@@ -197,6 +197,16 @@ class TestFlowchart:
             assert column <= set("│┌└─"), (x, column)
         assert "┼" not in drawing, "a rail crossed a corridor"
 
+    def test_a_width_draws_a_repeated_subtree_once(self) -> None:
+        """Three copies of an 8-row block: rails to one drawing, every row right."""
+        table = "01110001" + "10110010" * 3
+        once = boolean.flowchart(table, 60)
+        stacked = boolean.flowchart(table, 1)
+        assert len(once.splitlines()) < 0.6 * len(stacked.splitlines())
+        for row in range(32):
+            bits = [str((row >> (4 - i)) & 1) for i in range(5)]
+            assert run_flowchart(once, bits) == table[row], row
+
 
 @pytest.mark.parametrize("width", [1, 40])
 def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:

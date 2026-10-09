@@ -12,6 +12,7 @@ The default is a deque lookup, one pushed entry a row (a run of equal entries
 sets the register once), so it has no subtrees to share.
 """
 
+from collections import Counter
 from itertools import pairwise
 
 from esolangs.tools.helpers import (
@@ -21,7 +22,11 @@ from esolangs.tools.helpers import (
     grid_width,
     narrowest_grid,
     read_at,
+    subtree_ids,
 )
+
+# Fewest table rows a subtree must span for the stacked layout to draw it once.
+_SHARE_ROWS = 8
 
 # Leaf column pitch: 5-cell ``(( ))`` plus 1 gutter.
 _FLOWCHART_PITCH = 6
@@ -198,7 +203,33 @@ def _flowchart_render(cells: dict[tuple[int, int], str]) -> str:
     return "\n".join("".join(row).rstrip() for row in grid)
 
 
-def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
+def _occurrences(ids: list[list[int]]) -> Counter[int]:
+    """Count, per id, the subtrees of ``_SHARE_ROWS`` rows or more that repeat.
+
+    Scans in drawing order, one-branch first, and stops at such a subtree
+    (its inside is never shared), so a path jumps at most once.
+    """
+    counts = [Counter(level) for level in ids]
+    found: Counter[int] = Counter()
+
+    def scan(lo: int, hi: int, depth: int) -> None:
+        sid = ids[depth][lo // (hi - lo)]
+        if sid < 2:
+            return
+        if hi - lo >= _SHARE_ROWS and counts[depth][sid] > 1:
+            found[sid] += 1
+            return
+        half = (hi - lo) // 2
+        scan(lo + half, hi, depth + 1)
+        scan(lo, lo + half, depth + 1)
+
+    scan(0, len(ids[-1]), 0)
+    return found
+
+
+def _flowchart_stacked(
+    truth_table: str, *, share: bool = False
+) -> dict[tuple[int, int], str]:
     """Paint the tree with its subtrees stacked rather than side by side.
 
     The one-branch hangs below the switch and the zero-branch falls down its
@@ -209,6 +240,15 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
     is column ``d`` and every descendant is deeper and further east, so no
     rail and corridor ever meet.  Each leaf turns east onto a bus down
     column ``spine + 3``, which returns to the spine below the last leaf.
+
+    With ``share``, a subtree of ``_SHARE_ROWS`` rows or more that repeats at
+    its depth is drawn once, at its last copy.  Its entry is the east detour's
+    ``┴``, which a pointer from above and one from the east both leave west;
+    each earlier copy runs east over the bus to a rail column (``spine + 4``
+    on) and down to the entry row.  A pointer may not cross a cell it already
+    left (it would take the exit remembered from the first pass), and its
+    later way down the bus starts below the entry row, so the rails must run
+    down to the copy; running up to it would cross that bus.
     """
     truth_table, costs, tail = _plan(truth_table)
     n = len(costs)
@@ -219,6 +259,13 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
     cells: dict[tuple[int, int], str] = {}
     constant = constant_span_test(truth_table)
     taps: list[int] = []
+    ids = subtree_ids(truth_table)
+    counts = [Counter(level) for level in ids] if share else []
+    copies = _occurrences(ids) if share else Counter()
+    seen: Counter[int] = Counter()
+    entries: dict[int, int] = {}
+    # (row, first column east, id) of each copy drawn as a jump.
+    jumps: list[tuple[int, int, int]] = []
 
     def reads(y: int, count: int) -> int:
         """Draw ``count`` ``/ /`` nodes down the spine; return the row after."""
@@ -240,19 +287,44 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
         taps.append(y + 2)
         return y + 3
 
-    def walk(lo: int, hi: int, depth: int, y: int) -> int:
+    def repeat(lo: int, hi: int, depth: int, *, locked: bool) -> int | None:
+        """Return the id of a subtree that may repeat, or ``None``."""
+        if not share or locked or hi - lo < _SHARE_ROWS:
+            return None
+        sid = ids[depth][lo // (hi - lo)]
+        return sid if sid >= 2 and counts[depth][sid] > 1 else None
+
+    def role(sid: int | None) -> str:
+        """Return ``"jump"`` for an earlier copy, ``"body"`` for the last."""
+        if sid is None or copies[sid] < 2:
+            return "plain"
+        seen[sid] += 1
+        return "body" if seen[sid] == copies[sid] else "jump"
+
+    def walk(lo: int, hi: int, depth: int, y: int, *, locked: bool = False) -> int:
         """Draw the subtree for ``truth_table[lo:hi]``; return the row after."""
         if constant(lo, hi):
             return leaf(y, depth, truth_table[lo])
         y = reads(y, costs[depth])
         _paint(cells, spine - 1, y, "< >")
+        half = (hi - lo) // 2
         # b=1: east out of the switch, down, back west, onto the spine
         cells[(spine + 2, y)] = "┐"
-        cells[(spine + 2, y + 1)] = "┘"
-        cells[(spine + 1, y + 1)] = "─"
-        cells[(spine, y + 1)] = "┌"
-        half = (hi - lo) // 2
-        below = walk(lo + half, hi, depth + 1, y + 2)
+        one = repeat(lo + half, hi, depth + 1, locked=locked)
+        how = role(one)
+        if one is not None and how == "jump":
+            cells[(spine + 2, y + 1)] = "└"
+            jumps.append((y + 1, spine + 3, one))
+            below = y + 2
+        else:
+            cells[(spine + 2, y + 1)] = "┴" if how == "body" else "┘"
+            if one is not None and how == "body":
+                entries[one] = y + 1
+            cells[(spine + 1, y + 1)] = "─"
+            cells[(spine, y + 1)] = "┌"
+            below = walk(
+                lo + half, hi, depth + 1, y + 2, locked=locked or one is not None
+            )
         # b=0: west to this depth's own column, down past everything the
         # one-branch drew, then east again onto the spine
         for x in range(depth + 1, spine - 1):
@@ -261,10 +333,27 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
         for row in range(y + 1, below):
             cells[(depth, row)] = "│"
         cells[(depth, below)] = "└"
-        for x in range(depth + 1, spine):
+        zero = repeat(lo, lo + half, depth + 1, locked=locked)
+        how = role(zero)
+        if zero is not None and how == "jump":
+            for x in range(depth + 1, spine + 2):
+                cells[(x, below)] = "─"
+            jumps.append((below, spine + 2, zero))
+            return below + 1
+        for x in range(depth + 1, spine + 2 if how == "body" else spine):
             cells[(x, below)] = "─"
-        cells[(spine, below)] = "┐"
-        return walk(lo, lo + half, depth + 1, below + 1)
+        if zero is None or how == "plain":
+            cells[(spine, below)] = "┐"
+            return walk(
+                lo, lo + half, depth + 1, below + 1, locked=locked or zero is not None
+            )
+        # A repeated zero-branch is entered from the east like a one-branch.
+        cells[(spine + 2, below)] = "┐"
+        cells[(spine + 2, below + 1)] = "┴"
+        cells[(spine + 1, below + 1)] = "─"
+        cells[(spine, below + 1)] = "┌"
+        entries[zero] = below + 1
+        return walk(lo, lo + half, depth + 1, below + 2, locked=True)
 
     walk(0, len(truth_table), 0, 2)
     _paint(cells, spine - 1, 0, "( )")
@@ -279,7 +368,51 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
     cells[(bus, end)] = "┘"
     _paint(cells, spine, end, "┌──")
     _answer_column(cells, spine, end + 1)
+    _join_jumps(cells, jumps, entries, spine)
     return cells
+
+
+def _join_jumps(
+    cells: dict[tuple[int, int], str],
+    jumps: list[tuple[int, int, int]],
+    entries: dict[int, int],
+    spine: int,
+) -> None:
+    """Draw each copy's rail down to the entry row of its drawn subtree.
+
+    The topmost copy of an id is the trunk: east along its row, down column
+    ``spine + 4 + k`` and west along the entry row to the ``┴``.  A lower copy
+    runs east along its own row and turns down onto the trunk at ``┤`` (a
+    pointer heading east onto it turns down).  Groups whose spans are apart
+    share a column; crossings (the bus, other rails) become ``┼``.
+    """
+
+    def put(x: int, y: int, char: str) -> None:
+        crossing = {cells.get((x, y)), char} == {"│", "─"}
+        cells[(x, y)] = "┼" if crossing else char
+
+    last_row: list[int] = []  # per rail column, the entry row it reaches
+    groups: dict[int, list[tuple[int, int]]] = {}
+    for row, start, sid in jumps:
+        groups.setdefault(sid, []).append((row, start))
+    for sid in sorted(groups, key=lambda sid: min(groups[sid])):
+        copies = sorted(groups[sid])
+        top, entry = copies[0][0], entries[sid]
+        column = next((k for k, end in enumerate(last_row) if end < top), None)
+        if column is None:
+            column = len(last_row)
+            last_row.append(entry)
+        last_row[column] = entry
+        x = spine + 4 + column
+        for y in range(top + 1, entry):
+            put(x, y, "│")
+        cells[(x, entry)] = "┘"
+        for i in range(spine + 3, x):
+            put(i, entry, "─")
+        for number, (row, start) in enumerate(copies):
+            for i in range(start, x):
+                put(i, row, "─")
+            cells[(x, row)] = "┐" if number == 0 else "┤"
 
 
 def flowchart(truth_table: str, width: int | None = None) -> str:
@@ -287,7 +420,9 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.
     Without ``width``, preloads paired answers into deques and selects one
-    by the input bits; with it, draws a decision tree, stacked if narrower.
+    by the input bits; with it, draws a decision tree, stacked if narrower,
+    and in the stacked one draws a repeated subtree once when ``width`` leaves
+    room for its rail columns and characters and rectangle both shrink.
     """
     _validate_truth_table(truth_table)
     if width is None:
@@ -296,7 +431,21 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     if grid_width(flat) <= width:
         return flat
     stacked = _flowchart_render(_flowchart_stacked(truth_table))
-    return narrowest_grid(flat, stacked)
+    best = narrowest_grid(flat, stacked)
+    if best is not stacked:
+        return best
+    # Drawing repeats once costs rail columns, so it needs room and a gain
+    # in both characters and the rectangle.
+    shared = _flowchart_render(_flowchart_stacked(truth_table, share=True))
+    fits = grid_width(shared) <= width
+    if fits and len(shared) < len(stacked) and _area(shared) < _area(stacked):
+        return shared
+    return stacked
+
+
+def _area(program: str) -> int:
+    """Return the cells of the program's bounding rectangle."""
+    return grid_width(program) * (program.count("\n") + 1)
 
 
 def _flowchart_deque(truth_table: str) -> str:
