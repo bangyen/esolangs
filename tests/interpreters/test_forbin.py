@@ -4,7 +4,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.other.forbin import _Machine as Forbin
 from esolangs.interpreters.other.forbin import run
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.forbin_support import run_program
 
 
@@ -526,3 +528,10 @@ class TestScopingIsLexical:
     def test_a_top_level_function_does_not_see_its_callers_locals(self) -> None:
         with pytest.raises(HaltError, match="undeclared identifier 'x'"):
             run_program("g { out 0,1,0,0,0,0,0,x; }\nmain { x = 1; g 0; }")
+
+
+def test_forbin_for_loop_halts_without_a_false_cycle() -> None:
+    # Every row sets the same local to the same value, so only the loop's
+    # own row index (in the snapshot) keeps this from reading as a repeat.
+    machine = Forbin("main { for i:0..1 { x = 0; } }", ScriptedIO())
+    assert run_until_halt_or_cycle(machine) is True

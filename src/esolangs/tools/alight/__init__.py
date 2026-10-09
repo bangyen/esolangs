@@ -4,14 +4,18 @@ Derived, not transliterated (the page is unimplemented).  Alight's
 ``at{list, index}`` takes the index as an expression, so the table is a
 string literal and the input bits fold into its row by Horner's rule,
 ``row = ((b0 * 2 + b1) * 2 + b2)...``, minus their ASCII offset: O(n)
-commands over an O(2**n) literal, no branching.  That is why ``alight``
-sits in the contract test's ``_UNSHAPED`` list: a 0%
-fold is the construction working.  The reads are unconditional and first.
+commands over an O(2**n) literal, no branching.  That is why its
+``shape`` is ``LOOKUP``: a 0% fold is the construction working: a literal has
+no subtrees to fold or share.  The reads are unconditional and first.
 """
+
+from typing import Any
 
 from esolangs._dialects import expression_syntax as validate_expression_syntax
 from esolangs._dialects import list_update as validate_list_update
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 
 __all__ = ["alight"]
 
@@ -24,6 +28,10 @@ __all__ = ["alight"]
 #: lefts to get from west back to east.
 _ALIGHT_EAST_TURN = "turn right;"
 _ALIGHT_WEST_TURN = "turn left;"
+
+#: Width of a chunk's guard and lookup around the index text: ``skip i < I;``
+#: is 10 + I, ``set r at{"", i-I};`` is 18 + I.
+_ALIGHT_OVERHEAD = 28
 
 
 def _half_before(value: int) -> str:
@@ -38,35 +46,39 @@ def _alight_chunk(rows: int, width: int) -> int:
     by the largest row number, so this is a formula.
     """
     index = len(_half_before(rows))
-    # ``skip i < I;`` is 10 + I, ``set r at{"", i-I};`` is 18 + I.
-    overhead = 28 + 2 * index
+    overhead = _ALIGHT_OVERHEAD + 2 * index
     chunk = max(1, width - overhead - len(_ALIGHT_EAST_TURN))
-    # Chunking is not free: it buys a shorter literal with a guard, and for
-    # a short table the guard costs more than the literal saves.  Keeping
-    # the whole table in one lookup whenever splitting would not actually
-    # make the widest unit narrower is also what keeps this monotone --
-    # otherwise asking for 1 came back *wider* than asking for 40, which is
-    # not what "the narrowest it can build" should mean.
+    # For a short table the guard costs more than the literal saves; one
+    # lookup unless splitting narrows the widest unit, else a smaller request
+    # came back wider than a larger one.  Postfix, measured by area on random
+    # tables: without the guard n=8 at width 300 is 83% larger (0% at 50-160
+    # and 500).
     if len('set r at{"", i+0.5};') + rows <= overhead + chunk:
         return rows
     return chunk
 
 
-def _alight_units(truth_table: str, n: int, chunk: int) -> list[list[str]]:
+def _alight_units(
+    truth_table: str, n: int, chunk: int, essential: list[bool] | None = None
+) -> list[list[str]]:
     """Build the commands, grouped into pieces a fold may not split.
 
     A ``skip`` guards the next command along the heading, so the pair stays
-    on one row.  The literal is one token, so it is chunked to make the floor
-    the chunk size; each chunk is guarded only from below, so every chunk up
-    to the index's runs and the last overwrites (reading past a chunk's end
-    is ``nil``, per the wiki).
+    on one row.  The first chunk is guarded from above (``i > end``), the
+    rest from below (``i < start``); later chunks overwrite ``r`` (reading
+    past a chunk's end is ``nil``, per the wiki).  An input ``essential``
+    marks False is a bare ``inp a`` and ``truth_table`` is indexed by the rest.
     """
     units: list[list[str]] = [["begin"], ["var a"], ["var i"], ["var r"]]
-    for k in range(n):
+    folded = False
+    for kept in essential or [True] * n:
         units.append(["inp a"])
+        if not kept:
+            continue
         units.append(
-            [f"set i a-{_ASCII_ZERO}" if k == 0 else f"set i i*2+a-{_ASCII_ZERO}"]
+            [f"set i i*2+a-{_ASCII_ZERO}" if folded else f"set i a-{_ASCII_ZERO}"]
         )
+        folded = True
     rows = len(truth_table)
     if chunk >= rows:
         # Indices run 0.5, 1.5, ... so the row number is offset by a half.
@@ -89,30 +101,42 @@ def _alight_units(truth_table: str, n: int, chunk: int) -> list[list[str]]:
     return units
 
 
-def _alight_flat_compact(truth_table: str, n: int) -> str:
-    """Return the shorter straight lookup, with the index in ``at`` itself."""
+def _alight_flat_compact(
+    truth_table: str, n: int, essential: list[bool] | None = None
+) -> str:
+    """Return the shorter straight lookup, with the index in ``at`` itself.
+
+    Against the ``set i`` fold of ``_alight_units`` it is 10.3% shorter at n=8
+    (13.8% at n=7), so the default path never builds units.
+
+    An input ``essential`` marks False is read into ``r``, which the lookup
+    overwrites, and ``truth_table`` is indexed by the rest.
+    """
+    essential = essential or [True] * n
+    m = sum(essential)
     names = [chr(code) for code in range(ord("a"), ord("z") + 1) if code != ord("r")]
-    names.extend(f"a{index}" for index in range(n - len(names)))
+    names.extend(f"a{index}" for index in range(m - len(names)))
     expr = names[0]
-    for name in names[1:n]:
+    for name in names[1:m]:
         expr += f"*2+{name}"
-    # Every input is its character code.  The final half selects Alight's
-    # half-integer list slot; omitting its leading zero saves one column.
-    offset = _half_before(_ASCII_ZERO * ((1 << n) - 1))
-    expr += f"-{offset}"
+    # Every input is its character code; the final half selects Alight's
+    # half-integer list slot.  (Folding it into the offset, ``-N.5``, saved
+    # 2 chars: 0.47% at n=8, retired.)
+    expr += f"-{_ASCII_ZERO * ((1 << m) - 1)}+0.5"
+    reads = iter(names[:m])
     return ";".join(
-        ["begin", *(f"var {name}" for name in names[:n]), "var r"]
-        + [f"inp {name}" for name in names[:n]]
+        ["begin", *(f"var {name}" for name in names[:m]), "var r"]
+        + [f"inp {next(reads) if kept else 'r'}" for kept in essential]
         + [f'set r at{{"{truth_table}",{expr}}}', "out r", "end", ""]
     )
 
 
 def _alight_folded(units: list[list[str]], width: int) -> str:
-    """Lay ``commands`` out as a boustrophedon inside ``width`` columns.
+    """Lay ``units`` out as a boustrophedon inside ``width`` columns.
 
     A command is a word walked cell by cell, so a row end cuts it; the
-    heading is steered with two ``turn right`` then two ``turn left``, the
-    second of each written downward from the cell beyond.  Westward rows
+    heading is steered by an east turn then a west turn, the second of each
+    written downward from the cell beyond.  Westward rows
     read right to left (``end;`` is ``;dne``).  The turn sits at the far
     edge with bare semicolons (a nop) filling the gap, so every row is full
     width.  The floor is the longest command plus its turn.
@@ -124,9 +148,7 @@ def _alight_folded(units: list[list[str]], width: int) -> str:
     cells: dict[tuple[int, int], str] = {}
     row, col, step = 0, 0, 1
     pending = list(units)
-    # Every pass places at least one command and the pass that empties
-    # ``pending`` leaves through the break below, so the loop has no other
-    # way out and says so.
+    # Every pass places a command; the pass that empties ``pending`` breaks.
     while True:
         turn = _ALIGHT_EAST_TURN if step == 1 else _ALIGHT_WEST_TURN
         edge = limit - 1 if step == 1 else 0
@@ -178,17 +200,33 @@ def _dimensions(program: str) -> tuple[int, int]:
     return max(map(len, rows)), len(rows)
 
 
-def _alight_balanced(truth_table: str, n: int, width: int) -> str:
-    """Return the permitted layout with the smallest longer dimension.
+def _flatten(units: list[list[str]]) -> str:
+    """Return the commands of ``units`` as one semicolon-terminated line."""
+    return ";".join(command for unit in units for command in unit) + ";"
 
-    Straight, one-column rotation, or any legal boustrophedon within
-    ``width``; ties prefer less area, then fewer characters.
+
+def _fit(program: str, width: int) -> str | None:
+    """Return ``program`` if it is at most ``width`` wide, else None."""
+    return program if _dimensions(program)[0] <= width else None
+
+
+def _smallest(*programs: str | None, minimax: bool = True) -> str:
+    """Return the candidate with least ``max(width, height)``, then area.
+
+    ``minimax=False`` (postfix) ranks by area alone.
     """
-    if width < 1:
-        raise ValueError("width must be at least 1")
-    from esolangs.tools.alight.balance import select_alight
 
-    return select_alight(truth_table, n, width)
+    def score(program: str) -> tuple[int, int, int]:
+        w, h = _dimensions(program)
+        return max(w, h) if minimax else 0, w * h, len(program)
+
+    return min((p for p in programs if p is not None), key=score)
+
+
+def _postfix_width(units: list[list[str]], width: int) -> str:
+    """Return the fold of ``units`` if it fits ``width``, else one column."""
+    program = _alight_folded(units, width)
+    return program if _dimensions(program)[0] <= width else "\n".join(_flatten(units))
 
 
 def alight(
@@ -210,6 +248,17 @@ def alight(
     n = _validate_truth_table(truth_table)
     validate_expression_syntax(expression_syntax)
     validate_list_update(list_update)
+    if width is not None and width < 1:
+        raise ValueError("width must be at least 1")
+    weights, projected = input_weights(truth_table, n)
+    essential = [bool(weight) for weight in weights]
+    dropped = any(weights) and not all(weights)
+    # An ignored input is read and dropped, and the table is indexed by the
+    # rest.  A constant keeps every input.
+    if width is None and dropped:
+        if expression_syntax == "postfix":
+            return _flatten(_postfix_units(projected, n, len(projected), essential))
+        return _alight_flat_compact(projected, n, essential)
     if expression_syntax == "postfix":
         units = _postfix_units(
             truth_table,
@@ -218,33 +267,67 @@ def alight(
             if width is None
             else _alight_chunk(len(truth_table), width),
         )
-        flat = ";".join(command for unit in units for command in unit) + ";"
         if width is None:
-            return flat
-        if width < 1:
-            raise ValueError("width must be at least 1")
-        program = _alight_folded(units, width)
-        if _dimensions(program)[0] > width:
-            return "\n".join(flat)
+            return _flatten(units)
+        program = _postfix_width(units, width)
+        if dropped:
+            units = _postfix_units(
+                projected, n, _alight_chunk(len(projected), width), essential
+            )
+            return _smallest(program, _postfix_width(units, width), minimax=False)
         return program
     flat = _alight_flat_compact(truth_table, n)
     if width is None:
         return flat
-    return _alight_balanced(truth_table, n, width)
+    from esolangs.tools.alight.balance import select_alight  # circular
+
+    program = select_alight(truth_table, n, width)
+    if not dropped:
+        return program
+    # select_alight models n reads, so the dropped build is rendered here:
+    # the model's plan for the projected table, and a fold at ``width``.
+    # 32.6% by chars at n=8, 1 ignored, width 80 (audit); area measured in
+    # the commit.  A candidate wider than ``width`` is discarded.
+    from esolangs.tools.alight.balance import _Plan, _plans  # circular
+
+    plan = min(
+        (p for p in _plans(sum(essential)) if p.ready() <= width), key=_Plan.score
+    )
+    flat = _alight_flat_compact(projected, n, essential)
+    if plan.kind < 2:  # a column, or the one row (never the minimum here)
+        planned = ("\n".join(flat), flat)[plan.kind]
+    else:
+        planned = _alight_folded(
+            _alight_units(projected, n, plan.chunk, essential), plan.columns
+        )
+    units = _alight_units(projected, n, _alight_chunk(len(projected), width), essential)
+    return _smallest(
+        program, _fit(planned, width), _fit(_alight_folded(units, width), width)
+    )
 
 
-def _postfix_units(table: str, n: int, chunk: int) -> list[list[str]]:
-    """Emit the same row fold and guarded lookups in postfix notation."""
+def _postfix_units(
+    table: str, n: int, chunk: int, essential: list[bool] | None = None
+) -> list[list[str]]:
+    """Emit the same row fold and guarded lookups in postfix notation.
+
+    An input ``essential`` marks False is a bare ``inp a`` the next read
+    overwrites, and ``table`` is indexed by the rest.
+    """
     units = [["begin"], ["var a"], ["var i"], ["var r"]]
-    for step in range(n):
+    folded = False
+    for kept in essential or [True] * n:
         units.append(["inp a"])
+        if not kept:
+            continue
         units.append(
             [
-                f"set i a {_ASCII_ZERO} -"
-                if step == 0
-                else f"set i i 2 * a + {_ASCII_ZERO} -"
+                f"set i i 2 * a + {_ASCII_ZERO} -"
+                if folded
+                else f"set i a {_ASCII_ZERO} -"
             ]
         )
+        folded = True
     for start in range(0, len(table), chunk):
         piece = table[start : start + chunk]
         index = "i 0.5 +" if start == 0 else f"i {_half_before(start)} -"
@@ -256,3 +339,37 @@ def _postfix_units(table: str, n: int, chunk: int) -> list[list[str]]:
         else:
             units.append([f"skip i {_half_before(start)} <", lookup])
     return [*units, ["out r"], ["end"]]
+
+
+def _balance(table: str, default: Any, *, expression_syntax: str = "infix") -> Any:
+    """Defer to the ``balance`` submodule, which imports this one.
+
+    The notation is a keyword: it changes the reconstructed instructions.
+    """
+    from esolangs.tools.alight.balance import balance_alight  # circular
+
+    return balance_alight(table, default, expression_syntax=expression_syntax)
+
+
+def _dialect(expression_syntax: str = "infix", list_update: str = "in_place") -> None:
+    """Validate Alight's dialect settings, one keyword per setting."""
+    validate_expression_syntax(expression_syntax)
+    validate_list_update(list_update)
+
+
+LANGUAGE = Language(
+    "Alight",
+    "grid_based.alight",
+    boolean=alight,
+    dialect=_dialect,
+    # Not a tree: a Horner row index into a string literal.
+    shape=Shape.LOOKUP,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    balance=_balance,
+    no_wrap="a command is a word walked cell by cell; a row end cuts it",
+    eof="it raises its own error before the read is reached",
+    empty_program="empty program",
+)

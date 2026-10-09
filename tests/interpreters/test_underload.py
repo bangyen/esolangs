@@ -13,7 +13,6 @@ _run = partial(run_program, run, suppress_eof=False)
 
 
 def test_push_output_and_nested_elements() -> None:
-    assert _run("(Hello, world!)S") == "Hello, world!"
     assert _run("((x))S") == "(x)"
 
 

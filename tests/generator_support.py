@@ -1,5 +1,7 @@
 """Generator round-trip checks for the development suite."""
 
+from itertools import pairwise
+
 import esolangs
 from esolangs._evaluate import _DEFAULT, _Default, _evaluate
 from tests.stdin_check import _validate_shape_for_evaluate
@@ -31,3 +33,50 @@ def verify_generated(
     return (
         evaluate_generated(language, table, timeout, width, isolated=isolated) == table
     )
+
+
+#: What a coverage failure for a new language says to do: ``check`` names
+#: the file and the entry, so the messages need not repeat it.
+CHECK = "`just check-language <name>` names the entry to add"
+
+
+def assert_an_ignored_input_costs(name: str, n: int, cost: int) -> None:
+    """An input the table ignores adds ``cost`` characters, read and dropped.
+
+    Lifted at every position from an ``n``-input one-hot table.  A lookup
+    indexed by the essential inputs still reads the ignored one; it used to
+    grow as much as a real input, the table doubled over the bit.
+    """
+    from esolangs.registry import LANGUAGES
+
+    inner = "".join(str(int(row.bit_count() == 1)) for row in range(2**n))
+    build = LANGUAGES[name].boolean
+    assert build is not None
+    for at in (0, n // 2, n):
+        low = n - at
+        table = "".join(
+            inner[row >> (low + 1) << low | row & ((1 << low) - 1)]
+            for row in range(2 * len(inner))
+        )
+        assert len(build(table)) - len(build(inner)) == cost, at
+    assert evaluate_generated(name, table, timeout=30) == table
+
+
+def overruns(name: str, table: str) -> tuple[int, int]:
+    """Return how many widths a layout overran, and by the worst margin."""
+    counted = [
+        max(len(line) for line in esolangs.generate(name, table, width=w).splitlines())
+        - w
+        for w in range(1, 124, 4)
+    ]
+    over = [margin for margin in counted if margin > 0]
+    return len(over), max(over, default=0)
+
+
+def assert_parity_at_most_doubles(generator, arities, slack=0):
+    """A parity table's source at most doubles per input, plus ``slack``."""
+    sizes = [
+        len(generator("".join(str(r.bit_count() & 1) for r in range(2**n))))
+        for n in arities
+    ]
+    assert all(b <= 2 * a + slack for a, b in pairwise(sizes)), sizes

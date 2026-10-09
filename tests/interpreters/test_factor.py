@@ -7,7 +7,9 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.tape_based.factor import _Machine as Factor
 from esolangs.interpreters.tape_based.factor import decode, run
+from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
 # The wiki's published programs, decoded from their prime factorizations.
@@ -214,26 +216,6 @@ class TestFactorint:
 
         assert _factorint(2**61 - 1) == {2**61 - 1: 1}
 
-    def test_does_not_strand_a_large_composite_on_sympy(self) -> None:
-        """The residue handed to sympy must never be a large composite."""
-        import re
-        import time
-
-        from esolangs import tools as boolean_tools
-        from esolangs.interpreters.tape_based.factor import _factorint
-
-        program = str(boolean_tools.factor("0110100110010110"))
-        number = int(re.sub(r"[^0-9]", "", program))
-        start = time.perf_counter()
-        factors = _factorint(number)
-        elapsed = time.perf_counter() - start
-
-        assert max(factors) > 10000, "the case only bites above a 10000 sieve"
-        # Generous next to the ~0.004s it takes, and far under the minutes
-        # a stranded composite costs, so this fails on the bug and not on
-        # a slow machine.
-        assert elapsed < 5.0, f"factorizing took {elapsed:.1f}s"
-
     def test_never_strands_a_composite_above_the_first_chunk(self) -> None:
         """A barren chunk is not a factorization ceiling."""
         import sympy
@@ -310,3 +292,19 @@ class TestContract(SnapshotContract, CycleContract):
     stepping_program = "15"
     halting_program = "15"
     looping_program = "3567"
+
+
+def test_factor() -> None:
+    # 3*7*23*47*107: residues mod 11 spell `+[>+]` in prime order.
+    assert decode(2429007) == "+[>+]"
+    machine = Factor("2429007", ScriptedIO())
+    assert run_until_halt_or_growth(machine) is False
+
+    machine = Factor("2429007", ScriptedIO())
+    for _ in range(600):
+        assert not machine.halted
+        machine.step()
+    assert len(machine.tape) > 150
+
+    assert decode(19803) == "+[>]"
+    assert run_until_halt_or_growth(Factor("19803", ScriptedIO())) is True

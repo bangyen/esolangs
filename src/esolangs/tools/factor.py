@@ -3,27 +3,32 @@
 Ascending primes encode Brainfuck instructions by residue modulo eleven
 and run length by exponent. A compact tree tests inputs in stream order
 and puts the answer in the final input's unused flag. Multiplication loops
-build and subtract the ASCII offsets; only this tree is encoded.
-
-Retiring alternate trees and weighted reordering adds 4.26% to the
-three-input digit total, 0.061% to the seeded five-input sample.
+build and subtract the ASCII offsets; only this tree is encoded.  Equal
+sibling halves merge; the code has no call, so other repeats are copied.
+An ignored cell is read but not dedented.
 """
 
 import heapq
-import sys
 from collections.abc import Iterator
+from itertools import groupby
 
+from esolangs._digits import digit_limit_for
 from esolangs.factor_primes import prime_segments
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     decision_tree_body,
+    input_weights,
     move_text,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["factor"]
 
-#: A prime's residue mod 11 selects the instruction it stands for.
+#: A prime's residue mod ``_MODULUS`` selects the instruction it stands for.
+_MODULUS = 11
 _BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
 
 # Exact prime enumeration, in bounded segments. ``isprime`` becomes a BPSW
@@ -54,16 +59,10 @@ def _spans(code: str) -> list[tuple[int, int]]:
     encode smaller even when it has more runs.
     """
     primes = _primes()
-    out: list[tuple[int, int]] = []
-    i = 0
-    while i < len(code):
-        j = i
-        while j < len(code) and code[j] == code[i]:
-            j += 1
-        residue = _BF_RESIDUE[code[i]]
-        out.append((j - i, next(p for p in primes if p % 11 == residue)))
-        i = j
-    return out
+    return [
+        (len(list(run)), next(p for p in primes if p % _MODULUS == _BF_RESIDUE[char]))
+        for char, run in groupby(code)
+    ]
 
 
 def _encode(code: str) -> int:
@@ -79,18 +78,27 @@ def _encode(code: str) -> int:
     heapq.heapify(heap)
     serial = len(heap)
     while len(heap) > 1:
-        _a_bits, _a_serial, a = heapq.heappop(heap)
-        _b_bits, _b_serial, b = heapq.heappop(heap)
-        product = a * b
+        product = heapq.heappop(heap)[2] * heapq.heappop(heap)[2]
         heapq.heappush(heap, (product.bit_length(), serial, product))
         serial += 1
     return heap[0][2] if heap else 1
 
 
 def _program(truth_table: str) -> str:
-    """Build the compact tree in input order, using the final input's flag."""
+    """Build the compact tree in input order, using the final input's flag.
+
+    The tree tests the essential inputs only, so its last level is the last
+    one the table reads and keeps its binary leaves; an ignored input is
+    read and its cell left set.  The final-flag leaves are essential, not an
+    optimisation: the last input's flag cell is the answer cell, so the plain
+    flag test computes the wrong function.
+    """
     n = _validate_truth_table(truth_table)
-    perm = tuple(range(n))
+    weights, table = input_weights(truth_table, n)
+    perm = tuple(i for i, weight in enumerate(weights) if weight)
+    if len(table) == 1:
+        # A constant already folds to one leaf; it keeps every input.
+        table, perm = truth_table, tuple(range(n))
     result = 2 * n - 1
     scratch, multiplier = result + 1, result + 2
     after_reads = 2 * (n - 1)
@@ -113,14 +121,14 @@ def _program(truth_table: str) -> str:
         ">" * back
         + "[-"
         + "<" * scratch
-        + "-"
-        + ">>-" * (n - 1)
+        + "-" * (0 in perm)
+        + "".join(">>" + "-" * (k in perm) for k in range(1, n))
         + ">" * back
         + "]"
         + "<" * back
     )
     body, pos = decision_tree_body(
-        truth_table,
+        table,
         ">",
         "<",
         perm,
@@ -135,18 +143,21 @@ def factor(truth_table: str) -> str:
     """Build a Factor program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  Total, with no digit ceiling (the old
-    4300/16000/500000 budgets were size policy): CPython's
-    ``sys.get_int_max_str_digits()`` is raised to a bit-length estimate
-    (``log10(2) < 0.30103``, never under-counting) and put back.
+    inputs (most significant first).  Total, with no digit ceiling: CPython's
+    digit cap is raised to a bit-length estimate (``log10(2) < 0.30103``,
+    never under-counting) and put back.
     """
     number = _encode(_program(truth_table))
-    digits = int(number.bit_length() * 0.30103) + 1
-    limit = sys.get_int_max_str_digits()
-    if limit == 0 or digits <= limit:  # 0 is CPython's "unlimited"
+    with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
         return str(number)
-    sys.set_int_max_str_digits(digits + 1)
-    try:
-        return str(number)
-    finally:
-        sys.set_int_max_str_digits(limit)
+
+
+LANGUAGE = Language(
+    "Factor",
+    "tape_based.factor",
+    boolean=factor,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    wrap=wrap_chars,
+)

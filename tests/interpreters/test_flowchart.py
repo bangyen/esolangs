@@ -239,29 +239,33 @@ class TestNodes:
             machine.step()
         return machine.pointers[0].reg
 
-    def test_set_to_one(self) -> None:
-        """``[ }`` sets the register to one."""
-        assert self._register("[ }") == 1
-
-    def test_set_to_zero(self) -> None:
-        """``{ ]`` sets the register to zero."""
-        assert self._register("[ }─{ ]") == 0
-
-    def test_toggle_from_empty_is_one(self) -> None:
-        """``[ ]`` on an empty register yields one."""
-        assert self._register("[ ]") == 1
-
-    def test_toggle_flips(self) -> None:
-        """``[ ]`` twice returns the register to zero."""
-        assert self._register("[ ]─[ ]") == 0
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            # ``[ }`` sets the register to one.
+            pytest.param("[ }", 1, id="set_to_one"),
+            # ``{ ]`` sets the register to zero.
+            pytest.param("[ }─{ ]", 0, id="set_to_zero"),
+            # ``[ ]`` on an empty register yields one.
+            pytest.param("[ ]", 1, id="toggle_from_empty_is_one"),
+            # ``[ ]`` twice returns the register to zero.
+            pytest.param("[ ]─[ ]", 0, id="toggle_flips"),
+            # A pushed bit comes back off the top of the deque.
+            pytest.param("[ }─\\[ ]/─{ }─\\{ }/", 1, id="push_then_pop_round_trips"),
+            # ``/[ ]\`` and ``/{ }\`` use the other end of the deque.
+            pytest.param("[ }─/[ ]\\─{ }─/{ }\\", 1, id="push_bottom_pop_bottom"),
+            # Selecting the previous deque again restores its contents.
+            pytest.param(
+                "[ }─\\[ ]/─[ >─< ]─\\{ }/", 1, id="switching_back_finds_the_bit"
+            ),
+        ],
+    )
+    def test_final_register(self, code: str, expected: int) -> None:
+        assert self._register(code) == expected
 
     def test_clear_empties(self) -> None:
         """``{ }`` empties the register."""
         assert self._register("[ }─{ }") is None
-
-    def test_push_then_pop_round_trips(self) -> None:
-        """A pushed bit comes back off the top of the deque."""
-        assert self._register("[ }─\\[ ]/─{ }─\\{ }/") == 1
 
     def test_pushing_an_empty_register_pushes_an_empty(self) -> None:
         """The spec lets a deque hold empty, so it covers the bit beneath."""
@@ -269,17 +273,9 @@ class TestNodes:
         assert self._register("[ }─/[ ]\\─{ }─/[ ]\\─/{ }\\") is None
         assert self._register("[ }─\\[ ]/─{ }─\\[ ]/─\\{ }/─\\{ }/") == 1
 
-    def test_push_bottom_pop_bottom(self) -> None:
-        """``/[ ]\\`` and ``/{ }\\`` use the other end of the deque."""
-        assert self._register("[ }─/[ ]\\─{ }─/{ }\\") == 1
-
     def test_deques_are_separate(self) -> None:
         """A bit pushed on one deque is not visible from the next."""
         assert self._register("[ }─\\[ ]/─[ >─\\{ }/") is None
-
-    def test_switching_back_finds_the_bit(self) -> None:
-        """Selecting the previous deque again restores its contents."""
-        assert self._register("[ }─\\[ ]/─[ >─< ]─\\{ }/") == 1
 
     def test_output_prints_the_bit(self) -> None:
         """``\\ \\`` writes the register as the low bit of a padded byte."""

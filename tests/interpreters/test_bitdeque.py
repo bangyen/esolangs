@@ -1,5 +1,4 @@
-import io
-from contextlib import redirect_stdout
+from functools import partial
 
 import pytest
 
@@ -12,13 +11,10 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.interpreters.runner import run_printing
+from tests.raises import assert_rejected_with_hint
 
-
-def run_and_capture(code: str) -> str:
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+run_and_capture = partial(run_printing, run)
 
 
 class TestBitdeque:
@@ -78,7 +74,6 @@ class TestTheWikiExample:
 
 class TestStepMachine:
     def test_step_tracks_cursor_register_and_deque(self) -> None:
-        from esolangs.interpreters.io import IO
         from esolangs.interpreters.queue_based.bitdeque import _Machine
 
         machine = _Machine("INVERT PUSH", IO())
@@ -109,7 +104,6 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.queue_based.bitdeque import _Machine
 
     return _Machine(code, IO())
@@ -146,3 +140,8 @@ def test_stray_text_is_rejected_with_the_first_invalid_word(
     with pytest.raises(ValueError, match="not a Bitdeque command") as caught:
         run_and_capture(code)
     assert str(caught.value) == expected
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Bitdeque", "PUHS", "did you mean 'PUSH'")

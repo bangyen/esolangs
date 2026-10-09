@@ -6,7 +6,8 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from esolangs.tools.dig import _DIG_BRANCH, _DIG_RETURN, _DIG_STRIDE
+from esolangs._evaluate import _evaluate
+from esolangs.tools.dig import _DIG_BRANCH, _DIG_STRIDE
 from tests.tools.boolean_runners import (
     run_dig,
 )
@@ -70,6 +71,16 @@ class TestDig:
         program = boolean.dig("1111")
         assert program.split("\n") == ["'", ">$5~~1:@"]
 
+    def test_a_constant_leaf_is_a_row_of_reads(self) -> None:
+        """A constant half sizes its own box, so the grid shrinks."""
+        import random
+
+        rng = random.Random(3)
+        half = "".join(rng.choice("01") for _ in range(64))
+        mixed = boolean.dig(half + "0" * 64).split("\n")
+        full = boolean.dig(half + half[::-1]).split("\n")
+        assert len(mixed) * max(map(len, mixed)) < len(full) * max(map(len, full))
+
     def test_constant_subtrees_prune_their_rows(self) -> None:
         """A folded node's descendants are never written."""
         folded = boolean.dig("11110000")
@@ -79,6 +90,29 @@ class TestDig:
             1 for r in full.split("\n") if r.strip()
         )
         assert all(row.strip() for row in folded.splitlines())
+
+    def test_a_repeated_flat_leaf_is_shared_and_still_computes(self) -> None:
+        """Quarters A B B A hold two leaves' worth of text, not four."""
+        import random
+
+        rng = random.Random(5)
+        a, b, c, d = ("".join(rng.choice("01") for _ in range(64)) for _ in range(4))
+        table = a + b + b + a
+        program = boolean.dig(table)
+        assert len(program) < 0.7 * len(boolean.dig(a + b + c + d))
+        for row in range(0, 256, 17):
+            assert run_dig(program, list(format(row, "08b"))) == table[row]
+
+    def test_a_table_whose_wires_cannot_all_be_laid_still_answers(self) -> None:
+        """A copy with no route is dropped, leaving a program that computes."""
+        import random
+
+        rng = random.Random(262)
+        blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(3)]
+        table = "".join(blocks[i] for i in (1, 1, 1, 0, 0, 2, 0, 2))
+        program = boolean.dig(table)
+        for row in range(0, 512, 37):
+            assert run_dig(program, list(format(row, "09b"))) == table[row]
 
     def test_unaligned_leaf_chains_seven_input_reads(self) -> None:
         """A folded flat leaf needs two windows beyond its six-read tail."""
@@ -155,10 +189,10 @@ class TestDig:
         """Past the turn a block is written backwards, so its ``$`` comes first."""
         narrow = boolean.dig("0110100110010110", 1)
         assert _DIG_BRANCH[::-1] in narrow, "no mirrored block: the tree never turned"
-        assert _DIG_RETURN in narrow, "nothing points the mole west"
+        assert "<" in narrow, "nothing points the mole west"
         flat = boolean.dig("0110100110010110", 10_000)
         assert _DIG_BRANCH[::-1] not in flat
-        assert _DIG_RETURN not in flat
+        assert "<" not in flat
 
     def test_the_layout_check_refuses_a_stride_that_collides(
         self, monkeypatch: pytest.MonkeyPatch
@@ -190,3 +224,49 @@ class TestDig:
                 program = boolean.dig(value * (1 << n))
                 assert len(program) < 4 * n + 8
                 assert run_dig(program, ["1"] * n) == value
+
+    @pytest.mark.medium
+    def test_an_ignored_middle_input_costs_no_level(self) -> None:
+        """A bare ``~`` in an adder or the next block, not a level: 802 -> 355."""
+
+        def ignore(table: str, at: int) -> str:
+            low = len(table).bit_length() - 1 - at
+            return "".join(
+                table[row >> (low + 1) << low | row & ((1 << low) - 1)]
+                for row in range(2 * len(table))
+            )
+
+        six, seven, eight = (
+            "".join(str((row * 73 + row // 3) & 1) for row in range(size))
+            for size in (64, 128, 256)
+        )
+        # Seven essential inputs put the ignored one just above the leaf's
+        # six; eight put it between two tree levels, in the second's block.
+        cases = [(six, at) for at in (1, 3, 5)] + [(seven, 1), (eight, 1)]
+        for inner, at in cases:
+            table = ignore(inner, at)
+            n = len(table).bit_length() - 1
+            program = boolean.dig(table)
+            assert len(program) < 1.03 * len(boolean.dig(inner))
+            for row in range(0, 1 << n, 1 if n == 7 else 11):
+                bits = [str(row >> (n - 1 - i) & 1) for i in range(n)]
+                assert run_dig(program, bits) == table[row], (at, row)
+
+
+@pytest.mark.parametrize("width", [40, 10_000])
+def test_a_width_tree_reads_an_ignored_input_in_the_next_block(width: int) -> None:
+    """f(a, c, d) with b ignored: one ``$4~~;#`` skip, not a fourth level."""
+    inner = "01101001"
+    table = "".join(inner[(i >> 3) << 2 | i & 3] for i in range(16))  # b ignored
+    program = boolean.dig(table, width)
+    assert "$4~~;#" in program
+    assert len(program) < len(boolean.dig("0110100110010110", width))
+    for row in range(16):
+        assert run_dig(program, list(format(row, "04b"))) == table[row], row
+
+
+@pytest.mark.parametrize("table", ["00", "0000"])
+def test_narrow_balance_regime_edge_executes(table):
+    """The smallest tables reaching an otherwise-untaken balance arm."""
+    balanced = esolangs.generate("Dig", table, balance=True)
+    assert _evaluate("Dig", balanced, inputs=len(table).bit_length() - 1) == table

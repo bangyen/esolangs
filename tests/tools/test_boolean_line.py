@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.interpreters.tape_based.line.extract import extract
 from esolangs.interpreters.tape_based.line.simulate import (
@@ -14,8 +15,10 @@ from esolangs.interpreters.tape_based.line.simulate import (
     compile_program,
     run_compiled,
 )
+from esolangs.raster import Raster, png
 from esolangs.tools.line import line_boolean
 from esolangs.tools.line.render import Node, render
+from esolangs.tools.line.tree_layout import tree_extents
 
 
 def _forks(node: Node | None) -> int:
@@ -74,25 +77,23 @@ def _topology_representatives(n: int) -> list[str]:
 class TestLineBoolean:
     """Generated decision trees, end to end through render -> extract -> simulate."""
 
-    def test_identity_n1(self, tmp_path: Path) -> None:
-        """Identity on one input: output follows the single bit."""
-        _check_truth_table("01", 1, tmp_path)
-
-    def test_not_n1(self, tmp_path: Path) -> None:
-        """NOT on one input: output is the inverted bit."""
-        _check_truth_table("10", 1, tmp_path)
-
-    def test_and_n2(self, tmp_path: Path) -> None:
-        """AND over two inputs."""
-        _check_truth_table("0001", 2, tmp_path)
-
-    def test_xor_n2(self, tmp_path: Path) -> None:
-        """XOR over two inputs."""
-        _check_truth_table("0110", 2, tmp_path)
-
-    def test_majority_n3(self, tmp_path: Path) -> None:
-        """The regression case: a 3-deep tree with an inward-turning arm."""
-        _check_truth_table("00010111", 3, tmp_path)
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            # Identity on one input: output follows the single bit.
+            pytest.param("01", 1, id="identity_n1"),
+            # NOT on one input: output is the inverted bit.
+            pytest.param("10", 1, id="not_n1"),
+            # AND over two inputs.
+            pytest.param("0001", 2, id="and_n2"),
+            # XOR over two inputs.
+            pytest.param("0110", 2, id="xor_n2"),
+            # The regression case: a 3-deep tree with an inward-turning arm.
+            pytest.param("00010111", 3, id="majority_n3"),
+        ],
+    )
+    def test_truth_table(self, tmp_path: Path, table: str, n: int) -> None:
+        _check_truth_table(table, n, tmp_path)
 
     @pytest.mark.slow  # 5.2s: 32 input combinations through the renderer
     def test_parity_n5(self, tmp_path: Path) -> None:
@@ -167,16 +168,6 @@ class TestLineBoolean:
             _check_truth_table(table, 3, tmp_path)
             _check_truth_table(_complement(table), 3, tmp_path)
 
-    def test_invalid_length_rejected(self) -> None:
-        """A truth table whose length is not a power of two is rejected."""
-        with pytest.raises(ValueError, match="power-of-two"):
-            line_boolean("010")
-
-    def test_invalid_characters_rejected(self) -> None:
-        """A truth table containing anything but 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            line_boolean("0102")
-
 
 def test_line_generator_entry_points() -> None:
     import esolangs
@@ -188,3 +179,42 @@ def test_line_generator_entry_points() -> None:
     balanced = balance("01", generate("01"))
     assert balanced.to_png() == esolangs.generate("Line", "01", balance=True).to_png()
     assert _evaluate("Line", balanced.to_png(), inputs=1) == "01"
+
+
+def test_six_inputs_keep_the_rendered_layout() -> None:
+    """Past the small-tree cut-off both entry points draw through ``render``."""
+    import esolangs
+
+    table = "0110100110010110" * 4
+    for balanced in (False, True):
+        program = esolangs.generate("Line", table, balance=balanced)
+        assert _evaluate("Line", program.to_png(), inputs=6) == table
+
+
+@pytest.mark.medium
+def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
+    leaf = Node("+", next=Node("+", next=Node("o")))
+    for root in (leaf, Node("?", zero=leaf, nonzero=leaf), Node("?", zero=leaf)):
+        compact = render(root, acyclic=True)
+        legacy = render(root)
+        assert render(root, acyclic=True, compact=False).pixels == legacy.pixels
+        assert compact.width * compact.height <= legacy.width * legacy.height
+        for value in (0, 1):
+            sources = [
+                Raster.from_png(png.write_grey(canvas.pixels))
+                for canvas in (compact, legacy)
+            ]
+            assert esolangs.run("Line", sources[0], stdin=str(value)) == esolangs.run(
+                "Line", sources[1], stdin=str(value)
+            )
+    assert (
+        esolangs.run(
+            "Line",
+            Raster.from_png(png.write_grey(render(leaf, acyclic=True).pixels)),
+            stdin="",
+        )
+        == "2"
+    )
+    leaf.goto = Node("o")
+    with pytest.raises(ValueError, match="goto"):
+        tree_extents(leaf)

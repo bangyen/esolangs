@@ -1,10 +1,12 @@
 """brainif generator tests."""
 
+from functools import partial
 from itertools import pairwise
 
 import pytest
 
 from esolangs import tools as boolean
+from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import (
     run_brainif,
 )
@@ -112,7 +114,7 @@ class TestBrainIf:
                 unpruned = _brainif_tree(table, None, prune=False)
                 assert len(boolean.brainif(table)) <= len(unpruned)
         tables = [format(i, "08b") for i in range(256)]
-        assert sum(len(boolean.brainif(t)) for t in tables) == 292_492
+        assert sum(len(boolean.brainif(t)) for t in tables) == 291_524
         assert sum(len(_brainif_tree(t, None, prune=False)) for t in tables) == 345_486
 
     def test_spatial_lookup_executes_wide_rows(self) -> None:
@@ -174,3 +176,38 @@ def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:
     program = _brainif_tree(table, 1, prune=False)
     for row in [0, 1, 7, 13, 31]:
         assert run_brainif(program, list(format(row, "05b"))) == table[row]
+
+
+def test_linear_lookup_drops_ignored_inputs() -> None:
+    """A 6-input table ignoring its last input: smaller, and every row executes."""
+    from esolangs import generate
+
+    small = "".join(str((row * 73 + row // 3) % 2) for row in range(32))
+    table = "".join(bit * 2 for bit in small)
+    program = generate("BrainIf", table, width=1)
+    assert len(program) < 0.8 * len(generate("BrainIf", small + small[::-1], width=1))
+    for row in range(64):
+        assert run_brainif(program, list(format(row, "06b"))) == table[row]
+
+
+def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
+    """Ignored inputs 1-7 put levels 0 and 8 on one marker cell: only level 0 loops."""
+    from esolangs import generate
+    from esolangs.tools.brainif import _Strip
+
+    n, kept = 12, [0, 8, 9, 10, 11]
+    small = "01101001100101101001011001101001"
+    table = "".join(
+        small[sum((r >> (n - 1 - i) & 1) << (4 - k) for k, i in enumerate(kept))]
+        for r in range(1 << n)
+    )
+    weights = [16 if i == 0 else 1 << (11 - i) if i in kept else 0 for i in range(n)]
+    assert _Strip("0" * 64, weights).levels == [0]
+    program = generate("BrainIf", table, width=1)
+    for row in (0, 1, 777, 2048, 4095):
+        assert run_brainif(program, list(format(row, f"0{n}b"))) == table[row]
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(partial(boolean.brainif, width=1000), range(8, 12))

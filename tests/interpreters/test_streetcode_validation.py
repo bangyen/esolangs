@@ -19,19 +19,6 @@ class TestStreetcodeMalformedPrograms:
             pytest.param(
                 ["C  ", "  C"], "exactly one C", id="multiple_cars_is_malformed"
             ),
-        ],
-    )
-    def test_refused(self, code: list[str], match: str) -> None:
-        with pytest.raises(ValueError, match=match):
-            run(code, io=IO())
-
-
-class TestStreetcodeStreetWidth:
-    """Construction-time rejection of one-wide streets (``_validate_width``)."""
-
-    @pytest.mark.parametrize(
-        ("code", "match"),
-        [
             # A single instruction row between two walls has no second lane.
             pytest.param(
                 ["+----+", "|C^O;|", "+----+"],
@@ -67,9 +54,13 @@ class TestStreetcodeStreetWidth:
             ),
         ],
     )
-    def test_run_refuses(self, code: list[str], match: str) -> None:
+    def test_refused(self, code: list[str], match: str) -> None:
         with pytest.raises(ValueError, match=match):
             run(code, io=IO())
+
+
+class TestStreetcodeStreetWidth:
+    """Construction-time rejection of one-wide streets (``_validate_width``)."""
 
     def test_two_wide_street_is_accepted(self) -> None:
         """An instruction lane with an oncoming lane beside it is legal."""
@@ -150,6 +141,8 @@ class TestStreetcodeStreetWidth:
                 ["+----+", "|C   |", "|    |", "+----+", "      "],
                 id="blank_padding_is_not_geometry",
             ),
+            # One open cell with no neighbour is not a street to drive on.
+            pytest.param([" + ", "+C+", " + "], id="an_isolated_cell_is_not_a_street"),
         ],
     )
     def test_accepted(self, code: list[str]) -> None:
@@ -267,8 +260,3 @@ class TestStreetcodeStreetWidth:
         if code and code[-1] == "":
             code = code[:-1]
         _Machine(code, IO())
-
-
-def test_an_isolated_cell_is_not_a_street() -> None:
-    """One open cell with no neighbour is not a street to drive on."""
-    _Machine([" + ", "+C+", " + "], IO())

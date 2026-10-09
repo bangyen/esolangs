@@ -1,0 +1,132 @@
+language = "Packlang"
+oldid = 194512
+
+[[examples]]
+id = "hello"
+source = '''
+Package : IO {
+  Integer main {
+    charPut(72);
+    charPut(101);
+    charPut(108);
+    charPut(108);
+    charPut(111);
+    charPut(44);
+    charPut(32);
+    charPut(87);
+    charPut(111);
+    charPut(114);
+    charPut(108);
+    charPut(100);
+    charPut(33);
+    charPut(13);
+    charPut(10);
+    0;
+  }
+} helloWorld;'''
+expected = "Hello, World!\r\n"
+
+[[examples]]
+id = "truth-0"
+source = '''
+Package : IO {
+  Char input;
+  Integer main {
+    charGet(input);
+    If input ^ 48 Then {
+      While 1 Do {
+        charPut(49);
+      }
+    }
+    charPut(48);
+  }
+} truthMachine;'''
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-1"
+source = '''
+Package : IO {
+  Char input;
+  Integer main {
+    charGet(input);
+    If input ^ 48 Then {
+      While 1 Do {
+        charPut(49);
+      }
+    }
+    charPut(48);
+  }
+} truthMachine;'''
+stdin = "1"
+stop = "steps"
+max_steps = 200
+expected = "1111"
+
+[[examples]]
+id = "cat"
+note = "empty input reads a newline, so it then prints blank lines forever"
+source = '''
+Package : IO {
+  Array(Char, 100) input;
+  Char c;
+  Integer i;
+  Integer j;
+  Integer main {
+    While 1 Do {
+      INIT input;
+      INIT c;
+      INIT i;
+      INIT j;
+      charGet(c);
+      While c ^ 10 Do {
+        While c Do {
+          INCR input(i);
+          DECR c;
+        }
+        INCR i;
+        charGet(c);
+      }
+      While j ^ i Do {
+        charPut(input(j));
+        INCR j;
+      }
+      charPut(13);
+      charPut(10);
+    }
+    0;
+  }
+} cat;'''
+stdin = '''
+ab
+cd
+'''
+stop = "steps"
+max_steps = 3000
+expected = "ab\r\ncd\r\n\r\n"
+
+[[examples]]
+id = "dependency"
+note = "binary literals, as its comments state"
+settings = { literal_policy = "binary_digits" }
+source = '''
+Dependency {
+  Integer equals : Integer a, Integer b {
+    !(a ^ b);
+  }
+  Integer nequals : Integer a, Integer b {
+    !!(a ^ b);
+  }
+} myDependency;
+Package : IO, myDependency {
+  Integer main {
+    % 48 (1100000) ^ 0 -> 48 '0', 48 ^ 1 -> 49 '1'
+    charPut(110000 ^ equals(101, 011)); % 0
+    charPut(110000 ^ equals(001, 001)); % 1
+    charPut(110000 ^ nequals(101, 011)); % 1
+    charPut(110000 ^ nequals(001, 001)); % 0
+    0;
+  }
+} myPackage;'''
+expected = "0110"

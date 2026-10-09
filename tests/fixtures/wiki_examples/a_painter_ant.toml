@@ -1,0 +1,27 @@
+language = "A Painter Ant"
+oldid = 189071
+
+[[examples]]
+id = "diamond"
+note = "Grows forever; no state repeats, so nothing is printed."
+source = "PnPwPsPe"
+stop = "steps"
+max_steps = 2000
+expected = ""
+
+[[examples]]
+id = "countdown"
+note = "Marches south forever after the countdown."
+source = '''
+PePePePePePePePePePePePePePePePePePePePePePePePePePe
+PEpW
+ePWsPN
+EpWSpN
+WsPN
+ESpNWePW
+sss
+ePwPsPN
+'''
+stop = "steps"
+max_steps = 5000
+expected = ""

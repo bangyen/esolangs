@@ -17,6 +17,7 @@ from tests.tools.boolean_runners import (
     run_sophie,
     run_sophie_from,
 )
+from tests.tools.test_wrap_preserves_meaning import _WIDTHS, _evaluate
 
 
 def _printed_once(program: str) -> str:
@@ -43,13 +44,13 @@ def _numeric(program: str, *, keep_10: bool = False) -> str:
 class TestSophie:
     def test_hybrid_subsumes_both_routes(self) -> None:
         """The hybrid is no longer than either prior construction through n=3."""
-        from esolangs.tools.sophie import _sophie_hybrid
+        from esolangs.tools.sophie import sophie
 
         improved = 0
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
-                hybrid = _sophie_hybrid(table)
+                hybrid = sophie(table)
                 best = min(
                     len(_printed_once(_sophie_tree(table))),
                     len(_printed_once(_sophie_dag(table))),
@@ -231,3 +232,10 @@ def test_shared_residual_ids_execute_at_scale(n: int) -> None:
     program = boolean.sophie(table)
     for row in (0, (1 << n) - 1, *[rng.randrange(1 << n) for _ in range(6)]):
         assert run_sophie(program, list(format(row, f"0{n}b"))) == table[row]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("width", _WIDTHS)
+def test_sophie_survives_the_widths_that_used_to_break_it(width: int) -> None:
+    """The regression itself, kept separate so it names the language."""
+    assert _evaluate("Sophie", "0110", width) == "0110"

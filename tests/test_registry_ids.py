@@ -1,4 +1,6 @@
-from esolangs.registry import LANGUAGES, canonical_id
+import pytest
+
+from esolangs.registry import LANGUAGES, resolve
 
 
 def test_every_language_has_a_canonical_id() -> None:
@@ -7,9 +9,11 @@ def test_every_language_has_a_canonical_id() -> None:
         assert lang.id.isidentifier(), name
 
 
-def test_canonical_id_derives_the_recorded_id() -> None:
+def test_every_name_id_and_alias_resolves_to_its_language() -> None:
+    """An id set by hand (``///``'s ``slashes``) must still be reachable."""
     for name, lang in LANGUAGES.items():
-        assert canonical_id(name) == lang.id, name
+        for spelling in (name, name.casefold(), lang.id, *lang.aliases):
+            assert resolve(spelling) == name, spelling
 
 
 def test_id_matches_the_interpreter_module() -> None:
@@ -24,3 +28,20 @@ def test_id_matches_the_generator_function() -> None:
         if lang.boolean:
             fn = lang.boolean.__name__
             assert fn in (lang.id, lang.id.replace("_", "")), name
+
+
+def test_a_language_cannot_both_wrap_and_refuse_to() -> None:
+    from esolangs.registry._language import Language
+    from esolangs.tools.wrap import wrap_chars
+
+    with pytest.raises(ValueError, match="exclude each other"):
+        Language("X", wrap=wrap_chars, no_wrap="a break changes it")
+
+
+def test_parameterized_follows_the_example() -> None:
+    from esolangs.registry._contracts import BooleanContract
+    from esolangs.registry._language import Example, Language
+
+    assert Language("X", example=Example(pair=("a", "b"))).contract.parameterized
+    with pytest.raises(ValueError, match="parameterized follows example="):
+        Language("X", contract=BooleanContract(parameterized=True))

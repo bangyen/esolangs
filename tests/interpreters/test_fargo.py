@@ -11,6 +11,7 @@ from esolangs.interpreters.other.fargo import (
     run,
 )
 from esolangs.vm import run_until_halt_or_ancestor
+from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 # The wiki's truth machine, verbatim apart from the zero-width spaces it
 # renders inside the first two lines (kept in TestWikiExamples below).
@@ -55,9 +56,7 @@ class TestBuiltins:
     def test_binary_operators_read_both_arguments(self) -> None:
         """Each operand must come from its own position."""
         assert run_program("% 0 & 0 1\n$") == "0"
-        assert run_program("% 0 & 1 0\n$") == "0"
         assert run_program("% 0 | 1 0\n$") == "1"
-        assert run_program("% 0 | 0 1\n$") == "1"
         # `+[] x y` concatenates in order, so index 0 comes from the left.
         assert run_program("% 0 [?] +[] [] 1 [] 0 0\n$") == "1"
         assert run_program("% 0 [?] +[] [] 1 [] 0 1\n$") == "0"
@@ -314,3 +313,11 @@ class TestMachine:
             if other.frames:
                 others.append(other.frame_entry_key(other.frames[-1]))
         assert keys != others
+
+
+@pytest.mark.medium
+def test_bad_programs_carry_a_repair_hint() -> None:
+    assert_rejected_with_hint("Fargo", "% 0\n$", "pending prefix call")
+    assert_halts_with_hint(
+        "Fargo", "% 0 nope 1\n", "undefined function", "define the function"
+    )

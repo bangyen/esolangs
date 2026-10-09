@@ -1,0 +1,29 @@
+language = "LaserFuck"
+oldid = 191932
+
+[[examples]]
+id = "rng-seed0"
+source = '''
+ }+-x
+|o+x
+ }+-x'''
+seed = 0
+expected = "1"
+
+[[examples]]
+id = "rng-seed1"
+source = '''
+ }+-x
+|o+x
+ }+-x'''
+seed = 1
+expected = "0"
+
+[[examples]]
+id = "cat-until-nul"
+source = '''
+ÿ/\
+|o},#/)x
+ _\> /'''
+stdin = "abc\u0000"
+expected = "abc\u0000"

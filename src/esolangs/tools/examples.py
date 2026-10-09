@@ -19,39 +19,20 @@ generator lays its template out by the filled width, and a second
 spelling that drifted made an instantiated program loop and the suite hang.
 """
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import cast
 
 from esolangs._program import Program
 from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, SourceKind, canonical_id, resolve
+from esolangs.registry import LANGUAGES, Language, SourceKind, canonical_id, resolve
 from esolangs.registry._contracts import AnswerMode, BooleanContract, InputShape
-from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
-from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
-from esolangs.tools.back import PAIR as BACK_PAIR
-from esolangs.tools.bfpda import BFPDA_PAIR
-from esolangs.tools.bio import BIO_PAIR
-from esolangs.tools.bitdeque import bitdeque_setters
-from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
-from esolangs.tools.crement import crement_setters
-from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
-from esolangs.tools.fractran import fractran_setters
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     Setters,
     fill_runs,
 )
-from esolangs.tools.home_row import HOME_ROW_PAIR
-from esolangs.tools.intercal import PAIR as INTERCAL_PAIR
-from esolangs.tools.intercal import TEMPLATE_CHAR as INTERCAL_CHAR
-from esolangs.tools.minifuck import minifuck_setters
-from esolangs.tools.minsky_swap import minsky_swap_setters
-from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
-from esolangs.tools.one_two_three import PAIR as ONE_TWO_THREE_PAIR
-from esolangs.tools.ram0 import PAIR as RAM0_PAIR
-from esolangs.tools.smallfuck import smallfuck_setters
-from esolangs.tools.underload import underload_setters
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
 # The committed programs all witness the same two-input function and row:
@@ -205,8 +186,13 @@ class BooleanExample:
 
 def _contract_for(interpreter: str) -> BooleanContract:
     """Return the registered Boolean I/O contract for an interpreter."""
-    return next(
-        lang.contract for lang in LANGUAGES.values() if lang.interpreter == interpreter
+    for lang in LANGUAGES.values():
+        if lang.interpreter == interpreter:
+            return lang.contract
+    raise LookupError(
+        f"no registered language runs interpreter {interpreter!r}; the second "
+        "argument of an example in src/esolangs/tools/examples.py is the "
+        "module under esolangs.interpreters, e.g. 'tape_based.brainfuck'"
     )
 
 
@@ -316,366 +302,52 @@ def _fill_from(
     return fill
 
 
-# Example file stem -> how that example is built and run.  Stems match the
-# language's display name lowercased with spaces as dashes.
+# Example file stem -> how that example is built and run; see ``_stem``.
 BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
 
 
+def _stem(lang: Language) -> str:
+    """Return the language's ``examples/`` stem: its dashed lowercase name.
+
+    A name a filename would garble (``///``, ``CV(N)(C)``) uses its id.
+    """
+    stem = lang.name.lower().replace(" ", "-")
+    return lang.id.replace("_", "-") if re.search(r"[/*()+]", stem) else stem
+
+
 def _register() -> None:
-    from esolangs import tools as b
+    from esolangs._answers import encode_inputs
 
-    reading = {
-        "addsubjump": _reader(
-            b.addsubjump,
-            "register_based.addsubjump",
-        ),
-        # An executed line prints its result and nothing else, so the
-        # answer arrives with the newline that ends that line.
-        "algebraic-programming-language": _reader(
-            b.algebraic_programming_language,
-            "other.algebraic_programming_language",
-            expected="0\n",
-        ),
-        "alight": _reader(
-            b.alight,
-            "grid_based.alight",
-            split=True,
-        ),
-        "b-tapemark": _reader(
-            b.b_tapemark,
-            "grid_based.b_tapemark",
-        ),
-        # ``.`` writes the digit and a trailing space, so the committed
-        # answer carries it and the sweep strips it.
-        "befunge": _reader(
-            b.befunge,
-            "grid_based.befunge",
-            expected="0 ",
-            split=True,
-        ),
-        "bfstack": _reader(
-            b.bfstack,
-            "stack_based.bfstack",
-        ),
-        "sstack": _reader(
-            b.sstack,
-            "stack_based.sstack",
-        ),
-        "bit~": _reader(
-            b.bit_tilde,
-            "tape_based.bit_tilde",
-        ),
-        "brainfuck": _reader(
-            b.brainfuck,
-            "tape_based.brainfuck",
-        ),
-        "brainif": _reader(
-            b.brainif,
-            "tape_based.brainif",
-            split=True,
-        ),
-        "circlefuck": _reader(
-            b.circlefuck,
-            "tape_based.circlefuck",
-        ),
-        "collatz-multiverse": _reader(
-            b.collatz_multiverse, "register_based.collatz_multiverse"
-        ),
-        "container": _reader(
-            b.container,
-            "other.container",
-            split=True,
-        ),
-        # ``send`` terminates every line it writes, so the answer arrives
-        # with a newline after it -- there is no other output command.
-        "inject": _reader(
-            b.inject,
-            "other.inject",
-            expected="0\n",
-        ),
-        "circuit_diagram": _reader(
-            b.circuit_diagram,
-            "grid_based.circuit_diagram",
-            split=True,
-        ),
-        "clockwise": _reader(
-            b.clockwise,
-            "grid_based.clockwise",
-            inputs=("01",),
-            split=True,
-        ),
-        "cvnc": _reader(b.cvnc, "other.cvnc"),
-        "decleq": _reader(
-            b.decleq,
-            "register_based.decleq",
-        ),
-        "dig": _reader(b.dig, "grid_based.dig", split=True),
-        "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
-        "egl": _reader(
-            b.egl,
-            "grid_based.egl",
-        ),
-        "factor": _reader(
-            b.factor,
-            "tape_based.factor",
-        ),
-        "false": _reader(
-            b.false,
-            "stack_based.false",
-        ),
-        "fish": _reader(
-            b.fish,
-            "grid_based.fish",
-            split=True,
-        ),
-        "thisthat": _reader(
-            b.thisthat,
-            "grid_based.thisthat",
-            split=True,
-        ),
-        # Fargo reads one *number* before the program starts, not a bit per
-        # line, and ``@ k`` indexes that number's bits.  The boolean
-        # convention is therefore to feed the row index: the inputs
-        # most-significant-first are its binary digits, so the 0,1 row of a
-        # two-input table is the single line "1".
-        "fargo": _reader(
-            b.fargo,
-            "other.fargo",
-            inputs=("1",),
-        ),
-        "flowchart": _reader(
-            b.flowchart,
-            "grid_based.flowchart",
-            split=True,
-        ),
-        "forbin": _reader(
-            b.forbin,
-            "other.forbin",
-        ),
-        "forþ": _reader(b.forth, "stack_based.forth"),
-        "grapheme": _reader(
-            b.grapheme,
-            "stack_based.grapheme",
-            inputs=("%", "A"),
-        ),
-        "jaune": _reader(b.jaune, "tape_based.jaune"),
-        "laserfuck": _reader(
-            b.laserfuck,
-            "grid_based.laserfuck",
-            split=True,
-            expected="0",
-            kwargs=(("seed", 0),),
-        ),
-        "malbolge": _reader(
-            b.malbolge,
-            "other.malbolge",
-        ),
-        "modulous": _reader(b.modulous, "stack_based.modulous"),
-        "packlang": _reader(
-            b.packlang,
-            "other.packlang",
-        ),
-        "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
-        "polynomial": _reader(
-            b.polynomial,
-            "register_based.polynomial",
-        ),
-        "qoibl": _reader(
-            b.qoibl,
-            "register_based.qoibl",
-            split=True,
-        ),
-        "rotfuck": _reader(
-            b.rotfuck,
-            "tape_based.rotfuck",
-        ),
-        "boolfuck": _reader(
-            b.boolfuck,
-            "tape_based.boolfuck",
-        ),
-        "subleq": _reader(
-            b.subleq,
-            "tape_based.subleq",
-        ),
-        "sbleq": _reader(
-            b.sbleq,
-            "tape_based.sbleq",
-        ),
-        "slow-acv-mammalian": _reader(
-            b.slow_acv_mammalian,
-            "tape_based.slow_acv_mammalian",
-        ),
-        "smu": _reader(
-            b.smu,
-            "stack_based.smu",
-        ),
-        "sophie": _reader(
-            b.sophie,
-            "register_based.sophie",
-        ),
-        "streetcode": _reader(
-            b.streetcode,
-            "grid_based.streetcode",
-            split=True,
-        ),
-        "super-snusp": _reader(
-            b.super_snusp,
-            "grid_based.super_snusp",
-            split=True,
-        ),
-        "suffolk": _reader(
-            b.suffolk,
-            "tape_based.suffolk",
-        ),
-        "taglate": _reader(
-            b.taglate,
-            "queue_based.taglate",
-            split=True,
-        ),
-        "thue": _reader(
-            b.thue,
-            "other.thue",
-        ),
-        "unlambda": _reader(
-            b.unlambda,
-            "other.unlambda",
-        ),
-        "unsquare": _reader(
-            b.unsquare,
-            "stack_based.unsquare",
-        ),
-        "vandevelo": _reader(
-            b.vandevelo,
-            "other.vandevelo",
-            expected="",
-        ),
-        "3x": _reader(b.three_x, "stack_based.three_x"),
-        "6-5": _reader(
-            b.six_five,
-            "tape_based.six_five",
-        ),
-    }
-
-    embedded = {
-        "a-painter-ant": _embedded(
-            b.a_painter_ant,
-            "grid_based.a_painter_ant",
-            pair=APA_PAIR,
-            expected="....\n####\n.o.#",
-        ),
-        "back": _embedded(
-            b.back,
-            "tape_based.back",
-            pair=BACK_PAIR,
-            split=True,
-            expected="0 1 0",
-        ),
-        "bf-pda": _embedded(b.bfpda, "stack_based.bf_pda", pair=BFPDA_PAIR),
-        "bio": _embedded(b.bio, "register_based.bio", pair=BIO_PAIR),
-        "bitdeque": _embedded(
-            b.bitdeque,
-            "queue_based.bitdeque",
-            setters=bitdeque_setters,
-        ),
-        "slashes": _embedded(
-            b.slashes,
-            "other.slashes",
-            pair=("a", "b"),
-        ),
-        "cyclic-tag": _embedded(
-            b.cyclic_tag,
-            "queue_based.cyclic_tag",
-            pair=BCT_PAIR,
-        ),
-        "bitwise-cyclic-tag": _embedded(
-            b.bitwise_cyclic_tag,
-            "queue_based.bitwise_cyclic_tag",
-            pair=BCT_PAIR,
-        ),
-        "eval": _embedded(b.eval, "stack_based.eval", pair=EVAL_PAIR),
-        "fractran": _embedded(
-            b.fractran,
-            "other.fractran",
-            setters=fractran_setters,
-            expected="1",
-        ),
-        "home-row": _embedded(b.home_row, "tape_based.home_row", pair=HOME_ROW_PAIR),
-        "intercal": _embedded(
-            b.intercal,
-            "other.intercal",
-            pair=INTERCAL_PAIR,
-            char=INTERCAL_CHAR,
-            expected="_\n\n",
-        ),
-        "minifuck": _embedded(
-            b.minifuck, "tape_based.minifuck", setters=minifuck_setters
-        ),
-        "minsky-swap": _embedded(
-            b.minsky_swap,
-            "register_based.minsky_swap",
-            setters=minsky_swap_setters,
-            expected="1 0",
-        ),
-        "nocomment": _embedded(
-            b.nocomment, "tape_based.nocomment", pair=NOCOMMENT_PAIR
-        ),
-        "ram0": _embedded(
-            b.ram0,
-            "register_based.ram0",
-            pair=RAM0_PAIR,
-            expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}",
-        ),
-        "smallfuck": _embedded(
-            b.smallfuck,
-            "tape_based.smallfuck",
-            setters=smallfuck_setters,
-        ),
-        "underload": _embedded(
-            b.underload,
-            "stack_based.underload",
-            setters=underload_setters,
-        ),
-        # 123 answers with the termination convention, as ArrowQueue does, so
-        # only the halting (0) branch is committed.  The constructed template
-        # pops through location -2 while merging, which prints junk bytes on
-        # every row; ``test_boolean_example`` asserts the halt and ignores
-        # them, so ``expected`` is vestigial here.
-        "123": _embedded(
-            b.one_two_three,
-            "tape_based.one_two_three",
-            pair=ONE_TWO_THREE_PAIR,
-            expected="",
-            expected_compared=False,
-        ),
-        "arrowqueue": _embedded(
-            b.arrowqueue,
-            "grid_based.arrowqueue",
-            pair=ARROWQUEUE_PAIR,
-            expected="1 0 0 1 2 3",
-            split=True,
-        ),
-        "crement": _embedded(
-            b.crement,
-            "other.crement",
-            setters=crement_setters,
-            expected="",
-        ),
-    }
-
-    # Stamp each example with its own stem, so ``build()`` knows which
-    # language it is and can pick the matching token-aware wrapper without
-    # the caller having to supply it.
-    from esolangs.tools.line import line
-    from esolangs.tools.piet import piet
-
-    reading["line"] = _reader(line, "tape_based.line")
-    reading["piet"] = replace(
-        _reader(piet, "stack_based.piet"),
-        scale=80,
-    )
-    reading["piet-plus-plus"] = _reader(b.piet_plus_plus, "stack_based.piet_plus_plus")
-    for stem, example in {**reading, **embedded}.items():
-        BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
+    # Everything an example needs is in its ``LANGUAGE``: the registry facts
+    # ``_reader`` takes, and ``example=`` for a template or other answer.
+    for lang in LANGUAGES.values():
+        if lang.boolean is None or lang.interpreter is None:
+            continue
+        spec = lang.example
+        if spec.pair is not None or spec.setters is not None:
+            example = _embedded(
+                cast(Callable[[str], str], lang.boolean),
+                lang.interpreter,
+                pair=spec.pair,
+                setters=spec.setters,
+                char=spec.char or TEMPLATE_CHAR,
+                expected=spec.expected,
+                expected_compared=spec.expected_compared,
+                split=lang.split,
+                kwargs=spec.kwargs,
+            )
+        else:
+            stdin = encode_inputs(lang.name, (0, 1), truth_table=AND2)
+            example = _reader(
+                lang.boolean,
+                lang.interpreter,
+                inputs=tuple(stdin.splitlines()),
+                expected=spec.expected,
+                split=lang.split,
+                kwargs=spec.kwargs,
+            )
+        stem = _stem(lang)
+        BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem, scale=spec.scale)
 
 
 _register()

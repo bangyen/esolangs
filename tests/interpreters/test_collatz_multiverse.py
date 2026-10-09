@@ -58,10 +58,6 @@ class TestCollatzRule:
         )
         assert run_program(program) == "\x01"
 
-    def test_zero_is_treated_as_odd(self) -> None:
-        # x starts 0, treated as odd: 0*(-1)+(-1) = -1
-        assert run_program("x = negativeOne x + negativeOne, DO PRINT.") == "\xff"
-
     def test_sparse_register_and_array_lookups_return_zero(self) -> None:
         """Absent names and cells are semantic zeroes, not stored entries."""
         from esolangs.interpreters.register_based.collatz_multiverse import (
@@ -90,7 +86,7 @@ class TestPrinting:
         assert run_program(program) == "\x01"
 
     def test_print_wraps_to_byte(self) -> None:
-        # x = 0*(-1)+(-1) = -1 -> low byte is 255
+        # x starts 0, treated as odd: 0*(-1)+(-1) = -1 -> low byte is 255
         assert run_program("x = negativeOne x + negativeOne, DO PRINT.") == "\xff"
         assert run_program("x = negativeOne x + negativeOne, NOT PRINT.") == ""
 

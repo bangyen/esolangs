@@ -7,8 +7,6 @@ from esolangs.interpreters.register_based.polynomial import (
     _advance,
     _bracket_pairs,
 )
-from esolangs.tools.polynomial import _polynomial_decode_key
-from esolangs.tools.polynomial.algebra import format_coeffs, multiply, primes
 
 
 def test_symmetric_remainders_have_independent_zero_positions() -> None:
@@ -108,49 +106,6 @@ def test_direct_affine_dispatch_only_increases_the_profile() -> None:
         )
         assert profile == baseline + 34 * converted + 4 * converted**2
         assert profile >= baseline
-
-
-def _even_source(table: str) -> tuple[str, list[list[int]], list[int]]:
-    n = (len(table) - 1).bit_length()
-    instructions: list[list[int]] = []
-
-    def build(prefix: int, depth: int) -> None:
-        if depth == n:
-            value = int(table[prefix])
-            instructions.extend([[0, 2], [-8, 3], [8, 3]])
-            shift = 16 - value
-            instructions.extend([[-shift, 1], [0, 1], [shift, 1]])
-            return
-        instructions.extend([[-48, 2], [0, 2], [48, 2], [1]])
-        build(2 * prefix + 1, depth + 1)
-        instructions.extend([[2], [4]])
-        build(2 * prefix, depth + 1)
-        instructions.append([2])
-
-    build(0, 0)
-    groups: list[list[list[int]]] = []
-    for instruction in instructions:
-        if groups and _polynomial_decode_key(groups[-1][-1]) <= _polynomial_decode_key(
-            instruction
-        ):
-            groups[-1].append(instruction)
-        else:
-            groups.append([instruction])
-    factors: list[list[int]] = []
-    for group, prime in zip(groups, primes(len(groups)), strict=True):
-        for instruction in group:
-            if len(instruction) == 1:
-                root = prime ** instruction[0]
-                factors.append([1, 0, -(root * root)])
-            else:
-                operand, opcode = instruction
-                factors.append(
-                    [1, -2 * operand, operand * operand + prime ** (2 * opcode)]
-                )
-    coefficients = [1]
-    for factor in factors:
-        coefficients = multiply(coefficients, factor)
-    return format_coeffs(coefficients), instructions, coefficients
 
 
 def _execute(instructions: list[list[int]], bits: str) -> str:

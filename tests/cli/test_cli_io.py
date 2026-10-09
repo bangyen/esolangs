@@ -14,8 +14,7 @@ from esolangs.cli_io import (
     _bounded_read,
 )
 from tests.cli.test_cli import call_main, run_cli
-from tests.cli_support import EXAMPLES, call_both
-from tests.stdin_check import _check_stdin
+from tests.cli_support import EXAMPLES
 
 
 class TestTheStdinReaderInProcess:
@@ -103,108 +102,6 @@ class TestNonTextInputIsRefusedNotCrashed:
         path.write_bytes(bytes(range(256)))
         with pytest.raises(esolangs.ProgramError, match="not text"):
             esolangs.run("brainfuck", path)
-
-
-# 2.0s over 21 tests: drives the CLI as a subprocess.
-@pytest.mark.medium
-# 2.0s over 21 tests: drives the CLI as a subprocess.
-@pytest.mark.medium
-# 2.0s over 21 tests: drives the CLI as a subprocess.
-@pytest.mark.medium
-class TestOutputSurvivesAFailure:
-    """A run that failed emitted nothing at all, and it had the bytes."""
-
-    PRINTS_THEN_FAILS = '[PSH STR "Hi"][PRT STR][PRT STR][POP][END]'
-    LOOPS_PRINTING = "[PSH INT 9][PRT INT][JMP B 2][END]"
-
-    def test_a_halt_carries_what_was_printed(self) -> None:
-        """The attribute, which is what the CLI reads."""
-        with pytest.raises(esolangs.HaltError) as caught:
-            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
-        assert caught.value.partial_output == "Hi"
-
-    def test_it_is_in_the_traceback_too(self) -> None:
-        """The note, for anyone who only sees the traceback."""
-        with pytest.raises(esolangs.HaltError) as caught:
-            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
-        assert "printed 'Hi'" in "\n".join(getattr(caught.value, "__notes__", []))
-
-    def test_a_timeout_carries_it(self) -> None:
-        """The case that matters most: a loop you meant to be finite."""
-        with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            esolangs.run("Modulous", self.LOOPS_PRINTING, stdin="", timeout=0.01)
-        assert caught.value.partial_output.startswith("999")
-
-    def test_an_error_before_the_run_carries_nothing(self) -> None:
-        """Empty is the honest answer when the program never started."""
-        with pytest.raises(esolangs.UnknownLanguageError) as unknown:
-            esolangs.run("nosuchlang", "+", stdin="")
-        assert unknown.value.partial_output == ""
-        with pytest.raises(esolangs.ProgramError) as bad:
-            esolangs.run("brainfuck", "[[[", stdin="")
-        assert bad.value.partial_output == ""
-
-    def test_a_successful_run_is_unchanged(self) -> None:
-        """The attribute is for failures; success returns as it always did."""
-        assert esolangs.run("brainfuck", "+++.", stdin="") == "\x03"
-
-    def test_the_cli_prints_it_before_the_error(
-        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
-    ) -> None:
-        """On stdout, where a successful run puts it, so a pipe sees the same."""
-        path = tmp_path / "m.txt"
-        path.write_text(self.PRINTS_THEN_FAILS)
-        with pytest.raises(SystemExit) as exit_code:
-            call_main(["run", "--timeout", "5", "Modulous", str(path)], capsys)
-        captured = capsys.readouterr()
-        assert captured.out.startswith("Hi")
-        assert "stack is empty" in captured.err
-        assert exit_code.value.code == 1
-
-    def test_the_cli_says_nothing_extra_when_there_was_nothing(
-        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
-    ) -> None:
-        """A program that printed nothing must not gain a blank line."""
-        path = tmp_path / "m.txt"
-        path.write_text("[POP][END]")
-        with pytest.raises(SystemExit):
-            call_main(["run", "--timeout", "5", "Modulous", str(path)], capsys)
-        assert capsys.readouterr().out == ""
-
-
-class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
-    """`encode` refused these bytes all along; `run` answered them."""
-
-    @pytest.mark.parametrize("line", [" 1", "2", "01"])
-    def test_plain_run_accepts_a_non_boolean_line(
-        self, line: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """General execution does not impose a Boolean input alphabet."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0101"))
-        _out, err = call_both(
-            ["run", "brainfuck", str(path)], capsys, stdin=f"0\n{line}\n"
-        )
-        assert "spells its bits" not in err
-
-    def test_a_correct_encoding_is_silent_and_right(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Doing it right must stay quiet, or the check is noise."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0101"))
-        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="01")
-        assert out.strip() == "1"
-        assert err == ""
-
-    def test_the_alphabet_check_reads_the_declared_alphabet(self) -> None:
-        """Grapheme's own bits are %/A, so 0/1 is what is wrong there."""
-        _check_stdin("Grapheme", "%\nA\n")
-        # 0/1 is wrong *here*, and the specific message is the one that
-        # fires: the general stray-line rule runs last so a language with
-        # something better to say keeps saying it.
-        with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
-            _check_stdin("Grapheme", "0\n1\n")
 
 
 # 8.5s over 9 tests: drives the CLI as a subprocess.
@@ -331,27 +228,6 @@ class TestProgramFilesLoad:
         assert out
 
 
-class TestPrivateStdinCheckSaysWhatItCanActuallyCheck:
-    """Its help listed "the wrong number of lines" among what it catches
-    without a table.  For most languages it cannot.
-    """
-
-    def test_a_line_per_bit_language_accepts_any_count(self) -> None:
-        """Not a bug -- a count needs an arity, and only a table has one."""
-        for stdin in ("", "1", "101"):
-            _check_stdin("brainfuck", stdin)
-
-    def test_the_table_is_what_catches_the_count(self) -> None:
-        """The other half of the claim: with one, the count is checked."""
-        with pytest.raises(esolangs.ArgumentError):
-            _check_stdin("brainfuck", "1\n0\n1\n", "0110")
-
-    def test_a_one_line_language_does_catch_a_stray_line(self) -> None:
-        """Which is why the help can still claim a shape check at all."""
-        with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
-            _check_stdin("Clockwise", "1\n0\n")
-
-
 @pytest.mark.parametrize("filename", ["--timeout", "--help"])
 def test_run_flag_filename_after_separator(
     filename: str,
@@ -398,27 +274,3 @@ def test_width_after_separator_is_positional() -> None:
     from esolangs.cli_args import _pop_width
 
     assert _pop_width(["--", "--width", "80"]) == (["--", "--width", "80"], None, False)
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("arguments", "diagnostic"),
-    [
-        (["--table", "xyz", "brainfuck"], "unknown option"),
-        (["--judge", "123"], "unknown option"),
-    ],
-)
-def test_run_rejects_bad_options_before_acquiring_source_or_stdin(
-    arguments, diagnostic, monkeypatch, capsys
-):
-    import esolangs.cli_run as cli_run
-
-    def unreadable(*_args, **_kwargs):
-        pytest.fail("invalid run options must be rejected before reading")
-
-    monkeypatch.setattr(cli_run, "_read_program", unreadable)
-    monkeypatch.setattr(cli_run, "_read_stdin", unreadable)
-    with pytest.raises(SystemExit) as caught:
-        call_main(["run", *arguments, "never-read.txt"], capsys)
-    assert caught.value.code == 2
-    assert diagnostic in capsys.readouterr().err

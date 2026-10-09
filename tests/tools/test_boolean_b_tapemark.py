@@ -7,6 +7,8 @@ import pytest
 from esolangs import tools
 from esolangs.interpreters.grid_based.b_tapemark import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.tools.helpers import essential_inputs
+from tests.generator_support import assert_an_ignored_input_costs
 from tests.witness_tables import witnesses
 
 
@@ -18,9 +20,12 @@ def execute(program: str, bits: str) -> tuple[str, int]:
 
 
 @pytest.mark.medium
-def test_every_one_hot_table_is_addressed() -> None:
+@pytest.mark.parametrize(
+    "ones", [(0, 15, 31), pytest.param(range(32), marks=pytest.mark.slow)]
+)
+def test_every_one_hot_table_is_addressed(ones: tuple[int, ...] | range) -> None:
     """One row answering ``1`` pins the walk's arrival on that row alone."""
-    for one in range(32):
+    for one in ones:
         table = "".join("1" if i == one else "0" for i in range(32))
         program = tools.b_tapemark(table)
         for bits in map("".join, product("01", repeat=5)):
@@ -43,9 +48,17 @@ def test_dense_scaling_is_linear() -> None:
 
 
 def test_size_does_not_depend_on_the_table() -> None:
-    """Every entry costs the same three cells, whichever digit it holds."""
-    sizes = {len(tools.b_tapemark("".join(t))) for t in product("01", repeat=8)}
-    assert len(sizes) == 1
+    """Every entry costs the same three cells, whichever digit it holds.
+
+    An ignored input's stage crosses no ``|`` and the table is copied at the
+    rest, so the essential count, not the entries, sets the size.
+    """
+    sizes: dict[int, set[int]] = {}
+    for bits in product("01", repeat=8):
+        table = "".join(bits)
+        count = len(essential_inputs(table, 3))
+        sizes.setdefault(count, set()).add(len(tools.b_tapemark(table)))
+    assert all(len(group) == 1 for group in sizes.values()), sizes
 
 
 def test_render_has_no_blank_axis() -> None:
@@ -73,6 +86,22 @@ def test_narrow_staircase_executes_every_small_table_in_input_order() -> None:
 
 
 @pytest.mark.medium
+def test_narrow_drops_ignored_inputs_but_reads_them() -> None:
+    """Inputs 1 and 3 are ignored: smaller than the full table, all five read."""
+    n = 5
+    base = "01101001"
+    table = "".join(
+        base[((row >> 4) & 1) << 2 | ((row >> 2) & 1) << 1 | (row & 1)]
+        for row in range(1 << n)
+    )
+    program = tools.b_tapemark(table, 12)
+    parity = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+    assert len(program) < 0.7 * len(tools.b_tapemark(parity, 12))
+    for row, expected in enumerate(table):
+        assert execute(program, format(row, f"0{n}b")) == (expected, n)
+
+
+@pytest.mark.medium
 def test_narrow_weighted_arms_and_fitting_layouts() -> None:
     from esolangs.tools.b_tapemark import _b_tapemark_narrow, _Builder
 
@@ -90,7 +119,14 @@ def test_narrow_weighted_arms_and_fitting_layouts() -> None:
             )
             for row, expected in enumerate(table):
                 assert execute(program, format(row, f"0{n}b")) == (expected, n)
-    sizes = [len(_b_tapemark_narrow("01" * (1 << (n - 1)), n)) for n in (7, 8, 9)]
+    sizes = [
+        len(
+            _b_tapemark_narrow(
+                "01" * (1 << (n - 1)), n, [1 << (n - 1 - i) for i in range(n)]
+            )
+        )
+        for n in (7, 8, 9)
+    ]
     assert sizes[2] < 2.1 * sizes[1] < 4.41 * sizes[0]
     # Sparse standalone layouts exercise coordinate compression on either axis.
     horizontal, vertical = _Builder(), _Builder()
@@ -103,3 +139,9 @@ def test_narrow_weighted_arms_and_fitting_layouts() -> None:
     assert _Builder().render() == ""
     with pytest.raises(AssertionError, match="layout collision"):
         horizontal.put(0, 0, "v")
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """Its stage, crossing no ``|``."""
+    assert_an_ignored_input_costs("B-tapemark", 5, 177)

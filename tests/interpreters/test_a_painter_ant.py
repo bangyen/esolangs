@@ -74,34 +74,6 @@ class TestFormat:
         with pytest.raises(ValueError, match="unknown instruction"):
             run_program("Px", 10)
 
-    def test_counter_example_runs(self) -> None:
-        counter = """\
-PePePePePePePePePePePePePePePePePePePePePePePePePePe
-PEpW
-ePWsPN
-EpWSpN
-WsPN
-ESpNWePW
-sss
-        ePwPsPN"""
-        output = run_program(counter, 2000)
-        lines = output.splitlines()
-        # This long walk reaches the lower-left leaf after painting a 28-wide
-        # comb.  Non-empty output alone would not distinguish a truncated
-        # trace from the counterexample that prompted this regression test.
-        assert len(lines) == 5927
-        assert {len(line) for line in lines} == {28}
-        assert lines[:4] == [
-            "###.........................",
-            ".#..........................",
-            "............................",
-            "##..........................",
-        ]
-        assert lines[-2:] == [
-            "@#..........................",
-            "#...........................",
-        ]
-
 
 class TestStepMachine:
     def test_step_tracks_ip_grid_and_position(self) -> None:

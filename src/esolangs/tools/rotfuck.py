@@ -20,19 +20,22 @@ from itertools import product
 
 from esolangs._dialects import ROTFUCK_CYCLES
 from esolangs._dialects import rotation as validate_rotation
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["rotfuck"]
 
 #: The default direction's cycle: ``+ -> ] -> [ -> . -> , -> < -> > -> - -> +``.
 _ROTFUCK_CHAIN = ROTFUCK_CYCLES["backward"]
 
-# Longest pad: a pad of eight advances the rotation by nothing.
+# Pads are even-length; an 8-run is a full-cycle rotation no-op, so 6 is the cap.
 _MAX_PAD = 6
 
 #: Bits per digit of the index.  A digit's walk takes ``count**2 / 2`` moves,
@@ -216,6 +219,45 @@ def _walk(stride: int) -> str:
     return f"[[-{left}+{right}]{left}-]"
 
 
+def _skip(distance: int, *, fresh: bool) -> str:
+    """Brainfuck moving ``distance`` cells right across zeros, shortest of two.
+
+    Plain ``>`` steps, or a count carried ``stride`` cells a step.  The count
+    sits on the current cell when it is ``fresh`` (zero), else one cell on, and
+    must land on a zero cell before the destination.
+    """
+    best = ">" * distance
+    start = "" if fresh else ">"
+    room = distance - 1 if fresh else distance - 2
+    for stride in range(2, room + 1):
+        count = room // stride
+        if count < 2:
+            break
+        walk = f"[[-{'>' * stride}+{'<' * stride}]{'>' * stride}-]"
+        left = distance - len(start) - stride * count
+        candidate = start + "+" * count + walk + ">" * left
+        if len(candidate) < len(best):
+            best = candidate
+    return best
+
+
+def _strip(table: str, *, skips: bool) -> str:
+    """Brainfuck writing the table's ones two cells apart, ending past the last slot."""
+    size = len(table)
+    out = []
+    at = 0  # the cell the pointer stands on
+    written = False
+    for slot in range(size):
+        if table[size - 1 - slot] == "1":
+            distance = 2 * slot - at
+            out.append(_skip(distance, fresh=not written) if skips else ">" * distance)
+            out.append("+")
+            at, written = 2 * slot, True
+    distance = 2 * size - 1 - at
+    out.append(_skip(distance, fresh=not written) if skips else ">" * distance)
+    return "".join(out)
+
+
 def _select(n: int, used: list[int], groups: list[int]) -> str:
     """Brainfuck reading the inputs and walking to the entry they select.
 
@@ -257,7 +299,11 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
     with a zero carrier above it, and the pointer starts on entry 0's
     carrier.  The digits' walks step ``2 * index`` cells down in total, and
     one ``<`` reads the entry.  The table costs two ``>`` and half a ``+``
-    per entry; the rest is O(n) plus the walks' strides.
+    per entry; the rest is O(n) plus the walks' strides.  A run of zero entries
+    is crossed by a carried count instead (:func:`_skip`; zero upper half
+    -3%/-7.5%/-14% at n=7/8/9, 12 seeded tables).  A repeated block is not
+    shared: a brainfuck copy is at least 19 commands a cell against 2.5 for
+    an entry.
     """
     if validate_rotation(rotation) != "backward":
         raise ValueError("the ROTfuck generator targets rotation='backward' only")
@@ -266,13 +312,34 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
     # Ignored inputs are still read but do not enter the index.
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
-    size = 2 ** len(used)
+    strips = [_strip(table, skips=False)]
+    if (skipped := _strip(table, skips=True)) != strips[0]:
+        strips.append(skipped)
+    texts = []
+    for strip in strips:
+        bf = (
+            strip + _select(n, used, _groups(len(used))) + "<" + "+" * _ASCII_ZERO + "."
+        )
+        out = _Builder()
+        out.emit(_parse(bf))
+        texts.append(out.text())
+    return min(texts, key=len)
 
-    strip = ">>".join(
-        "+" if table[size - 1 - slot] == "1" else "" for slot in range(size)
-    )
-    bf = strip + ">" + _select(n, used, _groups(len(used)))
-    bf += "<" + "+" * _ASCII_ZERO + "."
-    out = _Builder()
-    out.emit(_parse(bf))
-    return out.text()
+
+def _dialect(rotation: str = "backward") -> None:
+    """Validate which way ROTfuck's command cycle turns."""
+    validate_rotation(rotation)
+
+
+LANGUAGE = Language(
+    "ROTfuck",
+    "tape_based.rotfuck",
+    boolean=rotfuck,
+    dialect=_dialect,
+    # A sum, not a tree: a lookup over the essential inputs only.
+    shape=Shape.REDUCING,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    wrap=wrap_chars,
+)

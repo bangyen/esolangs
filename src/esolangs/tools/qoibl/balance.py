@@ -13,7 +13,7 @@ def _chunk_rows(lines: list[list[str]], count: int, size: int) -> list[list[_Aff
     """Return statement token lengths affine in the requested width."""
     full = (1, -1)
     partial = (1 - count, size + count - 1)
-    prefix = [(0, 2)] * 9
+    prefix = [(0, 2)] * 9  # tokens of "we s we qe s qe ry ye ry"
     rows: list[list[_Affine]] = []
     for line in lines:
         tokens: list[_Affine] = []

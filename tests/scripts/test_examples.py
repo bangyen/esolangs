@@ -17,13 +17,10 @@ from esolangs.vm import (
     run_until_halt_or_cycle,
     run_until_halt_or_growth,
 )
+from tests.generator_support import CHECK
 from tests.tools.boolean_runners import one_two_three_result
 
 BASE_DIR = Path(__file__).parents[2]
-
-
-def _file_name(display_name: str) -> str:
-    return display_name.lower().replace(" ", "-")
 
 
 # The VM registry is keyed by the language's display name, while boolean
@@ -35,8 +32,6 @@ VM_LANGUAGE = {
     if lang.interpreter is not None
 }
 
-# container halts by calling sys.exit(0)
-EXITS = {"container"}
 
 # Boolean examples whose answer is their *termination* rather than their
 # output: each halts for a 0 and loops forever for a 1, so the committed
@@ -51,12 +46,15 @@ EXITS = {"container"}
 # program terminates *before* anything runs it unbounded.
 HALT_CONVENTION = {"123", "arrowqueue"}
 
+# The command every staleness message names.
+REGENERATE = "`uv run python scripts/generate.py examples`"
+
 
 @pytest.mark.parametrize(
     "name",
     [
         pytest.param(name, marks=pytest.mark.medium)
-        if name in {"circuit_diagram", "vandevelo"}
+        if name in {"circuit-diagram", "vandevelo"}
         else name
         for name in sorted(BOOLEAN_GENERATED)
     ],
@@ -66,11 +64,13 @@ def test_boolean_example_matches_generator(name: str) -> None:
     example = BOOLEAN_GENERATED[name]
     path = BASE_DIR / "examples" / example.filename
     program = example.build(balance=True)
+    stale = f"{path.relative_to(BASE_DIR)} is stale; run {REGENERATE}"
     if isinstance(program, Raster):
         # PNG compression differs across platforms; the pixels are the program.
-        assert Raster.from_png(path.read_bytes()) == program
+        assert Raster.from_png(path.read_bytes()) == program, stale
     else:
-        assert path.read_bytes() == (program.rstrip("\n") + "\n").encode("utf-8")
+        expected = (program.rstrip("\n") + "\n").encode("utf-8")
+        assert path.read_bytes() == expected, stale
 
 
 @pytest.mark.medium
@@ -87,7 +87,7 @@ def test_regeneration_yields_public_balanced_programs() -> None:
         )
         if example.fill is not None:
             expected = esolangs.instantiate(language, expected, example.bits)
-        assert programs[stem] == expected
+        assert programs[stem] == expected, stem
 
 
 def test_the_manifest_matches_what_the_script_would_write() -> None:
@@ -97,8 +97,7 @@ def test_the_manifest_matches_what_the_script_would_write() -> None:
 
     path = BASE_DIR / "examples" / "MANIFEST.md"
     assert path.read_text(encoding="utf-8") == boolean_manifest_text(), (
-        "examples/MANIFEST.md is stale; run "
-        "`python scripts/generate.py examples boolean`"
+        f"examples/MANIFEST.md is stale; run {REGENERATE}"
     )
 
 
@@ -110,7 +109,13 @@ def test_boolean_examples_cover_every_committed_file() -> None:
         if p.suffix in (".txt", ".png")
     }
     expected = {example.filename for example in BOOLEAN_GENERATED.values()}
-    assert on_disk == expected
+    unregistered = sorted(on_disk - expected)
+    assert not unregistered, (
+        f"examples/ holds {unregistered} with no BooleanExample; delete them "
+        "or register them in src/esolangs/tools/examples.py"
+    )
+    missing = sorted(expected - on_disk)
+    assert not missing, f"examples/ lacks {missing}; run {REGENERATE}"
 
 
 @pytest.mark.parametrize("name", sorted(HALT_CONVENTION))
@@ -140,12 +145,10 @@ def _halts(name: str, program: str, _inputs: list[str]) -> bool:
 
 def test_every_boolean_generator_has_an_example() -> None:
     """Every registered boolean generator has a committed example."""
-    registered = {
-        canonical_id(lang.name) for lang in LANGUAGES.values() if lang.boolean
-    }
+    registered = {lang.id for lang in LANGUAGES.values() if lang.boolean}
     covered = {canonical_id(stem.replace("-", " ")) for stem in BOOLEAN_GENERATED}
     missing = sorted(registered - covered)
-    assert not missing, f"boolean generators with no committed example: {missing}"
+    assert not missing, f"no committed example for {missing}; {CHECK}"
 
 
 # The boolean examples demonstrate a language's boolean-function capability
@@ -237,31 +240,6 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         monkeypatch.setattr(generate_examples, "EXAMPLES", target)
         return generate_examples
 
-    def test_write_set_writes_programs_and_manifest(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        module = self._redirect(monkeypatch, tmp_path / "examples")
-        programs = [("one", "a"), ("two", "b\n"), ("image", Raster((((0, 0, 0),),)))]
-        monkeypatch.setitem(module.SETS, "boolean", lambda: iter(programs))  # type: ignore[attr-defined]
-        module.write_set("boolean")  # type: ignore[attr-defined]
-
-        written = {
-            path.stem
-            for path in (tmp_path / "examples").iterdir()
-            if path.suffix in (".txt", ".png")
-        }
-        assert written == {"one", "two", "image"}
-        assert (tmp_path / "examples" / "MANIFEST.md").is_file()
-        for stem, generated in programs:
-            if isinstance(generated, Raster):
-                png = (tmp_path / "examples" / f"{stem}.png").read_bytes()
-                assert Raster.from_png(png) == generated
-            else:
-                text = (tmp_path / "examples" / f"{stem}.txt").read_text(
-                    encoding="utf-8"
-                )
-                assert text == generated.rstrip("\n") + "\n"
-
     def test_a_second_write_reports_unchanged(
         self,
         tmp_path: Path,
@@ -278,6 +256,22 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         assert lines
         assert all(line.startswith("unchanged") for line in lines if ".txt" in line)
 
+    def test_a_png_with_the_same_pixels_is_left_alone(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Another zlib's bytes for the same pixels are not a change."""
+        from PIL import Image
+
+        module = self._redirect(monkeypatch, tmp_path / "examples")
+        raster = Raster.from_png(BOOLEAN_GENERATED["line"].build(balance=True).to_png())
+        monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", raster)]))  # type: ignore[attr-defined]
+        module.write_set("boolean")  # type: ignore[attr-defined]
+        path = tmp_path / "examples" / "img.png"
+        Image.open(path).save(path, compress_level=1)
+        recompressed = path.read_bytes()
+        module.write_set("boolean")  # type: ignore[attr-defined]
+        assert path.read_bytes() == recompressed
+
     def test_main_with_no_arguments_writes_every_set(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -287,3 +281,10 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         monkeypatch.setattr(sys, "argv", ["generate.py"])
         assert module.main() == 0  # type: ignore[attr-defined]
         assert written == list(module.SETS)  # type: ignore[attr-defined]
+
+
+def test_an_unknown_interpreter_names_the_file_to_fix() -> None:
+    from esolangs.tools.examples import _contract_for
+
+    with pytest.raises(LookupError, match=r"src/esolangs/tools/examples\.py"):
+        _contract_for("tape_based.no_such_module")

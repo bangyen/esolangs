@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs import tools as boolean
+from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import (
     run_addsubjump,
     run_addsubjump_from,
@@ -28,9 +29,9 @@ class TestAddSubJump:
                 assert run_addsubjump(program, bits) == table[row]
 
     def test_three_input_total(self) -> None:
-        """Shared residuals reduce the n=3 total from 99,032 to 94,800."""
+        """Shared residuals reduce the n=3 total from 105,924 to 96,084."""
         total = sum(len(boolean.addsubjump(f"{value:08b}")) for value in range(256))
-        assert total == 94800
+        assert total == 96084
 
     def test_every_path_reads_each_input_once(self) -> None:
         """A run consumes exactly ``n`` inputs, whatever the table."""
@@ -42,3 +43,8 @@ class TestAddSubJump:
                 got = run_addsubjump_from(program, feed)
                 assert got == table[combo], f"{table} inputs {bits}"
                 assert not list(feed), f"{table} inputs {bits} left input unread"
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.addsubjump, range(11, 15))

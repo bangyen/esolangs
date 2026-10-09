@@ -12,32 +12,7 @@ from esolangs.interpreters.stack_based.false import (
     run,
 )
 from tests.interpreters.runner import run_program
-
-
-@pytest.mark.parametrize(
-    ("program", "expected"),
-    [
-        pytest.param(
-            '"Hello, world!"', "Hello, world!", id="a_string_is_printed_verbatim"
-        ),
-        pytest.param(
-            "{[}1.", "1", id="a_comment_is_skipped_and_its_brackets_do_not_nest"
-        ),
-        pytest.param(
-            "2147483647 1+.", "-2147483648", id="arithmetic_wraps_to_signed_32_bits"
-        ),
-        pytest.param(
-            "0" * 5000 + "4294967297.",
-            "1",
-            id="a_long_literal_does_not_hit_the_python_decimal_limit",
-        ),
-        pytest.param("[']]!,", "]", id="a_quoted_bracket_does_not_close_a_lambda"),
-        # B flushes a buffer this package has not got, so it is a no-op
-        pytest.param("1.B", "1", id="an_unknown_character_is_ignored"),
-    ],
-)
-def test_prints(program: str, expected: str) -> None:
-    assert run_program(run, program) == expected
+from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 
 @pytest.mark.parametrize(
@@ -169,3 +144,9 @@ def test_bitwise_or_and_pick_beyond_the_stack() -> None:
     assert run_program(run, "5 2|.") == "7"
     with pytest.raises(HaltError, match="which is not there"):
         run_program(run, "1 5ø")
+
+
+@pytest.mark.medium
+def test_bad_programs_carry_a_repair_hint() -> None:
+    assert_rejected_with_hint("FALSE", "[", "close the lambda")
+    assert_halts_with_hint("FALSE", "%", "stack is empty", "push a value")

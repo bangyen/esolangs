@@ -8,6 +8,7 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
 from esolangs.tools.jaune import _jaune_ordered
+from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import run_jaune
 from tests.tools.plain_oracles import _jaune_linear
 from tests.tools.sample_tables import five_input_sample
@@ -133,3 +134,8 @@ class TestJauneSharing:
             for row in range(256):
                 bits = [str((row >> (7 - i)) & 1) for i in range(8)]
                 assert run_jaune(program, bits) == table[row]
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(_jaune_linear, range(11, 15))

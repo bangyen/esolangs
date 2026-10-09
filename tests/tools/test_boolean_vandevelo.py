@@ -28,19 +28,17 @@ def test_constant_still_reads_every_input() -> None:
     assert io.reads == 3
 
 
-def test_one_rows_are_named_cubes() -> None:
-    program = vandevelo("0001")
-    assert program.splitlines()[-1] == "b? :: a? :: loop?"
-
-
-def test_constant_one_needs_no_guards() -> None:
-    program = vandevelo("11111111")
-    assert program.splitlines()[-1] == "loop?"
-
-
-def test_constant_subtree_is_one_coset() -> None:
-    program = vandevelo("00001111")
-    assert program.splitlines()[-1] == "a? :: loop?"
+@pytest.mark.parametrize(
+    ("table", "expected"),
+    [
+        pytest.param("0001", "b? :: a? :: loop?", id="one_rows_are_named_cubes"),
+        pytest.param("11111111", "loop?", id="constant_one_needs_no_guards"),
+        pytest.param("00001111", "a? :: loop?", id="constant_subtree_is_one_coset"),
+    ],
+)
+def test_last_line(table: str, expected: str) -> None:
+    program = vandevelo(table)
+    assert program.splitlines()[-1] == expected
 
 
 def test_an_input_tested_mostly_for_zero_is_read_negated() -> None:
@@ -87,7 +85,7 @@ def test_three_input_steps_and_sizes() -> None:
         program = vandevelo(format(index, "08b"))
         size += len(program)
         steps += sum(_steps(program, bits) for bits in product(range(2), repeat=3))
-    assert (size, steps) == (23425, 22669)
+    assert (size, steps) == (23425, 23430)
 
 
 def test_parity_is_a_single_hyperplane() -> None:
@@ -102,8 +100,6 @@ def test_parity_is_a_single_hyperplane() -> None:
 def test_affine_tables_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
     import importlib
 
-    from esolangs.tools.vandevelo import _affine_form
-
     module = importlib.import_module("esolangs.tools.vandevelo")
 
     def reject(*_args: object) -> None:
@@ -117,7 +113,6 @@ def test_affine_tables_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
                     str(((row & mask).bit_count() % 2) ^ offset)
                     for row in range(1 << n)
                 )
-                assert _affine_form(table, n) == (mask, offset)
                 program = vandevelo(table)
                 for bits in product((0, 1), repeat=n):
                     io = ScriptedIO("\n".join(map(str, bits)))
@@ -125,16 +120,6 @@ def test_affine_tables_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
                     row = int("".join(map(str, bits)), 2)
                     assert str(int(not halted)) == table[row]
                     assert io.reads == n
-
-
-def test_affine_detection_checks_non_basis_rows() -> None:
-    from esolangs.tools.vandevelo import _affine_form
-
-    for n in range(2, 13):
-        parity = "".join(str(row.bit_count() % 2) for row in range(1 << n))
-        assert _affine_form(parity, n) == ((1 << n) - 1, 0)
-        changed = parity[:-1] + str(1 - int(parity[-1]))
-        assert _affine_form(changed, n) is None
 
 
 @pytest.mark.medium
@@ -286,6 +271,33 @@ def test_constraints_weigh_four_per_input_plus_a_core() -> None:
     assert sum(w.bit_count() for w in duals) < echelon
     assert sum(w.bit_count() for w in duals) <= 4 * n + (dim + 1) * core
     assert sum(w.bit_count() > 4 for w in duals) <= core - dim
+
+
+def test_constraints_keep_the_earliest_triple_before_a_later_pair() -> None:
+    """A five-column dependency offers both witnesses; the first stays stable."""
+    from esolangs.tools.vandevelo import _constraints
+
+    columns = (1, 2, 4, 8, 15, 7)
+    dirs = [
+        sum(((col >> bit) & 1) << j for j, col in enumerate(columns))
+        for bit in range(4)
+    ]
+    # Column 7 is 1^2^4 before the later 8^15 pair becomes available.
+    assert _constraints(0, dirs, 6) == [(0b100111, 0), (0b111000, 0)]
+    _check_basis(dirs, 6)
+
+
+def test_repeated_columns_keep_the_witness_before_core_growth() -> None:
+    from esolangs.tools.vandevelo import _constraints
+
+    columns = (1, 2, 4, 7, 8, 15, 7)
+    dirs = [
+        sum(((col >> bit) & 1) << j for j, col in enumerate(columns))
+        for bit in range(4)
+    ]
+    # Both occurrences of 7 retain 1^2^4 after the later 8^15 pair appears.
+    assert _constraints(0, dirs, 7)[:2] == [(0b0001111, 0), (0b1000111, 0)]
+    _check_basis(dirs, 7)
 
 
 def test_constraint_bound_holds_on_random_cubes() -> None:

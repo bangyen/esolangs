@@ -10,7 +10,9 @@ from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster
 from esolangs.tools.helpers import essential_inputs, read_at
 from esolangs.tools.piet import piet as generate
+from esolangs.tools.piet.balance import _bounded_operations
 from tests.generator_support import verify_generated
+from tests.tools.test_raster_balance import TABLES, score
 
 
 @pytest.mark.parametrize(
@@ -55,10 +57,11 @@ def test_every_three_input_function_executes_through_png() -> None:
             stdin = "".join(f"{bit}\n" for bit in f"{row:03b}")
             assert esolangs.run("Piet", program, stdin=stdin) == truth_table[row]
     # Parent table lookup emitted 38,997 codels over this exhaustive corpus.
-    assert total == 34_638
+    # Folding a constant half: 34,638 -> 34,512.
+    assert total == 34_512
 
 
-@pytest.mark.medium
+@pytest.mark.slow
 def test_larger_functions_execute_through_png() -> None:
     rng = random.Random(20261001)
     for inputs in (4, 5, 6):
@@ -73,6 +76,14 @@ def test_larger_functions_execute_through_png() -> None:
                 image = esolangs.generate("Piet", table, balance=balanced)
                 decoded = Raster.from_png(image.to_png())
                 assert _evaluate("Piet", decoded, inputs=inputs) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("balanced", [False, True])
+def test_larger_asymmetric_function_executes_through_png(*, balanced: bool) -> None:
+    table = "".join(str(int(row in (0, 7, 31, 63))) for row in range(64))
+    image = esolangs.generate("Piet", table, balance=balanced)
+    assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=6) == table
 
 
 def test_public_generate_returns_a_piet_raster() -> None:
@@ -99,6 +110,16 @@ def test_ignored_inputs_are_read_but_not_indexed() -> None:
     assert esolangs.run("Piet", generate("0" * 8), stdin="1\n1\n1\n") == "0"
 
 
+def test_a_constant_half_is_folded_and_runs() -> None:
+    """All four constant-half shapes at n=5 beat the plain lookup and execute."""
+    rng = random.Random(3)
+    half = "".join(rng.choice("01") for _ in range(16))
+    plain = len(generate(half + "".join(rng.choice("01") for _ in range(16))).rows[0])
+    for table in (half + "0" * 16, half + "1" * 16, "0" * 16 + half, "1" * 16 + half):
+        assert len(generate(table).rows[0]) < plain
+        assert _evaluate("Piet", generate(table), inputs=5) == table
+
+
 @pytest.mark.parametrize("truth_table", ["", "0", "1", "010", "0121"])
 def test_invalid_truth_table_is_rejected(truth_table: str) -> None:
     with pytest.raises(ValueError, match="truth table"):
@@ -114,3 +135,56 @@ def test_piet_generator_and_interpreter() -> None:
     io = ScriptedIO("1")
     run(program, io)
     assert io.getvalue() == "1"
+
+
+def test_balance_raster_retains_layout(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import replace
+
+    from esolangs.registry import LANGUAGES
+
+    monkeypatch.setitem(LANGUAGES, "Piet", replace(LANGUAGES["Piet"], balance=None))
+    default = esolangs.generate("Piet", "0110")
+    balanced = esolangs.generate("Piet", "0110", balance=True)
+    assert isinstance(default, esolangs.Raster)
+    assert isinstance(balanced, esolangs.Raster)
+    assert balanced.to_png() == default.to_png()
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("table", [*TABLES, "10010110", "00000001", "01011010"])
+def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
+    operations = _bounded_operations(table)
+    candidates = [esolangs.generate("Piet", table)]
+    for width in range(13, sum(op.size for op in operations) + 7):
+        image = esolangs.generate("Piet", table, width=width)
+        assert isinstance(image, Raster)
+        candidates.append(image)
+        assert (
+            esolangs.run(
+                "Piet",
+                Raster.from_png(image.to_png()),
+                stdin="0\n" * (len(table).bit_length() - 1),
+            )
+            == table[0]
+        )
+    balanced = esolangs.generate("Piet", table, balance=True)
+    assert isinstance(balanced, Raster)
+    assert score(balanced) == min(score(image) for image in candidates)
+    assert (
+        _evaluate(
+            "Piet",
+            Raster.from_png(balanced.to_png()),
+            inputs=len(table).bit_length() - 1,
+        )
+        == table
+    )
+
+
+@pytest.mark.medium
+def test_piet_keeps_an_already_better_layout() -> None:
+    from esolangs.tools.piet.balance import balance
+
+    source = esolangs.generate("Piet", "0001", balance=True)
+    assert isinstance(source, Raster)
+    assert balance("0001", source) is source
+    assert _evaluate("Piet", Raster.from_png(source.to_png()), inputs=2) == "0001"

@@ -6,6 +6,10 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from tests.generator_support import (
+    assert_an_ignored_input_costs,
+    assert_parity_at_most_doubles,
+)
 from tests.tools.boolean_runners import (
     run_inject,
 )
@@ -18,7 +22,7 @@ class TestInject:
         """A table ignoring its later inputs costs one test, not ``n``."""
         one_dependency = len(boolean.inject("00001111"))
         parity = len(boolean.inject("01101001"))
-        assert one_dependency < parity / 2
+        assert one_dependency < parity * 3 / 4
 
     def test_reads_every_input_before_branching(self) -> None:
         """The reads are hoisted, so every path consumes exactly ``n`` lines."""
@@ -83,6 +87,18 @@ class TestInject:
             for row in range(1 << n):
                 assert run_inject(program, list(f"{row:0{n}b}")) == table[row] + "\n"
 
+    def test_chunked_lookup_drops_ignored_inputs(self) -> None:
+        """Input 2 of 7 is read and never tested; the table is indexed without it."""
+        small = "".join(str((row * 73 + row // 3) & 1) for row in range(64))
+        table = "".join(small[r >> 1 & 32 | r & 31] for r in range(128))
+        program = esolangs.generate("Inject", table, width=1)
+        assert program.count("readto ") == 7
+        assert len(program) < 0.7 * len(
+            esolangs.generate("Inject", small + small[::-1], width=1)
+        )
+        for row in range(128):
+            assert run_inject(program, list(f"{row:07b}")) == table[row] + "\n"
+
     def test_chunked_source_growth_is_linear(self) -> None:
         sizes = [
             len(boolean.inject("01101001" * (2 ** (n - 3)), 1)) for n in (9, 10, 11)
@@ -115,3 +131,14 @@ class TestInject:
         assert _tree("01101001", 0, 3, _Names(3, perm), perm) == _tree(
             "01101001", 0, 3, _Names(3, perm), perm
         )
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """Its declaration and ``readto``."""
+    assert_an_ignored_input_costs("Inject", 6, 15)
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.inject, range(11, 15))

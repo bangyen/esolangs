@@ -1,0 +1,22 @@
+language = "SLOW ACV MAMMALIAN"
+oldid = 197094
+
+[[examples]]
+id = "h"
+source = '''
+SEED
+SPRINT
+SPRINT
+SPRINT
+SEED
+SEED
+SEED
+SEED
+SEED
+SEED
+SEED
+SEED
+DIGEST
+PRONOUNCE
+'''
+expected = "H"

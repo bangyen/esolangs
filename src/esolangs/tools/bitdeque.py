@@ -1,14 +1,22 @@
 """Boolean template generator for bitdeque."""
 
 import re
+from collections.abc import Callable
+from typing import Any
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     best_input_order,
-    decision_tree_tokens,
+    input_weights,
     runs,
+    same_tokens,
+    subtree_ids,
 )
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import _bitdeque, _bitdeque_tokens, _join_tokens, balance_score
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 
@@ -32,18 +40,21 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     ``EJECT``/``INJECT`` work the head, so any bit can be brought to an end
     at two commands per position, measured not modelled.  Rotations happen
     inside the tree; the load is byte-identical under every order.
-    Below eleven columns, up to four inputs use POP/EJECT on fresh
-    zero/one endpoints; larger tables keep the linear load.
+    A constant subtree is one leaf, and a subtree repeated at its level is
+    emitted once and reached by ``GOTO`` (n=4, all 65,536 tables: -49.3%, none
+    longer).  Past n=4 the shorter of that tree and the linear discard lookup
+    is kept (tree 0.48x to 0.29x at n=5..10, random tables; never longer).
+    Width < 11 with n <= 4 loads each input via POP/EJECT on fresh zero/one
+    endpoints (15 commands each); otherwise the load is the linear ``2n``.
     """
-    if len(truth_table) <= 16:
-        program = best_input_order(truth_table, _bitdeque_ordered)
-        if width is not None and width < len(BITDEQUE_PAIR[0]):
-            program = best_input_order(
-                truth_table,
-                lambda table, perm: _bitdeque_ordered(table, perm, short=True),
-            )
-    else:
-        program = _bitdeque_linear(truth_table)
+    small = len(truth_table) <= 16
+    short = small and width is not None and width < len(BITDEQUE_PAIR[0])
+    program = best_input_order(
+        truth_table,
+        lambda table, perm: _bitdeque_ordered(table, perm, short=short),
+    )
+    if not small:
+        program = min(program, _bitdeque_linear(truth_table), key=len)
     if width is not None:
         from esolangs.tools.wrap import _bitdeque
 
@@ -52,6 +63,8 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
 
 
 _BITDEQUE_SHORT_PAIR = ("POP  ", "EJECT")
+_PRELUDE_LEN = 5
+_SHORT_BLOCK = 15
 
 
 def _bitdeque_short_load(n: int) -> list[str]:
@@ -59,7 +72,7 @@ def _bitdeque_short_load(n: int) -> list[str]:
     tokens: list[str] = []
     for i in range(n):
         # The block's first command, counted from 1 as ``GOTO`` counts.
-        at = 6 + 15 * i
+        at = _PRELUDE_LEN + 1 + _SHORT_BLOCK * i
         # POP/EJECT selects zero/one. Both branches remove the other
         # sentinel, append the selected bit, and restore register zero.
         tokens.extend(
@@ -96,6 +109,7 @@ def bitdeque_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     pair = _BITDEQUE_SHORT_PAIR if short else BITDEQUE_PAIR
     setters = (pair,) * n
     if template.count(TEMPLATE_CHAR) == 5 * n:
+        # Called only to raise if the runs do not match the setters.
         runs(template, TEMPLATE_CHAR, setters)
     return setters
 
@@ -108,8 +122,11 @@ def _bitdeque_linear(truth_table: str) -> str:
     half off the head for a one, ``POP`` the lower half off the tail for a
     zero, ``2**(n-1-i)`` commands each, meeting at a block that zeroes the
     register.  The last input skips that.  ``2T`` commands long, ``T`` executed.
+    An ignored input's bit is popped straight back and the register zeroed,
+    so the table indexes the rest.
     """
     n = _validate_truth_table(truth_table)
+    weights, truth_table = input_weights(truth_table, n)
     tokens: list[str] = []
     register = 0
     for bit in truth_table:
@@ -122,8 +139,13 @@ def _bitdeque_linear(truth_table: str) -> str:
         tokens.append("INVERT")
     # Command numbers count from 1, as ``GOTO`` does.
     at = len(tokens) + 1
-    for i, run in enumerate([TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])] * n):
-        k = 2 ** (n - 1 - i)
+    run = TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])
+    for i, k in enumerate(weights):
+        if not k:
+            # Pop the bit back; a one skips the first INVERT, zeroing it.
+            tokens += [run, "POP", f"GOTO {at + 5}", "INVERT", "INVERT"]
+            at += 6
+            continue
         # ``run`` is one token of text but two commands once filled.
         at += 2
         # Command numbers, with ``at`` the ``POP`` that reads the bit back:
@@ -202,40 +224,87 @@ def _bitdeque_ordered(
         # the rotation, its consuming pop, and the node's own ``GOTO``
         return len(rotations[level]) + 1
 
-    # Each input's run fills to two commands, which is what ``start`` below
-    # counts; see the docstring for why the load is byte-identical per order.
     # Commands count from 1.  Initially command 1 falls through on zero and
     # commands 2/3 skip the trampoline.  A leaf returns with one, so ``GOTO
     # 1`` reaches command 4; only that command carries the widening end
     # address.
     prelude = ["GOTO 4", "INVERT", "GOTO 5", "GOTO@END", "INVERT"]
-    # The setters read the route off the template's prefix, so they are
-    # handed the prelude, whose opening ``GOTO 4`` names this one.
-    load_block_in_name_order = (
+    # The setters read the route off the prelude's opening ``GOTO 4``.
+    load = (
         _bitdeque_short_load(n)
         if short
-        else ([TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])] * n)
+        else [TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])] * n
     )
+    # Each linear run fills to two commands.
+    load_len = _SHORT_BLOCK * n if short else 2 * n
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
-    # subtree, so the walker's ``at`` lands on this node and ``at +
-    # width(level)`` on the zero subtree.  The load block occupies ``2n``
-    # commands ahead of the tree, which is where the indices start, so the
-    # ``GOTO`` operands are right after substitution; ``start`` is 1-based.
-    def leaf_tokens(_level: int, row: int) -> list[str]:
-        return leaf(seen[row])
+    # subtree.  Commands count from 1 and the load occupies ``2n`` of them
+    # ahead of the tree, so the ``GOTO`` operands are right after substitution.
+    # A subtree already emitted is reached by ``GOTO`` to its first copy: a
+    # one-child's node operand, or ``INVERT GOTO`` where a zero-child falls in
+    # (``GOTO`` is taken on a one, and the register holds the zero just popped).
+    # Every subtree opens with a pop, so it ignores the register it is entered
+    # with.  Equal halves drop the node's ``GOTO``: the zero subtree is the only one.
+    ids = subtree_ids(seen)
+    placed: dict[int, int] = {}
 
-    def node(level: int, zero: int, _one: int, at: int) -> list[str]:
-        return [*rotations[level], f"GOTO {at + width(level) + zero}"]
+    def walk(level: int, block: int, at: int) -> list[str]:
+        key = ids[level][block]
+        if key in placed:
+            return ["INVERT", f"GOTO {placed[key]}"]
+        placed[key] = at
+        if key < 2:
+            return leaf(seen[block << (n - level)])
+        zero_key, one_key = ids[level + 1][2 * block : 2 * block + 2]
+        rotation = rotations[level]
+        if zero_key == one_key and zero_key not in placed:
+            return [*rotation, *walk(level + 1, 2 * block, at + len(rotation))]
+        below = at + width(level)
+        zero = walk(level + 1, 2 * block, below)
+        if one_key in placed:
+            return [*rotation, f"GOTO {placed[one_key]}", *zero]
+        one = walk(level + 1, 2 * block + 1, below + len(zero))
+        return [*rotation, f"GOTO {below + len(zero)}", *zero, *one]
 
-    tree = decision_tree_tokens(
-        seen,
-        leaf_tokens,
-        node,
-        parent_width=width,
-        start=len(prelude) + (15 * n if short else 2 * n) + 1,
-        collapse=True,
-    )
-    end = len(prelude) + (15 * n if short else 2 * n) + len(tree) + 1
-    tokens = prelude + load_block_in_name_order + tree
+    tree = walk(0, 0, len(prelude) + load_len + 1)
+    end = len(prelude) + load_len + len(tree) + 1
+    tokens = prelude + load + tree
     return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
+
+
+def _balance(table: str, default: str) -> str:
+    """Balance the eleven-cell and short endpoint loads in their width regimes."""
+    normal = _bitdeque_tokens(default)
+    short = _bitdeque_tokens(bitdeque(table, 1))
+    normal_width = balanced_token_width(normal, " ", minimum=11)
+    short_width = balanced_token_width(short, " ", maximum=10)
+    return min(
+        default,
+        _join_tokens(normal, normal_width, " "),
+        _join_tokens(short, short_width, " "),
+        key=balance_score,
+    )
+
+
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Commands tokenize on whitespace, which its wrapper turns to newlines."""
+    return same_tokens(template, layout(1)) or same_tokens(template, plain)
+
+
+LANGUAGE = Language(
+    "Bitdeque",
+    "queue_based.bitdeque",
+    boolean=bitdeque,
+    same_layout=_same_layout,
+    contract=BooleanContract(
+        answer_mode="dump",
+        note="Bitdeque has no output instruction and dumps its deque at "
+        "halt; the generator leaves exactly one bit on it, so the "
+        "whole dump is the answer and there is no position to name",
+    ),
+    # Space-delimited, but ``GOTO`` and its target must stay on one line.
+    wrap=_bitdeque,
+    balance=_balance,
+    example=Example(setters=bitdeque_setters),
+)

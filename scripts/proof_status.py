@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import re
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / "src" / "esolangs" / "proof_status.json"
+MANIFEST = ROOT / "src" / "esolangs" / "proof_status.toml"
 
 
 @dataclass(frozen=True)
@@ -75,7 +76,13 @@ def _check_evidence(reference: str, *, precise: bool) -> None:
 
 def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
     """Return validated proof and audit rows from the manifest."""
-    data = json.loads(path.read_text(encoding="utf-8"))
+    return validate(tomllib.loads(path.read_text(encoding="utf-8")))
+
+
+def validate(
+    data: dict[str, Any],
+) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
+    """Return proof and audit rows from parsed manifest ``data``."""
     proofs = []
     audits = []
     for row in data["ledger"]:
@@ -129,8 +136,24 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
     return tuple(proofs), tuple(audits)
 
 
+#: Small counts read as words in the totals sentence, as the prose around it does.
+_WORDS = ("no", "one", "two", "three", "four", "five")
+
+
+def render_totals(proofs: tuple[ProofRow, ...]) -> str:
+    """Return the ledger's closing totals sentence: arguments and exceptions."""
+    exceptions = sum("exception" in row.labels for row in proofs)
+    count = _WORDS[exceptions] if exceptions < len(_WORDS) else str(exceptions)
+    noun = "exception" if exceptions == 1 else "exceptions"
+    return (
+        f"Accordingly, this ledger records {len(proofs) - exceptions} theoretical"
+        f" totality arguments and\n{count} {noun} under the source-embedded"
+        " contract."
+    )
+
+
 def update_docs(root: Path = ROOT) -> None:
-    """Render both status tables without changing surrounding prose."""
+    """Render the status tables and totals without changing surrounding prose."""
     proofs, audits = load()
     tables = (
         (
@@ -157,6 +180,7 @@ def update_docs(root: Path = ROOT) -> None:
                 ],
             ],
         ),
+        (root / "docs/proofs/index.md", "PROOF-TOTALS", "", [render_totals(proofs)]),
         (
             root / "docs/roadmap.md",
             "SCALING-STATUS",

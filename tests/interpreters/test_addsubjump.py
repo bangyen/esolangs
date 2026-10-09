@@ -10,6 +10,7 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
 )
 from tests.interpreters.oisc import memory, run_program
+from tests.raises import assert_rejected_with_hint
 
 
 def _run(code, stdin=""):
@@ -23,43 +24,6 @@ class TestAssembly:
         @A:65 0 @A-1
         """
         assert _assembly(code) == [-1, 4, -1, 5, 65, 0, 3, -7]
-
-    def test_sugar_and_data_directive(self) -> None:
-        code = """
-        IO A
-        IO B
-        IO C
-        IO D
-        IO E IO
-        .data A:65 B:66 C:67 D:68 E:69
-        """
-        assert _assembly(code) == [
-            -1,
-            20,
-            4,
-            -7,
-            -1,
-            21,
-            8,
-            -7,
-            -1,
-            22,
-            12,
-            -7,
-            -1,
-            23,
-            16,
-            -7,
-            -1,
-            24,
-            -1,
-            -7,
-            65,
-            66,
-            67,
-            68,
-            69,
-        ]
 
     def test_macro_example(self) -> None:
         code = """
@@ -484,3 +448,8 @@ class TestContract(EmptyProgramContract, CycleContract):
     machine = staticmethod(_machine)
     halting_program = "-1 1 -1 -7"
     looping_program = "0 0 0 0"
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("AddSubJump", "ASJ 1", "2 to 4 address operands")

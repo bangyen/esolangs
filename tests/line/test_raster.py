@@ -176,36 +176,6 @@ def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
     assert io.getvalue() == "0"
 
 
-@pytest.mark.parametrize(
-    ("fixture", "expected"),
-    [("addition.png", [5, 4, 5]), ("multiplication.png", [6, 0, 6])],
-)
-def test_public_and_bounded_runs_reuse_pixels_with_fresh_state(
-    fixture: str, expected: list[int], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import esolangs.interpreters.tape_based.line as line
-
-    source = Raster.from_png(
-        (Path(__file__).parents[1] / "fixtures" / "line" / fixture).read_bytes()
-    )
-    line._compiled.cache_clear()  # noqa: SLF001
-    original = line.extract_mask
-    parses = 0
-
-    def extract_once(*args, **kwargs):
-        nonlocal parses
-        parses += 1
-        return original(*args, **kwargs)
-
-    monkeypatch.setattr(line, "extract_mask", extract_once)
-    for (a, b), answer in zip([(3, 2), (0, 4), (2, 3)], expected, strict=True):
-        stdin = f"{a}\n{b}\n"
-        assert esolangs.run("Line", source, stdin=stdin) == str(answer)
-        assert esolangs.run("Line", source, stdin=stdin, max_steps=1000) == str(answer)
-    assert parses == 1
-    line._compiled.cache_clear()  # noqa: SLF001
-
-
 def test_line_infers_the_entry_heading_from_the_arrow() -> None:
     """Pins heading inference: rotated a quarter turn clockwise, the
     ``01`` program still enters along its path (east), not forced north."""

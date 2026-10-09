@@ -32,7 +32,7 @@ class HaltError(EsolangError):
 class ExecutionTimeoutError(HaltError, TimeoutError):
     """A run was stopped by its wall-clock bound rather than by the program.
 
-    Not a plain :class:`HaltError`: four languages answer by terminating.
+    Not a plain :class:`HaltError`: some languages answer by terminating.
     """
 
     def __init__(self, *args: object) -> None:

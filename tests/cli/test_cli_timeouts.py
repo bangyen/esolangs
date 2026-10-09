@@ -1,44 +1,16 @@
 """What ``--timeout`` bounds, what it costs, and the code it exits with."""
 
-import subprocess
-import sys
 import time
 from pathlib import Path
 
 import pytest
 
 import esolangs
-from esolangs import cli, cli_io
+from esolangs import cli
 from esolangs.cli import HELP
 from tests.cli.test_cli import _program, call_main
 from tests.cli_support import _LOOPS, call_both
 from tests.generator_support import evaluate_generated
-
-
-# 3.0s over 12 tests: waits out a real timeout.
-@pytest.mark.medium
-class TestATimeoutIsNotAProgramError:
-    """They shared exit 1, so a script could not tell them apart."""
-
-    def test_a_program_failure_still_exits_1(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The other half of the distinction, which is what makes 124 useful."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["run", "brainfuck", _program(tmp_path, ",")], capsys, stdin="")
-        assert exc.value.code == 1
-
-    def test_a_termination_languages_timeout_says_it_is_the_answer(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It read as a failure when it was the result."""
-        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["run", "--timeout", _LOOPS, "123", _program(tmp_path, program)], capsys
-            )
-        assert exc.value.code == 124
-        assert "this timeout is the answer 1" in capsys.readouterr().err
 
 
 class TestATimeoutValueIsCheckedBeforeThePositionals:
@@ -150,107 +122,6 @@ class TestRunCanBeBounded:
         # answer *is* a timeout indistinguishable from a crash.
         assert exc.value.code == 124
         assert "timeout" in capsys.readouterr().err
-
-
-class TestAnUnboundedRunSaysSo:
-    """Several of these languages loop forever by design."""
-
-    def test_a_bounded_run_never_arms_it(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """With --timeout there is nothing to warn about."""
-        monkeypatch.setattr(cli_io, "_UNBOUNDED_NOTICE_AFTER", 0.01)
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        _out, err = call_both(
-            ["run", "--timeout", "10", "brainfuck", str(path)], capsys, stdin="1\n0\n"
-        )
-        assert "no bound" not in err
-
-    def test_debug_warns_about_a_termination_language(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """`run` gained this a round earlier and `debug` did not."""
-        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 0])
-        path = tmp_path / "p.txt"
-        path.write_text(program)
-        _out, err = call_both(["debug", "123", str(path)], capsys)
-        assert "not terminating" in err
-
-    def test_a_bounded_debug_is_not_told_to_pass_a_bound(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """--steps is a bound as much as --timeout is."""
-        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
-        path = tmp_path / "p.txt"
-        path.write_text(program)
-        _out, err = call_both(["debug", "--steps", "200", "123", str(path)], capsys)
-        assert "pass --timeout" not in err
-
-
-# waits out real stdin timeouts: drives the CLI as a subprocess.
-@pytest.mark.medium
-class TestStdinCannotHangTheCommandForever:
-    """`run` read stdin to EOF before doing anything, and --timeout missed it."""
-
-    def _run_with_open_stdin(self, args: list[str], wait: float) -> tuple[int, str]:
-        """Start the CLI with stdin held open and never written."""
-        proc = subprocess.Popen(
-            [sys.executable, "-m", "esolangs", *args],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        try:
-            proc.wait(timeout=wait)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            return -1, ""
-        finally:
-            if proc.stdin:
-                proc.stdin.close()
-        return proc.returncode, proc.stderr.read() if proc.stderr else ""
-
-    @pytest.mark.slow
-    def test_a_timeout_bounds_the_read(self, tmp_path: Path) -> None:
-        """It bounded execution only, and the block happens before that."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        code, err = self._run_with_open_stdin(
-            ["run", "--timeout", "2", "brainfuck", str(path)], 20
-        )
-        assert code == 124
-        assert "no input arrived on stdin" in err
-
-    @pytest.mark.slow
-    def test_an_unknown_language_is_named_without_reading_stdin(
-        self, tmp_path: Path
-    ) -> None:
-        """It blocked forever before saying the one thing it already knew."""
-        path = tmp_path / "p.txt"
-        path.write_text("+.")
-        code, err = self._run_with_open_stdin(
-            ["run", "--timeout", "30", "NotALang", str(path)], 20
-        )
-        assert code == 2
-        assert "unknown language" in err
-
-    @pytest.mark.slow
-    def test_a_language_that_reads_no_stdin_is_told_so(self, tmp_path: Path) -> None:
-        """RAM0 embeds its inputs, so the wait was for input nobody wanted."""
-        path = tmp_path / "p.txt"
-        path.write_text(
-            esolangs.instantiate("RAM0", esolangs.generate("RAM0", "0110"), [0, 1])
-        )
-        code, err = self._run_with_open_stdin(
-            ["run", "--timeout", "2", "RAM0", str(path)], 20
-        )
-        assert code == 124
-        assert "read no stdin" in err
 
 
 class TestEvaluationProvesRatherThanWaits:

@@ -1,6 +1,9 @@
 """bit_tilde generator tests."""
 
+import pytest
+
 from esolangs import tools as boolean
+from tests.generator_support import assert_parity_at_most_doubles
 
 
 class TestBitTilde:
@@ -13,3 +16,8 @@ class TestBitTilde:
         assert program.count(")") == 2
         assert program.count("(") == 1
         assert program.endswith("(")
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.bit_tilde, (7, 8), 255)

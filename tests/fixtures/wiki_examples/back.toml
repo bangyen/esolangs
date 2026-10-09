@@ -1,0 +1,18 @@
+language = "Back"
+oldid = 75747
+
+[[examples]]
+id = "reflect-once"
+note = "Stated to halt; the tape dump is this interpreter's."
+source = '''
+\\
+ *'''
+expected = "0"
+
+[[examples]]
+id = "reflect-twice"
+note = "Stated to halt; the tape dump is this interpreter's."
+source = '''
+//
+ *'''
+expected = "0"

@@ -1,15 +1,38 @@
 """Boolean-function generator for Back."""
 
+from collections.abc import Callable
+from itertools import pairwise
+from typing import Any
+
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
+    grid_width,
+    input_weights,
+    layout_width,
+    move_text,
+    same_up_to_wrapping,
+    subtree_ids,
 )
+from esolangs.tools.wrap import balance_score
 
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
 #: Both are one grid cell, so a run is the exact width of its program.
 PAIR = ("-", "+")
-_BACK_INPUT = TEMPLATE_CHAR * len(PAIR[0])
+_BACK_INPUT = TEMPLATE_CHAR
+_WRAP_ROWS = 8
+_MIRROR = {"/": "\\", "\\": "/"}
+
+
+def _render(rows: list[dict[int, str]]) -> str:
+    """Join sparse rows, gaps blank, each row only as long as its last cell."""
+    return "\n".join(
+        "".join(cells.get(x, " ") for x in range(max(cells, default=-1) + 1))
+        for cells in rows
+    )
 
 
 def _reflect_back(grid: dict[tuple[int, int], str], height: int, width: int) -> str:
@@ -22,49 +45,29 @@ def _reflect_back(grid: dict[tuple[int, int], str], height: int, width: int) -> 
     cells, each row only as long as its last one, so the cost is the
     output's size rather than the bounding box (``2**n`` rows by ``4n``).
     """
-    mirrors = {"/": "\\", "\\": "/"}
     rows: list[dict[int, str]] = [{} for _ in range(height)]
     for (row, column), cell in grid.items():
-        rows[row][width - column] = mirrors.get(cell, cell)
+        rows[row][width - column] = _MIRROR.get(cell, cell)
 
     # East, south, wrap west, north, west into the reflected root.  The two
     # extra columns touch only rows 0-1; tree padding is trailing and rstrips.
     rows[0][0] = rows[0][width + 1] = "\\"
     rows[1][0] = "/"
     rows[1][width + 1] = "\\"
-    lines = []
-    for cells in rows:
-        line = [" "] * (max(cells, default=-1) + 1)
-        for column, cell in cells.items():
-            line[column] = cell
-        lines.append("".join(line))
-    return "\n".join(lines)
+    return _render(rows)
 
 
-def _descending_back(grid: dict[tuple[int, int], str], n: int, cells: list[int]) -> str:
+def _descending_back(grid: dict[tuple[int, int], str], units: list[str]) -> str:
     """Reflect the tree below a downward loader, without outer entry columns."""
-    units: list[str] = []
-    at = 0
-    for cell in cells:
-        units.extend((">" if cell > at else "<") * abs(cell - at))
-        units.extend(("-", _BACK_INPUT))
-        at = cell
-    units.extend(">" * (n - at))
-    units.extend("<" * n)
     top = len(units) + 1
     last = max(column for _, column in grid)
     rows: dict[int, dict[int, str]] = {0: {last: "\\"}}
     for row, unit in enumerate(units, 1):
         rows[row] = {last: unit}
     rows[top] = {last: "/"}
-    mirrors = {"/": "\\", "\\": "/"}
     for (row, column), char in grid.items():
-        rows.setdefault(top + row, {})[last - column] = mirrors.get(char, char)
-    return "\n".join(
-        "".join(painted.get(x, " ") for x in range(max(painted, default=-1) + 1))
-        for y in range(max(rows) + 1)
-        for painted in [rows.get(y, {})]
-    )
+        rows.setdefault(top + row, {})[last - column] = _MIRROR.get(char, char)
+    return _render([rows.get(y, {}) for y in range(max(rows) + 1)])
 
 
 def _back_parity(truth_table: str, n: int) -> str | None:
@@ -83,7 +86,7 @@ def _back_parity(truth_table: str, n: int) -> str | None:
     return "\n".join([*rows, "*"])
 
 
-def back(truth_table: str, width: int | None = None) -> str:
+def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> str:
     r"""Build a Back template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -100,10 +103,7 @@ def back(truth_table: str, width: int | None = None) -> str:
     cell to 1 for either bit, then the input's run finishes it -- ``+`` (inert on
     a set cell) for a one, ``-`` (flipping it back) for a zero.  So cells
     ``0..n-1`` hold the inputs and cell ``n`` is the answer cell.  Both
-    bits cost the same two rows and, because no ``+`` ever meets a zero
-    cell here, both rows run for either bit.  A zero used to embed as a
-    blank the rstrip then removed, which made the program's height reveal
-    it.
+    bits cost the same two rows, so the height cannot leak an input.
 
     A decision node is ``+\>``: ``+`` tests the current tape bit (advancing
     the beam straight past the ``\`` when it is 0) and ``\`` reflects the
@@ -122,14 +122,38 @@ def back(truth_table: str, width: int | None = None) -> str:
     line ends where it is stripped.  A two-row outer route converts Back's
     fixed eastward start into the westward entry the reflected root needs.
 
-    The answer is the *value* of cell ``n``, which the halt dump prints,
-    rather than the head's position, which it does not.  An earlier layout
-    parked the head on whichever of a 0-cell and a 1-cell matched, which made
-    the result unreadable from the program's own output.  One answer cell
-    costs a leaf one ``-`` instead of one extra pointer move.
+    The answer is the *value* of cell ``n``, which the halt dump prints;
+    the head's position is not printed.
+
+    A node whose one-subtree equals the zero-subtree of the next node on its
+    level draws none: the beam falls down the column onto that node's mirror,
+    the first cell below, and turns east into the zero side.  The column
+    wraps, so the level's last node reaches its first the same way, from eight
+    rows up.  Other repeats are drawn again: bending the beam round column 1,
+    the one lane free below the root, to any mirror in its column saves 0.7 /
+    0.8 more points of characters (tiled, n=8/9) but takes the worst commands
+    from 122 / 221 to 154 / 306 at n=6/7, since a bend walks the distance
+    between the nodes.  Area (rows x longest row), seeded tables, n=6/7:
+    random -21.9% / -23.6%, tiled from two random blocks -17.5% / -35.8%,
+    constant half 0% / -13.1%; n <= 5 is unchanged, the load column setting
+    the height.  The wrap, over the next-node fall alone, n=8/9: tiled -9.7% /
+    -6.6% of characters (-16.5% / -9.7% of area), random and constant half 0%.
     """
     n = _validate_truth_table(truth_table)
-    program = _back_ordered(truth_table, tuple(range(n)), width)
+    weights, table = input_weights(truth_table, n)
+    if len(table) == 1:
+        # A constant already folds to one leaf; it keeps every input.
+        weights, table = [1] * n, truth_table
+    levels = len(table).bit_length() - 1
+    # A wrapped fall only removes rows; the shorter build, the plain one on a
+    # tie, is the guard that no table grows.
+    program = min(
+        (
+            _back_ordered(table, tuple(range(levels)), width, weights, wrap=w)
+            for w in ((False, True) if wrap else (False,))
+        ),
+        key=len,
+    )
     if width is not None and width > 0 and max(map(len, program.splitlines())) > width:
         parity = _back_parity(truth_table, n)
         if parity is not None:
@@ -138,132 +162,244 @@ def back(truth_table: str, width: int | None = None) -> str:
 
 
 def _back_ordered(
-    truth_table: str, perm: tuple[int, ...], width: int | None = None
+    truth_table: str,
+    perm: tuple[int, ...],
+    width: int | None = None,
+    weights: list[int] | None = None,
+    *,
+    wrap: bool = False,
 ) -> str:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 
-    ``truth_table`` is already permuted, so every row index here is in the
-    permuted frame.  ``perm`` is spent in exactly one place: the cell each
-    input's unit loads into.
+    ``truth_table`` is already permuted, so row indices are in the permuted
+    frame; ``perm`` only picks the cell each input loads into.
 
-    A node is ``+\>`` -- test the current cell, *then* advance -- so level
-    ``k`` tests cell ``k``, and input ``perm[k]`` is the one that has to be
-    loaded there.  That is one cell lower than the generators whose node
-    steps before it tests (Streetcode's halls and LaserFuck's ``>#v)`` both
-    test cell ``k + 1``), and getting it wrong computes a different
-    function rather than failing to draw.
+    A node tests the current cell, *then* advances, so level ``k`` tests cell
+    ``k`` and input ``perm[k]`` must load there -- one cell lower than
+    Streetcode's halls and LaserFuck's ``>#v)``, which test cell ``k + 1``.
+    Getting it wrong computes a different function.
 
-    **The load runs the inputs in name order and walks the pointer to
-    each one's cell.**  Input ``i`` belongs at cell ``perm.index(i)``, the
-    inverse of the permutation, and a walk of ``>``/``<`` carries the
-    pointer there.  Reading the permutation forward instead puts the right
-    bits in the wrong cells and computes a different function.
+    The load runs the inputs in name order (run k *is* input k) and walks the
+    pointer to cell ``perm.index(i)``, the inverse permutation; reading
+    ``perm`` forward computes a different function.  Filling in cell order
+    needs no walk and screens 12.0% against 9.15% here, but breaks name
+    order.  The walk is ``4n - 2`` moves, 10 of the 236 characters at n=3.
+    A ``-``/run pair is never split, so both bits still cost two rows.
 
-    **This is not the cheapest build, and the trade is deliberate.**
-    Filling in *cell* order -- cell ``c`` taking input ``perm[c]`` -- emits no
-    walk at all and delivers the full 12.0% screen against the 9.15% here,
-    but it puts the inputs out of name order, and the k-th run of the
-    template *is* input k: the harness fills the runs in order, so a
-    cell-order load would have to carry its permutation some other way.
-    The choice costs 2.85 points.  The walk is cheap in absolute
-    terms -- ``4n - 2`` pointer moves, 10 of the 236 characters Back's
-    programs average at n=3 -- but visible because the programs are short.
-
-    Keeping the ``-``/run pairs intact preserves the equal-width
-    embedding: the primer and the run are one unit and are never
-    separated, so both bits still cost the same two rows and the template's
-    height cannot leak an input.
+    ``weights`` names the stream inputs, zero for an ignored one: the table
+    indexes the rest, and the answer cell stays at the stream's input count.
+    An ignored input's run lands on the empty cell the next load fills and
+    a ``-`` follows it: a zero's ``-`` sets the cell and the ``-`` clears it,
+    a one's ``+`` meets the empty cell and skips the ``-``.  Two rows, no
+    walk, and the cell is empty again.
     """
-    n = _validate_truth_table(truth_table)
+    levels = _validate_truth_table(truth_table)
+    if weights is None:
+        weights = [1] * levels
+    n = len(weights)
 
     # Level c tests cell c and input perm[c], so input i lives at cell
-    # perm.index(i).  Filling in cell order instead needs no walk (12.0% vs
-    # 9.15%) but breaks "run k = input k"; not kept -- see the docstring.
-    cells = [0] * n
+    # perm.index(i).
+    essential = [i for i, weight in enumerate(weights) if weight]
+    cells = [levels] * n
     for level, i in enumerate(perm):
-        cells[i] = level
+        cells[essential[i]] = level
 
     def walk(frm: int, to: int) -> list[str]:
         """Move the pointer from cell ``frm`` to cell ``to``, one per row."""
-        return [">" if to >= frm else "<"] * abs(to - frm)
+        return list(move_text(frm, to, ">", "<"))
+
+    def load(order: list[int]) -> list[str]:
+        """Load the inputs in ``order``, then open the answer cell and home."""
+        # An ignored input borrows the cell loaded after it, or a spare one.
+        borrowed = dict(enumerate(cells))
+        spare = levels
+        for i in reversed(order):
+            if weights[i]:
+                spare = cells[i]
+            borrowed[i] = spare
+        units: list[str] = []
+        at = 0
+        for i in order:
+            # Primer '-' then the run, one row each (the beam reads one cell
+            # per row).  Bit on the trailing row so every load row executes;
+            # the walk goes before the pair, never between, or the height
+            # leaks the bit.
+            units.extend(walk(at, borrowed[i]))
+            units.extend(("-", _BACK_INPUT) if weights[i] else (_BACK_INPUT, "-"))
+            at = borrowed[i]
+        units.extend(walk(at, n))
+        units.extend("<" * n)
+        return units
 
     # Reverse name order: the load is drawn bottom-up in column 0, so this
-    # emits input 0 first.  The input-order search prices the walk anyway.
-    units: list[str] = []
-    at = 0
-    for cell in range(n - 1, -1, -1):
-        # Primer '-' then the run, one row each (the beam reads one cell per
-        # row).  Bit on the trailing row so every load row executes; the walk
-        # goes before the pair, never between, or the height leaks the bit.
-        units.extend(walk(at, cells[cell]))
-        units.append("-")
-        units.append(_BACK_INPUT)
-        at = cells[cell]
-    # Open the answer cell at n, then home to cell 0.
-    units.extend(walk(at, n))
-    units.extend("<" * n)
+    # emits input 0 first.
+    units = load(list(range(n - 1, -1, -1)))
 
-    # One '/' at the origin does both turns: right -> up off the top edge onto
-    # the bottom row, up the load, then up -> right into the tree at column 1.
-    # Relies on toroidal wrap (``_Machine.step`` uses ``% len(code)``); the
-    # wiki text is silent on edges and no interpreter test covers a wrap.
-    grid: dict[tuple[int, int], str] = {}
-    next_row = [1]
     constant = constant_span_test(truth_table)
-    vertical = False
+    ids = subtree_ids(truth_table)
 
-    def leaf(level: int, value: str, row: int, col: int) -> None:
-        # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
-        delta = n - level
-        move = (">" if delta >= 0 else "<") * abs(delta)
-        code = move + ("-" if value == "1" else "") + "*"
-        if vertical:
-            # Reserved DFS rows turn leaf finishers down without widening the tree.
-            grid[(row, col)] = "\\"
-            for k, ch in enumerate(code, 1):
-                grid[(row + k, col)] = ch
-            next_row[0] = max(next_row[0], row + len(code) + 1)
-        else:
-            for k, ch in enumerate(code):
-                grid[(row, col + k)] = ch
+    def draw(
+        shared: set[tuple[int, int]], *, vertical: bool
+    ) -> tuple[dict[tuple[int, int], str], dict[tuple[int, int], tuple[int, int]]]:
+        """Draw the tree; return its cells and each node's cell by (level, block).
 
-    def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
-        if level == n or constant(lo, hi):
-            leaf(level, truth_table[lo], row, col)
-            return
-        mid = lo + (hi - lo) // 2
-        grid[(row, col)] = "+"
-        grid[(row, col + 1)] = "\\"
-        grid[(row, col + 2)] = ">"
-        emit(level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
-        nrow = next_row[0]
-        next_row[0] += 1
-        grid[(nrow, col + 1)] = "\\"
-        grid[(nrow, col + 2)] = ">"
-        emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
+        A node in ``shared`` draws no one-subtree: its mirror drops the beam down
+        the column to the next mirror below, the zero-side entry of the next
+        node on that level.
+        """
+        grid: dict[tuple[int, int], str] = {}
+        where: dict[tuple[int, int], tuple[int, int]] = {}
+        next_row = [1]
 
-    emit(0, 0, 2**n, 0, 1)  # tree root at column 1, the beam arriving rightward
+        def leaf(level: int, value: str, row: int, col: int) -> None:
+            # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
+            code = ">" * (n - level) + ("-" if value == "1" else "") + "*"
+            if vertical:
+                # Reserved DFS rows turn leaf finishers down without widening the tree.
+                grid[(row, col)] = "\\"
+                for k, ch in enumerate(code, 1):
+                    grid[(row + k, col)] = ch
+                next_row[0] = max(next_row[0], row + len(code) + 1)
+            else:
+                for k, ch in enumerate(code):
+                    grid[(row, col + k)] = ch
+
+        def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
+            if level == levels or constant(lo, hi):
+                leaf(level, truth_table[lo], row, col)
+                return
+            mid = lo + (hi - lo) // 2
+            grid[(row, col)] = "+"
+            grid[(row, col + 1)] = "\\"
+            grid[(row, col + 2)] = ">"
+            block = lo >> (levels - level)
+            where[level, block] = (row, col + 1)
+            emit(level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
+            if (level, block) in shared:
+                return
+            nrow = next_row[0]
+            next_row[0] += 1
+            grid[(nrow, col + 1)] = "\\"
+            grid[(nrow, col + 2)] = ">"
+            emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
+
+        # Tree root at column 1, the beam arriving rightward.
+        emit(0, 0, 2**levels, 0, 1)
+        return grid, where
+
+    def level_order(k: int, shared: set[tuple[int, int]]) -> list[int]:
+        """Return level ``k``'s nodes in text order, one-subtrees of ``shared`` cut."""
+        order: list[int] = []
+
+        def walk(level: int, block: int) -> None:
+            size = 2 ** (levels - level)
+            if level == levels or constant(block * size, (block + 1) * size):
+                return
+            if level == k:
+                order.append(block)
+            walk(level + 1, 2 * block)
+            if (level, block) not in shared:
+                walk(level + 1, 2 * block + 1)
+
+        walk(0, 0)
+        return order
+
+    def plan(*, vertical: bool) -> set[tuple[int, int]]:
+        """Pick the nodes whose one-edge can fall onto an equal zero-side subtree.
+
+        Level by level: a node qualifies when the next node on its level (in
+        text order) has an equal zero subtree and that node's mirror is the
+        first cell below it in the column.
+        """
+        shared: set[tuple[int, int]] = set()
+        for k in range(levels):
+            order = level_order(k, shared)
+            # The last node's beam falls off the bottom and wraps to the top,
+            # where the level's first mirror is the first in the column.  Its
+            # walk is about the rows it saves, but only from eight rows up:
+            # below that it is a few cells saved for a whole column walked.
+            ring = wrap and 2 ** (levels - k - 1) >= _WRAP_ROWS
+            follower = dict(pairwise([*order, *order[:1]] if ring else order))
+            tried = {
+                (k, a)
+                for a, b in follower.items()
+                if ids[k + 1][2 * a + 1] == ids[k + 1][2 * b]
+            }
+            if not tried:
+                continue
+            grid, where = draw(shared | tried, vertical=vertical)
+            height = max(r for r, _ in grid) + 1
+            column = 3 * k + 2
+            owner = {cell: node for node, cell in where.items()}
+            for _, a in tried:
+                row = where[k, a][0] + 1
+                while row < height and (row, column) not in grid:
+                    row += 1
+                if ring and row == height:
+                    # Off the bottom the beam wraps to the top of the column.
+                    row = 0
+                    while (row, column) not in grid:
+                        row += 1
+                if owner.get((row, column)) == (k, follower[a]):
+                    shared.add((k, a))
+        return shared
+
+    grid, _ = draw(plan(vertical=False), vertical=False)
 
     if width is not None and width > 0:
         span = max(c for _, c in grid) + 3
         if span > width:
-            original = _descending_back(grid, n, cells)
-            vertical = True
-            grid.clear()
-            next_row[0] = 1
-            emit(0, 0, 2**n, 0, 1)
-            narrow = _descending_back(grid, n, cells)
-            return min(
-                (original, narrow), key=lambda code: max(map(len, code.splitlines()))
-            )
+            down = load(list(range(n)))
+            wide = _descending_back(grid, down)
+            grid, _ = draw(plan(vertical=True), vertical=True)
+            tall = _descending_back(grid, down)
+            return min((wide, tall), key=lambda code: max(map(len, code.splitlines())))
 
     # Height is max(tree 2**n, load units + 1).  Past n=3 load rows share with
     # tree rows; safe only because a run is one character for either bit.
     height = max(max(r for r, _ in grid) + 1, 1 + len(units))
-    width = max(c for _, c in grid) + 1
+    tree_width = max(c for _, c in grid) + 1
+    # One '/' at the origin does both turns: right -> up off the top edge onto
+    # the bottom row (toroidal wrap), up the load, then up -> right into the
+    # tree at column 1.
     grid[(0, 0)] = "/"
     for k, unit in enumerate(units):
         grid[(height - 1 - k, 0)] = unit
     # No input row can instantiate to whitespace (a zero used to embed as a
     # blank, and the height revealed it).
-    return _reflect_back(grid, height, width)
+    return _reflect_back(grid, height, tree_width)
+
+
+def _balance(table: str, default: str) -> str:
+    """Compare the reflected tree, descending tree and parity column."""
+    descending = back(table, max(1, grid_width(default) - 1))
+    # The unshared layouts stay: sharing can leave a layout less square.
+    plain = back(table, wrap=False)
+    narrow = back(table, max(1, grid_width(plain) - 1), wrap=False)
+    return min(default, descending, plain, narrow, back(table, 1), key=balance_score)
+
+
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Rebuild a width-fitted grid at the template's own width."""
+    return template == layout(layout_width(template)) or same_up_to_wrapping(
+        template, plain
+    )
+
+
+LANGUAGE = Language(
+    "Back",
+    "tape_based.back",
+    boolean=back,
+    same_layout=_same_layout,
+    split=True,
+    contract=BooleanContract(
+        answer_mode="dump",
+        note="Back has no output instruction and dumps its tape at halt; "
+        "the answer is cell n, past the n input cells",
+    ),
+    balance=_balance,
+    no_wrap="the beam path and embedded input occupy fixed grid coordinates",
+    empty_program="Back program cannot be empty",
+    example=Example(pair=PAIR, expected="0 1 0"),
+)

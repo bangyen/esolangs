@@ -2,7 +2,6 @@
 
 import importlib
 import io
-import random
 from collections.abc import Callable, Iterator
 from contextlib import redirect_stdout
 
@@ -43,12 +42,8 @@ run_dimensional = _runner("tape_based.dimensional", newline=True)
 run_bf = _runner("tape_based.brainfuck")
 run_factor = _runner("tape_based.factor")
 run_suffolk = _runner("tape_based.suffolk")
-run_painfuck = _runner("tape_based.painfuck", newline=True)
 run_rotfuck = _runner("tape_based.rotfuck")
-run_forth = _runner("stack_based.forth", newline=True)
 run_circlefuck = _runner("tape_based.circlefuck")
-run_bit_tilde = _runner("tape_based.bit_tilde")
-run_123 = _runner("tape_based.one_two_three", newline=True)
 run_collatz_multiverse = _runner("register_based.collatz_multiverse", newline=True)
 run_decleq = _runner("register_based.decleq")
 run_cvnc = _runner("other.cvnc", newline=True)
@@ -59,7 +54,6 @@ run_polynomial = _runner("register_based.polynomial")
 run_bfstack = _runner("stack_based.bfstack")
 run_sstack = _runner("stack_based.sstack")
 run_unsquare = _runner("stack_based.unsquare")
-run_slow_acv_mammalian = _runner("tape_based.slow_acv_mammalian")
 run_streetcode = _runner("grid_based.streetcode", lines=True)
 run_flowchart = _runner("grid_based.flowchart", lines=True)
 run_sophie = _runner("register_based.sophie")
@@ -180,32 +174,3 @@ def one_two_three_result(program: str) -> str:
 
     machine = _Machine(program, ScriptedIO(""))
     return "0" if run_until_halt_or_cycle(machine) else "1"
-
-
-_PB_TABLES = {
-    "10": 1,  # NOT
-    "0110": 2,  # XOR
-    "0001": 2,  # AND
-    "1110": 2,  # NAND
-    "10100101": 3,  # mixed
-}
-
-
-# The nullary tables ("0"/"1") are not here: a one-entry table is a
-# constant rather than a function of any input, and every boolean
-# generator refuses it (``test_a_one_entry_table_is_refused``).
-_PB_CONSTANTS = ("00", "11", "0000", "1111")
-
-
-def _pb_random_tables() -> list[str]:
-    """The seeded random tables shared by the halting and loop checks."""
-    random.seed(7)
-    return [
-        "".join(random.choice("01") for _ in range(2**n))
-        for n in (1, 2, 3, 4)
-        for _ in range(2)
-    ]
-
-
-def _pb_combo_bits(combo: int, n: int) -> list[str]:
-    return [str((combo >> (n - 1 - i)) & 1) for i in range(n)]

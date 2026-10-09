@@ -7,6 +7,69 @@ from esolangs.interpreters.tape_based.brainfuck import _Machine
 from esolangs.vm import run_until_halt_or_growth
 
 
+def _sole_loop_word(word: str) -> bool:
+    """Parse balanced words; reject a loop containing just one loop atom."""
+    frames: list[list[str]] = [[]]
+    for char in word:
+        if char == "[":
+            frames.append([])
+        elif char == "]":
+            if len(frames) == 1 or frames.pop() == ["loop"]:
+                return False
+            frames[-1].append("loop")
+        else:
+            frames[-1].append("letter")
+    return len(frames) == 1
+
+
+@pytest.mark.parametrize("letters", [5, 6])
+def test_six_series_grammar_matches_balanced_words(letters: int) -> None:
+    import itertools
+
+    from tests.proofs._brainfuck_count import sole_loop_counts
+
+    alphabet = "+-<>." + ("," if letters == 6 else "") + "[]"
+    counts = [
+        sum(
+            _sole_loop_word("".join(word))
+            for word in itertools.product(alphabet, repeat=n)
+        )
+        for n in range(6)
+    ]
+    assert sole_loop_counts(5, letters) == counts
+    assert _sole_loop_word("+[-[]].")
+    assert _sole_loop_word("[[]+]")
+    assert not _sole_loop_word("[[+]]")
+    assert not _sole_loop_word("[[]]")
+
+
+def test_six_series_algebraic_identity_and_rate_bracket() -> None:
+    from fractions import Fraction
+
+    from tests.proofs._brainfuck_count import sole_loop_counts
+
+    coefficients = sole_loop_counts(40)
+    # x^2 P^2 - (1-6x)(1+x^2) P + 1+x^2 = 0.
+    for n, coefficient in enumerate(coefficients):
+        residual = -coefficient + int(n in (0, 2))
+        if n >= 1:
+            residual += 6 * coefficients[n - 1]
+        if n >= 2:
+            residual += (
+                sum(coefficients[k] * coefficients[n - 2 - k] for k in range(n - 1))
+                - coefficients[n - 2]
+            )
+        if n >= 3:
+            residual += 6 * coefficients[n - 3]
+        assert residual == 0
+    # On 0 < x < 1/6, 1-6x decreases and 2x/sqrt(1+x^2) increases.
+    for rate, sign in ((Fraction(798449, 100000), -1), (Fraction(798450, 100000), 1)):
+        x = 1 / rate
+        discriminant = (1 - 6 * x) ** 2 * (1 + x * x) - 4 * x * x
+        assert 0 < x < Fraction(1, 6)
+        assert sign * discriminant > 0
+
+
 def _canonical(machine: _Machine) -> tuple[object, ...]:
     """Return the state up to translation of the bi-infinite tape.
 

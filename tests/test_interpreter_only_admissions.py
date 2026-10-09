@@ -1,6 +1,6 @@
 """Admission routes, and API and VM integration for the interpreter-only three."""
 
-import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -8,21 +8,28 @@ import pytest
 import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.vm import make_vm
+from tests.generator_support import CHECK
 
-_CENSUS = json.loads(
-    (Path(__file__).parent / "fixtures/curation.json").read_text(encoding="utf-8")
+_CENSUS = tomllib.loads(
+    (Path(__file__).parent / "fixtures/curation.toml").read_text(encoding="utf-8")
 )["languages"]
 
 
 def test_every_language_was_admitted_by_a_recorded_route() -> None:
     """Fame is 60 backlinks; below that, a first implementation or one of six."""
-    assert set(_CENSUS) == set(LANGUAGES)
+    unrecorded = sorted(set(LANGUAGES) - set(_CENSUS))
+    assert not unrecorded, f"no admission record for {unrecorded}; {CHECK}"
+    stale = sorted(set(_CENSUS) - set(LANGUAGES))
+    assert not stale, f"remove {stale} from tests/fixtures/curation.toml"
     for name, row in _CENSUS.items():
+        if row["route"] == "unassessed":
+            continue  # offline; `finish` asks for the count before merging
         assert (row["route"] == "fame") == (row["backlinks"] >= 60), name
         assert row["route"] in {"fame", "first implementation", "grandfathered"}
     grandfathered = {
         name for name, row in _CENSUS.items() if row["route"] == "grandfathered"
     }
+    # Closed: a new language takes "fame" or "first implementation".
     assert grandfathered == {"123", "BF-PDA", "BIO", "Jaune", "NoComment", "Sophie"}
 
 
@@ -47,9 +54,3 @@ def test_api_and_vm(language: str, code: str, stdin: str, output: str) -> None:
     assert esolangs.describe(language)["boolean_generator"] is False
     with pytest.raises(ValueError, match="no boolean generator"):
         esolangs.generate(language, "01")
-
-
-def test_unary_generator_refusal_does_not_deny_runtime_input() -> None:
-    with pytest.raises(esolangs.ArgumentError, match="generator contracts") as caught:
-        esolangs.generate("Unary", "01")
-    assert "reads no input" not in str(caught.value)

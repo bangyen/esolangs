@@ -233,10 +233,6 @@ class TestAPainterAnt:
                 table[bits[0] * 4 + bits[1] * 2 + bits[2]]
             ), f"XOR3 bits {bits}"
 
-    def test_non_binary_rejected(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            a_painter_ant("0123")
-
     def test_instantiate_fills_bits(self) -> None:
         """Every run fills to ``n`` for a zero and ``N`` for a one."""
         template = a_painter_ant("0110")

@@ -1,5 +1,7 @@
 """Smallfuck fixed-tape semantics."""
 
+import itertools
+import random
 from functools import partial
 
 import pytest
@@ -7,6 +9,8 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.smallfuck import _Machine, run
 from tests.interpreters.runner import run_program
+from tests.interpreters.semantic_oracles import STDINS, agrees
+from tests.interpreters.semantic_oracles import smallfuck as oracle
 
 _run = partial(run_program, run, suppress_eof=False)
 
@@ -51,3 +55,28 @@ def test_machine_exposes_pointer_and_tape() -> None:
 def test_unbalanced_loops_are_rejected(source: str) -> None:
     with pytest.raises(ValueError, match="unmatched"):
         _run(source)
+
+
+def _corpus():
+    for n in range(5):
+        yield from ("".join(c) for c in itertools.product("*<>", repeat=n))
+    yield from ["", "[]", "*[**]", "*[]", ">>*", "*[>*<*]", "[ignored]", "<*", ">"]
+    rng = random.Random(1703)
+    for _ in range(64):
+        yield "".join(rng.choices(["*", "<", ">", "[**]", "[>*<*]", "[]"], k=8))
+
+
+@pytest.mark.parametrize("stdin", STDINS)
+def test_bounded_programs_match_the_oracle(stdin):
+    for code in _corpus():
+        agrees(_Machine, oracle, code, stdin, dump=True)
+
+
+@pytest.mark.parametrize(
+    ("code", "output"),
+    [("[", None), ("]", None), ("][", None), (">>*", "1"), ("<", "0"), (">", "0")],
+)
+def test_oracle_controls(code, output):
+    result = agrees(_Machine, oracle, code, "\x81", dump=True)
+    assert result.output == output if output else isinstance(result, ValueError)
+    assert not agrees(_Machine, oracle, "*[]", "", dump=True).halted

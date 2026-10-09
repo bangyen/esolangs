@@ -244,3 +244,77 @@ def test_missing_tools_never_report_complete_verification(
     assert f"{tool} not installed" in text
     assert runs == (["available"] if allow else [])
     assert ("incomplete verification" if allow else "verification failed") in text
+
+
+def test_shared_changes_keep_all_tests_but_measure_only_touched_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    verify = load_script()
+    monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
+    monkeypatch.setattr(
+        verify, "_parse_only_skip", lambda: (None, None, False, True, False, False)
+    )
+    monkeypatch.setattr(
+        verify, "_scope_plan", lambda **_: (None, "verification tooling changed")
+    )
+    monkeypatch.setattr(
+        verify,
+        "_scope_changed_files",
+        lambda: ("scripts/verify.py", "src/esolangs/tools/vandevelo.py"),
+    )
+    monkeypatch.setattr(
+        verify.subprocess,
+        "run",
+        lambda *_a, **_kw: subprocess.CompletedProcess([], 0),
+    )
+    with mock.patch.object(verify, "_run_steps", return_value=(0, [], 0.0)) as run:
+        assert verify.main() == 0
+    runnable = run.call_args.args[0]
+    cmd = next(cmd for name, cmd, _ in runnable if name == "pytest")
+    assert not any(arg.startswith("tests/") for arg in cmd)
+    rc = next(arg for arg in cmd if arg.startswith("--cov-config=")).split("=", 1)[1]
+    assert "src/esolangs/tools/vandevelo.py" in Path(rc).read_text()
+    assert "--cov" in cmd
+
+
+def test_shadow_uv_command_cannot_resync_the_active_test_environment() -> None:
+    verify = load_script()
+    cmd = next(cmd for name, cmd in verify.STEPS if name == "bandit")
+    assert cmd[:3] == ["uv", "run", "--no-sync"]
+    assert "--with" in cmd
+    assert "bandit" in cmd
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("returncode", [0, 3])
+def test_long_step_output_is_drained_while_shadow_checks_run(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], returncode: int
+) -> None:
+    verify = load_script()
+    ready = tmp_path / "ready"
+    producer = (
+        "import sys; from pathlib import Path; "
+        "print('START' + 'x' * 1000000 + 'END', flush=True); "
+        f"Path({str(ready)!r}).touch(); sys.exit({returncode})"
+    )
+    consumer = f"""
+import time
+from pathlib import Path
+ready = Path({str(ready)!r})
+deadline = time.monotonic() + 3
+while not ready.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+assert ready.exists(), 'producer stalled on captured output'
+"""
+    runnable = [
+        ("pytest", [sys.executable, "-c", producer], {}),
+        ("shadow", [sys.executable, "-c", consumer], {}),
+    ]
+    failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
+    assert failures == int(returncode != 0)
+    assert {name for name, _ in timings} == {"pytest", "shadow"}
+    output = capsys.readouterr().out
+    if returncode:
+        assert "START" + "x" * 1000000 + "END" in output
+    else:
+        assert "START" not in output

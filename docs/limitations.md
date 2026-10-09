@@ -16,12 +16,18 @@ See [Polynomial](proofs/polynomial.md) for its size lower bound.
   documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
   specifies only a two-road choice.
-- Line and Piet carry a raster source: `generate` returns an
-  `esolangs.raster.Raster`, `run` takes it or a PNG path through the shared
-  codec, and `describe` reports `source_kind="raster"`. Text and raster share
-  VM and step contracts; `RUNNERS` describes text bundling only. Line
-  retains its graph for repeated generated rows; stepping parses pixels. Piet
-  emits and executes pixels.
+
+<!-- RASTER-SOURCES:START -->
+
+Line, Piet and Piet++ carry a raster source: `generate` returns an
+`esolangs.raster.Raster`, `run` takes it or a PNG path through the shared
+codec, and `describe` reports `source_kind="raster"`.
+
+<!-- RASTER-SOURCES:END -->
+
+Text and raster share VM and step contracts; `RUNNERS` describes text
+bundling only. Line retains its graph for repeated generated rows, and
+stepping parses pixels; the other raster languages emit and execute pixels.
 
 ## Source positions
 
@@ -36,6 +42,11 @@ a 1px stroke is rejected with 921 unaccounted pixels rather than silently
 changing the program.
 
 ## Boolean generators
+
+Every path reads all n inputs in order; an ignored input is read and
+discarded, never left unread. Leaving a trailing ignored input unread would
+save 9-29% at n=7..8 on Sophie, Unlambda, Brainfuck and Factor, but would make
+a program's input consumption depend on the table.
 
 Parameterized generators embed each input exactly once. Every emitted
 character is build work. The input text must have:
@@ -58,9 +69,9 @@ MAMMALIAN must read in order; BF-PDA uses fixed stack order. No instruction-only
 wire is derived for 123 or Minifuck.
 
 - ArrowQueue's rotations cost 19, 39, and 63 characters at k=1, 2, 3. Their
-  2.1% gain misses the 5% bar, so plain order ships (d5bac32).
-- Circuit Diagram gains 3.5% over four orders on the seeded five-input sample.
-  A fifth, sharing-scored order reaches 5.6% but violates the cap.
+  2.1% gain misses the 10% bar, so plain order ships (d5bac32).
+- Circuit Diagram's default path builds the identity order: four orders save
+  8.48% of area at n=7, under the 10% bar. Width requests still try four.
 - Factor subtree dispatch loses 1.0% at three inputs and gains 3.4% at five.
   Brainfuck lacks a cheaper jump, call, or label.
 - 123 has one straight-line stream per row. Its table-dependent paint sweep is
@@ -74,9 +85,12 @@ dense, parity, constant tables were executed exhaustively at each shipped
 arity. Construction details and measurements are in
 [malbolge-scaling](proofs/malbolge-scaling.md).
 
-Seventeen remains open. Executed decoder and instruction-reuse controls exist,
-but no source joins the address fold, row selector and complete decoder around
-an arbitrary full truth table. The shipped cap remains sixteen.
+Seventeen remains open. A prepared complete query and separate legal-source
+initialization and handoff components pass exhaustive input controls, but no
+source installs the query and relocates obstructed records around an arbitrary
+full truth table. The handoff's existing continuation corrupts a saved parity
+word. See [the controls](proofs/malbolge-scaling.md#native-input-and-prepared-query-controls-2026-10-08).
+The shipped cap remains sixteen.
 
 Counting bounds each family independently of mixer quality:
 
@@ -132,7 +146,9 @@ forces those values holds for every read count, so the language bound is
 ### Scaling
 
 Size is measured from rendered output, and correctness claims require running
-the generated program. Execution measurements exclude loading and use the
+the generated program. A generator guarantees its size class, not its
+constant; constant-factor tweaks beyond the canonical set ship only at 10% or
+more where they run (`docs/CONTRIBUTING.md`). Execution measurements exclude loading and use the
 worst sampled parity row. A sub-10 ms run does not establish an exponent.
 Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
 super-linear area); it is intentionally excluded from execution time.
@@ -170,10 +186,15 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 81 languages; its floor is 31. All ten classics have
-generators. Removed: unused ordinary imperative entries with shared-shim
-generators; Nopstacle for incompatible embeds; ZTOALC L for a searched
-syntax-level lookup table. The 2D screen intersected
+<!-- COLLECTION-SIZE:START -->
+
+The collection has 83 languages.
+
+<!-- COLLECTION-SIZE:END -->
+
+Its floor is 31, and all ten classics have generators. Removed: unused
+ordinary imperative entries with shared-shim generators; Nopstacle for
+incompatible embeds; ZTOALC L for a searched syntax-level lookup table. The 2D screen intersected
 1,543 unimplemented with 567 two-dimensional pages, then filtered 36 by prior
 verdicts, co-categories, I/O and branch vocabulary, and page length. It admitted
 Super SNUSP and Alight and rejected Pinyin.
@@ -184,7 +205,8 @@ across all namespaces, and deduplicate by page ID. Pause at least three seconds
 between requests.
 
 The cutoff is policy, adopted 2026-10-01, not a measured popularity boundary.
-Record resolved title, date and count; missing data means unassessed. Low
+Record resolved title, date and count; missing data means unassessed
+(`route = "unassessed"`, which `finish` flags until the count is recorded). Low
 backlinks count against only old languages; Wikipedia pageviews are not a
 gate.
 
@@ -226,14 +248,18 @@ Forth (57), Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
 Existing fame exceptions must still clear the bar. Whitespace was removed at
 58 backlinks.
 
-The 2026-10-06 census (`tests/fixtures/curation.json`) records each
-language's backlinks and route: 21 clear the fame gate and 54 are first
-implementations; SStack (4), Smu (4, remeasured 2026-10-07) and Piet++
-(8), all Unimplemented, were added after. Six were implemented elsewhere
-when added, all before the rule was written down on 2026-09-27, and are
-grandfathered: BIO (ais523),
-BF-PDA (Madk, 2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie
-(their authors') and Jaune (two others'). Befunge-98 (Funge-98, 31, two
+<!-- CURATION-CENSUS:START -->
+
+The 2026-10-06 census (`tests/fixtures/curation.toml`) records each
+language's backlinks and route: 21 clear the fame gate,
+56 are first implementations and 6 are grandfathered.
+
+<!-- CURATION-CENSUS:END -->
+
+The grandfathered languages were implemented elsewhere when added, all
+before the rule was written down on 2026-09-27: BIO (ais523), BF-PDA (Madk,
+2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie (their authors')
+and Jaune (two others'). Befunge-98 (Funge-98, 31, two
 dozen implementations) came after and was removed on 2026-10-06.
 
 A route admits a language only when its specification fixes the core
@@ -293,10 +319,12 @@ The 2026-10-01 fame audit covered eight census candidates:
   T/n chunks of n bits, with O(n) read instructions: O(T) rendered text.
 - [///](https://esolangs.org/wiki////) (88): integrated with ordered
   one-character `a`/`b` embeds. Binary-to-unary substitutions form the row
-  index; T fixed sweeps consume that many two-character table entries.
+  index; 2^m fixed sweeps, for the m inputs the table depends on, consume
+  that many two-character table entries.
   Escaped future patterns prevent earlier sweeps corrupting later rules.
   The selected entry becomes 0/1 and the suffix is deleted. Source is
-  exactly 20T + n + 53 characters; build work is O(T).
+  exactly 20*2^m + n + 53 characters, plus k + 10 for k = n - m > 0
+  ignored inputs; build work is O(T).
 
 Each uses the same 309-table, 3,352-row corpus as Cyclic tag. Dense size-difference
 ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.903 (Boolfuck), 2.926 (Subleq)

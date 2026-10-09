@@ -1,29 +1,40 @@
 """Boolean-function generator for Algebraic Programming Language."""
 
+from collections.abc import Callable
 from itertools import pairwise
 from string import ascii_uppercase
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
-    _GREEDY_ORDER_MAX_ARITY,
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
+    essential_inputs,
     in_input_order,
-    input_orders,
-    permute_truth_table,
+    read_at,
     short_name,
     subtree_ids,
 )
 
 #: Input variable names in harness order; a variable is bound by being
 #: named on an executed line, so these must be codepoint-ascending
-#: (the input prefix names variables in this order).  The wiki allows accented Latin,
-#: Cyrillic and Greek; accented Latin is appended (past any reachable
+#: (the input prefix names variables in this order).  The wiki allows accented
+#: Latin, Cyrillic and Greek; accented Latin is appended (past any reachable
 #: arity), Cyrillic and Greek left out as confusable (RUF001).
 _NAMES = "abcdefghijklmnopqrstuvwxyzàáâãäåæçèéêëìíîïñòóôõöøùúûüý"
 
 #: The complement operator, spelled exactly as the wiki spells it.
 _NOT = "!x = {\nx & $0\n$1\n}"
+_NOT_TIGHT = _NOT.replace(" ", "")
+
+
+def _reads(n: int, sep: str) -> str:
+    """Join the input names ``a``.. in order, then ``0``."""
+    return sep.join([*_NAMES[:n], "0"])
+
+
+def _span(program: str) -> int:
+    return max(map(len, program.splitlines()))
 
 
 def algebraic_programming_language(truth_table: str, width: int | None = None) -> str:
@@ -32,17 +43,14 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
     variable is read from stdin by appearing on an executed line, and the
     line's result is printed.  A folded decision tree selects subtrees with
-    ``!x`` and ``x``; the harness feeds 0 or 1, so an input needs no
-    normalization and every value stays 0 or 1. Splits stay in input order
-    unless a width is requested; the reads
-    are unaffected since the line names ``a`` before ``b``.  A zero-valued
-    prefix names every input first, preserving binding under folds; O(T)
-    size.  Width-constrained output splits the compact tree into definitions,
+    ``!x`` and ``x``; the harness feeds 0 or 1, so every value stays 0 or 1.
+    A zero-valued prefix names every input first, preserving binding under
+    folds; O(T) size.  With ``width``, the tree splits into definitions,
     since APL cannot continue an expression across lines.
     """
     if width is not None:
-        return best_input_order(
-            truth_table, lambda table, perm: _apl_narrow(table, perm, width)
+        return in_input_order(
+            truth_table, lambda table, perm: _apl_narrow_layout(table, perm, width)[0]
         )
     return in_input_order(truth_table, _apl_reduced_ordered)
 
@@ -57,7 +65,7 @@ def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     changes = [0]
     for previous, current in pairwise(truth_table):
         changes.append(changes[-1] + (previous != current))
-    reads = " & ".join(_NAMES[index] for index in range(n)) + " & 0"
+    reads = _reads(n, " & ")
     pieces = [f"{_NOT}\n({reads}) | "]
 
     def constant(start: int, end: int) -> str | None:
@@ -95,9 +103,9 @@ def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     return "".join(pieces)
 
 
-Key = tuple[int, int]
+_Key = tuple[int, int]
 #: A half as a node reached through it and whether it arrives complemented.
-Ref = tuple[Key, bool]
+_Ref = tuple[_Key, bool]
 
 
 def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -112,17 +120,17 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """
     n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
-    reads = " & ".join(_NAMES[index] for index in range(n)) + " & 0"
+    reads = _reads(n, " & ")
     # A node's (test, zero half, one half); ``ref`` sends every subtable to
     # the node that spells it, and ``made`` finds a node by its halves.
-    split: dict[Key, tuple[str, Ref, Ref]] = {}
-    ref: dict[Key, Ref] = {}
-    made: dict[tuple[int, Ref, Ref], Key] = {}
+    split: dict[_Key, tuple[str, _Ref, _Ref]] = {}
+    ref: dict[_Key, _Ref] = {}
+    made: dict[tuple[int, _Ref, _Ref], _Key] = {}
 
-    def resolve(key: Key) -> Ref:
+    def resolve(key: _Key) -> _Ref:
         return (key, False) if key[1] < 2 else ref[key]
 
-    def flip(half: Ref) -> Ref:
+    def flip(half: _Ref) -> _Ref:
         (level, node), negated = half
         return ((level, 1 - node), False) if node < 2 else (half[0], not negated)
 
@@ -142,9 +150,10 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
                 made[depth, zero, one] = key
                 split[key] = (_NAMES[perm[depth]], zero, one)
 
-    def emit(half: Ref, out: list[str]) -> None:
+    def emit(half: _Ref, out: list[str]) -> None:
         """Append a half's text: the inline tree's shapes, ``!`` if flipped."""
-        (key, negated), bang = half, "!" * half[1]
+        (key, negated) = half
+        bang = "!" * negated
         if key[1] < 2:
             out.append(str(key[1]))
             return
@@ -175,12 +184,44 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 type _Rope = str | tuple[_Rope, ...]
 
 
+def _join(parts: list[tuple[_Rope, int, int]]) -> tuple[_Rope, int, int]:
+    """Fold frame pieces into one (nodes, length, fresh) piece."""
+    return (
+        tuple(node for node, _, _ in parts),
+        sum(length for _, length, _ in parts),
+        sum(fresh for _, _, fresh in parts),
+    )
+
+
 def _apl_tree_layout(
     table: str, perm: tuple[int, ...], width: int
 ) -> tuple[str, int | None]:
-    """Return the split tree and its next frame-budget transition."""
+    """Return the shorter split tree and its next frame-budget transition.
+
+    The reduced diagram drops ignored inputs and repeated halves; the inline
+    tree stays a candidate since ``!`` sharing grew XOR-like n=3 tables by
+    1-3 characters.
+    """
+    laid = [
+        _apl_split(table, perm, width, build)
+        for build in (_apl_reduced_ordered, _apl_tree_ordered)
+    ]
+    events = [point for _, point in laid if point is not None]
+    best = min(
+        (program for program, _ in laid), key=lambda x: (max(_span(x), width), len(x))
+    )
+    return best, min(events, default=None)
+
+
+def _apl_split(
+    table: str,
+    perm: tuple[int, ...],
+    width: int,
+    build: Callable[[str, tuple[int, ...]], str],
+) -> tuple[str, int | None]:
+    """Split ``build``'s tree into definitions under the frame budget."""
     n = _validate_truth_table(table)
-    source = _apl_tree_ordered(table, perm).removeprefix(_NOT + "\n").replace(" ", "")
+    source = build(table, perm).removeprefix(_NOT + "\n").replace(" ", "")
     prefix, source = source.split(")|", 1)
     prefix += ")|"
     # There are fewer definitions than source characters, bounding name width.
@@ -231,37 +272,18 @@ def _apl_tree_layout(
             parts = frames.pop()
             parts.append((")", 1, 1))
             trim(parts, limit - name_width - 1)
-            frames[-1].append(
-                (
-                    tuple(node for node, _, _ in parts),
-                    sum(length for _, length, _ in parts),
-                    sum(fresh for _, _, fresh in parts),
-                )
-            )
+            frames[-1].append(_join(parts))
         else:
             frames[-1].append((char, 1, 1))
     parts = frames[0]
     span = sum(length for _, length, _ in parts) + len(prefix)
     if span > limit:
         events.add(span)
-        parts = [
-            define(
-                (
-                    tuple(node for node, _, _ in parts),
-                    sum(length for _, length, _ in parts),
-                    sum(fresh for _, _, fresh in parts),
-                )
-            )
-        ]
-    complement = _NOT.replace(" ", "")
+        parts = [define(_join(parts))]
     program = "\n".join(
-        [complement, *definitions, prefix + render(tuple(node for node, _, _ in parts))]
+        [_NOT_TIGHT, *definitions, prefix + render(tuple(node for node, _, _ in parts))]
     )
     return program, min(events, default=None)
-
-
-def _apl_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
-    return _apl_narrow_layout(table, perm, width)[0]
 
 
 def _apl_narrow_layout(
@@ -270,26 +292,31 @@ def _apl_narrow_layout(
     """Return the chosen spelling and its next frame or format fit."""
     previous, next_width = _apl_tree_layout(table, perm, width)
     n = _validate_truth_table(table)
-    if n > 3 or max(map(len, previous.splitlines())) <= width:
+    if n > 3 or _span(previous) <= width:
         return previous, next_width
-    events = [max(map(len, previous.splitlines()))]
+    events = [_span(previous)]
     if next_width is not None:
         events.append(next_width)
     # At most nine primitive definitions use one-character names below n=4.
     # Larger trees retain fresh-text splitting, avoiding O(T log T) names.
-    constant = constant_span_test(table)
+    reduced, selectors = _essential(table, perm)
+    constant = constant_span_test(reduced)
     definitions: list[str] = []
+    made: dict[str, str] = {}
 
     def combine(left: str, operator: str, right: str) -> str:
-        name = short_name(len(definitions), ascii_uppercase)
-        definitions.append(f"{name}={left}{operator}{right}")
-        return f"{name}()"
+        body = f"{left}{operator}{right}"
+        if body not in made:
+            name = short_name(len(definitions), ascii_uppercase)
+            definitions.append(f"{name}={body}")
+            made[body] = f"{name}()"
+        return made[body]
 
     def tree(start: int, end: int, depth: int) -> str:
         if constant(start, end):
-            return table[start]
+            return reduced[start]
         half = (start + end) // 2
-        selector = _NAMES[perm[depth]]
+        selector = selectors[depth]
         zero, one = tree(start, half, depth + 1), tree(half, end, depth + 1)
         if (zero, one) == ("0", "1"):
             return selector
@@ -307,15 +334,13 @@ def _apl_narrow_layout(
         high = combine(selector, "&", one)
         return combine(low, "|", high)
 
-    result = tree(0, len(table), 0)
+    result = tree(0, len(reduced), 0)
     # '&' binds before '|'; the zero prefix pre-binds every input without
     # parentheses, preserving input order even when a Boolean arm folds.
-    reads = "&".join(_NAMES[index] for index in range(n)) + "&0"
-    candidate = "\n".join([_NOT.replace(" ", ""), *definitions, f"{reads}|{result}"])
-    chosen = min(
-        (previous, candidate), key=lambda program: max(map(len, program.splitlines()))
-    )
-    span = max(map(len, chosen.splitlines()))
+    reads = _reads(n, "&")
+    candidate = "\n".join([_NOT_TIGHT, *definitions, f"{reads}|{result}"])
+    chosen = min((previous, candidate), key=_span)
+    span = _span(chosen)
     if span <= width:
         return chosen, min(events)
     events.append(span)
@@ -324,17 +349,30 @@ def _apl_narrow_layout(
         events.append(5)
         # a+b-2ab: the executed sum binds both globals before the unary calls.
         operators = "!x={\nx*b\n}\n?x={\nx*2\n}\n~x={\na-x\n}\n^x={\n~?!x\n}\n^a+b"
-    program = min(
-        (chosen, operators), key=lambda program: max(map(len, program.splitlines()))
-    )
+    program = min((chosen, operators), key=_span)
     return program, min(events)
+
+
+def _essential(table: str, perm: tuple[int, ...]) -> tuple[str, list[str]]:
+    """Return the table over its essential inputs and their selector names.
+
+    An ignored input is still named by the binding line, so it needs no test.
+    """
+    n = len(perm)
+    used = essential_inputs(table, n)
+    if not used:
+        return table, [_NAMES[i] for i in perm]
+    return read_at(table, used, n), [_NAMES[perm[i]] for i in used]
 
 
 def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
     """Return five-column operator definitions for at most three inputs."""
+    inputs = len(perm)
+    table, selectors = _essential(table, perm)
     constant = constant_span_test(table)
     symbols = iter("!?:;~^@")
     lines: list[str] = []
+    made: dict[tuple[str, str], str] = {}
 
     def tree(start: int, end: int, depth: int) -> str:
         if constant(start, end):
@@ -342,24 +380,29 @@ def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
         half = (start + end) // 2
         zero = tree(start, half, depth + 1)
         one = tree(half, end, depth + 1)
-        symbol = next(symbols)
-        lines.extend([f"{symbol}x={{", f"x&${one}", f"${zero}", "}"])
-        return symbol + _NAMES[perm[depth]]
+        if (one, zero) not in made:
+            symbol = next(symbols)
+            lines.extend([f"{symbol}x={{", f"x&${one}", f"${zero}", "}"])
+            made[one, zero] = symbol
+        return made[one, zero] + selectors[depth]
 
     root = tree(0, len(table), 0)
     # The executed binding call names all inputs before any operator runs.
     # Its intermediate values are unused, so chaining binds three inputs.
-    if len(perm) == 1:
+    if inputs == 1:
         lines.extend(["]x={", f"${root}", "}", "]a"])
     else:
-        lines.extend(["x`y={", f"${root}", "}", "`".join(_NAMES[: len(perm)])])
+        lines.extend(["x`y={", f"${root}", "}", "`".join(_NAMES[:inputs])])
     return "\n".join(lines)
 
 
 def balance_apl(table: str, default: str) -> str:
-    """Compare reachable frame-budget and short-definition fit transitions."""
-    orders = input_orders(table, max_arity=_GREEDY_ORDER_MAX_ARITY)
-    regimes = [(permute_truth_table(table, perm), perm) for perm in orders]
+    """Compare reachable frame-budget and short-definition fit transitions.
+
+    Input order stays the identity (a greedy order saves 4.8% at n=8, under
+    the 10% bar).
+    """
+    regimes = [(table, tuple(range(len(table).bit_length() - 1)))]
     candidates = [default]
     width: int | None = 1
     while width is not None:
@@ -371,3 +414,18 @@ def balance_apl(table: str, default: str) -> str:
     from esolangs.tools.wrap import balance_score
 
     return min(candidates, key=balance_score)
+
+
+LANGUAGE = Language(
+    "Algebraic Programming Language",
+    "other.algebraic_programming_language",
+    boolean=algebraic_programming_language,
+    contract=BooleanContract(
+        note="an executed line prints its result, so the answer ends in a newline",
+    ),
+    balance=balance_apl,
+    no_wrap="a line with '=' defines, one without runs",
+    # An executed line prints its result and nothing else, so the
+    # answer arrives with the newline that ends that line.
+    example=Example(expected="0\n"),
+)

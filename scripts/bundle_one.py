@@ -26,6 +26,7 @@ package versions.
 
 import argparse
 import ast
+import functools
 import re
 import sys
 from pathlib import Path
@@ -42,6 +43,14 @@ class Source:
     def __init__(self, base: str | None) -> None:
         """Use the local checkout unless a ``base`` URL is given."""
         self._base = base
+
+    def __eq__(self, other: object) -> bool:
+        """Two sources reading the same base are the same source."""
+        return isinstance(other, Source) and other._base == self._base
+
+    def __hash__(self) -> int:
+        """Hash by base, so the parsed registry is cached per base."""
+        return hash(self._base)
 
     def get(self, rel: str) -> str:
         """Return the text of the file at ``rel`` under ``src/esolangs``."""
@@ -130,22 +139,67 @@ def _interpreter_of(entry: ast.expr) -> str | None:
     return None
 
 
+def _generator_modules(source: Source) -> list[str]:
+    """Return the source of each module ``tools/__init__.py`` imports from."""
+    modules = sorted(
+        {
+            node.module.split(".", 2)[2]
+            for node in ast.parse(source.get("tools/__init__.py")).body
+            if isinstance(node, ast.ImportFrom)
+            and node.module
+            and node.module.startswith("esolangs.tools.")
+        }
+    )
+    texts = []
+    for module in modules:
+        for rel in (f"tools/{module}.py", f"tools/{module}/__init__.py"):
+            try:
+                text = source.get(rel)
+            except (OSError, ValueError):
+                continue
+            # The declaration closes the module; parsing only it is what
+            # keeps a bundle from parsing every generator in full.
+            start = text.find("\nLANGUAGE = ")
+            if start >= 0:
+                texts.append(text[start:])
+            break
+    return texts
+
+
+@functools.cache
 def _parse_registry(source: Source) -> dict[str, str]:
     """Map each display name to its interpreter module path.
 
-    ``registry/_table.py`` is parsed with ``ast`` (never executed), so the mapping
-    works against a raw download where the ``esolangs`` package cannot be
-    imported.
+    Sources are parsed with ``ast`` (never executed), so the mapping works
+    against a raw download where the ``esolangs`` package cannot be
+    imported.  A generator module declares ``LANGUAGE = Language(...)``;
+    ``registry/_table.py`` lists the rest, and in older sources every
+    language as a dict keyed by display name.
     """
-    tables = _languages_tables(ast.parse(source.get("registry/_table.py")))
+    table = ast.parse(source.get("registry/_table.py"))
     langs: dict[str, str] = {}
-    for table in tables:
-        for key, entry in zip(table.keys, table.values, strict=True):
+    for dictionary in _languages_tables(table):
+        for key, entry in zip(dictionary.keys, dictionary.values, strict=True):
             if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
                 continue
             interpreter = _interpreter_of(entry)
             if interpreter:
                 langs[key.value] = interpreter
+    if langs:
+        return langs
+    for tree in (table, *map(ast.parse, _generator_modules(source))):
+        for call in ast.walk(tree):
+            if not (
+                isinstance(call, ast.Call)
+                and isinstance(call.func, ast.Name)
+                and call.func.id == "Language"
+                and call.args
+                and isinstance(call.args[0], ast.Constant)
+            ):
+                continue
+            interpreter = _interpreter_of(call)
+            if interpreter:
+                langs[str(call.args[0].value)] = interpreter
     return langs
 
 

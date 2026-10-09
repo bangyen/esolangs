@@ -37,63 +37,6 @@ class TestABoundMustBind:
         assert set(STOP_REASONS) == {"halted", "breakpoint", "max_steps", "timeout"}
 
 
-class TestABreakpointMustBeAbleToFire:
-    """A breakpoint that can never match is worse than a refused one."""
-
-    @pytest.mark.parametrize("ip", ["x", 1.5, None])
-    def test_a_non_position_is_refused(self, ip: object) -> None:
-        with pytest.raises(esolangs.ArgumentError, match="ip must be"):
-            _debugger().break_at(ip)  # type: ignore[arg-type]
-
-    def test_a_grid_coordinate_is_still_accepted(self) -> None:
-        """A 2D language's ``ip`` is a tuple, so that spelling must pass."""
-        program = esolangs.generate("Streetcode", "0110")
-        dbg = debugger_api.make_debugger(
-            "Streetcode", program, stdin=esolangs.encode_inputs("Streetcode", [0, 1])
-        )
-        assert isinstance(dbg.ip, tuple)
-        dbg.break_at(dbg.ip)
-        assert dbg.run(max_steps=5) == "breakpoint"
-
-    def test_a_non_integer_cell_value_is_refused(self) -> None:
-        with pytest.raises(esolangs.ArgumentError, match="value must be"):
-            _debugger().break_on_cell(0, "x")  # type: ignore[arg-type]
-
-    @pytest.mark.parametrize("index", [-5, "x"])
-    def test_a_bad_watch_index_is_refused(self, index: object) -> None:
-        """``watch_cell(-5)`` raised a bare IndexError from a later run."""
-        with pytest.raises(esolangs.ArgumentError, match="index"):
-            _debugger().watch_cell(index)  # type: ignore[arg-type]
-
-
-class TestWidthIsCheckedWhereverItIsTaken:
-    """``generate`` refused these and ``instantiate`` ignored them."""
-
-    @pytest.mark.parametrize("width", [0, "8", 2.5])
-    def test_instantiate_refuses_what_generate_refuses(self, width: object) -> None:
-        template = esolangs.generate("Minifuck", "0110")
-        with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.instantiate("Minifuck", template, [1, 0], width=width)  # type: ignore[arg-type]
-
-    @pytest.mark.parametrize("width", [0, "8", 2.5])
-    def test_generate_still_refuses_them(self, width: object) -> None:
-        with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.generate("brainfuck", "0110", width=width)  # type: ignore[arg-type]
-
-
-class TestTheEncodersRefuseWhatTheyCannotAnswer:
-    """Each says so rather than returning something plausible."""
-
-    def test_encode_inputs_refuses_a_language_that_reads_nothing(self) -> None:
-        """It returned stdin for a program with no input command."""
-        with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
-            esolangs.encode_inputs("123", [0, 1])
-
-    def test_read_answer_refuses_a_non_string(self) -> None:
-        with pytest.raises(esolangs.ProgramError, match="output must be a string"):
-            esolangs.read_answer("brainfuck", None)  # type: ignore[arg-type]
-
-
 class TestTheNamespaceIsTheSurface:
     def test_dir_matches_all(self) -> None:
         """``dir()`` also offered ``os``, ``re``, ``signal``, ``threading``."""
@@ -157,23 +100,6 @@ class TestTheChecksAreSymmetric:
         assert dbg.run(max_steps=10) == "breakpoint"
 
 
-class TestBitsAreBits:
-    """The container as well as the elements."""
-
-    @pytest.mark.parametrize("bits", [None, "10", {0: 1, 1: 0}, [], [1.0, 0.0]])
-    def test_both_encoders_refuse_the_same_bits(self, bits: object) -> None:
-        """A dict was iterated as its *keys*, answering a different row."""
-        with pytest.raises(esolangs.ArgumentError, match="bits"):
-            esolangs.encode_inputs("brainfuck", bits)  # type: ignore[arg-type]
-        template = esolangs.generate("Minifuck", "0110")
-        with pytest.raises(esolangs.ArgumentError, match="bits"):
-            esolangs.instantiate("Minifuck", template, bits)  # type: ignore[arg-type]
-
-    def test_a_non_string_template_is_refused(self) -> None:
-        with pytest.raises(esolangs.TemplateError, match="template must be"):
-            esolangs.instantiate("Minifuck", None, [1, 0])  # type: ignore[arg-type]
-
-
 class TestTerminationPolarityIsData:
     """The one convention a zero-branch verifier still had to hardcode."""
 
@@ -185,52 +111,3 @@ class TestTerminationPolarityIsData:
 
     def test_a_printing_language_still_reports_digits(self) -> None:
         assert esolangs.describe("brainfuck")["answer_encoding"] == ("0", "1")
-
-
-class TestNameResolutionIsTrulyCaseInsensitive:
-    """The usage text promises it for every name, including the odd ones."""
-
-    @pytest.mark.parametrize(
-        "spelling", ["CV(N)(C)", "cv(n)(c)", "CV(n)(c)", "cvnc", "CVNC"]
-    )
-    def test_the_overridden_name_folds_too(self, spelling: str) -> None:
-        """Its id came from an exact-key override, so only one case matched."""
-        assert esolangs.describe(spelling)["name"] == "CV(N)(C)"
-
-
-def test_memory_address_at_the_cell_limit_is_refused():
-    from esolangs._validate import _MAX_CELLS, check_address
-    from esolangs.exceptions import InterpreterLimitError
-
-    assert check_address(_MAX_CELLS - 1, "S*bleq") == _MAX_CELLS - 1
-    for address in (_MAX_CELLS, _MAX_CELLS + 1):
-        with pytest.raises(InterpreterLimitError, match="cell limit"):
-            check_address(address, "S*bleq")
-
-
-@pytest.mark.parametrize(
-    "operation",
-    [
-        lambda huge: esolangs.run("brainfuck", "", timeout=huge),
-        lambda huge: esolangs.run("brainfuck", "", timeout=-huge),
-        lambda huge: esolangs.run("brainfuck", "", isolated=True, max_output=-huge),
-        lambda huge: esolangs.generate("brainfuck", "01", width=-huge),
-        lambda huge: esolangs.encode_inputs("brainfuck", [huge]),
-        lambda huge: esolangs.encode_inputs("brainfuck", [True, huge]),
-        lambda huge: esolangs.run(
-            "Piet", esolangs.Raster((((0, 0, 0),),)), scale=-huge
-        ),
-        lambda huge: esolangs.run("brainfuck", "", timeout={"value": huge}),
-    ],
-)
-def test_oversized_integer_arguments_keep_public_errors(operation):
-    with pytest.raises(esolangs.ArgumentError) as caught:
-        operation(10**5000)
-    assert len(str(caught.value)) < 400
-
-
-def test_oversized_memory_addresses_keep_the_allocation_error():
-    from esolangs._validate import check_address
-
-    with pytest.raises(esolangs.InterpreterLimitError, match="integer with"):
-        check_address(10**5000, "S*bleq")

@@ -76,7 +76,7 @@ class TestBundleCompiles:
         """Every bundled file is importable and defines ``run``."""
         bundle_one = load_script()
         for name in RUNNERS:
-            out = tmp_path / f"{canonical_id(name)}.py"
+            out = tmp_path / f"{LANGUAGES[name].id}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
             module = _load_bundle(out)
             assert callable(module.run), name
@@ -122,7 +122,7 @@ class TestBundleMatchesPackage:
         for name, (module, _split) in RUNNERS.items():
             if LANGUAGES[name].boolean is not None:
                 continue
-            out = tmp_path / f"{canonical_id(name)}.py"
+            out = tmp_path / f"{LANGUAGES[name].id}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
             bundled = _load_bundle(out)
             expected = importlib.import_module("esolangs.interpreters." + module)

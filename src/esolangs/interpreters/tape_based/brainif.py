@@ -17,6 +17,9 @@ I/O and the malformed-line rejection are the shell's.
 
 from __future__ import annotations
 
+import re
+
+from esolangs._suggest import Correction, keyword_correction
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_integer
@@ -279,3 +282,51 @@ def run(code: list[str], io: IO) -> None:
 
 if __name__ == "__main__":
     script_main(run, shape="keep")
+
+
+def suggest_corrections(source: str) -> tuple[Correction, ...]:
+    """Return unambiguous keyword edits for ``esolangs suggest``."""
+    corrections: list[Correction] = []
+    offset = 0
+    for line in source.splitlines(keepends=True):
+        tokens = list(re.finditer(r"\S+", line))
+        edits = []
+        for index, vocabulary in ((0, ("if",)), (2, _COMMANDS)):
+            if index < len(tokens):
+                token = tokens[index]
+                correction = keyword_correction(
+                    token.group(), token.start(), vocabulary
+                )
+                if correction is not None:
+                    edits.append(correction)
+        command = (
+            next(
+                (edit.after for edit in edits if edit.start == tokens[2].start()),
+                tokens[2].group(),
+            )
+            if len(tokens) > 2
+            else ""
+        )
+        if command == "move" and len(tokens) > 3:
+            token = tokens[3]
+            correction = keyword_correction(
+                token.group(), token.start(), ("left", "right")
+            )
+            if correction is not None:
+                edits.append(correction)
+        repaired = line
+        for edit in sorted(edits, reverse=True):
+            repaired = repaired[: edit.start] + edit.after + repaired[edit.end :]
+        _parse(repaired)
+        corrections.extend(
+            Correction(
+                edit.start + offset,
+                edit.end + offset,
+                edit.before,
+                edit.after,
+                edit.reason,
+            )
+            for edit in edits
+        )
+        offset += len(line)
+    return tuple(sorted(corrections))

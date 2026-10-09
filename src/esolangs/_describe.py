@@ -15,7 +15,6 @@ from esolangs.registry import (
 )
 from esolangs.registry._contracts import AnswerMode, InputShape, WidthEffect
 from esolangs.settings import DialectOption, dialect_choices
-from esolangs.tools.wrap import WRAPPERS
 from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import machine_traits
 
@@ -152,7 +151,7 @@ def _width_effect(lang: Language) -> WidthEffect:
     generator = lang.boolean
     if generator is not None and _takes_width(generator):
         return "layout"
-    return "wrap" if lang.id in WRAPPERS else "none"
+    return "wrap" if lang.wrap is not None else "none"
 
 
 def _spec(language: str) -> str:

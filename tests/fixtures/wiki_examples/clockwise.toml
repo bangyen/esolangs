@@ -1,0 +1,41 @@
+language = "Clockwise"
+oldid = 190264
+
+[[examples]]
+id = "hello"
+source_file = "clockwise_hello.txt"
+expected = "Hello World"
+
+[[examples]]
+id = "truth-0"
+source = '''
++-?.;.;.;.;.;.;.;?R
+  R              R
+R                 R
+'''
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-1"
+source = '''
++-?.;.;.;.;.;.;.;?R
+  R              R
+R                 R
+'''
+stdin = "1"
+stop = "steps"
+max_steps = 500
+expected = "1111"
+
+[[examples]]
+id = "cat"
+note = "input bits are re-enqueued, so the cat repeats its input forever"
+source = '''
++-?++.;R
+  R    R
+'''
+stdin = "Hi"
+stop = "steps"
+max_steps = 2000
+expected = "HiHi"

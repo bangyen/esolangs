@@ -9,7 +9,8 @@ import pytest
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.packlang import _Machine, run
+from esolangs.interpreters.other._packlang_parse import _Parser
+from esolangs.interpreters.other.packlang import _get, _Machine, _node, run
 from esolangs.tools.packlang import packlang
 from esolangs.vm import run_until_halt_or_cycle
 from tests.fixtures import text
@@ -19,6 +20,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
+from tests.raises import assert_rejected_with_hint
 
 # The wiki's five example programs, verbatim.
 HELLO, TRUTH_MACHINE, CAT, PLUS_OR_MINUS, DEPENDENCY = (
@@ -44,9 +46,6 @@ def _machine(code: str) -> _Machine:
 
 class TestWikiExamples:
     """Every example on the wiki page, run rather than read."""
-
-    def test_hello_world(self) -> None:
-        assert _run(HELLO) == "Hello, World!\r\n"
 
     def test_truth_machine_zero_halts_printing_zero(self) -> None:
         assert _run(TRUTH_MACHINE, "0\n") == "0"
@@ -74,16 +73,6 @@ class TestWikiExamples:
 
 class TestLiteralBase:
     """The wiki's conflicting literal-base examples, pinned both ways."""
-
-    def test_the_decimal_examples_are_byte_exact(self) -> None:
-        assert _run(HELLO) == "Hello, World!\r\n"
-        assert _run(TRUTH_MACHINE, "0\n") == "0"
-        machine = _Machine(CAT, io := ScriptedIO("hi"))
-        for _ in range(1000):
-            machine.step()
-            if io.getvalue() == "hi\r\n":
-                break
-        assert io.getvalue() == "hi\r\n"
 
     def test_the_binary_authored_example_is_declared_wrong(self) -> None:
         """As written it prints mojibake, not the ``0110`` its comments claim."""
@@ -194,9 +183,6 @@ Package : IO {
 """
         assert _run(code) == "0"
 
-    def test_a_dependency_function_is_callable(self) -> None:
-        assert _run(DEPENDENCY_REBASED) == "0110"
-
     def test_comments_are_stripped(self) -> None:
         code = """
 % a line comment
@@ -227,10 +213,6 @@ Package : IO {
 
 
 class TestErrors:
-    def test_an_operator_cannot_start_an_expression(self) -> None:
-        with pytest.raises(ValueError, match="unexpected token"):
-            _run("Package : IO { Integer main { ); } } p;")
-
     def test_unbalanced_block_is_malformed(self) -> None:
         """A block that is never closed runs the parser off the end."""
         with pytest.raises(ValueError, match="unbalanced"):
@@ -239,10 +221,6 @@ class TestErrors:
         # check the parser reaches is the datatype one.
         with pytest.raises(ValueError, match="unknown datatype"):
             _run("Package : IO {\n  Integer main {\n    0;\n} p;")
-
-    def test_a_program_with_no_entry_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="no parameterless entry"):
-            _run("Dependency {\n  Integer f : Integer a {\n    a;\n  }\n} d;")
 
     def test_unbounded_recursion_grows_frames_without_crashing(self) -> None:
         """No depth ceiling: frames grow on the heap, not Python's stack."""
@@ -271,10 +249,6 @@ class TestErrors:
         io = ScriptedIO()
         assert run_until_halt_or_cycle(_Machine(program, io)) is False
         assert set(io.getvalue()) == {"A"}
-
-    def test_garbage_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="not Packlang tokens"):
-            _run("~~~ not packlang @@@")
 
     def test_undefined_variable_halts(self) -> None:
         with pytest.raises(HaltError, match="undefined variable"):
@@ -431,16 +405,6 @@ class TestCharPut:
         assert _run(program) == "hi"
 
 
-def _boolean_rows(table: str, n: int) -> list[str]:
-    """Run the generated program on every row and collect what it printed."""
-    program = packlang(table)
-    out = []
-    for row in range(2**n):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        out.append(_run(program, "".join(f"{b}" for b in bits)))
-    return out
-
-
 class TestBooleanGenerator:
     """Executed over complete truth tables, not inspected as source."""
 
@@ -450,14 +414,14 @@ class TestBooleanGenerator:
         assert packlang("0110").count("INCR t(") == 2
         assert packlang("01101001").count("INCR t(") == 4
         assert packlang("0000").count("INCR t(") == 0
-        assert "While q^4Do{" in packlang("1111")
-        assert "DECR t(" not in packlang("1111")
+        assert "While q^7Do{" in packlang("11111110")
+        assert packlang("11111110").count("DECR t(") == 0
         assert packlang("1110").count("INCR t(") == 3
         assert "charPut(48^t(" in packlang("1110")
 
     @pytest.mark.medium
     def test_three_input_steps_and_sizes(self) -> None:
-        """Retiring polarity choice adds 3.19% size and 20.5% steps."""
+        """The three-input totals over all 256 tables, pinned."""
         size = steps = 0
         for value in range(256):
             program = packlang(format(value, "08b"))
@@ -468,7 +432,7 @@ class TestBooleanGenerator:
                 while not machine.halted:
                     machine.step()
                     steps += 1
-        assert (size, steps) == (84024, 62696)
+        assert (size, steps) == (80562, 55632)
 
     def test_full_table_growth_is_linear(self) -> None:
         """Parity paints half the rows, and its emitted size still doubles."""
@@ -511,26 +475,6 @@ Package : IO {
 """
 
 
-def test_a_global_belongs_to_its_own_package() -> None:
-    """Wiki: a package defines "all variables it will need"."""
-    code = """Package : IO {
-  Integer x;
-  Integer main {
-    INCR x;
-    INCR x;
-    charPut(48 ^ x);
-    0;
-  }
-} p;
-Dependency {
-  Integer(0, 1, 0, 0) x;
-  Integer f : Integer a {
-    a;
-  }
-} d;"""
-    assert _run(code) == "2"
-
-
 _TWO_GS = """Dependency {
   Integer g : Integer a {
     1;
@@ -569,8 +513,63 @@ _HEAD = "{\n  Integer main"
         ),
         (_MAIN + "\n" + _MAIN.replace("} p;", "} q;"), "multiple parameterless"),
         (_MAIN.replace("} p;", "  Integer main {\n    0;\n  }\n} p;"), "duplicate"),
+        pytest.param(
+            "Package : IO { Integer main { ); } } p;",
+            "unexpected token",
+            id="an_operator_cannot_start_an_expression",
+        ),
+        pytest.param(
+            "Dependency {\n  Integer f : Integer a {\n    a;\n  }\n} d;",
+            "no parameterless entry",
+            id="a_program_with_no_entry_is_malformed",
+        ),
+        pytest.param(
+            "~~~ not packlang @@@", "not Packlang tokens", id="garbage_is_malformed"
+        ),
     ],
 )
 def test_malformed_declarations_are_rejected(code: str, error: str) -> None:
     with pytest.raises(ValueError, match=error):
         _run(code)
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Packlang", "?", "punctuation")
+
+
+def test_datatype_typo_uses_the_parser_vocabulary():
+    with pytest.raises(ValueError, match="unknown datatype") as caught:
+        _Parser(["Intger"]).parse_type()
+    assert caught.value.__notes__ == ["hint: did you mean 'Integer'?"]
+
+
+def test_variable_suggestions_use_the_live_scope():
+    with pytest.raises(HaltError) as caught:
+        _get((("COUNT", 1),), "COUTN")
+    assert caught.value.__notes__ == ["hint: did you mean 'COUNT'?"]
+
+
+def test_internal_tree_errors_and_explicit_aborts_have_no_repair_hint():
+    with pytest.raises(HaltError) as caught:
+        _node("broken internal tree")
+    assert not hasattr(caught.value, "__notes__")
+    assert not hasattr(HaltError(), "__notes__")
+
+
+@pytest.mark.medium
+def test_dependency_readings_under_each_literal_policy():
+    for policy, expected in (("decimal", "°±±°"), ("binary_digits", "0110")):
+        io = ScriptedIO("")
+        run(DEPENDENCY, io, literal_policy=policy)
+        assert io.getvalue() == expected
+
+
+@pytest.mark.parametrize("policy", ["decimal", "binary_digits"])
+def test_literal_roundtrip(policy):
+    from esolangs._dialects import PacklangLiterals
+
+    literals = PacklangLiterals(policy)
+    for value in (0, 1, 2, 10, 48, 128, 255):
+        assert literals.parse(literals.emit(value)) == value
+    assert literals.parse("255") == 255

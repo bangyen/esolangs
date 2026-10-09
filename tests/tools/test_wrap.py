@@ -32,6 +32,7 @@ from esolangs.tools.wrap import (
     wrap_tokens,
 )
 from tests.divergence import diverges, terminates
+from tests.generator_support import CHECK
 
 # A 2-input table (XOR), which every boolean generator can build.  Used
 # where a test needs *a* program rather than the language's own example.
@@ -62,7 +63,8 @@ def _public(lang: object, table: str) -> str:
 # width in the suite is what keeps the class from coming back.
 NARROW_WIDTH = 13
 
-# Languages that must never be *reflowed*, and why.  Not a restatement of
+# Languages that must never be *reflowed*, and why: each ``LANGUAGE``'s
+# ``no_wrap=``.  Not a restatement of
 # the implementation: each was verified to break (or to be meaningless) when
 # newlines are inserted, so the table is the record of that finding.
 #
@@ -87,27 +89,7 @@ NARROW_WIDTH = 13
 # subtrees.  What this table says is only that :func:`wrap_program` must
 # not touch the finished text -- the reasons above are why a break is
 # destructive, and those hold whatever the generator learns to do.
-UNWRAPPABLE = {
-    "slashes": "newlines are literal output and substitution data",
-    "fargo": "each physical line is one command; expressions have no continuation",
-    "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
-    "alight": "a command is a word walked cell by cell; a row end cuts it",
-    "super_snusp": "a row is a grid row; a break moves code, it does not reflow",
-    "algebraic_programming_language": "a line with '=' defines, one without runs",
-    "arrowqueue": "the queue and decision tree occupy fixed grid coordinates",
-    "back": "the beam path and embedded input occupy fixed grid coordinates",
-    "befunge": "a row is a grid row and the lookup table is indexed by column",
-    "fish": "a row is a codebox row and the lookup table is indexed by column",
-    "underload": "a break inside a pushed element changes the string it contains",
-    "brainif": "each line is one instruction and goto targets are line numbers",
-    "clockwise": "a row is a ring row; the walk's turns sit at fixed cells",
-    "collatz_multiverse": "each line is one complete register assignment",
-    "container": "each line declares a container or one of its rules",
-    "crement": "each line is one instruction; jumps and patches name line numbers",
-    "inject": "blocks and executable commands are delimited by source lines",
-    "thue": "a newline ends a rule, and the state's own newlines are part of it",
-    "thisthat": "the H-tree's nodes and wires occupy fixed grid coordinates",
-}
+UNWRAPPABLE = {lang.id: lang.no_wrap for lang in LANGUAGES.values() if lang.no_wrap}
 
 # These are 2D too, and wrap_program must not touch them either -- but each
 # honours a width itself by *laying its program out* to fit rather than by
@@ -124,12 +106,6 @@ UNWRAPPABLE = {
 # what let it pass.  Dig has since grown a real one, so that entry would be
 # right today for a reason the table never had; a derived table cannot make
 # either mistake in the first place.
-WIDTH_EXCEPTIONS = {
-    "slashes": "newlines are literal output and substitution data",
-    "piet_plus_plus": "one fixed three-row strip, like Piet before scaling",
-    "line": "tree geometry fixes the width; balance chooses orientation",
-}
-
 WIDTH_HONOURING = sorted(
     lang.id
     for lang in LANGUAGES.values()
@@ -175,22 +151,15 @@ def _wrapper_witnesses() -> list[str]:
 
 def test_every_generator_has_a_width_policy() -> None:
     """Every generator reflows, lays itself out, or records why it cannot."""
-    boolean_ids = {
-        language.id for language in LANGUAGES.values() if language.boolean is not None
-    }
     missing = {
         language.id
         for language in LANGUAGES.values()
         if language.boolean is not None
         and language.id not in WRAPPERS
         and not takes_width(language.boolean)
-        and language.id not in WIDTH_EXCEPTIONS
+        and not language.no_wrap.strip()
     }
-    assert missing == set()
-    assert set(WIDTH_EXCEPTIONS) <= boolean_ids
-    assert all(reason.strip() for reason in WIDTH_EXCEPTIONS.values())
-    assert set(UNWRAPPABLE) <= boolean_ids
-    assert all(reason.strip() for reason in UNWRAPPABLE.values())
+    assert not missing, f"{sorted(missing)} have no width policy; {CHECK}"
 
 
 def _table(arity: int) -> str:
@@ -345,14 +314,6 @@ def _grown(name: str, table: str, width: int | None) -> str:
     arity = len(table).bit_length() - 1
     return esolangs.instantiate(name, generate(name, table), [0] * arity, width=width)
 
-
-# Tables the generators take a *different path* on than parity.  The
-# committed examples are all AND2, and the sweeps above grow parity, so
-# between them they exercise two shapes -- and a wrapper is exercised by the
-# shape of the program, not by the table directly.  Sophie's else-block bug
-# needed a table that puts an if-block beside an else-block, which neither
-# AND2 nor parity produces at three inputs; majority does.
-_OTHER_TABLES = {"majority": "00010111", "mixed": "11111001"}
 
 # Long enough that a run which has not finished is looping, short enough
 # that eight of them are not a wait.  123 answers by *looping forever* for a
@@ -789,3 +750,18 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
     whitespace-only program is returned as it came."""
     assert _mammalian("", 40) == ""
     assert _mammalian("   \n ", 40) == "   \n "
+
+
+def test_bio_layouts_differ_only_in_whitespace() -> None:
+    same_layout = LANGUAGES["BIO"].same_layout
+    assert same_layout is not None
+    assert same_layout("a\n b", "a b", lambda _width: "")
+    assert not same_layout("ab c", "a b", lambda _width: "")
+
+
+def test_smallfuck_matches_a_narrow_layout_without_its_newlines() -> None:
+    same_layout = LANGUAGES["Smallfuck"].same_layout
+    assert same_layout is not None
+    narrow = {1: "*\n<", 4: "*>\n*"}
+    assert same_layout("*>*", "*>*<", lambda width: narrow[width])
+    assert same_layout("*>\n*<", "*>*<", lambda width: narrow[width])

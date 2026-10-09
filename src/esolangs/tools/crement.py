@@ -20,12 +20,23 @@ tables that is 39,156 to 37,862 characters (3.3%); over 200 seeded
 five-input tables, 114,791 to 83,070 (27.6%).
 """
 
+from collections.abc import Callable
+from typing import Any
+
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    grid_width,
     in_input_order,
+    layout_width,
+    same_tokens,
+    same_up_to_wrapping,
     subtree_ids,
 )
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import balance_score
 
 __all__ = ["crement"]
 
@@ -52,14 +63,17 @@ def crement(truth_table: str, width: int | None = None) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
     Constant subtrees fold and repeated halves share code. Splits stay in
-    input order; retiring the greedy candidate adds 1.57% to the three-input
-    total and 1.84% to the five-input sample.
-    Over-wide instructions use their shortest absolute or relative operands;
-    Below six columns, whitespace separates fields and only tester data is filled.
+    input order. Below six columns, whitespace separates fields and only
+    tester data is filled.
     """
     template = in_input_order(truth_table, _crement_shared)
     if width is None or width <= 0 or max(map(len, template.splitlines())) <= width:
         return template
+    return _narrow(template, width)
+
+
+def _narrow(template: str, width: int) -> str:
+    """Respell over-wide instructions with their shortest operands, then wrap."""
     lines = []
     for here, line in enumerate(template.splitlines()):
         if line.startswith(TEMPLATE_CHAR):
@@ -81,25 +95,21 @@ def crement(truth_table: str, width: int | None = None) -> str:
     return narrowed
 
 
+def _rel(offset: int) -> str:
+    """Spell a relative operand: ``@`` or ``@+k`` / ``@-k``."""
+    return "@" if not offset else f"@{offset:+d}"
+
+
 def _short_operand(source: str, here: int) -> str:
     """Return the shortest absolute or relative spelling of one operand."""
     value = here + int(source[1:] or "0") if source.startswith("@") else int(source)
     offset = value - here
-    relative = "@" if not offset else f"@{offset:+d}"
-    return min((source, str(value), relative), key=len)
+    return min((source, str(value), _rel(offset)), key=len)
 
 
 def _crement_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     """Return one order's shared template."""
     return _crement_ordered(truth_table, perm, share=True)
-
-
-def _data(target: int, line: int) -> str:
-    """Spell ``+A`` data at ``line`` naming ``target``: absolute or ``@-k``."""
-    offset = target - 1 - line
-    relative = "@" if not offset else f"@{offset:+d}"
-    absolute = str(target - 1)
-    return relative if len(relative) < len(absolute) else absolute
 
 
 def _crement_ordered(
@@ -138,7 +148,7 @@ def _crement_ordered(
         # A child emitted here is named relative to the patch, as ``@+k``;
         # a gadget or earlier copy takes the shorter spelling.
         def data(target: int, line: int) -> str:
-            return f"@+{target - 1 - line}" if target > at else _data(target, line)
+            return f"@+{target - 1 - line}" if target > at else str(target - 1)
 
         cell = tester[level]
         rel = at - first
@@ -153,9 +163,51 @@ def _crement_ordered(
         f"+J {first + len(lines)} 1",
         "+J @ 1",
     ]
-    testers = [
-        line
-        for zero, _one in (PAIR,) * n
-        for line in (TEMPLATE_CHAR * len(zero), "+J 0 1")
-    ]
+    testers = [TEMPLATE_CHAR * len(PAIR[0]), "+J 0 1"] * n
     return "\n".join(header + testers + lines)
+
+
+def _balance(table: str, default: str) -> str:
+    """Compare preserved instructions and the two field-wrapping regimes."""
+    candidates = [default]
+    upper = grid_width(default) - 1
+    if upper >= 6:
+        normal = crement(table, upper)
+        candidates.append(normal)
+        folded_upper = min(upper, grid_width(normal) - 1)
+        if folded_upper >= 6:
+            width = balanced_token_width(
+                normal.split(), " ", minimum=6, maximum=folded_upper
+            )
+            candidates.append(crement(table, width))
+    short = crement(table, 1)
+    width = balanced_token_width(short.split(), " ", maximum=5)
+    candidates.append(crement(table, width))
+    return min(candidates, key=balance_score)
+
+
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Tokens on whitespace; short setters coexist with fitting layouts."""
+    return (
+        same_tokens(template, layout(1))
+        or same_tokens(template, layout(layout_width(template)))
+        or same_up_to_wrapping(template, plain)
+    )
+
+
+LANGUAGE = Language(
+    "Crement",
+    "other.crement",
+    boolean=crement,
+    same_layout=_same_layout,
+    contract=BooleanContract(
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+        note="Crement answers by termination: the tree's nodes patch a "
+        "per-input tester's jump targets, and the row lands past the "
+        "end (halts, 0) or on a self-jump (diverges, 1)",
+    ),
+    balance=_balance,
+    no_wrap="each line is one instruction; jumps and patches name line numbers",
+    example=Example(setters=crement_setters, expected=""),
+)

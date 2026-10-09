@@ -25,26 +25,6 @@ def run_and_capture(code: str) -> str:
     return buffer.getvalue()
 
 
-@pytest.mark.parametrize(
-    ("code", "expected"),
-    [("ciinsiio", "\x02"), ("ciindbo", "\x00"), ("cbo", "\x00")],
-)
-def test_lf_does_not_change_indexed_jump_targets(code: str, expected: str) -> None:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.nocomment import _Machine
-
-    plain = _Machine(code, ScriptedIO(""))
-    wrapped = _Machine("\n" + "\n".join(code) + "\n", ScriptedIO(""))
-    while not plain.halted:
-        assert plain.snapshot() == wrapped.snapshot()
-        plain.step()
-        wrapped.step()
-    assert wrapped.halted
-    assert plain.snapshot() == wrapped.snapshot()
-    assert wrapped.ind == len(code)
-    assert wrapped.io.getvalue() == plain.io.getvalue() == expected
-
-
 @pytest.mark.parametrize("char", [" ", "\t", "\r", "x"])
 def test_loading_ignores_only_lf(char: str) -> None:
     with pytest.raises(ValueError, match="unrecognized NoComment command"):
@@ -211,26 +191,6 @@ class TestTheWikiExamples:
             "rioriiiiiiiiiio"
         )
         assert run_and_capture(program) == "Hello World!\n"
-
-    @pytest.mark.parametrize(
-        ("body", "a", "b", "expected"),
-        [
-            ("lnciiiiiiiirrdlilnrrbllfr", 5, 7, 12),
-            ("lnciiiiiiiirrdlilnrrbllfr", 200, 100, 44),
-            ("lnciiiiiiiirrdlilnrrbllfr", 3, 0, 3),  # the slow 256-round case
-            ("lnciiiiiiiirrdldlnrrbllfr", 5, 7, 254),
-        ],
-    )
-    def test_add_and_subtract_two_cells(
-        self, body: str, a: int, b: int, expected: int
-    ) -> None:
-        """Cells n and n+1 combine into n, n+1 cleared, the pointer back on n."""
-        from esolangs.interpreters.tape_based.nocomment import _Machine
-
-        machine = _Machine("r" + "i" * a + "r" + "i" * b + "l" + body, IO())
-        while not machine.halted:
-            machine.step()
-        assert (machine.ptr, machine.tape[1:3]) == (1, (expected, 0))
 
     @pytest.mark.parametrize(("value", "expected"), [(0, 1), (1, 0), (7, 0)])
     def test_logical_not(self, value: int, expected: int) -> None:

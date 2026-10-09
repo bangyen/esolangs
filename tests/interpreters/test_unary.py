@@ -5,6 +5,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.unary import _Machine, decode, run
 from tests.interpreters.runner import run_program
+from tests.raises import assert_rejected_with_hint
 
 
 def _source(brainfuck: str) -> str:
@@ -79,3 +80,8 @@ def test_wiki_cat_stated_count_runs_and_listed_count_is_unmatched() -> None:
     assert run_program(run, "0" * 56623, "hi") == "hi"
     with pytest.raises(ValueError, match="unmatched"):
         _Machine("0" * 55623, ScriptedIO())
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Unary", "1", "only 0")

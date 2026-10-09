@@ -14,12 +14,17 @@ from typing import Any
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
+from esolangs.polynomial_resources import estimate_generation
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
+from esolangs.tools.polynomial.algebra import primes, render_product
+from esolangs.tools.wrap import _polynomial
 
 # Instruction cap.  Analytic n=10 worst case is 1659
 # (``test_polynomial_cap_admits_every_n10_table``); kept at the old 1934,
@@ -49,18 +54,14 @@ def polynomial(truth_table: str) -> str:
     construction is :func:`_polynomial_hybrid` at some ``k``: ``k == n`` a
     folded tree, ``k == 0`` one state machine (an ordered BDD merging equal
     residuals: parity needs two states per level, 11 instructions per
-    input), the interior a machine per residual. Reduced variants drain a
-    leading run only when ordinary builders exceed the instruction cap.
+    input), the interior a machine per residual.  A leading ignored run is drained
+    to bare reads.
     Reordering is unreachable (a read assigns the single register).
     Selection is on rendered characters.
     More than ``_POLYNOMIAL_MAX_INSTRS`` raises :class:`ValueError`.
     """
     n = _validate_truth_table(truth_table)
 
-    # Every construction here is :func:`_polynomial_hybrid` at some ``k``.
-    # ``k == n`` is the plain decision tree, ``k == 0`` the plain state
-    # machine, and the interior splits the difference; the reduced variants
-    # below prepend a drain and rebuild on a smaller table.
     builders: list[tuple[int, Any]] = [
         (
             _polynomial_hybrid_cost(truth_table, level),
@@ -73,8 +74,23 @@ def polynomial(truth_table: str) -> str:
     # *leading* ignored run before building (a later one drained out of
     # turn branched on the wrong bit: 92 wrong rows over 26 tables).
     essential = essential_inputs(truth_table, n) or [0]
+    # A *trailing* ignored run is cut from the table and its reads appended
+    # at the very end, which every path reaches parked below zero, so they
+    # change nothing; the selection below keeps it only where it is shorter.
+    tail = n - 1 - essential[-1]
+    if tail:
+        cut = read_at(truth_table, list(range(n - tail)), n)
+        builders += [
+            (
+                _polynomial_hybrid_cost(cut, level) + tail,
+                lambda level=level, c=cut, t=tail: (
+                    _polynomial_hybrid(c, level) + [[0, 2]] * t
+                ),
+            )
+            for level in range(n - tail, -1, -1)
+        ]
     lead = next((i for i in range(n) if i in essential), n)
-    if lead and min(cost for cost, _ in builders) > _POLYNOMIAL_MAX_INSTRS:
+    if lead:
         prefix: list[list[int]] = [[0, 2]] * lead
         reduced = read_at(truth_table, list(range(lead, n)), n)
         reduced_n = n - lead
@@ -85,13 +101,8 @@ def polynomial(truth_table: str) -> str:
                     pre + _polynomial_hybrid(r, level)
                 ),
             )
-            for level in range(reduced_n, 0, -1)
+            for level in range(reduced_n, -1, -1)
         ]
-        drained = _polynomial_drained_dag_cost(truth_table)
-        # Only reached inside ``if lead:``, and the cost is None only when
-        # there is no lead to drain, so it always answers here.
-        if drained is not None:  # pragma: no branch
-            builders.append((drained, lambda: _polynomial_drained_dag(truth_table)))
 
     fits = [(cost, build) for cost, build in builders if cost <= _POLYNOMIAL_MAX_INSTRS]
     if not fits:
@@ -129,30 +140,14 @@ def polynomial(truth_table: str) -> str:
     return program
 
 
-def _polynomial_decode_key(instr: list[int]) -> tuple[int, int]:
-    """Return where ``convert`` places ``instr`` among the roots of one prime.
-
-    Primes upward; within one, real roots by exponent then complex by
-    ``(b, a)``.
-    """
-    if len(instr) == 1:
-        return (0, instr[0])
-    return (instr[1], instr[0])
-
-
 def _polynomial_assemble(instrs: list[list[int]]) -> str:
     """Expand an instruction list into its ``f(x) = ...`` polynomial.
 
-    Consecutive instructions share a prime when their decode order is their
-    program order (keys never decrease), and each shared prime shrinks every
-    later constant: dense n=5..8 machines fall 14%, 12%, 11%, 10%.  A block's
-    ``if > 0; input; *= span`` and ``endif; += 1`` are such runs, so a block
-    spends three primes, not six.
+    One prime per instruction.  Sharing a prime across decode-ordered runs
+    was retired: 11.0% at n=7 (200 tables), 9.0% at n=8 (200), under the bar.
     """
-    from esolangs.tools.polynomial.algebra import estimate_product, render_product
-
     factors = _polynomial_factors(instrs)
-    estimate = estimate_product(factors)
+    estimate = estimate_generation(factors)
     if estimate.rendered_chars > _POLYNOMIAL_MAX_ESTIMATED_CHARS:
         raise with_hint(
             GeneratorCapError(
@@ -175,24 +170,13 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
 
 def _polynomial_factors(instrs: list[list[int]]) -> list[list[int]]:
     """Encode instructions as factors without expanding their product."""
-    from esolangs.tools.polynomial.algebra import primes
-
-    groups: list[list[list[int]]] = []
-    for instr in instrs:
-        if groups and _polynomial_decode_key(groups[-1][-1]) <= _polynomial_decode_key(
-            instr
-        ):
-            groups[-1].append(instr)
-        else:
-            groups.append([instr])
     factors: list[list[int]] = []
-    for group, p in zip(groups, primes(len(groups)), strict=True):
-        for instr in group:
-            if len(instr) == 2:
-                a, b = instr
-                factors.append([1, -2 * a, a * a + p ** (2 * b)])
-            else:
-                factors.append([1, -(p ** instr[0])])
+    for instr, p in zip(instrs, primes(len(instrs)), strict=True):
+        if len(instr) == 2:
+            a, b = instr
+            factors.append([1, -2 * a, a * a + p ** (2 * b)])
+        else:
+            factors.append([1, -(p ** instr[0])])
     return factors
 
 
@@ -377,31 +361,23 @@ def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
     return instrs
 
 
-def _polynomial_drained_dag(truth_table: str) -> list[list[int]] | None:
-    """Drain a leading run of ignored inputs, then run the machine.
-
-    One bare read per ignored input.  ``None`` when nothing is ignored or the
-    reduction leaves one row.
-    """
-    n = _validate_truth_table(truth_table)
-    essential = essential_inputs(truth_table, n) or [0]
-    lead = next((i for i in range(n) if i in essential), n)
-    if not lead:
-        return None
-    reduced = read_at(truth_table, list(range(lead, n)), n)
-    # Exhausted over every table to four inputs: a nonzero lead leaves an
-    # essential input behind, so the reduction always holds two rows.
-    if len(reduced) < 2:  # pragma: no cover - see above
-        return None
-    return [[0, 2]] * lead + _polynomial_dag(reduced, n + 2)
-
-
-def _polynomial_drained_dag_cost(truth_table: str) -> int | None:
-    """Return :func:`_polynomial_drained_dag`'s instruction count."""
-    built = _polynomial_drained_dag(truth_table)
-    return None if built is None else len(built)
-
-
 def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
     """Return the emitted hybrid instruction count."""
     return len(_polynomial_hybrid(truth_table, k))
+
+
+LANGUAGE = Language(
+    "Polynomial",
+    "register_based.polynomial",
+    generator_restrictions=f"at most {_POLYNOMIAL_MAX_INSTRS} instructions and "
+    f"{_POLYNOMIAL_MAX_ESTIMATED_CHARS} estimated characters; "
+    "table dependent",
+    boolean=polynomial,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    # Space wrap stranded every sign alone; keep sign with term, one per line.
+    wrap=_polynomial,
+    eof="an exhausted input instruction stores -1",
+    empty_program="Polynomial program must start with 'f(x) = '",
+)

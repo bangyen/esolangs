@@ -227,24 +227,3 @@ class TestMachineMemory:
         machine = _Machine(_wrap("    0;"), ScriptedIO(""))
         machine.frames.clear()
         assert machine.ip == 0
-
-    def test_stack_lists_the_callers_waiting_on_a_call(self) -> None:
-        program = """
-Dependency {
-  Integer id : Integer a {
-    a;
-  }
-} lib;
-Package : lib, IO {
-  Integer main {
-    charPut(id(65));
-    0;
-  }
-} p;
-"""
-        machine = _Machine(program, ScriptedIO(""))
-        depths = set()
-        while not machine.halted:
-            machine.step()
-            depths.add(len(machine.stack))
-        assert depths == {0, 1}

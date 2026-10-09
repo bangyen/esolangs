@@ -27,8 +27,7 @@ A new language must add an uncovered construction, branch mechanism,
 answer convention, or input interface:
 
 - **Construction shape** -- decision tree (the default), minterm sum
-  (`bfstack`, `vandevelo`), ANF/XOR-of-products (`fargo`, and `super_snusp`
-  below five inputs), grid walk (`laserfuck`, `a_painter_ant`, `streetcode`).
+  (`bfstack`, `vandevelo`), ANF/XOR-of-products (`fargo`), grid walk (`laserfuck`, `a_painter_ant`, `streetcode`).
 - **Branch mechanism** -- explicit conditional, value-testable jump, skip
   guard, implicit comparator, pointer displacement (`123`).
 - **Answer convention** -- print 0/1, landing colour (`a_painter_ant`),
@@ -73,7 +72,12 @@ interpreter module ◄──── source + encoded stdin ◄──┘
 - `src/esolangs/registry/` owns integration. `Language` records names,
   interpreter, source shape, optional generator and the typed input and
   answer `contract`; `resolve` normalizes spelling, and `RUNNERS` selects
-  whole-source or split-line input.
+  whole-source or split-line input. A language with a generator declares
+  its own `LANGUAGE = Language(...)` at the end of its generator module, and
+  the registry collects those; only interpreter-only languages are listed
+  in `registry/_table.py`. `esolangs.tools`'s imports are generated from
+  the declarations (`scripts/generate_exports.py`, run by `generate.py docs`
+  and by `check`).
 - Generators live in `src/esolangs/tools/`. Most return runnable source;
   input-embedding languages return a `$`-run template for `instantiate`.
   `encode_inputs` handles stdin conventions, and `read_answer` reads printed
@@ -94,7 +98,10 @@ Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
   Most grids receive lines via registry `split=True`; A Painter Ant,
   B-tapemark and EGL receive whole source.
 - Raises `ValueError` for a malformed program and `HaltError` for an
-  invalid runtime operation. Divergence is legal; tests bound execution of
+  invalid runtime operation, where the spec has one. An empty program the
+  spec calls malformed declares its error as `empty_program=` in the
+  `LANGUAGE`, and an input command the spec gives an EOF value declares it
+  as `eof=`. Divergence is legal; tests bound execution of
   empty programs rather than requiring termination.
 - Guards an input line before indexing it (`if val:`); an empty line is
   legal, and running out raises `EOFError` either way.
@@ -122,14 +129,25 @@ interpreter reads input or raises them.
 
 ## What makes a generator optimization worth shipping
 
-A generator size optimization must meet all of these requirements:
+A generator guarantees its size class (the Scaling column in
+`docs/proofs/index.md`), not its constant. Every generator applies the
+canonical set, or its docstring says why one does not apply: ignored inputs
+dropped (`essential_inputs`, `read_at`), constant subtrees folded
+(`constant_span_test`), repeated subtrees shared (`subtree_ids`). A
+canonical piece ships at any saving: it is exempt only where the construction
+leaves it nothing to act on, or where it makes the average program larger on
+the tables it targets at the largest arity measured (cite the figure).
 
-- **5% or more** off the total emitted size over all 256 three-input tables,
-  measured against its parent. ArrowQueue's 2.1% rotation gain was reverted.
-  A gain that grows with the table, such as sharing repeated subtrees
-  (`scripts/screens/sharing.py`: 14.5% of nodes repeat at three inputs, a
-  third at five), may clear it instead on 200 seeded random five-input
-  tables; the no-growth rule then holds on that sample too.
+Anything else is a bespoke size optimization and must meet all of these
+requirements:
+
+- **10% or more** off the total emitted size at the largest arity where it
+  runs: seeded random tables at n=7..8, or at its cap if it stops earlier,
+  and 200 tables when the result is within two points of the bar. A trick
+  aimed at a table class (ignored inputs, constants) is judged on that class;
+  2D grids are judged by area, rows times the longest row. The n=3 total is
+  context only: greedy order searches saved 8-15% there but at most 2.2% at
+  n >= 7, and were retired. Cite the measurement beside the code.
 - **No table grows**: checked exhaustively through three inputs, so keep the
   old build as a candidate when the new one is not uniformly shorter.
 - **Every table executes**: exhaustively through three inputs and sampled at
@@ -150,11 +168,64 @@ Use `scripts/screens/` to bound the upside first.
 
 ## Checklist
 
-1. Run `just new-language "Name" --category tape_based` (using the matching
-   category), then replace the placeholder semantics and test.
-2. Register the language and any generator in `registry/_table.py`.
-3. Add end-to-end tests, and execute the generated programs.
-4. Record generator evidence with `just benchmark "Name" TABLE`; compare
-   `source_units` and `commands`, not wall-clock time.
-5. Regenerate docs, then run `just test`; `just test-full` for release-scale
-   changes.
+1. `just new-language "Name" --category tape_based` (the matching category;
+   `--interpreter-only` for a fame admission) writes the interpreter,
+   generator and test stubs. Replace the placeholder semantics and tests.
+2. `just check-language "Name"` lists every integration step still missing,
+   each with the file and entry to add: registry, exports, contract,
+   example, width policy, samples, curation, proof ledger and its formula
+   tables. Repeat until it reports none; a test runs it over the registry,
+   so the list matches what the suite enforces. It then runs the
+   seconds-long checks `finish` would otherwise fail late: the language's
+   own tests, its committed example, the generator's shape, the ledger's
+   word limits and fold measure, its formula rows, and bandit on its
+   sources. It lists the generated files it refreshed.
+   Optional: the wiki page's own examples, with their stated output, go in
+   `tests/fixtures/wiki_examples/<id>.toml` (schema in
+   `tests/interpreters/test_published_programs.py`).
+   To try a program that may loop, bound it:
+   `esolangs.run("Name", program, stdin=..., max_steps=10_000)` or
+   `timeout=5`, never a bare `run`.
+3. Record generator evidence with `just benchmark "Name" TABLE`; compare
+   `source_units` and `commands`, not wall-clock time. `python
+   scripts/new_language.py bounds "Name"` prints the worst steps and
+   written bits per arity, with the table reaching each: a cell's "worst"
+   must equal them exactly, else it says "at most".
+4. `just finish-language "Name"` regenerates examples, docs and the size
+   baseline, then runs the full `verify.py`. That is the gate: `just
+   test-quick` skips the slower contract sweeps every generator must pass.
+   Added lines need 90% statement and branch coverage per file; the
+   report separates them from older gaps. It takes minutes, so run it in
+   the background; it reruns failed tests
+   alone and says when every failure was machine load. Steps `check`
+   still lists don't stop it: it reports them, runs the gate anyway, and
+   fails.
+
+To take a language out, `just remove-language "Name"` deletes what `check`
+asks for, regenerates, and lists the prose mentions left to edit.
+
+A language should live in its own files: its generator module's
+`LANGUAGE`, its interpreter, and its own test files. A fact another file
+keys by a language's name (a list of names in a shared test, a branch on
+an id) is coupling, and `tests/test_language_coupling.py` holds each
+file's count of them to `tests/fixtures/coupling.toml`, which only goes
+down. Put such a fact on `Language`, or the test in the language's own
+test file: `tests/interpreters/test_<id>.py` for its interpreter,
+`tests/tools/test_boolean_<gen>.py` for its generator, and
+`tests/languages/test_<id>.py` for it through the shared API, CLI, VM and
+debugger. brainfuck is the reference language shared tests use as their
+example.
+
+### The Boolean I/O contract
+
+A generated program reads the inputs and prints the answer the way its
+`BooleanContract` (the `contract=` of its `LANGUAGE`) says; with none the
+default is one `0`/`1` line per input and a printed `0`/`1`. Every program
+reads all n inputs, in order, even when the table is constant or ignores an
+input. `input_shape="char_stream"` reads the bits as bare characters, and also
+covers languages whose stdin packs bits into bytes (Boolfuck, Smu): each
+input is then the byte `'0'` (0x30) or `'1'` (0x31), whose low bit is the
+input's value, so a program that reads low bit first takes that bit and must
+read and drop the byte's other seven before the next input (see
+`src/esolangs/tools/smu.py`). `answer_mode` covers state-dump and
+termination answers.

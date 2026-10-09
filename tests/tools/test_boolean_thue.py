@@ -1,5 +1,8 @@
 """Executed deterministic chunk expansion for narrow Thue sources."""
 
+import itertools
+import random
+
 import pytest
 
 from esolangs import generate
@@ -92,13 +95,14 @@ def test_short_tree_executes_one_and_two_input_tables() -> None:
 
 
 def test_thue_proof_text_counts_the_emitted_rules() -> None:
-    """The ledger says nineteen fixed rules; the program carries nineteen."""
+    """The ledger says at most 23 fixed rules: 19, or 23 with a round queue."""
     from scripts.proof_status import load
 
-    lines = boolean.thue("0110").splitlines()
-    assert len(lines[: lines.index("::=")]) == 19
+    for table, count in (("0110", 19), ("0110" * 32, 23)):
+        lines = boolean.thue(table).splitlines()
+        assert len(lines[: lines.index("::=")]) == count, table
     scaling = next(row.scaling for row in load()[0] if row.generator == "Thue")
-    assert "nineteen fixed rules" in scaling
+    assert "at most 23 fixed rules" in scaling
 
 
 def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
@@ -141,6 +145,27 @@ def test_thue_answers_the_same_under_every_draw(table: str) -> None:
 
 
 @pytest.mark.medium
+def test_an_ignored_input_reads_without_halving() -> None:
+    """Its round is an ``S`` in the queue: read, delete, nothing to draw."""
+    from esolangs.interpreters.other.thue import _Machine, _matches
+
+    inner = "".join(str((row * 73 + row // 3) & 1) for row in range(64))
+    # Seven inputs, the third ignored: 64 entries, not 128.
+    table = "".join(inner[row >> 5 << 4 | row & 15] for row in range(128))
+    program = boolean.thue(table)
+    assert "SR::=JR" in program
+    assert len(program) < len(boolean.thue(inner)) + 50
+    for row in range(0, 128, 5):
+        io = ScriptedIO("".join(f"{bit}\n" for bit in _bits(row, 7)))
+        machine = _Machine(program, io, Seeded(row))
+        while not machine.halted:
+            assert len(_matches(machine.state, machine.rules)) == 1
+            machine.step()
+        assert io.getvalue() == table[row]
+        assert io.reads == 7
+
+
+@pytest.mark.medium
 def test_thue_contracted_heads_keep_a_unique_rewrite() -> None:
     """Ready and waiting symbols leave exactly one rewrite before each read."""
     from esolangs.interpreters.other.thue import _Machine, _matches
@@ -179,3 +204,40 @@ def test_thue_fixed_width_chunk_names_expand_before_reading() -> None:
                 assert len(_matches(machine.state, machine.rules)) == 1
                 machine.step()
             assert io.getvalue() == expected
+
+
+def test_narrow_layouts_drop_ignored_inputs() -> None:
+    """Chunked sources drop ignored inputs and stay deterministic."""
+    small = "0110"
+    table = "".join(small[r >> 1 & 2 | r & 1] for r in range(32))
+    full = "0110100110010110" + "0110100110010111"
+    for width in (1, 8):
+        assert len(thue(table, width)) < 0.8 * len(thue(full, width))
+        for row in (0, 5, 18, 31):
+            _execute(table, row, width)
+
+
+def test_a_constant_half_is_stored_once_and_stays_deterministic() -> None:
+    """The fold's one-entry collapse still reads every line, one rule a step."""
+    from esolangs.tools.thue import _fold, _thue_layout
+
+    half = "01101001"
+    tables = (half + "0" * 8, "1" * 8 + half, half[:4] * 2 + "1" * 8)
+    for table, width in itertools.product(tables, (None, 8)):
+        fold = _fold(table)
+        assert fold is not None
+        program = _thue_layout(*fold, width)
+        n = len(table).bit_length() - 1
+        for row in range(len(table)):
+            io = ScriptedIO("\n".join(f"{row:0{n}b}"))
+            machine = _Machine(program, io, Seeded(row))
+            while not machine.halted:
+                assert len(_matches(machine.state, machine.rules)) == 1
+                machine.step()
+            assert (io.getvalue(), io.reads) == (table[row], n)
+    rng = random.Random(0)
+    half = "".join(rng.choice("01") for _ in range(256))
+    dense = half + "".join(rng.choice("01") for _ in range(256))
+    for options in ({}, {"balance": True}):
+        folded = generate("Thue", half + "1" * 256, **options)
+        assert len(folded) < 0.85 * len(generate("Thue", dense, **options))

@@ -1,0 +1,16 @@
+language = "Taglate"
+oldid = 189094
+
+[[examples]]
+id = "hello"
+source = '''
+Hello, world!
+iiiiiiiiiiiii'''
+expected = "Hello, world!"
+
+[[examples]]
+id = "url-of-empty-queue"
+source = '''
+
+tgyigz'''
+expected = "https://translate.google.com/?sl=en&tl=es&text=&op=translate"

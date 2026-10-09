@@ -4,8 +4,8 @@
 def test_settled_embed_matches_the_interpreter() -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import _Machine
-    from esolangs.tools.minifuck.pool import _embed
     from tests.tools.fills import _fill_minifuck
+    from tests.tools.minifuck_support import _embed
 
     for n in (1, 2, 3):
         for settle in (1, 2):

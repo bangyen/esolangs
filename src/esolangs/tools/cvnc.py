@@ -10,42 +10,36 @@ gadget squares its way past the end of the program and halts.  A constant
 subtree folds to one leaf but keeps its reads, the last of which is floored
 by ``ə``.
 
-Commands are emitted through :func:`_render`, which is the whole size
-story: CV(N)(C) admits a nasal and a coda after a syllable's vowel, so a
-consonant command does not need a vowel of its own when the next command
-can host it.  Spelling every command as its own ``CV`` pair -- which is
-what this generator used to do -- pays a filler vowel per consonant.
-:func:`_render` chooses, per syllable, between taking the next consonant as
-a coda and letting it open the next syllable, and takes the cheaper.  The
-two fillers it inserts, ``c`` and ``u``, are inert *because* no command
-here ever builds a function: ``c`` clears an already-empty one and ``u``
-applies it, which the interpreter defines as leaving the accumulator alone.
+Commands are spelled by :func:`_render`, which is the size story: CV(N)(C)
+admits a nasal and a coda after a syllable's vowel, so a consonant command
+needs no vowel of its own when the next command can host it.  Per syllable
+it takes the cheaper of closing with the next consonant as a coda or
+letting it open the next syllable.  Its fillers, ``c`` and ``u``, are inert
+because no command here builds a function: ``c`` clears an already-empty
+one and ``u`` applies it, which leaves the accumulator alone.
 
-A second construction hoists the reads into the deque (``m``/``n`` push,
-``ŋ``/``ɲ`` pop either end) so :func:`_ordered` can test in any order; each
-read is pushed to the end it will be popped from (:func:`_deque_schedule`),
-which serves exactly the unimodal permutations.  A stored read costs one
-more character and a fetch three vs one, but a folded subtree then owes
-nothing; the shorter of the two is kept.
+A second construction, hoisting the reads into the deque to test in any
+order, saves 4.87% at n=8, under the 10% bar, and is not built.
 
 ``j`` is also how a repeated subtree is shared (:class:`_Stream`): the
 accumulator names a syllable, so a later copy climbs to the first copy's
 syllable with ``i``, ``æ`` and ``ə`` and jumps into it, where that is
-shorter. Its leaves halt, so nothing returns. Production uses the shared
-build.
+shorter. Its leaves halt, so nothing returns.
 """
 
 import math
 from collections import Counter
 from functools import partial
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
-    deque_plan,
     in_input_order,
+    input_weights,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["cvnc"]
 
@@ -74,10 +68,6 @@ _IF_ZERO = "ɰ"
 # one, which is a codepoint shorter.
 _SKIP = "ɰ̊"
 _END_IF = "ʋ"
-_PUSH_FRONT = "m"
-_PUSH_BACK = "n"
-_POP_FRONT = "ŋ"
-_POP_BACK = "ɲ"
 
 # Every leaf leaves the accumulator here before its ``j``, which is both
 # the syllable the shared gadget starts at and the answer ``1``: the bit
@@ -120,16 +110,6 @@ def _reach(squarings: int) -> int:
     return int(_HALT_BASE ** (2**squarings))
 
 
-def _is_vowel(token: str) -> bool:
-    """Whether ``token`` can fill a syllable's vowel slot."""
-    return token in _VOWELS
-
-
-def _is_nasal(token: str) -> bool:
-    """Whether ``token`` can fill a syllable's nasal slot."""
-    return token in _NASALS
-
-
 def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
     """Return the ways to spell one syllable starting at ``tokens[index]``.
 
@@ -146,24 +126,24 @@ def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
     chars: list[str] = []
     cursor = index
     token = tokens[cursor]
-    if _is_vowel(token) or _is_nasal(token):
+    if token in _VOWELS or token in _NASALS:
         chars.append(_FILLER_ONSET)
     else:
         chars.append(token)
         cursor += 1
-    if cursor < total and _is_vowel(tokens[cursor]):
+    if cursor < total and tokens[cursor] in _VOWELS:
         chars.append(tokens[cursor])
         cursor += 1
     else:
         chars.append(_FILLER_VOWEL)
-    if cursor < total and _is_nasal(tokens[cursor]):
+    if cursor < total and tokens[cursor] in _NASALS:
         chars.append(tokens[cursor])
         cursor += 1
     options = [("".join(chars), cursor)]
     if (
         cursor < total
-        and not _is_vowel(tokens[cursor])
-        and not _is_nasal(tokens[cursor])
+        and tokens[cursor] not in _VOWELS
+        and tokens[cursor] not in _NASALS
     ):
         options.append(("".join(chars) + tokens[cursor], cursor + 1))
     return options
@@ -323,25 +303,33 @@ def _leaf(answer: str, accumulator: int | None) -> list[str]:
     return tokens
 
 
-def _bit_count(size: int) -> int:
-    """Return how many inputs a subtable of ``size`` rows still selects on."""
-    return size.bit_length() - 1
+def _consumed(weights: list[int]) -> list[int]:
+    """Return the stream reads made before each indexed level, then in all."""
+    return (
+        [0] + [at + 1 for at, weight in enumerate(weights) if weight] + [len(weights)]
+    )
 
 
-def _tree(table: str, stream: _Stream | None = None) -> list[str]:
+def _tree(
+    table: str, stream: _Stream | None = None, weights: list[int] | None = None
+) -> list[str]:
     """Build the command sequence for ``table``, reading at every node.
 
     A constant table stops branching but still owes every read below it.
     Spans of the one table, an O(1) constant test and one flat token list:
     O(2**n).  Returns the commands not yet spelled: all of them unless
     ``stream`` shares, whose :meth:`_Stream.text` is then the body.
+    ``weights`` names the stream inputs, zero for an ignored one: ``table``
+    indexes the rest, and a node first reads the ignored inputs ahead of its
+    own, which its read then overwrites.
     """
     constant = constant_span_test(table)
     stream = stream or _Stream(table)
+    before = _consumed(weights or [1] * (len(table).bit_length() - 1))
 
     def walk(lo: int, hi: int, level: int, accumulator: int | None) -> None:
         if constant(lo, hi):
-            reads = _bit_count(hi - lo)
+            reads = before[-1] - before[level]
             stream.tokens.extend([_READ] * reads)
             stream.tokens.extend(_leaf(table[lo], None if reads else accumulator))
             return
@@ -353,7 +341,8 @@ def _tree(table: str, stream: _Stream | None = None) -> list[str]:
         # ``ɰ`` jumps past ``ʋ`` on *nonzero*, so the arm between the
         # markers is the first (bit 0) half; swapped, every odd-weight
         # table inverts.
-        stream.tokens.extend([_READ, _IF_ZERO])
+        stream.tokens.extend([_READ] * (before[level + 1] - before[level]))
+        stream.tokens.append(_IF_ZERO)
         walk(lo, mid, level + 1, 0)
         stream.tokens.append(_END_IF)
         walk(mid, hi, level + 1, 1)
@@ -363,83 +352,16 @@ def _tree(table: str, stream: _Stream | None = None) -> list[str]:
     return stream.tokens
 
 
-def _deque_schedule(
-    perm: tuple[int, ...],
-) -> tuple[list[str], list[str]] | None:
-    """Return this order's named two-run deque routing, or None."""
-    plan = deque_plan(perm)
-    if plan is None:
-        return None
-    pushes, pops = plan
-    return (
-        [_PUSH_FRONT if head else _PUSH_BACK for head in pushes],
-        [_POP_FRONT if head else _POP_BACK for head in pops],
-    )
-
-
-def _stored(
-    truth_table: str, perm: tuple[int, ...], stream: _Stream | None = None
-) -> list[str] | None:
-    """Build the stored-read command sequence for ``perm``.
-
-    Every input is read up front and each node fetches the bit it tests; a
-    folded subtree owes nothing, which is where the reorder pays.  Returns
-    what :func:`_tree` does, or None when no deque schedule serves ``perm``.
-    """
-    schedule = _deque_schedule(perm)
-    if schedule is None:
-        return None
-    pushes, pops = schedule
-    stream = stream or _Stream(truth_table)
-    for push in pushes:
-        stream.tokens.extend([_READ, push])
-    constant = constant_span_test(truth_table)
-
-    def walk(lo: int, hi: int, level: int, accumulator: int | None) -> None:
-        if constant(lo, hi):
-            # Below a branch the accumulator is a known bit; at an
-            # immediately-folding root it is the last read, so it is floored.
-            stream.tokens.extend(_leaf(truth_table[lo], accumulator))
-            return
-        block = lo // (hi - lo)
-        if accumulator is not None and stream.jump(level, block, accumulator):
-            return
-        entered = stream.enter(level, block)
-        mid = (lo + hi) // 2
-        stream.tokens.extend([pops[level], _IF_ZERO])
-        walk(lo, mid, level + 1, 0)
-        stream.tokens.append(_END_IF)
-        walk(mid, hi, level + 1, 1)
-        stream.leave(entered)
-
-    walk(0, len(truth_table), 0, None)
-    return stream.tokens
-
-
-def _ordered(
-    truth_table: str, perm: tuple[int, ...], offset: int | None = None
-) -> str | None:
-    """Build the shortest read strategy available for ``perm``.
-
-    Stream order may read at its nodes or store first; other orders store.
-    Ties keep the direct tree.  ``offset``, the body's first syllable,
-    turns sharing on in both.
-    """
-    stream = _Stream(truth_table, offset)
-    rendered = stream.text() if _stored(truth_table, perm, stream) is not None else None
-    if perm != tuple(range(len(perm))):
-        return rendered
-    stream = _Stream(truth_table, offset)
-    _tree(truth_table, stream)
-    direct = stream.text()
-    return rendered if rendered is not None and len(rendered) < len(direct) else direct
-
-
-def _ordered_candidate(
-    truth_table: str, perm: tuple[int, ...], offset: int | None = None
+def _direct(
+    truth_table: str,
+    _perm: tuple[int, ...],
+    offset: int | None = None,
+    weights: list[int] | None = None,
 ) -> str:
-    """Adapt :func:`_ordered` to :func:`in_input_order`'s contract."""
-    return _ordered(truth_table, perm, offset) or ""
+    """Spell the direct tree; ``offset``, the first syllable, turns sharing on."""
+    stream = _Stream(truth_table, offset)
+    _tree(truth_table, stream, weights)
+    return stream.text()
 
 
 def _prologue_syllables(squarings: int) -> int:
@@ -462,14 +384,35 @@ def cvnc(truth_table: str) -> str:
     fits; changing the prologue rebases the shared body before its
     reach is checked again.
     """
-    # For the refusal only; the arity is not needed below.
-    _validate_truth_table(truth_table)
+    # A tree over the inputs that matter, its ignored reads bare, against the
+    # full tree, whose sharing is sometimes the shorter; a tie keeps the full.
+    n = _validate_truth_table(truth_table)
+    weights, table = input_weights(truth_table, n)
+    shapes = [(truth_table, [1] * n)]
+    if 1 < len(table) < len(truth_table):
+        shapes.append((table, weights))
     squarings = _HALT_SQUARINGS
     while True:
-        body = in_input_order(
-            truth_table,
-            partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
+        offset = _prologue_syllables(squarings)
+        body = min(
+            (
+                in_input_order(shape, partial(_direct, offset=offset, weights=named))
+                for shape, named in shapes
+            ),
+            key=len,
         )
         if len(_halt(squarings)) + len(body) < _reach(squarings):
             return _halt(squarings) + body
         squarings += 1
+
+
+LANGUAGE = Language(
+    "CV(N)(C)",
+    "other.cvnc",
+    # The parentheses mark optional slots; the language is written as one word.
+    id="cvnc",
+    boolean=cvnc,
+    # LF-only source-format deviation: discard breaks before parsing or addressing.
+    wrap=wrap_chars,
+    empty_program="program is empty",
+)

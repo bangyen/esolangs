@@ -1,6 +1,13 @@
-"""Boolean generator for bit tilde."""
+"""Boolean generator for bit tilde.
 
+Entries are planted left to right, so a skip loop has no terminator ahead of
+it: a constant or repeated span costs a ``>`` per cell.
+"""
+
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["bit_tilde"]
 
@@ -28,8 +35,8 @@ def bit_tilde(truth_table: str) -> str:
     used = essential_inputs(truth_table, n) or [0]
     table = read_at(truth_table, used, n)
     width = len(used)
-    # Two cells an entry, above the planted region, and even so that the
-    # reads stay in the lane whose jumps land in the zero one.
+    # Two cells an entry, above the planted region (max 27, lowest entry 32),
+    # and even so that the reads stay in the lane whose jumps land in the zero one.
     start = 2 * len(table) + 34
 
     planted = set(_BIT_TILDE_PLANTED)
@@ -50,10 +57,23 @@ def bit_tilde(truth_table: str) -> str:
         # sends later reads below this bit; an unused input reads one up.
         if i in depth:
             weight = 2 << (width - 1 - depth[i])
-            prog.append(")>>>~>>>>{" + "<" * weight + "}" + "<" * 7)
+            prog.append(
+                ")>>>~>>>>{" + "<" * weight + "}" + "<" * 7
+            )  # undo the 7 cells advanced
         else:
             prog.append(">)>>~<<<")
 
     prog.append("<<{" + _BIT_TILDE_WALK + "}" + _BIT_TILDE_WALK)
     prog.append("<" * 17 + "(")
     return "".join(prog)
+
+
+LANGUAGE = Language(
+    "bit~",
+    "tape_based.bit_tilde",
+    boolean=bit_tilde,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    wrap=wrap_chars,
+)

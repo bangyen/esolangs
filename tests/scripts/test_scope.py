@@ -1,7 +1,9 @@
 """The scoping rule narrows a check without ever narrowing what it proves."""
 
 import importlib.util
+import subprocess
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -73,3 +75,41 @@ class TestWidensToEverything:
         scope = load_script()
         changed = ["src/esolangs/interpreters/tape_based/brainfuck.py"]
         assert scope.widens_to_everything(changed) is None  # type: ignore[attr-defined]
+
+
+def test_empty_branch_diff_does_not_fall_back_to_previous_commit() -> None:
+    scope = load_script()
+    responses = [
+        subprocess.CompletedProcess([], 0, stdout="", stderr=""),
+        subprocess.CompletedProcess(
+            [], 0, stdout=" M src/esolangs/tools/vandevelo.py\n", stderr=""
+        ),
+    ]
+    with mock.patch.object(scope.subprocess, "run", side_effect=responses) as run:
+        assert scope.changed_files() == ["src/esolangs/tools/vandevelo.py"]
+    assert run.call_count == 2
+    assert run.call_args_list[0].args[0][-1] == "main...HEAD"
+
+
+def test_missing_branch_refs_still_fall_back_to_previous_commit() -> None:
+    scope = load_script()
+    responses = [
+        subprocess.CompletedProcess([], 128, stdout="", stderr="missing local ref"),
+        subprocess.CompletedProcess([], 128, stdout="", stderr="missing remote ref"),
+        subprocess.CompletedProcess([], 0, stdout="src/esolangs/vm.py\n", stderr=""),
+        subprocess.CompletedProcess([], 0, stdout="", stderr=""),
+    ]
+    with mock.patch.object(scope.subprocess, "run", side_effect=responses):
+        assert scope.changed_files() == ["src/esolangs/vm.py"]
+
+
+def test_missing_local_main_uses_remote_main() -> None:
+    scope = load_script()
+    responses = [
+        subprocess.CompletedProcess([], 128, stdout="", stderr="missing local ref"),
+        subprocess.CompletedProcess([], 0, stdout="src/esolangs/vm.py\n", stderr=""),
+        subprocess.CompletedProcess([], 0, stdout="", stderr=""),
+    ]
+    with mock.patch.object(scope.subprocess, "run", side_effect=responses) as run:
+        assert scope.changed_files() == ["src/esolangs/vm.py"]
+    assert run.call_args_list[1].args[0][-1] == "origin/main...HEAD"

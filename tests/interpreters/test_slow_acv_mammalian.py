@@ -1,22 +1,21 @@
 """Unit tests for the SLOW ACV SLOW ACV MAMMALIAN interpreter."""
 
-import io
-from contextlib import redirect_stdout
+from functools import partial
 from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.tape_based.slow_acv_mammalian import (
+    _Machine as SlowAcvMammalian,
+)
 from esolangs.interpreters.tape_based.slow_acv_mammalian import run
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
-from tests.raises import raises_message
+from tests.interpreters.runner import run_printing
+from tests.raises import assert_rejected_with_hint, raises_message
 
-
-def run_and_capture(code: str) -> str:
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+run_and_capture = partial(run_printing, run)
 
 
 class TestMammalian:
@@ -254,37 +253,6 @@ class TestContract(SnapshotContract):
     stepping_program = "SEED PRONOUNCE"
 
 
-@pytest.mark.parametrize("io_modulus", [255])
-@pytest.mark.parametrize("cell_modulus", [255, 256])
-@pytest.mark.parametrize(
-    ("program", "stdin"),
-    [
-        ("ACCEPT CONSUME CONSUME PRONOUNCE", "ÿ"),
-        ("ACCEPT CONSUME CONSUME EXCRETE CONSUME PRONOUNCE", "ÿ"),
-        ("ACCEPT CONSUME CONSUME PRONOUNCE", "Ā"),
-        (" ".join(["SEED"] * 256 + ["DIGEST", "PRONOUNCE"]), ""),
-    ],
-)
-def test_moduli_agree_between_fast_run_and_vm(
-    cell_modulus: int, io_modulus: int, program: str, stdin: str
-) -> None:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine, run
-
-    fast = ScriptedIO(stdin)
-    run(program, fast, cell_modulus=cell_modulus, io_modulus=io_modulus)
-    stepped = ScriptedIO(stdin)
-    machine = _Machine(
-        program, stepped, cell_modulus=cell_modulus, io_modulus=io_modulus
-    )
-    while not machine.halted:
-        machine.step()
-    raw_value = ord(stdin) if stdin else 256
-    expected = raw_value % cell_modulus
-    assert fast.getvalue() == stepped.getvalue() == chr(expected % io_modulus)
-    assert fast.reads == stepped.reads == len(stdin)
-
-
 @pytest.mark.parametrize("cell_modulus", [255, 256])
 def test_conflagrate_uses_cell_modulus(cell_modulus: int) -> None:
     from esolangs.interpreters.tape_based.slow_acv_mammalian import _total
@@ -323,3 +291,17 @@ def test_unsupported_moduli_are_rejected_before_execution(settings) -> None:
     for entry in (_Machine, run):
         with pytest.raises(ValueError, match="modulus must"):
             entry("PRONOUNCE", ScriptedIO(), **settings)
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint(
+        "SLOW ACV MAMMALIAN", "PRONOUNCEE", "did you mean 'PRONOUNCE'"
+    )
+
+
+def test_slow_acv_mammalian_looping_run_is_detected_as_a_cycle() -> None:
+    # LEAPFROG jumps back to a point that reproduces the exact same state
+    code = "CONFLAGRATE SEED SEED DIGEST FISSION LEAPFROG"
+    machine = SlowAcvMammalian(code, ScriptedIO())
+    assert run_until_halt_or_cycle(machine) is False

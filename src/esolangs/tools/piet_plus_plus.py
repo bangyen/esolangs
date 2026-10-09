@@ -3,6 +3,7 @@
 Piet's lookup recoloured: Piet++ keeps Piet's traversal, push-int, roll,
 not, arithmetic and numeric I/O, so each Piet command maps to its Piet++
 colour delta and the same strip computes the table (T + O(n) codels).
+A constant half is folded as in Piet; a strip has no subtrees to share.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 from functools import cache
 
 from esolangs.raster import Raster
+from esolangs.registry._language import Language, SourceKind
 from esolangs.tools.helpers import _validate_truth_table
 from esolangs.tools.piet import (
     _ADD,
@@ -57,3 +59,15 @@ def _generate(truth_table: str) -> Raster:
 def piet_plus_plus(truth_table: str) -> Raster:
     """Return a Piet++ raster computing ``truth_table``."""
     return _generate(truth_table)
+
+
+LANGUAGE = Language(
+    "Piet++",
+    "stack_based.piet_plus_plus",
+    # The slug rule drops "++" and would collide with Piet.
+    id="piet_plus_plus",
+    source_kind=SourceKind.RASTER,
+    boolean=piet_plus_plus,
+    no_wrap="one fixed three-row strip, like Piet before scaling",
+    eof="an exhausted In command is ignored, as the page recommends",
+)

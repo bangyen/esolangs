@@ -1,7 +1,13 @@
 """bio generator tests."""
 
 import importlib
+import random
 
+import pytest
+
+import esolangs
+from esolangs._evaluate import _evaluate
+from esolangs.tools.wrap import balance_program, balance_score, wrap_program
 from tests.tools.fills import _run_form
 
 
@@ -77,3 +83,72 @@ class TestParameterizedBIO:
             setters = esolangs.generate("BIO", "01" * (2 ** (n - 1))).setters
             assert set(setters) == {("0oz;", "0ox;")}, n
             assert len(setters) == n
+
+    def test_trailing_run_is_one_level(self) -> None:
+        """Entries 2..7 are flat: one bare level re-tests x to zero, still correct."""
+        import esolangs
+
+        table = "01000000"
+        template = esolangs.generate("BIO", table)
+        assert template.split("$$$$")[-1].count("0ix{") == 3
+        for row in range(8):
+            bits = [row >> s & 1 for s in (2, 1, 0)]
+            program = self.instantiate(template, bits)
+            assert self.run_bio(program, []) == table[row]
+
+
+def test_bio_balance_keeps_source_that_does_not_tile_commands():
+    assert balance_program("not BIO", "bio") == "not BIO"
+
+
+def test_bio_nested_spaced_commands_keep_their_structural_runs():
+    program = "0ix{0ox; 0ix{0oy;};};"
+    balanced = balance_program(program, "bio")
+    layouts = [program] + [
+        wrap_program(program, "bio", width) for width in range(1, len(program) + 1)
+    ]
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert esolangs.run("BIO", balanced) == esolangs.run("BIO", program) == ""
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", [4, 6])
+def test_bio_padding_caps_match_every_width(inputs):
+    rng = random.Random(1017 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate("BIO", table)
+    balanced = esolangs.generate("BIO", table, balance=True)
+    layouts = [default] + [
+        esolangs.generate("BIO", table, width=width)
+        for width in range(1, len(default) + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert _evaluate("BIO", balanced, inputs=inputs) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", [7, 10])
+def test_bio_saturated_runs_attain_both_geometry_bounds(inputs):
+    rng = random.Random(1018 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate("BIO", table)
+    balanced = esolangs.generate("BIO", table, balance=True)
+    full = esolangs.generate("BIO", table, width=3 * len(table))
+    # Deep runs contain at most three four-cell commands; the last has at
+    # least one. A cap over four levels below the deepest cannot attain Wmax.
+    depth = len(table) - 1
+    lower = 2 * (depth - 4) + 2 * (depth - 4) // 3
+    upper = 2 * (depth + 1) + 2 * (depth + 1) // 3
+    layouts = [default, full] + [
+        esolangs.generate("BIO", table, width=width)
+        for width in range(lower, upper + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert len(balanced.split("\n")) == 2 * len(table) + 6 * (inputs - 1)
+    assert max(map(len, balanced.split("\n"))) == max(map(len, full.split("\n")))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run("BIO", esolangs.instantiate("BIO", balanced, bits))
+        assert esolangs.read_answer("BIO", output) == table[row]

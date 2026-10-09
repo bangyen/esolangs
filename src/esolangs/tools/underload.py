@@ -10,25 +10,33 @@ copy of ``X`` is then ``^``, and a half without one drops it with ``!``.
 """
 
 import re
+from collections.abc import Callable
 from functools import cache
+from typing import Any
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     SubtreeDiagram,
     _validate_truth_table,
+    same_up_to_wrapping,
 )
-from esolangs.tools.wrap import wrap_tokens
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import balance_score, wrap_tokens
 
-# ()! and :! are neutral, giving both selectors seven space-free characters.
+# ()! and :! are neutral, padding both selectors to _NODE space-free characters.
 PAIR = ("(()!!^)", "(~:!!^)")
 _SHORT_PAIR = ("(!) ", "(~!)")
 _BIT_PAIR = (" ", "~")
 
-#: How many levels below a node a carried subtree may sit: 2**4 candidates a
-#: node keeps the build O(T).
+#: How many levels below a node a carried subtree may sit; bounds the
+#: candidates per node (``repeated_near``) so the build stays O(T).
 _REACH = 4
-#: ``(A)~(B)~^`` less its halves.
+#: Characters in ``(A)~(B)~^`` less its halves.
 _NODE = 7
+#: Inert prefix that marks the narrow (``short``) layouts.
+_PREFIX = "()!"
 
 
 def _reflected(truth_table: str, n: int) -> str:
@@ -123,11 +131,11 @@ def underload(truth_table: str, width: int | None = None) -> str:
     # Only bit literals reach S; every other pushed string is executable code.
     if short:
         # The inert prefix distinguishes the four-character uniform setters.
-        program = "()!" + program
+        program = _PREFIX + program
     if short and width < 4:
         n = _validate_truth_table(truth_table)
         # Build both selector strings, then keep one with a single swap bit.
-        program = "()!" + "(!)(~)(!)*$!" * n + program[3 + 4 * n :]
+        program = _PREFIX + "(!)(~)(!)*$!" * n + program[len(_PREFIX) + 4 * n :]
     slots = 1 if short and width < 4 else (4 if short else len(PAIR[0]))
     return wrap_tokens(program, width, rf"\${{{slots}}}|\(\)!|\([01]\)|.")
 
@@ -135,9 +143,9 @@ def underload(truth_table: str, width: int | None = None) -> str:
 def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Return the uniform selector pair distinguished by its inert prefix."""
     clean = template.replace("\n", "")
-    if clean.startswith("()!(!)"):
+    if clean.startswith(_PREFIX + "(!)"):
         pair = _BIT_PAIR
-    elif template.startswith("()!"):
+    elif template.startswith(_PREFIX):
         pair = _SHORT_PAIR
     else:
         pair = PAIR
@@ -147,3 +155,40 @@ def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 def _underload_layout_tokens(template: str) -> list[str]:
     """Ignore layout LF while retaining whole output literals as atoms."""
     return re.findall(r"\${4}|\([01]\)|[^\n]", template)
+
+
+def _balance(table: str, default: str) -> str:
+    """Balance default selectors, the width-four form and swap bits."""
+    normal = re.findall(rf"\${{{len(PAIR[0])}}}|\(\)!|\([01]\)|.", default)
+    width = balanced_token_width(normal, minimum=5)
+    short = underload(table, 3).replace("\n", "")
+    tokens = re.findall(r"\$|\(\)!|\([01]\)|.", short)
+    short_width = balanced_token_width(tokens, maximum=3)
+    return min(
+        default,
+        underload(table, width),
+        underload(table, 4),
+        underload(table, short_width),
+        key=balance_score,
+    )
+
+
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Compare the narrow layouts token by token."""
+    for width in (1, 4):
+        narrow = str(layout(width))
+        if _underload_layout_tokens(template) == _underload_layout_tokens(narrow):
+            return True
+    return same_up_to_wrapping(template, plain)
+
+
+LANGUAGE = Language(
+    "Underload",
+    "stack_based.underload",
+    boolean=underload,
+    same_layout=_same_layout,
+    contract=BooleanContract(),
+    balance=_balance,
+    no_wrap="a break inside a pushed element changes the string it contains",
+    example=Example(setters=underload_setters),
+)

@@ -5,6 +5,8 @@ from itertools import pairwise, product
 
 import pytest
 
+import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.exceptions import TruthTableError
 from esolangs.interpreters.other.crement import _Machine
 from esolangs.tools.crement import PAIR, _crement_ordered, crement
@@ -168,3 +170,10 @@ class TestCrementSharing:
         template = crement(table)
         assert len(template) < len(best_input_order(table, _crement_ordered))
         _check(table)
+
+
+@pytest.mark.parametrize("table", ["00", "0011"])
+def test_narrow_balance_regime_edge_executes(table):
+    """The smallest tables reaching an otherwise-untaken balance arm."""
+    balanced = esolangs.generate("Crement", table, balance=True)
+    assert _evaluate("Crement", balanced, inputs=len(table).bit_length() - 1) == table

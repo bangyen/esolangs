@@ -17,18 +17,32 @@ The bits are read up front (one ``readto`` each) so every path reads
 greedy compete) with ``skipq INPUT ZERO``, which fires when the bit is
 ``0`` and skips the ``1``-subtree block.  A leaf sends the zero or one
 block and escapes; the two constants serve as operands and answers.
+
+A subtree repeated at its level is written once, at its last occurrence, and
+each earlier one is a ``skip`` over a block closing just before it (jumps run
+forward only): n=4, all 65,536 tables, -27.1%, none longer; at n=5 the shared tree is
+1.04x the halving lookup, so the n<=4 crossover stays.  A node whose halves
+agree is passed over.
 """
 
+import string
+
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
-    constant_span_test,
+    essential_inputs,
+    input_weights,
+    read_at,
+    subtree_ids,
 )
+from esolangs.tools.wrap import balance_score
 
 __all__ = ["inject"]
 
 
-_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_ALPHABET = string.ascii_letters
 _CONSTANTS = {"o", "t", "z"}
 
 
@@ -76,30 +90,92 @@ def _tree(
     """Emit the decision tree for ``table``, testing input ``perm[depth]`` first.
 
     ``table`` is in the permuted frame; ``names`` records escape labels, closing order.
+    A subtree repeated at its level is written at its last occurrence in the
+    text; each earlier one is a ``skip`` over a block that closes just before
+    it.  A constant subtree is a leaf, and a node whose halves agree is passed
+    over for its zero half.
     """
-    constant = constant_span_test(table)
+    ids = subtree_ids(table)
 
-    def walk(start: int, stop: int, level: int) -> list[str]:
-        # A constant subtree needs no further tests: whatever the remaining
-        # bits are, the answer is the same, so the node collapses to its leaf.
-        if level == n or constant(start, stop):
+    def canonical(level: int, block: int) -> tuple[int, int]:
+        while (
+            level < n
+            and ids[level][block] >= 2
+            and ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]
+        ):
+            level, block = level + 1, 2 * block
+        return level, block
+
+    # Text order is the node, its one-subtree, then its zero-subtree.
+    last: dict[int, tuple[int, int]] = {}
+
+    def scan(level: int, block: int) -> None:
+        level, block = canonical(level, block)
+        last[ids[level][block]] = (level, block)
+        if ids[level][block] >= 2:
+            scan(level + 1, 2 * block + 1)
+            scan(level + 1, 2 * block)
+
+    scan(depth, 0)
+    closes: dict[int, list[str]] = {}
+
+    def walk(level: int, block: int) -> list[str]:
+        level, block = canonical(level, block)
+        key = ids[level][block]
+        if last[key] != (level, block):
+            label = names.fresh()
+            closes.setdefault(key, []).append(f"{label};")
+            return ["skip", f"{label};"]
+        lines = closes.get(key, [])
+        if key < 2:
             escape = names.fresh()
             names.escapes.append(escape)
-            return _leaf(table[start], escape)
-
-        middle = (start + stop) // 2
-        zeros = walk(start, middle, level + 1)
-        ones = walk(middle, stop, level + 1)
-        block = names.fresh()
+            return [*lines, *_leaf(str(key), escape)]
+        label = names.fresh()
+        ones = walk(level + 1, 2 * block + 1)
+        zeros = walk(level + 1, 2 * block)
         return [
+            *lines,
             f"skipq {names.inputs[perm[level]]} z",
-            f"{block};",
+            f"{label};",
             *ones,
-            f"{block};",
+            f"{label};",
             *zeros,
         ]
 
-    return walk(0, len(table), depth)
+    return walk(depth, 0)
+
+
+def _widest(program: str) -> int:
+    return max(map(len, program.splitlines()))
+
+
+def _preamble(names: _Names, table_line: str) -> list[str]:
+    """Empty input blocks, the table ``t``, constants ``z``/``o``, then the reads."""
+    lines = [f"{name};\n{name};" for name in names.inputs]
+    lines += ["t;", table_line, "t;", "z;", "0", "z;", "o;", "1", "o;"]
+    lines += [f"readto {name}" for name in names.inputs]
+    return lines
+
+
+def _halve(names: _Names, halvings: list[tuple[int, str]]) -> list[str]:
+    """Narrow ``t`` by each ``(half, input name)``: a zero keeps the front half."""
+    lines: list[str] = []
+    for half, input_name in halvings:
+        one = names.fresh()
+        zero = names.fresh()
+        # A zero skips the prefix deletion; a one skips the suffix deletion.
+        lines += [
+            f"skipq {input_name} z",
+            f"{one};",
+            "inject t=^" + "." * half + "/",
+            f"{one};",
+            f"skipq {input_name} o",
+            f"{zero};",
+            "inject t=" + "." * half + "$/",
+            f"{zero};",
+        ]
+    return lines
 
 
 def inject(truth_table: str, width: int | None = None) -> str:
@@ -114,87 +190,65 @@ def inject(truth_table: str, width: int | None = None) -> str:
         program = best_input_order(truth_table, _inject_ordered)
     else:
         program = _inject_halving(truth_table)
-    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+    widest = _widest(program)
+    if width is None or width <= 0 or widest <= width:
         return program
     banded = _inject_banded(truth_table)
-    return (
-        banded
-        if max(map(len, banded.splitlines())) < max(map(len, program.splitlines()))
-        else program
-    )
+    return banded if _widest(banded) < widest else program
 
 
 def _inject_banded(truth_table: str) -> str:
-    """Select an O(n)-bit chunk, then halve it in one shared postlude."""
+    """Select an O(m)-bit chunk of the ``m`` essential inputs, then halve it.
+
+    Ignored inputs are read and never tested (see :func:`_inject_halving`).
+    """
     n = _validate_truth_table(truth_table)
-    low = min(n, (n - 1).bit_length())
-    high = n - low
+    essential = essential_inputs(truth_table, n)
+    table = read_at(truth_table, essential, n)
+    m = len(essential)
+    # >= m rows per chunk amortize O(m)-letter unique labels over the table.
+    low = min(m, (m - 1).bit_length())
+    high = m - low
     names = _Names(n, tuple(range(n)))
-    lines = [f"{name};\n{name};" for name in names.inputs]
-    lines += ["t;", "0", "t;", "z;", "0", "z;", "o;", "1", "o;"]
-    lines += [f"readto {name}" for name in names.inputs]
+    lines = _preamble(names, "0")
 
     def walk(start: int, stop: int, level: int) -> None:
         if level == high:
             escape = names.fresh()
             names.escapes.append(escape)
-            lines.extend(
-                ["inject t=^.*$/" + truth_table[start:stop], "skip", f"{escape};"]
-            )
+            lines.extend(["inject t=^.*$/" + table[start:stop], "skip", f"{escape};"])
             return
         middle = (start + stop) // 2
         block = names.fresh()
-        lines.extend([f"skipq {names.inputs[level]} z", f"{block};"])
+        lines.extend([f"skipq {names.inputs[essential[level]]} z", f"{block};"])
         walk(middle, stop, level + 1)
         lines.append(f"{block};")
         walk(start, middle, level + 1)
 
-    # >= n rows per chunk amortize O(n)-letter unique labels over the table.
     # Every leaf escapes the remaining tree to the same low-input postlude.
-    walk(0, len(truth_table), 0)
+    walk(0, len(table), 0)
     lines.extend(f"{escape};" for escape in names.escapes)
-    for depth in range(high, n):
-        half = 1 << (n - depth - 1)
-        one, zero = names.fresh(), names.fresh()
-        lines.extend(
-            [
-                f"skipq {names.inputs[depth]} z",
-                f"{one};",
-                "inject t=^" + "." * half + "/",
-                f"{one};",
-                f"skipq {names.inputs[depth]} o",
-                f"{zero};",
-                "inject t=" + "." * half + "$/",
-                f"{zero};",
-            ]
-        )
+    lines += _halve(
+        names,
+        [(1 << (m - d - 1), names.inputs[essential[d]]) for d in range(high, m)],
+    )
     lines.append("send t")
     return "\n".join(lines)
 
 
 def _inject_halving(truth_table: str) -> str:
-    """Select one table character with linear total regex text."""
-    n = _validate_truth_table(truth_table)
-    names = _Names(n, tuple(range(n)))
-    lines = [f"{name};\n{name};" for name in names.inputs]
-    lines += ["t;", truth_table, "t;", "z;", "0", "z;", "o;", "1", "o;"]
-    lines += [f"readto {name}" for name in names.inputs]
+    """Select one table character with linear total regex text.
 
-    for depth, input_name in enumerate(names.inputs):
-        half = 1 << (n - depth - 1)
-        one = names.fresh()
-        zero = names.fresh()
-        # A zero skips the prefix deletion; a one skips the suffix deletion.
-        lines += [
-            f"skipq {input_name} z",
-            f"{one};",
-            "inject t=^" + "." * half + "/",
-            f"{one};",
-            f"skipq {input_name} o",
-            f"{zero};",
-            "inject t=" + "." * half + "$/",
-            f"{zero};",
-        ]
+    An input's halving is its weight; an ignored input, weight 0, is read
+    and never tested, and the table is indexed by the rest.
+    """
+    n = _validate_truth_table(truth_table)
+    weights, projected = input_weights(truth_table, n)
+    names = _Names(n, tuple(range(n)))
+    lines = _preamble(names, projected)
+    lines += _halve(
+        names, [(h, i) for h, i in zip(weights, names.inputs, strict=True) if h]
+    )
     lines.append("send t")
     return "\n".join(lines)
 
@@ -207,18 +261,37 @@ def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     body = [f"readto {names.inputs[d]}" for d in range(n)]
     body += _tree(truth_table, 0, n, names, perm)
 
-    # Every escape block has to span all the remaining executable lines, so
-    # the closes come after the tree and before the data tail.  They are
-    # emitted innermost-last: a leaf that escapes must clear every *later*
-    # leaf's code too, and closing them in order of issue does that.
+    # Each escape block spans every later executable line, so the closes
+    # follow the tree, in order of issue, ahead of the constants.
     tail = [f"{escape};" for escape in names.escapes]
 
-    # The constants.  ``z`` is both the comparison operand for every node
-    # and the answer for a 0 leaf; ``o`` is only an answer.  They sit
-    # after the escape closes, so no escape jump can land inside them.
+    # ``z`` is also every node's comparison operand; after the closes, so no
+    # escape lands inside the constants.
     tail += ["z;", "0", "z;", "o;", "1", "o;"]
 
     # The input blocks start empty: ``readto`` fills them, and an empty
     # block is two adjacent delimiters.
     head = [f"{name};\n{name};" for name in names.inputs]
     return "\n".join([*head, *body, *tail])
+
+
+def _balance(table: str, default: str) -> str:
+    """Compare the normal program and its width-selected banded lookup."""
+    return min(default, inject(table, 1), key=balance_score)
+
+
+LANGUAGE = Language(
+    "Inject",
+    "other.inject",
+    boolean=inject,
+    contract=BooleanContract(
+        note="send terminates each line, so the answer ends in a newline",
+    ),
+    balance=_balance,
+    no_wrap="blocks and executable commands are delimited by source lines",
+    # The wiki cat's only clean exit is a ``readto`` that gets no line.
+    eof="an exhausted readto empties the block",
+    # ``send`` terminates every line it writes, so the answer arrives
+    # with a newline after it -- there is no other output command.
+    example=Example(expected="0\n"),
+)

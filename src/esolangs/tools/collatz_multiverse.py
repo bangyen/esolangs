@@ -1,7 +1,9 @@
 """Boolean generator for collatz multiverse."""
 
 import re
+from collections import Counter
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _cm_constants,
@@ -27,6 +29,15 @@ _CM_ALIAS = "abcefghijlmnpqr"
 _CM_PAD = "z=zx+z,NOT PRINT."
 
 
+def _span(text: str) -> int:
+    """Return the longest line's length."""
+    return max(map(len, text.splitlines()), default=0)
+
+
+#: Renamable registers in a laid-out program.
+_CM_REGISTER = r"k\d+|w\d+|b\d+|\bout\b|\bzero\b"
+
+
 def _cm_cells(
     lines: list[str], array: str, values: list[str | None], capture: str
 ) -> None:
@@ -48,7 +59,7 @@ def _cm_cells(
     lines += block
 
 
-def _cm_codes(chunks: list[int], *, zero_top: bool) -> dict[int, int] | None:
+def _cm_codes(counts: Counter[int]) -> dict[int, int]:
     """Return codes ``0, 1, ...`` for the distinct cells: the decoder spans them.
 
     A cell's code, not its bits, is what the table stores and the decoder is
@@ -58,30 +69,22 @@ def _cm_codes(chunks: list[int], *, zero_top: bool) -> dict[int, int] | None:
     the cell nothing writes, so it goes to the empty cell when there is one
     (its cells cost a pad) and else to the most frequent.  The top code's
     decoder entries past its highest set bit are trailing pads and drop, so
-    it goes to the cell whose highest set bit is lowest.
-
-    ``zero_top`` instead puts the empty cell on top, where its four decoder
-    entries all drop, and pays for its cells with an alias; ``None`` when
-    there is no empty cell to move.
+    it goes to the cell whose highest set bit is lowest.  Putting the empty
+    cell on top instead saves 1.09% at n=8, under the 10% bar.
     """
-    counts: dict[int, int] = {}
-    for value in chunks:
-        counts[value] = counts.get(value, 0) + 1
-    if zero_top and 0 not in counts:
-        return None
     ranked = sorted(counts, key=lambda v: (-counts[v], v))
     head = []
-    if 0 in counts and not zero_top:
+    if 0 in counts:
         ranked.remove(0)
         head = [0]
-    top = 0 if zero_top else min(ranked, key=lambda v: (v.bit_length(), -counts[v]))
+    top = min(ranked, key=lambda v: (v.bit_length(), -counts[v]))
     ranked.remove(top)
     return {value: code for code, value in enumerate([*head, *ranked, top])}
 
 
 def _cm_narrow_constants(needed: set[int]) -> list[str]:
     """Capture constants at their numbered lines; intervening pads are inert."""
-    needed |= {1, 2, 3, 4}
+    needed |= {1, 2, 3, 4}  # k1..k4: the cursor and address code reads them
     return [
         f"k{value}=zx+lineNumber,NOT PRINT." if value in needed else _CM_PAD
         for value in range(1, max(needed) + 1)
@@ -93,8 +96,8 @@ def _cm_narrow_cells(
 ) -> None:
     """Write at odd indices 3+2i; an odd cursor advances without halving."""
     lines += [f"{capture}=zx+k1,NOT PRINT.", "r=zx+k3,NOT PRINT."]
-    last = max((i for i, value in enumerate(values) if value), default=-1)
-    for value in values[: last + 1]:
+    end = max((i for i, value in enumerate(values) if value), default=-1) + 1
+    for value in values[:end]:
         if value:
             lines.append(f"{array}[r]=zx+{value},NOT PRINT.")
         lines.append("r=k1x+k2,NOT PRINT.")
@@ -105,16 +108,16 @@ def _cm_build(
     n: int,
     order: list[int],
     *,
-    zero_top: bool | None,
+    numbered: bool = True,
     narrow: bool = False,
-) -> str | None:
+) -> str:
     """Emit the cell-and-decoder program over ``order``'s inputs.
 
     ``order`` names the inputs the address is built from, most significant
     first; its last two select a row within a cell and the rest index the
     cells.  An input it leaves out is still read, and never added.
-    ``zero_top`` picks :func:`_cm_codes`'s numbering; ``None`` stores each
-    cell's own value as its code, the build before cells were numbered.
+    ``numbered`` False stores each cell's own value as its code, the build
+    before :func:`_cm_codes` numbered cells.
     ``narrow`` uses odd indices ``3 + 2 i`` and doubles address offsets.
     """
     address_scale = 2 if narrow else 1
@@ -124,15 +127,8 @@ def _cm_build(
         sum(int(bit) << j for j, bit in enumerate(padded[base : base + _CM_CHUNK]))
         for base in range(0, len(padded), _CM_CHUNK)
     ]
-    if zero_top is None:
-        codes: dict[int, int] | None = {value: value for value in chunks}
-    else:
-        codes = _cm_codes(chunks, zero_top=zero_top)
-    if codes is None:
-        return None
-    uses: dict[int, int] = {}
-    for value in chunks:
-        uses[value] = uses.get(value, 0) + 1
+    uses = Counter(chunks)
+    codes = _cm_codes(uses) if numbered else {value: value for value in chunks}
 
     high = max(len(order) - 2, 0)
     weights = {address_scale * 2 ** (high - 1 - k) for k in range(high)}
@@ -145,15 +141,17 @@ def _cm_build(
     lines = _cm_narrow_constants(needed) if narrow else _cm_constants(needed, zero="z")
     # A cell names its code's constant, or a one-letter alias of it when the
     # alias line is cheaper than the characters the alias saves.
+    # The narrow cursor owns r throughout both array blocks.
+    alias_pool = _CM_ALIAS.replace("r", "u") if narrow else _CM_ALIAS
     names: dict[int, str] = {}
+    aliased = 0
     for code, value in stored:
         constant = f"k{address_scale * _CM_CHUNK * code}"
-        # The narrow cursor owns r throughout both array blocks.
-        alias_pool = _CM_ALIAS.replace("r", "u") if narrow else _CM_ALIAS
-        alias = alias_pool[sum(len(name) == 1 for name in names.values())]
+        alias = alias_pool[aliased]
         line = f"{alias}=zx+{constant},NOT PRINT."
         if uses[value] * (len(constant) - 1) > len(line) + 1:
             lines.append(line)
+            aliased += 1
             names[value] = alias
         else:
             names[value] = constant
@@ -183,8 +181,8 @@ def _cm_build(
     if len(select) == 2:
         lines.append(f"w{select[0]}=k{2 * address_scale}x+z,NOT PRINT.")
         lines.append(f"t=k1x+w{select[0]},NOT PRINT.")
-    last = f"k{address_scale}x+k{address_scale}"
-    lines.append(f"w{select[-1]}={last},NOT PRINT.")
+    one = f"k{address_scale}x+k{address_scale}"
+    lines.append(f"w{select[-1]}={one},NOT PRINT.")
     lines.append(f"t=k1x+w{select[-1]},NOT PRINT.")
     lines.append("o=zx+D[t],NOT PRINT.")
     # ``o`` holds the bit: ``0 * a + b`` for a zero, ``1 * a + b`` for a one.
@@ -194,45 +192,41 @@ def _cm_build(
 
 def _cm_layout(program: str, width: int) -> str:
     """Narrow complete assignments; an even prefix preserves address parity."""
-    if max(map(len, program.splitlines()), default=0) <= width:
+    if _span(program) <= width:
         return program
     compact = program.replace(" ", "").replace("NOTPRINT", "NOT PRINT")
     compact = compact.replace("DOPRINT", "DO PRINT")
-    if max(map(len, compact.splitlines()), default=0) <= width:
+    if _span(compact) <= width:
         return compact
     # Generated names exclude '_'.  Captured lineNumber addresses shift
     # together; two prefix lines keep the odd capture used by weighted sums.
     if "negativeOne" in compact:
         aliased = "_=zx+negativeOne,NOT PRINT.\n" + "z=zx+z,NOT PRINT.\n"
         aliased += compact.replace("negativeOne", "_")
-        if max(map(len, aliased.splitlines())) < max(map(len, compact.splitlines())):
+        if _span(aliased) < _span(compact):
             compact = aliased
-    if max(map(len, compact.splitlines())) <= width:
+    if _span(compact) <= width:
         return compact
     # A bijective rename changes no lines, so captured addresses and parity stay.
     # Uppercase names other than A/D are absent from the generated cell decoder.
-    registers = list(
-        dict.fromkeys(re.findall(r"k\d+|w\d+|b\d+|\bout\b|\bzero\b", compact))
-    )
+    registers = list(dict.fromkeys(re.findall(_CM_REGISTER, compact)))
     alphabet = "BCEFGHIJKLMNOPQRSTUVWXYZ"
     aliases = {
         name: alphabet[i] if i < len(alphabet) else f"B{i - len(alphabet)}"
         for i, name in enumerate(registers)
     }
-    return re.sub(
-        r"k\d+|w\d+|b\d+|\bout\b|\bzero\b",
-        lambda match: aliases[match.group()],
-        compact,
-    )
+    return re.sub(_CM_REGISTER, lambda match: aliases[match.group()], compact)
 
 
 def _cm_orders(essential: list[int], *, expanded: bool) -> list[list[int]]:
-    """Return the selector orders, including the width-only first pair."""
+    """Return the selector orders; width requests (``expanded``) add a rotation.
+
+    A middle-rotated order for the default call saves 0.46% at n=8, under
+    the 10% bar.
+    """
     orders = [essential]
-    if len(essential) >= 3:
-        if expanded:
-            orders.append(essential[2:] + essential[:2])
-        orders.append([*essential[1:-1], essential[0], essential[-1]])
+    if expanded and len(essential) >= 3:
+        orders.append(essential[2:] + essential[:2])
     return orders
 
 
@@ -253,8 +247,22 @@ def _cm_narrow_choice(fitted: str, layouts: list[str]) -> str:
     """Choose the narrowest fallback, retaining the existing length tie-break."""
     return min(
         [fitted, *layouts],
-        key=lambda code: (max(map(len, code.splitlines())), len(code)),
+        key=lambda code: (_span(code), len(code)),
     )
+
+
+def _cm_candidates(
+    truth_table: str, n: int, *, narrow: bool, expanded: bool
+) -> list[str]:
+    """Return every build: one for a constant, else per order."""
+    if len(set(truth_table)) == 1:
+        # A constant table needs no evaluation, but the reads are the
+        # interface: skipping them strands the caller's bits and the prompts.
+        return [
+            _cm_constant_program(n, _ASCII_ZERO + int(truth_table[0]), narrow=narrow)
+        ]
+    orders = _cm_orders(essential_inputs(truth_table, n), expanded=expanded)
+    return [_cm_build(truth_table, n, order, narrow=narrow) for order in orders]
 
 
 def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
@@ -269,58 +277,36 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
     the cell the writing line's own number addresses: such a block lays the
     table out at consecutive addresses for one line a cell, no pointer to
     advance.  Four rows ride in each cell, stored as a *code* ``c`` whose
-    constant is ``4 c``, and the last two inputs select within it through a
-    decoder holding the cell's bit ``j`` at ``4 c + j``.  ``d = A x + B`` is
-    ``d := B + d*A`` for a destination holding zero and ``d := d // 2`` for an
-    even one, so an address takes its odd weight last: nothing halves it.
+    constant is ``4 c`` (:func:`_cm_codes`), and the last two inputs select
+    within it through a decoder holding the cell's bit ``j`` at ``4 c + j``.
+    ``d = A x + B`` is ``d := B + d*A`` for a destination holding zero and
+    ``d := d // 2`` for an even one, so an address takes its odd weight last:
+    nothing halves it.
 
-    Numbered builds store codes ``0 .. m`` (:func:`_cm_codes`),
-    which halves the three-input total, over the essential inputs only (an
-    ignored input is read and never added). The last two or the first and
-    last inputs select; width requests also try the first two.  Only which input a
-    level tests moves; the reads stay in name order. Both code numberings
-    are tried: the empty chunk stays at code zero or moves to the top,
-    where its decoder pads drop.
+    The shortest build over the essential inputs wins; an ignored input is
+    read and never added.
     """
     n = _validate_truth_table(truth_table)
-    if all(c == truth_table[0] for c in truth_table):
-        # A constant table needs no evaluation, but the reads are the
-        # interface: skipping them strands the caller's bits and the prompts.
-        const = _ASCII_ZERO + int(truth_table[0])
-        program = _cm_constant_program(n, const)
-        if width is None or width <= 0:
-            return program
-        fitted = _cm_layout(program, width)
-        if max(map(len, fitted.splitlines())) <= width:
-            return fitted
-        narrow = _cm_layout(_cm_constant_program(n, const, narrow=True), width)
-        return _cm_narrow_choice(fitted, [narrow])
-
-    orders = _cm_orders(essential_inputs(truth_table, n), expanded=width is not None)
-    candidates = [
-        _cm_build(truth_table, n, order, zero_top=zero_top)
-        for order in orders
-        for zero_top in (False, True)
-    ]
-    program = min((c for c in candidates if c is not None), key=len)
+    program = min(
+        _cm_candidates(truth_table, n, narrow=False, expanded=width is not None),
+        key=len,
+    )
     if width is None or width <= 0:
         return program
     fitted = _cm_layout(program, width)
-    if max(map(len, fitted.splitlines())) <= width:
+    if _span(fitted) <= width:
         return fitted
-    narrow_candidates = [
-        _cm_build(truth_table, n, order, zero_top=zero_top, narrow=True)
-        for order in orders
-        for zero_top in (False, True)
+    layouts = [
+        _cm_layout(c, width)
+        for c in _cm_candidates(truth_table, n, narrow=True, expanded=True)
     ]
-    layouts = [_cm_layout(c, width) for c in narrow_candidates if c is not None]
     return _cm_narrow_choice(fitted, layouts)
 
 
 def _cm_layout_versions(program: str) -> tuple[str, ...]:
     """Return reachable original, compact, aliased and renamed spellings."""
-    compact = _cm_layout(program, max(1, max(map(len, program.splitlines())) - 1))
-    aliased = _cm_layout(program, max(1, max(map(len, compact.splitlines())) - 1))
+    compact = _cm_layout(program, max(1, _span(program) - 1))
+    aliased = _cm_layout(program, max(1, _span(compact) - 1))
     return program, compact, aliased, _cm_layout(program, 1)
 
 
@@ -330,28 +316,9 @@ def balance_collatz_multiverse(truth_table: str, default: str) -> str:
 
     n = _validate_truth_table(truth_table)
     wide = collatz_multiverse(truth_table, len(default))
-    if len(set(truth_table)) == 1:
-        narrow = [
-            _cm_constant_program(n, _ASCII_ZERO + int(truth_table[0]), narrow=True)
-        ]
-    else:
-        orders = _cm_orders(essential_inputs(truth_table, n), expanded=True)
-        narrow = [
-            source
-            for order in orders
-            for zero_top in (False, True)
-            if (
-                source := _cm_build(
-                    truth_table, n, order, zero_top=zero_top, narrow=True
-                )
-            )
-            is not None
-        ]
+    narrow = _cm_candidates(truth_table, n, narrow=True, expanded=True)
     versions = [
-        [
-            (max(map(len, source.splitlines())), source)
-            for source in _cm_layout_versions(program)
-        ]
+        [(_span(source), source) for source in _cm_layout_versions(program)]
         for program in [wide, *narrow]
     ]
     thresholds = {1}
@@ -367,9 +334,18 @@ def balance_collatz_multiverse(truth_table: str, default: str) -> str:
     candidates = [default]
     for width in sorted(thresholds):
         program = fitted(versions[0], width)
-        if max(map(len, program.splitlines())) > width:
+        if _span(program) > width:
             program = _cm_narrow_choice(
                 program, [fitted(item, width) for item in versions[1:]]
             )
         candidates.append(program)
     return min(candidates, key=balance_score)
+
+
+LANGUAGE = Language(
+    "Collatz Multiverse",
+    "register_based.collatz_multiverse",
+    boolean=collatz_multiverse,
+    balance=balance_collatz_multiverse,
+    no_wrap="each line is one complete register assignment",
+)

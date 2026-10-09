@@ -5,23 +5,22 @@ a;
 readto b
 readto a
 skipq b z
-g;
+c;
 skipq a z
-f;
+d;
 send o
 skip
 e;
+d;
+skip
+f;
+c;
 f;
 send z
 skip
-d;
 g;
-send z
-skip
-c;
-c;
-d;
 e;
+g;
 z;
 0
 z;

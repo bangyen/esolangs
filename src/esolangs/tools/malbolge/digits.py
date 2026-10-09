@@ -39,28 +39,36 @@ from functools import cache
 
 from esolangs.interpreters.other.malbolge import _crazy
 
-from . import (
-    _DIGITS_N,
+from .core import (
+    _ANSWER,
+    _CONSTS,
+    _ENTRY,
+    _K_CELL,
     _T_HELPERS,
     _T_HUB_CELLS,
     _T_LABELS,
     _T_LOW,
-    _chain,
-    _emit_chain,
-    _Planner,
-    _rotations,
-    _t_jump,
-    _valid_chars,
-)
-from .core import (
-    _ENTRY,
     _WORDS,
     _build_constants,
-    _char_for,
+    _chain,
+    _emit_chain,
     _g,
+    _main_planner,
+    _merge_code,
+    _one_options,
+    _pointers,
+    _prime,
+    _program,
+    _render,
     _rot,
+    _t_hubs,
+    _t_jump,
     _table_char,
+    _valid_chars,
 )
+
+#: The largest input count the generator builds.
+_DIGITS_N = 16
 
 #: The gadget: ``/`` reads an input, ``K`` sets ``A`` to 0 / all-1 / all-2 and
 #: a digit names the cell a ``p`` runs over.  Found by breadth-first search
@@ -91,8 +99,6 @@ _D_SEEDS = {
 _D_OPERANDS = {86: "rot K2", 101: "rot K2"}
 #: Stubs, hub characters and the navigation's data cells sit at or above this.
 _D_FLOOR = 6000
-_D_STUBS = {"0": "<v", "x": "/<v", "1": "pp<v", "n": "/ppjp<v"}
-_K = (0, 29524, 59048)
 
 
 def _swap12(value: int) -> int:
@@ -120,7 +126,7 @@ def _readouts(n: int) -> tuple[int, ...]:
                     if op == "/":
                         a = next(reads)
                     elif op[0] == "K":
-                        a = _K[int(op[1])]
+                        a = _CONSTS[int(op[1])]
                     else:
                         a = cells[int(op)] = _crazy(a, cells[int(op)])
                 u, v = cells[1], cells[2]
@@ -153,60 +159,27 @@ def _hubs(
 ) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
     """Return hub and stub data, stub code and rotations per hub.
 
-    As :func:`~esolangs.tools.malbolge._t_hubs`, but the ``n`` stubs flip
-    through the prepared operand cells rather than a hub value.
+    As :func:`~esolangs.tools.malbolge.core._t_hubs` with stubs placed in
+    ``_D_FLOOR..``, and the ``n`` stubs flipping through the prepared operand
+    cells rather than a hub value.
     """
     operand = {f: _chain(_g(f), ops) for f, ops in _D_OPERANDS.items()}
-    hubs = {values[p]: label[p] for p in sorted(values)}
-    reserved: set[int] = set()
-    for v, lab in sorted(hubs.items()):
-        cells = set(range(v + 1, v + 1 + _span(lab)))
-        if v < _D_FLOOR or cells & (avoid | reserved):
-            raise AssertionError(f"hub {v} collides")
-        reserved |= cells
-    data: dict[int, int] = {}
-    stubs: dict[int, str] = {}
-    turns: dict[int, int] = {}
-    for v, lab in sorted(hubs.items()):
-        options: list[dict[int, int]] = [{}]
+
+    def options_of(v: int, lab: str) -> list[dict[int, int]]:
         if lab == "1":
-            options = [
-                {v + 2: a, v + 3: b}
-                for a in _valid_chars(v + 2)
-                for b in _valid_chars(v + 3)
-                if _crazy(_crazy(48, a), b) & 0xFF == ord("1")
-            ]
-        elif lab == "n":
-            options = _n_options(v, operand)
-        placed = next(
-            (
-                (option, char, k, s)
-                for option in options
-                for char in _valid_chars(v + 1)
-                for k, s in _rotations(char)
-                if _D_FLOOR <= s < _WORDS - 10
-                and not set(range(s, s + 1 + len(_D_STUBS[lab])))
-                & (avoid | reserved | set(option))
-            ),
-            None,
-        )
-        if placed is None:
-            raise AssertionError(f"no stub for hub {v}")
-        option, char, k, s = placed
-        data.update(option)
-        data[v + 1] = char
-        turns[v] = k
-        for i, op in enumerate(_D_STUBS[lab]):
-            stubs[s + 1 + i] = op
-        reserved |= set(range(s, s + 1 + len(_D_STUBS[lab])))
-    return data, stubs, turns
+            return _one_options(v)
+        return _n_options(v, operand) if lab == "n" else [{}]
 
-
-def _span(lab: str) -> int:
-    span = _T_HUB_CELLS[lab]
-    if not isinstance(span, int):  # pragma: no cover - only N lists offsets
-        raise TypeError(f"label {lab} has no plain span")
-    return span
+    return _t_hubs(
+        values,
+        label,
+        avoid,
+        hub_cells=_T_HUB_CELLS,
+        options_of=options_of,
+        floor=_D_FLOOR,
+        ceiling=_WORDS - 10,
+        hub_floor=_D_FLOOR,
+    )
 
 
 _Digits = tuple[dict[int, str], dict[int, int], tuple[int, ...], dict[int, str]]
@@ -245,27 +218,16 @@ def _digits(n: int) -> _Digits:
     to_48 = [walked(69) for _ in range(2)]  # ``crazy(all-2, 69) == 48``
     seeds = {lab: walked(value) for lab, (value, _) in _D_SEEDS.items()}
 
-    values: dict[int, int] = {}
-    for lab, (value, ops) in _D_SEEDS.items():
-        a = _chain(value, ops)
-        for p in sorted(label):
-            if label[p] == lab:
-                a = _crazy(a, 29524)
-                values[p] = a
-    pointer: dict[int, int] = {}
-    for p in sorted(values):
-        pointer.setdefault(values[p], p)
+    values, pointer = _pointers(
+        label, [(lab, _chain(value, ops)) for lab, (value, ops) in _D_SEEDS.items()]
+    )
     data, stubs, hub_turns = _hubs(values, label, cells_of_tables)
 
-    mem: dict[int, int | None] = {a: _g(a) for a in range(_ENTRY)}
-    main = _Planner(_ENTRY + 1, 34 + (7 - _ENTRY) % 94, mem, data)
-    main.code[_ENTRY] = "j"
+    main, _ = _main_planner(data)
     _build_constants(main, helper)
-    for p in (helper["all1"], helper["all2"], s_cell, z_cell, *sorted(label)):
-        main.op("p", p)
-        main.op("p", p)
-    main.op("*", helper["w"])
-    main.op("p", helper["all2"])
+    _prime(
+        main, helper, (helper["all1"], helper["all2"], s_cell, z_cell, *sorted(label))
+    )
     for lab, (_, ops) in _D_SEEDS.items():
         _emit_chain(main, seeds[lab], ops, helper)
         for p in sorted(label):
@@ -277,8 +239,6 @@ def _digits(n: int) -> _Digits:
             main.raw("*")
     for f, ops in sorted(_D_OPERANDS.items()):
         _emit_chain(main, f, ops, helper)
-
-    konst = {"K0": helper["z0"], "K1": helper["all1"], "K2": helper["all2"]}
 
     def swap12(target: int, two: int) -> None:
         main.op("*", helper["all1"])
@@ -297,7 +257,7 @@ def _digits(n: int) -> _Digits:
                     main.raw("/")
                 first = False
             elif op[0] == "K":
-                main.op("*", konst[op])
+                main.op("*", helper[_K_CELL[op]])
             else:
                 main.op("p", cell[int(op)])
         if group == _D_SWAP_V:
@@ -315,15 +275,9 @@ def _digits(n: int) -> _Digits:
     _t_jump(main, z_cell, 0)
     code_end = main.c
 
-    code = dict.fromkeys(range(_ENTRY), "o")
-    for part in (main.code, stubs):
-        if set(part) & set(code):
-            raise AssertionError(f"code overlaps at {min(set(part) & set(code))}")
-        code.update(part)
-    if set(data) & set(code):
-        raise AssertionError("a data cell overlaps code")
-    if cells_of_tables & (set(code) | set(data)) or code_end >= _D_FLOOR:
-        raise AssertionError("a table cell collides with code")
+    code = _merge_code(
+        (main.code, stubs), data, cells_of_tables, code_end, ceiling=_D_FLOOR
+    )
     return code, data, tables, {p - 1: lab for p, lab in label.items()}
 
 
@@ -332,13 +286,11 @@ def _readouts_cells() -> tuple[int, ...]:
     return tuple(s + 1 for s in _readouts(_DIGITS_N))
 
 
-def _digits_program(truth_table: str) -> str:
-    n = len(truth_table).bit_length() - 1
+def _digits_program(truth_table: str, n: int) -> str:
     code, data, tables, labels = _digits(n)
-    program = {a: _char_for(op, a) for a, op in code.items()}
+    program = _program(code)
     program.update(data)
-    answer = {"00": "0", "11": "1", "01": "x", "10": "n"}
     for row, h in enumerate(tables):
-        label = answer[truth_table[2 * row : 2 * row + 2]]
+        label = _ANSWER[truth_table[2 * row : 2 * row + 2]]
         program[h] = _table_char(h, label, labels)
-    return "".join(chr(program.get(a, _char_for("o", a))) for a in range(_WORDS))
+    return _render(program)

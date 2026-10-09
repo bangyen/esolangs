@@ -1,35 +1,12 @@
 """Polynomial algebra for the Polynomial generator.
 
-Each run of instructions whose decode order is their program order shares one
-prime ``p`` ascending in program order (see ``_polynomial_assemble``) and
-becomes a root ``a + p**b*i``; conjugate
-pairs keep the coefficients integral.
+Each instruction takes the next prime ``p`` in program order and becomes a
+root ``a + p**b*i``; conjugate pairs keep the coefficients integral.
 """
 
-import contextlib
 import decimal
-import sys
-from collections.abc import Iterator
 
-from esolangs.polynomial_resources import GenerationEstimate, estimate_generation
-
-
-@contextlib.contextmanager
-def _digit_limit_for(digits: int) -> Iterator[None]:
-    """Raise CPython's ``int``/``str`` digit cap to fit ``digits``, then restore.
-
-    The 4300 default is a DoS guard; a 1382-instruction table exceeds it.
-    Same borrow as Factor's ``_parse`` and boolean ``factor``.
-    """
-    limit = sys.get_int_max_str_digits()
-    if digits <= limit:
-        yield
-        return
-    sys.set_int_max_str_digits(digits + 1)
-    try:
-        yield
-    finally:
-        sys.set_int_max_str_digits(limit)
+from esolangs._digits import digit_limit_for
 
 
 def primes(count: int) -> list[int]:
@@ -84,16 +61,8 @@ def render_product(factors: list[list[int]]) -> str:
     Both are exact, so they render the same bytes.
     """
     if len(factors) < _PACKED_MIN_FACTORS:
-        coeffs = [1]
-        for factor in factors:
-            coeffs = multiply(coeffs, factor)
-        return format_coeffs(coeffs)
+        return format_coeffs(_schoolbook(factors))
     return _render_terms(*_packed_product(factors))
-
-
-def estimate_product(factors: list[list[int]]) -> GenerationEstimate:
-    """Return the conservative pre-expansion resource estimate."""
-    return estimate_generation(factors)
 
 
 def _packed_product(factors: list[list[int]]) -> tuple[list[str], bool]:
@@ -115,7 +84,7 @@ def _packed_product(factors: list[list[int]]) -> tuple[list[str], bool]:
 
     groups = 1 << max(1, (len(factors) // _PACKED_GROUP_SIZE).bit_length() - 1)
     size = -(-len(factors) // groups)
-    with _digit_limit_for(digits):
+    with digit_limit_for(digits):
         nodes = [
             _normalise(_expand_group(factors[start : start + size]))
             for start in range(0, len(factors), size)
@@ -130,10 +99,15 @@ def _packed_product(factors: list[list[int]]) -> tuple[list[str], bool]:
 
 def _expand_group(factors: list[list[int]]) -> list[str]:
     """Expand one group on the incremental loop, as signed decimal strings."""
+    return [str(coeff) for coeff in _schoolbook(factors)]
+
+
+def _schoolbook(factors: list[list[int]]) -> list[int]:
+    """Multiply the factors in one incremental sweep, as ints."""
     coeffs = [1]
     for factor in factors:
         coeffs = multiply(coeffs, factor)
-    return [str(coeff) for coeff in coeffs]
+    return coeffs
 
 
 def _normalise(coeffs: list[str]) -> tuple[list[str], bool]:
@@ -261,7 +235,7 @@ def format_coeffs(coeffs: list[int]) -> str:
     """
     widest = max((abs(coeff) for coeff in coeffs), default=0)
     digits = int(widest.bit_length() * 0.30103) + 2
-    with _digit_limit_for(digits):
+    with digit_limit_for(digits):
         return _format_coeffs(coeffs)
 
 

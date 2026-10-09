@@ -175,11 +175,11 @@ def _language_of(fn: Builder) -> str | None:
 def check_embedding(fn: Builder, max_n: int = 4) -> str:
     """Each input embeds exactly once, at a width independent of the bit."""
     import esolangs
-    from esolangs.registry import canonical_id, parameterized_ids
+    from esolangs.registry import LANGUAGES, parameterized_ids
     from esolangs.tools.helpers import runs
 
     name = _language_of(fn)
-    if name is None or canonical_id(name) not in parameterized_ids():
+    if name is None or LANGUAGES[name].id not in parameterized_ids():
         raise UnprovenError("not a parameterized generator: no runs to count")
     checked = 0
     for n in range(2, max_n + 1):

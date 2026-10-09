@@ -1,0 +1,49 @@
+language = "Jaune"
+oldid = 191090
+
+[[examples]]
+id = "adder"
+source = "v+v+^."
+stdin = '''
+3
+4
+'''
+expected = "7"
+
+[[examples]]
+id = "adder-hold"
+source = "v+>v+#<&^."
+stdin = '''
+3
+4
+'''
+expected = "7"
+
+[[examples]]
+id = "adder-subroutine"
+source = "v+>v+1@^.1$#<&;"
+stdin = '''
+3
+4
+'''
+expected = "7"
+
+[[examples]]
+id = "adder-loop"
+note = "a do-while: a zero second input never halts on unbounded cells"
+source = "v+>v+1:1-<1+>1?<^."
+stdin = '''
+3
+4
+'''
+expected = "7"
+
+[[examples]]
+id = "multiplier"
+note = "a zero first input never halts on unbounded cells"
+source = "v+1->v+#<1:2!>&<1-1?2:>^."
+stdin = '''
+6
+7
+'''
+expected = "42"

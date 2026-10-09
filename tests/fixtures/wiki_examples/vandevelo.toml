@@ -1,0 +1,24 @@
+language = "Vandevelo"
+oldid = 75287
+
+[[examples]]
+id = "truth-machine-0"
+source = '''
+0 -!> Nil?
+1 -> Inp? == 0?
+2 -> 2?
+1? :: 2?'''
+stdin = "0"
+expected = ""
+
+[[examples]]
+id = "truth-machine-1"
+source = '''
+0 -!> Nil?
+1 -> Inp? == 0?
+2 -> 2?
+1? :: 2?'''
+stdin = "1"
+expected = ""
+stop = "steps"
+max_steps = 200

@@ -5,7 +5,10 @@ import importlib
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.tools.grapheme import _grapheme_table
+from esolangs._grapheme import GraphemeDialect
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.stack_based.grapheme import run
+from esolangs.tools.grapheme import _grapheme_literal, _grapheme_push65, _grapheme_table
 from tests.generator_support import evaluate_generated
 from tests.tools.boolean_runners import (
     run_grapheme,
@@ -76,3 +79,15 @@ class TestGraphemeTable:
         monkeypatch.setattr(module, "_grapheme_table", lambda t: 2 * packed(t))
         table = _one_minterm(6)
         assert evaluate_generated("Grapheme", table, timeout=60) != table
+
+
+@pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
+def test_generator_literals_are_exact(mode):
+    dialect = GraphemeDialect(integer_conversion=mode)
+    for value in (0, 1, 2, 5, 13, 16, 106, 1006, 1263460, 5666666, 9999996):
+        io = ScriptedIO("")
+        run(_grapheme_literal(value, dialect) + "Y", io, integer_conversion=mode)
+        assert io.getvalue() == str(value)
+    io = ScriptedIO("")
+    run(_grapheme_push65(dialect) + "Y", io, integer_conversion=mode)
+    assert io.getvalue() == "65"

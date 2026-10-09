@@ -5,14 +5,18 @@ answers.  Each input is ``n`` (into the lane) or ``N`` (blocked), then
 ``E`` x ``2**(n-1-i)`` which only the corridor allows, then ``SN``; a pass
 ends on the answer, or for a one on the white corridor above it.  The
 corridor ends where the trailing run of equal answers starts: a walk halts
-there, and every index past it shares its answer.
+there, and every index past it shares its answer.  Interior runs stay: the
+ant counts through every row, so no subtree folds or is shared.
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["a_painter_ant"]
 
@@ -43,3 +47,22 @@ def a_painter_ant(truth_table: str) -> str:
     # ``s`` steps onto a black answer; a white one leaves the ant on white.
     out.append("s")
     return "".join(out)
+
+
+LANGUAGE = Language(
+    "A Painter Ant",
+    "grid_based.a_painter_ant",
+    boolean=a_painter_ant,
+    # Not a tree: one corridor cell per row, walked by the inputs' weights.
+    shape=Shape.LOOKUP,
+    contract=BooleanContract(
+        answer_mode="dump",
+        answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",
+        answer_values=("o", "@"),
+        note="A Painter Ant has no output: it paints a grid and the answer "
+        "is the answer cell the ant rests on below its white corridor, "
+        "shown by 'o' (on black, a zero) or '@' (on white, a one)",
+    ),
+    wrap=wrap_chars,
+    example=Example(pair=PAIR, expected="....\n####\n.o.#"),
+)

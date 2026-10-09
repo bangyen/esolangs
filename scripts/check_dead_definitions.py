@@ -47,26 +47,26 @@ def _top_level_names(node: ast.stmt) -> set[str]:
 
 def _references(tree: ast.Module) -> Counter[str]:
     """Count every name read in ``tree`` outside import statements, de-aliased."""
+    nodes = list(ast.walk(tree))
     aliases: dict[str, str] = {}
-    for node in ast.walk(tree):
+    for node in nodes:
         if isinstance(node, ast.ImportFrom):
             for alias in node.names:
                 if alias.asname:
                     aliases[alias.asname] = alias.name
     counts: Counter[str] = Counter()
-    for node in tree.body:
-        if isinstance(node, ast.Import | ast.ImportFrom):
-            continue
-        for sub in ast.walk(node):
-            if isinstance(sub, ast.Name):
-                counts[aliases.get(sub.id, sub.id)] += 1
-            elif isinstance(sub, ast.Attribute):
-                counts[sub.attr] += 1
-            elif isinstance(sub, ast.Constant) and isinstance(sub.value, str):
-                # A forward reference: ``"_State | _Halt | None"``.  Docstrings
-                # do not parse as an expression and drop out here.
-                for name in _forward_names(sub.value):
-                    counts[aliases.get(name, name)] += 1
+    # Import nodes contain aliases, not Name/Attribute/Constant expressions.
+    # Reusing the walk preserves every counted read without a second traversal.
+    for sub in nodes:
+        if isinstance(sub, ast.Name):
+            counts[aliases.get(sub.id, sub.id)] += 1
+        elif isinstance(sub, ast.Attribute):
+            counts[sub.attr] += 1
+        elif isinstance(sub, ast.Constant) and isinstance(sub.value, str):
+            # A forward reference: "_State | _Halt | None". Docstrings
+            # do not parse as an expression and drop out here.
+            for name in _forward_names(sub.value):
+                counts[aliases.get(name, name)] += 1
     return counts
 
 

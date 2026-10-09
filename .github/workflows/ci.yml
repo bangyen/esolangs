@@ -67,7 +67,7 @@ jobs:
     # comparison walks (141s of this job's 218s in run 37334678602).
     - name: Check for duplicated code blocks
       run: >
-        uv run --with pylint python -m pylint --disable=all
+        uv run --with pylint python scripts/check_duplicate_code.py --disable=all
         --enable=duplicate-code --min-similarity-lines=10
         --ignore-imports=yes src/esolangs scripts
 

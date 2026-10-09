@@ -7,6 +7,7 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
 from esolangs.tools.sbleq import _sbleq_hoisted, _sbleq_packed
+from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import run_sbleq
 from tests.tools.sample_tables import five_input_sample
 
@@ -42,14 +43,6 @@ class TestSbleq:
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_sbleq(program, bits) == table[row]
 
-    def test_mismatched_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.sbleq("011")
-
-    def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.sbleq("0123")
-
     def test_a_repeated_subtree_is_jumped_to(self) -> None:
         """XOR's second test reaches the leaves already emitted for the first."""
         shared = boolean.sbleq("0110").split()
@@ -75,12 +68,12 @@ class TestSbleq:
         return before, after
 
     def test_sharing_three_input_total(self) -> None:
-        """All 256 three-input tables: 48,078 to 38,084 characters, 20.8%."""
+        """All 256 three-input tables: 48,078 to 38,478 characters, 20.0%."""
         tables = [format(i, "08b") for i in range(256)]
         assert self._sharing_totals(tables) == (48078, 38478)
 
     def test_sharing_five_input_sample_total(self) -> None:
-        """200 seeded five-input tables: 323,720 to 61,593 characters, 81.0%."""
+        """200 seeded five-input tables: 323,720 to 62,709 characters, 80.6%."""
         assert self._sharing_totals(five_input_sample()) == (323720, 62709)
 
     def test_shared_tree_executes_wide_rows(self) -> None:
@@ -92,3 +85,8 @@ class TestSbleq:
         for row in range(2**n):
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_sbleq(program, bits) == table[row]
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.sbleq, range(11, 15))

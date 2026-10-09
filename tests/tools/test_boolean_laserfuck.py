@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.laserfuck` and its layout module."""
+"""Covers :mod:`esolangs.tools.laserfuck`."""
 
 import importlib
 import random
@@ -6,7 +6,7 @@ import random
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.tools.laserfuck import layout as laserfuck_layout
+from esolangs.tools.laserfuck import MARGIN
 from tests.tools.boolean_runners import (
     run_laserfuck,
 )
@@ -37,6 +37,16 @@ class TestLaserFuck:
                     for heading in range(4):
                         assert run_laserfuck(program, bits, heading) == table[combo]
 
+    def test_an_ignored_input_crosses_no_arm(self) -> None:
+        """The weighted lookup reads an ignored input but indexes the rest."""
+        # Five inputs, the middle one ignored: rows pair up across bit 2.
+        table = "".join("0110100110010110"[(r >> 3) << 2 | r & 3] for r in range(32))
+        program = boolean.laserfuck(table)
+        assert program.count("#v)") == 4
+        for combo in range(32):
+            bits = [str((combo >> (4 - i)) & 1) for i in range(5)]
+            assert run_laserfuck(program, bits, 0) == table[combo]
+
     def test_input_reordering_folds_a_scattered_table(self) -> None:
         """The tree splits in whichever order folds most, not input order."""
         scattered = len(boolean.laserfuck("10101010"))
@@ -50,7 +60,7 @@ class TestLaserFuck:
         assert ",>,>," in boolean.laserfuck("01101001")
 
     def test_only_identity_and_greedy_orders_are_built(self) -> None:
-        """Each table costs at most two orders with two named layouts each."""
+        """Each table costs at most two orders, one natural layout each."""
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
@@ -68,7 +78,7 @@ class TestLaserFuck:
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_laserfuck_build", counted)
                 boolean.laserfuck(table)
-            assert built == 2 * orders, f"n={n} built {built} candidates"
+            assert built == orders, f"n={n} built {built} candidates"
 
     @pytest.mark.parametrize(
         "table",
@@ -149,8 +159,8 @@ class TestLaserFuck:
         """The folded reader loops rather than writing 48 '-' per input."""
         rows = boolean.laserfuck("0110", 80).split("\n")
         # columns 0..2 are the funnel; the reader starts at the margin
-        head = rows[0][laserfuck_layout.MARGIN :]
-        legs = rows[1][laserfuck_layout.MARGIN :]
+        head = rows[0][MARGIN:]
+        legs = rows[1][MARGIN:]
         assert head.count("}") == 3, "the reader's own '}' plus one per ring"
         assert head.count("#/)") == 2, "each ring tests its counter"
         assert legs.count("^") == 2, "each ring returns to its own '}'"
@@ -357,7 +367,7 @@ def test_overhead_funnel_floor_and_corpus_size() -> None:
     assert len(boolean.laserfuck("0110", 1)) == 569
     assert sum(len(boolean.laserfuck(format(v, "04b"), 1)) for v in range(16)) == 9104
     assert (
-        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 104873
+        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 102623
     )
 
 
@@ -430,3 +440,13 @@ def test_vertical_tree_places_permuted_inputs_in_stream_order(
             assert (
                 run_laserfuck(source, list(f"{row:0{len(perm)}b}"), heading) == expected
             )
+
+
+@pytest.mark.parametrize("width", [1, 40])
+def test_a_width_tree_tests_only_essential_inputs(width: int) -> None:
+    """Ignored inputs cost a bare step, not a node: f(c, d) of four inputs."""
+    table = "0110" * 4
+    program = boolean.laserfuck(table, width)
+    assert len(program) < len(boolean.laserfuck("0110100110010110", width))
+    for row in range(16):
+        assert run_laserfuck(program, list(format(row, "04b")), 0) == table[row]

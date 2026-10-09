@@ -53,6 +53,13 @@ def test_the_emissions_grow_by_a_line() -> None:
     # FALSE's and Unlambda's shipped builds fold and share this table's
     # subtrees, so their plain trees are the ones measured.
     trees = (lambda table: _plain(table, len(table).bit_length() - 1),)
-    for generate in (*trees, boolean.thue, _plain_unlambda):
+    for generate in (*trees, _plain_unlambda):
         sizes = [len(generate("01" * (2 ** (n - 1)))) for n in (4, 6, 8)]
         assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) == 4.0
+    # Thue drops an ignored input's round, and ``01...`` ignores all but the
+    # last input, so it is measured on parity, which reads every one.
+    sizes = [
+        len(boolean.thue("".join(str(row.bit_count() & 1) for row in range(2**n))))
+        for n in (4, 6, 8)
+    ]
+    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) == 4.0
