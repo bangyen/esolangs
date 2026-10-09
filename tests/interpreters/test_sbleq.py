@@ -9,6 +9,7 @@ from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.sbleq import _Machine, run
 from esolangs.interpreters.tape_based.sbleq import _Machine as Sbleq
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.contract import SnapshotContract
 
 
 def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
@@ -222,15 +223,6 @@ class TestVariants:
             _Machine("0 0 0", ScriptedIO(""), store=store)
 
 
-class TestSnapshot:
-    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        machine = _Machine("3 4 6 1 1 0 0 0 0", ScriptedIO(""))
-        before = machine.snapshot()
-        hash(before)  # must not raise
-        machine.step()
-        assert machine.snapshot() != before
-
-
 class TestProgramText:
     """Comments and whitespace, via the shared ``parse_int_memory``."""
 
@@ -291,3 +283,8 @@ def test_a_huge_address_is_refused_before_allocating() -> None:
     with pytest.raises(esolangs.InterpreterLimitError, match="grow its store"):
         esolangs.run("S*bleq", "1000000000000000000 0 0", stdin="", timeout=2)
     assert esolangs.run("S*bleq", "20 0 0", stdin="", timeout=5) == ""
+
+
+class TestContract(SnapshotContract):
+    machine = staticmethod(lambda code: _Machine(code, ScriptedIO("")))
+    stepping_program = "3 4 6 1 1 0 0 0 0"

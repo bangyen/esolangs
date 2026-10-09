@@ -15,6 +15,7 @@ from esolangs.interpreters.grid_based.streetcode.geometry import (
 )
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import _StepMachine, run_until_halt_or_cycle
+from tests.interpreters.contract import InputCursorContract
 from tests.interpreters.streetcode_support import _RING_PROGRAM
 
 
@@ -26,15 +27,6 @@ class TestStreetcodeStepMachine:
         assert (machine.row, machine.col, machine.heading) == (0, 0, "E")
         machine.step()  # 'C' is a nop; drives onto 'I'
         assert (machine.row, machine.col) == (0, 1)
-
-    def test_snapshot_includes_input_cursor(self) -> None:
-        machine = _Machine(["CIO;"], ScriptedIO("A"))
-        before = machine.snapshot()
-        machine.step()  # 'C'
-        machine.step()  # 'I' consumes the input line
-        after = machine.snapshot()
-        assert before != after
-        assert machine.io.position() == 1
 
     def test_the_machine_satisfies_the_vm_step_protocol(self) -> None:
         """``run_until_halt_or_cycle`` steps this, so it must conform."""
@@ -80,6 +72,13 @@ class TestStreetcodeStepMachine:
 
     def test_halting_program_is_detected_as_halted(self) -> None:
         assert run_until_halt_or_cycle(_Machine(["C;"], IO())) is True
+
+
+class TestContract(InputCursorContract):
+    reader = staticmethod(lambda code, stdin: _Machine(code, ScriptedIO(stdin)))
+    reading_program = ("CIO;",)  # 'C' is a nop; 'I' consumes the input line
+    reading_stdin = "A"
+    steps_to_read = 2
 
 
 class TestStreetcodeDriveStates:
