@@ -726,6 +726,15 @@ def remove(name: str) -> list[str]:
     for relative in ("tests/fixtures/curation.toml", "src/esolangs/proof_status.toml"):
         _drop_toml(ROOT / relative, name)
     _drop_bullets(ROOT / "docs/limitations.md", name)
+    tuning = ROOT / "tests/fixtures/deep_arities.toml"
+    tuning.write_text(
+        "".join(
+            line
+            for line in tuning.read_text(encoding="utf-8").splitlines(keepends=True)
+            if line.split(" = ", 1)[0] not in keys
+        ),
+        encoding="utf-8",
+    )
     kept = []
     for module_name in sorted(modules):
         users = subprocess.run(

@@ -5,7 +5,9 @@ import random
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
+from esolangs._evaluate import _evaluate
 from tests.generator_support import assert_an_ignored_input_costs
 from tests.tools.boolean_runners import run_container
 from tests.tools.sample_tables import five_input_sample
@@ -264,3 +266,10 @@ class TestContainerSharing:
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """Its latch and window, no weight (the threshold route starts at seven)."""
     assert_an_ignored_input_costs("Container", 7, 66)
+
+
+@pytest.mark.parametrize("table", ["01" * 64])
+def test_narrow_balance_regime_edge_executes(table):
+    """The smallest tables reaching an otherwise-untaken balance arm."""
+    balanced = esolangs.generate("Container", table, balance=True)
+    assert _evaluate("Container", balanced, inputs=len(table).bit_length() - 1) == table

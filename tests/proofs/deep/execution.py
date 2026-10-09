@@ -18,6 +18,7 @@ from esolangs.debugger import make_vm
 from esolangs.registry import BY_BOOLEAN
 from esolangs.vm import VM
 from tests.proofs._ledger import load as load_ledger
+from tests.proofs.deep import deep_arities
 from tests.proofs.deep.linearity import _regime_start
 from tests.tools.test_boolean_contract import _parity
 
@@ -70,17 +71,7 @@ MAX_ARITY = 9
 #: ~6s over 23 rows.  ``ARITY_OVERRIDE`` still caps Factor, Line and Circuit
 #: Diagram, whose time is load, not commands (152s, 99s, 27s to n=12).
 DENSE_ARITY = 12
-ARITY_OVERRIDE = {
-    "addsubjump": 10,
-    "b_tapemark": 7,
-    "circuit_diagram": 7,
-    "container": 6,
-    "factor": 7,
-    "line": 6,
-    "flowchart": 8,
-    "one_two_three": 8,
-    "polynomial": 7,
-}
+ARITY_OVERRIDE = deep_arities("execution")
 
 #: Generators this contract cannot measure at all, with the reason.
 #:

@@ -16,6 +16,7 @@ import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import load as load_audit
+from tests.proofs.deep import deep_arities
 
 #: Cost band; see ``__main__.py``.  It passes now that Forþ is linear, so the
 #: band is a cost call rather than a triage one: it builds every generator at
@@ -64,14 +65,7 @@ MIN_RUNGS = 3
 #: overrides are the generators whose builds are measured in seconds, each set
 #: to the lowest arity that still clears MIN_RUNGS past its last route change.
 MAX_ARITY = 12
-ARITY_OVERRIDE = {
-    "circuit_diagram": 10,
-    "factor": 11,
-    "polynomial": 9,
-    "streetcode": 10,
-    # Native Line at n=6 already renders millions of pixels.
-    "line": 6,
-}
+ARITY_OVERRIDE = deep_arities("linearity")
 
 
 @dataclass

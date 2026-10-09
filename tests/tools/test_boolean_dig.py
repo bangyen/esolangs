@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from esolangs._evaluate import _evaluate
 from esolangs.tools.dig import _DIG_BRANCH, _DIG_STRIDE
 from tests.tools.boolean_runners import (
     run_dig,
@@ -262,3 +263,10 @@ def test_a_width_tree_reads_an_ignored_input_in_the_next_block(width: int) -> No
     assert len(program) < len(boolean.dig("0110100110010110", width))
     for row in range(16):
         assert run_dig(program, list(format(row, "04b"))) == table[row], row
+
+
+@pytest.mark.parametrize("table", ["00", "0000"])
+def test_narrow_balance_regime_edge_executes(table):
+    """The smallest tables reaching an otherwise-untaken balance arm."""
+    balanced = esolangs.generate("Dig", table, balance=True)
+    assert _evaluate("Dig", balanced, inputs=len(table).bit_length() - 1) == table

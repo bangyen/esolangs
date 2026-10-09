@@ -1,0 +1,60 @@
+# Per-generator tuning for tests/proofs/deep: arity ceilings below each
+# module's MAX_ARITY default, and exemptions.  Optional: a generator left out
+# gets the default.  Keys are language ids.
+
+[linearity]
+# Builds measured in seconds, each set to the lowest arity that still clears
+# MIN_RUNGS past its last route change.
+circuit_diagram = 10
+factor = 11
+polynomial = 9
+streetcode = 10
+line = 6  # native Line at n=6 already renders millions of pixels
+
+[execution]
+# Factor, Line and Circuit Diagram: time is load, not commands (152s, 99s,
+# 27s to n=12).  AddSubJump jumps 39 -> 965 commands at n=6, so it climbs to
+# 10 to keep MIN_RUNGS past it.
+addsubjump = 10
+b_tapemark = 7
+circuit_diagram = 7
+container = 6
+factor = 7
+line = 6
+flowchart = 8
+one_two_three = 8
+polynomial = 7
+
+[workspace]
+# Written state is recounted every step, so a rung costs ~4x the last.
+# Lowered where a generator's top rung passed ~3s; FALSE and BFStack keep 9,
+# since their poly n fit (x1.49, x1.48) is steeper lower down.
+addsubjump = 6
+b_tapemark = 7
+bfstack = 9
+circlefuck = 6
+# Below its n=8 route change, which leaves no five rungs in budget past it;
+# the 9T + 3n - 12 bound holds at n=8 on all ten formula tables.
+circuit_diagram = 7
+dimensional = 7
+factor = 8
+false = 9
+laserfuck = 9
+flowchart = 7
+line = 7
+polynomial = 8
+rotfuck = 6
+streetcode = 7
+taglate = 7
+unlambda = 6
+
+[workspace_step_exempt]
+# poly n rows whose dense increments may grow past STEP_GROWTH at the
+# measured arities.  Vandevelo's registers grow ~sqrt(T) until the n*n cap
+# binds at n=14: written bits 2450, 3361, 3872, 4419, 4998 at n=13..17,
+# increments 911, 511, 547, 579 -- polynomial -- but n=16 alone costs 34s.
+# SLOW ACV MAMMALIAN's increments track per-level residues, not T: a command
+# adds at most one cell, so its arrays hold 23 + S bytes for S poly n
+# commands (dense x1.155); written bits 3077 at n=12, 3216 at 13.
+vandevelo = "registers grow ~sqrt(T) until the n*n cap binds at n=14"
+slow_acv_mammalian = "increments track per-level residues, not T"

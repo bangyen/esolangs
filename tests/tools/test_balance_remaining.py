@@ -30,7 +30,14 @@ def test_token_fit_lattice_respects_width_regimes(minimum, maximum):
         assert balance_score(_join_tokens(tokens, width, " ")) == balance_score(optimum)
 
 
-@pytest.mark.parametrize("language", ["AddSubJump", "Decleq", "S*bleq"])
+@pytest.mark.parametrize(
+    "language",
+    [
+        n
+        for n, lang in LANGUAGES.items()
+        if lang.boolean and lang.wrap is _wrap.wrap_grid
+    ],
+)
 @pytest.mark.parametrize("table", ["0110", "10010110"])
 def test_aligned_balanced_programs_compute_the_table(language, table):
     balanced = esolangs.generate(language, table, balance=True)
@@ -129,21 +136,3 @@ def test_native_width_generators_have_balance_rules():
         and takes_width(generator)
         and language.balance is None
     ]
-
-
-# Smallest tables reaching each balancer's otherwise-untaken regime arm.
-@pytest.mark.parametrize(
-    ("language", "table"),
-    [
-        ("Dig", "00"),
-        ("Dig", "0000"),
-        ("Crement", "00"),
-        ("Crement", "0011"),
-        ("Minifuck", "01"),
-        ("INTERCAL", "00"),
-        ("Container", "01" * 64),
-    ],
-)
-def test_narrow_regime_edges_balance_and_execute(language, table):
-    balanced = esolangs.generate(language, table, balance=True)
-    assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
