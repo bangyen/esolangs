@@ -24,6 +24,7 @@
 "tests/scripts/test_mutate_one.py" = 1
 "tests/test_answer_stdin.py" = 1
 "tests/test_debug.py" = 2
+"tests/test_generator_conventions.py" = 1
 "tests/test_interpreter_only_admissions.py" = 6
 "tests/test_source_containers.py" = 1
 "tests/tools/plain_oracles.py" = 5
