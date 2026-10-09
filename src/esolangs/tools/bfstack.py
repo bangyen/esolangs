@@ -1,9 +1,15 @@
 """Boolean program generator for BFStack.
 
-No call or goto (loops nest), so a span has one parent and none is shared.
+No call or goto (loops nest) and the stack hides all but its top, so a repeated
+block cannot be reached from a flag.  A node whose four quarters are two
+distinct blocks instead classifies its two prefix bits and branches once, so
+each block is written once.  Two bits only: a classifier's weights sum to
+``2**d - 1``, so wider ones make the worst run exponential, not ``poly n``.
 The byte-indexed decoder lists the rarer value rather than folding a run: it
 has no range test, so each listed row is its own nested loop.
 """
+
+from functools import cache
 
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
@@ -80,18 +86,52 @@ def _bfstack_small(truth_table: str, n: int) -> str:
     return encoder + decoder + "<" + "+" * _ASCII_ZERO + "."
 
 
+def _bfstack_class(prefix: str, bits: int) -> str:
+    """Return the classifier: ``prefix`` read as a table, left as 0/1 on top."""
+    weights, projected = input_weights(prefix, bits)
+    decoder, preset = _bfstack_decoder(projected)
+    return _bfstack_encoder(weights, preset=preset) + decoder + "<"
+
+
 def bfstack(truth_table: str) -> str:
     """Build a BFStack program, routing wide tables into blocks.
 
     The byte index is ``1 + row``; eight inputs wrap its nonzero sentinel
     (``_BLOCK_INPUTS`` = 7).
     Prefix branches select blocks before the byte-indexed decoder runs.
+    A node whose four quarters are two distinct blocks instead classifies its
+    two prefix bits once and writes each block once, when that is shorter.
     """
     n = _validate_truth_table(truth_table)
     if n <= _BLOCK_INPUTS or 0 < len(essential_inputs(truth_table, n)) <= _BLOCK_INPUTS:
         return _bfstack_small(truth_table, n)
     constant = constant_span_test(truth_table)
 
+    def classified(level: int, lo: int, hi: int) -> str | None:
+        """Return the node classifying two distinct quarters of ``[lo, hi)``, if any."""
+        if n - level < 3:
+            return None
+        size = (hi - lo) >> 2
+        slots = [truth_table[lo + k * size : lo + (k + 1) * size] for k in range(4)]
+        kinds = sorted(set(slots))
+        if len(kinds) != 2:
+            return None
+        codes = []
+        for one, zero in (kinds, kinds[::-1]):
+            prefix = "".join("1" if slot == one else "0" for slot in slots)
+            at_one, at_zero = (lo + slots.index(k) * size for k in (one, zero))
+            codes.append(
+                ">+"
+                + _bfstack_class(prefix, 2)
+                + "[<-"
+                + build(level + 2, at_one, at_one + size)
+                + ">]<[<"
+                + build(level + 2, at_zero, at_zero + size)
+                + ">]<"
+            )
+        return min(codes, key=len)
+
+    @cache
     def build(level: int, lo: int, hi: int) -> str:
         remaining = n - level
         if constant(lo, hi):
@@ -102,14 +142,17 @@ def bfstack(truth_table: str) -> str:
                 + ".<"
             )
         if remaining <= _BLOCK_INPUTS:
-            return _bfstack_small(truth_table[lo:hi], remaining) + "<"
-        mid = (lo + hi) // 2
-        if truth_table[lo:mid] == truth_table[mid:hi]:
-            # An input this subtree ignores is read and popped, not branched.
-            return ",<" + build(level + 1, lo, mid)
-        zero, one = build(level + 1, lo, mid), build(level + 1, mid, hi)
-        # The one arm clears the sentinel below the bit. Both arms restore
-        # their stack depth, so the zero arm runs only when the bit was zero.
-        return ">+," + "-" * _ASCII_ZERO + "[<-" + one + ">]<[<" + zero + ">]<"
+            plain = _bfstack_small(truth_table[lo:hi], remaining) + "<"
+        else:
+            mid = (lo + hi) // 2
+            if truth_table[lo:mid] == truth_table[mid:hi]:
+                # An input this subtree ignores is read and popped, not branched.
+                return ",<" + build(level + 1, lo, mid)
+            zero, one = build(level + 1, lo, mid), build(level + 1, mid, hi)
+            # The one arm clears the sentinel below the bit. Both arms restore
+            # their stack depth, so the zero arm runs only when the bit was zero.
+            plain = ">+," + "-" * _ASCII_ZERO + "[<-" + one + ">]<[<" + zero + ">]<"
+        shared = classified(level, lo, hi)
+        return plain if shared is None or len(plain) <= len(shared) else shared
 
     return build(0, 0, len(truth_table))

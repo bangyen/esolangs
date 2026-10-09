@@ -78,7 +78,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "Circuit Diagram": (lambda n, _: 2 * n + 1 + (n >= 8), True, (3, 8)),
     "Forbin": (lambda n, _: 2 * max(n - 7, 0) + 2, True, (3, 8)),
     "Inject": (lambda n, _: 8 * n + 10, True, (5, 6)),
-    "BFStack": (lambda n, _: 60 * n + 475, True, (8,)),
+    "BFStack": (lambda n, _: 73 * n + 371 + 13 * (n % 2), True, (8, 9, 10)),
     # Proved for all n: a path costs at most the all-ones one, and a
     # level's moves at most max(a, b) + 2 over adjacent input cells a, b.
     "Painfuck": (lambda n, _: -(-3 * n * n // 4) + 20 * n + 4, False, (3, 6)),
@@ -211,9 +211,22 @@ def _seeded(n: int, seed: int) -> str:
 
 
 #: BFStack's worst 7-input block, a rule: 64 zeros, 60 ones, a zero, then ones.
-#: Wider, it sits under all-ones top inputs: repeated, it would make them
-#: ignored, and they are read and dropped rather than branched.
 _BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
+
+
+def _bfstack_worst(n: int) -> str:
+    """BFStack's worst past n = 7, a rule: the block under classifier nodes.
+
+    Two inputs wrap ``t`` as ``t d d t`` with ``d`` all ones: the classifier
+    reads 1001 and its last row costs 146 commands against two branches' 120.
+    An odd input goes under an all-ones half.
+    """
+    table = _BFSTACK_BLOCK
+    if n % 2 == 0:
+        table = "1" * len(table) + table
+    while len(table) < 1 << n:
+        table += "1" * len(table) * 2 + table
+    return table
 
 
 def _one_two_three_worst(n: int) -> str:
@@ -272,7 +285,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         "01" * (width // 2),
     )
     if name == "BFStack" and n >= 7:
-        tables += ("0" * (width - 128) + _BFSTACK_BLOCK,)
+        tables += (_bfstack_worst(n),)
     if name == "Bitdeque":
         tables += ("10" + "01" * (width // 2 - 1),)
     if name == "123" and n >= 4:

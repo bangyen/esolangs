@@ -68,6 +68,19 @@ class TestBfstack:
             assert run_bfstack(program, bits) == table[row], row
 
     @pytest.mark.medium
+    def test_two_blocks_in_four_slots_are_written_once_each(self) -> None:
+        """A classifier picks the block, so a block repeated in slots costs once."""
+        rng = random.Random(4)
+        a, b = ("".join(rng.choice("01") for _ in range(128)) for _ in "ab")
+        table = a + a + a + b
+        program = boolean.bfstack(table)
+        # Writing a twice (the equal-halves fold leaves three blocks) is 1.5x.
+        assert len(program) < 1.3 * (len(boolean.bfstack(a)) + len(boolean.bfstack(b)))
+        for row in range(0, 512, 7):
+            bits = [str((row >> i) & 1) for i in range(8, -1, -1)]
+            assert run_bfstack(program, bits) == table[row], row
+
+    @pytest.mark.medium
     def test_the_last_eight_input_row_does_not_wrap_to_zero(self) -> None:
         """Index 256 previously skipped the decoder's outer loop."""
         table = "0" * 255 + "1"
