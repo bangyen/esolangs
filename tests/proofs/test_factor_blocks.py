@@ -97,15 +97,6 @@ def test_block_stride_preserves_payloads(width: int) -> None:
         ) == tuple(v % 256 for v in payloads)
 
 
-_VALUES = [0, 1, 2**31, 2**32 - 1, 0xA596B47C, 0x55555555, 0xAAAAAAAA]
-_VALUES += [random.Random(928 + i).getrandbits(32) for i in range(5)]
-_TABLES = [format(value, "032b") for value in _VALUES]
-_TABLES += [
-    "".join(format(v, "032b") for v in _VALUES[:2]),
-    "".join(format(v, "032b") for v in _VALUES[2:6]),
-]
-
-
 @pytest.mark.slow
 def test_block_factor_executes() -> None:
     table = format(0xA596B47C, "032b")
