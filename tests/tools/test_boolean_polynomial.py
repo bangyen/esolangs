@@ -15,12 +15,12 @@ from esolangs.tools.wrap import (
     balance_score,
     wrap_program,
 )
-from tests.tools.boolean_oracles import (
-    _polynomial_tree,
-)
 from tests.tools.boolean_runners import (
     run_polynomial,
     run_polynomial_from,
+)
+from tests.tools.polynomial_support import (
+    _polynomial_tree,
 )
 from tests.witness_tables import row_bits
 

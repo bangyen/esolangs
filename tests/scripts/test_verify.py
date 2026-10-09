@@ -26,7 +26,7 @@ class TestPytestScopeCollects:
     def test_a_helper_module_widens(self) -> None:
         """A non-collected module under ``tests/`` is imported, not run."""
         verify = load_script()
-        scope = verify._pytest_scope(["tests/tools/boolean_oracles.py"])  # noqa: SLF001
+        scope = verify._pytest_scope(["tests/tools/polynomial_support.py"])  # noqa: SLF001
         assert scope == verify.WHOLE_SUITE
 
     def test_a_test_module_stays_scoped(self) -> None:
@@ -111,7 +111,7 @@ class TestScopedCoverageMeasuresTheTouchedFiles:
         cmd = verify._scoped_cmd(  # noqa: SLF001
             "pytest",
             list(self.COV),
-            ["tests/tools/boolean_oracles.py", "src/esolangs/vm.py"],
+            ["tests/tools/polynomial_support.py", "src/esolangs/vm.py"],
         )
         assert cmd is not None
         assert any(c.startswith("--cov-config=") for c in cmd)

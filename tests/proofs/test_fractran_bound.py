@@ -12,7 +12,7 @@ import pytest
 from esolangs.interpreters.other.fractran import _choose, _parse
 from esolangs.tools.fractran import PAIR, fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from tests.proofs.deep.fractran_shared import row_addressed, rows, spelled
+from tests.proofs.deep.fractran import row_addressed, rows, spelled
 from tests.witness_tables import row_bits
 
 #: A fraction list, as the interpreter holds it.

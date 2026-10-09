@@ -6,7 +6,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.polynomial import _Machine as Polynomial
 from esolangs.interpreters.register_based.sophie import _Machine as Sophie
 from esolangs.tools.polynomial import _polynomial_assemble
-from tests.tools.boolean_oracles import _polynomial_tree, _sophie_dag, _sophie_tree
+from tests.tools.polynomial_support import _polynomial_tree, _sophie_dag, _sophie_tree
 
 
 @pytest.mark.parametrize("oracle", ["polynomial_tree", "sophie_tree", "sophie_dag"])

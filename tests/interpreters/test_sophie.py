@@ -80,7 +80,7 @@ def test_break_outside_loop_halts() -> None:
 @pytest.mark.parametrize(
     ("code", "line", "expected"),
     [
-        (":.&", "123", "123"),
+        (":.&", "456", "456"),
         (";,&", "X", "X"),
         # A non-number leaves the accumulator alone.
         ("#$42:.&", "not_a_number", "42"),

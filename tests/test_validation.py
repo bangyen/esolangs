@@ -7,6 +7,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.debugger import STOP_REASONS
+from tests.pick import languages
 
 
 def _debugger() -> debugger_api.Debugger:
@@ -103,7 +104,7 @@ class TestTheChecksAreSymmetric:
 class TestTerminationPolarityIsData:
     """The one convention a zero-branch verifier still had to hardcode."""
 
-    @pytest.mark.parametrize("name", ["123", "ArrowQueue"])
+    @pytest.mark.parametrize("name", languages(answer_mode="termination"))
     def test_the_polarity_is_reported(self, name: str) -> None:
         facts = esolangs.describe(name)
         assert facts["answer_mode"] == "termination"

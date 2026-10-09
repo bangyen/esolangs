@@ -186,3 +186,15 @@ def test_line_infers_the_entry_heading_from_the_arrow() -> None:
         io = ScriptedIO(f"{bit}\n")
         run_line(raster, io)
         assert io.getvalue() == bit
+
+
+def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
+    """A JPEG names itself and the fix, rather than failing on the signature."""
+    from esolangs.interpreters.tape_based.line import extract
+
+    path = tmp_path / "drawing.jpg"
+    # A JPEG start-of-image plus APP0, which is all the sniff looks at.
+    path.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 64)
+    with pytest.raises(ValueError, match="is a JPEG") as caught:
+        extract.load_binary(str(path))
+    assert "PNG" in str(caught.value)
