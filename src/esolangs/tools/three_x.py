@@ -85,6 +85,10 @@ _SWAP = str.maketrans("01", "10")
 _RESULT = ("result", 0)
 
 
+#: Fewest rows of a block worth sharing.
+_SHARE_MIN = 4
+
+
 def three_x(truth_table: str) -> str:
     """Build a 3x program computing the given truth table.
 
@@ -101,8 +105,12 @@ def three_x(truth_table: str) -> str:
     popped off the stack: the interpreter leaves a tested condition where it
     is, and every snippet pushes its own operands, so the junk is never read.
 
-    3x has no call or goto (``( )`` loops back only to their own start), so a
-    span has one parent and none is shared.
+    3x has no call or goto, so a repeated block is deferred instead: the tree
+    sets the block's flag where it would sit and the block is written once
+    after the tree, guarded by that flag; a node whose halves are equal is
+    its first half.  Greedy over aligned blocks of at least ``_SHARE_MIN``
+    rows, kept only where the program shrinks.  At 4 rows a share pays in
+    46 of the 65,536 n=4 tables, by at most 5 characters; 2 rows pay in none.
 
     The tree splits in input order (a greedy order saves 2.2% at n=8,
     under the 10% bar).
@@ -131,11 +139,60 @@ def _three_x_build(
     essential: list[int],
     n: int,
 ) -> str:
-    """Emit the tree with stored 3 and an unset result both meaning one."""
+    """Return the shorter of the plain tree and the tree sharing blocks.
+
+    A block that repeats is shared when deferring it pays: see
+    :func:`_three_x_emit`.  Candidates are the non-constant aligned blocks
+    of at least ``_SHARE_MIN`` rows seen twice or more; the greedy loop adds
+    the one that shrinks the program most until none does.
+    """
+    width = len(essential)
+    shares: tuple[str, ...] = ()
+    best = _three_x_emit(table, perm, essential, n, shares)
+    candidates: set[str] = set()
+    seen: set[str] = set()
+    for rows in (2**k for k in range(_SHARE_MIN.bit_length() - 1, width)):
+        for lo in range(0, 2**width, rows):
+            block = table[lo : lo + rows]
+            if "0" in block and "1" in block:
+                if block in seen:
+                    candidates.add(block)
+                seen.add(block)
+    while True:
+        trial = min(
+            (
+                (_three_x_emit(table, perm, essential, n, (*shares, block)), block)
+                for block in candidates
+                if block not in shares
+            ),
+            key=lambda pair: len(pair[0]),
+            default=None,
+        )
+        if trial is None or len(trial[0]) >= len(best):
+            return best
+        best = trial[0]
+        shares = (*shares, trial[1])
+
+
+def _three_x_emit(
+    table: str,
+    perm: tuple[int, ...],
+    essential: list[int],
+    n: int,
+    shares: tuple[str, ...],
+) -> str:
+    """Emit the tree with stored 3 and an unset result both meaning one.
+
+    Each block in ``shares`` is written once, after the tree, under its own
+    flag; the tree only sets that flag where the block would sit.  A flag is
+    unset (3) at the start and any other leaf clears it, so the last write
+    wins as it does for the result.
+    """
     width = len(essential)
     pieces: list[str | tuple[str, int]] = []
     constant = constant_span_test(table)
     patterns: dict[tuple[int, int], str] = {}
+    flag_of = {block: i for i, block in enumerate(shares)}
     # What the stack top holds inside the guard being emitted: 3 from the
     # guard's own condition (``(`` does not pop it), or 0 once a nested guard
     # has closed (both of its exits leave one).  A write leaves it alone, so
@@ -150,8 +207,8 @@ def _three_x_build(
             patterns[rows, level] = ("0" * half + "1" * half) * (rows // (2 * half))
         return patterns[rows, level]
 
-    def write(value: str) -> None:
-        pieces.append(_RESULT)
+    def write(value: str, var: tuple[str, int] = _RESULT) -> None:
+        pieces.append(var)
         pieces.append(("3" if value == "1" else _ZERO) + "v")
 
     def copy(level: int, *, complement: bool) -> None:
@@ -159,38 +216,68 @@ def _three_x_build(
         pieces.append(("not" if complement else "bit", essential[level]))
         pieces.append("^v")
 
-    def build(lo: int, hi: int, depth: int, ambient: str) -> str:
-        """Emit rows ``[lo, hi)``; return the result's value afterwards.
+    def settle(state: tuple[str, ...], keep: int = -1) -> tuple[str, ...]:
+        """Clear every flag but ``keep``, writing only where it may be set."""
+        out = list(state)
+        for i in range(1, len(state)):
+            want = "1" if i - 1 == keep else "0"
+            if out[i] != want:
+                write(want, ("flag", i - 1))
+                out[i] = want
+        return tuple(out)
 
-        ``""`` means the value depends on bits below, which only costs the
+    def build(lo: int, hi: int, depth: int, state: tuple[str, ...]) -> tuple[str, ...]:
+        """Emit rows ``[lo, hi)``; return the result's and flags' values after.
+
+        ``""`` means a value depends on bits below, which only costs the
         caller's next sibling its skipped writes.
         """
         nonlocal top
+        if flag_of:
+            keep = flag_of.get(table[lo:hi], -1)
+            if keep >= 0:
+                return settle(state, keep)
         if constant(lo, hi):
-            if table[lo] != ambient:
+            state = settle(state)
+            if table[lo] != state[0]:
                 write(table[lo])
-            return table[lo]
+            return (table[lo], *state[1:])
         span = table[lo:hi]
         for level in range(depth, width):
             column = pattern(hi - lo, level - depth)
             if span == column:
                 copy(level, complement=False)
-                return ""
+                return ("", *settle(state)[1:])
             if span == column.translate(_SWAP):
                 copy(level, complement=True)
-                return ""
+                return ("", *settle(state)[1:])
 
         mid = (lo + hi) // 2
-        first = build(lo, mid, depth + 1, ambient)
+        if table[lo:mid] == table[mid:hi]:
+            return build(lo, mid, depth + 1, state)
+        first = build(lo, mid, depth + 1, state)
         pieces.append(("bit", essential[depth]))
         pieces.append("^(")
         top = "3"
         second = build(mid, hi, depth + 1, first)
         pieces.append(("" if top == "0" else "33x") + ")")
         top = "0"
-        return first if first == second else ""
+        return tuple(x if x == y else "" for x, y in zip(first, second, strict=True))
 
-    build(0, 2**width, 0, "1")
+    # Every flag starts set, as an unset variable reads 3.
+    build(0, 2**width, 0, ("1",) * (1 + len(shares)))
+    flag_of.clear()
+    for i, block in enumerate(shares):
+        size = len(block)
+        lo = next(
+            at for at in range(0, len(table), size) if table[at : at + size] == block
+        )
+        pieces.append(("flag", i))
+        pieces.append("^(")
+        top = "3"
+        build(lo, lo + len(block), width - len(block).bit_length() + 1, ("",))
+        pieces.append(("" if top == "0" else "33x") + ")")
+        top = "0"
     pieces.append("3" + _ZERO)
     pieces.append(_RESULT)
     pieces.append("^x!")

@@ -144,3 +144,19 @@ class TestThreeX:
         # The identity on input 1 at n=2: no guard, one copy of the stored bit.
         program = boolean.three_x("0011")
         assert "(" not in program
+
+    def test_repeated_blocks_are_written_once(self) -> None:
+        """Three copies of one block cost one block, and the program still runs."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.three_x import run
+        from esolangs.tools.three_x import _three_x_emit
+
+        a, b = "0010110111010001", "1101001000101110"
+        table = a + a + b + a
+        program = boolean.three_x(table)
+        plain = _three_x_emit(table, tuple(range(6)), list(range(6)), 6, ())
+        assert len(program) < 0.9 * len(plain)
+        for combo in range(64):
+            io = ScriptedIO("\n".join(str((combo >> (5 - k)) & 1) for k in range(6)))
+            run(program, io)
+            assert io.getvalue().strip() == table[combo]
