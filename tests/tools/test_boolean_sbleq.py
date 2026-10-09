@@ -4,13 +4,49 @@ import random
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.tape_based.sbleq import _Machine
 from esolangs.tools.helpers import best_input_order
 from esolangs.tools.packed_decoder import packed_decoder
 from esolangs.tools.sbleq import _sbleq_hoisted
 from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import run_sbleq
 from tests.tools.sample_tables import five_input_sample
+
+
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> None:
+    table = bit * (1 << n)
+    for program in (boolean.sbleq(table), _sbleq_packed(table)):
+        for row in range(1 << n):
+            text = f"{row:0{n}b}"
+            io = ScriptedIO(text + "extra")
+            machine = _Machine(program, io)
+            for _ in range(n + 1):
+                assert not machine.halted
+                machine.step()
+            assert machine.halted
+            assert io.position() == n
+            assert io.getvalue() == bit
+
+
+@pytest.mark.parametrize("n", [3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_balanced_constants_read_every_input(n: int, bit: str) -> None:
+    program = esolangs.generate("S*bleq", bit * (1 << n), balance=True)
+    for row in range(1 << n):
+        io = ScriptedIO(f"{row:0{n}b}" + "extra")
+        machine = _Machine(str(program), io)
+        for _ in range(n + 3):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        assert io.position() == n
+        assert io.getvalue() == bit
 
 
 class TestSbleq:
@@ -69,9 +105,9 @@ class TestSbleq:
         return before, after
 
     def test_sharing_three_input_total(self) -> None:
-        """All 256 three-input tables: 48,078 to 38,478 characters, 20.0%."""
+        """All 256 three-input tables: 48,078 to 38,360 characters, 20.2%."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._sharing_totals(tables) == (48078, 38478)
+        assert self._sharing_totals(tables) == (48078, 38360)
 
     def test_sharing_five_input_sample_total(self) -> None:
         """200 seeded five-input tables: 323,720 to 62,709 characters, 80.6%."""

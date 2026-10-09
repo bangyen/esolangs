@@ -4,7 +4,43 @@ from typing import Any
 
 import pytest
 
+import esolangs
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.tape_based.subleq import _Machine
 from tests.generator_support import assert_an_ignored_input_costs
+
+
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> None:
+    table = bit * (1 << n)
+    for width in (None, 1, 20):
+        program = esolangs.generate("Subleq", table, width=width)
+        for row in range(1 << n):
+            io = ScriptedIO(f"{row:0{n}b}" + "extra")
+            machine = _Machine(str(program), io)
+            for _ in range(n + 1):
+                assert not machine.halted
+                machine.step()
+            assert machine.halted
+            assert io.position() == n
+            assert io.getvalue() == bit
+
+
+@pytest.mark.parametrize("n", [3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_balanced_constants_read_every_input(n: int, bit: str) -> None:
+    program = esolangs.generate("Subleq", bit * (1 << n), balance=True)
+    for row in range(1 << n):
+        io = ScriptedIO(f"{row:0{n}b}" + "extra")
+        machine = _Machine(str(program), io)
+        for _ in range(10_000):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        assert io.position() == n
+        assert io.getvalue() == bit
 
 
 @pytest.mark.medium

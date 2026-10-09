@@ -10,19 +10,28 @@ from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Payload, Shape
-from esolangs.tools.packed_decoder import packed_decoder
-from esolangs.tools.wrap import wrap_grid
+from esolangs.tools.sbleq import _sbleq_packed
+from esolangs.tools.wrap import balance_program, balance_score, wrap_grid
 
 
 def subleq(truth_table: str) -> str:
-    """Build the shared packed decoder with direct jumps and byte I/O."""
-    return packed_decoder(truth_table, direct=True)
+    """Build a packed decoder or a read-and-print constant with direct byte I/O."""
+    return _sbleq_packed(truth_table, direct=True)
 
 
 def _payload(state: Any) -> Payload:
     """Split out memory, mutable code included, and pc; no control stack."""
     data, pc, _cursor = state
     return data, (), pc, 0
+
+
+def _balance(table: str, default: str) -> str:
+    """Retain the old constant decoder when its grid is more balanced."""
+    candidate = balance_program(default, "subleq")
+    if len(set(table)) == 1:
+        legacy = _sbleq_packed(table, direct=True, keep_constant_layout=True)
+        return min(candidate, balance_program(legacy, "subleq"), key=balance_score)
+    return candidate
 
 
 LANGUAGE = Language(
@@ -36,4 +45,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_grid,
+    balance=_balance,
 )

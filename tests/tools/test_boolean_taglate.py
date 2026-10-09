@@ -2,6 +2,7 @@
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
 from esolangs.tools.wrap import (
     _taglate,
@@ -10,6 +11,31 @@ from tests.tools.boolean_runners import (
     run_taglate,
 )
 from tests.witness_tables import row_bits, witnesses
+
+
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_reads_the_ghost_and_real_inputs_before_printing(
+    n: int, bit: str
+) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.queue_based.taglate import _Machine
+
+    table = bit * (1 << n)
+    programs = [esolangs.generate("Taglate", table, width=w) for w in (None, 1, 20)]
+    programs.append(esolangs.generate("Taglate", table, balance=True))
+    ghost = "0" if n > 1 and n % 2 else ""
+    for program in programs:
+        for row in range(1 << n):
+            io = ScriptedIO(ghost + f"{row:0{n}b}" + "extra")
+            machine = _Machine(str(program).splitlines(), io)
+            for _ in range(1000):
+                if machine.halted:
+                    break
+                machine.step()
+            assert machine.halted
+            assert io.position() == n + len(ghost)
+            assert io.getvalue() == bit
 
 
 class TestTaglate:

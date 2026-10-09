@@ -16,6 +16,26 @@ from tests.tools.boolean_runners import (
 from tests.witness_tables import witnesses
 
 
+@pytest.mark.parametrize("n", [1, 2, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_reads_into_scratch_and_prints_a_fresh_literal(
+    n: int, bit: str
+) -> None:
+    table = bit * (1 << n)
+    programs = [generate("Dimensional", table, width=w) for w in (None, 1, 20)]
+    programs.append(generate("Dimensional", table, balance=True))
+    for program in programs:
+        for row in range(1 << n):
+            io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\nextra")
+            machine = _Machine(program, io)
+            for _ in range(1000):
+                if machine.halted:
+                    break
+                machine.step()
+            assert machine.halted
+            assert (io.getvalue(), io.reads) == (bit, n)
+
+
 @pytest.mark.medium
 def test_bare_axis_leaves_execute_all_small_tables() -> None:
     for n in range(1, 4):
