@@ -56,25 +56,6 @@ def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) 
         assert io.reads == n
 
 
-#: How many items each ``every_row`` sweep is split into, per shape.
-#:
-#: A sweep is execution, not build: a thirteen-input row is 12.1ms of which
-#: the load is 1%, so that shape alone is ~100s.  As one item per shape the
-#: sweeps pinned one worker each while the constant shapes finished at once
-#: and the rest idled, so the wall was the longest single item; split, the
-#: work spreads and the wall falls to the total over the worker count.  The
-#: thirteen-input sweep went 103.9s -> 56.9s on ten workers, and the whole
-#: weekly band 103.5s -> 82.5s.  Rebuilding per part is free -- the build is
-#: 0.17s, 0.2% of a sweep.  Strided rather than blocked so the parts cost the
-#: same, and their union is still every row.
-#:
-#: Four is where the band bottoms out: eight parts measured 83.6s, no better,
-#: because the remaining wall is the band's total work over the cores it has
-#: rather than the longest item.  Raising this past the core count buys
-#: nothing.
-_SWEEP_PARTS = 4
-
-
 @pytest.mark.slow
 @pytest.mark.parametrize("n", [6, 9, 10])
 @pytest.mark.parametrize("shape", [_dense, _parity])

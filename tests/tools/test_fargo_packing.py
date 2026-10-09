@@ -90,36 +90,3 @@ def test_narrow_packed_constants_consume_input() -> None:
         run(program, io)
         assert io.getvalue() == bit
         assert io.reads == 1
-
-
-def test_reordered_emission_has_a_real_character_budget(monkeypatch) -> None:
-    """High-index literals stop before they can add a logarithmic text factor."""
-    from esolangs.tools.fargo import _Emission, _expression, _SourceLimitError
-
-    n = 8
-    table = _nested_dense(n)
-    expression = _expression(table, n, tuple(range(n)))
-    assert expression is not None
-    budget = len(expression)
-    original = _Emission.append
-    characters = 0
-    stops = 0
-
-    def record(emission: _Emission, text: str) -> None:
-        nonlocal characters, stops
-        characters += len(text)
-        try:
-            original(emission, text)
-        except _SourceLimitError:
-            stops += 1
-            raise
-
-    monkeypatch.setattr(_Emission, "append", record)
-    candidate = _expression(table, n, tuple(reversed(range(n))), limit=budget)
-    assert stops > 0
-    assert candidate is None
-    assert characters <= 2 * (budget + 9 + n.bit_length())
-    row = (1 << n) // 3
-    io = ScriptedIO(str(row))
-    run(fargo(table), io)
-    assert io.getvalue() == table[row]

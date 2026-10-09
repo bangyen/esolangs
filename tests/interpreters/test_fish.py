@@ -6,6 +6,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.fish import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
+from tests.raises import assert_halts_with_hint
 
 
 def _run(source: str, stdin: str = "", rng: object = None) -> str:
@@ -225,3 +226,8 @@ def test_the_wiki_quines_print_their_source() -> None:
     )
     assert _run(quine) == quine
     assert _run(quine.rstrip(" ")).endswith("^^\x00")
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_halts_with_hint("Fish", "+", "something smells fishy", "push a value")

@@ -1,0 +1,303 @@
+language = "Befunge"
+oldid = 196839
+
+[[examples]]
+id = "hello-loop"
+source = '''
+ >              v
+ v"Hello World!"<
+ >:v
+ ^,_@'''
+expected = "Hello World!"
+
+[[examples]]
+id = "hello-no-letters"
+source = '''
+89*,52*5*2*1+,92*6*,92*6*,52*1+52**1+,48*,52*8*7+,52*1+52**1+,52*1+52**4+,v
+v                                                                         <
+>52*52**8+,52*52**,48*1+,@'''
+expected = "Hello World!"
+
+[[examples]]
+id = "hello-no-turns"
+source = '''
+?0|0
+0 0  @,,,,,,,,,,,,,_
+_0_"!dlroW ,olleH"0|
+0                  1'''
+expected = "Hello, World!"
+
+[[examples]]
+id = "cat"
+source = "~:1+!#@_,"
+stdin = "abc"
+stop = "eof"
+expected = "abc"
+
+[[examples]]
+id = "cat-wrapping"
+source = "~,"
+stdin = "abc"
+stop = "eof"
+expected = "abc"
+
+[[examples]]
+id = "truth-machine-0"
+source = "&#::_.@#"
+stdin = "0"
+expected = "0 "
+
+[[examples]]
+id = "truth-machine-1"
+source = "&#::_.@#"
+stdin = "1"
+stop = "steps"
+max_steps = 1000
+expected = "1 1 1 1 1 "
+
+[[examples]]
+id = "factorial"
+source = '''
+&>:1-:v v *_$.@ 
+ ^    _$>\:^'''
+stdin = "5"
+expected = "120 "
+
+[[examples]]
+id = "fibonacci"
+note = """\
+    Cells hold bytes, so after 610 the stored 377 wraps; the prefix is the sequence."""
+source = '''
+0:09p1>09g\:09p+:.84*,v
+      ^               <'''
+stop = "steps"
+max_steps = 2000
+expected = "1  2  3  5  8  13  21  34  55  89  144  233  377  610  "
+
+[[examples]]
+id = "fizzbuzz"
+note = "No @: counts forever, CR-separated; its rows carry spaces past column 80."
+source = '''
+>0099+p67+,1+:3%!#v_>:5%!#v_099+g#v_v                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                    ,     "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+                    ,     z                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+                    ,     z                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+                    ,     u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+                  " p     B                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+                  z +     "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+                  z 9                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                  i 9               :                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                  F 0     ,         .                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                  " 1     ,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+                  > ^     ,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+                          ,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+^                         <       < <                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '''
+stop = "steps"
+max_steps = 20000
+expected = """\
+    \r1 \r2 \rFizz\r4 \rBuzz\rFizz\r7 \r8 \rFizz\rBuzz\r11 \rFizz\r13 \r14 \
+    \rFizzBuzz\r16 \r17 \rFizz\r19 \rBuzz\rFizz\r22 \r23 \rFizz\rBuzz\r26 \rFizz\r28 \
+    \r29 \rFizzBuzz"""
+
+[[examples]]
+id = "guessing-game"
+note = """\
+    Any secret is guessed by 1, 2, 3; the print loop also prints the empty stack's 0."""
+source = '''
+>>v
+v1?2v
+  3
+> > >: v
+    |-&<
+    $
+    >"!tcerroC">:v
+               |,<
+               @'''
+stdin = '''
+1
+2
+3
+'''
+expected = "Correct!\u0000"
+
+[[examples]]
+id = "dna"
+source = '''
+7^DN>vA
+v_#v? v
+7^<""""
+3  ACGT
+90!""""
+4*:>>>v
++8^-1,<
+> ,+,@)'''
+seed = 0
+decode = "acgt"
+expected = "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\r\n"
+
+[[examples]]
+id = "sieve"
+source = '''
+2>:3g" "-!v\  g30          <
+ |!`"O":+1_:.:03p>03g+:"O"`|
+ @               ^  p3\" ":<
+2 234567890123456789012345678901234567890123456789012345678901234567890123456789'''
+expected = "2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 "
+
+[[examples]]
+id = "quine"
+source = "01->1# +# :# 0# g# ,# :# 5# 8# *# 4# +# -# _@"
+expected = "01->1# +# :# 0# g# ,# :# 5# 8# *# 4# +# -# _@"
+
+[[examples]]
+id = "quine-string-mode"
+note = "80-column rows print their padding."
+source = '''
+0 v
+ "<@_ #! #: #,<*2-1*92,*84,*25,+*92*4*55.0                                      '''
+decode = "unpad"
+expected = '''
+0 v
+"<@_ #! #: #,<*2-1*92,*84,*25,+*92*4*55.0'''
+
+[[examples]]
+id = "quine-no-g"
+source = "<@,*86,+2*48_,#! #:<$\"0"
+decode = "unpad"
+expected = "<@,*86,+2*48_,#! #:<$\"0"
+
+[[examples]]
+id = "quine-trailing-space"
+source = "<@.,+2*48_,#! #:<$$\"0 "
+decode = "unpad"
+expected = "<@.,+2*48_,#! #:<$$\"0"
+
+[[examples]]
+id = "calculator"
+note = "Its print loops also print the empty stack's 0."
+source = '''
+"rotaluclaC egnufeB">:v
+                    |,<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                    >52*:,,"/4 *3 -2 +1">:v     ^^^^
+                                        |,<     ^^^^
+                                        >52*:,,v^^^^
+                                        v<<<<<<<^^^^
+                                        &       ^^^^
+                                        :       ^^^^
+                                        1       ^^^^
+                                        -       ^^^^
+                                       v_$&&+.$>^^^^
+                                       :         ^^^
+                                       2         ^^^
+                                       -         ^^^
+                                      v_$&&-.$>>>^^^
+                                      :           ^^
+                                      3           ^^
+                                      -           ^^
+                                     v_$&&*.$>>>>>^^
+                                     :             ^
+                                     4             ^
+                                     -             ^
+                                    @_$&&/.$>>>>>>>^'''
+stdin = '''
+1
+3
+4
+'''
+stop = "eof"
+expected = "Befunge Calculator\u0000\n\n1+ 2- 3* 4/\u0000\n\n7 \u0000\n\n1+ 2- 3* 4/\u0000\n\n"
+
+[[examples]]
+id = "calculator-2"
+source = '''
+025*"rotaluclaC egnufeB">:#,_&&&v   >v   >v   >v   >0"!dilav toN">:#,_@
+                                >:1-|>:2-|>:3-|>:4-|
+                                    $    $    $    $
+                                    +    -    *    /
+                                    >    >    >    >.@'''
+stdin = '''
+3
+4
+1
+'''
+expected = '''
+Befunge Calculator
+7 '''
+
+[[examples]]
+id = "99-bottles-80x25"
+source = '''
+55+55+*1->:." ,llaw eht no reeb fo selttob"v
+            v,,,,,,,,,,,,,,,,,,,,,,,,,,,,, <
+            >:.".reeb fo selttob"v
+               v,,,,,,,,,,,,,,,, <
+               >55+," ,dnuora ti ssap dna nwod eno ekaT"v
+                    v,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, <
+                    >1-:.".llaw eht no reeb fo selttob"v
+                         v,,,,,,,,,,,,,,,,,,,,,,,,,,,, <
+                         >55+:,,:2-v
+         ^                         _v
+v                                +55<
+>".reeb fo selttob 2 ,llaw eht no reeb fo selttob 2"v
+v ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, <
+>:,".llaw eht no reeb fo elttob 1 ,dnuora ti ssap dna nwod eno ekaT"v
+v ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,   <
+>::,,".reeb fo elttob 1 ,llaw eht no reeb fo elttob 1"v
+v,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,      <
+>:,".llaw eht no reeb fo selttob erom on ,dnuora ti ssap dna nwod eno ekaT"v
+v,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,   <
+>55+:,".reeb fo selttob erom on ,llaw eht no reeb fo selttob erom oN"v
+v,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,       <
+>,".llaw eht no reeb fo selttob 99 ,erom emos yub dna erots eht ot oG"v
+@,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,   <'''
+expected_file = "befunge_99_bottles_80x25.txt"
+
+[[examples]]
+id = "random-below-1"
+source = '''
+& :v>00g2/.@
+v00_^#!`/2g00:<
+>0p:1>>:10p` !|
+>+00p^?<*2g01:<
+^ g00:<'''
+stdin = "1"
+expected = "0 "
+
+[[examples]]
+id = "a-plus-b"
+source = "&&+.@"
+stdin = "3 4"
+expected = "7 "
+
+[[examples]]
+id = "do-nothing-at"
+source = "@"
+expected = ""
+
+[[examples]]
+id = "98-hello"
+source = "<>>#;>:#,_@#:\"Hello, World!\""
+expected = "Hello, World!"
+
+[[examples]]
+id = "98-hello-multiline"
+source = '''
+<v"Hello, World!"
+ >:v
+ ^,_@'''
+expected = "Hello, World!"
+
+[[examples]]
+id = "looping-counter"
+source = '''
+1v,*25<                                                                         
+ 1    .                                                                         
+ >+:  ^'''
+stop = "steps"
+max_steps = 300
+expected = '''
+2 
+3 
+4 
+5 
+'''

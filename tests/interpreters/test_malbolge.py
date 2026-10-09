@@ -14,6 +14,7 @@ from esolangs.interpreters.other.malbolge import (
     run,
 )
 from tests.interpreters.runner import run_program
+from tests.raises import assert_rejected_with_hint
 
 #: Kamila Szewczyk's "Hello, world." -- the reference output is lowercase.
 HELLO = (
@@ -125,3 +126,8 @@ def test_a_non_graphic_rewrite_skips_the_encipherment() -> None:
     assert not halted
     assert a == 13
     assert writes == ((0, 13),)
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Malbolge", "?", "position-dependent")

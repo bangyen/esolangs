@@ -2,15 +2,18 @@
 
 from typing import Any
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _residual_ids,
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
+    in_input_order,
     stored_inputs,
 )
+from esolangs.tools.wrap import wrap_grid
 
 #: The ``d`` operand of every instruction: cell 7, the last word of the
 #: first data block, which nothing writes, so ``*d > 0`` never holds and the
@@ -24,33 +27,23 @@ def addsubjump(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Through five inputs, shared residuals compete with the existing build;
-    wider tables retain the linear packed construction.
-
-    Inputs are read once into a binary row index.  The table is packed into
-    ``n``-bit numeric cells; a self-modified operand selects the indexed cell
-    and repeated subtraction extracts its bit.  There are ``Theta(T/n)``
-    cells of ``O(n)`` digits and the decoder has ``O(n)`` instructions, so
-    generation time and rendered size are both ``O(T)``.
+    Up to 16 rows, the shorter of tree and shared residuals in input order; 32 rows
+    also try the shared residual tree; wider tables use the linear packed
+    decoder (``n``-bit cells, size ``O(T)``).  Packed cells are read by a
+    running operand, so equal cells cannot share a word (interning saves 0.00%
+    at n=8) and a constant run costs a cell each.
     """
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _addsubjump_candidate)
-    packed = min(
-        (_addsubjump_packed(truth_table), _addsubjump_packed(truth_table, shared=True)),
-        key=len,
-    )
+        return in_input_order(truth_table, _addsubjump_candidate)
+    packed = _addsubjump_packed(truth_table)
     if len(truth_table) == 32:
         shared = _addsubjump_ordered(truth_table, tuple(range(5)), shared=True)
         return min((packed, shared), key=len)
     return packed
 
 
-def _addsubjump_packed(truth_table: str, *, shared: bool = False) -> str:
-    """Emit a linear packed decoder, optionally interning equal numeric cells.
-
-    The shared map has O(T/n) pointers of O(n) digits. Its pool comes
-    first, keeping pointers short when few values occur; both builds are O(T).
-    """
+def _addsubjump_packed(truth_table: str) -> str:
+    """Emit a linear packed decoder (O(T)); interning equal cells saves 0.00% at n=8."""
     n = _validate_truth_table(truth_table)
     chunk_width = max(n, 1)
     # ``c`` is a literal destination (the wiki's ``goto c``), so a label or
@@ -137,9 +130,7 @@ def _addsubjump_packed(truth_table: str, *, shared: bool = False) -> str:
 
     mark("selected")
     clear("TABLE")
-    # Selection runs once: the indirect load operand starts at zero.
-    pointer_write = emit(0, "CHUNK0", "next") if shared else None
-    load_chunk = emit("TABLE", 0 if shared else "CHUNK0", "next")
+    load_chunk = emit("TABLE", "CHUNK0", "next")
     clear("SHIFT")
     emit("SHIFT", "OFFSET", "next")
     emit("SHIFT", "ONE", "div_init")
@@ -181,18 +172,16 @@ def _addsubjump_packed(truth_table: str, *, shared: bool = False) -> str:
     ]
 
     names = list(values)
-    unique = list(dict.fromkeys(chunks)) if shared else []
-    names.extend(f"VALUE{i}" for i in range(len(unique)))
     names.extend(f"CHUNK{i}" for i in range(len(chunks)))
     base = 4 * len(instructions)
     address = {name: base + i for i, name in enumerate(names)}
 
     memory = [0] * (base + len(names))
+
+    def operand(value: int | str) -> int:
+        return address[value] if isinstance(value, str) else int(value)
+
     for i, (a, b, target, d) in enumerate(instructions):
-
-        def operand(value: int | str) -> int:
-            return address[value] if isinstance(value, str) else int(value)
-
         if target == "next":
             c = 4 * (i + 1)
         elif isinstance(target, int):
@@ -203,17 +192,11 @@ def _addsubjump_packed(truth_table: str, *, shared: bool = False) -> str:
 
     for name, value in values.items():
         memory[address[name]] = value
-    locations = {value: address[f"VALUE{i}"] for i, value in enumerate(unique)}
     for i, value in enumerate(chunks):
-        memory[address[f"CHUNK{i}"]] = locations[value] if shared else value
-    for i, value in enumerate(unique):
-        memory[address[f"VALUE{i}"]] = value
-    if pointer_write is not None:
-        memory[4 * pointer_write] = 4 * load_chunk + 1
+        memory[address[f"CHUNK{i}"]] = value
     # Advancing this instruction's destination advances LOAD_CHUNK's b
     # operand through the contiguous chunk cells.
-    indexed_load = pointer_write if pointer_write is not None else load_chunk
-    memory[4 * load_operand_increment] = 4 * indexed_load + 1
+    memory[4 * load_operand_increment] = 4 * load_chunk + 1
     return " ".join(map(str, memory))
 
 
@@ -250,11 +233,8 @@ def _addsubjump_ordered(
     # operand rather than into a cell the jump dereferences.  ``targets`` maps
     # a forward-reference name to the instruction index it will land on.
     targets: dict[str, int] = {}
-    # The operand names in the order the instructions mention them, recorded
-    # as they are emitted.  The numbering pass below wants exactly this list
-    # and used to recover it by re-scanning every operand of every
-    # instruction -- 3.5M ``isinstance`` calls on a six-input build, which
-    # input-order selection pays once per candidate.
+    # Operand names in mention order, recorded at emit: re-scanning every
+    # operand cost 3.5M ``isinstance`` calls on a six-input build.
     named: list[str] = []
 
     def emit(a: object, b: object, c: object, d: int) -> int:
@@ -267,8 +247,7 @@ def _addsubjump_ordered(
 
     # The entry jumps over these two instruction-width data blocks.  Their
     # fixed addresses hold the operands repeated throughout the tree:
-    # D48=4, D49=5, U=6 and C48=8.  It adds U to itself, a no-op: nothing
-    # reads the flags, so the old ``-9 -6`` (enable flag mode) bought nothing.
+    # D48=4, D49=5, U=6 and C48=8.  It adds U to itself, a no-op.
     emit(6, 6, "next", _ADD)
     instructions += [[_ASCII_ZERO, _ASCII_ONE, 0, 0], [-_ASCII_ZERO, 0, 0, 0]]
 
@@ -292,10 +271,7 @@ def _addsubjump_ordered(
 
     # Rows split most significant first, so the span a node covers is the
     # contiguous ``truth_table[lo:hi]`` and its two halves are that slice cut
-    # in two.  Carried as a pair rather than as the list of row indices it
-    # used to be: the list rebuilt itself at every node, O(n * 2**n) per
-    # candidate, for spans the slice bounds already name.  The fold test is
-    # O(1) on the span, so the tree is O(2**n).
+    # in two.  The fold test is O(1) on the span, so the tree is O(2**n).
     constant = constant_span_test(truth_table)
 
     # IDs retain depth, so each row visits a self-modified branch at most once.
@@ -331,7 +307,7 @@ def _addsubjump_ordered(
         # it to the one trampoline.
         jump = 4 * (base + 1) + 2
         emit(jump, bit, "next", _ADD)  # c of the goto += B, the hoisted bit
-        emit(6, 6, ("init", 4 * (base + 2)), _ADD)  # goto, target patched above
+        emit(6, 6, 4 * (base + 2), _ADD)  # goto, rests on the zero trampoline
         ztarget = f"Z{base}"
         otarget = f"O{base}"
         emit(6, 6, ztarget, _ADD)  # zero trampoline
@@ -344,12 +320,8 @@ def _addsubjump_ordered(
     build(0, 0, 2**n, root)
 
     base_data = 4 * len(instructions)
-    # Insertion-ordered name -> index.  A dict rather than a list because the
-    # list spelling scanned twice per call -- ``in`` and then ``.index`` --
-    # which is O(names) on a table that calls this once per operand: 1.6M
-    # calls and 2.4s of a 3.8s six-input build, the generator's whole cost.
-    # ``dict`` preserves insertion order, so the numbering it hands out is
-    # the same one the scan produced.
+    # A dict, not a list: list ``in`` + ``.index`` per operand was 2.4s of a
+    # 3.8s six-input build.
     names = {name: index for index, name in enumerate(dict.fromkeys([*named, *values]))}
 
     def cell(name: str) -> int:
@@ -361,8 +333,6 @@ def _addsubjump_ordered(
         if c == "next":
             # Instruction 0 jumps over the two data blocks that follow it.
             c = 12 if i == 0 else 4 * (i + 1)
-        elif isinstance(c, tuple):
-            c = c[1]
         elif isinstance(c, str):
             c = 4 * targets[c]
         row = [cell(v) if isinstance(v, str) else v for v in (a, b)]
@@ -370,3 +340,14 @@ def _addsubjump_ordered(
     for name, val in values.items():
         mem[cell(name)] = val
     return " ".join(map(str, mem))
+
+
+LANGUAGE = Language(
+    "AddSubJump",
+    "register_based.addsubjump",
+    boolean=addsubjump,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    wrap=wrap_grid,
+)

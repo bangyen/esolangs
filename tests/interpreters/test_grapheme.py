@@ -6,7 +6,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.stack_based.grapheme import _Machine as Grapheme
 from esolangs.interpreters.stack_based.grapheme import run
+from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -14,6 +16,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program as _run_program
+from tests.raises import assert_rejected_with_hint
 
 run_program = partial(_run_program, run)
 
@@ -142,6 +145,12 @@ def test_loading_ignores_only_lf(char: str) -> None:
             "12",
             id="string_integer_conversion_stops_before_f_without_a_final_shift",
         ),
+        # "skip the next B commands" never moves back to re-run ``V``.
+        pytest.param(
+            "FAFFZFBFZFVFAFY", "1", id="v_with_a_negative_count_skips_nothing"
+        ),
+        # The map takes "integers/strings/functions" as keys, by body.
+        pytest.param("FBFHAHCHAHDY", "2", id="a_function_names_a_variable"),
     ],
 )
 def test_prints(code: str, expected: str) -> None:
@@ -253,14 +262,6 @@ class TestEdgeCases:
         program = "H" + "FFTPBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
         assert run_program("FEZZF" + program) == ""
         assert run_program("FEZZF" + "FFT" + "A" + program) == ""
-
-    def test_v_with_a_negative_count_skips_nothing(self) -> None:
-        """ "skip the next B commands" never moves back to re-run ``V``."""
-        assert run_program("FAFFZFBFZFVFAFY") == "1"
-
-    def test_a_function_names_a_variable(self) -> None:
-        """The map takes "integers/strings/functions" as keys, by body."""
-        assert run_program("FBFHAHCHAHDY") == "2"
 
     def test_the_error_messages_read_in_full(self) -> None:
         """Each message entire, not the fragment the tests match on."""
@@ -434,3 +435,31 @@ def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle():
     machine = _Machine("FAFHWMHZ", PositionlessIO("a\n" * 10))
     with pytest.raises(EOFError):
         run_until_halt_or_cycle(machine, limit=100)
+
+
+def test_grapheme_replayed_function_is_detected_as_an_ancestor() -> None:
+    # The function invokes itself without changing the shared state.
+    machine = Grapheme("HKGHKG", ScriptedIO())
+    assert run_until_halt_or_ancestor(machine) is False
+
+
+def test_grapheme_changing_stack_halts() -> None:
+    # The function decrements the count before Q recurs, so each entry
+    # has a different shared stack and reaches the zero base case.
+    code = "FAF" + "H" + "FFTPBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
+    assert run_until_halt_or_ancestor(Grapheme(code, ScriptedIO())) is True
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Grapheme", "abc", "uppercase Latin")
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [("FAFY", "10"), ("FABFY", "120"), ("FZFY", "0"), ("EABFCEJY", "120")],
+)
+def test_after_each_letter_conversion(source, expected):
+    io = ScriptedIO("")
+    run(source, io, integer_conversion="after_each_letter")
+    assert io.getvalue() == expected

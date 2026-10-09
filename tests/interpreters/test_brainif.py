@@ -2,6 +2,8 @@
 
 from typing import ClassVar
 
+import pytest
+
 import esolangs.debugger as debugger_api
 from esolangs.interpreters.tape_based.brainif import run
 from tests.interpreters.contract import (
@@ -10,7 +12,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import raises_message
+from tests.raises import assert_rejected_with_hint, raises_message
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -301,3 +303,15 @@ def test_moving_right_over_an_existing_cell_does_not_grow_the_tape() -> None:
     for _ in range(3):
         machine.step()
     assert (machine.ptr, machine.cells) == (1, (0, 0))
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("source", "hint"),
+    [
+        ("if 0 move up", "move left or move right"),
+        ("if 0 incremnt", "did you mean 'increment'"),
+    ],
+)
+def test_malformed_source_carries_a_repair_hint(source: str, hint: str) -> None:
+    assert_rejected_with_hint("BrainIf", source, hint)

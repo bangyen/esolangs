@@ -5,11 +5,17 @@ variables and named where they recur (:func:`_intercal_shared`).
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     in_input_order,
+    layout_width,
+    same_up_to_wrapping,
 )
 
 TEMPLATE_CHAR = "@"
@@ -28,18 +34,11 @@ class _Expr:
         if self.op == "input":
             return f".{self.value + 1}"
         outer, inner = ("'", '"') if depth % 2 == 0 else ('"', "'")
-        if self.op == "mingle":
-            left, right = self.children
-            return f"{outer}{left.render()}${right.render()}{outer}"
-        if self.op == "select":
-            # The manual places a unary between the spot and the number.
-            (operand,) = self.children
-            return f"{outer}.{'&V?'[self.value]}{operand.value + 1}~#1{outer}"
         if self.op == "not":
-            children, operator = (*self.children, _Expr("constant", 1)), "?"
+            children, operator = (*self.children, _ONE), "?"
         else:
             children = self.children
-            operator = {"and": "&", "or": "V", "xor": "?"}[self.op]
+            operator = {"and": "&", "or": "V"}[self.op]
         left, right = children
         mingled = (
             f"{inner}{operator}{left.render(depth + 2)}$"
@@ -48,35 +47,32 @@ class _Expr:
         return f"{outer}{mingled}~#1{outer}"
 
 
+_ZERO, _ONE = _Expr("constant", 0), _Expr("constant", 1)
+# A statement's newline plus a fifth of the 4 characters PLEASE costs over DO.
+_STATEMENT_OVERHEAD = 2
+
+
 def intercal(truth_table: str, width: int | None = None) -> str:
     """Return a polite C-INTERCAL template computing ``truth_table``.
 
-    Every input is assigned to its own variable before the expression, so
-    shared Shannon diagram tests them in input order. Retiring the greedy
-    order adds 2.14% to the three-input total and 1.68% to the five-input
-    sample.  Over-wide
-    expressions name each Boolean operation; narrower layouts break between tokens.
+    Inputs are tested in input order (the greedy order costs +2.14% on three
+    inputs, +1.68% on the five-input sample).  A ``width`` breaks over-wide
+    statements between tokens.  Narrower rebuilds (unsimplified, per-operation
+    names, split mingles) were retired: at n=7..10 wrapping the natural
+    program is smaller at every width from 1 to 259, by 26.2% (n=7) to
+    32.3% (n=10).
     """
     natural = in_input_order(truth_table, _intercal_shared)
-    if width is None or width <= 0 or max(map(len, natural.splitlines())) <= width:
+    if width is None or width <= 0:
         return natural
-    previous = _intercal_narrow(truth_table, simplify=False)
-    if max(map(len, previous.splitlines())) <= width:
-        return previous
-    narrow = _intercal_narrow(truth_table)
-    if max(map(len, narrow.splitlines())) <= width:
-        return narrow
-    split = _intercal_narrow(truth_table, split=True)
-    best = min((narrow, split), key=lambda program: max(map(len, program.splitlines())))
-    chosen = (
-        best
-        if max(map(len, best.splitlines())) < max(map(len, natural.splitlines()))
-        else natural
-    )
-    return _wrap_intercal(chosen, width)
+    return _wrap_intercal(natural, width)
 
 
-_TOKEN = re.compile(r"[A-Z]+|[.#][&V?]?[0-9]+|<-|@+|[0-9]+|[^\s]")
+def _span(program: str) -> int:
+    return max(map(len, program.splitlines()))
+
+
+_TOKEN = re.compile(r"[A-Z]+|[.#][0-9]+|<-|@+|[0-9]+|[^\s]")
 
 
 def _intercal_tokens(program: str) -> list[str]:
@@ -84,29 +80,13 @@ def _intercal_tokens(program: str) -> list[str]:
     return _TOKEN.findall(program)
 
 
-def balance_intercal(table: str, default: str) -> str:
-    """Compare reachable statement formats and whole-token fit thresholds."""
+def balance_intercal(_table: str, default: str) -> str:
+    """Return the lowest-``balance_score`` wrap of ``default`` over fit widths."""
     from esolangs.tools.wrap import balance_score
 
-    def span(program: str) -> int:
-        return max(map(len, program.splitlines()))
-
-    natural_width = span(default)
-    previous = _intercal_narrow(table, simplify=False)
-    previous_width = span(previous)
-    narrow = _intercal_narrow(table)
-    narrow_width = span(narrow)
-    candidates = [default]
-    if previous_width < natural_width:
-        candidates.append(previous)
-    if narrow_width < min(natural_width, previous_width):
-        candidates.append(narrow)
-    split = _intercal_narrow(table, split=True)
-    best = min((narrow, split), key=span)
-    chosen = best if span(best) < natural_width else default
-    maximum = min(natural_width, previous_width, narrow_width) - 1
+    maximum = _span(default) - 1
     widths = {1}
-    for line in chosen.splitlines():
+    for line in default.splitlines():
         if len(line) <= maximum:
             widths.add(len(line))
         tokens = _intercal_tokens(line)
@@ -117,9 +97,9 @@ def balance_intercal(table: str, default: str) -> str:
                 if used > maximum:
                     break
                 widths.add(used)
-    # Within a format, a row changes only when a whole token run fits or
-    # the original statement starts fitting and retains its punctuation.
-    candidates.extend(_wrap_intercal(chosen, width) for width in widths)
+    # A row changes only when a whole token run fits or the original
+    # statement starts fitting and retains its punctuation.
+    candidates = [default, *(_wrap_intercal(default, width) for width in widths)]
     return min(candidates, key=balance_score)
 
 
@@ -133,86 +113,6 @@ def _wrap_intercal(program: str, width: int) -> str:
         else _join_tokens(_intercal_tokens(line), width, separator=" ")
         for line in program.splitlines()
     )
-
-
-def _intercal_narrow(
-    truth_table: str, *, simplify: bool = True, split: bool = False
-) -> str:
-    """Name each primitive operation in the reduced Shannon diagram.
-
-    At most O(T/log T) diagram nodes need O(log T)-digit names: O(T) source.
-    Constant arms simplify Boolean operations; complementary arms use XOR.
-    Each assignment has only one mingle/unary/select frame.
-    """
-    n = _validate_truth_table(truth_table)
-    nodes, root = _diagram(truth_table, n)
-    assigned: list[tuple[int, _Expr]] = []
-
-    def name(expr: _Expr) -> _Expr:
-        if split:
-            children = expr.children
-            operator = "xor" if expr.op == "not" else expr.op
-            if expr.op == "not":
-                children = (*children, _ONE)
-            intermediate = n + 2 + len(assigned)
-            assigned.append(
-                (
-                    intermediate,
-                    _Expr("mingle", ("and", "or", "xor").index(operator), children),
-                )
-            )
-            # Store the raw mingle (at most 3); unary OR/XOR on the 32-bit
-            # mingle can set bit31 and would overflow a onespot assignment.
-            expr = _Expr(
-                "select",
-                ("and", "or", "xor").index(operator),
-                children=(_Expr("input", intermediate - 1),),
-            )
-        variable = n + 2 + len(assigned)
-        assigned.append((variable, expr))
-        return _Expr("input", variable - 1)
-
-    selectors = [_Expr("input", n - 1 - level) for level in range(n)]
-    if not simplify:
-        inverses = [name(_Expr("not", children=(selector,))) for selector in selectors]
-        previous = [_ZERO, _ONE]
-        for level, zero, one in nodes[2:]:
-            low = name(_Expr("and", children=(inverses[level], previous[zero])))
-            high = name(_Expr("and", children=(selectors[level], previous[one])))
-            previous.append(name(_Expr("or", children=(low, high))))
-        return _program(n, assigned, previous[root])
-    negated: dict[int, _Expr] = {}
-    results = [_ZERO, _ONE]
-    complements = {0: 1, 1: 0}
-    seen: dict[tuple[int, int, int], int] = {}
-    for node, (level, zero, one) in enumerate(nodes[2:], 2):
-        mirror = (level, complements.get(zero, -1), complements.get(one, -1))
-        if mirror in seen:
-            other = seen[mirror]
-            complements[node], complements[other] = other, node
-        seen[level, zero, one] = node
-        selector = selectors[level]
-        if (zero, one) == (0, 1):
-            result = selector
-        elif complements.get(zero) == one:
-            result = name(_Expr("xor", children=(selector, results[zero])))
-        else:
-            if level not in negated:
-                negated[level] = name(_Expr("not", children=(selector,)))
-            if zero == 0:
-                result = name(_Expr("and", children=(selector, results[one])))
-            elif one == 0:
-                result = name(_Expr("and", children=(negated[level], results[zero])))
-            elif zero == 1:
-                result = name(_Expr("or", children=(negated[level], results[one])))
-            elif one == 1:
-                result = name(_Expr("or", children=(selector, results[zero])))
-            else:
-                low = name(_Expr("and", children=(negated[level], results[zero])))
-                high = name(_Expr("and", children=(selector, results[one])))
-                result = name(_Expr("or", children=(low, high)))
-        results.append(result)
-    return _program(n, assigned, results[root])
 
 
 def _mux(
@@ -264,9 +164,8 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
         inline = frames[level] + text[zero] + text[one]
         name = first + len(names)
         spelled = len(f".{name}")
-        # ``DO .k <- `` and a newline, plus a fifth of the four characters a
-        # ``PLEASE`` costs over ``DO``, against what each later reader saves.
-        statement = len(f"DO .{name} <- ") + 2
+        # Against what each later reader saves.
+        statement = len(f"DO .{name} <- ") + _STATEMENT_OVERHEAD
         count = readers[node]
         if (count - 1) * inline > statement + count * spelled:
             names[node] = name
@@ -309,9 +208,10 @@ def _diagram(truth_table: str, n: int) -> tuple[list[tuple[int, int, int]], int]
             if key[1] == key[2]:
                 ids.append(key[1])
                 continue
-            ids.append(index.setdefault(key, len(nodes)))
-            if ids[-1] == len(nodes):
+            if key not in index:
+                index[key] = len(nodes)
                 nodes.append(key)
+            ids.append(index[key])
     return nodes, ids[0]
 
 
@@ -321,6 +221,8 @@ def _negations(
     """Name each level's ``~selector`` variable, or ``None`` to inline it.
 
     Numbered from the bottom level up, from the first spare ``.{n + 2}``.
+    Naming beats inlining every ``~selector`` by 15.4% at n=8, 19.0% at n=10
+    (random tables); always naming a used level is within 0.8% at n=8.
     """
     n = len(selectors)
     per_level = [0] * n
@@ -330,14 +232,11 @@ def _negations(
     name = n + 2
     for level in range(n - 1, -1, -1):
         inline = len(_Expr("not", children=(selectors[level],)).render())
-        statement = len(f"DO .{name} <- ") + inline + 2
+        statement = len(f"DO .{name} <- ") + inline + _STATEMENT_OVERHEAD
         if per_level[level] * (inline - len(f".{name}")) > statement:
             negated[level] = name
             name += 1
     return negated
-
-
-_ZERO, _ONE = _Expr("constant", 0), _Expr("constant", 1)
 
 
 def _variable(name: int | None) -> _Expr | None:
@@ -351,8 +250,38 @@ def _program(n: int, assigned: list[tuple[int, _Expr]], result: _Expr) -> str:
     statements += [f".{name} <- {expr.render()}" for name, expr in assigned]
     statements += [f".{n + 1} <- {result.render()}"]
     statements += [f"READ OUT .{n + 1}", "GIVE UP"]
-    polite = max(1, (len(statements) + 4) // 5)
+    polite = max(1, (len(statements) + 4) // 5)  # one statement in five
     return "\n".join(
         f"{'PLEASE' if i < polite else 'DO'} {statement}"
         for i, statement in enumerate(statements)
     )
+
+
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Equivalent statement syntax at the narrowest layout, or the observed fit."""
+    narrow = layout(1)
+    if isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
+        narrow
+    ):
+        return True
+    # Its primitive layout fits between the natural and simplified floors.
+    # Rebuild at the observed bound rather than accepting equivalent syntax.
+    return template == layout(layout_width(template)) or same_up_to_wrapping(
+        template, plain
+    )
+
+
+LANGUAGE = Language(
+    "INTERCAL",
+    "other.intercal",
+    boolean=intercal,
+    same_layout=_same_layout,
+    contract=BooleanContract(
+        answer_pattern=r"(?s)^(_\n|I)\n$",
+        answer_values=("_\n", "I"),
+        note="INTERCAL READ OUT prints a lone overbar for zero and I for one",
+    ),
+    balance=balance_intercal,
+    empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
+    example=Example(pair=PAIR, char=TEMPLATE_CHAR, expected="_\n\n"),
+)

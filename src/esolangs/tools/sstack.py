@@ -9,11 +9,14 @@ prints ``:b:`` or ``:c:``; a constant subtree reads its remaining inputs
 onto ``d`` and prints once.  28 characters a node: O(T) size and build.
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_chars
 
 _PROLOGUE = '"49/b""48/c"'
 _LEAF = {"0": ":c:", "1": ":b:"}
@@ -44,3 +47,15 @@ def sstack(truth_table: str) -> str:
 
     build(n, 0, len(truth_table))
     return "".join(out)
+
+
+LANGUAGE = Language(
+    "SStack",
+    "stack_based.sstack",
+    boolean=sstack,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    # Whitespace is discarded anywhere, inside a token too.
+    wrap=wrap_chars,
+)

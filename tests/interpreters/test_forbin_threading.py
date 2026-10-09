@@ -51,35 +51,41 @@ class TestDiscardTarget:
 class TestArgumentThreading:
     r"""Programs that notice ``_eval``'s arguments going astray."""
 
-    def test_a_call_returning_a_call(self) -> None:
-        """``globals_`` and ``depth`` threaded through nested returns."""
-        assert (
-            run_program(
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            # ``globals_`` and ``depth`` threaded through nested returns.
+            pytest.param(
                 "one { return 1; }\nf { return (one 0); }\n"
-                "main {\n a = (f 0);\n out 0,1,0,0,0,0,0,a;\n}\n"
-            )
-            == "A"
-        )
-
-    def test_a_call_as_a_range_bound(self) -> None:
-        """A ``for`` bound is a value, so it may itself be a call."""
-        assert (
-            run_program(
+                "main {\n a = (f 0);\n out 0,1,0,0,0,0,0,a;\n}\n",
+                "A",
+                id="a_call_returning_a_call",
+            ),
+            # A ``for`` bound is a value, so it may itself be a call.
+            pytest.param(
                 "g x { out 0,1,0,0,0,0,0,x; }\none { return 1; }\n"
-                "main {\n for i:0..(one 0) { g i; }\n}\n"
-            )
-            == "@A"
-        )
-
-    def test_a_call_in_a_nested_loop_bound(self) -> None:
-        """The inner bound is re-evaluated on every row of the outer loop."""
-        assert (
-            run_program(
+                "main {\n for i:0..(one 0) { g i; }\n}\n",
+                "@A",
+                id="a_call_as_a_range_bound",
+            ),
+            # The inner bound is re-evaluated on every row of the outer loop.
+            pytest.param(
                 "g x { out 0,1,0,0,0,0,0,x; }\none { return 1; }\n"
-                "main {\n for i:0..1 {\n  for j:0..(one 0) { g j; }\n }\n}\n"
-            )
-            == "@A@A"
-        )
+                "main {\n for i:0..1 {\n  for j:0..(one 0) { g j; }\n }\n}\n",
+                "@A@A",
+                id="a_call_in_a_nested_loop_bound",
+            ),
+            # ``*`` doubles the row count, and the columns are independent.
+            pytest.param(
+                "g x { out 0,1,0,0,0,0,0,x; }\n"
+                "main {\n for (i,j):((*,*)) { g i; g j; }\n}\n",
+                "@@@AA@AA",
+                id="two_wildcards_expand_to_four_rows",
+            ),
+        ],
+    )
+    def test_output(self, code: str, expected: str) -> None:
+        assert run_program(code) == expected
 
     def test_a_nested_definition_reads_the_enclosing_frame(self) -> None:
         """``_lookup`` walks ``frame.parent`` until it finds the name."""
@@ -95,16 +101,6 @@ class TestArgumentThreading:
                 "  deep 0;\n }\n mid 0;\n}\n"
             )
             == "A"
-        )
-
-    def test_two_wildcards_expand_to_four_rows(self) -> None:
-        """``*`` doubles the row count, and the columns are independent."""
-        assert (
-            run_program(
-                "g x { out 0,1,0,0,0,0,0,x; }\n"
-                "main {\n for (i,j):((*,*)) { g i; g j; }\n}\n"
-            )
-            == "@@@AA@AA"
         )
 
     def test_arity_mismatches_are_tolerated(self) -> None:

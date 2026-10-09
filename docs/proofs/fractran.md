@@ -8,7 +8,7 @@ count. These bounds apply to that construction, not to all FRACTRAN programs.
 **FRACTRAN’s Boolean source complexity is `Theta(T)`.** The counting floor is
 `D >= T / log2(15) - O(1)` (Theorem 14); the shared decision diagram in
 Theorem 15 matches it within a constant. At `n = 12`, the shipped generator
-emits `3.90` characters per entry, decreasing with arity, versus `23.6` and
+emits `3.81` characters per entry, decreasing with arity, versus `23.6` and
 increasing for the prime-per-row tree.
 
 Sharing costs no execution. The diagram gives every distinct subtable one

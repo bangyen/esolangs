@@ -96,14 +96,6 @@ class TestParameterizedMinskySwap:
         ]
         assert all(b <= 2 * a for a, b in pairwise(sizes))
 
-    def test_template_is_input_independent(self) -> None:
-        """The template has input runs, not hardcoded bits."""
-        from esolangs import tools as generators
-
-        template = generators.minsky_swap("0110")
-        assert "{X" not in template
-        assert template.startswith("~ ~ + * ~ $$ ~ ~ * ++ * $$ ~ ~ * + * *")
-
     @pytest.mark.parametrize("bits", [(0, 0), (0, 1), (1, 0), (1, 1)])
     def test_examples_fill_sets_either_bit_in_either_position(
         self, bits: tuple[int, int]
@@ -115,23 +107,3 @@ class TestParameterizedMinskySwap:
 
         program = _fill_minsky_swap(minsky_swap(AND2), list(bits))
         assert self.run_minsky_swap(program) == AND2[(bits[0] << 1) | bits[1]]
-
-    def test_examples_fill_is_one_pair_at_every_input(self) -> None:
-        """A run is ``++`` or ``**`` at the MSB exactly as at the LSB."""
-        from esolangs.tools import minsky_swap
-        from esolangs.tools.examples import AND2
-        from esolangs.tools.minsky_swap import MINSKY_SWAP_PAIR
-        from tests.tools.fills import _fill_minsky_swap
-
-        assert MINSKY_SWAP_PAIR == ("**", "++")
-        template = minsky_swap(AND2)
-        leaves = "~ ~ + * ~ "
-        assert _fill_minsky_swap(template, [1, 1]).startswith(
-            leaves + "++ ~ ~ * ++ * ++ ~ ~ * + *"
-        )
-        assert _fill_minsky_swap(template, [0, 1]).startswith(
-            leaves + "** ~ ~ * ++ * ++ ~ ~ * + *"
-        )
-        assert _fill_minsky_swap(template, [1, 0]).startswith(
-            leaves + "++ ~ ~ * ++ * ** ~ ~ * + *"
-        )

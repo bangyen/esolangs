@@ -7,7 +7,6 @@ import re
 import pytest
 
 import esolangs
-from esolangs.tools.back import _back_ordered
 
 
 def _parameterized_generators():
@@ -86,14 +85,6 @@ def test_parameterized_generators_embed_each_input_once() -> None:
 _SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
 
 
-def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
-    """Every staging the enumeration places at ``n``, in one pass."""
-    if n not in staged_arities:
-        return derived_plans(n, ())
-    every = tuple(format(v, f"0{2**n}b") for v in range(2 ** (2**n)))
-    return derived_plans(n, every)
-
-
 def _slot_order(gen: object, table: str) -> list[int] | None:
     """The input indices in the order ``gen`` emits them, or None."""
 
@@ -121,38 +112,6 @@ def test_slots_run_in_name_order() -> None:
 def _drawing(template: str) -> str:
     """The template as the drawing the reorder bar compares."""
     return template
-
-
-@pytest.mark.slow  # builds every permuting generator over several tables
-def test_a_permuting_generator_changes_its_drawing() -> None:
-    """A generator that permutes its slots must emit a different *drawing*."""
-    from itertools import permutations
-
-    from esolangs.tools.helpers import permute_truth_table
-
-    checked = 0
-    for name in ("back",):
-        build = _back_ordered
-        for table in ("10101010", "11001100", "00111100"):
-            n = 3
-            builds: dict[str, set[int]] = {}
-            for perm in permutations(range(n)):
-                built = build(permute_truth_table(table, perm), perm)
-                builds.setdefault(_drawing(built), set()).add(len(built))
-            checked += 1
-            # The orders must not all collapse onto one drawing, or the
-            # reorder is a relabelling.
-            assert len(builds) > 1, (
-                name,
-                table,
-                "every input order draws the same program, so permuting the "
-                "slots emits an identical program and books a fake saving",
-            )
-            # And size must be a function of the drawing, not of the labels:
-            # orders sharing a drawing are the same program.
-            for drawing, sizes in builds.items():
-                assert len(sizes) == 1, (name, table, len(drawing), sorted(sizes))
-    assert checked >= 3, checked
 
 
 @pytest.mark.slow  # 2.6s: every fill of every parameterized generator

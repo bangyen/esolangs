@@ -1,0 +1,22 @@
+language = "Malbolge"
+oldid = 195070
+
+[[examples]]
+id = "cat"
+note = "Does not stop on EOF: input reads 59048 there, so it prints byte 168 forever."
+source = '''
+(=BA#9"=<;:3y7x54-21q/p-,+*)"!h%B0/.
+~P<
+<:(8&
+66#"!~}|{zyxwvu
+gJ%'''
+stdin = '''
+Hello, cat!
+line2
+'''
+stop = "steps"
+max_steps = 1000
+expected = '''
+Hello, cat!
+line2
+'''

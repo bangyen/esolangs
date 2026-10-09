@@ -505,3 +505,27 @@ def test_refused(case: tuple[Callable[[object], object], object, str]) -> None:
     call, argument, match = case
     with pytest.raises(ValueError, match=match):
         call(argument)
+
+
+@pytest.mark.medium
+def test_text_import_defers_pillow_until_png_io() -> None:
+    import subprocess
+    import sys
+
+    source = """
+import sys
+import esolangs
+assert 'PIL.Image' not in sys.modules
+raster = esolangs.Raster((((1, 2, 3),),))
+data = raster.to_png()
+assert 'PIL.Image' in sys.modules
+assert esolangs.Raster.from_png(data).rows == raster.rows
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", source],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

@@ -7,14 +7,11 @@ laws, one per maximal run of the alphabet, not a stepper: the left law
 (``"<" * k`` is ``ptr = max(ptr - k, 0)``), the comment law (only consumes
 a pending skip), the bracket law (``"[" * k`` writes the complement of the
 prefix-XOR over the cells crossed, costing the staircase
-``T(m) = m + sum(e_1..e_m)``, the same one :class:`_Chain` walks), and the
-print law (``.`` prints cells 0-7 as a byte, or on zero *reads*, which
-marks the row ``dead``).  ``"[x" * k`` keeps its own spelling
-(:meth:`_Sim.run_walk`).  The interpreter's ``_step`` stays the definition
-and the tests pin every law to it differentially from arbitrary states
-(the first cascade-less walk law matched fresh states and diverged on 877
-of 3000 random ones; 40000 random ``(state, code)`` pairs at the
-prototype).  What to emit lives in :mod:`esolangs.tools.minifuck`.
+``T(m) = m + sum(e_1..e_m)``), and the print law (``.`` prints cells 0-7 as
+a byte, or on zero *reads*, which marks the row ``dead``).  ``"[x" * k``
+keeps its own spelling (:meth:`_Sim.run_walk`).  The interpreter's ``_step``
+stays the definition and the tests pin every law to it differentially from
+arbitrary states.  What to emit lives in :mod:`esolangs.tools.minifuck`.
 """
 
 from collections.abc import Callable
@@ -104,25 +101,6 @@ class _Sim:
     def cell(self, index: int) -> int:
         """Return the bit in cell ``index``."""
         return (self.tape >> index) & 1
-
-    def cells(self, stop: int) -> tuple[int, ...]:
-        """Return cells ``0..stop-1``, the shape a column comparison wants."""
-        return tuple((self.tape >> i) & 1 for i in range(stop))
-
-    def copy(self) -> "_Sim":
-        """Return an independent copy, for branching a derivation or a probe."""
-        clone = _Sim.__new__(_Sim)
-        clone.tape = self.tape
-        clone.length = self.length
-        clone.ptr = self.ptr
-        clone.out = list(self.out)
-        clone.dead = self.dead
-        clone.skip = self.skip
-        return clone
-
-    def key(self) -> tuple[object, ...]:
-        """Return the whole state, hashable, so a caller can dedup on it."""
-        return (self.tape, self.length, self.ptr, tuple(self.out), self.dead, self.skip)
 
     def run_left(self, count: int) -> None:
         """Apply ``"<" * count``: the left law.
@@ -261,103 +239,6 @@ class _Sim:
         self.skip = skip_out
         self.length = max(self.length, self.ptr + 2)
 
-    def run_weight(self, units: int) -> bool:
-        """Apply ``("[x<[<" + "<") * (units - 1) + "[x<[<"`` in closed form.
-
-        Each restoring read restores ``ptr + 1``, flips ``ptr + 2`` and moves
-        the pointer down by the bit read, so the gadget is a march down
-        consecutive 1-cells, stalling at a 0: cells ``ptr+3-m .. ptr+2``
-        complemented, the stall cell flipped iff the remaining units are odd,
-        pointer at ``ptr - m + 1``.  O(1) where the parsed runs cost ~4 calls per
-        read.  Returns False untouched when a pending skip or a floor clamp
-        applies (``test_the_weight_law_matches_the_parsed_runs``).
-        """
-        if units <= 0:
-            return True
-        if self.dead:
-            return True
-        if self.skip:
-            return False
-        p = self.ptr
-        gaps = ~self.tape & ((1 << (p + 2)) - 1)
-        run = p + 1 - (gaps.bit_length() - 1)
-        marched = min(run, units)
-        if marched > p + 1 or (marched < units and marched > p):
-            return False
-        tape = self.tape
-        if marched:
-            tape ^= ((1 << marched) - 1) << (p + 3 - marched)
-        if (units - marched) & 1:
-            tape ^= 1 << (p + 2 - marched)
-        self.tape = tape
-        self.ptr = p - marched + 1
-        self.length = max(self.length, p + 3)
-        return True
-
-    def run_rewind(self, count: int) -> None:
-        """Apply the sculpting round ``"<" * count + "[x" * count + "x"``.
-
-        The walk law's prefix-XOR over the window ending at the pointer, the
-        carry into ``ptr + 1``, pointer unchanged; one call where the runs cost
-        three.  A pending skip or a pointer inside the window falls back
-        (``test_the_rewind_law_matches_the_parsed_runs``).
-        """
-        if self.dead or count <= 0:
-            if count <= 0 and not self.dead and self.skip:
-                self.skip = False
-            return
-        if self.skip or self.ptr < count:
-            self.run_left(count)
-            self.run_walk(count)
-            self.run_comment(1)
-            return
-        tape, ptr = self.tape, self.ptr
-        low = ptr - count + 1
-        mask = (1 << count) - 1
-        carries = (tape >> low) & mask
-        span = 1
-        while span < count:
-            carries ^= (carries << span) & mask
-            span <<= 1
-        tape = (tape & ~(mask << low)) | ((carries ^ mask) << low)
-        tape ^= ((carries >> (count - 1)) & 1) << (low + count)
-        self.tape = tape
-        self.length = max(self.length, ptr + 2)
-
-    def run_rewinds(self, widths: list[int]) -> None:
-        """Apply a sequence of sculpting rounds, fused over their window.
-
-        Every round touches only ``ptr - max(widths) + 1 .. ptr + 1``, so the
-        window is extracted once and the sequence is arithmetic on integers the
-        width of the deepest rewind, one write-back.  Falls back to
-        :meth:`run_rewind` on a pending skip or a window off the tape.
-        """
-        if self.dead or not widths:
-            return
-        p = self.ptr
-        top = max(widths)
-        if self.skip or p < top:
-            for width in widths:
-                self.run_rewind(width)
-            return
-        shift = p - top + 1
-        span_mask = (1 << (top + 1)) - 1
-        window = (self.tape >> shift) & span_mask
-        for width in widths:
-            low = top - width
-            mask = (1 << width) - 1
-            bits = (window >> low) & mask
-            carries = bits
-            span = 1
-            while span < width:
-                carries ^= (carries << span) & mask
-                span <<= 1
-            window ^= ((bits ^ carries ^ mask) << low) | (
-                ((carries >> (width - 1)) & 1) << top
-            )
-        self.tape = (self.tape & ~(span_mask << shift)) | (window << shift)
-        self.length = max(self.length, p + 2)
-
     def run_dot(self, count: int = 1) -> None:
         """Apply ``.``: the print law.
 
@@ -386,35 +267,13 @@ class _Sim:
         for law, count in parsed:
             law(self, count)
 
-    def exec(self, ins: str) -> None:
-        """Execute one instruction, the single-character case of the laws.
-
-        For probes and tests; dispatches to the same four laws.
-        """
-        if ins == "<":
-            self.run_left(1)
-        elif ins == "[":
-            self.run_brackets(1)
-        elif ins == ".":
-            self.run_dot()
-        else:
-            self.run_comment(1)
-
 
 #: How each input is set, at ``ptr+1``: ``[<`` steps right, flips the cell
 #: and steps back for a one; ``xx`` is two executed no-ops for a zero.  The
 #: template spells each input as a run of :data:`TEMPLATE_CHAR` this wide.
 PAIR = ("xx", "[<")
 _MINIFUCK_INPUT = TEMPLATE_CHAR * len(PAIR[0])
-
-
-def _set_bit(bit: int) -> str:
-    """Return the input fill writing ``bit`` at ``ptr+1``.
-
-    Both spellings are two characters and leave the pointer, so the length
-    does not leak the inputs.
-    """
-    return PAIR[bit]
+_SET_ZERO, _SET_ONE = _runs(PAIR[0]), _runs(PAIR[1])
 
 
 class _Joint:
@@ -443,33 +302,8 @@ class _Joint:
     def emit_setter(self, i: int) -> None:
         """Emit input ``i``'s run, simulating each row with its bit."""
         self.parts.append(_MINIFUCK_INPUT)
-        one = _runs(_set_bit(1))
-        zero = _runs(_set_bit(0))
         for bits, m in zip(self.rows, self.ms, strict=True):
-            m.apply(one if bits[i] else zero)
-
-    def emit_weight(self, code: str, units: int) -> None:
-        """Append the weight gadget, advancing rows by its composed law.
-
-        ``code`` must spell exactly ``units`` restoring reads; a row the law
-        refuses falls back to the parsed runs (~4 calls per read).
-        """
-        self.parts.append(code)
-        parsed: _Runs | None = None
-        for m in self.ms:
-            if not m.run_weight(units):
-                if parsed is None:
-                    parsed = _runs(code)
-                m.apply(parsed)
-
-    def fork(self) -> "_Joint":
-        """Return a copy, for trying a continuation without committing."""
-        clone = _Joint.__new__(_Joint)
-        clone.n = self.n
-        clone.rows = self.rows
-        clone.ms = [m.copy() for m in self.ms]
-        clone.parts = list(self.parts)
-        return clone
+            m.apply(_SET_ONE if bits[i] else _SET_ZERO)
 
     def col(self, cell: int) -> tuple[int, ...]:
         """Return ``cell``'s value across the rows -- the function it holds."""

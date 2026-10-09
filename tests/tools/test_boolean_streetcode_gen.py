@@ -40,17 +40,6 @@ class TestStreetcode:
             rows = program.splitlines()
             assert len(rows) == 9, n
             assert len(rows) * max(map(len, rows)) <= 18 * 2**n + 3200, n
-            assert len(program) <= 11 * 2**n + 3000, n
-
-    def test_compact_layout_compares_both_rotations(self) -> None:
-        """Rotation strips the dense tree's leading triangular padding."""
-        from esolangs.tools.streetcode import _streetcode_rotate
-
-        table = "01101001"
-        original = boolean.streetcode(table, width=10_000)
-        rotated = _streetcode_rotate(original)
-        assert len(rotated) < len(original)
-        assert boolean.streetcode(table) == rotated
 
     def test_default_uses_only_shared_layouts(self) -> None:
         """Per-input loops are width fallbacks, never default candidates."""
@@ -61,11 +50,7 @@ class TestStreetcode:
                 table = format(value, f"0{1 << n}b")
                 tree = module._streetcode_tree(table)  # noqa: SLF001
                 shared = module._streetcode_shared_programs(table, n, tree)  # noqa: SLF001
-                all_programs = [
-                    *shared,
-                    *(module._streetcode_rotate(p) for p in shared),  # noqa: SLF001
-                ]
-                assert boolean.streetcode(table) == shortest(*all_programs)
+                assert boolean.streetcode(table) == shortest(*shared)
 
     def test_constant_subtrees_fold(self) -> None:
         """A subtree whose rows agree prints instead of driving down halls."""

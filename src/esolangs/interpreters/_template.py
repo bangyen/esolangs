@@ -3,7 +3,8 @@
 Copy to ``src/esolangs/interpreters/<category>/<name>.py`` and fill in the
 dispatch.  The conventions every interpreter follows -- ``run(code, io)``,
 :class:`ValueError` for a malformed program, :class:`~esolangs.exceptions.HaltError`
-for an invalid operation, ``EOFError`` on exhausted input, a ``_Machine``
+for an invalid operation, ``EOFError`` on exhausted input (unless the spec
+gives EOF a value: then ``eof=`` on its ``LANGUAGE``), a ``_Machine``
 with ``step``/``halted``/``snapshot``, a pure :func:`_advance`, and the
 module docstring shape ``tests/test_interpreter_conventions.py`` checks --
 are listed under "Interpreter conventions" in ``docs/CONTRIBUTING.md``.
@@ -41,6 +42,9 @@ def _advance(
 class _Machine:
     """The run state: the data cell and the code position."""
 
+    # ``ind`` counts source characters.  If it indexes anything else (parsed
+    # tokens, a grid, a frame stack), set ``ip_shape`` -- see ``vm.ip_shape``.
+
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
         self.io = io
@@ -72,6 +76,9 @@ class _Machine:
 
         The shell: the two ports live here and nothing else does.
         """
+        # A halted machine ignores a further step (``contract.py`` checks).
+        if self.halted:
+            return
         c = self.code[self.ind]
 
         # A read is taken before the transition and passed as an argument.
@@ -80,7 +87,8 @@ class _Machine:
             byte = self.io.input_char()
         elif c == ";":
             # ``input_str`` returns the raw line, and an empty one is legal:
-            # guard before indexing.  Running out still raises EOFError.
+            # guard before indexing.  Running out still raises EOFError; a
+            # language with an EOF value catches it here and uses that value.
             val = self.io.input_str()
             byte = ord(val[0]) if val else None
 

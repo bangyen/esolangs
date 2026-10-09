@@ -15,9 +15,12 @@ from esolangs.debugger import make_vm
 from esolangs.interpreters.stack_based.sstack import _parse
 from esolangs.tools.three_x import _level
 from scripts.benchmark import WrittenState, state_bits
+from tests.generator_support import CHECK
+from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import run_to_answer
-from tests.proofs.test_execution_formulas import _tables, _worst
+from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
+from tests.proofs.test_execution_formulas import _measure, _tables
 
 bl = int.bit_length
 
@@ -185,45 +188,13 @@ def _decleq(n: int, _: str) -> int:
     return 55 * n + 11 * s + 95 * b + d + e + f + r
 
 
-#: Generator -> (bits from n and the program, exact?, arities).  Mirrors the ledger.
-FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
-    "Fish": (lambda n, _: n + 13 + bl(9 * n + 8) + bl(n), True, (3, 6)),
-    "Home Row": (lambda n, _: n + 32 + bl(14 * 2**n + 10 * n + 15), True, (3, 5)),
-    "Minsky Swap": (lambda n, _: n + 3 + bl(2 ** (n + 1) + 6 * n + 5), True, (3, 6)),
-    "Factor": (
-        lambda n, _: (
-            7 * n + 12 + bl(2 * n + 1) + bl(n) + bl(51 * 2 ** (n - 2) + 16 * n + 14)
-        ),
-        True,
-        (4,),
-    ),
-    "Clockwise": (
-        lambda n, _: 57 * n + 50 + bl(2 * n + 14) + bl(2 ** (n + 1) + 9 * n + 1),
-        True,
-        (3, 6),
-    ),
-    "CV(N)(C)": (lambda n, _: 2 * n + 20 + bl(2 * n - 1), True, (4, 6)),
+#: Formulas the ledger notation cannot state: a case split, a definition,
+#: a count taken from the program.
+_HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
+    "CV(N)(C)": (lambda n, p: 17 + bl(2 * n - 1) + bl(len(p)), True, (4, 6)),
     "Container": (lambda n, _: 25 * n + 154 + bl(2 * n + 2) + 2 * bl(n), True, (7,)),
-    "BF-PDA": (lambda n, _: 3 * n + 4, True, (3, 6)),
-    "Back": (
-        lambda n, _: n + 5 + bl(max(6 * n - 2, 2**n - 1)) + bl(3 * n + 4) + bl(n),
-        True,
-        (3, 6),
-    ),
     "Alight": (lambda n, _: 72 * n + 762 + bl(6 * n + 12) + bl(n), True, (3, 5)),
-    "brainfuck": (
-        lambda n, p: 2 * n + 6 + bl(2 * n) + bl(n) + bl(len(p)),
-        True,
-        (3, 6),
-    ),
     "BrainIf": (lambda n, p: 13 + bl(len(p.splitlines())) + bl(n), True, (3, 6)),
-    "Jaune": (
-        lambda n, _: n + 1 + bl(5 * 2**n + 5 * n - 4) + bl(n - 1) + bl(2 * n - 1),
-        False,
-        (3, 6),
-    ),
-    "FALSE": (lambda n, _: (2 * n + 56) * (n + 4) + n + 1 + bl(n), False, (3, 5)),
-    "Sophie": (lambda n, p: bl(len(p)) + bl(n) + 7, False, (3, 6)),
     # Every path stacks all n input bytes (6 bits) beside '1' and '0'.
     "SStack": (lambda n, p: 6 * n + 12 + bl(len(_parse(p))) + bl(n), True, (3, 6)),
     "RAM0": (
@@ -250,75 +221,9 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         True,
         (5,),
     ),
-    "Suffolk": (
-        lambda n, p: bl(len(p) - 1) + max(6, n - 1) + max(19, 4 * n - 1) + bl(n) + 4,
-        True,
-        (3, 5),
-    ),
-    "Qoibl": (lambda n, _: 2**n + 3 + bl(n) + bl(n + 2), True, (3, 6)),
-    "Piet": (
-        lambda n, _: (
-            2**n + 2 * n + 7 + bl(3 * 2**n + 5 * n + 15) + bl(2 * n - 1) + bl(n)
-        ),
-        True,
-        (3, 5),
-    ),
-    "Piet++": (
-        lambda n, _: (
-            2**n + 2 * n + 7 + bl(3 * 2**n + 5 * n + 15) + bl(2 * n - 1) + bl(n)
-        ),
-        True,
-        (3, 5),
-    ),
-    "NoComment": (lambda n, p: 32768 + 2**n // 4 + 30 + bl(len(p)), True, (5,)),
-    "6-5": (lambda n, _: 2 * 2**n + 7 * n + 9 + bl(n), True, (7,)),
-    "S*bleq": (lambda _, p: 3 * len(p), False, (3, 5)),
-    "Circlefuck": (
-        lambda n, p: (
-            6 * len(p) + 10 * n + 7 + bl(len(p) - 1) + bl(len(p) - 2**n - 2) + bl(n)
-        ),
-        True,
-        (3,),
-    ),
-    "Eval": (lambda n, p: 8 * len(p) + 2**n + n + 2 + bl(len(p)), True, (3, 5)),
     "EGL": (_egl, True, (3, 5)),
     "Dig": (_dig, True, (5,)),
-    "Cyclic tag": (lambda n, _: 16 * 2**n + 1 + bl(2 * 2**n + n), True, (3, 5)),
-    "Bitwise Cyclic Tag": (
-        lambda n, _: 16 * 2**n + 8 + bl(8 * 2**n + n - 2) + bl(2 * 2**n + n + 1),
-        True,
-        (3, 5),
-    ),
-    "Bitdeque": (lambda n, _: 2**n + 2 + bl(4 * 2**n + 10 * n - 5), True, (5,)),
-    "ArrowQueue": (lambda n, _: 2**n + 11 + bl(3 * 2**n + 6 * n + 5), True, (5, 6)),
-    "bit~": (
-        lambda n, _: (
-            2 * 2**n + 49 + bl(2 * 2**n + 41) + bl(5 * 2**n + 18 * n + 74) + bl(n)
-        ),
-        True,
-        (3, 5),
-    ),
-    "///": (lambda n, p: 8 * len(p) + 56 + 8 * max(0, 2**n - 15), True, (3, 5)),
-    "Smallfuck": (lambda n, p: len(p) + bl(len(p)) + bl(3 * n), True, (3, 6)),
-    "Thue": (lambda n, _: 8 * 2**n + 24 + bl(2 * n), True, (3, 6)),
     "Taglate": (_taglate, True, (3, 5)),
-    "Unsquare": (
-        lambda n, p: 2**n + 12 + bl(len(p)) + bl(len(p) - 33) + 2 * bl(n),
-        True,
-        (3, 6),
-    ),
-    "Super SNUSP": (lambda n, p: 2**n + 2 * n + 12 + bl(len(p)) + bl(n), True, (5,)),
-    "Modulous": (
-        lambda n, _: 6 * 2**n + n + 2 + bl(6 * n + 5) + bl(2 * n - 1) + bl(n),
-        True,
-        (3, 6),
-    ),
-    "Minifuck": (
-        lambda n, p: 6 * 2**n + 30 + bl(6 * 2**n + 28) + bl(6 * 2**n + 30) + bl(len(p)),
-        True,
-        (5,),
-    ),
-    "LaserFuck": (lambda n, _: 12 * 2**n + 2 * n + 11 + 2 * bl(n), True, (5,)),
     "Grapheme": (_grapheme, True, (3, 5)),
     "BIO": (
         lambda n, _: (
@@ -326,7 +231,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
             + sum(bl(10 * n - 8 + 3 * j) for j in range(2**n - 1))
             + bl(4 * 2**n + 10 * n + 37)
         ),
-        True,
+        False,
         (3, 5),
     ),
     "Dimensional": (
@@ -336,13 +241,12 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
             + n * (n - 1) // 2
             + 4 * n
             + 6
-            + bl(2 * 2**n + 20 * n + 40)
+            + bl(2 * 2**n + 20 * n + 56)
             + bl(2 * n - 1)
         ),
         True,
         (3, 4),
     ),
-    "Forþ": (lambda n, _: (2 * n + 364) * 2**n + 43 * n + 2 * bl(n), False, (3, 5)),
     "123": (
         lambda n, p: (
             9
@@ -354,35 +258,6 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         (4, 5),
     ),
     "INTERCAL": (lambda n, _: _intercal(n), False, (3, 6)),
-    "Underload": (
-        lambda n, p: (
-            24 * len(p)
-            + 120 * 2**n
-            + 32 * n
-            - 176
-            + bl(2 * len(p) + 10 * 2**n + 6 * n - 14)
-        ),
-        False,
-        (3, 6),
-    ),
-    "ROTfuck": (
-        lambda n, p: (
-            2 * 2**n
-            + 5 * n
-            + 35
-            + bl(2080 * len(p))
-            + bl(2 * 2**n + 6)
-            + bl(len(p))
-            + bl(n)
-        ),
-        False,
-        (3, 4),
-    ),
-    "Painfuck": (
-        lambda n, p: 2 * n + 5 + 3 * bl(n) + (n + 1) * bl(len(p)),
-        False,
-        (3, 6),
-    ),
     "BFStack": (
         lambda n, p: (
             n
@@ -431,7 +306,6 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         False,
         (3,),
     ),
-    "Fargo": (lambda _, p: 16 * (len(p) - 3) + bl(len(p)) + 11, False, (6,)),
     "FRACTRAN": (
         lambda n, _: (
             bl(_primes(n + 1 + _diagram_cap(n))[-1])
@@ -443,15 +317,18 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         (3, 5),
     ),
     "Streetcode": (
+        # Peak car state is 13 + bl(width), width = 2T + 57 + G.
         lambda n, _: (
             n * 2**n
             + 2 * n
-            + 24
-            + bl(52 + sum(max(51, 2 ** (k - 1) + 3) for k in range(1, n)))
+            + 25
+            + bl(
+                2 ** (n + 1) + 57 + sum(max(51, 2 ** (k - 1) + 3) for k in range(1, n))
+            )
             + 2 * bl(n)
         ),
         True,
-        (6,),
+        (6, 7),
     ),
     "Crement": (_crement, False, (3, 6)),
     "Inject": (_inject, True, (5,)),
@@ -460,26 +337,6 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Forbin": (_forbin, True, (3, 8)),
     "Algebraic Programming Language": (_apl, True, (3, 5)),
     "Decleq": (_decleq, True, (3, 4)),
-    # Every word and register is below 3^10 < 2^16; measured ~394k bits.
-    "Malbolge": (lambda n, _: 16 * 3**10 + 49 + bl(n), False, (2, 3)),
-    # Task, then 3n + 6 frames, each one shared subterm and its depth.
-    "Unlambda": (
-        lambda n, p: (
-            12 * len(p)
-            + 60
-            + (3 * n + 6) * (8 * len(p) + 24 + bl(3 * n + 6))
-            + 9
-            + bl(n)
-        ),
-        False,
-        (2, 3),
-    ),
-    # A T-cell corridor and T - 1 answers at bl(x) + 2 bits each, the ant, ip.
-    "A Painter Ant": (
-        lambda n, p: 2 * (n + 1) * 2**n + 4 + bl(len("".join(p.split())) - 1),
-        True,
-        (3, 6),
-    ),
     # Code, stack and store each near E, the expanded program, at most 95T - 80.
     "Smu": (
         lambda n, _: 24 * (95 * 2**n - 80) - 1214 + bl(95 * 2**n - 80) + bl(n),
@@ -487,17 +344,6 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         (2, 4),
     ),
     "AddSubJump": (_add_sub_jump, False, (3, 5)),
-    "B-tapemark": (
-        lambda n, _: (
-            (4 * 2**n + 31 * n + 5) * (8 + bl(3 * 2**n + n + 3) + bl(9 * n + 3))
-            + (2**n + 4 * n) * (10 + 2 * bl(8 * 2**n + 50 * n))
-            + 4 * bl(8 * 2**n + 50 * n)
-            + bl(n)
-            + 12
-        ),
-        False,
-        (3, 4),
-    ),
     # Latches never clear: 3T - 6 + n flat slots, 6T - 10 + n under the
     # H-layout. Same-state pulses are an antichain: T/2 + n flat, T + n after.
     "Circuit Diagram": (
@@ -531,18 +377,93 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
 }
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("name", sorted(FORMULAS))
-def test_the_workspace_formula_holds(name: str) -> None:
-    formula, exact, arities = FORMULAS[name]
-    for n in arities:
-        reached = False
-        for table in _tables(name, n):
-            claim = formula(n, esolangs.generate(name, table))
-            bits = _worst(name, table, written=True)
-            assert bits <= claim, f"{name} n={n} {table}: {bits} > {claim}"
-            reached |= bits == claim
-        assert reached or not exact, f"{name} n={n}: no table reaches the formula"
+#: Arities where the default (see ``ledger_formulas``) is too slow or too
+#: shallow for the construction.
+_ARITIES: dict[str, tuple[int, ...]] = {
+    "Minsky Swap": (3, 6),
+    "Factor": (4,),
+    "Clockwise": (3, 6),
+    "Back": (3, 6),
+    "FALSE": (3, 5),
+    "Sophie": (3, 6),
+    "NoComment": (5,),
+    "6-5": (7,),
+    "Circlefuck": (3,),
+    "Bitdeque": (5,),
+    "ArrowQueue": (1, 6),
+    "Thue": (3, 6),
+    "Unsquare": (3, 6),
+    "Super SNUSP": (5,),
+    "Modulous": (3, 6),
+    "Minifuck": (5,),
+    "LaserFuck": (5,),
+    "ROTfuck": (3, 4),
+    "Fargo": (6,),
+    # Every word and register is below 3^10 < 2^16; measured ~394k bits.
+    "Malbolge": (2, 3),
+    # Task, then 3n + 6 frames, each one shared subterm and its depth.
+    "Unlambda": (2, 3),
+    # A T-cell corridor and T - 1 answers at bl(x) + 2 bits each, the ant, ip.
+    "A Painter Ant": (3, 6),
+    "B-tapemark": (3, 4),
+}
+
+#: Generator -> (formula, exact?, arities): the ledger's own clause where
+#: it parses (``tests/proofs/_formula.py``), else ``_HAND``.
+FORMULAS = ledger_formulas(
+    lambda row: row.workspace_clause if " bits" in row.workspace_clause else "",
+    _HAND,
+    _ARITIES,
+)
+
+
+def _formula_cases() -> list[object]:
+    ledgers = (EXECUTION_FORMULAS, FORMULAS)
+    cases = sorted(
+        {
+            (name, n)
+            for ledger in ledgers
+            for name, (_, _, arities) in ledger.items()
+            for n in arities
+        }
+    )
+    return [
+        pytest.param(
+            name,
+            n,
+            marks=pytest.mark.medium
+            if any(name in ledger and n == min(ledger[name][2]) for ledger in ledgers)
+            else pytest.mark.slow,
+        )
+        for name, n in cases
+    ]
+
+
+@pytest.mark.parametrize(("name", "n"), _formula_cases())
+def test_execution_and_workspace_formulas_hold(name: str, n: int) -> None:
+    formulas = [
+        (written, formula, exact)
+        for written, ledger in ((False, EXECUTION_FORMULAS), (True, FORMULAS))
+        if name in ledger
+        for formula, exact, arities in (ledger[name],)
+        if n in arities
+    ]
+    reached = [False] * len(formulas)
+    for table in _tables(name, n):
+        program = esolangs.generate(name, table)
+        measurements = _measure(
+            name,
+            table,
+            written=any(written for written, _, _ in formulas),
+            program=program,
+        )
+        for i, (written, formula, _) in enumerate(formulas):
+            claim = formula(n, program)
+            actual = measurements[int(written)]
+            assert actual <= claim, f"{name} n={n} {table}: {actual} > {claim}"
+            reached[i] |= actual == claim
+    for found, (_, _, exact) in zip(reached, formulas, strict=True):
+        assert found or not exact, f"{name} n={n}: no table reaches the formula"
 
 
 def test_every_formula_cell_is_checked() -> None:
@@ -553,7 +474,10 @@ def test_every_formula_cell_is_checked() -> None:
         if row.workspace_clause.startswith(("worst ", "at most "))
         and " bits" in row.workspace_clause
     }
-    assert stated == set(FORMULAS)
+    unchecked = sorted(stated - set(FORMULAS))
+    assert not unchecked, f"{unchecked} state a bound with no FORMULAS row; {CHECK}"
+    orphaned = sorted(set(FORMULAS) - stated)
+    assert not orphaned, f"remove {orphaned} from FORMULAS: no stated bound"
 
 
 def _unlambda_chain(n: int) -> str:

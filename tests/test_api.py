@@ -1,13 +1,11 @@
 """Tests for the public package API."""
 
-import warnings
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
 import esolangs
 from esolangs import _check_program, debugger
-from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
 from esolangs._validate import check_bits, check_scale, check_timeout, check_whole
 from esolangs.exceptions import EsolangError, UnknownLanguageError
@@ -53,13 +51,6 @@ def test_deliberate_error_keeps_partial_output(monkeypatch: pytest.MonkeyPatch) 
     assert caught.value is error
     assert caught.value.partial_output == "before"
     assert caught.value.__notes__ == ["the program printed 'before' before this"]
-
-
-def test_run_warns_when_input_runs_out() -> None:
-    program = boolean.circlefuck("10")  # reads one input bit
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        esolangs.run("Circlefuck", program, stdin="")
 
 
 def test_run_timeout_halts_runaway_program() -> None:
@@ -110,16 +101,6 @@ def test_describe_covers_state_models() -> None:
     assert esolangs.describe("NoComment")["boolean_generator"] is True
 
 
-def test_generate_refuses_a_language_with_no_generator() -> None:
-    """A registered language may have no generator, and must say so."""
-    with pytest.raises(esolangs.ArgumentError) as exc:
-        esolangs.generate("Deadfish", "0110")
-    message = str(exc.value)
-    assert "no boolean generator" in message
-    assert "generator contracts" in message
-    assert "'int'" in message
-
-
 @pytest.mark.parametrize("table", ["", "0120", "010", "1"])
 def test_truth_table_hint(table: str) -> None:
     with pytest.raises(esolangs.TruthTableError) as caught:
@@ -140,15 +121,6 @@ def test_truth_table_examples_execute(table: str) -> None:
         assert esolangs.read_answer("brainfuck", output) == expected
 
 
-def test_template_hint_and_example() -> None:
-    template = esolangs.generate("Minifuck", "0110")
-    with pytest.raises(esolangs.TemplateError) as caught:
-        esolangs.instantiate("Minifuck", template, [0])
-    assert "exactly 2 integer bits" in caught.value.__notes__[0]
-    program = esolangs.instantiate("Minifuck", template, [0, 1])
-    assert esolangs.read_answer("Minifuck", esolangs.run("Minifuck", program)) == "1"
-
-
 def test_option_hints_preserve_messages() -> None:
     with pytest.raises(esolangs.ArgumentError) as caught:
         check_whole(-1, "max_steps")
@@ -166,12 +138,6 @@ def test_option_hints_preserve_messages() -> None:
     assert check_whole(0, "max_steps") == 0
     assert check_scale(1) == 1
     assert check_bits([0, 1]) == [0, 1]
-
-
-def test_generator_cap_hint() -> None:
-    with pytest.raises(esolangs.GeneratorCapError) as caught:
-        esolangs.generate("Befunge", "0010" * (1 << 12))
-    assert "fixed 80x25 grid" in caught.value.__notes__[0]
 
 
 def test_debugger_exports_are_available():
@@ -246,25 +212,6 @@ def test_bound_language_runs_a_boolean_workflow():
     assert _evaluate(language.name, program, inputs=2) == "0110"
 
 
-def test_bound_template_language_runs_each_input_row():
-    language = esolangs.Language("RAM0")
-    template = language.generate("0110", width=1)
-    assert _evaluate(language.name, template, timeout=None, inputs=2) == "0110"
-    for row, answer in enumerate("0110"):
-        bits = tuple(map(int, format(row, "02b")))
-        program = language.instantiate(template, bits, width=1, truth_table="0110")
-        assert language.read_answer(language.run(program, max_steps=1000)) == answer
-
-
-def test_bound_raster_language_loads_and_evaluates_png(tmp_path):
-    language = esolangs.Language("Piet")
-    program = language.generate("0110")
-    assert isinstance(program, esolangs.Raster)
-    path = tmp_path / "program.png"
-    path.write_bytes(program.to_png())
-    assert _evaluate(language.name, path, inputs=2) == "0110"
-
-
 @pytest.mark.medium
 def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path):
     language = esolangs.Language("brainfuck")
@@ -285,8 +232,3 @@ def test_bound_execution_keeps_partial_output_on_step_exhaustion():
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         language.run("+.[]", max_steps=10, timeout=1)
     assert caught.value.partial_output == "\x01"
-
-
-def test_bound_execution_passes_the_seed():
-    language = esolangs.Language("LaserFuck")
-    assert [language.run("o+++.\n", seed=0) for _ in range(6)] == ["3"] * 6

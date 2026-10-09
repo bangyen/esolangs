@@ -1,6 +1,14 @@
 """Boolean-function generator for Clockwise."""
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    essential_inputs,
+    grid_width,
+    read_at,
+)
+from esolangs.tools.wrap import balance_score
 
 # The ring's own columns: 3 descends at the start, 2 climbs into the first
 # gadget, 0 climbs home.  Column 1 is the gap that keeps the three apart.
@@ -8,10 +16,9 @@ _DESCENT = 3
 _CLIMB = 2
 
 # A head is a corner, a gap the descent crosses, seven ``.`` for one input's
-# value bit, and the gap the return leg climbs -- the next gadget's corner,
-# so the head width is the pitch too.
+# value bit (more where ignored inputs precede it), and the gap the return
+# leg climbs -- the next gadget's corner, so the head width is the pitch too.
 _READS = 7
-_HEAD = 2 + _READS
 
 _TABLE_ROWS = 5
 
@@ -24,27 +31,31 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     """Build a Clockwise program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
-    program prints ``'0'`` or ``'1'``.  An over-wide lookup rotates
-    counterclockwise when narrower: two columns through two inputs, then
-    ``2*n + 5``.
+    program prints ``'0'`` or ``'1'``.  With ``width`` set and exceeded, the
+    program rotates counterclockwise (two columns for n <= 2, else
+    ``2*n + 5``).
 
-    A flat indexed lookup, not a tree.  The table is one ``!`` per entry in
-    a row of ``!``/``-`` pairs: the index sits in the accumulator, the
-    pointer loses one per pair, and the ``!`` it reaches zero on turns it
-    down that entry's column.  Three rows below hold the answer (``+`` if
-    the bit is set, ``;``, ``S``) and a fifth turns every descent back
-    along one corridor -- ``!`` under each column, ``+`` between, so the
-    turning pointer is zero there and the passing one is not.
-
-    The index is Horner's rule, MSB first.  ``.`` clears the accumulator's
-    low bit before storing what it reads, so seven of them over an even
-    accumulator add an input's bit; only doubling needs a gadget, two rows
-    of three columns a unit -- out losing one a group, down on zero, back
-    picking up two.  Gadget widths double upward, so the chain costs what
-    its top one does and the program is ``O(T)``.
+    A flat indexed lookup: one ``!`` per entry in a row of ``!``/``-``
+    pairs, a Horner-rule index (MSB first) in the accumulator, and one
+    doubling gadget per input (widths double upward, so ``O(T)``).  An
+    ignored input's seven reads run just before the next indexed input's,
+    which overwrite the bit they leave; inputs past the last essential one
+    stay indexed, since a run must read all ``7n`` bits to turn whole.  A
+    literal row has no subtrees to fold or share.
     """
-    n = _validate_truth_table(truth_table)
-    size = len(truth_table)
+    total = _validate_truth_table(truth_table)
+    used = essential_inputs(truth_table, total)
+    used += range(used[-1] + 1 if used else 0, total)
+    indexed = read_at(truth_table, used, total)
+    reads: list[int] = []
+    pending = 0
+    for position in range(total):
+        pending += _READS
+        if position in used:
+            reads.append(pending)
+            pending = 0
+    n = len(reads)
+    size = len(indexed)
     cells: dict[tuple[int, int], str] = {}
 
     def place(x: int, y: int, char: str) -> None:
@@ -53,24 +64,26 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
             raise AssertionError(f"two cells at {(x, y)}: {cells[(x, y)]!r}, {char!r}")
         cells[(x, y)] = char
 
-    def head(x: int, y: int) -> None:
-        """Lay a gadget's corner and the seven reads that follow it."""
-        place(x, y, "R")
-        for i in range(_READS):
-            place(x + 2 + i, y, ".")
+    def head(level: int, y: int) -> None:
+        """Lay a gadget's corner and the reads that follow it."""
+        place(corner[level], y, "R")
+        for i in range(reads[level]):
+            place(corner[level] + 2 + i, y, ".")
 
-    # A gadget starts a pitch right of the one below.
-    corner = [_HEAD * level + _CLIMB for level in range(n)]
+    # A gadget starts a head's width right of the one below.
+    corner = [_CLIMB]
+    for count in reads[:-1]:
+        corner.append(corner[-1] + 2 + count)
 
     # Row 0 sends the pointer down; rows 1 to 5 are the table.
     place(_DESCENT, 0, "R")
-    start = corner[n - 1] + _HEAD + 1
-    head(corner[n - 1], 1)
+    start = corner[n - 1] + 2 + reads[n - 1] + 1
+    head(n - 1, 1)
     for entry in range(size):
         place(start + 2 * entry, 1, "!")
         if entry + 1 < size:
             place(start + 2 * entry + 1, 1, "-")
-        if truth_table[entry] == "1":
+        if indexed[entry] == "1":
             place(start + 2 * entry, 2, "+")
         place(start + 2 * entry, 3, ";")
         # ``S`` under every entry, so the row's length says nothing.
@@ -84,9 +97,9 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     for level in range(n - 1):
         # A level's gadget covers every value its partial index can hold.
         row = _TABLE_ROWS + 1 + 2 * (n - 2 - level)
-        base = corner[level] + _HEAD + 1
+        base = corner[level + 1] + 1
         groups = 1 << (level + 1)
-        head(corner[level], row)
+        head(level, row)
         place(base - 1, row + 1, "R")
         for group in range(groups):
             place(base + 3 * group, row, "!")
@@ -112,44 +125,53 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     program = "\n".join("".join(row).rstrip() for row in grid)
     if width is None or width <= 0 or span <= width:
         return program
-    original_cells, original_span = cells, span
     if width < height + 2:
         # Emit the common six digit bits on the entry rail, before reading.
         # Only the selected final bit depends on the table. This removes the
         # nine-row digit tail without changing the accumulator at the first read.
-        cells = {
+        rail_cells = {
             (x + len(_DIGIT) + 1 if x else x, y): char
             for (x, y), char in cells.items()
             if y < digit
         }
         for x, char in enumerate(_DIGIT):
-            cells[x, 0] = char
-        cells[_DESCENT + len(_DIGIT) + 1, digit] = "R"
-        cells[_CLIMB + len(_DIGIT) + 1, digit] = "R"
-        height = digit + 1
-        span = max(x for x, _ in cells) + 1
+            rail_cells[x, 0] = char
+        rail_cells[_DESCENT + len(_DIGIT) + 1, digit] = "R"
+        rail_cells[_CLIMB + len(_DIGIT) + 1, digit] = "R"
+        rail_height = digit + 1
+        rail_span = max(x for x, _ in rail_cells) + 1
+    else:
+        rail_cells, rail_height, rail_span = cells, height, span
     # Counterclockwise rotation puts the wide lookup down the page.  Most
     # rows end at the five table columns; the interpreter pads the entry rail.
     rotated: dict[int, dict[int, str]] = {}
-    for (x, y), char in cells.items():
-        rotated.setdefault(span - x, {})[y + 1] = char
-    rotated[0] = {height + 1: "R"}
-    rotated[span + 1] = {1: "R", height + 1: "R"}
-    rotated.setdefault(span, {})[0] = "R"
-    rows: list[str] = []
-    for y in range(span + 2):
-        painted = rotated.get(y, {})
-        rows.append(
-            "".join(painted.get(x, " ") for x in range(max(painted, default=-1) + 1))
-        )
-    legacy = "\n".join(rows)
-    if max(map(len, rows)) <= width:
+    for (x, y), char in rail_cells.items():
+        rotated.setdefault(rail_span - x, {})[y + 1] = char
+    rotated[0] = {rail_height + 1: "R"}
+    rotated[rail_span + 1] = {1: "R", rail_height + 1: "R"}
+    rotated.setdefault(rail_span, {})[0] = "R"
+    legacy = _render(rotated, rail_span + 2)
+    legacy_w = max(map(len, legacy.splitlines()))
+    if legacy_w <= width:
         return legacy
-    lean = _clockwise_lean_rotate(original_cells, n, digit, original_span)
-    chosen = lean if max(map(len, lean.splitlines())) < max(map(len, rows)) else legacy
-    if size <= 4 and max(map(len, chosen.splitlines())) > width:
+    lean = _clockwise_lean_rotate(cells, n, digit, span)
+    lean_w = max(map(len, lean.splitlines()))
+    chosen, chosen_w = (lean, lean_w) if lean_w < legacy_w else (legacy, legacy_w)
+    # Only n <= 2 has a two-column form (its prefix handles n == 2 alone).
+    if total <= 2 and chosen_w > width:
         return _clockwise_two_columns(truth_table)
     return chosen
+
+
+def _render(rotated: dict[int, dict[int, str]], nrows: int) -> str:
+    """Join sparse ``{row: {col: char}}`` cells into text, ``nrows`` lines."""
+    return "\n".join(
+        "".join(
+            rotated.get(row, {}).get(col, " ")
+            for col in range(max(rotated.get(row, {}), default=-1) + 1)
+        )
+        for row in range(nrows)
+    )
 
 
 def _clockwise_lean_rotate(
@@ -172,15 +194,7 @@ def _clockwise_lean_rotate(
     rotated[span + 1] = {0: "R", rail: "R"}
     rotated.setdefault(span, {})[0] = "?"
     rotated.setdefault(span - _DESCENT, {})[0] = "!"
-    rows: list[str] = []
-    for row in range(span + 2):
-        painted = rotated.get(row, {})
-        rows.append(
-            "".join(
-                painted.get(col, " ") for col in range(max(painted, default=-1) + 1)
-            )
-        )
-    return "\n".join(rows)
+    return _render(rotated, span + 2)
 
 
 def _clockwise_two_columns(table: str) -> str:
@@ -203,3 +217,31 @@ def _clockwise_two_columns(table: str) -> str:
             rows.append("+" + ("-" if entry and offset == 0 else " "))
         rows.append("!!")
     return "\n".join(row.rstrip() for row in rows)
+
+
+def _balance(table: str, default: str) -> str:
+    """Compare the lookup, legacy rotation, lean rotation and two-column route."""
+    rotated = clockwise(table, max(1, grid_width(default) - 1))
+    lean = clockwise(table, max(1, grid_width(rotated) - 1))
+    return min(default, rotated, lean, clockwise(table, 1), key=balance_score)
+
+
+LANGUAGE = Language(
+    "Clockwise",
+    "grid_based.clockwise",
+    boolean=clockwise,
+    # Not a tree: a countdown stops on the entry's own column.
+    shape=Shape.LOOKUP,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream_cyclic",
+        note="Clockwise reads all its input bits in one go, so they go "
+        "on one line -- one character per bit, not a line per bit, and "
+        "not seven bits packed into a character: that packing is real "
+        "but is on the output side. A line per bit, or a packed one, "
+        "is read as a different row and answered wrongly",
+    ),
+    balance=_balance,
+    no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
+    empty_program="Clockwise program cannot be empty",
+)

@@ -2,9 +2,12 @@
 
 import itertools
 
+import pytest
+
 from esolangs import tools
 from esolangs.interpreters.grid_based.egl import run
 from esolangs.interpreters.io import ScriptedIO
+from tests.generator_support import assert_an_ignored_input_costs
 
 
 def execute(program: str, bits: tuple[int, ...]) -> tuple[str, int]:
@@ -20,8 +23,12 @@ def test_the_walk_is_branch_free() -> None:
 
 
 def test_size_is_table_content_only() -> None:
-    """Two tables of one arity and one popcount render to the same length."""
-    assert len(tools.egl("01101001")) == len(tools.egl("00001111"))
+    """Two tables of one arity and one popcount render to the same length.
+
+    Both read every input: an ignored one is a bare ``x`` and drops the table
+    to the rest's.
+    """
+    assert len(tools.egl("01101001")) == len(tools.egl("01110001"))
 
 
 def test_wrapped_programs_still_compute_the_table() -> None:
@@ -32,3 +39,9 @@ def test_wrapped_programs_still_compute_the_table() -> None:
         for bits in itertools.product((0, 1), repeat=3):
             index = int("".join(map(str, bits)), 2)
             assert execute(program, bits) == (table[index], 3)
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """A bare ``x``."""
+    assert_an_ignored_input_costs("EGL", 6, 1)

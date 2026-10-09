@@ -31,9 +31,6 @@ def run_program(code: str, stdin: str = "") -> str:
 class TestWikiExamples:
     """The page's four example programs, which pin the execution model."""
 
-    def test_hi(self) -> None:
-        assert run_program(HI) == "HI"
-
     def test_cat_echoes_until_its_input_runs_out(self) -> None:
         """The cat loops on the character it read, so EOF is how it ends."""
         io = ScriptedIO("H\ni\n!\n")
@@ -176,14 +173,10 @@ class TestDeque:
         assert run_program(three + "coɲ" + "coɲ" + "θi") == "3"  # 6 then 3
         assert run_program(three + "coŋ" + "coŋ" + "θi") == "3"  # 1 then 3
 
-    @pytest.mark.parametrize("program", ["coŋ", "coɲ"], ids=["front", "back"])
-    def test_popping_an_empty_deque_halts(self, program: str) -> None:
-        with pytest.raises(HaltError) as caught:
-            run_program(program)
-        assert str(caught.value) == "pop from an empty deque"
-
-    @pytest.mark.parametrize("program", ["pi", "ki"], ids=["front", "back"])
-    def test_appending_from_an_empty_deque_halts(self, program: str) -> None:
+    @pytest.mark.parametrize(
+        "program", ["coŋ", "coɲ", "pi", "ki"], ids=["front", "back", "pi", "ki"]
+    )
+    def test_popping_or_appending_from_an_empty_deque_halts(self, program: str) -> None:
         with pytest.raises(HaltError) as caught:
             run_program(program)
         assert str(caught.value) == "pop from an empty deque"

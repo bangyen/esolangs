@@ -44,9 +44,13 @@ _FOLD = 0.05
 #: one-dependency table) with no subtree involved, A Painter Ant's corridor
 #: stops where the trailing run of equal answers starts (36.4%), and Unsquare
 #: pushes only the cells the essential inputs address.  Cyclic tag, Bitwise
-#: Cyclic Tag, /// and A Painter Ant weight only the essential inputs
-#: (``input_weights``): an ignored one costs an empty rule, a bare ``0``, an
-#: ``X``-deleted bit or a bare ``SN``.  Named rather
+#: Cyclic Tag, ///, A Painter Ant, Forbin and Minsky Swap weight only the
+#: essential inputs (``input_weights``): an ignored one costs an empty rule, a
+#: bare ``0``, an ``X``-deleted bit, a bare ``SN``, a read into the scratch
+#: name or a drained ``~ ~``; Fish reads and pops it (``i~``), Packlang reads
+#: it bare, Flowchart skips its eight bits and Clockwise reads its seven
+#: before the next input's overwrite them; BIO parks its index while an
+#: ignored setter runs.  Named rather
 #: than derived because the proxy is structural and these are its known blind
 #: spot; a further such row has to be added here, which is the point -- the
 #: equality below then fails until the prose and this set agree.
@@ -54,14 +58,28 @@ _FOLDS_WITHOUT_TREE = frozenset(
     {
         "///",
         "A Painter Ant",
+        "Alight",
+        "B-tapemark",
+        "BIO",
         "Bitwise Cyclic Tag",
         "bit~",
         "Circlefuck",
+        "Clockwise",
         "Collatz Multiverse",
         "Cyclic tag",
         "Dimensional",
+        "EGL",
         "Eval",
+        "Fish",
+        "Flowchart",
+        "Forbin",
+        "Minsky Swap",
+        "Modulous",
         "NoComment",
+        "Packlang",
+        "Qoibl",
+        "SLOW ACV MAMMALIAN",
+        "Subleq",
         "Suffolk",
         "Unsquare",
     }
@@ -104,7 +122,7 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
     """A ``parameterized`` row's proof rests on the per-input embedding."""
     rows = _parameterized_rows(load())
     assert rows, "the ledger lists no parameterized rows"
-    from esolangs.registry import canonical_id, recover_setters, template_char
+    from esolangs.registry import LANGUAGES, recover_setters, template_char
 
     for row in rows:
         # The generator spells its inputs as runs of its declared character;
@@ -112,7 +130,7 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
         # run, so three spans is exactly one per input.
         program = str(_generator(row)(_PARITY))
         assert "{X" not in program, row.generator
-        language = canonical_id(row.generator)
+        language = LANGUAGES[row.generator].id
         char = template_char(language)
         assert char is not None
         spans = runs(program, char, recover_setters(language, program))
@@ -148,4 +166,9 @@ def test_the_documented_exemptions_are_real_ledger_rows(ledger: Ledger) -> None:
 
 def test_no_minterm_obligation_is_claimed(ledger: Ledger) -> None:
     """The `minterms` rows carry no measured obligation, and that is recorded."""
-    assert len(ledger.labelled("minterms")) == 3
+    rows = ledger.labelled("minterms")
+    assert rows, "no ledger row is labelled minterms; retire this test"
+    for row in rows:
+        assert not set(row.labels) & _LOOKUP_SCHEMES, (
+            f"{row.generator} is minterms and a lookup; a lookup row is measured"
+        )

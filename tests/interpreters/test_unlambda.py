@@ -14,6 +14,7 @@ from esolangs.interpreters.other.unlambda import (
     run,
 )
 from tests.interpreters.runner import run_program
+from tests.raises import assert_rejected_with_hint
 
 #: The wiki's Hello world: a left-nested chain of prints, newline first.
 #: Spelled from its atoms rather than by hand, because ``n`` atoms need
@@ -159,3 +160,8 @@ def test_advancing_a_finished_state_is_answered_not_stepped() -> None:
     while not machine.halted:
         machine.step()
     assert _advance(machine.state) == (machine.state, None)
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Unlambda", "`i", "exactly two expressions")

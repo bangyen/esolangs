@@ -1,8 +1,14 @@
-"""Linear padding construction for Cyclic tag."""
+"""Linear padding construction for Cyclic tag.
 
+One rule a row is the index step; dropping rows moves the walk, and a rule
+runs once a cycle, so none is shared.
+"""
+
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language, Shape
+from esolangs.tools.bitwise_cyclic_tag import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
-
-PAIR = ("0", "1")
+from esolangs.tools.wrap import wrap_chars
 
 
 def cyclic_tag(truth_table: str) -> str:
@@ -15,3 +21,18 @@ def cyclic_tag(truth_table: str) -> str:
     for answer in table:
         rules.extend((answer, ""))
     return ";".join(rules) + "," + TEMPLATE_CHAR * n + "1"
+
+
+LANGUAGE = Language(
+    "Cyclic tag",
+    "queue_based.cyclic_tag",
+    boolean=cyclic_tag,
+    # Not a tree: no branch, so every table of an arity is one length.
+    shape=Shape.LOOKUP,
+    contract=BooleanContract(
+        note="Inputs fill the initial queue; the final deleted bit is the answer.",
+    ),
+    wrap=wrap_chars,
+    empty_program="Cyclic tag requires productions,queue using bits and semicolons",
+    example=Example(pair=PAIR),
+)

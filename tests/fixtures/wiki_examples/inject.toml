@@ -1,0 +1,85 @@
+language = "Inject"
+oldid = 194509
+
+[[examples]]
+id = "hello"
+source = '''
+send data
+skip
+data;
+Hello, world!
+data;
+'''
+expected = '''
+Hello, world!
+'''
+
+[[examples]]
+id = "truth-0-as-written"
+note = """\
+    wiki bug: skipq loops when data equals 0, so the page's truth machine is \
+    inverted; the repair is not unique"""
+source = '''
+readto data
+loop;
+send data
+skipq data 0
+loop;
+skip
+data;
+data;
+0;
+0
+0;
+'''
+stdin = "0"
+stop = "steps"
+max_steps = 200
+expected = '''
+0
+0
+0
+'''
+
+[[examples]]
+id = "truth-1-as-written"
+source = '''
+readto data
+loop;
+send data
+skipq data 0
+loop;
+skip
+data;
+data;
+0;
+0
+0;
+'''
+stdin = "1"
+expected = '''
+1
+'''
+
+[[examples]]
+id = "cat"
+note = "a blank line is copied; EOF ends it"
+source = '''
+loop;
+readto data
+send data
+skipif data
+loop;
+data;
+data;
+'''
+stdin = '''
+abc
+
+def
+'''
+expected = '''
+abc
+
+def
+'''

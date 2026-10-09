@@ -5,8 +5,8 @@ boolean programs under ``examples`` come from the boolean generators.
 ``tests/scripts/test_examples.py`` asserts that; run this script to refresh
 the files after a generator changes.
 
-    python scripts/generate.py examples           # every set
-    python scripts/generate.py examples boolean   # just one set
+    uv run python scripts/generate.py examples           # every set
+    uv run python scripts/generate.py examples boolean   # just one set
 """
 
 import argparse
@@ -127,13 +127,32 @@ def write_boolean_manifest() -> None:
     to a language left the committed table describing the one before it.
     """
     path = EXAMPLES / "MANIFEST.md"
-    path.write_text(boolean_manifest_text(), encoding="utf-8")
+    text = boolean_manifest_text()
+    if path.exists() and path.read_text(encoding="utf-8") == text:
+        print(f"unchanged examples/{path.name}")
+        return
+    path.write_text(text, encoding="utf-8")
     print(f"wrote     examples/{path.name}")
 
 
 SETS = {
     "boolean": boolean_programs,
 }
+
+
+def _same_program(existing: bytes | None, encoded: bytes, generated: Program) -> bool:
+    """Whether the file holding ``existing`` already is ``generated``.
+
+    A raster compares by pixels, not bytes: the PNG encoder's zlib differs
+    between Pillow builds, so a byte comparison rewrote every committed
+    image on any machine but the one that last wrote it, with nothing in it
+    changed.  The pixels are the program, which is what the tests compare.
+    """
+    if existing is None:
+        return False
+    if isinstance(generated, Raster):
+        return Raster.from_png(existing) == generated
+    return existing == encoded
 
 
 def write_set(name: str) -> None:
@@ -150,9 +169,11 @@ def write_set(name: str) -> None:
             else (generated.rstrip("\n") + "\n").encode("utf-8")
         )
         existing = path.read_bytes() if path.exists() else None
-        path.write_bytes(program)
-        status = "unchanged" if existing == program else "wrote"
-        print(f"{status:9} examples/{path.name}")
+        if not _same_program(existing, program, generated):
+            path.write_bytes(program)
+            print(f"wrote     examples/{path.name}")
+        else:
+            print(f"unchanged examples/{path.name}")
     if name == "boolean":
         write_boolean_manifest()
 

@@ -11,10 +11,37 @@ from esolangs.interpreters.randomness import FirstDraw
 from esolangs.tools.thisthat import thisthat
 
 
-def test_constant_output_and_halt() -> None:
-    io = ScriptedIO("")
-    run(["▣─■═◇"], io)
-    assert io.getvalue() == "1"
+@pytest.mark.parametrize(
+    ("stdin", "grid", "expected"),
+    [
+        pytest.param("", ["▣─■═◇"], "1", id="constant_output_and_halt"),
+        # ``◹`` always succeeds; ``◺`` sends 0 at ``k = 0`` and stays there.
+        pytest.param(
+            "",
+            ["▣─◹─◺─◺", "  ║ ║ ║", "  ◇ ◇ ◇"],
+            "110",
+            id="cursor_moves_up_freely_and_fails_only_at_the_axis",
+        ),
+        pytest.param("", ["▣─◇═◇"], "", id="eof_is_an_empty_transfer"),
+        # Only wires connect: a ``◇`` beside ``■`` never receives its 1.
+        pytest.param(
+            "", ["▣─■◇", "  ║", "  ◇"], "1", id="touching_nodes_do_not_connect"
+        ),
+        # ``◇`` reads, sends the bit, and goes on: two reads, two prints.
+        pytest.param(
+            "10",
+            ["▣─◇─◇", "  ║ ║", "  ◇ ◇"],
+            "10",
+            id="a_data_sender_goes_on_down_execution_wires",
+        ),
+        # ``◉`` and a ``◇`` reached in the same cycle: the bit still prints.
+        pytest.param("", ["▣─■─◉", "  ║", "  ◇"], "1", id="halt_lets_its_cycle_finish"),
+    ],
+)
+def test_output(stdin: str, grid: list[str], expected: str) -> None:
+    io = ScriptedIO(stdin)
+    run(grid, io)
+    assert io.getvalue() == expected
 
 
 def test_loader_push_pop_and_horizontal_route() -> None:
@@ -130,19 +157,6 @@ def test_random_merge_selects_one_pointer_and_nands_data() -> None:
     machine.step()
     assert len(machine.pointers) == 1
     assert machine.pointers[0].value == 0
-
-
-def test_cursor_moves_up_freely_and_fails_only_at_the_axis() -> None:
-    """``◹`` always succeeds; ``◺`` sends 0 at ``k = 0`` and stays there."""
-    io = ScriptedIO("")
-    run(["▣─◹─◺─◺", "  ║ ║ ║", "  ◇ ◇ ◇"], io)
-    assert io.getvalue() == "110"
-
-
-def test_eof_is_an_empty_transfer() -> None:
-    io = ScriptedIO("")
-    run(["▣─◇═◇"], io)
-    assert io.getvalue() == ""
 
 
 @pytest.mark.parametrize(
@@ -330,24 +344,3 @@ def test_cat_and_kolakoski_wiki_examples() -> None:
     printed = machine.io.getvalue()
     assert len(printed) > 60
     assert printed == "".join(str(term - 1) for term in kolakoski)[: len(printed)]
-
-
-def test_touching_nodes_do_not_connect() -> None:
-    """Only wires connect: a ``◇`` beside ``■`` never receives its 1."""
-    io = ScriptedIO("")
-    run(["▣─■◇", "  ║", "  ◇"], io)
-    assert io.getvalue() == "1"
-
-
-def test_a_data_sender_goes_on_down_execution_wires() -> None:
-    """``◇`` reads, sends the bit, and goes on: two reads, two prints."""
-    io = ScriptedIO("10")
-    run(["▣─◇─◇", "  ║ ║", "  ◇ ◇"], io)
-    assert io.getvalue() == "10"
-
-
-def test_halt_lets_its_cycle_finish() -> None:
-    """``◉`` and a ``◇`` reached in the same cycle: the bit still prints."""
-    io = ScriptedIO("")
-    run(["▣─■─◉", "  ║", "  ◇"], io)
-    assert io.getvalue() == "1"

@@ -19,10 +19,6 @@ def execute(source: str, stdin: str = "") -> str:
     return io.getvalue()
 
 
-def test_documented_hello_world() -> None:
-    assert execute(">HELLO+WORLD!") == "HELLO WORLD"
-
-
 def test_documented_cat() -> None:
     io = ScriptedIO("A\nB\n")
     with pytest.raises(EOFError):

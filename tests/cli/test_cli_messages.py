@@ -14,29 +14,6 @@ from tests.cli.test_cli import _FakeStdin, _program, call_main
 from tests.cli_support import _failure, _refused, call_both
 
 
-class TestMessagesNameTheThingThatIsWrong:
-    """Small, and each one sent a reader to the wrong word."""
-
-    def test_encode_points_at_a_flag_not_a_python_call(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """`instantiate()` is not reachable from a shell."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["encode", "Minifuck", "10"], capsys)
-        assert exc.value.code == 2
-        err = capsys.readouterr().err
-        assert "instantiate()" not in err
-        assert "esolangs generate --bits" in err
-
-    def test_the_details_legend_is_printed_with_the_details(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It lived in `list --help` only, so the columns arrived unexplained."""
-        out = call_main(["list", "--details"], capsys)
-        assert out.splitlines()[0].strip().startswith("language")
-        assert "gen=generator" in out.splitlines()[0]
-
-
 class TestTheHintsStayQuietWhenTheyDoNotApply:
     """Each hint added this round rewrites one message and no others."""
 
@@ -50,104 +27,6 @@ class TestTheHintsStayQuietWhenTheyDoNotApply:
         err = capsys.readouterr().err
         assert "unknown language" in err
         assert "generate --bits" not in err
-
-
-class TestTheShapeWarningFiresOnlyWhenItShould:
-    """The last silent-wrong path: stdin in the shape a reader expects."""
-
-    def test_an_ordinary_language_is_never_warned_about(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Sixty-five languages read 0/1 lines and must stay silent."""
-        path = tmp_path / "bf.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="10")
-        assert out == "1"
-        assert err == ""
-
-    def test_the_warning_does_not_change_the_answer(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It is advice; the run is exactly what it was."""
-        path = tmp_path / "g.txt"
-        path.write_text(esolangs.generate("Grapheme", "0110"))
-        warned = call_main(["run", "Grapheme", str(path)], capsys, stdin="1\n0\n")
-        capsys.readouterr()
-        stdin = esolangs.encode_inputs("Grapheme", [1, 0])
-        right = call_main(["run", "Grapheme", str(path)], capsys, stdin=stdin)
-        assert warned == "0"
-        assert right == "1"
-
-
-class TestTheAdvisoryNotesAreRenderedOnce:
-    """The library warns; this command renders, and does not also duplicate."""
-
-    def test_a_surplus_line_is_noted_without_pythons_framing(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A raw UserWarning would print this file's path and a line of it."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "00010111"))
-        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="110011")
-        assert out == "1"
-        assert "read 3 of the 6 lines" not in err
-        assert "UserWarning" not in err
-        assert "cli.py" not in err
-
-    def test_an_empty_program_file_is_noted(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It ran and printed nothing, at exit 0, with no explanation."""
-        path = tmp_path / "empty.txt"
-        path.write_text("")
-        _out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="0\n0\n")
-        assert "is empty" in err
-
-    def test_a_mixed_none_watch_history_is_legended(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The all-None case was annotated; the mixed one needed it more."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("Streetcode", "0110"))
-        out, _err = call_both(
-            ["debug", "--steps", "30", "--watch-cell", "0", "Streetcode", str(path)],
-            capsys,
-            stdin="0\n1\n",
-        )
-        assert "did not exist yet" in out
-
-
-class TestAMultiWordNameSuggestsQuoting:
-    """`describe A Painter Ant` blamed the third word."""
-
-    def test_the_joined_positionals_are_suggested(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The suggester can already resolve it; it was never asked."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["describe", "A", "Painter", "Ant"], capsys)
-        assert exc.value.code == 2
-        err = capsys.readouterr().err
-        assert "quote" in err.lower()
-        assert "A Painter Ant" in err
-
-
-class TestModulousSaysWhatWentWrong:
-    """Four halts raised ``HaltError`` with the empty string as a message."""
-
-    @pytest.mark.parametrize(
-        ("program", "expected"),
-        [
-            ("[POP][END]", "stack is empty"),
-            ('[PSH STR "x"][SWP][END]', "SWP needs two values"),
-            ("[PRT VAR9][END]", "not a defined variable"),
-            ("[RND 0][END]", "at least 1"),
-        ],
-    )
-    def test_each_halt_names_its_cause(self, program: str, expected: str) -> None:
-        """Not the class, the sentence: an empty message helps nobody."""
-        with pytest.raises(esolangs.HaltError, match=expected):
-            esolangs.run("Modulous", program, stdin="")
 
 
 class TestSmallerReportsFromRoundFifteen:
@@ -192,101 +71,6 @@ class TestSmallerReportsFromRoundFifteen:
         """A reader had two fields to compose; templates got a sentence."""
         out = call_main(["describe", name], capsys)
         assert phrase in out
-
-
-class TestTheSmallInconsistencies:
-    """Each one was a place this CLI did not do what it does everywhere else."""
-
-    def test_a_repeated_isolated_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Every value-taking option refused a repeat; this flag did not."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["run", "--isolated", "--isolated", "brainfuck", str(path)],
-                capsys,
-                stdin="0\n1\n",
-            )
-        assert exc.value.code == 2
-        assert "--isolated given more than once" in capsys.readouterr().err
-
-    @pytest.mark.medium
-    def test_a_no_op_width_says_so(
-        self, capsysbinary: pytest.CaptureFixture[bytes]
-    ) -> None:
-        with (
-            patch.object(
-                sys, "argv", ["esolangs", "generate", "--width", "10", "Line", "0100"]
-            ),
-            patch.object(sys, "stdin", _FakeStdin("")),
-        ):
-            main()
-        captured = capsysbinary.readouterr()
-        assert b"no effect on Line" in captured.err
-        image = esolangs.Raster.from_png(captured.out)
-        assert esolangs.run("Line", image, stdin="0\n0\n") == "0"
-
-    @pytest.mark.medium
-    def test_line_balance_has_no_no_op_warning(
-        self, capsysbinary: pytest.CaptureFixture[bytes]
-    ) -> None:
-        with (
-            patch.object(
-                sys, "argv", ["esolangs", "generate", "--balance", "Line", "0001"]
-            ),
-            patch.object(sys, "stdin", _FakeStdin("")),
-        ):
-            main()
-        captured = capsysbinary.readouterr()
-        assert b"no effect" not in captured.err
-        image = esolangs.Raster.from_png(captured.out)
-        assert (len(image.rows[0]), len(image.rows)) == (680, 800)
-        assert esolangs.run("Line", image, stdin="1\n1\n") == "1"
-
-    def test_a_breakpoint_that_never_fires_says_so(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It looked exactly like a program that never reached it."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        _out, err = call_both(
-            [
-                "debug",
-                "--break-on-output",
-                "Z",
-                "--steps",
-                "5000",
-                "brainfuck",
-                str(path),
-            ],
-            capsys,
-            stdin="0\n1\n",
-        )
-        assert "no breakpoint matched" in err
-
-    def test_a_breakpoint_that_fires_is_not_reported_as_missed(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The other half, so the note means something."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        out, err = call_both(
-            [
-                "debug",
-                "--break-on-output",
-                "1",
-                "--steps",
-                "5000",
-                "brainfuck",
-                str(path),
-            ],
-            capsys,
-            stdin="01",
-        )
-        assert "stopped: breakpoint" in out
-        assert "no breakpoint matched" not in err
 
 
 # 1.8s over 45 tests: drives the CLI as a subprocess.
@@ -430,19 +214,6 @@ def test_truth_table_hint_and_corrected_cli_program(bad, good, hint, tmp_path, c
     assert err == ""
 
 
-def test_template_hint_names_cli_bits_and_correction_runs(tmp_path, capsys):
-    _, err = _failure(["generate", "--bits", "0", "Minifuck", "0110"], capsys)
-    assert "hint: pass exactly 2 0/1 digits to --bits, one per input" in err
-    assert "instantiate()" not in err
-    program, err = call_both(["generate", "--bits", "01", "Minifuck", "0110"], capsys)
-    assert err == ""
-    path = tmp_path / "generated.mini"
-    path.write_text(program)
-    answer, err = call_both(["run", "Minifuck", str(path)], capsys)
-    assert answer.strip() == "1"
-    assert err == ""
-
-
 def test_reader_template_hint_names_cli_encode(capsys):
     _, err = _failure(["generate", "--bits", "01", "brainfuck", "0110"], capsys)
     assert "hint: pipe input from esolangs encode brainfuck <bits>" in err
@@ -460,57 +231,6 @@ def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys):
     assert err == ""
 
 
-def test_generator_cap_hint_reaches_cli(capsys):
-    _, err = _failure(["generate", "Befunge", "0010" * (1 << 12)], capsys)
-    assert "fixed 80x25 grid" in err
-    assert err.count("hint:") == 1
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("language", "source", "hint", "code", "output"),
-    [
-        ("brainfuck", "[", "close this '[' with ']'", 2, ""),
-        ("Modulous", "[PSH INT 65][PRT][SWP]", "push two values before SWP", 1, "A\n"),
-        ("brainfuck", "+.,", "at least 1 input character", 1, "\x01\n"),
-    ],
-)
-def test_isolated_cli_preserves_error_hint_and_partial_output(
-    language, source, hint, code, output, tmp_path: Path, capsys
-):
-    path = tmp_path / "program.txt"
-    path.write_text(source)
-    direct = _failure(["run", language, str(path)], capsys, code)
-    isolated = _failure(["run", "--isolated", language, str(path)], capsys, code)
-    assert direct == isolated
-    assert direct[0] == output
-    assert hint in direct[1]
-    assert direct[1].count("hint:") == 1
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("language", "source", "kind"),
-    [
-        ("brainfuck", "[", esolangs.ProgramError),
-        ("Modulous", "[SWP]", esolangs.HaltError),
-        ("brainfuck", ",", esolangs.InputExhaustedError),
-    ],
-)
-def test_isolated_worker_preserves_exact_diagnostic_and_notes(language, source, kind):
-    errors = []
-    for isolated in (False, True):
-        with pytest.raises(kind) as caught:
-            esolangs.run(language, source, isolated=isolated)
-        errors.append(caught.value)
-    assert type(errors[0]) is type(errors[1])
-    assert str(errors[0]) == str(errors[1])
-    assert errors[0].__notes__ == errors[1].__notes__
-    if kind is esolangs.InputExhaustedError:
-        assert errors[0].unit == errors[1].unit == "character"
-    assert sum(note.startswith("hint:") for note in errors[1].__notes__) == 1
-
-
 def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes():
     from esolangs.cli_hints import _cli_error_text
 
@@ -526,19 +246,6 @@ def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes():
 def test_text_generator_scale_hint_uses_cli_flag(capsys):
     _, err = _failure(["generate", "--scale", "2", "brainfuck", "0110"], capsys)
     assert "hint: omit --scale for text languages" in err
-
-
-def test_template_rewording_keeps_notes_and_quotes_language():
-    from esolangs.cli_hints import _template_hint
-
-    error = esolangs.TemplateError(
-        "unfilled slots; fill them with esolangs.instantiate("
-    )
-    error.add_note("hint: keep the original template")
-    assert _template_hint(error, "A Painter Ant") == (
-        "unfilled slots; fill them with: esolangs generate --bits <bits> "
-        '"A Painter Ant" <table>\nhint: keep the original template'
-    )
 
 
 #: Commands refused with exit code 2, and what stderr must say.

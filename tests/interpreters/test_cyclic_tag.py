@@ -6,6 +6,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.queue_based.cyclic_tag import _Machine, run
 from esolangs.tools.cyclic_tag import cyclic_tag
 from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, fill_runs
+from tests.raises import assert_rejected_with_hint
 from tests.witness_tables import witnesses
 
 
@@ -70,3 +71,8 @@ def test_the_wiki_evolution() -> None:
         trace.append(machine.live)
         machine.step()
     assert trace == ["1", "011", "11", "1101", "101011", "0101110", "101110"]
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Cyclic tag", "0,1;", "semicolons only before")

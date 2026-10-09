@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
@@ -121,7 +122,9 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
                 f"{record['language']} [{record['truth_table']}] "
                 f"row {failed.get('row')}: "
                 f"{failed['execution_status']}, expected {failed['expected_answer']}, "
-                f"got {failed['actual_answer']}"
+                f"got {failed['actual_answer']}; reproduce with: uv run python "
+                f"scripts/benchmark.py {shlex.quote(record['language'])} "
+                f"{record['truth_table']} --row {failed.get('row')}"
             )
     return records
 
@@ -229,7 +232,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if not BASELINE.exists():
-        print(f"no baseline at {BASELINE}; run with --update", file=sys.stderr)
+        print(
+            f"no baseline at {BASELINE}; run "
+            "uv run python scripts/check_generator_sizes.py --update",
+            file=sys.stderr,
+        )
         return 1
     recorded = json.loads(BASELINE.read_text(encoding="utf-8"))
     lines = differences(recorded, measured)
@@ -242,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {line}", file=sys.stderr)
     print(
         "\nIf the change is intended, re-record it so the diff carries it:\n"
-        "  python scripts/check_generator_sizes.py --update",
+        "  uv run python scripts/check_generator_sizes.py --update",
         file=sys.stderr,
     )
     return 1

@@ -26,19 +26,30 @@ def test_no_file_is_over_the_cap() -> None:
 
 
 def _tracked_lines(tree: str) -> int:
-    """Count the lines of tracked ``tree/*.py`` files, as ``wc -l`` does."""
+    """Count the lines of ``tree/*.py`` files git sees, as ``wc -l`` does."""
+    # Untracked files count too: a new language's tests are untracked until
+    # committed, and a file only staged for deletion does not.
     listed = subprocess.run(
-        ["git", "ls-files", "-z", f"{tree}/*.py"],
+        [
+            "git",
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            f"{tree}/*.py",
+        ],
         cwd=_ROOT,
         capture_output=True,
         check=True,
     ).stdout
     names = [name.decode() for name in listed.split(b"\0") if name]
-    return sum((_ROOT / name).read_bytes().count(b"\n") for name in names)
+    paths = [_ROOT / name for name in names]
+    return sum(path.read_bytes().count(b"\n") for path in paths if path.exists())
 
 
 def test_tests_stay_smaller_than_src() -> None:
-    """The test budget: tracked tests/*.py lines stay under src/*.py lines."""
+    """The test budget: tests/*.py lines stay under src/*.py lines."""
     tests, src = _tracked_lines("tests"), _tracked_lines("src")
     assert src > 0
     assert tests < src, f"tests/ has {tests} lines, src/ only {src}: trim tests"

@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "generate_docs.py"
 README = REPO_ROOT / "README.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
+LIMITATIONS = REPO_ROOT / "docs" / "limitations.md"
 CONTRIBUTING = REPO_ROOT / "docs" / "CONTRIBUTING.md"
 LANGUAGE_REQUEST = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
 
@@ -116,14 +117,19 @@ def test_main_updates_all_registry_derived_docs(
     called = []
     module.update_readme = lambda _root: called.append("readme")
     module.update_usage = lambda _root: called.append("usage")
+    module.update_limitations = lambda _root: called.append("limitations")
     module.update_contributing = lambda _root: called.append("contributing")
     module.update_language_request = lambda _root: called.append("request")
-    for relative in ("docs/proofs/index.md", "docs/roadmap.md"):
+    for relative in (
+        "docs/proofs/index.md",
+        "docs/roadmap.md",
+        "src/esolangs/tools/__init__.py",
+    ):
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((REPO_ROOT / relative).read_bytes())
     assert module.main(output_root=tmp_path) == 0
-    assert called == ["readme", "usage", "contributing", "request"]
+    assert called == ["readme", "usage", "limitations", "contributing", "request"]
     assert "language request template" in capsys.readouterr().out
 
 
@@ -133,12 +139,29 @@ def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
     (tmp_path / "docs").mkdir()
     readme = README.read_text()
     usage = USAGE_DOC.read_text()
+    limitations = LIMITATIONS.read_text()
     (tmp_path / "README.md").write_text(readme)
     (tmp_path / "docs" / "usage.md").write_text(usage)
+    (tmp_path / "docs" / "limitations.md").write_text(limitations)
     module.update_readme(tmp_path)
     module.update_usage(tmp_path)
+    module.update_limitations(tmp_path)
     assert (tmp_path / "README.md").read_text() == readme
     assert (tmp_path / "docs" / "usage.md").read_text() == usage
+    assert (tmp_path / "docs" / "limitations.md").read_text() == limitations
+
+
+def test_an_unheaded_category_names_where_to_add_it() -> None:
+    """A new interpreter directory fails with the fix, not a ``KeyError``."""
+    module = load_script()
+    language = next(
+        lang for lang in module.LANGUAGES.values() if lang.interpreter is not None
+    )
+    module.LANGUAGES = {
+        language.name: replace(language, interpreter="new_category.module")
+    }
+    with pytest.raises(ValueError, match="_README_HEADINGS"):
+        module.render_languages_section()
 
 
 def test_the_tui_frame_has_no_trailing_whitespace() -> None:

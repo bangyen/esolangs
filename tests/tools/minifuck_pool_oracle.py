@@ -4,12 +4,45 @@ from functools import cache
 
 from esolangs.tools.minifuck.pool import (
     _POOL,
-    _POOL_CODES,
     _POOL_MASK,
     _POOL_WIDTH,
     _PROBE_WALK_OUT,
 )
 from esolangs.tools.minifuck.sim import _Joint, _runs, _Sim, _walk_to
+
+
+def _step(carry: int = 1, backs: int = 1, *, odd: bool = True) -> str:
+    """One step of a pool code: carry a mark right, then walk the pointer back.
+
+    ``k`` brackets carry a mark ``ceil(k / 2)`` and leave a skip when ``k``
+    is odd, so a carry of ``c`` is ``2 * c - 1`` with the skip and ``2 * c``
+    without; the ``<`` run sets how far behind the mark the pointer ends.
+    """
+    return "[" * (2 * carry - odd) + "<" * backs
+
+
+# ``(steps, core, {step: (backs, odd)})``; a default step carries one
+# cell, the core two.  Measured not to compress: moving a core strands
+# 22 / 18 / 6 tables for plans 3 / 4 / 5 and slot order pins plan 2's.
+_PLANS: tuple[tuple[int, int, dict[int, tuple[int, bool]]], ...] = (
+    (2, 0, {1: (4, True)}),
+    (4, 1, {}),
+    (5, 2, {}),
+    (5, 3, {0: (2, True)}),
+    (5, 3, {2: (2, True), 4: (3, False)}),
+)
+
+
+def _render(steps: int, core: int, overrides: dict[int, tuple[int, bool]]) -> str:
+    """Spell one plan out as a pool code."""
+    codes = []
+    for i in range(steps):
+        backs, odd = overrides.get(i, (1, True))
+        codes.append(_step(carry=2 if i == core else 1, backs=backs, odd=odd))
+    return "".join(codes)
+
+
+_POOL_CODES = tuple(_render(*plan) for plan in _PLANS)
 
 #: Rightmost pointer at which the window is the whole key (at 3 codes reach
 #: above cell 7; 3 of 300 verdicts changed).  Every build site has pointer

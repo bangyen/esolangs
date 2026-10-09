@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from tests.cli_support import call_both
+from tests.pick import languages
 
 
 def _names(args, capsys):
@@ -17,19 +18,16 @@ def _names(args, capsys):
 def test_generator_and_interpreter_only_partition_catalog(capsys):
     generators = _names(["--generator"], capsys)
     interpreters = _names(["--interpreter-only"], capsys)
-    assert interpreters == ["Deadfish", "HQ9+", "Nope.", "Unary"]
+    assert interpreters == languages(boolean_generator=False)
     assert set(generators).isdisjoint(interpreters)
     assert sorted([*generators, *interpreters]) == esolangs.list_languages()
 
 
 def test_raster_filter_has_a_positive_control(capsys):
-    assert _names(["--source=raster"], capsys) == ["Line", "Piet", "Piet++"]
-    assert _names(["--source", "text", "--interpreter-only"], capsys) == [
-        "Deadfish",
-        "HQ9+",
-        "Nope.",
-        "Unary",
-    ]
+    assert _names(["--source=raster"], capsys) == languages(source_kind="raster")
+    assert _names(["--source", "text", "--interpreter-only"], capsys) == languages(
+        source_kind="text", boolean_generator=False
+    )
 
 
 @pytest.mark.medium
@@ -46,18 +44,19 @@ def test_answer_filter_agrees_with_describe(capsys, mode):
 
 @pytest.mark.medium
 def test_input_filter_respects_caps_without_hiding_table_limits(capsys):
-    for name in ("Befunge", "Malbolge"):
+    capped = [n for n in languages() if esolangs.describe(n)["generator_max_inputs"]]
+    assert capped
+    for name in capped:
         cap = esolangs.describe(name)["generator_max_inputs"]
         assert name in _names(["--inputs", str(cap)], capsys)
         assert name not in _names(["--inputs", str(cap + 1)], capsys)
     rows = _names(["--inputs=17", "--details"], capsys)
     assert all(row["boolean_generator"] for row in rows)
-    polynomial = next(row for row in rows if row["name"] == "Polynomial")
-    assert (
-        polynomial["generator_restrictions"]
-        == esolangs.describe("Polynomial")["generator_restrictions"]
-    )
-    assert polynomial["generator_restrictions"]
+    restricted = [row for row in rows if row["generator_restrictions"]]
+    assert restricted
+    for row in restricted:
+        expected = esolangs.describe(row["name"])["generator_restrictions"]
+        assert row["generator_restrictions"] == expected
 
 
 def test_combined_filters_match_in_every_output_format(capsys):
@@ -71,7 +70,7 @@ def test_combined_filters_match_in_every_output_format(capsys):
         "4",
     ]
     names = _names(filters, capsys)
-    assert names == ["Line", "Piet", "Piet++"]
+    assert names == languages(source_kind="raster", answer_mode="output")
     text, error = call_both(["list", *filters], capsys)
     assert text.splitlines() == names
     assert error == ""

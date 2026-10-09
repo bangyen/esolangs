@@ -5,17 +5,16 @@ import importlib
 import pytest
 
 from esolangs.tools.minifuck import _solve
-from esolangs.tools.minifuck.pool import (
-    _POOL_CODES,
-    _embed,
-)
 from esolangs.tools.minifuck.sim import _clamp, _Joint, _Sim
 from tests.tools.minifuck_pool_oracle import (
+    _POOL_CODES,
     _POOL_PTR_MAX,
     _endgame,
     _find_pool,
 )
 from tests.tools.minifuck_support import (
+    _embed,
+    _fork,
     _MinifuckCase,
     _mux_separate,
     _pool_reaches,
@@ -99,12 +98,12 @@ class TestMinifuckPool(_MinifuckCase):
         _clamp(joint)
 
         with pytest.raises(ValueError, match="must sit past the pool"):
-            _endgame(joint.fork(), 3, "[<", 0)
+            _endgame(_fork(joint), 3, "[<", 0)
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_find_pool", lambda *_a, **_k: None)
             with pytest.raises(ValueError, match="no pool pattern"):
-                _endgame(joint.fork(), 12, "[<", 0)
+                _endgame(_fork(joint), 12, "[<", 0)
 
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
         """``[x`` walks are only safe rightward from one shared position."""

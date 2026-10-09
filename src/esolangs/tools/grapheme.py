@@ -1,7 +1,13 @@
-"""Boolean program generator for Grapheme."""
+"""Boolean program generator for Grapheme.
+
+The table is one integer literal, so it has no subtrees to fold or share.
+"""
 
 from esolangs._grapheme import DEFAULT_GRAPHEME, GraphemeDialect
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.tools.wrap import wrap_chars
 
 #: Int-mode digits: ``Z`` is 0 and ``A``-``Y`` are 1 to 25, so the one value
 #: with no letter is 6 -- ``F`` closes the mode.  16 with a borrow spells it.
@@ -12,7 +18,7 @@ _GRAPHEME_CONST = 9
 
 
 def _grapheme_push65(dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> str:
-    """Grapheme code pushing 65 (``ord('A')``), spelled ``5 * 13``."""
+    """Grapheme code pushing 65: ``5 * 13``, or ``FEFFMFS`` between letters."""
     if dialect.integer_conversion == "between_letters":
         return "FEFFMFS"
     return _grapheme_literal(5, dialect) + _grapheme_literal(13, dialect) + "S"
@@ -87,3 +93,22 @@ def grapheme(
     pieces.append(_grapheme_literal(_grapheme_table(table), dialect))
     pieces.append(shift + low_bit + "Y")
     return "".join(pieces)
+
+
+LANGUAGE = Language(
+    "Grapheme",
+    "stack_based.grapheme",
+    boolean=grapheme,
+    dialect=GraphemeDialect,
+    contract=BooleanContract(
+        alphabet=("%", "A"),
+        note="Grapheme's generator normalizes each input line with "
+        "ord(line[0]) - 65 and then maps zero to 1, so its input "
+        "bits are spelled % and A: 'A' is a 1 and every other "
+        "first character is a 0, which means a 0/1 line reads as 0 "
+        "and the program answers the all-zeros row. The second "
+        "step is not optional prose -- ord('A') - 65 is 0, so the "
+        "subtraction alone says the opposite",
+    ),
+    wrap=wrap_chars,
+)

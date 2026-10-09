@@ -6,11 +6,15 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.randomness import FirstDraw
+from esolangs.interpreters.tape_based.painfuck import _Machine as Painfuck
+from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
     SnapshotContract,
 )
+from tests.raises import assert_halts_with_hint
 
 run = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
 
@@ -69,6 +73,12 @@ _OUTPUT = {
     # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
     # pair must be consumed as a unit, leaving 'u' to print cell 0.
     "skipping_a_loop_steps_over_a_nested_one": ("aabbue", "\x00"),
+    # The grown cell and the start cell are distinct and both kept.
+    # start 2, grow left and add 6; r lands one past the start, then
+    # two l print the start cell and the grown one
+    "left_of_zero_and_back_keeps_both_cells": ("plppprloloe", "26"),
+    # The cell left of the leftmost exists and is zero, as ``w``'s is.
+    "copy_from_left_at_the_leftmost_cell_copies_a_zero": ("ppqoe", "0"),
 }
 
 
@@ -165,20 +175,10 @@ class TestPainfuck:
         # ``r`` (two each) walk back onto the start cell
         assert run_program("pcllrrrroe") == "2"
 
-    def test_left_of_zero_and_back_keeps_both_cells(self) -> None:
-        """The grown cell and the start cell are distinct and both kept."""
-        # start 2, grow left and add 6; r lands one past the start, then
-        # two l print the start cell and the grown one
-        assert run_program("plppprloloe") == "26"
-
     def test_reset_returns_to_the_start_cell_after_growing_left(self) -> None:
         """``d`` goes back to the cell the run began on, not the leftmost."""
         assert run_program("plldoe") == "2"
         assert run_program("lpdoe") == "0"
-
-    def test_copy_from_left_at_the_leftmost_cell_copies_a_zero(self) -> None:
-        """The cell left of the leftmost exists and is zero, as ``w``'s is."""
-        assert run_program("ppqoe") == "0"
 
     def test_square(self) -> None:
         assert run_program("pkue") == "\x04"  # 2*2
@@ -436,3 +436,86 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     stepping_program = "pp"
     halting_program = "pp"
     looping_program = _encode("pab")
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_halts_with_hint("Painfuck", "i", HaltError.DEFAULT, "decimal integer", "x")
+
+
+def _painfuck_source(targets: str) -> str:
+    """Encode direct Painfuck commands through its source translation."""
+    cycles = ("pevkjzwr", "yuctsobqihald")
+    out: list[str] = []
+    for index, target in enumerate(targets):
+        cycle = next(cycle for cycle in cycles if target in cycle)
+        out.append(cycle[(cycle.index(target) - index) % len(cycle)])
+    return "".join(out)
+
+
+def test_painfuck_all_coin_outcomes_can_be_proved_to_loop() -> None:
+    """Either ``y`` outcome reaches a loop close and returns to ``a``."""
+    code = _painfuck_source("paybb")
+    machine = Painfuck(code, ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(machine) is False
+    # A single path's snapshot counts its coin draws (a later draw could
+    # escape), so it never repeats: undecided, not a false cycle.
+    for coin in (0, 1):
+        draws = FirstDraw(coin, rest=coin)
+        with pytest.raises(TimeoutError, match="undecided after 64 steps"):
+            run_until_halt_or_cycle(Painfuck(code, ScriptedIO(), draws), limit=64)
+
+
+def test_painfuck_one_halting_coin_refutes_an_all_branches_hang() -> None:
+    code = _painfuck_source("payb")
+    machine = Painfuck(code, ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(machine) is True
+    halting = Painfuck(code, ScriptedIO(), FirstDraw(1))
+    assert run_until_halt_or_cycle(halting) is True
+    looping = Painfuck(code, ScriptedIO(), FirstDraw(0, rest=0))
+    with pytest.raises(TimeoutError, match="undecided after 64 steps"):
+        run_until_halt_or_cycle(looping, limit=64)
+
+
+def test_painfuck_a_malformed_loop_is_a_terminal_branch() -> None:
+    """An unmatched ``b`` ends its branch instead of escaping the search."""
+    machine = Painfuck(_painfuck_source("b"), ScriptedIO())
+    start = machine.branching_snapshot()
+    assert machine.branching_halted(start) is False
+
+    (ended,) = machine.branching_successors(start, 100) or ()
+    assert machine.branching_halted(ended) is True
+    assert ended[3] == machine.n  # cursor parked past the program
+
+
+def test_painfuck_later_coin_can_escape_repeated_visible_state() -> None:
+    """Pins the draw count in the snapshot: tape/cursor repeat, yet the
+    fifth coin halts ``payb``, so a single path must not report a cycle."""
+
+    class DelayedEscape:
+        def __init__(self) -> None:
+            self.draws = 0
+
+        def randbelow(self, upper: int) -> int:
+            assert upper == 2
+            self.draws += 1
+            return int(self.draws == 5)
+
+    coins = DelayedEscape()
+    machine = Painfuck(_painfuck_source("payb"), ScriptedIO(), coins)
+    assert run_until_halt_or_cycle(machine, limit=64) is True
+    assert coins.draws == 5
+
+
+def test_branching_search_leaves_input_and_wide_coin_paths_undecided() -> None:
+    # The direct target 'j' reads; sibling paths must not share a cursor.
+    with pytest.raises(TimeoutError, match="needs input"):
+        run_until_halt_or_all_branches_cycle(
+            Painfuck(_painfuck_source("j"), ScriptedIO("A\n"))
+        )
+    # c repeats y 49 times: the frontier is limited at the transition,
+    # before its 2**49 outcomes are materialized.
+    with pytest.raises(TimeoutError, match="coin outcomes"):
+        run_until_halt_or_all_branches_cycle(
+            Painfuck(_painfuck_source("ccy"), ScriptedIO()), limit=4
+        )

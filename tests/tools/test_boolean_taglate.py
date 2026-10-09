@@ -86,6 +86,11 @@ class TestTaglate:
             ("1111000011110000", 4),  # input 1
             ("1010101010101010", 4),  # input 3
             ("1111111111111111", 4),  # none at all
+            # depends on inputs 0-2, so the window widens rightward to 0-3
+            ("0000000000000011", 4),
+            # depends on inputs 1-3, which has no room on the right, so the
+            # window widens leftward to 0-3 instead
+            ("0000000100000001", 4),
         ],
     )
     def test_reduced_tables_compute_past_three_inputs(self, table: str, n: int) -> None:
@@ -96,35 +101,6 @@ class TestTaglate:
             ghost = ["0"] if n % 2 == 1 and n > 1 else []
             got = run_taglate(program, ghost + [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            # depends on inputs 0-2, so the window widens rightward to 0-3
-            ("0000000000000011", 4),
-            # depends on inputs 1-3, which has no room on the right, so the
-            # window widens leftward to 0-3 instead
-            ("0000000100000001", 4),
-        ],
-    )
-    def test_odd_dependency_sets_widen_to_stay_even(self, table: str, n: int) -> None:
-        """An odd-sized window takes one more ignored input, either side."""
-        program = boolean.taglate(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            ghost = ["0"] if n % 2 == 1 and n > 1 else []
-            got = run_taglate(program, ghost + [str(b) for b in bits])
-            assert got == table[combo], f"inputs {bits}"
-
-    def test_wrong_length_truth_table_rejected(self) -> None:
-        """A truth table of the wrong length is malformed."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.taglate("011")
-
-    def test_invalid_truth_table_chars_rejected(self) -> None:
-        """A truth table with non-0/1 characters is malformed."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.taglate("0120")
 
 
 @pytest.mark.parametrize("width", [1, 7, 19])

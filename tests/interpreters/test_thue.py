@@ -9,6 +9,7 @@ from esolangs.interpreters.other import thue
 from esolangs.interpreters.other.thue import _advance, _Machine, _matches, _parse, run
 from esolangs.interpreters.randomness import FirstDraw, Seeded
 from tests.interpreters.runner import run_program
+from tests.raises import assert_rejected_with_hint
 
 #: Two print rules over ``ab``.  Both match the starting state, so which
 #: half prints first is a *draw* -- the pair below pins both orders.
@@ -161,3 +162,8 @@ def test_the_block_index_steps_as_the_whole_string_would(
             break
         state = _advance(state, rules, found[reference.randbelow(len(found))])[0]
         machine.step()
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Thue", "a::=b", "line containing only ::=")

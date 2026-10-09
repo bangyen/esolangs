@@ -76,9 +76,10 @@ Further decisions for gaps the wiki leaves open:
   returns 0.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 from esolangs._drive import drive
+from esolangs._suggest import Correction, keyword_correction
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -684,3 +685,61 @@ def run(code: str, io: IO, *, literal_policy: str = "decimal") -> None:
 
 if __name__ == "__main__":
     script_main(run)
+
+
+def suggest_corrections(source: str) -> tuple[Correction, ...]:
+    """Return edits only where Packlang's parser requires a keyword."""
+    from esolangs.interpreters.other._packlang_lex import (
+        _TOKEN,
+        _strip_comments,
+        _tokenize,
+    )
+    from esolangs.interpreters.other._packlang_parse import (
+        _DATATYPES,
+        _parse_packages,
+        _Parser,
+        _Type,
+    )
+
+    masked = _strip_comments(source, preserve_positions=True)
+    tokens = _tokenize(masked)
+    positions = [match.start() for match in _TOKEN.finditer(masked)]
+    corrections: list[Correction] = []
+
+    class PreviewParser(_Parser):
+        _speculating = False
+
+        def correct(self, vocabulary: Iterable[str]) -> None:
+            word = self.peek()
+            if word is None or self._speculating:
+                return
+            correction = keyword_correction(word, positions[self.pos], vocabulary)
+            if correction is not None:
+                self.tokens[self.pos] = correction.after
+                corrections.append(correction)
+
+        def package_kind(self) -> str:
+            self.correct(("Package", "Dependency"))
+            return super().package_kind()
+
+        def parse_type(self) -> _Type:
+            self.correct(_DATATYPES)
+            return super().parse_type()
+
+        def expect(self, word: str) -> None:
+            if word in ("Then", "Do"):
+                self.correct((word,))
+            super().expect(word)
+
+        def is_declaration(self) -> bool:
+            # Array(Integer, n) can also be a call; speculative parsing
+            # must not rewrite identifiers in its arguments.
+            previous = self._speculating
+            self._speculating = True
+            try:
+                return super().is_declaration()
+            finally:
+                self._speculating = previous
+
+    _parse_packages(PreviewParser(tokens))
+    return tuple(sorted(corrections, key=lambda correction: correction.start))

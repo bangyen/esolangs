@@ -222,10 +222,9 @@ options:
   --max-output N     cap isolated output in Unicode characters (including zero).
   --max-memory BYTES cap Linux worker address space; requires --isolated.
   --timeout SECONDS  stop the run after this long rather than hanging.
-                     Unbounded by default.  Four languages answer 1 by
-                     *not* terminating -- 123, ArrowQueue, Crement and
-                     Vandevelo -- so a timeout there is the answer, not a
-                     failure.
+                     Unbounded by default.  123, ArrowQueue, Crement and
+                     Vandevelo answer 1 by *not* terminating, so a timeout
+                     there is the answer, not a failure.
   --scale N          override detected raster scale; 1 preserves native pixels.
   -p, --portable         load JSON saved by generate --portable.  The language
                      may be omitted because the JSON names it.
@@ -233,11 +232,10 @@ options:
   -s, --settings JSON    dialect overrides, e.g. '{"eof":"zero"}'.
   --set KEY=VALUE    one dialect override without JSON, repeatable and applied
                      after --settings.
-  --seed N           fix the random draws so the run repeats.  Nine
-                     languages draw: Befunge, Fish, INTERCAL, LaserFuck,
-                     Modulous, Painfuck, Super SNUSP, Thue and thisthat.
-                     A seed for a language that draws nothing is refused
-                     rather than ignored.
+  --seed N           fix the random draws so the run repeats.  Befunge,
+                     Fish, INTERCAL, LaserFuck, Modulous, Painfuck, Super
+                     SNUSP, Thue and thisthat draw.  A seed for a language
+                     that draws nothing is refused rather than ignored.
 examples:
   printf '1\n0\n' | esolangs run brainfuck prog.txt
   printf '1\n0\n' | esolangs run --timeout 5 brainfuck prog.txt
@@ -285,7 +283,7 @@ line, A Painter Ant's as the mark on the ant's own cell (`o` for 0, `@`
 for 1).  Working that out by hand meant generating all four rows and
 diffing them.
 
-The four languages that answer by terminating have no output to read, so
+The languages that answer by terminating have no output to read, so
 they are refused here and named: run with `--timeout S` and observe whether it halts.
 
 examples:

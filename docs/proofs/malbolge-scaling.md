@@ -1378,18 +1378,75 @@ the store, so a placement search is deferred. The decoder's 1,173
 unshareable overlaps are the binding term: only more sharing of the common
 initialization, or a smaller decoder, closes the gap.
 
+## Native input and prepared query controls (2026-10-08)
+
+The newer controls separate a legal seventeen-input prefix from a complete,
+prepared Boolean query. The prefix reads all seventeen ordered ASCII bits from
+an ordinary legal source. The prepared parity query passes all 131,072 inputs,
+with 36 complete Python/C state comparisons, including boundary controls. Its
+5,629 instructions and 6,177 reserved cells include VM capture of the three
+table glyphs. There is no host intervention between capture and query, but the
+host installs query instructions, constants, entry registers and selected table
+glyphs after the input prefix. This is not a source-embedded generator.
+
+Exhaustive native compatibility checks retain 3,727 of those query instruction
+words, leaving 1,902 opcode patches and 502 constants to install. Exact joint
+placement leaves 2,242 free cells. The prefix obstructs 329 three-cell table
+records; reserving 987 cells to relocate them leaves 1,255 cells. This is a
+reservation count, not an executed relocation or initializer.
+
+Two separate legal-source components now execute without host memory or
+register injection. Each source has 59,049 characters and reads seventeen
+inputs without producing output.
+
+| Component | Instructions | Exhaustive cases | Maximum steps | Frozen replay |
+| --- | ---: | ---: | ---: | ---: |
+| Initialize cells 0 and 3 to ALL1 | 35 | 131,072 | 5,350 | 4.455 s |
+| Reach the native bank at cell 26,608 | 30 | 131,072 | 5,346 | 11.042 s |
+
+The initializer loads native ALL1 once and applies two crazy operations per
+target. It halts at an actual `v`, with `A=29524`, `C=6920`, `D=4`; 18 complete
+Python/C comparisons and a damaged-load control pass. TABLE is unchanged.
+It initializes two of the 502 pending constants and none of the opcode patches.
+
+The handoff complements the native pointer in cell 1, rotates it eight times
+and jumps to `A=26607`, `C=26608`, `D=2`. Its exhaustive gate compares all
+49,152 TABLE cells and 17 protected exports against the native prefix on the
+same input. Sixteen complete landing and sixteen continuation Python/C
+comparisons agree; a damaged-bridge control is rejected. Arrival is an
+observation pause, not a halt. The existing continuation subsequently executes
+`p` at cell 119 with `D=139`, corrupting the saved parity word. Thus the
+handoff is verified, but that continuation is unusable.
+
+Four deterministic, source-legal three-bit metadata representations roundtrip
+the generated query in 3,783, 3,749, 3,113 and 1,592 cells. The smallest exceeds
+the 1,255-cell allowance by 337 before decoder, writer or constant construction
+costs. These measurements reject those representations, not other initializer
+architectures or seventeen-input programs.
+
+Evidence is retained locally in the untracked research snapshot
+`notes/malbolge-research/verified-native-query-roots-v2`: 1,075 files,
+38,813,334 bytes, manifest SHA-256
+`7f7b9ead384023eb8ced77e2ea59316cfcab23a542ec75b7adc712e664eb35cb`.
+Its checker replays the new components with five freshly compiled C libraries
+and preserves all 1,023 hashes of the preceding archive. The initializer source
+SHA-256 is `db8ded0a22c62fb34fa61132637c44de51f6328ce3896c414d32723494f01567`;
+the handoff source SHA-256 is
+`13e690a14add71a5203e17f8c18880e0205faf93e575b121c7ca0b2944ef26fc`.
+These artifacts are not shipped or available from the archived commit cited
+at the start of this document.
+
 ## Open problems
 
 **Malbolge's first unreachable arity.** The shipped cap is 16 inputs.
 Counting excludes some 18-input tables; 17 remains undecided, and a
 build needs more than two table bits per cell across almost the whole
-store. Packing uses 49,152 cells, and the five-state decoder executes
-all 2,744 one-group cases. Neither placement nor sharing setup
-between the address fold, row selector and decoder fits them: the
-shared union is 10,324 cells against a 9,897-cell complement, and the
-decoder's 1,173 conflicting overlaps are the binding term. Next: shrink
-the decoder or share more of its common initialization. See [the construction
-record](#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
+store. Packing uses 49,152 cells. A prepared complete query and native input
+prefix now execute separately; their joint reservations leave 1,255 cells
+after allowing for 329 obstructed table records. Native installation of the
+query and an executed record selector remain unresolved. Next: construct the
+initializer and relocation without damaging the saved interface, or change
+the query architecture. See [the latest controls](#native-input-and-prepared-query-controls-2026-10-08).
 Proving impossibility instead needs a density lemma: cut the count by
 `2**46076`, or bound a normal-form representative's dependence by
 24,434 cells. A per-program dependence cut is false (`'o'*59046 + '/<v'`

@@ -2,10 +2,13 @@
 
 import hashlib
 import importlib
+import random
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
+from esolangs.tools.wrap import balance_score
 from tests.witness_tables import witnesses
 
 
@@ -163,9 +166,11 @@ class TestCircuitDiagramLayoutGuards:
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             drawing = boolean.circuit_diagram(table)
             widths[n] = max(len(row) for row in drawing.splitlines())
-        assert widths == {3: 67, 4: 99, 5: 131, 6: 163}
-        steps = [widths[n + 1] - widths[n] for n in (3, 4, 5)]
-        assert max(steps) <= 32, steps
+        assert widths == {3: 67, 4: 87, 5: 125, 6: 145}
+        # A shared output alternates the step (20, 38); two inputs still cost
+        # at most the 64 columns two unshared levels did.
+        steps = [widths[n + 2] - widths[n] for n in (3, 4)]
+        assert max(steps) <= 64, steps
 
     @pytest.mark.slow
     def test_emitted_size_is_linear_in_the_table(self) -> None:
@@ -467,40 +472,11 @@ class TestCircuitDiagram:
         table = "".join("1" if n in primes else "0" for n in range(16))
         assert self.run_table(table) == table
 
-    @pytest.mark.slow  # ~3s: 256 builds of up to four orders, eight rows each
-    def test_every_three_input_table_under_its_chosen_order(self) -> None:
-        """A reordered fold still reads its rails in input order."""
+    @pytest.mark.slow  # 256 builds, eight rows each
+    def test_every_three_input_table_executes(self) -> None:
+        """Every three-input table computes itself."""
         for table in witnesses(3):
             assert self.run_table(table) == table
-
-    @pytest.mark.parametrize(
-        ("table", "winner"),
-        [
-            # One four-input table per candidate that alone is shortest.
-            ("1001111101010101", 0),  # identity
-            ("1001100001000001", 1),  # constant-cofactor greedy
-            ("0010000101100011", 2),  # mux-cost greedy
-            ("0111100101011011", 3),  # reversed identity
-        ],
-    )
-    def test_the_shortest_candidate_order_ships(self, table: str, winner: int) -> None:
-        """Each named order wins somewhere, and the winner still computes."""
-        from esolangs.tools.circuit_diagram import (
-            _circuit_diagram_at,
-            _selector_orders,
-            circuit_diagram,
-        )
-
-        orders = _selector_orders(table)
-        assert len(orders) == 4
-        sizes = [len(_circuit_diagram_at(table, None, order)) for order in orders]
-        assert sizes.index(min(sizes)) == winner
-        assert sizes.count(min(sizes)) == 1
-        compact = _selector_orders(table, compact=True)
-        assert len(circuit_diagram(table)) == min(
-            len(_circuit_diagram_at(table, None, order)) for order in compact
-        )
-        assert self.run_table(table) == table
 
     def test_each_run_prints_exactly_one_bit(self) -> None:
         """The output wire is live for exactly one generation."""
@@ -525,17 +501,9 @@ class TestCircuitDiagram:
         starts = [row for row in rows if row.startswith("-")]
         assert len(starts) == 3
 
-    def test_a_malformed_table_is_rejected(self) -> None:
-        from esolangs.tools.circuit_diagram import circuit_diagram
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            circuit_diagram("010")
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            circuit_diagram("012x")
-
     def test_a_route_may_cross_a_hold_but_not_corner_beside_it(self) -> None:
         """A held cell keeps corners out of its neighbourhood, not wires."""
-        from esolangs.tools.circuit_diagram import _HOLD, _RoutingLayout
+        from esolangs.tools.circuit_diagram.layout import _HOLD, _RoutingLayout
 
         layout = _RoutingLayout()
         layout.reserve((1, 10), _HOLD)  # beside the ``down`` corner
@@ -552,7 +520,7 @@ class TestCircuitDiagram:
     @pytest.mark.parametrize("collision", ["endpoint", "neighbour", "interior"])
     def test_a_route_refuses_each_kind_of_claimed_cell(self, collision: str) -> None:
         """Endpoints, their neighbours and run interiors are all guarded."""
-        from esolangs.tools.circuit_diagram import _RoutingLayout
+        from esolangs.tools.circuit_diagram.layout import _RoutingLayout
 
         layout = _RoutingLayout()
         if collision == "endpoint":
@@ -584,21 +552,44 @@ class TestCircuitDiagram:
                 assert io.getvalue() == table[index], (table, index)
 
 
-class TestCircuitDiagramSelectorOrder:
-    """Which rail each Shannon level selects, chosen among four named orders."""
+def test_a_repeated_subtree_is_drawn_once_and_still_computes() -> None:
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.circuit_diagram import circuit_diagram
 
-    def test_the_mux_cost_order_keeps_the_identity_on_a_tie(self) -> None:
-        """Parity costs every level the same, whichever rail it selects."""
-        from esolangs.tools.circuit_diagram import _cheapest_selector_order
+    gates = lambda t: sum(map(str(circuit_diagram(t)).count, "aox"))  # noqa: E731
+    tiled, distinct = "0110111010010011" * 2, "01101110100100110011101011000101"
+    assert gates(tiled) < gates(distinct)
+    assert (
+        _evaluate("Circuit Diagram", str(circuit_diagram(tiled, 40)), inputs=5) == tiled
+    )
 
-        assert _cheapest_selector_order("01101001", 3) == (0, 1, 2)
-        assert _cheapest_selector_order("0110", 2) == (0, 1)
-        assert _cheapest_selector_order("01", 1) == (0,)
 
-    def test_orders_stop_at_the_flat_routes_last_arity(self) -> None:
-        """From eight inputs only the identity is built: bounded scoring."""
-        from esolangs.tools.circuit_diagram import _selector_orders
+@pytest.mark.slow
+@pytest.mark.parametrize("inputs", [6, 8])
+@pytest.mark.parametrize("affine", [False, True])
+def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
+    from esolangs.tools.circuit_diagram import _circuit_diagram_at
 
-        seven = "0001" * 32
-        assert len(_selector_orders(seven)) > 1
-        assert _selector_orders("0001" * 64) == [None]
+    language = "Circuit Diagram"
+    rng = random.Random(1022 + inputs)
+    table = (
+        "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
+        if affine
+        else "".join(rng.choice("01") for _ in range(1 << inputs))
+    )
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    # Once the flat drawing fits, all larger widths repeat it.
+    widest = max(map(len, _circuit_diagram_at(table, None).split("\n")))
+    layouts = [default] + [
+        esolangs.generate(language, table, width=width)
+        for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run(
+            language, balanced, stdin=esolangs.encode_inputs(language, bits)
+        )
+        assert esolangs.read_answer(language, output) == table[row]

@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import (
     run_collatz_multiverse,
 )
@@ -56,9 +57,9 @@ class TestCollatzMultiverse:
         from esolangs.tools.collatz_multiverse import _cm_build
 
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
-        plain = sum(len(_cm_build(t, 3, [0, 1, 2], zero_top=None)) for t in varied)
+        plain = sum(len(_cm_build(t, 3, [0, 1, 2], numbered=False)) for t in varied)
         built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
-        assert (plain, built) == (450156, 228694)
+        assert (plain, built) == (450156, 232942)
 
     def test_numbering_never_grows_a_program(self) -> None:
         """Numbered cells beat the retired value-as-code size oracle."""
@@ -69,7 +70,7 @@ class TestCollatzMultiverse:
         tables += ["".join(rng.choice("01") for _ in range(2**n)) for n in (4, 5, 6)]
         for table in tables:
             n = len(table).bit_length() - 1
-            plain = _cm_build(table, n, list(range(n)), zero_top=None)
+            plain = _cm_build(table, n, list(range(n)), numbered=False)
             assert plain is not None
             assert len(boolean.collatz_multiverse(table)) <= len(plain), table
 
@@ -152,3 +153,8 @@ class TestCollatzMultiverse:
             for n in (7, 8)
         ]
         assert sizes[1] < 2 * sizes[0] + 256
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.collatz_multiverse, (7, 8), 255)

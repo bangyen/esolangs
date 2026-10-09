@@ -2,9 +2,11 @@
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
 from tests.generator_support import verify_generated
 from tests.tools.sample_tables import five_input_sample
+from tests.witness_tables import witnesses
 
 
 def test_false_tests_the_low_bit_and_prints_a_constant_pair() -> None:
@@ -49,3 +51,17 @@ def test_false_runs_out_of_variables_and_writes_the_rest_inline() -> None:
     program = boolean.false(table)
     assert all(f"]{name}:" in program for name in "abcdefghijklmnopqrstuvwxyz")
     assert verify_generated("FALSE", table)
+
+
+@pytest.mark.medium
+def test_false_single_character_floor_executes_every_small_table() -> None:
+    for n in range(1, 4):
+        for table in witnesses(n):
+            program = esolangs.generate("FALSE", table, width=1)
+            assert max(map(len, program.splitlines())) == 1
+            for row, expected in enumerate(table):
+                stdin = format(row, f"0{n}b")
+                assert (
+                    esolangs.run("FALSE", program, stdin=stdin, max_steps=100_000)
+                    == expected
+                )

@@ -14,6 +14,11 @@ def _bits(combo: int, n: int) -> list[str]:
     return [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
 
 
+def _parity(n: int) -> str:
+    """The ``n``-input parity table: every input matters."""
+    return "".join(str(row.bit_count() & 1) for row in range(1 << n))
+
+
 class TestClockwise:
     @pytest.mark.medium
     def test_the_lookup_computes_every_row_at_five_and_six_inputs(self) -> None:
@@ -45,8 +50,17 @@ class TestClockwise:
             def print_char(self, char: str) -> None:
                 pass
 
-        for n in (1, 2, 3):
-            table = "01101001"[: 2**n].ljust(2**n, "1")
+        # A constant, and a table ignoring every input after the first.
+        tables = [
+            (n, table)
+            for n in (1, 2, 3)
+            for table in (
+                "01101001"[: 2**n].ljust(2**n, "1"),
+                "1" * 2**n,
+                "0" * 2 ** (n - 1) + "1" * 2 ** (n - 1),
+            )
+        ]
+        for n, table in tables:
             program = boolean.clockwise(table, width)
             for combo in range(2**n):
                 machine = _Machine(
@@ -62,7 +76,7 @@ class TestClockwise:
 
     def test_size_is_linear_in_the_table(self) -> None:
         """Four table rows and a doubling chain: both linear, so size is."""
-        sizes = [len(boolean.clockwise("01101001" * (2 ** (n - 3)))) for n in (5, 7, 9)]
+        sizes = [len(boolean.clockwise(_parity(n))) for n in (5, 7, 9)]
         rise = (sizes[2] - sizes[1]) / (sizes[1] - sizes[0])
         assert 3.5 < rise < 4.4, sizes
         assert sizes[2] / 2**9 < 20, sizes
@@ -90,7 +104,7 @@ def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
 
 def test_rotated_lookup_size_is_linear() -> None:
     """Implicit padded rails keep rotation from rendering a filled rectangle."""
-    sizes = [len(boolean.clockwise("01101001" * (2 ** (n - 3)), 1)) for n in (5, 7, 9)]
+    sizes = [len(boolean.clockwise(_parity(n), 1)) for n in (5, 7, 9)]
     assert sizes[2] / 2**9 < 30
     assert 3.5 < (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) < 4.4
 

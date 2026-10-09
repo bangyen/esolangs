@@ -13,6 +13,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.raises import assert_rejected_with_hint
 
 
 def dump(code: str) -> str:
@@ -158,3 +159,8 @@ class TestStateViewValues:
         machine = _machine("A N S")
         machine.step()
         assert (machine.z, machine.n) == (1, 0)
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("RAM0", "1" * 4301, "PYTHONINTMAXSTRDIGITS")

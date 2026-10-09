@@ -60,3 +60,10 @@ class TestUnsquare:
         """Only the characters Unsquare reads are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.unsquare(table)) <= set("+-<>AIOPiox"), table
+
+    @pytest.mark.parametrize("tail", ["0" * 32, "1" * 31 + "0", "0" * 31 + "1"])
+    def test_a_long_run_of_cells_is_a_loop_and_runs(self, tail: str) -> None:
+        """Even and odd runs, both entries, in front of and behind other cells."""
+        table = "01101001100101101001011001101001" + tail
+        assert "OA+" in boolean.unsquare(table)
+        assert self._rows(table) == list(table)

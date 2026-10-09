@@ -48,11 +48,13 @@ import argparse
 import atexit
 import functools
 import os
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -171,7 +173,10 @@ STEPS = [
     # so on stderr with a `no-sysmon` CoverageWarning.  Both timing tables
     # are in ``the verification history``.
     ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
-    ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
+    (
+        "bandit",
+        ["uv", "run", "--no-sync", "--with", "bandit", "bandit", "-r", "src", "-q"],
+    ),
     # A generator route that was replaced keeps its own tests green, so it
     # never fails; three sat that way.  <1s.
     ("dead definitions", [*PY, "scripts/check_dead_definitions.py"]),
@@ -192,8 +197,7 @@ STEPS = [
         "duplicate-code check (pylint)",
         [
             *PY,
-            "-m",
-            "pylint",
+            "scripts/check_duplicate_code.py",
             "--disable=all",
             "--enable=duplicate-code",
             "--min-similarity-lines=10",
@@ -217,12 +221,34 @@ STEPS = [
     # The contract exceptions.py states, executed: no interpreter may leak a
     # raw Python error to its caller.  Bare, it checks only the languages
     # this branch touched, which is why it is affordable here; CI runs
-    # --all (59 languages, 68s).
+    # --all over the whole registry.
     (
         "exception leaks",
         [*PY, "scripts/verify_no_exception_leaks.py"],
     ),
 ]
+
+
+# What fixes a step beyond rerunning it, for the steps whose failure is a
+# stale committed file a script rewrites.  Printed under its rerun command.
+FIXES: dict[str, tuple[str, ...]] = {
+    "generated docs": ("uv run python scripts/generate.py docs",),
+    "generator size baseline": (
+        "uv run python scripts/check_generator_sizes.py --update  "
+        "(only if the size change is intended)",
+    ),
+}
+
+
+def _rerun_hint(name: str) -> list[str]:
+    """Return the commands that rerun, and any that fix, failed step *name*.
+
+    The coverage gate is not a ``STEPS`` entry, so ``--only`` cannot name it;
+    it runs after pytest, which is what reproduces it.
+    """
+    step = "pytest" if name == DIFF_COVERAGE_STEP else name
+    rerun = f"  rerun: uv run python scripts/verify.py --only {shlex.quote(step)}"
+    return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
 
 
 @functools.lru_cache(maxsize=1)
@@ -284,7 +310,6 @@ INTERPRETER_CONTRACT_TESTS = (
     "tests/test_interpreter_conventions.py",
     "tests/interpreters/test_io.py",
     "tests/interpreters/test_input_convention.py",
-    "tests/interpreters/test_semantic_oracles.py",
 )
 
 
@@ -651,13 +676,31 @@ def _run_steps(
         )
         print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
 
-    for name, cmd, step_env in shadow:
-        run_serial(name, cmd, step_env)
-
     if proc is not None:
-        # The cheap steps are done and pytest holds the only remaining output.
-        output, returncode = _wait_with_heartbeat(proc, LONG_STEP, long_start)
-        record(LONG_STEP, time.time() - long_start, returncode, output)
+
+        def collect_long(
+            child: subprocess.Popen[str], started: float
+        ) -> tuple[str, int, float]:
+            output, returncode = _wait_with_heartbeat(child, LONG_STEP, started)
+            return output, returncode, time.time() - started
+
+        # Drain immediately: waiting until the shadow ends can fill the pipe
+        # and stall pytest. The collector also measures its actual finish.
+        with ThreadPoolExecutor(max_workers=1) as collector:
+            pending = collector.submit(collect_long, proc, long_start)
+            if stream:
+                for name, cmd, step_env in shadow:
+                    run_serial(name, cmd, step_env)
+            else:
+                with ThreadPoolExecutor(max_workers=2) as checks:
+                    results = [checks.submit(run_serial, *step) for step in shadow]
+                    for result in results:
+                        result.result()
+            output, returncode, elapsed = pending.result()
+        record(LONG_STEP, elapsed, returncode, output)
+    else:
+        for name, cmd, step_env in shadow:
+            run_serial(name, cmd, step_env)
 
     # Phase 3: the coverage gate, which only speaks for a complete data file,
     # and only if the run that wrote it passed -- coverage from a failed suite
@@ -673,6 +716,8 @@ def _run_steps(
     for name, cmd, step_env in heavy:
         run_serial(name, cmd, step_env)
 
+    for name in failed:
+        print(f"[FAIL] {name}", *_rerun_hint(name), sep="\n")
     return len(failed), timings, time.time() - wall_start
 
 
@@ -686,7 +731,11 @@ def main() -> int:
     # An explicit --only is already a hand-picked subset; scoping it further
     # would silently drop steps the caller asked for by name.
     unaffected, why = (None, "--only given") if only else _scope_plan(full=full)
-    changed = [] if unaffected is None else list(_scope_changed_files())
+    changed = (
+        []
+        if only or full or os.environ.get("VERIFY_FULL", "0") not in ("", "0")
+        else list(_scope_changed_files())
+    )
     if unaffected is None:
         print(f"scope: full run ({why})")
     else:
@@ -729,6 +778,16 @@ def main() -> int:
                 print(f"[skip] {name}: branch touched none of its files")
                 continue
             cmd = narrowed
+        elif (
+            name == "pytest"
+            and changed
+            and only is None
+            and not full
+            and os.environ.get("VERIFY_FULL", "0") in ("", "0")
+        ):
+            # Shared changes still run every test. Only measurement narrows:
+            # the diff-coverage gate reads the touched source files alone.
+            cmd = _scoped_coverage(cmd, changed)
         # The `slow` marker covers the generator derivations and fuzz loops
         # whose cost is seconds each.  Deselecting them locally trades no
         # coverage, because the sharded `slow` job runs every marked test

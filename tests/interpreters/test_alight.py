@@ -8,6 +8,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.alight import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.alight import alight
+from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
 from tests.fixtures import grid
 from tests.interpreters.contract import (
@@ -15,6 +16,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
+from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 # The wiki's three examples, transcribed from the page source.  Trailing
 # spaces matter (each vertical ``turn right`` sits at a fixed column, and a
@@ -260,9 +262,17 @@ class TestGenerators:
         assert counts == {3}
 
     def test_boolean_length_does_not_leak_the_table(self) -> None:
-        """Every table of one arity renders to the same length."""
-        lengths = {len(alight(bin(v)[2:].zfill(8))) for v in range(256)}
-        assert len(lengths) == 1
+        """Tables reading as many inputs render to the same length.
+
+        An ignored input is read and dropped, so the essential count, not
+        the entries, sets the length.
+        """
+        lengths: dict[int, set[int]] = {}
+        for v in range(256):
+            table = bin(v)[2:].zfill(8)
+            count = len(essential_inputs(table, 3))
+            lengths.setdefault(count, set()).add(len(alight(table)))
+        assert all(len(group) == 1 for group in lengths.values()), lengths
 
     def test_boolean_refuses_a_nullary_table(self) -> None:
         with pytest.raises(ValueError, match="at least one input"):
@@ -392,6 +402,10 @@ class TestEdgeCases:
             ("begin;var v;set v 65.5;out v;end;", "not a character code"),
             # A non-numeric list index.
             ('begin;var v;set v at{"ab", nil};end;', "index is not a number"),
+            # ``len`` with three arguments.
+            ('begin;var v;set v len{"ab", 1, 2};end;', "optionally a count"),
+            # ``at`` with four.
+            ('begin;var v;set v at{"ab", 0.5, 65, 1};end;', "optionally a value"),
         ],
     )
     def test_invalid_operations_raise_halt_error(
@@ -492,20 +506,6 @@ class TestFunctionDefinitionEdges:
             run(["begin;var v;set v 1/0;end;"], ScriptedIO())
 
     @pytest.mark.parametrize(
-        ("program", "message"),
-        [
-            # ``len`` with three arguments.
-            ('begin;var v;set v len{"ab", 1, 2};end;', "optionally a count"),
-            # ``at`` with four.
-            ('begin;var v;set v at{"ab", 0.5, 65, 1};end;', "optionally a value"),
-        ],
-    )
-    def test_builtin_arity_errors(self, program: str, message: str) -> None:
-        """A builtin called with the wrong number of arguments halts."""
-        with pytest.raises(HaltError, match=message):
-            run([program], ScriptedIO())
-
-    @pytest.mark.parametrize(
         ("lines", "message"),
         [
             # Trailing text after a variable name.
@@ -576,3 +576,54 @@ def test_at_list_update_and_aliases(
         "set c at{m,0.5};out c;end;"
     )
     assert _run([program], "", list_update) == expected
+
+
+@pytest.mark.medium
+def test_bad_programs_carry_a_repair_hint() -> None:
+    assert_rejected_with_hint("Alight", "begin;vra x;end;", "did you mean 'var'")
+    assert_halts_with_hint(
+        "Alight", "begin;var v;set v 1/0;end;", "division by zero", "divisor"
+    )
+    assert_halts_with_hint(
+        "Alight", 'begin;var v;set v at{"AB",1};end;', "0.5 + k", "0.5, 1.5"
+    )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("source", "syntax"),
+    [("65 1 +", "postfix"), ("65+1", "infix"), ("[65, 66] 0.5", "bad")],
+)
+def test_alight_notation(source, syntax):
+    io = ScriptedIO("")
+    if syntax == "bad":
+        with pytest.raises(ValueError, match="one value"):
+            run(f"begin;var a;set a {source};end;", io, expression_syntax="postfix")
+    else:
+        run(f"begin;var a;set a {source};out a;end;", io, expression_syntax=syntax)
+        assert io.getvalue() == "B"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("expr", "expected"),
+    [("right !", "A"), ("left !", "B"), ("at{[65, 66], 1.5}", "B")],
+)
+def test_postfix_unary_and_nested_lists(expr, expected):
+    io = ScriptedIO("")
+    command = (
+        f"set a {expr}" if expr.startswith("at") else f"set a 65;skip {expr};set a 66"
+    )
+    run(f"begin;var a;{command};out a;end;", io, expression_syntax="postfix")
+    assert io.getvalue() == expected
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("expr", ["65 +", "!"])
+def test_postfix_operator_requires_operands(expr):
+    with pytest.raises(ValueError, match="lacks operands"):
+        run(
+            f"begin;var a;set a {expr};end;",
+            ScriptedIO(""),
+            expression_syntax="postfix",
+        )

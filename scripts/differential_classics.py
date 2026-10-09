@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import json
 import random
 import re
+import tomllib
 from pathlib import Path
 
 
 def _wiki(language: str) -> list[str]:
     """Return the wiki example sources pinned in ``tests/fixtures``."""
     path = Path(__file__).parents[1] / "tests/fixtures/wiki_examples"
-    data = json.loads((path / f"{language}.json").read_text("utf-8"))
+    data = tomllib.loads((path / f"{language}.toml").read_text("utf-8"))
     return [example["source"] for example in data["examples"]]
 
 

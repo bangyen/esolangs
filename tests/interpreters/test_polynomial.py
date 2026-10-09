@@ -85,12 +85,34 @@ class TestPolynomialExecution:
     def test_nested_control_flow_brackets_match(self) -> None:
         assert brackets([[1], [1], [2], [2]], 0) == 3
 
-    def test_output_instruction(self) -> None:
-        """A root of 2i encodes an output instruction (reg starts at 0)."""
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            # A root of 2i encodes an output instruction (reg starts at 0).
+            pytest.param("f(x) = x^2+4", "\x00", id="output_instruction"),
+            # The no-space form produced by run's sanitizer still executes.
+            pytest.param("f(x)=x^2+4", "\x00", id="run_without_spaces"),
+            # Real roots 2 and 4 encode an if-statement pair (reg is 0).
+            pytest.param("f(x) = x^2 - 6x + 8", "", id="control_flow_roots"),
+            # If reg==0 { output } executes the body when reg is 0.
+            pytest.param(
+                "f(x) = x^3 - 16x^2 + 25x - 400",
+                "\x00",
+                id="if_enters_when_condition_met",
+            ),
+            # The spec example: if reg>0 { output } skips the body when reg is 0.
+            pytest.param(
+                "f(x) = x^4 - 27x^3 + 59x^2 - 243x + 450",
+                "",
+                id="if_skipped_when_condition_not_met",
+            ),
+        ],
+    )
+    def test_output(self, code: str, expected: str) -> None:
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run("f(x) = x^2+4", io=IO())
-        assert buffer.getvalue() == "\x00"
+            run(code, io=IO())
+        assert buffer.getvalue() == expected
 
     def test_arithmetic_then_output(self) -> None:
         """Roots encoding reg += 65 followed by output produce 'A'."""
@@ -117,34 +139,6 @@ class TestPolynomialExecution:
             with redirect_stdout(buffer):
                 run(program, io=IO())
             assert buffer.getvalue() == ""
-
-    def test_run_without_spaces(self) -> None:
-        """The no-space form produced by run's sanitizer still executes."""
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run("f(x)=x^2+4", io=IO())
-        assert buffer.getvalue() == "\x00"
-
-    def test_control_flow_roots(self) -> None:
-        """Real roots 2 and 4 encode an if-statement pair (reg is 0)."""
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run("f(x) = x^2 - 6x + 8", io=IO())
-        assert buffer.getvalue() == ""
-
-    def test_if_enters_when_condition_met(self) -> None:
-        """If reg==0 { output } executes the body when reg is 0."""
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run("f(x) = x^3 - 16x^2 + 25x - 400", io=IO())
-        assert buffer.getvalue() == "\x00"
-
-    def test_if_skipped_when_condition_not_met(self) -> None:
-        """The spec example: if reg>0 { output } skips the body when reg is 0."""
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run("f(x) = x^4 - 27x^3 + 59x^2 - 243x + 450", io=IO())
-        assert buffer.getvalue() == ""
 
     def test_wiki_cat_echoes_and_stops_at_eof(self) -> None:
         """EOF reads -1, which the loop's ``while (reg > 0)`` exits on."""

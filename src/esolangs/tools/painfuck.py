@@ -9,19 +9,17 @@ pointer, so returning to the reads costs one character instead of one
 per cell.
 """
 
+from esolangs.interpreters.tape_based.painfuck import _CYCLES
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
+    in_input_order,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["painfuck"]
-
-# The interpreter's two substitution cycles, in the order its cross-check
-# scans them: source is pre-shifted here so the trans table recovers the
-# intended command.
-_CYCLES = ("pevkjzwr", "yuctsobqihald")
 
 
 def _encode(code: str) -> str:
@@ -78,7 +76,7 @@ def painfuck(truth_table: str) -> str:
     side, so exactly one side fires and both cells are left zero.  The
     answer accumulates in cell ``2n`` and is printed once, as a number.
     """
-    return best_input_order(truth_table, _painfuck_ordered)
+    return in_input_order(truth_table, _painfuck_ordered)
 
 
 def _painfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -159,3 +157,11 @@ def _painfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     move(result)
     out.append("o")
     return _encode("".join(out))
+
+
+LANGUAGE = Language(
+    "Painfuck",
+    "tape_based.painfuck",
+    boolean=painfuck,
+    wrap=wrap_chars,
+)

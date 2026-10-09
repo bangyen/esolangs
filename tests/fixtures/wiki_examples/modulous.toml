@@ -1,0 +1,32 @@
+language = "Modulous"
+oldid = 143648
+
+[[examples]]
+id = "cat"
+source = "[INP STR][PRT STR][JMP B 1 NIF 0][JMP B 3]"
+stdin = "abc"
+stop = "eof"
+expected = "abc"
+
+[[examples]]
+id = "truth-machine-0"
+source = """\
+    [INP INT][JMP F 3 IF 0][JMP F 4 IF 1][RST][PRT INT][END][DUP][PRT INT][JMP B 2]"""
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-machine-1"
+source = """\
+    [INP INT][JMP F 3 IF 0][JMP F 4 IF 1][RST][PRT INT][END][DUP][PRT INT][JMP B 2]"""
+stdin = "1"
+stop = "steps"
+max_steps = 500
+expected = "1111111111"
+
+[[examples]]
+id = "counter"
+source = "[PSH INT 0][DUP][PRT INT][ADD 1][JMP B 3]"
+stop = "steps"
+max_steps = 500
+expected = "0123456789101112"

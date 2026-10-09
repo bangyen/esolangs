@@ -2,8 +2,6 @@
 
 import itertools
 
-import pytest
-
 from esolangs import tools as boolean
 
 
@@ -66,16 +64,6 @@ class TestThreeX:
                     io = ScriptedIO("\n".join(str(b) for b in bits) + "\n")
                     run(program, io)
                     assert io.getvalue().strip() == table[combo], f"{table} {perm}"
-
-    def test_wrong_length_truth_table_rejected(self) -> None:
-        """A truth table of the wrong length is malformed."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.three_x("011")
-
-    def test_invalid_truth_table_chars_rejected(self) -> None:
-        """A truth table with non-0/1 characters is malformed."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.three_x("02")
 
     def test_uses_input_variables(self) -> None:
         """Each input bit is read into a distinct variable."""
@@ -144,3 +132,19 @@ class TestThreeX:
         # The identity on input 1 at n=2: no guard, one copy of the stored bit.
         program = boolean.three_x("0011")
         assert "(" not in program
+
+    def test_repeated_blocks_are_written_once(self) -> None:
+        """Three copies of one block cost one block, and the program still runs."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.three_x import run
+        from esolangs.tools.three_x import _three_x_emit
+
+        a, b = "0010110111010001", "1101001000101110"
+        table = a + a + b + a
+        program = boolean.three_x(table)
+        plain = _three_x_emit(table, tuple(range(6)), list(range(6)), 6, ())
+        assert len(program) < 0.9 * len(plain)
+        for combo in range(64):
+            io = ScriptedIO("\n".join(str((combo >> (5 - k)) & 1) for k in range(6)))
+            run(program, io)
+            assert io.getvalue().strip() == table[combo]

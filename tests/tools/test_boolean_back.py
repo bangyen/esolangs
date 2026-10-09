@@ -6,6 +6,8 @@ import pytest
 
 from esolangs.tools.back import _back_ordered
 from esolangs.tools.helpers import TEMPLATE_CHAR, permute_truth_table, runs
+from tests.generator_support import assert_an_ignored_input_costs
+from tests.tools.test_boolean_parameterized_contract import _drawing
 from tests.witness_tables import witnesses
 
 
@@ -43,6 +45,36 @@ class TestParameterizedBack:
             }
             assert len(sizes) == 1, f"n={n} sizes {sorted(sizes)}"
 
+    def test_a_falling_beam_reuses_the_next_zero_subtree(self) -> None:
+        """A one-edge onto an equal zero side draws no rows, and still answers."""
+        import random
+
+        from esolangs import tools as generators
+
+        rng = random.Random(5)
+        table = "".join(rng.choice("01") for _ in range(128))
+        program = generators.back(table)
+        assert len(program.splitlines()) < 80  # 84 when every one-edge is drawn
+        for row in range(128):
+            bits = [(row >> (6 - i)) & 1 for i in range(7)]
+            assert self.run_back(self.instantiate(program, bits), 7) == table[row]
+
+    def test_a_fall_off_the_bottom_wraps_onto_the_first_mirror(self) -> None:
+        """A last node equal to the first is drawn once, and still answers."""
+        import random
+
+        from esolangs import tools as generators
+
+        rng = random.Random(1)
+        blocks = ["".join(rng.choice("01") for _ in range(8)) for _ in range(3)]
+        pattern = [2, 1, 2, 2, 0, 1, 1, 2, 1, 2, 1, 2, 0, 1, 0, 2]
+        table = "0" * 128 + "".join(blocks[i] for i in pattern)
+        program = generators.back(table)
+        assert len(program) < 0.98 * len(generators.back(table, wrap=False))
+        for row in range(0, 256, 3):
+            bits = [(row >> (7 - i)) & 1 for i in range(8)]
+            assert self.run_back(self.instantiate(program, bits), 8) == table[row]
+
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
         from esolangs import tools as generators
@@ -73,20 +105,21 @@ class TestParameterizedBack:
         assert "*" in template  # leaves halt
 
     def test_the_natural_order_folds_its_aligned_dependency(self) -> None:
-        """Only a dependency aligned with the natural root folds immediately."""
+        """A one-input dependency folds wherever the input sits."""
         from esolangs import tools as generators
 
         scattered = len(generators.back("10101010"))
         aligned = len(generators.back("11110000"))
         parity = len(generators.back("01101001"))
-        assert scattered == parity
+        assert scattered < parity
         assert aligned < parity
 
     def test_the_identity_template_is_emitted(self) -> None:
         """Back no longer contests input orders."""
         from esolangs import tools as generators
 
-        for table in ("01101001", "10101010", "11110000", "00111100", "10010110"):
+        # Every input matters in each; an ignored one is indexed past.
+        for table in ("01101001", "00010111", "01111110", "00011110", "10010110"):
             n = (len(table) - 1).bit_length()
             identity = _back_ordered(table, tuple(range(n)))
             assert generators.back(table) == identity, table
@@ -234,3 +267,41 @@ def test_parity_accumulator_keeps_public_slots_and_provenance(
                     "Back", template, [0] * n, truth_table="0" * len(table)
                 )
     assert max(map(len, esolangs.generate("Back", table, width=1).splitlines())) == 1
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """Two load rows on a borrowed cell; each leaf walks one more."""
+    assert_an_ignored_input_costs("Back", 6, 131)
+
+
+@pytest.mark.slow  # builds every permuting generator over several tables
+def test_a_permuting_generator_changes_its_drawing() -> None:
+    """A generator that permutes its slots must emit a different *drawing*."""
+    from itertools import permutations
+
+    from esolangs.tools.helpers import permute_truth_table
+
+    checked = 0
+    for name in ("back",):
+        build = _back_ordered
+        for table in ("10101010", "11001100", "00111100"):
+            n = 3
+            builds: dict[str, set[int]] = {}
+            for perm in permutations(range(n)):
+                built = build(permute_truth_table(table, perm), perm)
+                builds.setdefault(_drawing(built), set()).add(len(built))
+            checked += 1
+            # The orders must not all collapse onto one drawing, or the
+            # reorder is a relabelling.
+            assert len(builds) > 1, (
+                name,
+                table,
+                "every input order draws the same program, so permuting the "
+                "slots emits an identical program and books a fake saving",
+            )
+            # And size must be a function of the drawing, not of the labels:
+            # orders sharing a drawing are the same program.
+            for drawing, sizes in builds.items():
+                assert len(sizes) == 1, (name, table, len(drawing), sorted(sizes))
+    assert checked >= 3, checked

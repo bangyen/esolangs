@@ -45,25 +45,23 @@ class TestBIOBasicCommands:
 
 
 class TestBIOWhileLoops:
-    def test_simple_while_loop(self) -> None:
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            pytest.param("0ox;0ix{0oy;1ox;};1iy;", "\x01", id="simple_while_loop"),
+            pytest.param("0ix{0oy;};1iy;", "\x00", id="while_loop_skip_when_zero"),
+            pytest.param(
+                "0ox;0ix{0oy;0iy{0oz;1oy;};1ox;};1iz;", "\x01", id="nested_while_loops"
+            ),
+            pytest.param(
+                "0ox;0ox;0ix{1ix;1ox;};", "\x02\x01", id="while_loop_with_output"
+            ),
+        ],
+    )
+    def test_while_loop_output(self, code: str, expected: str) -> None:
         with redirect_stdout(io.StringIO()) as f:
-            run("0ox;0ix{0oy;1ox;};1iy;", io=IO())
-        assert f.getvalue() == "\x01"
-
-    def test_while_loop_skip_when_zero(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ix{0oy;};1iy;", io=IO())
-        assert f.getvalue() == "\x00"
-
-    def test_nested_while_loops(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox;0ix{0oy;0iy{0oz;1oy;};1ox;};1iz;", io=IO())
-        assert f.getvalue() == "\x01"
-
-    def test_while_loop_with_output(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox;0ox;0ix{1ix;1ox;};", io=IO())
-        assert f.getvalue() == "\x02\x01"
+            run(code, io=IO())
+        assert f.getvalue() == expected
 
 
 class TestBIOEdgeCases:
@@ -73,11 +71,6 @@ class TestBIOEdgeCases:
             run("0ox; //increment x\n1ix; //print it\n", io=IO())
         assert f.getvalue() == "\x01"
 
-    def test_loop_without_its_brace_is_rejected(self) -> None:
-        """``0i?`` is only a command with the ``{`` that opens its body."""
-        with pytest.raises(ValueError, match="not a command"):
-            run("0ox;0ix1ox;}", io=IO())
-
     @pytest.mark.parametrize(
         "code",
         [
@@ -86,6 +79,8 @@ class TestBIOEdgeCases:
             "0ox;0iz;",  # a guard alone, after a valid command
             "0ox{};",  # `{` on an increment, which opens nothing
             "1ix{};",  # `{` on an output command
+            # ``0i?`` is only a command with the ``{`` that opens its body.
+            pytest.param("0ox;0ix1ox;}", id="loop_without_its_brace_is_rejected"),
         ],
     )
     def test_terminator_must_match_the_opcode(self, code: str) -> None:

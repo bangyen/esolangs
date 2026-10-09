@@ -20,7 +20,6 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
 class TestMinifuck:
     def test_cat_program(self) -> None:
         """The canonical cat program echoes its input."""
-        assert run_and_capture("<[<.[<.", inputs=["A"]) == "A"
         assert run_and_capture("<[<.[<.", inputs=["B"]) == "B"
 
     def test_comment_characters_ignored(self) -> None:

@@ -1,5 +1,8 @@
 """Boolean-function generator for Dig."""
 
+import heapq
+
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -8,6 +11,7 @@ from esolangs.tools.helpers import (
     narrowest_grid,
     read_at,
 )
+from esolangs.tools.wrap import balance_score
 
 # Dig blocks for one level of the decision tree.  ``$`` takes its count
 # from the digit beside it and looks up, right, down, left for one, so the
@@ -15,15 +19,6 @@ from esolangs.tools.helpers import (
 # from the left: the count digit is itself the first of the commands it
 # arms, which is why three covers a read and a store.
 _DIG_BRANCH = "$3~;#"  # arm three, read a bit, store it, then turn on it
-
-
-_DIG_ENTER = ">"  # the root's turn out of the column the mole starts down
-
-
-_DIG_CONTINUE = ">"  # a child of a branch: keep facing right into its block
-
-
-_DIG_RETURN = "<"  # the same, for a child the mole reaches facing west
 
 
 _DIG_PRINT = "{}:@"  # set the mole to the result and print it
@@ -45,6 +40,10 @@ _DIG_STRIDE = len(_DIG_BRANCH)
 _DIG_BAND = _DIG_STRIDE + 1
 
 
+# Offset of a block's ``#``, the cell its children attach under.
+_DIG_LAST = _DIG_STRIDE - 1
+
+
 # Cells a mole walking over them does not obey.  Everything else is
 # scenery while the underground counter is at zero -- digits included,
 # which is what lets a corridor cross a block's middle.
@@ -57,6 +56,26 @@ _DIG_OPAQUE = "^>'<#$@"
 _DIG_DIGITS = "0123456789;"
 
 
+def _render(cells: dict[tuple[int, int], str], *, dense: bool) -> str:
+    """Paint ``cells`` into rows of text; ``dense`` keeps empty rows.
+
+    Rows are painted into a rectangle of blanks, but the mole never walks
+    past the last command on a row, so the trailing filler is inert and is
+    trimmed rather than committed.
+    """
+    span = max(col for _, col in cells) + 1
+    rows = (
+        range(max(row for row, _ in cells) + 1)
+        if dense
+        else sorted({row for row, _ in cells})
+    )
+    index = {row: i for i, row in enumerate(rows)}
+    grid = [[" "] * span for _ in rows]
+    for (row, col), char in cells.items():
+        grid[index[row]][col] = char
+    return "\n".join("".join(row).rstrip() for row in grid)
+
+
 def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
     """Build a leaf that consumes ``reads`` inputs, then prints ``value``.
 
@@ -67,6 +86,8 @@ def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
     """
     out = ""
     if not aligned:
+        # Three cells of the last window are not reads: its count digit and
+        # the two of ``_DIG_PRINT`` that precede the value.
         while reads > _DIG_SPAN - 3:
             take = min(_DIG_SPAN - 1, reads - (_DIG_SPAN - 3))
             out += f"${take + 1}" + "~" * take
@@ -81,29 +102,81 @@ def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
     return out + f"${reads + pad + 3}" + tail
 
 
-def _dig_columns(n: int, split: int | None) -> tuple[int, int]:
-    """Where the two bands start, or the one band if ``split`` is ``None``.
+def _dig_columns(strides: list[int], split: int | None) -> list[int]:
+    """Return the ``$`` column of every level, the leaf's last, from the strides.
 
     A banded tree turns round once and the west band runs over the east
     band's columns, mirrored.  A ``$`` or ``#`` sits at block offset 0 or 4
     and confusable digits at 1 and 3, so with stride six a collision needs
     the bands' column difference ``d`` to be 0, 1, 2, 3 or 5 mod six; four is
-    not, so ``d = 4 mod 6`` clears all of them.  A second turn would put two
+    not, so ``d = 4 mod six`` clears all of them.  A second turn would put two
     bands the same way, differing by 0 mod six -- the case ``d`` must avoid.
+    The west band is anchored at the leaf, whose ``$`` sits at column seven:
+    one stride further back from the east band's last ``#`` makes ``d`` four.
+    A level's skipped reads lengthen its stride, so only the one-band tree
+    has any.
     """
+    east = [1]
+    for stride in strides:
+        east.append(east[-1] + stride)
     if split is None:
-        return 1, 0
-    # The west band ends four columns short of where the east band's last
-    # ``#`` stands, which is the cell the mole turns west from; putting it
-    # one stride further back is what makes ``d`` four modulo six.
-    return 1, _DIG_BAND * (n - split) + 3
+        return east
+    west = [7]
+    for stride in reversed(strides[split:]):
+        west.append(west[-1] + stride)
+    return east[:split] + west[::-1]
 
 
-def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
-    """Lay the decision tree out, in one band east or two that turn round."""
-    total = 2 ** (n + 1) - 1
+def _dig_levels(essential: list[int], n: int) -> list[int]:
+    """Return the inputs a tree branches on.
+
+    The essential ones, and an ignored one only where a block's count digit
+    cannot hold more skips.
+    """
+    if not essential:
+        return list(range(n))
+    levels: list[int] = []
+    pending = 0
+    for i in range(essential[-1] + 1):
+        if i in essential or pending == _DIG_SPAN - 3:
+            levels.append(i)
+            pending = 0
+        else:
+            pending += 1
+    return levels
+
+
+def _dig_grid(
+    truth_table: str, n: int, split: int | None, *, reduce: bool = True
+) -> str:
+    """Lay the decision tree out, in one band east or two that turn round.
+
+    The one-band tree branches only on the essential inputs; an ignored one
+    is read by the next block (``$5~~;#`` after one skipped read), or by the
+    leaf.  The banded tree branches on every input: with a skip or a long
+    leaf it left blocks the clearance check does not see (mole deaths at
+    n=5, essential inputs (0, 2, 3, 4) and (0, 1, 2)).  ``reduce=False``
+    branches on every input in either.
+    """
+    levels = list(range(n))
+    if reduce and split is None:
+        levels = _dig_levels(essential_inputs(truth_table, n), n)
+    return _dig_lay(truth_table, n, split, levels)
+
+
+def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> str:
+    """Lay the tree out branching on the inputs ``used``, reading the rest."""
+    truth_table = read_at(truth_table, used, n)
+    m = len(used)
+    # Inputs read before level ``l``'s own block, its skips being the gap.
+    consumed = [0, *(i + 1 for i in used)]
+    skips = [used[level] - consumed[level] for level in range(m)]
+    columns = _dig_columns(
+        [(_DIG_STRIDE if split is None else _DIG_BAND) + skip for skip in skips],
+        split,
+    )
+    total = 2 ** (m + 1) - 1
     constant = constant_span_test(truth_table)
-    east, west = _dig_columns(n, split)
     cells: dict[tuple[int, int], str] = {}
     corridors: list[tuple[int, int, int]] = []
 
@@ -113,11 +186,7 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
 
     def dollar(level: int) -> int:
         """Return the column of this level's ``$``, the cell the mole meets first."""
-        if split is None:
-            return east + _DIG_STRIDE * level
-        if level < split:
-            return east + _DIG_BAND * level
-        return west + 4 - _DIG_BAND * (level - split)
+        return columns[level]
 
     def place(row: int, col: int, text: str) -> None:
         """Write ``text`` along ``row`` from ``col``, refusing an occupied cell.
@@ -142,23 +211,25 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
 
     def walk(row: int, level: int, lo: int, hi: int) -> None:
         """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
-        if level == n or constant(lo, hi):
+        if level == m or constant(lo, hi):
             # A constant slice cannot be told apart by more branching, so
             # this is a leaf and every row below it goes unwritten.  It
             # still reads what it did not branch on: a program whose input
             # count depended on its table would desync a caller feeding
             # several programs from one stream.
-            reads = n - level
+            reads = n - consumed[level]
             block(
                 row,
                 level,
                 _dig_leaf(reads, int(truth_table[lo]), aligned=split is not None),
             )
             return
-        block(row, level, _DIG_BRANCH)
+        skip = skips[level]
+        block(row, level, f"${3 + skip}{'~' * skip}~;#")
         col = dollar(level)
-        hop = col - 4 if leftward(level) else col + 4
-        step = 2 ** (n - level - 1)
+        last = _DIG_LAST + skip
+        hop = col - last if leftward(level) else col + last
+        step = 2 ** (m - level - 1)
         half = (hi - lo) // 2
         # ``#`` rotates one way on a 0 and the other on a 1, so which child
         # is up and which is down follows the mole's heading: a bit that
@@ -173,29 +244,20 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
             # the mole arrives here vertically from the parent's "#", which
             # is the cell right before the child's own block -- so the turn
             # goes in that column, pointing the way the child is entered
-            place(child, hop, _DIG_RETURN if leftward(level + 1) else _DIG_CONTINUE)
+            place(child, hop, "<" if leftward(level + 1) else ">")
             corridors.append((hop, row, child))
             walk(child, level + 1, *bounds)
 
     # The mole starts at (0, 0) facing right, so the ``'`` below turns it
     # down column 0 and this is the cell that turns it back out of it.
-    place(total // 2, east - 1, _DIG_ENTER)
-    walk(total // 2, 0, 0, 2**n)
+    place(total // 2, columns[0] - 1, ">")
+    walk(total // 2, 0, 0, 2**m)
     _dig_clear(cells, corridors)
 
     if (0, 0) in cells:
         raise AssertionError("the start marker's cell is taken")
     cells[0, 0] = "'"
-    span = max(col for _, col in cells) + 1
-    rows = sorted({row for row, _ in cells})
-    grid = [[" "] * span for _ in rows]
-    row_index = {row: i for i, row in enumerate(rows)}
-    for (row, col), char in cells.items():
-        grid[row_index[row]][col] = char
-    # Rows are painted into a rectangle of blanks, but the mole never walks
-    # past the last command on a row, so the trailing filler is inert and is
-    # trimmed rather than committed.
-    return "\n".join("".join(row).rstrip() for row in grid)
+    return _render(cells, dense=False)
 
 
 def _dig_clear(
@@ -239,7 +301,7 @@ _DIG_ALT_BRANCH = "$~;#"
 # Two work commands is what a branch block arms: read and store.  The
 # command after them runs with the counter back at zero, which is what
 # ``#`` needs.
-_DIG_COUNT = "2"
+_DIG_COUNT = 2
 
 
 # The block's last cell, the one children attach to.
@@ -276,11 +338,13 @@ type _Stamp = tuple[
 ]
 
 
-def _dig_adder(bits: int, bonus: int) -> _Stamp:
-    """Read ``bits`` inputs and leave their value plus ``bonus`` in the mole.
+def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
+    """Read one input per weight and leave their weighted sum plus ``bonus``.
 
     One ``$`` arms the whole forward leg: ``~ * ;`` per leading bit, then a
-    bare ``~`` for the last, whose weight is one.  The partial products stay
+    bare ``~`` for the last, whose weight is one.  An ignored input weighs 0
+    and is a bare ``~`` the next read overwrites, so it may not be last; at
+    least one leading weight is nonzero.  The partial products stay
     in the grid where ``;`` wrote them, and the return leg one cell to the
     side adds them back -- a ``+`` under a ``;`` is the only placement that
     puts a stored operand where the mole can reach it, since a work command
@@ -300,14 +364,15 @@ def _dig_adder(bits: int, bonus: int) -> _Stamp:
     reads: _Reads = []
     stores: list[int] = []
     spot = 1
-    for index in range(bits - 1):
+    for weight in weights[:-1]:
         chars[0, spot] = "~"
-        weight = spot + 1
-        chars[0, weight] = "*"
-        chars[-1, weight] = str(1 << (bits - 1 - index))
-        reads.append(((0, weight), (-1, weight), frozenset({(0, weight + 1)})))
-        spot = weight + 1
-        if bonus and not index:
+        spot += 1
+        if not weight:
+            continue
+        chars[0, spot], chars[-1, spot] = "*", str(weight)
+        reads.append(((0, spot), (-1, spot), frozenset({(0, spot + 1)})))
+        spot += 1
+        if bonus and not stores:
             chars[0, spot], chars[-1, spot] = "+", str(bonus)
             reads.append(((0, spot), (-1, spot), frozenset({(0, spot + 1)})))
             spot += 1
@@ -329,7 +394,7 @@ def _dig_adder(bits: int, bonus: int) -> _Stamp:
     return chars, turns, reads, (1, first - 1), (0, hold + 1, -1, 1)
 
 
-def _dig_flat_leaf(table: str, high: int, low: int) -> _Stamp:
+def _dig_flat_leaf(table: str, high: list[int], low: list[int]) -> _Stamp:
     """Index ``table`` by two adders instead of branching on its bits.
 
     The first ``high`` inputs become a row count, painted across a whole row
@@ -344,7 +409,7 @@ def _dig_flat_leaf(table: str, high: int, low: int) -> _Stamp:
     corridor columns carry the mole between them: one in, one down to the
     paint row, one back up to the selector.
     """
-    rows, cols = 1 << high, 1 << low
+    rows, cols = sum(high) + 1, sum(low) + 1
     painter, stepper = _dig_adder(high, 2), _dig_adder(low, 0)
     chars: dict[tuple[int, int], str] = {}
     turns: dict[tuple[int, int], int] = {}
@@ -398,12 +463,15 @@ def _dig_flat_leaf(table: str, high: int, low: int) -> _Stamp:
     reads.append(((last + 5, 5), (last + 5, 6), frozenset()))
     # Down the far side, back along the bottom, and up into the second
     # adder; then up the near side into the selector.
-    turns[sel + 1, 6 + cols] = _DIG_SIDE
-    turns[back, 6 + cols] = _DIG_BACK
+    # The far corridor clears the second adder's exit turns: a narrow
+    # table would put them on it.
+    far = max(6 + cols, 4 + stepper[4][1])
+    turns[sel + 1, far] = _DIG_SIDE
+    turns[back, far] = _DIG_BACK
     turns[back, 2] = _DIG_RETRACE
     turns[bot, 2] = _DIG_FORWARD
     turns[stamp(bot, 3, stepper)[0], 1] = _DIG_RETRACE
-    width = max(6 + cols, 3 + max(painter[4][1], stepper[4][1]))
+    width = max(far, 3 + painter[4][1])
     return chars, turns, reads, (0, 0), (0, width, top - 1, back)
 
 
@@ -447,36 +515,218 @@ def _dig_alt_clear(
                 raise AssertionError(f"a mole from {start} meets {char!r} on its way")
 
 
-def _dig_alternating(truth_table: str, n: int) -> str:
+def _dig_leaf_inputs(
+    truth_table: str, n: int
+) -> tuple[list[int], list[int], list[int], str]:
+    """Return the leaf's two adders' weights, each tree level's skips, the table.
+
+    The leaf takes the last six essential inputs, the ignored ones among
+    them, and those just before them while the first adder's digit reaches.
+    An ignored input weighs 0, a bare ``~`` rather than a tree level; the
+    table is read at the tree's inputs and the leaf's essential ones.  The
+    adders split after the first's last essential input, so neither ends on
+    an ignored one.  Fewer than four essential inputs, a trailing ignored
+    one, or a forward leg past the digit keeps every leaf input.
+
+    Above the leaf, an ignored input is a bare ``~`` in the next level's
+    block (:func:`_dig_alternating`), so a level's skips count the ignored
+    inputs just before it; those after the last essential tree input have no
+    next level and stay levels.
+    """
+    essential = essential_inputs(truth_table, n)
+    leaf = essential[-_DIG_LEAF_BITS:]
+
+    def weigh(group: range) -> list[int]:
+        return [
+            1 << sum(j in leaf for j in group if j > i) if i in leaf else 0
+            for i in group
+        ]
+
+    def fits(group: range, bonus: int) -> bool:
+        # ``~ * ;`` per leading essential input, ``~`` per ignored one, the
+        # bonus and the last ``~``: the run one digit arms.
+        leading = weigh(group)[:-1]
+        return sum(3 if w else 1 for w in leading) + bonus + 1 <= _DIG_SPAN
+
+    def levels(depth: int) -> tuple[list[int], list[int]]:
+        last = max((i for i in essential if i < depth), default=-1)
+        kept: list[int] = []
+        skips: list[int] = []
+        pending = 0
+        for i in range(depth):
+            # The skips share the level's one-digit count with its own read.
+            if i in essential or i > last or pending == _DIG_SPAN - 2:
+                kept.append(i)
+                skips.append(pending)
+                pending = 0
+            else:
+                pending += 1
+        return kept, skips
+
+    if len(leaf) >= 4 and leaf[-1] == n - 1:
+        split = leaf[len(leaf) - len(leaf) // 2 - 1] + 1
+        depth = leaf[0]
+        while depth and depth - 1 not in essential and fits(range(depth - 1, split), 1):
+            depth -= 1
+        high, low = range(depth, split), range(split, n)
+        if fits(high, 1) and fits(low, 0):
+            kept, skips = levels(depth)
+            table = read_at(truth_table, [*kept, *leaf], n)
+            return weigh(high), weigh(low), skips, table
+    bits = min(_DIG_LEAF_BITS, n)
+    low_bits = bits // 2
+    kept, skips = levels(n - bits)
+    return (
+        [1 << k for k in reversed(range(bits - low_bits))],
+        [1 << k for k in reversed(range(low_bits))],
+        skips,
+        read_at(truth_table, [*kept, *range(n - bits, n)], n),
+    )
+
+
+#: A mole on a cell, about to leave it in a heading.
+type _Mole = tuple[tuple[int, int], int]
+
+
+def _dig_wire(
+    cells: dict[tuple[int, int], str],
+    corridors: list[tuple[tuple[int, int], int, int]],
+    wires: list[tuple[tuple[int, int], int]],
+    entries: dict[int, tuple[tuple[int, int], int]],
+) -> bool:
+    """Lay arrows carrying each wire's mole to its original leaf's entry.
+
+    A wire is a shared leaf's point and the original it stands for.  A
+    mole walks blank and inert cells straight; an arrow is laid only on a
+    cell no wall, fall or earlier route owns, and it may join an earlier
+    route's arrow.  The entry turn takes a mole from any side, but its own
+    climb leaves on the side the mole must not come from, so it is entered
+    from ahead or from the operand side.  Fewest turns first.  False when a
+    wire has no route.
+    """
+    fall = {
+        (end[0] + _DIG_DIRECTIONS[h][0] * k, end[1] + _DIG_DIRECTIONS[h][1] * k)
+        for end, h, distance in corridors
+        for k in range(1, distance)
+    }
+    rows = [row for row, _ in cells]
+    cols = [col for _, col in cells]
+    box = (min(rows) - 1, max(rows) + 1, min(cols) - 1, max(cols) + 1)
+    laid: dict[tuple[int, int], int] = {}
+    used: set[tuple[int, int]] = set()
+    for point, original in wires:
+        entry, heading = entries[original]
+        ahead = _DIG_DIRECTIONS[heading]
+        side = _DIG_DIRECTIONS[(heading + 1) % 4]
+        arrivals = {ahead, (-side[0], -side[1])}
+        back: dict[_Mole, _Mole | None] = {}
+        queue: list[tuple[int, tuple[int, int], int, _Mole | None]] = [
+            (1, point, d, None) for d in range(4)
+        ]
+        goal = None
+        while queue:
+            cost, cell, d, prev = heapq.heappop(queue)
+            if (cell, d) in back:
+                continue
+            back[cell, d] = prev
+            nxt = (cell[0] + _DIG_DIRECTIONS[d][0], cell[1] + _DIG_DIRECTIONS[d][1])
+            if laid.get(nxt) == original or (
+                nxt == entry and _DIG_DIRECTIONS[d] in arrivals
+            ):
+                goal = (cell, d)
+                break
+            char = cells.get(nxt)
+            if (
+                not (box[0] <= nxt[0] <= box[1] and box[2] <= nxt[1] <= box[3])
+                or nxt in laid
+                or (char is not None and char in _DIG_OPAQUE)
+            ):
+                continue
+            heapq.heappush(queue, (cost + 1, nxt, d, (cell, d)))
+            # The root's entry ray runs left of the tree along row 0.
+            if (
+                char is None
+                and nxt not in fall
+                and nxt not in used
+                and not (nxt[0] == 0 > nxt[1])
+            ):
+                for turn in (d + 1, d + 3):
+                    heapq.heappush(queue, (cost + 1000, nxt, turn % 4, (cell, d)))
+        if goal is None:
+            return False
+        step: _Mole | None = goal
+        while step is not None:
+            cell, d = step
+            used.add(cell)
+            step = back[step]
+            if step is None or step[1] != d:
+                cells[cell] = "^>'<"[d]
+                laid[cell] = original
+    return True
+
+
+def _dig_alternating(truth_table: str, n: int, share: str | None = None) -> str | None:
     """Lay a Dig tree whose leaves are flat tables, branch axis rotating.
 
     The last six inputs are not branched on at all: a leaf holds their whole
     table as one rectangle of digits and indexes it with two counts (see
-    :func:`_dig_flat_leaf`), so the tree above it is a sixty-fourth the size
-    the per-entry tree was.  Children enter on the local y-axis, placed just
+    :func:`_dig_flat_leaf`).  Children enter on the local y-axis, placed just
     beyond the parent's most-backward cell; width and height swap and one
-    doubles per level, so the rectangle stays O(2**n).
+    doubles per level, so the rectangle stays O(2**n).  An ignored input
+    above the leaf is no level: its read rides the next block, ``$~~;#``.
     """
-    leaf_bits = min(_DIG_LEAF_BITS, n)
-    low = leaf_bits // 2
-    high = leaf_bits - low
-    depth = n - leaf_bits
-    # Bounds of a complete m-level subtree, inclusive and local to its first
-    # ``$``: (min_x, max_x, min_y, max_y), x along the heading.  A branch
-    # block is four cells long and carries its operand one cell off to a
-    # side the heading picks, so it reaches one row past its own line.
-    bounds = [_dig_flat_leaf("0" * (1 << leaf_bits), high, low)[4]]
-    for _ in range(depth):
-        min_x, max_x, min_y, max_y = bounds[-1]
-        distance = 2 - min_x
-        bounds.append(
-            (
-                min(0, _DIG_END + min_y, _DIG_END - max_y),
-                max(_DIG_END, _DIG_END + max_y, _DIG_END - min_y),
-                min(-1, -(distance + max_x)),
-                max(1, distance + max_x),
-            )
-        )
+    high, low, skips, truth_table = _dig_leaf_inputs(truth_table, n)
+    depth = len(skips)
+    constant = constant_span_test(truth_table)
+    # Inputs read before each level's block; a constant span reads the rest.
+    consumed = [0]
+    for skip in skips:
+        consumed.append(consumed[-1] + 1 + skip)
+    flat_box = _dig_flat_leaf("0" * (len(truth_table) >> depth), high, low)[4]
+    # A repeated flat leaf is laid once; the later copy is a wire to it.
+    size = len(truth_table) >> depth
+    shared: dict[int, int] = {}
+    if share:
+        kept: dict[str, int] = {}
+        for lo in range(0, len(truth_table), size)[:: -1 if share == "last" else 1]:
+            if not constant(lo, lo + size):
+                twin = kept.setdefault(truth_table[lo : lo + size], lo)
+                if twin != lo:
+                    shared[lo] = twin
+    if share and not shared:
+        return None
+    entries: dict[int, tuple[tuple[int, int], int]] = {}
+    wires: list[tuple[tuple[int, int], int]] = []
+
+    def short_leaf(level: int, lo: int) -> str:
+        return _dig_leaf(n - consumed[level], int(truth_table[lo]), aligned=False)
+
+    # Bounds of a subtree, inclusive and local to its first ``$``: (min_x,
+    # max_x, min_y, max_y), x along the heading.  A branch block is four
+    # cells long and carries its operand one cell off to a side the heading
+    # picks, so it reaches one row past its own line.  A level's skipped
+    # reads lengthen its block by one cell each.  A constant span is a row of
+    # reads, and the children differ, so each is bounded on its own: the one
+    # turned left lies on the -y side, the one turned right on the +y side.
+    boxes: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+
+    def box(level: int, lo: int, hi: int) -> tuple[int, int, int, int]:
+        if (level, lo) not in boxes:
+            if constant(lo, hi):
+                boxes[level, lo] = (0, len(short_leaf(level, lo)) - 1, 0, 0)
+            elif level == depth:
+                boxes[level, lo] = (0, 0, 0, 0) if lo in shared else flat_box
+            else:
+                half = (lo + hi) // 2
+                left, right = box(level + 1, lo, half), box(level + 1, half, hi)
+                end = _DIG_END + skips[level]
+                boxes[level, lo] = (
+                    min(0, end + left[2], end - right[3]),
+                    max(end, end + left[3], end - right[2]),
+                    min(-1, -(2 - left[0] + left[1])),
+                    max(1, 2 - right[0] + right[1]),
+                )
+        return boxes[level, lo]
 
     cells: dict[tuple[int, int], str] = {}
     # Each reader against the cell it must read and the stores still
@@ -534,8 +784,22 @@ def _dig_alternating(truth_table: str, n: int) -> str:
         lo: int,
         hi: int,
     ) -> None:
+        if constant(lo, hi):
+            code = short_leaf(level, lo)
+            text(point, heading, code)
+            reads.extend(
+                (step(point, heading, i), step(point, heading, i + 1), frozenset())
+                for i, char in enumerate(code)
+                if char == "$"
+            )
+            return
         if level == depth:
-            leaf(point, heading, truth_table[lo:hi])
+            if lo in shared:
+                place(point, "^")  # an arrow, so no wire crosses it unrouted
+                wires.append((point, shared[lo]))
+            else:
+                entries[lo] = (point, heading)
+                leaf(point, heading, truth_table[lo:hi])
             return
         # The operand digit sits one cell off the block.  Which side is
         # forced -- a reader takes the first digit of up, right, down, left,
@@ -543,18 +807,19 @@ def _dig_alternating(truth_table: str, n: int) -> str:
         # stray digit opposite it can never be read first.
         side = min((heading + 1) % 4, (heading - 1) % 4)
         count = step(point, side)
-        place(count, _DIG_COUNT)
+        skip = skips[level]
+        place(count, str(_DIG_COUNT + skip))
         reads.append((point, count, frozenset()))
-        text(point, heading, _DIG_ALT_BRANCH)
-        end = step(point, heading, _DIG_END)
+        text(point, heading, _DIG_ALT_BRANCH[0] + "~" * skip + _DIG_ALT_BRANCH[1:])
+        end = step(point, heading, _DIG_END + skip)
         reads.append((end, step(end, heading, -1), frozenset()))
         half = (lo + hi) // 2
         # Two cells off, not one: a leaf reaches far enough sideways that
         # its box, turned a quarter, would otherwise land on this block's
         # own operand.  The spare cell is corridor the mole falls through.
-        distance = 2 - bounds[depth - level - 1][0]
         for child_bit, child_bounds in ((0, (lo, half)), (1, (half, hi))):
             child_heading = (heading + (1 if child_bit else -1)) % 4
+            distance = 2 - box(level + 1, *child_bounds)[0]
             corridors.append((end, child_heading, distance))
             child = step(end, child_heading, distance)
             node(level + 1, child, child_heading, *child_bounds)
@@ -564,6 +829,8 @@ def _dig_alternating(truth_table: str, n: int) -> str:
     # reach it without crossing the tree.
     node(0, (0, 0), 1, 0, len(truth_table))
     _dig_alt_clear(cells, reads, corridors)
+    if not _dig_wire(cells, corridors, wires, entries):
+        return None
     min_row = min(row for row, _ in cells)
     min_col = min(col for _, col in cells)
     row_shift, col_shift = 2 - min_row, 2 - min_col
@@ -580,12 +847,7 @@ def _dig_alternating(truth_table: str, n: int) -> str:
     cells[(0, 0)] = "'"
     cells[(root_row, 0)] = ">"
 
-    height = max(row for row, _ in cells) + 1
-    width = max(col for _, col in cells) + 1
-    grid = [[" "] * width for _ in range(height)]
-    for (row, col), char in cells.items():
-        grid[row][col] = char
-    return "\n".join("".join(row).rstrip() for row in grid)
+    return _render(cells, dense=True)
 
 
 def _dig_quarter_turn(program: str) -> str:
@@ -639,25 +901,28 @@ def _dig_discards(count: int, tail: str = "0") -> str:
     return "\n".join(cells)
 
 
-def dig(truth_table: str, width: int | None = None) -> str:
+def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> str:
     """Build a Dig program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Past
     four inputs the default stops branching six inputs short and gives each
     leaf their whole table as one rectangle of digits, indexed by two ``$``
-    counts (:func:`_dig_flat_leaf`); the tree above it alternates the branch
-    axis, so the area stays O(T) at 7.2 characters an entry rather than the
-    29.5 a per-entry tree cost.  ``width`` keeps the one- or two-band
-    layouts, the narrower returned when under the floor.  The mole starts
-    top-left facing down; each branch block reads a bit (``~``), stores it
-    (``;``) and ``#`` turns on it, and in the band layouts a constant
-    subtree becomes a leaf whose rows are never written.  A level of those
-    costs five columns, and under ``5 * n + 6`` the tree turns round once
-    (:func:`_dig_columns`). Two-input XOR below width eight uses a four-column
-    polynomial stencil instead.
+    counts (:func:`_dig_flat_leaf`), keeping the area O(T).  ``width`` keeps
+    the one- or two-band layouts (:func:`_dig_columns`), the narrower
+    returned when under the floor; two-input XOR below width eight uses a
+    four-column polynomial stencil.
+
+    A constant span at any level is a row of reads and a print, its box sized
+    alone (seeded n=7/8/9 area, one half constant: -14.7% / -20.0% / -25.4%;
+    constant 64-entry blocks -12.3% / -34.2% / -24.3%; random unchanged).
+    A repeated flat leaf is laid once and the later copies are arrows
+    walking the mole to it (:func:`_dig_wire`), keeping the first or the last
+    copy, whichever is shorter than the unshared tree (two 64-row blocks
+    mixed over the quarters, characters: n=8 -33.4%, n=9 -28.7%; random and
+    one-constant-half tables have none and are unchanged).
     """
     n = _validate_truth_table(truth_table)
-    built = _dig_build(truth_table, n, width)
+    built = _dig_build(truth_table, n, width, share=share)
     essential = essential_inputs(truth_table, n)
     if width is None and not essential:
         # A constant reads every input down one column and prints.
@@ -666,17 +931,21 @@ def dig(truth_table: str, width: int | None = None) -> str:
     if width is None and essential and 0 < essential[0] == n - len(essential):
         # Inputs before the first essential one can be read and dropped above
         # the smaller table's program, when that is shorter.
-        inner = dig(read_at(truth_table, essential, n))
+        inner = dig(read_at(truth_table, essential, n), share=share)
         return min(built, _dig_discards(essential[0]) + "\n" + inner, key=len)
     return built
 
 
-def _dig_build(truth_table: str, n: int, width: int | None) -> str:
+def _dig_build(
+    truth_table: str, n: int, width: int | None, *, share: bool = True
+) -> str:
     """Return :func:`dig`'s layout for every table, ignored inputs included."""
     if width is not None and 0 < width < 8 and truth_table == "0110":
         return _dig_xor_pair()
     if width is None and n > 4:
-        return _dig_alternating(truth_table, n)
+        kept = (None, "first", "last") if share else (None,)
+        tried = (_dig_alternating(truth_table, n, copy) for copy in kept)
+        return min(filter(None, tried), key=len)
     flat = _dig_grid(truth_table, n, None)
     if n < 2:
         return flat
@@ -695,3 +964,33 @@ def _dig_build(truth_table: str, n: int, width: int | None) -> str:
     if n <= 4:
         candidates += (_dig_quarter_turn(flat),)
     return narrowest_grid(*candidates)
+
+
+def _balance(table: str, default: str) -> str:
+    """Compare alternating, flat, banded and reachable narrow/affine routes."""
+    n = _validate_truth_table(table)
+    flat = _dig_grid(table, n, None)
+    # The full tree stays: a reduced one can be less square.
+    candidates = [
+        default,
+        dig(table, share=False),
+        flat,
+        _dig_grid(table, n, None, reduce=False),
+        dig(table, 1),
+        dig(table, 8),
+    ]
+    if n >= 2:
+        banded = _dig_grid(table, n, (n + 3) // 2)
+        if grid_width(banded) < grid_width(flat):
+            candidates.append(banded)
+    return min(candidates, key=balance_score)
+
+
+LANGUAGE = Language(
+    "Dig",
+    "grid_based.dig",
+    boolean=dig,
+    split=True,
+    balance=_balance,
+    empty_program="Dig program cannot be empty",
+)

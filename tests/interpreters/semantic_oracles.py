@@ -2,6 +2,11 @@
 
 from dataclasses import dataclass
 
+import pytest
+
+from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import ScriptedIO
+
 
 @dataclass(frozen=True)
 class Observation:
@@ -135,3 +140,35 @@ def smallfuck(code: str, _stdin: str, cap: int) -> Observation:
     halted = pc >= len(code)
     output = str(tape[2] if len(tape) > 2 else 0) if halted else ""
     return Observation(output, tuple(tape), pc, 0, halted)
+
+
+#: Empty, two raw bytes, and a long multibyte stream.
+STDINS = ["", "\x81\x02", "λ\n\xff" * 30]
+
+
+def observed(machine_type, code, stdin, cap=200, *, dump=False):
+    """Step the production machine; ``dump`` takes its one post-halt step."""
+    io = ScriptedIO(stdin)
+    machine = machine_type(code, io)
+    for _ in range(cap):
+        if machine.halted:
+            break
+        machine.step()
+    if dump and machine.halted:
+        machine.step()
+    return Observation(
+        io.getvalue(), tuple(machine.memory), machine.ip, io.position(), machine.halted
+    )
+
+
+def agrees(machine_type, oracle, code, stdin, *, dump=False):
+    """Production matches the oracle, or fails the way the oracle does."""
+    try:
+        expected = oracle(code, stdin, 200)
+    except (EOFError, ValueError, RuntimeError) as error:
+        raised = HaltError if isinstance(error, RuntimeError) else type(error)
+        with pytest.raises(raised):
+            observed(machine_type, code, stdin, dump=dump)
+        return error
+    assert observed(machine_type, code, stdin, dump=dump) == expected, (code, stdin)
+    return expected

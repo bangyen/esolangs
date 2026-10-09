@@ -28,10 +28,10 @@ cursor)``; the instructions are factored once when the machine is built.
 
 import functools
 import re
-import sys
 from collections.abc import Callable, Sequence
 from typing import cast
 
+from esolangs._digits import digit_limit_for
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -144,14 +144,8 @@ def sanitize_terms(code: str) -> dict[int, int]:
 def _with_digit_limit[T](parse: Callable[[str], T], code: str) -> T:
     """Run ``parse`` with CPython's digit cap lifted past ``code``'s widest number."""
     longest = max((len(run) for run in re.findall(r"\d+", code)), default=0)
-    limit = sys.get_int_max_str_digits()
-    if longest <= limit:
+    with digit_limit_for(longest):
         return parse(code)
-    sys.set_int_max_str_digits(longest + 1)
-    try:
-        return parse(code)
-    finally:
-        sys.set_int_max_str_digits(limit)
 
 
 def _sanitize(code: str) -> list[int]:

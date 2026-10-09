@@ -29,6 +29,9 @@ def test_bare_axis_leaves_execute_all_small_tables() -> None:
                 assert machine.halted
                 assert (io.getvalue(), io.reads) == (expected, n)
     assert len(dimensional("0110", 1)) == 429
+    # Ignored inputs paint nothing: 0011 ignores the second, 0101 the first.
+    assert len(dimensional("0011", 1)) == 275
+    assert len(dimensional("0101", 1)) == 195
 
 
 @pytest.mark.parametrize("width", [None, 2, 3, 8, 80])
@@ -68,10 +71,12 @@ class TestDimensional:
         assert len(bare) == 3, program
 
     def test_the_table_costs_two_characters_an_entry(self) -> None:
-        """One painted cell an entry, whichever bit it is."""
-        full = "1" * 64
+        """One painted cell an entry, whichever bit, until a zero run is a loop."""
+        full = "0" + "1" * 63
+        spaced = "01" * 31 + "11"
         one = "0" * 63 + "1"
-        assert len(boolean.dimensional(full)) == len(boolean.dimensional(one))
+        assert len(boolean.dimensional(full)) == len(boolean.dimensional(spaced))
+        assert len(boolean.dimensional(one)) < len(boolean.dimensional(full))
         parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         assert len(boolean.dimensional(parity)) < 10_000
 
@@ -86,12 +91,3 @@ class TestDimensional:
         program = boolean.dimensional("0" * 4095 + "1")
         got = run_dimensional(program, ["1"] * 12)
         assert got == "1"
-
-
-class TestGeneratorEdgePaths:
-    def test_dimensional_validation(self) -> None:
-        """The Dimensional generator rejects bad truth tables."""
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.dimensional("011")
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.dimensional("0123")

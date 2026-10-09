@@ -1,0 +1,37 @@
+language = "CV(N)(C)"
+oldid = 194504
+
+[[examples]]
+id = "hi"
+source = "didididædədædidididididididifif"
+expected = "HI"
+
+[[examples]]
+id = "hello-as-written"
+note = """\
+    wiki bug: 14 f commands for 13 characters, 'd' printed twice; no single-symbol \
+    repair keeps the syllables valid"""
+source = """\
+    cicidigæducədəcədəcədəcədəcəfodigiducificiʔiciʔicidifufiʡiʡifocədəgəduqəʔəcədəgəfoduʡəʡəʡəcəfodogiducidigædəbəfodubifiditifoducədəfogæfodufoboʔidiʡuʔiʔicif"""
+expected = "Hello, worldd!"
+
+[[examples]]
+id = "cat"
+source = "ʒuɰ̊fuʒʋu"
+stdin = "abc"
+stop = "eof"
+expected = "abc"
+
+[[examples]]
+id = "truth-0"
+source = "soθɰ̊oθʋi"
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-1"
+source = "soθɰ̊oθʋi"
+stdin = "1"
+stop = "steps"
+max_steps = 200
+expected = "1111"

@@ -1,5 +1,6 @@
 """Boolean-function program generators and shared generation helpers."""
 
+# BEGIN GENERATED EXPORTS: python scripts/generate.py docs
 from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.addsubjump import addsubjump
 from esolangs.tools.algebraic_programming_language import algebraic_programming_language
@@ -15,7 +16,7 @@ from esolangs.tools.bit_tilde import bit_tilde
 from esolangs.tools.bitdeque import bitdeque
 from esolangs.tools.bitwise_cyclic_tag import bitwise_cyclic_tag
 from esolangs.tools.boolfuck import boolfuck
-from esolangs.tools.brainfuck import bf_tree, brainfuck
+from esolangs.tools.brainfuck import brainfuck
 from esolangs.tools.brainif import brainif
 from esolangs.tools.circlefuck import circlefuck
 from esolangs.tools.circuit_diagram import circuit_diagram
@@ -29,7 +30,7 @@ from esolangs.tools.decleq import decleq
 from esolangs.tools.dig import dig
 from esolangs.tools.dimensional import dimensional
 from esolangs.tools.egl import egl
-from esolangs.tools.eval_lang import eval  # noqa: A004 - named Eval
+from esolangs.tools.eval_lang import eval  # noqa: A004 - the language's name
 from esolangs.tools.factor import factor
 from esolangs.tools.false import false
 from esolangs.tools.fargo import fargo
@@ -90,7 +91,6 @@ __all__ = [
     "b_tapemark",
     "back",
     "befunge",
-    "bf_tree",
     "bfpda",
     "bfstack",
     "bio",
@@ -163,6 +163,7 @@ __all__ = [
     "unsquare",
     "vandevelo",
 ]
+# END GENERATED EXPORTS
 
 
 def __getattr__(name: str) -> frozenset[str]:

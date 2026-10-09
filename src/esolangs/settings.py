@@ -10,20 +10,21 @@ from esolangs._dialects import (
     LIST_UPDATES,
     LITERAL_POLICIES,
     ROTATIONS,
-    PacklangLiterals,
-    expression_syntax,
-    list_update,
-    rotation,
 )
-from esolangs._grapheme import INTEGER_CONVERSIONS, GraphemeDialect
-from esolangs._mammalian import MODULI, MammalianModuli
+from esolangs._grapheme import INTEGER_CONVERSIONS
+from esolangs._mammalian import MODULI
 from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, resolve
 
-_ALIGHT = ("expression_syntax", "list_update")
-_VALIDATORS: dict[str, Any] = {
-    "grapheme": GraphemeDialect,
-    "slow_acv_mammalian": MammalianModuli,
+#: Every setting a language's ``dialect=`` may take, and its values.
+_CHOICES: dict[str, tuple[int | str, ...]] = {
+    "expression_syntax": EXPRESSION_SYNTAXES,
+    "list_update": LIST_UPDATES,
+    "literal_policy": LITERAL_POLICIES,
+    "rotation": ROTATIONS,
+    "integer_conversion": INTEGER_CONVERSIONS,
+    "cell_modulus": MODULI,
+    "io_modulus": MODULI,
 }
 
 
@@ -35,8 +36,8 @@ class DialectSettings:
 
     def __init__(self, **choices: int | str | None) -> None:
         """Copy typed overrides; language-specific validation precedes use."""
-        integer = {"cell_modulus", "io_modulus"}
-        text = {*_ALIGHT, "literal_policy", "integer_conversion", "rotation"}
+        integer = {key for key, values in _CHOICES.items() if type(values[0]) is int}
+        text = set(_CHOICES) - integer
         for key, value in choices.items():
             if key not in integer | text:
                 known = sorted(integer | text)
@@ -58,29 +59,17 @@ class DialectSettings:
     def options(self, language: str) -> dict[str, Any]:
         """Return validated overrides supported by ``language``."""
         name = resolve(language)
-        language_id = LANGUAGES[name].id
         values: dict[str, Any] = dict(self._items)
+        dialect = LANGUAGES[name].dialect
         try:
-            if language_id == "alight":
-                if values.keys() - set(_ALIGHT):
-                    raise TypeError(f"supported dialect settings: {', '.join(_ALIGHT)}")
-                expression_syntax(values.get("expression_syntax", "infix"))
-                list_update(values.get("list_update", "in_place"))
-            elif language_id == "packlang":
-                PacklangLiterals(
-                    **{
-                        "policy" if key == "literal_policy" else key: value
-                        for key, value in values.items()
-                    }
-                )
-            elif language_id == "rotfuck":
-                if values.keys() - {"rotation"}:
-                    raise TypeError("supported dialect setting: rotation")
-                rotation(values.get("rotation", "backward"))
-            elif language_id in _VALIDATORS:
-                _VALIDATORS[language_id](**values)
-            elif values:
-                raise ArgumentError(f"{name} supports no dialect settings")
+            if dialect is None:
+                if values:
+                    raise ArgumentError(f"{name} supports no dialect settings")
+            else:
+                keys = list(inspect.signature(dialect).parameters)
+                if values.keys() - set(keys):
+                    raise TypeError(f"supported dialect settings: {', '.join(keys)}")
+                dialect(**values)
         except (TypeError, ValueError) as error:
             raise ArgumentError(
                 f"invalid dialect settings for {name}: {error}"
@@ -137,33 +126,16 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
     from esolangs._execution import interpreter_module
 
     name = resolve(language)
-    language_id = LANGUAGES[name].id
-    fixed = {
-        "alight": _ALIGHT,
-        "packlang": ("literal_policy",),
-        "rotfuck": ("rotation",),
-    }
-    if language_id in fixed:
-        keys = list(fixed[language_id])
-    elif language_id in _VALIDATORS:
-        keys = list(inspect.signature(_VALIDATORS[language_id]).parameters)
-    else:
+    dialect = LANGUAGES[name].dialect
+    if dialect is None:
         return {}
-    choices: dict[str, tuple[int | str, ...]] = {
-        "expression_syntax": EXPRESSION_SYNTAXES,
-        "list_update": LIST_UPDATES,
-        "literal_policy": LITERAL_POLICIES,
-        "rotation": ROTATIONS,
-        "integer_conversion": INTEGER_CONVERSIONS,
-        "cell_modulus": MODULI,
-        "io_modulus": MODULI,
-    }
+    keys = list(inspect.signature(dialect).parameters)
     machine = interpreter_module(name)._Machine  # noqa: SLF001 - interpreter adapter
     parameters = inspect.signature(machine).parameters
     return {
         key: {
             "default": cast("int | str | None", parameters[key].default),
-            "choices": choices[key],
+            "choices": _CHOICES[key],
             "minimum": None,
             "nullable": False,
             "requires": {},

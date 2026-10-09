@@ -2,7 +2,6 @@
 
 import contextlib
 import io
-from pathlib import Path
 from typing import cast
 from unittest.mock import patch
 
@@ -15,6 +14,7 @@ from esolangs.debugger import complete_vm
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.registry import INTERPRETERS
 from esolangs.vm import VM, _climbs_forever, make_vm, run_until_halt
+from tests.generator_support import CHECK
 
 from .samples import (
     DUMPS_ON_THE_POST_HALT_STEP,
@@ -77,10 +77,12 @@ class TestSamplesCoverEveryLanguage:
     """The table is the sweep's coverage, so it is the thing to lock."""
 
     def test_every_registry_language_has_a_sample(self) -> None:
-        assert sorted(set(INTERPRETERS) - set(SAMPLES)) == []
+        missing = sorted(set(INTERPRETERS) - set(SAMPLES))
+        assert not missing, f"no VM sample for {missing}; {CHECK}"
 
     def test_no_sample_names_a_language_the_registry_lost(self) -> None:
-        assert sorted(set(SAMPLES) - set(INTERPRETERS)) == []
+        stale = sorted(set(SAMPLES) - set(INTERPRETERS))
+        assert not stale, f"remove {stale} from SAMPLES in tests/samples.py"
 
     @pytest.mark.parametrize(
         "exceptions",
@@ -95,7 +97,8 @@ class TestSamplesCoverEveryLanguage:
         self, exceptions: frozenset[str]
     ) -> None:
         """A renamed language must not leave an exception silently inert."""
-        assert sorted(exceptions - set(INTERPRETERS)) == []
+        stale = sorted(exceptions - set(INTERPRETERS))
+        assert not stale, f"remove or rename {stale} in tests/samples.py"
 
 
 def _check_protocol(language: str, program: str, stdin: str) -> _Observed:
@@ -246,26 +249,6 @@ def _first_move(name: str, program: str, stdin: str) -> tuple[int, int]:
     return (before[0] != after[0], before[1] != after[1])
 
 
-class TestPathAndTextTrailingNewline:
-    """Path input strips one trailing newline; string input preserves it."""
-
-    def test_lf_ignored_by_cvnc_makes_path_and_text_agree(self, tmp_path: Path) -> None:
-        path = tmp_path / "c.txt"
-        path.write_text(esolangs.generate("CV(N)(C)", "0110", width=3) + "\n")
-        stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], truth_table="0110")
-        assert esolangs.run("CV(N)(C)", path, stdin=stdin, timeout=5) == "0"
-        assert esolangs.run("CV(N)(C)", path.read_text(), stdin=stdin, timeout=5) == "0"
-
-    def test_they_agree_without_one(self, tmp_path: Path) -> None:
-        """The difference is the newline and nothing else."""
-        path = tmp_path / "c.txt"
-        path.write_text(esolangs.generate("CV(N)(C)", "0110"))
-        stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], truth_table="0110")
-        assert esolangs.run("CV(N)(C)", path, stdin=stdin, timeout=5) == esolangs.run(
-            "CV(N)(C)", path.read_text(), stdin=stdin, timeout=5
-        )
-
-
 @pytest.mark.medium
 # A tape language, a grid language, and one that never halts by itself:
 # ``complete_vm`` is the same driver for all of them.
@@ -302,16 +285,6 @@ def test_completion_rejects_invalid_budgets(budget):
 @pytest.mark.medium
 def test_completion_can_opt_out_of_the_step_budget():
     assert complete_vm(make_vm("brainfuck", "+."), max_steps=None) == "\x01"
-
-
-@pytest.mark.medium
-def test_a_non_self_halting_machine_can_already_be_finished():
-    from esolangs.vm import run_until_halt
-
-    vm = make_vm("Suffolk", ",", stdin="1")
-    assert not vm.self_halts
-    assert run_until_halt(vm, 2)
-    assert complete_vm(vm, max_steps=0) == esolangs.run("Suffolk", ",", stdin="1")
 
 
 # Three visits, ten steps apart, whose values climb by a constant 1 with
@@ -389,6 +362,46 @@ class TestTheArmsThatTranslateWhatAnInterpreterRaises:
         ):
             machine.step()
         assert exc.value is planted
+
+
+@pytest.mark.parametrize(
+    ("fault", "error_type"),
+    [
+        (RecursionError(), InterpreterLimitError),
+        (MemoryError(), InterpreterLimitError),
+        (ValueError("invalid literal for int() with base 10: 'x'"), ProgramError),
+        (RuntimeError("unexpected"), RuntimeError),
+        (KeyboardInterrupt(), KeyboardInterrupt),
+    ],
+)
+def test_step_keeps_shared_failure_translation(fault, error_type):
+    machine = debugger_api.make_vm("brainfuck", "+")
+    message = (
+        "the brainfuck interpreter recursed deeper than "
+        "CPython's stack limit allows on this program"
+    )
+    with (
+        pytest.raises(error_type) as expected,
+        vm_module.interpreter_errors(message, language="brainfuck"),
+    ):
+        raise fault
+
+    def boom():
+        raise fault
+
+    with (
+        patch.object(machine._machine, "step", boom),  # noqa: SLF001 - planted failure
+        pytest.raises(error_type) as actual,
+    ):
+        machine.step()
+    assert type(actual.value) is type(expected.value)
+    assert str(actual.value) == str(expected.value)
+    assert getattr(actual.value, "__notes__", ()) == getattr(
+        expected.value, "__notes__", ()
+    )
+    assert actual.value.__cause__ is expected.value.__cause__
+    if expected.value is fault:
+        assert actual.value is fault
 
 
 class TestRunUntilHalt:

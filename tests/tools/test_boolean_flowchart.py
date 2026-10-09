@@ -145,11 +145,6 @@ class TestFlowchart:
                 assert io.position() == n
                 assert io.getvalue() == table[row]
 
-    def test_rejects_a_malformed_table(self) -> None:
-        """A table whose length is not a power of two is rejected."""
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.flowchart("011")
-
     def test_a_width_stacks_the_tree_onto_one_column(self) -> None:
         """A narrower drawing is the same tree, separated by rows not columns."""
         for table in ("0110", "01101001", "0110100110010110"):
@@ -196,3 +191,24 @@ class TestFlowchart:
             column = {row[x] for row in grid} - {" "}
             assert column <= set("│┌└─"), (x, column)
         assert "┼" not in drawing, "a rail crossed a corridor"
+
+    def test_a_width_draws_a_repeated_subtree_once(self) -> None:
+        """Three copies of an 8-row block: rails to one drawing, every row right."""
+        table = "01110001" + "10110010" * 3
+        once = boolean.flowchart(table, 60)
+        stacked = boolean.flowchart(table, 1)
+        assert len(once.splitlines()) < 0.6 * len(stacked.splitlines())
+        for row in range(32):
+            bits = [str((row >> (4 - i)) & 1) for i in range(5)]
+            assert run_flowchart(once, bits) == table[row], row
+
+
+@pytest.mark.parametrize("width", [1, 40])
+def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:
+    """Ignored inputs cost their reads, not a switch: f(c, d) of four inputs."""
+    table = "0110" * 4
+    program = boolean.flowchart(table, width)
+    assert program.count("< >") == 3
+    for row in range(16):
+        bits = [str((row >> (3 - i)) & 1) for i in range(4)]
+        assert run_flowchart(program, bits) == table[row], row

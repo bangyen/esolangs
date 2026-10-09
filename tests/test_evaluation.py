@@ -9,27 +9,21 @@ import pytest
 import esolangs
 import esolangs._evaluate as evaluator
 from esolangs._evaluate import _evaluate, _iter_evaluate
+from tests.pick import first, languages
 
 
-def test_supplied_program_never_generates(monkeypatch: pytest.MonkeyPatch) -> None:
-    def refuse(*_args: object, **_kwargs: object) -> None:
-        raise AssertionError("evaluation called a generator")
+def _kinds() -> list[str]:
+    """One generator language per source kind, answer mode and input shape."""
+    seen: dict[tuple, str] = {}
+    for name in languages(boolean_generator=True):
+        facts = esolangs.describe(name)
+        key = (facts["source_kind"], facts["answer_mode"], facts["parameterized"])
+        seen.setdefault(key, name)
+        seen.setdefault((facts["input_shape"],), name)
+    return sorted(set(seen.values()))
 
-    monkeypatch.setattr(esolangs, "generate", refuse)
-    assert _evaluate("brainfuck", ",>,<.", inputs=2) == "0011"
-    assert _evaluate("Deadfish", "o", inputs=1) == "00"
 
-
-@pytest.mark.parametrize(
-    "name",
-    [
-        "Clockwise",
-        "A Painter Ant",
-        "Minifuck",
-        "Piet",
-        "123",
-    ],
-)
+@pytest.mark.parametrize("name", _kinds())
 def test_evaluate_files(name: str, tmp_path: Path) -> None:
     program = esolangs.generate(name, "0110")
     path = tmp_path / "source"
@@ -51,9 +45,12 @@ def test_api_refuses_bad_source() -> None:
         _evaluate("brainfuck", 42, inputs=1)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("name", ["Minifuck", "Vandevelo"])
+@pytest.mark.parametrize(
+    "name",
+    [first(source_kind="text", answer_mode=m) for m in ("output", "termination")],
+)
 def test_api_refuses_raster_for_text_answer(name: str) -> None:
-    raster = esolangs.generate("Piet", "0110")
+    raster = esolangs.generate(first(source_kind="raster"), "0110")
     with pytest.raises(esolangs.ProgramError, match="string of source"):
         _evaluate(name, raster, inputs=2)
 
@@ -61,21 +58,6 @@ def test_api_refuses_raster_for_text_answer(name: str) -> None:
 def test_timeout_is_not_a_boolean_answer() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as exc:
         _evaluate("brainfuck", "+[]", inputs=1, timeout=0.01)
-    assert any("row 0" in note for note in exc.value.__notes__)
-
-
-def test_termination_input_exhaustion_is_a_fault(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import esolangs._evaluate as evaluate_module
-
-    def exhausted(*_args: object, **_kwargs: object) -> None:
-        raise esolangs.InputExhaustedError(2, 1)
-
-    program = esolangs.generate("ArrowQueue", "01")
-    monkeypatch.setattr(evaluate_module, "make_vm", exhausted)
-    with pytest.raises(esolangs.InputExhaustedError) as exc:
-        _evaluate("ArrowQueue", program, inputs=1)
     assert any("row 0" in note for note in exc.value.__notes__)
 
 
@@ -101,16 +83,20 @@ def test_evaluation_output_overflow_retains_partial_output_and_row():
 
 @pytest.mark.medium
 def test_termination_output_limit_is_not_a_divergence_verdict():
-    with pytest.raises(esolangs.InterpreterLimitError, match="output limit"):
-        _evaluate(
-            "123",
-            esolangs.generate("123", "0110"),
-            inputs=2,
-            isolated=True,
-            max_output=0,
-        )
-    source = esolangs.generate("Vandevelo", "01")
-    assert _evaluate("Vandevelo", source, inputs=1, isolated=True, max_output=0) == "01"
+    """A program that prints hits the limit; a silent one still answers."""
+    outcomes = set()
+    for name in languages(answer_mode="termination"):
+        source = esolangs.generate(name, "01")
+        try:
+            answer = _evaluate(name, source, inputs=1, isolated=True, max_output=0)
+        except esolangs.InterpreterLimitError as error:
+            outcomes.add(str(error).split(":")[0])
+        else:
+            assert answer == "01"
+            outcomes.add("answer")
+    assert len(outcomes) == 2, outcomes
+    assert "answer" in outcomes
+    assert any("output limit" in outcome for outcome in outcomes), outcomes
 
 
 @pytest.mark.parametrize("limit", [-1, True, 1.0])
@@ -127,7 +113,7 @@ def test_evaluation_output_limit_requires_isolation():
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("name", ["brainfuck", "RAM0", "123", "Piet"])
+@pytest.mark.parametrize("name", _kinds())
 def test_streaming_executes_the_expected_table(name):
     program = esolangs.generate(name, "0110")
     assert "".join(_iter_evaluate(name, program, inputs=2)) == "0110"
@@ -230,18 +216,6 @@ def test_total_deadline_bounds_a_growing_machine(isolated):
 def test_loading_errors_keep_their_public_type_under_a_deadline(isolated):
     with pytest.raises(esolangs.ProgramError):
         _evaluate("brainfuck", b"\xff", inputs=1, isolated=isolated, total_timeout=5)
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("isolated", [False, True])
-def test_termination_answers_still_require_a_proof_with_a_total_budget(isolated):
-    source = esolangs.generate("123", "0110")
-    assert (
-        _evaluate(
-            "123", source, inputs=2, timeout=None, total_timeout=5, isolated=isolated
-        )
-        == "0110"
-    )
 
 
 @pytest.mark.parametrize("budget", [0, True, float("inf"), 0.00001])

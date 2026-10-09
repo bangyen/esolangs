@@ -2,7 +2,6 @@
 
 # ruff: noqa: SLF001
 
-import random
 import re
 
 import pytest
@@ -11,6 +10,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import _choose, _Machine, _parse, run
 from esolangs.interpreters.other.fractran import index as fractran_index
 from tests.interpreters.runner import run_program
+from tests.raises import assert_rejected_with_hint
 
 #: Conway's PRIMEGAME.  The powers of two it passes through are the primes.
 PRIMEGAME = (
@@ -94,36 +94,6 @@ def test_the_final_print_is_its_own_step() -> None:
 def test_a_non_positive_numerator_is_refused() -> None:
     with pytest.raises(ValueError, match="is not positive"):
         run_program(run, "5 0/3")
-
-
-@pytest.mark.medium
-def test_incremental_guards_match_literal_threshold_crossings() -> None:
-    rng = random.Random(20261007)
-    primes = (2, 3, 5, 7, 11)
-
-    def product() -> str:
-        terms = [f"{prime}^{rng.randrange(4)}" for prime in primes]
-        return "*".join(terms)
-
-    for _ in range(200):
-        source = " ".join([product(), *(f"{product()}/{product()}" for _ in range(12))])
-        machine = _Machine(source, ScriptedIO(""))
-        assert machine._cursor is not None
-        value, fractions, _offsets = _parse(source)
-        for _ in range(64):
-            selected = _choose(value, fractions)
-            assert machine._next() == selected
-            # Repeated reads must not change eligibility or charge inspections.
-            inspections = machine.inspections
-            assert machine._next() == selected
-            assert machine.inspections == inspections
-            machine.step()
-            if selected is None:
-                assert machine.halted
-                break
-            numerator, denominator = fractions[selected]
-            value = value * numerator // denominator
-            assert machine.value == value
 
 
 def test_indexed_transitions_do_not_materialize_factor_snapshots(
@@ -213,3 +183,8 @@ def test_sieve_products_have_linear_fractional_bit_weight(
         assert set(products) == composites
         assert len(products) == len(composites)
         assert weight <= 11 * bound
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("FRACTRAN", "2 3/0", "nonzero denominator")

@@ -8,7 +8,7 @@ import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.smallfuck import run
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.smallfuck import PAIR, _smallfuck_ordered, smallfuck
+from esolangs.tools.smallfuck import PAIR, smallfuck
 
 
 def _run(table: str, row: int) -> str:
@@ -42,23 +42,11 @@ def test_source_growth_is_linear() -> None:
     assert all(right <= 2 * left + 64 for left, right in pairwise(sizes))
 
 
-def test_levels_test_inputs_in_the_shorter_order() -> None:
-    """Only the tested bit moves; over three inputs no template grows."""
-    assert len(smallfuck("10101011")) < len(_smallfuck_ordered("10101011", (0, 1, 2)))
-    old = new = 0
-    for value in range(256):
-        table = f"{value:08b}"
-        before, after = len(_smallfuck_ordered(table, (0, 1, 2))), len(smallfuck(table))
-        assert after <= before, table
-        old, new = old + before, new + after
-    assert (old, new) == (20145, 19359)
-
-
 def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
-    """Pin the three-input total: 57,894 characters before, 19,359 after."""
+    """Pin the three-input total: 57,894 characters before, 20,145 after."""
     assert smallfuck("0001") == TEMPLATE_CHAR * 8 + "<<<<<<[*>>>[*<*>]]"
     assert smallfuck("0110").endswith("<<<]>[*>>[*<*>]]")
-    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 19359
+    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 20145
 
 
 @pytest.mark.medium

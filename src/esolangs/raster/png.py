@@ -16,14 +16,21 @@ from esolangs.interpreters.source_hints import syntax_error
 if TYPE_CHECKING:
     from esolangs.raster import Pixel, Rows
 
-try:
-    from PIL import Image
-except ModuleNotFoundError:
-    Image = None  # type: ignore[assignment]
+_UNLOADED = object()
+Image: Any = _UNLOADED
 
 
 def _require_image() -> Any:
     """Return Pillow or name the extra that installs it."""
+    global Image
+    if Image is _UNLOADED:
+        # Text-only workers paid 29 ms importing Pillow before using PNG I/O.
+        try:
+            from PIL import Image as PillowImage
+        except ModuleNotFoundError:
+            Image = None
+        else:
+            Image = PillowImage
     if Image is None:
         raise MissingDependencyError(
             "PNG I/O requires optional image support; "

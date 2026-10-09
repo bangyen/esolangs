@@ -242,7 +242,8 @@ class TestFastLanding:
         array, acc = [11, 23], 7
         counts = []
         for _ in range(6):
-            chunk, array, acc = _stash_chunk(array, acc)
+            chunk, array = _stash_chunk(array, acc)
+            acc = 0
             counts.append(len(chunk) - 2)
         assert counts[2:] == [1, 1, 1, 1]
 
@@ -608,14 +609,17 @@ def test_cell_255_tree_rejects_backward_sum_targets() -> None:
 
 @pytest.mark.parametrize("head", [0, 254])
 @pytest.mark.parametrize("extra", [0, 512])
+@pytest.mark.parametrize(
+    "values", [(0, 1, 253, 254), pytest.param(range(255), marks=pytest.mark.slow)]
+)
 def test_cell_255_appends_every_value_with_a_missing_head(
-    head: int, extra: int
+    head: int, extra: int, values: tuple[int, ...] | range
 ) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
     from esolangs.tools._mammalian255 import _State
 
-    for value in range(255):
+    for value in values:
         rest = value + 1 + extra
         state = _State(head=head, rest=rest, io_modulus=256)
         tokens = state.append(value)

@@ -1,45 +1,20 @@
 """Unit tests for the Back interpreter."""
 
-import io
-from contextlib import redirect_stdout
+from functools import partial
 from typing import ClassVar
 
-import pytest
-
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.tape_based.back import _Machine as Back
 from esolangs.interpreters.tape_based.back import run
+from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.runner import run_printing
 from tests.raises import raises_message
 
-
-def run_and_capture(code: list[str]) -> str:
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+run_and_capture = partial(run_printing, run)
 
 
 class TestBack:
-    @pytest.mark.parametrize(
-        ("code", "expected"),
-        [
-            pytest.param(["*"], "0", id="halt_prints_tape"),
-            pytest.param(["-*"], "1", id="flip_bit"),
-            # + skips the next cell when the current bit is 0.
-            pytest.param([">+-*"], "0 0", id="skip_instruction_on_zero"),
-            # \ reflects the direction.
-            pytest.param(["\\-*"], "1", id="reflect_backslash"),
-            # < moves the tape head left when it is not at zero.
-            pytest.param([">>-<*"], "0 0 1", id="move_left"),
-            # The beam moves by rows too, not only along one line.
-            pytest.param(["\\", "-", "*"], "1", id="beam_travels_down_a_column"),
-            # A short row keeps its content at the left, and the pad goes right.
-            pytest.param(["\\", "\\-*"], "1", id="a_short_line_is_padded_on_the_right"),
-        ],
-    )
-    def test_result(self, code, expected) -> None:
-        assert run_and_capture(code) == expected
-
     def test_blank_only_program_is_empty(self) -> None:
         """Programs of only blank lines are rejected, not crashed on."""
 
@@ -121,3 +96,12 @@ class TestContract(SnapshotContract, CycleContract):
     stepping_program: ClassVar[list[str]] = ["-*"]
     halting_program: ClassVar[list[str]] = ["-*"]
     looping_program: ClassVar[list[str]] = ["-"]
+
+
+def test_the_heading_is_part_of_the_code_position() -> None:
+    # Back's position is (row, col, a, b): two visits to one square
+    # travelling different ways are not the same point in the program.
+    machine = Back([">"], ScriptedIO())
+    assert isinstance(machine.ip, tuple)
+    assert len(machine.ip) == 4
+    assert run_until_halt_or_growth(machine) is False

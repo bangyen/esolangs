@@ -1,0 +1,12 @@
+language = "Nope."
+oldid = 193999
+
+[[examples]]
+id = "quine"
+source = "Nope."
+expected = "Nope."
+
+[[examples]]
+id = "anything-else"
+source = "Hello, world!"
+expected = "Nope."

@@ -3,6 +3,7 @@
 import inspect
 import json
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -10,6 +11,7 @@ import pytest
 import esolangs
 import esolangs.tools as boolean
 from esolangs._evaluate import _evaluate
+from esolangs.registry import LANGUAGES
 from tests.cli.test_cli import call_main
 
 
@@ -51,11 +53,42 @@ def test_boolean_generators_take_a_truth_table() -> None:
     assert not failures
 
 
-@pytest.mark.parametrize(("name", "cap"), [("Befunge", 13), ("Malbolge", 16)])
+@pytest.mark.parametrize(
+    ("name", "cap"),
+    [
+        (name, lang.generator_max_inputs)
+        for name, lang in LANGUAGES.items()
+        if lang.generator_max_inputs is not None
+    ],
+)
 def test_declared_arity_cap_is_enforced(name, cap):
-    assert esolangs.describe(name)["generator_max_inputs"] == cap
     with pytest.raises(esolangs.GeneratorCapError):
         esolangs.generate(name, "0" * (1 << (cap + 1)))
+
+
+#: Generators whose ``GeneratorCapError`` never reaches a caller, and why.
+_INTERNAL_CAPS = {
+    "6-5": "the stream-ordered tree is tried only when its labels fit",
+}
+
+
+def test_a_generator_that_can_refuse_declares_its_limit():
+    """A ``GeneratorCapError`` a caller can see is in ``describe``."""
+    undeclared = []
+    for name, lang in LANGUAGES.items():
+        if lang.boolean is None or name in _INTERNAL_CAPS:
+            continue
+        module = Path(inspect.getfile(lang.boolean))
+        files = module.parent.glob("*.py") if module.stem == "__init__" else [module]
+        refuses = any("GeneratorCapError(" in f.read_text("utf-8") for f in files)
+        declared = lang.generator_max_inputs or lang.generator_restrictions
+        if refuses and not declared:
+            undeclared.append(name)
+    assert not undeclared, (
+        f"{undeclared} raise GeneratorCapError; set generator_max_inputs= or "
+        "generator_restrictions= in its LANGUAGE"
+    )
+    assert _INTERNAL_CAPS.keys() <= LANGUAGES.keys()
 
 
 @pytest.mark.medium

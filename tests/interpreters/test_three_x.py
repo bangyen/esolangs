@@ -14,6 +14,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.raises import assert_rejected_with_hint
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
 
@@ -225,3 +226,10 @@ class TestStateViewValues:
             machine.step()
         assert machine.variables == {Fraction(3): Fraction(0)}
         assert not hasattr(machine, "memory")
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_rejected_with_hint(
+        "3x", "?", "fraction with nonzero denominator", stdin="oops"
+    )

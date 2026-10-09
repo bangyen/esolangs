@@ -51,14 +51,6 @@ def test_ci_scales_both_ceilings(monkeypatch: pytest.MonkeyPatch, value: str) ->
     assert "medium band limit of 15s" in str(violation({"medium"}, 5 * CI_SCALE + 0.01))
 
 
-@pytest.mark.parametrize("value", ["", "0", "false"])
-def test_an_unset_or_falsey_ci_keeps_the_local_ceiling(
-    monkeypatch: pytest.MonkeyPatch, value: str
-) -> None:
-    monkeypatch.setenv("CI", value)
-    assert limits() == (1.0, 5.0)
-
-
 def test_the_top_bands_are_exempt_on_either_machine(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

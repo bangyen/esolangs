@@ -107,3 +107,35 @@ def test_identifier_charge_on_a_rendered_wide_program() -> None:
         machine = _Machine(program, ScriptedIO(stdin))
         actual = "0" if run_until_halt_or_cycle(machine, limit=100_000) else "1"
         assert actual == table[row]
+
+
+def test_refresh_skips_a_full_pool_and_refills_after_pair_loss(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from esolangs.tools.vandevelo import _CANDIDATES, _nearest, _Peel, _remove
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+    peel = _Peel(set(range(128)), 7)
+    calls: list[int] = []
+
+    def counted(node: _Node, pivot: int, seen: set[int], n: int, cap: int) -> list[int]:
+        calls.append(cap)
+        return _nearest(node, pivot, seen, n, cap)
+
+    monkeypatch.setattr(module, "_nearest", counted)
+    assert len(peel.root.cands) == _CANDIDATES
+    before = dict(peel.root.cands)
+    peel.refresh(peel.root)
+    assert calls == []
+    assert peel.root.cands == before
+
+    for point in range(1, 128, 2):
+        _remove(peel.root, point)
+    missing = sum(_pairs(peel.root, v) == 0 for v in before)
+    assert 0 < missing < _CANDIDATES
+    peel.refresh(peel.root)
+    assert calls == [missing]
+    assert len(peel.root.cands) == _CANDIDATES
+    assert all(
+        _pairs(peel.root, v) == count == 64 for v, count in peel.root.cands.items()
+    )

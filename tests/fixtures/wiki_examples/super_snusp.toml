@@ -1,0 +1,36 @@
+language = "Super SNUSP"
+oldid = 194514
+
+[[examples]]
+id = "hello"
+source_file = "super_snusp_hello.txt"
+expected = "Hello, World!"
+
+[[examples]]
+id = "cat-as-published"
+source = '''
+   ,!/ ?\'
+     \,./'''
+stdin = "abc"
+expected = "abc"
+stop = "eof"
+note = """\
+    no \" marker, so the IP starts rightward at the bottom right, the last line's \
+    last character, and the cat runs"""
+
+[[examples]]
+id = "cat-with-start-marker"
+source = '''
+  ",!/ ?\'
+     \,./'''
+stdin = "abc"
+expected = "abc"
+stop = "eof"
+
+[[examples]]
+id = "cat-with-start-marker-nul"
+source = '''
+  ",!/ ?\'
+     \,./'''
+stdin = "abc\u0000"
+expected = "abc"

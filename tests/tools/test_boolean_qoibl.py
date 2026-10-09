@@ -6,6 +6,10 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from tests.generator_support import (
+    assert_an_ignored_input_costs,
+    assert_parity_at_most_doubles,
+)
 from tests.tools.boolean_runners import (
     run_qoibl,
 )
@@ -22,7 +26,7 @@ class TestQoibl:
                 assert run_qoibl(program, list(format(row, "03b"))) == table[row]
 
     @pytest.mark.medium
-    @pytest.mark.parametrize("n", [5, 8])
+    @pytest.mark.parametrize("n", [5, pytest.param(8, marks=pytest.mark.slow)])
     @pytest.mark.parametrize("width", [1, 3, 13])
     def test_narrow_horner_larger_literals(self, n: int, width: int) -> None:
         rng = random.Random(20260930 + n)
@@ -37,7 +41,7 @@ class TestQoibl:
     def test_narrow_horner_floor_and_corpus_size(self) -> None:
         assert max(map(len, boolean.qoibl("0110", 1).splitlines())) == 2
         assert (
-            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 520366
+            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 508676
         )
 
     def test_the_table_is_one_literal(self) -> None:
@@ -62,3 +66,25 @@ class TestQoibl:
         program = boolean.qoibl("0000")
         assert program.count(" et ") == 2
         assert "we y we e ry yy ry" in program
+
+
+def test_constant_table_reads_cost_one_line_each() -> None:
+    """Past the first read a constant's inputs are ignored reads, not Horner steps."""
+    for bit in "01":
+        sizes = [len(boolean.qoibl(bit * 2**n)) for n in (4, 6, 8)]
+        assert sizes[2] - sizes[1] == sizes[1] - sizes[0] < 80 * 2
+        for n in (1, 3, 5):
+            program = boolean.qoibl(bit * 2**n)
+            for row in (0, 2**n - 1):
+                assert run_qoibl(program, list(f"{row:0{n}b}")) == bit
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """One read into a register the next write clears."""
+    assert_an_ignored_input_costs("Qoibl", 6, 30)
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.qoibl, range(7, 11), 800)

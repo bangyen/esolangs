@@ -1,5 +1,7 @@
-"""Boolean-function generator for Suffolk."""
+"""Boolean generator for Suffolk: steps telescope; with no jump, nothing is shared."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -7,6 +9,7 @@ from esolangs.tools.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.tools.wrap import wrap_chars
 
 #: The cell plan.  Cost here is a cell's *index* -- every read spends one
 #: ``>`` per cell crossed -- so the countdown, which every sweep op reads,
@@ -107,3 +110,20 @@ def suffolk(truth_table: str) -> str:
     out.append(_one(_COUNTS[0][0]) + _read(_COUNTS[0][1]) + _read(_COUNTS[1][1]))
     out.append(_write(_COUNTS[0][0]) + _write(_TWO) * (_ASCII_ZERO - 2))
     return "".join(out) + _read(_TWO) + _read(_COUNTS[0][0]) + "."
+
+
+LANGUAGE = Language(
+    "Suffolk",
+    "tape_based.suffolk",
+    boolean=suffolk,
+    # A sum, not a tree: a lookup over the essential inputs only.
+    shape=Shape.REDUCING,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    wrap=wrap_chars,
+    # Reads until the input runs out and treats that as its stop, which is
+    # how its generated programs terminate at all.
+    eof="reads to exhaustion, so EOF is the halt",
+    empty_program="Suffolk program cannot be empty",
+)
