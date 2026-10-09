@@ -176,15 +176,21 @@ Use `scripts/screens/` to bound the upside first.
    example, width policy, samples, curation, proof ledger and its formula
    tables. Repeat until it reports none; a test runs it over the registry,
    so the list matches what the suite enforces. It then runs the
-   seconds-long tests `finish` would otherwise fail late: the language's
-   own, the ledger's word limits and fold measure, its formula rows.
+   seconds-long checks `finish` would otherwise fail late: the language's
+   own tests, its committed example, the generator's shape, the ledger's
+   word limits and fold measure, its formula rows, and bandit on its
+   sources. It lists the generated files it refreshed.
    Optional: the wiki page's own examples, with their stated output, go in
    `tests/fixtures/wiki_examples/<id>.toml` (schema in
    `tests/interpreters/test_published_programs.py`).
+   To try a program that may loop, bound it:
+   `esolangs.run("Name", program, stdin=..., max_steps=10_000)` or
+   `timeout=5`, never a bare `run`.
 3. Record generator evidence with `just benchmark "Name" TABLE`; compare
    `source_units` and `commands`, not wall-clock time. `python
    scripts/new_language.py bounds "Name"` prints the worst steps and
-   written bits per arity, the numbers the ledger's cells state.
+   written bits per arity, with the table reaching each: a cell's "worst"
+   must equal them exactly, else it says "at most".
 4. `just finish-language "Name"` regenerates examples, docs and the size
    baseline, then runs the full `verify.py`. That is the gate: `just
    test-quick` skips the slower contract sweeps every generator must pass.

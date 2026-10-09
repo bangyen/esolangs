@@ -1,17 +1,25 @@
 """Shared reader-generator samples and execution probes."""
 
-import esolangs
-from esolangs import tools as boolean
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.thue import run as run_thue
-from esolangs.interpreters.other.unlambda import run as run_unlambda
-from esolangs.interpreters.stack_based.false import run as run_false
+import importlib
+from collections.abc import Callable
+from typing import Any
 
-_READERS = {
-    "false": (boolean.false, run_false),
-    "thue": (boolean.thue, run_thue),
-    "unlambda": (boolean.unlambda, run_unlambda),
-}
+import esolangs
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.registry import LANGUAGES
+
+
+def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]]:
+    """Return any registered language's generator and interpreter ``run``."""
+    lang = next(lang for lang in LANGUAGES.values() if lang.id == language_id)
+    assert lang.boolean is not None
+    assert lang.interpreter is not None
+    module = importlib.import_module(f"esolangs.interpreters.{lang.interpreter}")
+    return lang.boolean, module.run
+
+
+#: The tree readers these shared checks were written for.
+_READERS = {name: _reader(name) for name in ("false", "thue", "unlambda")}
 
 
 _TABLES = [
@@ -30,7 +38,7 @@ def _bits(row: int, n: int) -> list[int]:
 
 def _read_answer(name: str, table: str, row: int) -> tuple[str, int]:
     """Return what the generated program printed, and how many inputs it read."""
-    generate, run = _READERS[name]
+    generate, run = _reader(name)
     n = len(table).bit_length() - 1
     io = ScriptedIO(esolangs.encode_inputs(name, _bits(row, n)))
     run(generate(table), io)

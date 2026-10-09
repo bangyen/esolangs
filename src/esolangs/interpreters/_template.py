@@ -87,7 +87,8 @@ class _Machine:
             byte = self.io.input_char()
         elif c == ";":
             # ``input_str`` returns the raw line, and an empty one is legal:
-            # guard before indexing.  Running out still raises EOFError.
+            # guard before indexing.  Running out still raises EOFError; a
+            # language with an EOF value catches it here and uses that value.
             val = self.io.input_str()
             byte = ord(val[0]) if val else None
 
