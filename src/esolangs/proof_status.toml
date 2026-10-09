@@ -1051,7 +1051,7 @@ qualification = """\
 scaling = "linear: `2**n` cells and `2**n - 1` pops, two bytes a row"
 execution = "linear: worst 4T + 79n + 22 commands past n=5: 12- or 14-cell loops, 76 per read, weight pops"
 workspace = """\
-    linear: worst T + 12 + bl(L) + bl(L-33) + 2bl(n) bits: T + 1 table cells on the \
+    linear: worst T + 12 + bl(L) + bl(max(0,L-33)) + 2bl(n) bits: T + 1 table cells on the \
     stack"""
 evidence = "docs/proofs/index.md#generator-ledger"
 

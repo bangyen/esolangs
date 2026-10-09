@@ -135,3 +135,41 @@ class TestRotfuck:
 def test_rotation_is_checked():
     with pytest.raises(ValueError, match="rotation"):
         boolean.rotfuck("01", rotation="sideways")
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("bit", "01")
+def test_every_constant_row_within_written_state_bound(bit: str) -> None:
+    from esolangs import generate
+    from esolangs.tools.rotfuck import _program
+    from tests.generator_support import assert_shared_program
+
+    language = "ROTfuck"
+    table = bit * 256
+    plain = _program(table, keep_constant_input=True)
+    commands = len(generate(language, table))
+
+    def workspace(p):
+        return (
+            2 * 256
+            + 5 * 8
+            + 35
+            + (2080 * len(p)).bit_length()
+            + (518).bit_length()
+            + len(p).bit_length()
+            + 4
+        )
+
+    assert_shared_program(language, table, plain, commands, workspace)
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
+@pytest.mark.parametrize("bit", "01")
+def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
+    from esolangs.tools.rotfuck import _program
+    from tests.generator_support import assert_constant_balanced_shape
+
+    table = bit * (1 << n)
+    assert_constant_balanced_shape(
+        "ROTfuck", "rotfuck", table, _program(table, keep_constant_input=True)
+    )

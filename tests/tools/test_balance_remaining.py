@@ -2,6 +2,10 @@
 
 import random
 
+
+from inspect import signature
+from itertools import product
+
 import pytest
 
 import esolangs
@@ -9,7 +13,7 @@ from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES, SourceKind
 from esolangs.tools import wrap as _wrap
 from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import balance_score, wrap_chars
+from esolangs.tools.wrap import balance_score, wrap_chars, wrap_program
 from tests.witness_tables import witnesses
 
 
@@ -90,8 +94,18 @@ def test_balance_reaches_the_supported_minimum(language, table):
     default = esolangs.generate(language, table)
     balanced = esolangs.generate(language, table, balance=True)
     widest = max(map(len, default.split("\n")))
+    lang = LANGUAGES[language]
+    # Rebuilding character-only layouts at every width exceeded the
+    # five-second medium band; their source only needs reflowing.
+    reflow = (
+        lang.wrap is wrap_chars
+        and not lang.contract.parameterized
+        and "width" not in signature(lang.boolean).parameters
+    )
     layouts = [default] + [
-        esolangs.generate(language, table, width=width)
+        wrap_program(default, lang.id, width)
+        if reflow
+        else esolangs.generate(language, table, width=width)
         for width in range(1, max(65, widest + 1))
     ]
     optimum = min(layouts, key=balance_score)

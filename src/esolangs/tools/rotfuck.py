@@ -22,10 +22,10 @@ from esolangs._dialects import ROTFUCK_CYCLES
 from esolangs._dialects import rotation as validate_rotation
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.tools.constant_projection import balanced_projection, projected_inputs
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    essential_inputs,
     read_at,
 )
 from esolangs.tools.wrap import wrap_chars
@@ -305,12 +305,19 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
     shared: a brainfuck copy is at least 19 commands a cell against 2.5 for
     an entry.
     """
+    return _program(truth_table, rotation=rotation)
+
+
+def _program(
+    truth_table: str, *, rotation: str = "backward", keep_constant_input: bool = False
+) -> str:
+    """Build the rotated lookup, including a one-entry constant table."""
     if validate_rotation(rotation) != "backward":
         raise ValueError("the ROTfuck generator targets rotation='backward' only")
     n = _validate_truth_table(truth_table)
 
     # Ignored inputs are still read but do not enter the index.
-    used = essential_inputs(truth_table, n) or [0]
+    used = projected_inputs(truth_table, n, keep_constant_input=keep_constant_input)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     strips = [_strip(table, skips=False)]
     if (skipped := _strip(table, skips=True)) != strips[0]:
@@ -324,6 +331,17 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
         out.emit(_parse(bf))
         texts.append(out.text())
     return min(texts, key=len)
+
+
+def balance_rotfuck(
+    truth_table: str, default: str, *, rotation: str = "backward"
+) -> str:
+    """Retain the legacy constant layout when it balances better."""
+    return balanced_projection(
+        default,
+        _program(truth_table, rotation=rotation, keep_constant_input=True),
+        "rotfuck",
+    )
 
 
 def _dialect(rotation: str = "backward") -> None:
@@ -342,4 +360,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    balance=balance_rotfuck,
 )

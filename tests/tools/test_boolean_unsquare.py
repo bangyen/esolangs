@@ -104,3 +104,35 @@ def test_balance_retains_the_square_unshared_initializer() -> None:
     assert balance_score(program) == balance_score(old) == (0, 232, 15)
     for row in (0, 1, 127, 128, 255):
         assert run_unsquare(program, list(format(row, "08b"))) == table[row]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("bit", "01")
+def test_every_constant_row_within_written_state_bound(bit: str) -> None:
+    from esolangs.tools.unsquare import _program
+    from tests.generator_support import assert_shared_program
+
+    language = "Unsquare"
+    table = bit * 256
+    plain = _program(table, share=True, keep_constant_input=True)
+    commands = 4 * 256 + 79 * 8 + 22
+
+    def workspace(p):
+        return 256 + 12 + len(p).bit_length() + max(0, len(p) - 33).bit_length() + 8
+
+    assert_shared_program(language, table, plain, commands, workspace)
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
+@pytest.mark.parametrize("bit", "01")
+def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
+    from esolangs.tools.unsquare import _program
+    from tests.generator_support import assert_constant_balanced_shape
+
+    table = bit * (1 << n)
+    assert_constant_balanced_shape(
+        "Unsquare",
+        "unsquare",
+        table,
+        _program(table, share=True, keep_constant_input=True),
+    )

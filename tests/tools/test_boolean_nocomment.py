@@ -162,3 +162,32 @@ class TestParameterizedNoComment:
                 bits = row_bits(combo, n)
                 got = self.run_nocomment(self.instantiate(template, bits))
                 assert got == table[combo], f"{name} n={n} inputs {bits}"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("bit", "01")
+def test_every_constant_row_within_written_state_bound(bit: str) -> None:
+    from esolangs.tools.nocomment import _program
+    from tests.generator_support import assert_shared_program
+
+    language = "NoComment"
+    table = bit * 256
+    plain = _program(table, keep_constant_input=True)
+    commands = 3 * 256 + 3 * 256 // 32 + 240 * 8 - 491
+
+    def workspace(p):
+        return 32768 + 256 // 4 + 30 + len(p).bit_length()
+
+    assert_shared_program(language, table, plain, commands, workspace)
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
+@pytest.mark.parametrize("bit", "01")
+def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
+    from esolangs.tools.nocomment import _program
+    from tests.generator_support import assert_constant_balanced_shape
+
+    table = bit * (1 << n)
+    assert_constant_balanced_shape(
+        "NoComment", "nocomment", table, _program(table, keep_constant_input=True)
+    )

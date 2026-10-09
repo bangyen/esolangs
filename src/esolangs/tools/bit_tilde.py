@@ -6,7 +6,8 @@ it: a constant or repeated span costs a ``>`` per cell.
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.tools.constant_projection import balanced_projection, projected_inputs
+from esolangs.tools.helpers import _validate_truth_table, read_at
 from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["bit_tilde"]
@@ -30,9 +31,14 @@ def bit_tilde(truth_table: str) -> str:
     Its bit selects one of two walks, whose final positions print distinct
     eight-cell windows planted as ASCII zero and one in the prologue.
     """
+    return _program(truth_table)
+
+
+def _program(truth_table: str, *, keep_constant_input: bool = False) -> str:
+    """Build the planted lookup, including a one-entry constant table."""
     n = _validate_truth_table(truth_table)
 
-    used = essential_inputs(truth_table, n) or [0]
+    used = projected_inputs(truth_table, n, keep_constant_input=keep_constant_input)
     table = read_at(truth_table, used, n)
     width = len(used)
     # Two cells an entry, above the planted region (max 27, lowest entry 32),
@@ -68,6 +74,13 @@ def bit_tilde(truth_table: str) -> str:
     return "".join(prog)
 
 
+def balance_bit_tilde(truth_table: str, default: str) -> str:
+    """Retain the legacy constant layout when it balances better."""
+    return balanced_projection(
+        default, _program(truth_table, keep_constant_input=True), "bit_tilde"
+    )
+
+
 LANGUAGE = Language(
     "bit~",
     "tape_based.bit_tilde",
@@ -76,4 +89,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    balance=balance_bit_tilde,
 )

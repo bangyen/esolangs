@@ -80,3 +80,41 @@ def test_generator_literals_are_exact(mode):
     io = ScriptedIO("")
     run(_grapheme_push65(dialect) + "Y", io, integer_conversion=mode)
     assert io.getvalue() == "65"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("bit", "01")
+def test_every_constant_row_within_written_state_bound(bit: str) -> None:
+    from esolangs.tools.grapheme import _program
+    from tests.generator_support import assert_shared_program
+
+    language = "Grapheme"
+    table = bit * 256
+    plain = _program(table, keep_constant_input=True)
+    digits = len(str(2**256))
+    commands = 14 * 8 + 32 + digits
+
+    def workspace(_p):
+        return (
+            16 * digits
+            + 112 * 8
+            + 312
+            + (14 * 8 + digits + 17).bit_length()
+            + 2 * (10 ** (digits + 1) + 2**256 - 1).bit_length()
+            + (16).bit_length()
+            + (8).bit_length()
+        )
+
+    assert_shared_program(language, table, plain, commands, workspace)
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
+@pytest.mark.parametrize("bit", "01")
+def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
+    from esolangs.tools.grapheme import _program
+    from tests.generator_support import assert_constant_balanced_shape
+
+    table = bit * (1 << n)
+    assert_constant_balanced_shape(
+        "Grapheme", "grapheme", table, _program(table, keep_constant_input=True)
+    )

@@ -6,7 +6,8 @@ The table is one integer literal, so it has no subtrees to fold or share.
 from esolangs._grapheme import DEFAULT_GRAPHEME, GraphemeDialect
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.tools.constant_projection import balanced_projection, projected_inputs
+from esolangs.tools.helpers import _validate_truth_table, read_at
 from esolangs.tools.wrap import wrap_chars
 
 #: Int-mode digits: ``Z`` is 0 and ``A``-``Y`` are 1 to 25, so the one value
@@ -66,9 +67,19 @@ def grapheme(
     ``'0'`` or ``'1'``.  The table is one int-mode literal, ~0.302 letters an
     entry, indexed by Horner's rule run on the complemented input bits.
     """
+    return _program(truth_table, integer_conversion=integer_conversion)
+
+
+def _program(
+    truth_table: str,
+    *,
+    integer_conversion: str = "between_letters",
+    keep_constant_input: bool = False,
+) -> str:
+    """Build the integer lookup, including a one-entry constant table."""
     dialect = GraphemeDialect(integer_conversion)
     n = _validate_truth_table(truth_table)
-    used = essential_inputs(truth_table, n) or [0]
+    used = projected_inputs(truth_table, n, keep_constant_input=keep_constant_input)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     reading = set(used)
 
@@ -95,6 +106,21 @@ def grapheme(
     return "".join(pieces)
 
 
+def balance_grapheme(
+    truth_table: str, default: str, *, integer_conversion: str = "between_letters"
+) -> str:
+    """Retain the legacy constant layout when it balances better."""
+    return balanced_projection(
+        default,
+        _program(
+            truth_table,
+            integer_conversion=integer_conversion,
+            keep_constant_input=True,
+        ),
+        "grapheme",
+    )
+
+
 LANGUAGE = Language(
     "Grapheme",
     "stack_based.grapheme",
@@ -111,4 +137,5 @@ LANGUAGE = Language(
         "subtraction alone says the opposite",
     ),
     wrap=wrap_chars,
+    balance=balance_grapheme,
 )

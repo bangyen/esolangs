@@ -96,6 +96,15 @@ def run_lines(run, program: str, bits: str) -> tuple[str, int]:
     return io.getvalue(), io.reads
 
 
+def assert_constant_balanced_shape(language, language_id, table, legacy):
+    """Check that a projected constant retains its legacy balanced shape."""
+    from esolangs.tools.wrap import balance_program, balance_score
+
+    assert balance_score(
+        esolangs.generate(language, table, balance=True)
+    ) <= balance_score(balance_program(legacy, language_id))
+
+
 def assert_shared_program(
     language, table, plain, command_bound, workspace_bound, *, size=len
 ):

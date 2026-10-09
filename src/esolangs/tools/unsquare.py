@@ -4,14 +4,14 @@ from itertools import groupby
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.tools.constant_projection import balanced_projection, projected_inputs
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    essential_inputs,
     read_at,
     subtree_ids,
 )
-from esolangs.tools.wrap import balance_program, balance_score, wrap_chars
+from esolangs.tools.wrap import wrap_chars
 
 
 def _run(entry: str, count: int) -> str:
@@ -89,14 +89,16 @@ def unsquare(truth_table: str) -> str:
     return _program(truth_table, share=True)
 
 
-def _program(truth_table: str, *, share: bool) -> str:
+def _program(
+    truth_table: str, *, share: bool, keep_constant_input: bool = False
+) -> str:
     """Return the lookup, optionally sharing its push initializer."""
     n = _validate_truth_table(truth_table)
-    used = essential_inputs(truth_table, n) or [0]
+    used = projected_inputs(truth_table, n, keep_constant_input=keep_constant_input)
     reduced = read_at(truth_table, used, n)
     bits = reduced[::-1]
     cells, _ = _runs(bits)
-    shared = _shared_pushes(bits, n, len(used)) if share else None
+    shared = _shared_pushes(bits, n, len(used)) if share and len(bits) > 1 else None
     if shared is not None and len(shared) < len(cells):
         cells = shared
     blocks: list[str] = []
@@ -111,10 +113,10 @@ def _program(truth_table: str, *, share: bool) -> str:
 
 def balance_unsquare(truth_table: str, default: str) -> str:
     """Retain the unshared initializer when its wrapped shape is better."""
-    return min(
-        balance_program(default, "unsquare"),
-        balance_program(_program(truth_table, share=False), "unsquare"),
-        key=balance_score,
+    return balanced_projection(
+        default,
+        _program(truth_table, share=False, keep_constant_input=True),
+        "unsquare",
     )
 
 
