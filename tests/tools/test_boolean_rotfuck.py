@@ -129,3 +129,8 @@ class TestRotfuck:
         for combo in (0, 1, 127, 128, 200, 255):
             bits = [(combo >> (7 - i)) & 1 for i in range(8)]
             assert run_rotfuck(program, [str(b) for b in bits]) == table[combo]
+
+
+def test_rotation_is_checked():
+    with pytest.raises(ValueError, match="rotation"):
+        boolean.rotfuck("01", rotation="sideways")

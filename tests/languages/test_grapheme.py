@@ -480,3 +480,11 @@ def test_a_load_error_is_reported_not_raised(
         call_main(["debug", "Grapheme", str(path)], capsys)
     assert exc.value.code == 2
     assert "uppercase Latin letters" in capsys.readouterr().err
+
+
+def test_dialect_options_are_a_copy():
+    settings = DialectSettings(integer_conversion="after_each_letter")
+    options = settings.options("Grapheme")
+    options["integer_conversion"] = "between_letters"
+    assert esolangs.run("Grapheme", "FAFY", settings=settings) == "10"
+    assert esolangs.run("Grapheme", "FAFY") == "1"

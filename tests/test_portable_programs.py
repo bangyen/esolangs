@@ -12,7 +12,7 @@ from tests.test_dialects import CASES
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("language", ["Alight", "Packlang", "Grapheme"])
+@pytest.mark.parametrize("language", [name for name, _ in CASES])
 def test_restored_isolated_execution(language):
     source = esolangs.generate(language, "01", settings=dict(CASES)[language])
     restored = esolangs.load_program(language, esolangs.dump_program(language, source))

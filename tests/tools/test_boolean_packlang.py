@@ -7,6 +7,8 @@ import pytest
 import esolangs
 from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.other.packlang import run as packlang_run
 from esolangs.tools.wrap import balance_score, wrap_program
 
 
@@ -101,3 +103,26 @@ def test_packlang_reduced_indent_crossing(indent):
         assert (
             _evaluate("Packlang", balanced, inputs=len(table).bit_length() - 1) == table
         )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("table", "width"),
+    [("0110", 32), ("00110110011010100101110010100110", 32)]
+    + [("00110110" * (2**n // 8), None) for n in (8, 11)],
+)
+def test_binary_digits_generated(table, width):
+    source = boolean.packlang(table, width, literal_policy="binary_digits")
+    n = (len(table) - 1).bit_length()
+    for row in sorted({0, 1, 127 % len(table), len(table) // 2, len(table) - 1}):
+        io = ScriptedIO(format(row, f"0{n}b"))
+        packlang_run(source, io, literal_policy="binary_digits")
+        assert io.getvalue() == table[row]
+
+
+def test_literal_policy_is_checked_and_does_not_leak():
+    with pytest.raises(ValueError, match="literal_policy"):
+        boolean.packlang("01", literal_policy="binary")
+    before = boolean.packlang("0110")
+    boolean.packlang("0110", literal_policy="binary_digits")
+    assert boolean.packlang("0110") == before
