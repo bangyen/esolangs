@@ -239,8 +239,14 @@ jobs:
     - name: Install dependencies
       run: uv sync --group dev --python 3.14
 
+    # The certificate's fixed 40-second construction cap aborted alongside
+    # xdist workers. Give it the runner alone; retain the same cap.
+    - name: Check the preserving certificate without competing workers
+      if: matrix.shard == 0
+      run: uv run pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0
+
     - name: Test one slow shard
-      run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 -- -n auto
+      run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 -- -n auto -k "not test_preserving_certificate"
 
 
   generated-docs:
