@@ -26,6 +26,8 @@ given the Moles current value"), so the truth machine prints ``2111...``
 on 1, as drawn; zeroing the mole there would make it print ``111...``.
 """
 
+from functools import lru_cache
+
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
@@ -36,6 +38,7 @@ from esolangs.interpreters.source_hints import syntax_error
 # Headings as (drow, dcol), in the order the ``^>'<`` glyphs select
 # them: up, right, down, left.  Row grows downward.
 _DIRECT = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+_CONTROL = frozenset("^>'<#$@")
 
 
 #: One instant of a run: ``(code, row, col, move, mole, num, done)`` -- the
@@ -54,6 +57,13 @@ _DIRECT = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 type _Cell = str | int
 type _Grid = tuple[tuple[_Cell, ...], ...]
 type _State = tuple[_Grid, int, int, int, int, int, bool]
+
+
+@lru_cache(maxsize=8)
+def _padded_grid(code: tuple[str, ...]) -> _Grid:
+    """Return reusable initial rows; stores replace tuples rather than edit them."""
+    size = max(map(len, code))
+    return tuple(tuple(line.ljust(size)) for line in code)
 
 
 def _value(code: _Grid, row: int, col: int, size: int) -> int:
@@ -191,8 +201,8 @@ class _Machine:
                 "provide a nonempty grid; @ halts immediately",
             )
         self.io = io
-        self.size = max(len(lne) for lne in code)
-        self.code: _Grid = tuple(tuple(c.ljust(self.size)) for c in code)
+        self.code = _padded_grid(tuple(code))
+        self.size = len(self.code[0])
         self.mole = self.num = self.row = self.col = 0
         self.move = 1
         self._done = False
@@ -282,6 +292,15 @@ class _Machine:
         if self._done:
             return
         char = self.code[self.row][self.col]
+
+        # Scenery only moves the mole; avoid rebuilding its whole state.
+        if not self.num and char not in _CONTROL:
+            self.row += _DIRECT[self.move][0]
+            self.col += _DIRECT[self.move][1]
+            self._done = not (
+                0 <= self.row < len(self.code) and 0 <= self.col < self.size
+            )
+            return
 
         value: int | None = None
         if self.num and char == "=":

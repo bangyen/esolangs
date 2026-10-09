@@ -19,7 +19,8 @@ narrower than the real page's ``!$'()*,/:;?@`` and ``+`` but within the
 spec.  Exhausted input raises :class:`EOFError`.
 """
 
-from esolangs._drive import drive
+from functools import lru_cache
+
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import unmatched
@@ -57,6 +58,13 @@ def _match(tokens: list[str]) -> dict[int, int]:
             res[j] = i
             res[i] = j
     return res
+
+
+@lru_cache(maxsize=8)
+def _program(commands: str) -> tuple[tuple[str, ...], tuple[tuple[int, int], ...]]:
+    """Return reusable tokens and loop pairs; machines own mutable copies."""
+    tokens = _tokens(commands)
+    return tuple(tokens), tuple(_match(tokens).items())
 
 
 _URL_SAFE = frozenset(
@@ -121,27 +129,25 @@ def _advance(
     does not wrap and halts on zero.
     """
     queue, ind = state
-    if tok == "a":
-        x, state = _pop(state)
-        y, state = _pop(state)
-        state = _push(state, (x + y) % 65536)
-    elif tok == "b":
-        x, state = _pop(state)
-        y, state = _pop(state)
-        state = _push(state, (x - y) % 65536)
-    elif tok == "c":
-        x, state = _pop(state)
-        y, state = _pop(state)
-        state = _push(state, (x * y) % 65536)
-    elif tok == "d":
-        x, state = _pop(state)
-        y, state = _pop(state)
-        if not y:
-            raise HaltError(
-                f"'d' divides {x} by the queued {y}, which is zero",
-                hint="ensure the divisor is nonzero before dividing",
-            )
-        state = _push(state, x // y)
+    if tok in ("a", "b", "c", "d"):
+        if len(queue) < 2:
+            _x, remaining = _pop(state)
+            _pop(remaining)
+        x, y = queue[0], queue[1]
+        if tok == "a":
+            result = x + y
+        elif tok == "b":
+            result = x - y
+        elif tok == "c":
+            result = x * y
+        else:
+            if not y:
+                raise HaltError(
+                    f"'d' divides {x} by the queued {y}, which is zero",
+                    hint="ensure the divisor is nonzero before dividing",
+                )
+            result = x // y
+        state = _push((queue[2:], ind), result)
     elif tok == "e":
         x, state = _pop(state)
         state = _push(state, x)
@@ -205,8 +211,9 @@ class _Machine:
         self.queue: tuple[int, ...] = (
             tuple(ord(c) % 65536 for c in code[0]) if code else ()
         )
-        self.tokens = _tokens("".join(code[1:]))
-        self.match = _match(self.tokens)
+        tokens, pairs = _program("".join(code[1:]))
+        self.tokens = list(tokens)
+        self.match = dict(pairs)
         self.ind = 0
 
     @property
@@ -262,7 +269,24 @@ class _Machine:
 def run(code: list[str], io: IO) -> None:
     """Run a Taglate program seeded by the first line's queue."""
     machine = _Machine(code, io)
-    drive(machine)
+    while not machine.halted:
+        tok = machine.tokens[machine.ind]
+        if tok not in ("e", "f") or not machine.queue:
+            machine.step()
+            continue
+        end = machine.ind + 1
+        while end < len(machine.tokens) and machine.tokens[end] == tok:
+            end += 1
+        if tok == "e":
+            # Rotations compose modulo the nonempty queue's length.
+            offset = (end - machine.ind) % len(machine.queue)
+            machine.queue = machine.queue[offset:] + machine.queue[:offset]
+            machine.ind = end
+        else:
+            # Stop at the first empty pop, retaining its original cursor.
+            consumed = min(end - machine.ind, len(machine.queue))
+            machine.queue = machine.queue[consumed:]
+            machine.ind += consumed
 
 
 if __name__ == "__main__":

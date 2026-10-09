@@ -222,6 +222,45 @@ class TestStepMachine:
         assert machine.mole == ord("A")
 
 
+def test_repeated_runs_keep_stores_private() -> None:
+    from esolangs._drive import drive
+    from esolangs.interpreters.grid_based.dig import _Machine
+
+    rows = [">$3~;:@"]
+    first = _Machine(rows, ScriptedIO("12\n"))
+    second = _Machine(rows, ScriptedIO("7\n"))
+    drive(first)
+    assert first.code[0][4] == 12
+    assert second.code[0][4] == ";"
+    drive(second)
+    assert second.code[0][4] == 7
+    assert first.code[0][4] == 12
+    assert _Machine(rows, ScriptedIO("")).code[0][4] == ";"
+    rows[0] = "@"
+    assert _Machine(rows, ScriptedIO("")).code == (("@",),)
+
+
+def test_overground_data_steps_match_the_transition() -> None:
+    from esolangs.interpreters.grid_based.dig import _advance, _Machine
+
+    for char in (" ", "é", ";", ":", "~", "7", 12, -3):
+        for move in range(4):
+            for row in range(3):
+                for col in range(3):
+                    machine = _Machine(["   ", "   ", "  @"], ScriptedIO(""))
+                    grid = [[" "] * 3 for _ in range(3)]
+                    grid[row][col] = char
+                    machine.code = tuple(map(tuple, grid))
+                    machine.row, machine.col, machine.move = row, col, move
+                    machine.mole = 17
+                    expected = _advance(machine._state, machine.size)  # noqa: SLF001
+                    machine.step()
+                    assert machine._state == expected  # noqa: SLF001
+                    if machine.halted:
+                        machine.step()
+                        assert machine._state == expected  # noqa: SLF001
+
+
 def _machine(code: object) -> object:
     from esolangs.interpreters.grid_based.dig import _Machine
     from esolangs.interpreters.io import IO

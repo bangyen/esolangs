@@ -15,6 +15,94 @@ from tests.raises import raises_message
 run_and_capture = run_lines(run)
 
 
+@pytest.mark.parametrize("count", [0, 1, 2, 3, 4, 17, 257])
+def test_consecutive_rotations_compose(count):
+    seed = "ABC"
+    offset = count % len(seed)
+    assert run_and_capture([seed, "e" * count + "iii"]) == seed[offset:] + seed[:offset]
+
+
+@pytest.mark.parametrize(
+    ("seed", "commands", "stdin"),
+    [
+        ("ABC", "eeqeeiii", ""),
+        (chr(3), "gy" + "e" * 31 + "jgzi", ""),
+        ("", "h" + "e" * 17 + "i", "A"),
+        ("", "ee", ""),
+        ("A", "iee", ""),
+        ("A", "e" * 17 + "gz", ""),
+        ("\x00A", "gy" + "e" * 17, ""),
+        ("ABC", "ffi", ""),
+        ("ABC", "fffhiii", "A"),
+        ("ABC", "f" * 17 + "i", ""),
+        ("", "ff", ""),
+    ],
+)
+def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch):
+    from esolangs._drive import drive
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.queue_based import taglate
+
+    original = taglate._Machine  # noqa: SLF001
+    machines = []
+
+    def create(code, port):
+        machine = original(code, port)
+        machines.append(machine)
+        return machine
+
+    monkeypatch.setattr(taglate, "_Machine", create)
+    ports = [ScriptedIO(stdin), ScriptedIO(stdin)]
+    reference = original([seed, commands], ports[0])
+    errors = []
+    for execute in (
+        lambda: drive(reference),
+        lambda: taglate.run([seed, commands], ports[1]),
+    ):
+        try:
+            execute()
+        except (HaltError, EOFError, ValueError) as error:
+            errors.append((type(error), error.args))
+        else:
+            errors.append(None)
+    assert errors[0] == errors[1]
+    assert ports[0].getvalue() == ports[1].getvalue()
+    assert reference.snapshot() == machines[0].snapshot()
+
+
+@pytest.mark.parametrize("seed", ["", "A"])
+@pytest.mark.parametrize("command", ["a", "b", "c", "d"])
+def test_binary_underflow_retains_consumed_pops(seed, command):
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.queue_based.taglate import _Machine
+
+    machine = _Machine([seed, command], ScriptedIO(""))
+    with pytest.raises(HaltError, match="queue is empty"):
+        machine.step()
+    assert machine.queue == ()
+    assert machine.ind == 0
+
+
+def test_repeated_programs_keep_parser_state_private():
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.queue_based.taglate import _Machine
+
+    code = ["ABC", "gyeigz"]
+    first = _Machine(code, ScriptedIO(""))
+    second = _Machine(code, ScriptedIO(""))
+    first.tokens[0] = "i"
+    first.match.clear()
+    assert second.tokens == ["gy", "e", "i", "gz"]
+    assert second.match == {0: 3, 3: 0}
+    third = _Machine(code, ScriptedIO(""))
+    assert third.tokens == second.tokens
+    assert third.match == second.match
+    code[1] = "i"
+    changed = _Machine(code, ScriptedIO(""))
+    assert changed.tokens == ["i"]
+    assert changed.match == {}
+
+
 class TestTaglate:
     @pytest.mark.parametrize(
         ("seed", "commands", "expected"),
