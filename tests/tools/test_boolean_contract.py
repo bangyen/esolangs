@@ -335,16 +335,6 @@ def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
             assert program, f"{name} built an empty program at n={n} ({shape})"
 
 
-def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
-    """Nothing above k2 is needed, so the plan sieve is never entered."""
-    from esolangs.tools.helpers import _cm_constants
-
-    lines = _cm_constants([1, 2])
-    assert len(lines) == 4
-    assert all(line.endswith("NOT PRINT.") for line in lines)
-    assert _cm_constants([]) == lines
-
-
 # The build sweep above proves every generator *returns* a program up to five
 # inputs.  It never runs one, and nothing else ran one past
 # four inputs either.  Grapheme's variable keys collided with two of its own

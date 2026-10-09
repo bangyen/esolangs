@@ -6,9 +6,11 @@ runs once a cycle, so none is shared.
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.bitwise_cyclic_tag import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 from esolangs.tools.wrap import wrap_chars
+
+#: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
+PAIR = ("0", "1")
 
 
 def cyclic_tag(truth_table: str) -> str:

@@ -79,7 +79,7 @@ class TestFargo:
 
     def test_choosing_arms_shrinks_the_corpus(self) -> None:
         """Tables to two inputs never grow; the three-input corpus shrinks 11%."""
-        from esolangs.tools.helpers import anf_coefficients
+        from esolangs.tools.fargo import anf_coefficients
         from tests.tools.fargo_oracle import _anf_expression
 
         before = after = 0

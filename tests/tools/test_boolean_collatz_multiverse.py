@@ -158,3 +158,13 @@ class TestCollatzMultiverse:
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.collatz_multiverse, (7, 8), 255)
+
+
+def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
+    """Nothing above k2 is needed, so the plan sieve is never entered."""
+    from esolangs.tools.collatz_multiverse import _cm_constants
+
+    lines = _cm_constants([1, 2])
+    assert len(lines) == 4
+    assert all(line.endswith("NOT PRINT.") for line in lines)
+    assert _cm_constants([]) == lines

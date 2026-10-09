@@ -4,7 +4,7 @@ A valid table has ``2**n`` entries, so ``n`` is recovered from the length
 and the generators take no ``n`` parameter.
 """
 
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Sequence
 from itertools import pairwise
 
 from esolangs.exceptions import TruthTableError
@@ -224,33 +224,6 @@ def _validate_shape(truth_table: str) -> int:
     return n
 
 
-def anf_coefficients(truth_table: str) -> list[int]:
-    """Return row-indexed ANF coefficients, allowing a nullary reduced table.
-
-    Pack Theta(log T) coefficients per word for O(T) word-RAM work.
-    """
-    n = _validate_shape(truth_table)
-    if n == 0:
-        return [int(truth_table)]
-    width = max(2, 1 << (n.bit_length() - 1))
-    words = [
-        int(truth_table[start : start + width][::-1], 2)
-        for start in range(0, len(truth_table), width)
-    ]
-    stride = 1
-    while stride < width:
-        high = int(("1" * stride + "0" * stride) * (width // (2 * stride)), 2)
-        words = [value ^ ((value << stride) & high) for value in words]
-        stride *= 2
-    stride = 1
-    while stride < len(words):
-        for start in range(0, len(words), 2 * stride):
-            for offset in range(start, start + stride):
-                words[offset + stride] ^= words[offset]
-        stride *= 2
-    return [(value >> bit) & 1 for value in words for bit in range(width)]
-
-
 #: One ``(zero, one)`` pair per input, in name order: what a template's
 #: runs are filled with.  Each pair is equal width, checked by
 #: :func:`check_setters`, so the constant-width convention is a property
@@ -415,45 +388,6 @@ def _residual_ids(
         levels[k] = list(names.values())
         ids = parents
     return levels, children, constants
-
-
-def deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
-    """Return head pushes by input and head pops by level that pop ``order``.
-
-    Inputs are read in order and each goes to the row's head or tail, so
-    the row reads (head first) the head-pushed inputs descending, input 0,
-    then the tail-pushed ones ascending; the tree pops either end at each
-    level.  Before input 0 is popped each pop is the largest left on its
-    side, so that prefix splits into two descending runs, the tail run
-    above every input popped after 0; those are all tail-pushed, so they
-    leave the row as a run each pop takes the least or the greatest of.
-    ``None`` when ``order`` has no such split: the plan is the greedy fit
-    (a tie goes to the lower run), which finds every poppable order.
-    """
-    depth = len(order)
-    zero = order.index(0)
-    floor = max(order[zero + 1 :], default=-1)
-    head_push = [False] * depth
-    head_pop = []
-    last = {True: depth, False: depth}
-    for x in order[:zero]:
-        fits = [
-            head for head in (True, False) if x < last[head] and (head or x > floor)
-        ]
-        if not fits:
-            return None
-        head = min(fits, key=last.__getitem__)
-        last[head] = x
-        head_push[x] = head
-        head_pop.append(head)
-    head_pop.append(True)
-    rest = sorted(order[zero + 1 :])
-    for x in order[zero + 1 :]:
-        if x not in (rest[0], rest[-1]):
-            return None
-        head_pop.append(x == rest[0])
-        rest.remove(x)
-    return head_push, head_pop
 
 
 def essential_inputs(truth_table: str, n: int) -> list[int]:
@@ -770,83 +704,6 @@ def decision_tree_body(
     move(2 * perm[0])
     node(0, 0)
     return "".join(cells), pos
-
-
-# The build plan for every Collatz Multiverse constant: ``_PLAN[n]`` is
-# ``(needed, decompositions)`` where ``needed`` is the smallest set of
-# constants (beyond k1/k2) required to build ``k n`` and ``decompositions``
-# maps each such constant to the ``(b, a, c)`` it is built from.
-_PLAN: dict[int, tuple[frozenset[int], dict[int, tuple[int, int, int]]]] = {
-    1: (frozenset(), {}),
-    2: (frozenset(), {}),
-}
-
-
-def _extend_plans(maxval: int) -> None:
-    """Fill ``_PLAN`` up to ``maxval`` with minimal two-line build plans.
-
-    ``v = a x + b`` applies the Collatz rule to ``v``: odd or zero becomes
-    ``v * a + b``, even halves.  A fresh register copies ``b`` with
-    ``v = negativeOne x + b``; if ``b`` is odd a second line makes
-    ``b * a + c``.  O(log) constants instead of a +1/+2 chain.
-    """
-    for m in range(3, maxval + 1):
-        if m in _PLAN:
-            continue
-        best: tuple[frozenset[int], dict[int, tuple[int, int, int]]] | None = None
-        for b in range(1, m, 2):
-            for a in range(1, min(m // b + 1, m)):
-                rem = m - b * a
-                need = frozenset({m}) | _PLAN[b][0] | _PLAN[a][0]
-                if rem > 2:
-                    need |= _PLAN[rem][0]
-                if best is None or len(need) < len(best[0]):
-                    best = (need, {m: (b, a, rem)})
-        if best is None:
-            raise AssertionError("b = 1 always yields a finite plan")
-        plan = dict(best[1])
-        for v in best[0]:
-            if v >= 3 and v != m:
-                plan.update(_PLAN[v][1])
-        _PLAN[m] = (best[0], plan)
-
-
-def _cm_constants(needed: Iterable[int], zero: str = "zero") -> list[str]:
-    """Lines building Collatz Multiverse constants for the values in ``needed``.
-
-    ``k1``/``k2`` bootstrap from ``negativeOne``; the rest use
-    :func:`_extend_plans`'s two-line trick.  Only referenced constants are built.
-
-    ``zero`` names the never-written register the language reads as 0.  It is
-    a parameter because the name is free -- any register never assigned reads
-    as 0 -- and a caller that spells zero on most of its lines wants the
-    shortest spelling.
-    """
-    need = sorted(n for n in set(needed) if n > 2)
-    lines = [
-        "k1 = negativeOne x + negativeOne, NOT PRINT.",
-        f"k1 = negativeOne x + {zero}, NOT PRINT.",
-        "k2 = negativeOne x + negativeOne, NOT PRINT.",
-        "k2 = negativeOne x + k1, NOT PRINT.",
-    ]
-    if not need:
-        return lines
-    _extend_plans(max(need))
-    total: frozenset[int] = frozenset()
-    decomp: dict[int, tuple[int, int, int]] = {}
-    for n in need:
-        s, d = _PLAN[n]
-        total |= s
-        decomp.update(d)
-    for n in range(3, max(need) + 1):
-        if n in total:
-            b, a, c = decomp[n]
-            lines.append(f"k{n} = negativeOne x + k{b}, NOT PRINT.")
-            if c == 0:
-                lines.append(f"k{n} = k{a} x + {zero}, NOT PRINT.")
-            else:
-                lines.append(f"k{n} = k{a} x + k{c}, NOT PRINT.")
-    return lines
 
 
 def _parity_bias(truth_table: str) -> int | None:

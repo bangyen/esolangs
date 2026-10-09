@@ -16,7 +16,7 @@ from esolangs.tools.helpers import (
     subtree_ids,
 )
 from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _bitdeque, _bitdeque_tokens, _join_tokens, balance_score
+from esolangs.tools.wrap import _join_tokens, balance_score
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 
@@ -56,8 +56,6 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     if not small:
         program = min(program, _bitdeque_linear(truth_table), key=len)
     if width is not None:
-        from esolangs.tools.wrap import _bitdeque
-
         return _bitdeque(program, width)
     return program
 
@@ -290,6 +288,22 @@ def _balance(table: str, default: str) -> str:
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
     """Commands tokenize on whitespace, which its wrapper turns to newlines."""
     return same_tokens(template, layout(1)) or same_tokens(template, plain)
+
+
+def _bitdeque(program: str, width: int) -> str:
+    """Wrap Bitdeque, keeping each ``GOTO`` with its target operand."""
+    return _join_tokens(_bitdeque_tokens(program), width, separator=" ")
+
+
+def _bitdeque_tokens(program: str) -> list[str]:
+    """Return Bitdeque commands with their attached branch operands."""
+    tokens: list[str] = []
+    for token in program.split():
+        if tokens and tokens[-1] == "GOTO":
+            tokens[-1] = f"GOTO {token}"
+        else:
+            tokens.append(token)
+    return tokens
 
 
 LANGUAGE = Language(

@@ -447,22 +447,6 @@ def _unlambda(program: str, width: int) -> str:
     return wrap_tokens(program, width, _UNLAMBDA_COMMAND)
 
 
-def _bitdeque(program: str, width: int) -> str:
-    """Wrap Bitdeque, keeping each ``GOTO`` with its target operand."""
-    return _join_tokens(_bitdeque_tokens(program), width, separator=" ")
-
-
-def _bitdeque_tokens(program: str) -> list[str]:
-    """Return Bitdeque commands with their attached branch operands."""
-    tokens: list[str] = []
-    for token in program.split():
-        if tokens and tokens[-1] == "GOTO":
-            tokens[-1] = f"GOTO {token}"
-        else:
-            tokens.append(token)
-    return tokens
-
-
 def _jaune(program: str, width: int) -> str:
     """Wrap Jaune, keeping each operand attached to the operator it feeds.
 
@@ -569,15 +553,6 @@ def _taglate(program: str, width: int) -> str:
     if not commands:
         return program
     return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
-
-
-def _qoibl(program: str, width: int) -> str:
-    """Wrap Qoibl, folding each of its lines but keeping them apart.
-
-    A newline between tokens is whitespace (measured), so each statement
-    line folds on its own; joining first would fold across statements.
-    """
-    return "\n".join(wrap_space_delimited(line, width) for line in program.split("\n"))
 
 
 # Language id -> wrapper; semantic newlines require generator-owned layouts.

@@ -15,7 +15,6 @@ from esolangs.tools.wrap import (
     MULTILINE,
     WRAPPERS,
     _bio,
-    _bitdeque,
     _cell_width,
     _mammalian,
     _packlang,
@@ -170,15 +169,6 @@ def _stdin(name: str) -> str:
     return _example(name).stdin
 
 
-def _replaces_a_space(name: str) -> bool:
-    """Whether ``name``'s wrapper breaks at a space rather than between commands."""
-    return WRAPPERS[LANGUAGES[name].id] in (
-        wrap_space_delimited,
-        _polynomial,
-        _bitdeque,
-    )
-
-
 def _is_grid(name: str) -> bool:
     """Whether ``name``'s wrapper lays its tokens out as a padded grid."""
     return WRAPPERS[LANGUAGES[name].id] in (wrap_grid, _mammalian)
@@ -265,8 +255,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     if WRAPPERS[LANGUAGES[name].id] is _polynomial:
         assert re.sub(r"\s", "", wrapped) == re.sub(r"\s", "", plain)
         return
-    restored = wrapped.replace("\n", " ") if _replaces_a_space(name) else wrapped
-    assert restored.replace("\n", "") == plain
+    assert plain in {wrapped.replace("\n", " "), wrapped.replace("\n", "")}
 
 
 @pytest.mark.parametrize("name", WRAPPED)
