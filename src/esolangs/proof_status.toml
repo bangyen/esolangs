@@ -412,8 +412,7 @@ qualification = """\
     cell"""
 scaling = "linear: T painted cells, guard weights sum to T - 1"
 execution = """\
-    linear: worst 3T + 52n + 4 commands: paint the table, 50 per input, weights \
-    summing to T - 1"""
+    linear: worst 3T + 52n + 3 commands: paint at most T-1 ones; weights sum to T-1"""
 workspace = """\
     linear: worst 2T + 2n + 7 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of \
     T"""

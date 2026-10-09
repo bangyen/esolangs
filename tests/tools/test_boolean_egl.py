@@ -22,6 +22,23 @@ def test_the_walk_is_branch_free() -> None:
     assert program.count("(") == 3
 
 
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_reads_into_scratch_and_prints_a_literal(n: int, bit: str) -> None:
+    from esolangs.tools.egl import _balance
+
+    table = bit * (1 << n)
+    default = tools.egl(table)
+    programs = [tools.egl(table, width) for width in (None, 1, 20)]
+    programs.append(_balance(table, default))
+    for program in programs:
+        assert program.startswith("2,1:")
+        assert program.count("x") == n
+        assert "(" not in program
+        for bits in itertools.product((0, 1), repeat=n):
+            assert execute(program, bits) == (bit, n)
+
+
 def test_size_is_table_content_only() -> None:
     """Two tables of one arity and one popcount render to the same length.
 

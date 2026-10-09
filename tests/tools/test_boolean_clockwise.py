@@ -9,6 +9,55 @@ from tests.tools.boolean_runners import (
 from tests.witness_tables import parity, row_bits, witnesses
 
 
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_ring_reads_and_prints_without_a_lookup(n: int, bit: str) -> None:
+    from esolangs.tools.clockwise import _balance
+
+    table = bit * (1 << n)
+    default = boolean.clockwise(table)
+    for program in (default, boolean.clockwise(table, 1), _balance(table, default)):
+        assert program.count(".") == 7 * n
+        assert "!" not in program
+        for row in range(1 << n):
+            assert run_clockwise(program, _bits(row, n)) == bit
+
+
+@pytest.mark.parametrize("width", [None, 1, 20])
+def test_trailing_inputs_are_read_after_the_two_entry_lookup(width: int | None) -> None:
+    table = "0" * 128 + "1" * 128
+    program = boolean.clockwise(table, width)
+    assert program.count(".") == 56
+    assert len(program) < 1000
+    for row in range(256):
+        assert run_clockwise(program, _bits(row, 8)) == table[row]
+
+
+@pytest.mark.parametrize("width", [None, 1, 20])
+def test_return_reads_complete_exactly_one_rotation(width: int | None) -> None:
+    from esolangs.interpreters.grid_based.clockwise import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+
+    n = 8
+    table = "".join(str(((row >> 7) ^ (row >> 6)) & 1) for row in range(256))
+    program = boolean.clockwise(table, width)
+    for row in range(256):
+        io = ScriptedIO("".join(_bits(row, n)))
+        machine = _Machine(program.splitlines(), io)
+        initial = machine.inp
+        reads = 0
+        steps = 0
+        while not machine.halted:
+            y, x = machine.state[:2]
+            reads += machine.code[y][x] == "."
+            machine.step()
+            steps += 1
+            assert steps < 100_000
+        assert reads == 7 * n
+        assert machine.inp == initial
+        assert io.getvalue() == table[row]
+
+
 class TestClockwise:
     @pytest.mark.medium
     def test_the_lookup_computes_every_row_at_five_and_six_inputs(self) -> None:

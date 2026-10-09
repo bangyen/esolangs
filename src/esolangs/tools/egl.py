@@ -18,10 +18,19 @@ def egl(truth_table: str, width: int | None = None) -> str:
     weight, so the weights accumulate into the index with no branch per
     level, and ``v=`` prints the cell below.  An ignored input is a bare
     ``x`` the next read overwrites, and the table is indexed by the rest.  A
-    constant keeps its full table: one cell leaves ``^<`` no room.  A row is a
-    cell, with no subtrees to fold or share.
+    constant reads into a scratch cell and prints its adjacent literal cell.
+    An indexed row is a cell, with no subtrees to fold or share.
     """
+    return _program(truth_table, width)
+
+
+def _program(
+    truth_table: str, width: int | None = None, *, keep_constant_table: bool = False
+) -> str:
+    """Build the indexed grid or a two-cell read-and-print constant."""
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1 and not keep_constant_table:
+        return _wrap("2,1:" + "x" * n + ">" + "+" * int(truth_table[0]) + "=", width)
     weights, projected = input_weights(truth_table, n)
     if any(weights):
         truth_table = projected
@@ -37,7 +46,11 @@ def egl(truth_table: str, width: int | None = None) -> str:
     pieces += [f"x{'-' * 48}(-{'>' * weight})" if weight else "x" for weight in weights]
     pieces.append("v=")
 
-    program = "".join(pieces)
+    return _wrap("".join(pieces), width)
+
+
+def _wrap(program: str, width: int | None) -> str:
+    """Fold the body without splitting the dimension header."""
     if width is None:
         return program
     header, rest = program.split(":", 1)
@@ -51,6 +64,14 @@ def egl(truth_table: str, width: int | None = None) -> str:
 
 def _balance(table: str, default: str) -> str:
     """Balance character folds above the header and its fixed-width regime."""
+    if len(set(table)) == 1:
+        legacy = _program(table, keep_constant_table=True)
+        return min(_balanced(default), _balanced(legacy), key=balance_score)
+    return _balanced(default)
+
+
+def _balanced(default: str) -> str:
+    """Return the best character fold across the header-width regimes."""
     header, _, body = default.partition(":")
     floor = len(header) + 1
     square = max(floor, isqrt(len(default) - 1) + 1)
@@ -60,7 +81,7 @@ def _balance(table: str, default: str) -> str:
         min(max(1, crossing), floor - 1),
         min(max(1, crossing + 1), floor - 1),
     }
-    return min(default, *(egl(table, width) for width in widths), key=balance_score)
+    return min(default, *(_wrap(default, width) for width in widths), key=balance_score)
 
 
 LANGUAGE = Language(

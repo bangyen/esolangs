@@ -1,5 +1,7 @@
 """Boolean-function generator for Clockwise."""
 
+from math import ceil
+
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
@@ -40,12 +42,68 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     doubling gadget per input (widths double upward, so ``O(T)``).  An
     ignored input's seven reads run just before the next indexed input's,
     which overwrite the bit they leave; inputs past the last essential one
-    stay indexed, since a run must read all ``7n`` bits to turn whole.  A
+    are read on the return rail after printing.  A
     literal row has no subtrees to fold or share.
+    Constants read a full input rotation, clear the accumulator and emit the
+    seven answer bits on a closed two-column ring.
     """
     total = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        return _constant_ring(total, truth_table[0])
     used = essential_inputs(truth_table, total)
-    used += range(used[-1] + 1 if used else 0, total)
+    if len(used) == 1:
+        return _coordinate_ring(total, used[0], truth_table[0])
+    return _clockwise_program(truth_table, width)
+
+
+def _constant_ring(inputs: int, bit: str, width: int = 2) -> str:
+    """Place constant reads/output on a rectangular ring with three turns."""
+    commands = "." * (_READS * inputs) + _DIGIT[:-1] + "+" * int(bit) + ";"
+    return _command_ring(commands, width)
+
+
+def _coordinate_ring(
+    inputs: int, position: int, complement: str, width: int = 2
+) -> str:
+    """Print the selected bit before consuming the remaining input rotation."""
+    commands = (
+        _DIGIT
+        + "." * (_READS * (position + 1))
+        + "+" * int(complement)
+        + ";"
+        + "." * (_READS * (inputs - position - 1))
+    )
+    return _command_ring(commands, width)
+
+
+def _command_ring(commands: str, width: int) -> str:
+    """Place a straight command sequence on a closed clockwise perimeter."""
+    height = max(2, ceil((len(commands) + 7 - 2 * width) / 2))
+    grid = [[" "] * width for _ in range(height)]
+    for x, y in ((width - 1, 0), (width - 1, height - 1), (0, height - 1)):
+        grid[y][x] = "R"
+    positions = (
+        [(x, 0) for x in range(width - 1)]
+        + [(width - 1, y) for y in range(1, height - 1)]
+        + [(x, height - 1) for x in range(width - 2, 0, -1)]
+        + [(0, y) for y in range(height - 2, 0, -1)]
+    )
+    if len(positions) < len(commands):
+        raise AssertionError("constant ring has too few command cells")
+    for (x, y), command in zip(positions, commands, strict=False):
+        grid[y][x] = command
+    return "\n".join("".join(row).rstrip() for row in grid)
+
+
+def _clockwise_program(
+    truth_table: str, width: int | None = None, *, keep_trailing: bool = False
+) -> str:
+    """Build the indexed lookup, retaining the previous constant layout."""
+    total = _validate_truth_table(truth_table)
+    used = essential_inputs(truth_table, total)
+    if keep_trailing or not used:
+        used += range(used[-1] + 1 if used else 0, total)
+    trailing = total - used[-1] - 1
     indexed = read_at(truth_table, used, total)
     reads: list[int] = []
     pending = 0
@@ -116,6 +174,17 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     place(_DESCENT, digit + len(_DIGIT), "R")
     place(_CLIMB, digit + len(_DIGIT), "R")
 
+    # Separate the return reads from the entry descent. Two increments keep
+    # the lean rotation's return sentinel nonzero when a read clears its bit.
+    return_gap = _READS * trailing - 2 if trailing else 0
+    if return_gap:
+        cells = {(x, y + return_gap): char for (x, y), char in cells.items()}
+        del cells[_DESCENT, return_gap]
+        cells[_DESCENT, 0] = "R"
+        for y in range(1, return_gap + _TABLE_ROWS):
+            cells[0, y] = "." if y <= _READS * trailing else "+"
+        digit += return_gap
+
     height = max(y for _, y in cells) + 1
     span = max(x for x, _ in cells) + 1
     grid = [[" "] * span for _ in range(height)]
@@ -154,7 +223,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     legacy_w = max(map(len, legacy.splitlines()))
     if legacy_w <= width:
         return legacy
-    lean = _clockwise_lean_rotate(cells, n, digit, span)
+    lean = _clockwise_lean_rotate(cells, n, digit, span, return_gap)
     lean_w = max(map(len, lean.splitlines()))
     chosen, chosen_w = (lean, lean_w) if lean_w < legacy_w else (legacy, legacy_w)
     # Only n <= 2 has a two-column form (its prefix handles n == 2 alone).
@@ -175,7 +244,11 @@ def _render(rotated: dict[int, dict[int, str]], nrows: int) -> str:
 
 
 def _clockwise_lean_rotate(
-    cells: dict[tuple[int, int], str], n: int, digit: int, span: int
+    cells: dict[tuple[int, int], str],
+    n: int,
+    digit: int,
+    span: int,
+    return_gap: int = 0,
 ) -> str:
     """Share entry and return rails using zero/nonzero gates around the lookup."""
     tail = digit - 1 if n > 1 else digit
@@ -183,7 +256,7 @@ def _clockwise_lean_rotate(
     # The descent turns alongside the last gadget's return, outside its cells.
     body[_DESCENT, tail] = "R"
     body[_CLIMB, tail] = "R"
-    body[1, _TABLE_ROWS] = "+"  # Every completed answer returns with nonzero acc.
+    body[1, _TABLE_ROWS + return_gap] = "+"
     rotated: dict[int, dict[int, str]] = {}
     for (x, y), char in body.items():
         rotated.setdefault(span - x, {})[y] = char
@@ -221,6 +294,32 @@ def _clockwise_two_columns(table: str) -> str:
 
 def _balance(table: str, default: str) -> str:
     """Compare the lookup, legacy rotation, lean rotation and two-column route."""
+    inputs = len(table).bit_length() - 1
+    used = essential_inputs(table, inputs)
+    if len(used) <= 1:
+        commands = _READS * inputs + len(_DIGIT) + int(table[0]) + bool(used)
+        width = max(2, ceil((commands + 7) / 4))
+        square = (
+            _coordinate_ring(inputs, used[0], table[0], width)
+            if used
+            else _constant_ring(inputs, table[0], width)
+        )
+        legacy = _clockwise_program(table, keep_trailing=True)
+        rotated = _clockwise_program(
+            table, max(1, grid_width(legacy) - 1), keep_trailing=True
+        )
+        lean = _clockwise_program(
+            table, max(1, grid_width(rotated) - 1), keep_trailing=True
+        )
+        return min(
+            default,
+            square,
+            legacy,
+            rotated,
+            lean,
+            _clockwise_program(table, 1, keep_trailing=True),
+            key=balance_score,
+        )
     rotated = clockwise(table, max(1, grid_width(default) - 1))
     lean = clockwise(table, max(1, grid_width(rotated) - 1))
     return min(default, rotated, lean, clockwise(table, 1), key=balance_score)
