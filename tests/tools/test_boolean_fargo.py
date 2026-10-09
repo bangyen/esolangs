@@ -114,3 +114,15 @@ class TestFargo:
         for combo in range(8):
             bits = list(format(combo, "03b"))
             assert run_fargo(program, bits) == table[combo]
+
+
+@pytest.mark.medium
+def test_default_compares_shared_definitions() -> None:
+    from scripts.screens.canonical import corpus
+
+    table = corpus(8)["tiled"]
+    program = boolean.fargo(table)
+    assert len(program) == 441
+    assert program == boolean.fargo(table, width=1)
+    for row, answer in enumerate(table):
+        assert run_fargo(program, list(format(row, "08b"))) == answer

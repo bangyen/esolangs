@@ -17,6 +17,14 @@ from esolangs.tools.helpers import (
     in_input_order,
     subtree_ids,
 )
+from esolangs.tools.shared_block import (
+    BranchCost,
+    add_cost,
+    dispatch_cost,
+    merge_cost,
+    normal_cost,
+    repeated_block,
+)
 from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["painfuck"]
@@ -75,88 +83,144 @@ def painfuck(truth_table: str) -> str:
     the bit and clears the flag inside, then tests the flag for the zero
     side, so exactly one side fires and both cells are left zero.  The
     answer accumulates in cell ``2n`` and is printed once, as a number.
+    A repeated residual uses its first level flag as a deferred entry; inline
+    text remains a candidate and the existing command bound gates admission.
     """
     return in_input_order(truth_table, _painfuck_ordered)
 
 
-def _painfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's program; see :func:`painfuck`.
+def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
+    """Compare the inline tree with one deferred repeated residual."""
+    plain, _ = _painfuck_tree(table, perm)
+    shared = repeated_block(table)
+    if shared is None:
+        return plain
+    candidate, commands = _painfuck_tree(table, perm, shared)
+    n = len(perm)
+    bound = (3 * n * n + 3) // 4 + 20 * n + 4
+    return candidate if commands <= bound and len(candidate) < len(plain) else plain
 
-    ``truth_table`` is already permuted; ``perm`` is spent only in the
-    cell a node tests, ``2 * perm[i]``.  The reads stay in input order.
-    """
-    n = _validate_truth_table(truth_table)
+
+def _painfuck_tree(
+    table: str, perm: tuple[int, ...], shared: tuple[int, int] | None = None
+) -> tuple[str, int]:
+    """Emit a tree and its maximum commands, separating deferred paths."""
+    n = _validate_truth_table(table)
     out: list[str] = []
-    pos = 0
+    pos = count = 0
     result = 2 * n
+    pending = 2 * perm[shared[0]] + 1 if shared is not None else 0
+    fold_zero = shared is not None
+    ids = subtree_ids(table)
+    is_constant = constant_span_test(table)
+
+    def emit(code: str) -> None:
+        nonlocal count
+        out.append(code)
+        count += len(code)
 
     def move(target: int) -> None:
         nonlocal pos
-        out.append(_move(pos, target))
+        emit(_move(pos, target))
         pos = target
 
-    # Read bit k into cell 2k as a number, so a 0/1 line needs no ASCII
-    # correction.  ``r`` is the stride, so the reads walk one character a bit.
     for k in range(n):
-        out.append("i")
+        emit("i")
         if k < n - 1:
             move(pos + 2)
 
-    is_constant = constant_span_test(truth_table)
-    ids = subtree_ids(truth_table)
+    def constant(level: int, row: int) -> str | None:
+        span = 1 << (n - level)
+        return table[row] if is_constant(row, row + span) else None
 
-    def constant(level: int, combo: int) -> str | None:
-        """Return the shared value of the subtree at ``(level, combo)``, else None."""
-        span = 2 ** (n - level)
-        return truth_table[combo] if is_constant(combo, combo + span) else None
-
-    def branch(level: int, combo: int) -> None:
-        """Emit one side of node ``level``: a leaf when constant, else a subtree.
-
-        A ``'1'`` leaf is ``ps`` (``p`` adds two, ``s`` takes one back);
-        a ``'0'`` leaf is nothing, the result cell being zero already.
-        """
-        value = constant(level + 1, combo)
+    def branch(level: int, row: int) -> BranchCost:
+        start = count
+        value = constant(level + 1, row)
         if value is None:
             move(2 * perm[level + 1])
-            node(level + 1, combo)
-        elif value == "1":
+            overhead = count - start
+            return add_cost(node(level + 1, row), overhead)
+        if value == "1":
             move(result)
-            out.append("ps")
+            emit("ps")
+        return count - start, None
 
-    def node(level: int, combo: int) -> None:
-        """Emit node ``level``: test its bit and leave both its cells zero."""
+    def node(level: int, row: int) -> BranchCost:
+        start = count
+        if (
+            shared is not None
+            and level == shared[0]
+            and ids[level][row >> (n - level)] == ids[level][shared[1] >> (n - level)]
+        ):
+            move(pending)
+            emit("ps")
+            return None, count - start
         bit = 2 * perm[level]
         flag = bit + 1
-        one = combo | (1 << (n - 1 - level))
+        one = row | (1 << (n - 1 - level))
         below = ids[level + 1]
-        if below[combo >> (n - 1 - level)] == below[one >> (n - 1 - level)]:
-            # Both sides agree, so the bit cannot matter: emit one, untested.
-            branch(level, combo)
-            return
+        if below[row >> (n - level - 1)] == below[one >> (n - level - 1)]:
+            return branch(level, row)
+        if fold_zero and constant(level + 1, row) == "0":
+            move(bit)
+            emit("a")
+            common = count - start
+            emit("s")
+            body_start = count
+            cost = branch(level, one)
+            flat = count - body_start
+            move(bit)
+            emit("b")
+            return merge_cost(add_cost(cost, count - start - flat + 1), (common, None))
         move(flag)
-        out.append("ps")  # flag = 1, pending
+        emit("ps")
         move(bit)
-        out.append("as")  # one-side: if the bit is set, and clear it to exit
+        emit("a")
+        one_start = count
+        emit("s")
         move(flag)
-        out.append("s")  # the one-side ran, so the zero-side must not
-        branch(level, one)
+        emit("s")
+        body_start = count
+        one_cost = branch(level, one)
+        one_flat = count - body_start
         move(bit)
-        out.append("b")
+        emit("b")
+        one_cost = add_cost(one_cost, count - one_start - one_flat + 1)
+        between = count
         move(flag)
-        out.append("as")  # zero-side: the flag survived, so the bit was 0
-        branch(level, combo)
+        emit("a")
+        common = one_start - start + count - between
+        zero_start = count
+        emit("s")
+        body_start = count
+        zero_cost = branch(level, row)
+        zero_flat = count - body_start
         move(flag)
-        out.append("b")
+        emit("b")
+        zero_cost = add_cost(zero_cost, count - zero_start - zero_flat + 1)
+        return add_cost(merge_cost(one_cost, zero_cost), common)
 
     move(2 * perm[0])
-    node(0, 0)
-
-    # Exactly one leaf fired, leaving 0 or 1 in the result cell.  ``o``
-    # prints it as a number, which is already the answer's spelling.
+    read_cost = count
+    cost = node(0, 0)
+    tail_start = count
+    if shared is not None:
+        depth, row = shared
+        move(pending)
+        skip = count - tail_start + 1
+        emit("as")
+        body_start = count
+        shared = None
+        body_cost = node(depth, row)
+        flat = count - body_start
+        move(pending)
+        emit("b")
+        active = count - tail_start - flat + normal_cost(body_cost) + 1
+        cost = dispatch_cost(cost, active, skip)
+        tail_start = count
     move(result)
-    out.append("o")
-    return _encode("".join(out))
+    emit("o")
+    return _encode("".join(out)), read_cost + normal_cost(cost) + count - tail_start
 
 
 LANGUAGE = Language(

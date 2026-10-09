@@ -7,6 +7,9 @@ once, and a 0 lifted to 49 fails nothing, since the one-test already ran.
 Subtrees keep ``a`` balanced, so a node's tests see its own bit.  A leaf
 prints ``:b:`` or ``:c:``; a constant subtree reads its remaining inputs
 onto ``d`` and prints once.  28 characters a node: O(T) size and build.
+Repeated residuals defer
+to a 49 on stack e, then run once after the prefix unwinds; the inline
+tree and existing command bound guard admission.
 """
 
 from esolangs.registry._contracts import BooleanContract
@@ -16,6 +19,14 @@ from esolangs.tools.helpers import (
     constant_span_test,
     subtree_ids,
 )
+from esolangs.tools.shared_block import (
+    BranchCost,
+    add_cost,
+    dispatch_cost,
+    merge_cost,
+    normal_cost,
+    repeated_block,
+)
 from esolangs.tools.wrap import wrap_chars
 
 _PROLOGUE = '"49/b""48/c"'
@@ -24,29 +35,55 @@ _LEAF = {"0": ":c:", "1": ":b:"}
 
 def sstack(truth_table: str) -> str:
     """Build an SStack program printing ``truth_table[row]`` for the inputs."""
+    plain, _ = _sstack_tree(truth_table)
+    shared = repeated_block(truth_table)
+    if shared is None:
+        return plain
+    candidate, commands = _sstack_tree(truth_table, shared)
     n = _validate_truth_table(truth_table)
-    constant = constant_span_test(truth_table)
-    ids = subtree_ids(truth_table)
+    return candidate if commands <= 7 * n + 3 and len(candidate) < len(plain) else plain
+
+
+def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str, int]:
+    """Emit a tree and the maximum commands of normal and deferred paths."""
+    n = _validate_truth_table(table)
+    constant = constant_span_test(table)
+    ids = subtree_ids(table)
     out = [_PROLOGUE]
 
-    def build(remaining: int, lo: int, hi: int) -> None:
+    def build(remaining: int, lo: int, hi: int) -> BranchCost:
+        depth = n - remaining
+        if (
+            shared is not None
+            and depth == shared[0]
+            and ids[depth][lo >> remaining] == ids[depth][shared[1] >> remaining]
+        ):
+            out.append('"49/e"')
+            return None, 1
         if constant(lo, hi):
-            out.append(";d;" * remaining + _LEAF[truth_table[lo]])
-            return
+            out.append(";d;" * remaining + _LEAF[table[lo]])
+            return remaining + 1, None
         mid = (lo + hi) // 2
-        below = ids[n - remaining + 1]
+        below = ids[depth + 1]
         if below[lo >> (remaining - 1)] == below[mid >> (remaining - 1)]:
-            out.append(";d;")  # halves agree: drop the bit, untested
-            build(remaining - 1, lo, mid)
-            return
+            out.append(";d;")
+            return add_cost(build(remaining - 1, lo, mid), 1)
         out.append(";a;[a\\b/")
-        build(remaining - 1, mid, hi)
+        one = build(remaining - 1, mid, hi)
         out.append("+a/a+][a\\c/")
-        build(remaining - 1, lo, mid)
+        zero = build(remaining - 1, lo, mid)
         out.append("+a/a+]~a~")
+        return add_cost(merge_cost(one, zero), 7)
 
-    build(n, 0, len(truth_table))
-    return "".join(out)
+    cost = build(n, 0, len(table))
+    if shared is not None:
+        depth, row = shared
+        out.append("[e\\b/~e~")
+        shared = None
+        body = build(n - depth, row, row + (1 << (n - depth)))
+        out.append("]")
+        cost = dispatch_cost(cost, normal_cost(body) + 4, 1)
+    return "".join(out), normal_cost(cost) + 2
 
 
 LANGUAGE = Language(

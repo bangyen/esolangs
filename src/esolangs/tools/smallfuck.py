@@ -17,6 +17,7 @@ from esolangs.tools.helpers import (
     subtree_ids,
     unmark,
 )
+from esolangs.tools.shared_block import repeated_block
 from esolangs.tools.token_balance import balanced_token_width
 from esolangs.tools.wrap import _RUN, balance_score, wrap_chars
 
@@ -33,22 +34,27 @@ class _Builder:
     def __init__(self, start: int = 0) -> None:
         self.at = start
         self.code: list[str] = []
+        self.count = 0
+
+    def emit(self, code: str) -> None:
+        self.code.append(code)
+        self.count += len(code)
 
     def move(self, cell: int) -> None:
-        self.code.append(move_text(self.at, cell, ">", "<"))
+        self.emit(move_text(self.at, cell, ">", "<"))
         self.at = cell
 
     def flip(self, cell: int) -> None:
         self.move(cell)
-        self.code.append("*")
+        self.emit("*")
 
     def loop(self, cell: int) -> None:
         self.move(cell)
-        self.code.append("[*")
+        self.emit("[*")
 
     def end(self, cell: int) -> None:
         self.move(cell)
-        self.code.append("]")
+        self.emit("]")
 
 
 def smallfuck(truth_table: str, width: int | None = None) -> str:
@@ -56,7 +62,9 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
 
     Input ``i`` is stored in cell ``3 i`` before the tree runs, so a level
     may test any of them; splits stay in input order (a greedy order saves
-    1.1% at n=8, under the 10% bar).
+    1.1% at n=8, under the 10% bar). A repeated residual is deferred
+    with its first level flag and emitted once after the band transfers;
+    inline text and the existing command bound guard admission.
     """
     natural = in_input_order(truth_table, _smallfuck_ordered)
     if width is None or width <= 0:
@@ -76,7 +84,24 @@ def smallfuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     return (pair,) * n
 
 
-def _smallfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
+    """Compare inline text with a deferred repeated residual."""
+    plain, _ = _smallfuck_tree(table, perm)
+    shared = repeated_block(table)
+    if shared is None:
+        return plain
+    candidate, commands = _smallfuck_tree(table, perm, shared)
+    n = len(perm)
+    return (
+        candidate
+        if commands <= 9 * n * n + 100 * n + 20 and len(candidate) < len(plain)
+        else plain
+    )
+
+
+def _smallfuck_tree(
+    truth_table: str, perm: tuple[int, ...], shared: tuple[int, int] | None = None
+) -> tuple[str, int]:
     """Emit one order's template; level ``k`` tests input ``perm[k]``.
 
     ``truth_table`` is already permuted.  Level ``k`` keeps its flag in
@@ -92,51 +117,90 @@ def _smallfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)
     builder = _Builder(3 * n)
-    builder.code.append(TEMPLATE_CHAR * (len(PAIR[0]) * n))
+    builder.emit(TEMPLATE_CHAR * (len(PAIR[0]) * n))
+    pending = 3 * shared[0] + 1 if shared is not None else 0
 
     def transfer(source: int, target: int) -> None:
         builder.loop(source)
         builder.flip(target)
         builder.end(source)
 
-    def arm(level: int, lo: int, hi: int, result: int, on: str) -> None:
+    def arm(level: int, lo: int, hi: int, result: int, on: str) -> int:
         """XOR into ``result`` whether the span's answer is ``on``."""
+        start = builder.count
         if constant(lo, hi):
             if truth_table[lo] == on:
                 builder.flip(result)
-        elif level < 0 or (n - BAND - level - 1) % BAND:
-            tree(level + 1, lo, hi, result, on)
-        else:
-            own = 3 * (level + 1) + 2
-            tree(level + 1, lo, hi, own, on)
-            transfer(own, result)
+            return builder.count - start
+        if level < 0 or (n - BAND - level - 1) % BAND:
+            return tree(level + 1, lo, hi, result, on)
+        own = 3 * (level + 1) + 2
+        cost = tree(level + 1, lo, hi, own, on)
+        tail = builder.count
+        transfer(own, result)
+        return cost + builder.count - tail + 1
 
-    def tree(level: int, lo: int, hi: int, result: int, on: str) -> None:
+    def tree(level: int, lo: int, hi: int, result: int, on: str) -> int:
+        start = builder.count
+        if (
+            shared is not None
+            and level == shared[0]
+            and ids[level][lo >> (n - level)] == ids[level][shared[1] >> (n - level)]
+        ):
+            # A complemented arm contributes its constant now; the common
+            # suffix contributes the function itself after band transfers.
+            if on == "0":
+                builder.flip(result)
+            builder.flip(pending)
+            return builder.count - start
         bit, flag, mid = 3 * perm[level], 3 * level + 1, (lo + hi) // 2
         below = ids[level + 1]
         if below[lo >> (n - level - 1)] == below[mid >> (n - level - 1)]:
-            # Both halves agree, so the bit cannot matter: build one, untested.
-            arm(level, lo, mid, result, on)
-            return
+            return arm(level, lo, mid, result, on)
         if constant(lo, mid):
             if truth_table[lo] == on:
                 builder.flip(result)
                 on = "1" if on == "0" else "0"
             builder.loop(bit)
-            arm(level, mid, hi, result, on)
+            body_start = builder.count
+            cost = arm(level, mid, hi, result, on)
+            flat = builder.count - body_start
             builder.end(bit)
-            return
+            return cost + builder.count - start - flat + 1
         builder.flip(flag)
         builder.loop(bit)
+        one_start = builder.count
         builder.flip(flag)
-        arm(level, mid, hi, result, on)
+        body_start = builder.count
+        one_cost = arm(level, mid, hi, result, on)
+        one_flat = builder.count - body_start
         builder.end(bit)
+        one_cost += builder.count - one_start - one_flat + 1
+        between = builder.count
         builder.loop(flag)
-        arm(level, lo, mid, result, on)
+        # A skipped loop executes its opener, not its immediate flip.
+        common = one_start - start - 1 + builder.count - between - 1
+        zero_start = builder.count
+        body_start = builder.count
+        zero_cost = arm(level, lo, mid, result, on)
+        zero_flat = builder.count - body_start
         builder.end(flag)
+        zero_cost += builder.count - zero_start - zero_flat + 2
+        return common + max(one_cost + 1, zero_cost)
 
-    arm(-1, 0, len(truth_table), 2, "1")
-    return _trim_tail("".join(builder.code)).ljust(3, ">")  # cell 2 must exist
+    cost = len(PAIR[0]) * n + arm(-1, 0, len(truth_table), 2, "1")
+    if shared is not None:
+        depth, row = shared
+        start = builder.count
+        builder.loop(pending)
+        shared = None
+        body_start = builder.count
+        body_cost = tree(depth, row, row + (1 << (n - depth)), 2, "1")
+        flat = builder.count - body_start
+        builder.end(pending)
+        cost += body_cost + builder.count - start - flat + 1
+    program = _trim_tail("".join(builder.code)).ljust(3, ">")
+    return program, cost
 
 
 def _trim_tail(code: str) -> str:

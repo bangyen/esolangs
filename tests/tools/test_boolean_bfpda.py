@@ -1,5 +1,7 @@
 """bfpda generator tests."""
 
+import pytest
+
 from tests.tools.fills import _run_form
 
 
@@ -38,3 +40,14 @@ class TestParameterizedBfpda:
 
         total = sum(len(generators.bfpda(format(v, "08b"))) for v in range(256))
         assert total == 14502
+
+
+@pytest.mark.medium
+def test_shared_residual_executes_within_ledger() -> None:
+    from esolangs.tools.bfpda import _bfpda_tree, _reflected
+    from tests.generator_support import assert_shared_program
+
+    a, b = "0001" * 16, "0110" * 16
+    table = _reflected(a + b + b + a, 8)
+    plain, _ = _bfpda_tree(table)
+    assert_shared_program("BF-PDA", table, plain, 82, lambda _: 3 * 8 + 4)

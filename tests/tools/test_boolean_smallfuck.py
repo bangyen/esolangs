@@ -97,3 +97,35 @@ def test_smallfuck_matches_a_narrow_layout_without_its_newlines() -> None:
     narrow = {1: "*\n<", 4: "*>\n*"}
     assert same_layout("*>*", "*>*<", lambda width: narrow[width])
     assert same_layout("*>\n*<", "*>*<", lambda width: narrow[width])
+
+
+@pytest.mark.medium
+def test_shared_residual_executes_within_ledger() -> None:
+    from esolangs.tools.smallfuck import _smallfuck_tree
+    from scripts.screens.canonical import corpus
+    from tests.generator_support import assert_shared_program
+
+    table = corpus(8)["tiled"]
+    plain, _ = _smallfuck_tree(table, tuple(range(8)))
+    assert_shared_program(
+        "Smallfuck",
+        table,
+        plain,
+        1396,
+        lambda p: len(p) + len(p).bit_length() + (3 * 8).bit_length(),
+    )
+
+
+def test_complemented_shared_arm_contributes_its_constant_first() -> None:
+    from esolangs.tools.smallfuck import _smallfuck_tree
+    from tests.generator_support import assert_shared_program
+
+    table = "1111011001101111"
+    plain, _ = _smallfuck_tree(table, tuple(range(4)))
+    assert_shared_program(
+        "Smallfuck",
+        table,
+        plain,
+        564,
+        lambda p: len(p) + len(p).bit_length() + (12).bit_length(),
+    )

@@ -46,13 +46,21 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     ``!x`` and ``x``; the harness feeds 0 or 1, so every value stays 0 or 1.
     A zero-valued prefix names every input first, preserving binding under
     folds; O(T) size.  With ``width``, the tree splits into definitions,
-    since APL cannot continue an expression across lines.
+    since APL cannot continue an expression across lines. Repeated bounded
+    frames use one definition; default compares that sharing with inline text.
     """
     if width is not None:
         return in_input_order(
             truth_table, lambda table, perm: _apl_narrow_layout(table, perm, width)[0]
         )
-    return in_input_order(truth_table, _apl_reduced_ordered)
+    return in_input_order(truth_table, _apl_shared_ordered)
+
+
+def _apl_shared_ordered(table: str, perm: tuple[int, ...]) -> str:
+    """Compare inline text with repeated definitions from bounded frames."""
+    plain = _apl_reduced_ordered(table, perm)
+    shared, _ = _apl_split(table, perm, 40, _apl_reduced_ordered, require_share=True)
+    return min(plain, shared, key=len)
 
 
 def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -218,6 +226,8 @@ def _apl_split(
     perm: tuple[int, ...],
     width: int,
     build: Callable[[str, tuple[int, ...]], str],
+    *,
+    require_share: bool = False,
 ) -> tuple[str, int | None]:
     """Split ``build``'s tree into definitions under the frame budget."""
     n = _validate_truth_table(table)
@@ -229,6 +239,8 @@ def _apl_split(
     call_width = name_width + 2
     limit = max(width, 4 * call_width + 6, 2 * n + call_width + 4)
     definitions: list[str] = []
+    made: dict[str, str] = {}
+    reused = False
     events: set[int] = set()
     # A frame's pieces carry their fresh source-character count; references
     # carry zero. Every definition consumes at least one call-width of fresh
@@ -247,9 +259,15 @@ def _apl_split(
         return "".join(pieces)
 
     def define(part: tuple[_Rope, int, int]) -> tuple[_Rope, int, int]:
-        name = short_name(len(definitions), ascii_uppercase)
-        definitions.append(f"{name}={render(part[0])}")
-        call = f"{name}()"
+        nonlocal reused
+        body = render(part[0])
+        if body in made:
+            reused = True
+            call = made[body]
+        else:
+            name = short_name(len(definitions), ascii_uppercase)
+            definitions.append(f"{name}={body}")
+            call = made[body] = f"{name}()"
         return call, len(call), 0
 
     def trim(parts: list[tuple[_Rope, int, int]], budget: int) -> None:
@@ -283,6 +301,8 @@ def _apl_split(
     program = "\n".join(
         [_NOT_TIGHT, *definitions, prefix + render(tuple(node for node, _, _ in parts))]
     )
+    if require_share and not reused:
+        return build(table, perm), None
     return program, min(events, default=None)
 
 

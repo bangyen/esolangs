@@ -20,6 +20,8 @@ holding ``int(bits, 2)``, so input ``i`` (most-significant-first) is bit
 interpreter reads that line before execution, so every program consumes
 exactly one input line.  With no reads there is no read order: factoring
 order only renames the ``@`` literals, and :func:`fargo` uses the identity.
+Repeated expression nodes use shared definitions when shorter; the inline
+form stays a candidate on every fitting path.
 """
 
 from string import ascii_lowercase
@@ -257,11 +259,19 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     expression = _expression(truth_table, n)
     compact = f"% 0 {expression}\n$\n"
-    if width is None or max(map(len, compact.splitlines())) <= width:
-        return compact
-    # Interns the folded Davio expression; the old ANF-per-mask form was 1.4-2.0x
-    # larger at n=3-5 on random, constant-half and tiled tables.
-    return _definition_program(expression, n)
+    shared = _definition_program(expression, n)
+    if width is None:
+        return min(compact, shared, key=len)
+    if max(map(len, compact.splitlines())) <= width:
+        return min(
+            (
+                program
+                for program in (compact, shared)
+                if max(map(len, program.splitlines())) <= width
+            ),
+            key=len,
+        )
+    return shared
 
 
 def _balance(table: str, default: str) -> str:

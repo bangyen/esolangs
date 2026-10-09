@@ -132,8 +132,9 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
 
 
 def _stream_tree(table: str) -> str:
-    """Read along a three-column decision tree with at most two inputs."""
+    """Read at most two inputs; equal halves discard onto the column stack."""
     depth = _validate_truth_table(table)
+    ids = subtree_ids(table)
     builder = _Builder()
 
     def tree(
@@ -148,7 +149,9 @@ def _stream_tree(table: str) -> str:
             return
         router = (2 - point[0], point[1])
         builder.node(point, "◇")
-        builder.node(router, "◒")
+        index = lo >> (depth - level)
+        same = ids[level + 1][2 * index] == ids[level + 1][2 * index + 1]
+        builder.node(router, "⬒" if same else "◒")
         builder.connect(_path(point, router, "horizontal"), "double")
         half = (lo + hi) // 2
         # The root's wider separation leaves its startup and wires clear of
@@ -159,7 +162,8 @@ def _stream_tree(table: str) -> str:
             pitch = 8
         else:
             pitch = 4
-        for sign, start, end in ((-1, lo, half), (1, half, hi)):
+        children = ((-1, lo, half),) if same else ((-1, lo, half), (1, half, hi))
+        for sign, start, end in children:
             child = (router[0], router[1] + sign * pitch)
             builder.connect(_path(router, child, "vertical"), "single")
             tree(level + 1, start, end, child, router)

@@ -94,3 +94,40 @@ def run_lines(run, program: str, bits: str) -> tuple[str, int]:
     io = ScriptedIO(bits)
     run(program.splitlines(), io)
     return io.getvalue(), io.reads
+
+
+def assert_shared_program(language, table, plain, command_bound, workspace_bound):
+    """Execute every shared-program row and check commands and written state."""
+    from esolangs.debugger import make_vm
+    from scripts.benchmark import WrittenState
+
+    n = len(table).bit_length() - 1
+    program = esolangs.generate(language, table)
+    assert isinstance(program, str)
+    assert len(program) < len(plain)
+    parameterized = esolangs.describe(language)["parameterized"]
+    for row, expected in enumerate(table):
+        bits = [int(bit) for bit in format(row, f"0{n}b")]
+        source = (
+            esolangs.instantiate(language, program, bits) if parameterized else program
+        )
+        stdin = (
+            ""
+            if parameterized
+            else esolangs.encode_inputs(language, bits, truth_table=table)
+        )
+        machine = make_vm(language, source, stdin=stdin)
+        written = WrittenState(machine.snapshot())
+        commands = 0
+        while not machine.halted and commands <= command_bound:
+            machine.step()
+            written.sample(machine.snapshot())
+            commands += 1
+        assert machine.halted
+        if machine.dumps_on_the_post_halt_step:
+            machine.step()
+            written.sample(machine.snapshot())
+            commands += 1
+        assert esolangs.read_answer(language, machine.output) == expected
+        assert commands <= command_bound
+        assert written.bits <= workspace_bound(program)
