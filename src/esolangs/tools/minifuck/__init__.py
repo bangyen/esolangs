@@ -86,45 +86,24 @@ def _degenerate(truth_table: str, n: int) -> str | None:
 _INERT = "[[<<[" + _MINIFUCK_INPUT + "<"
 
 
-def _kept_inputs(essential: list[int]) -> list[int]:
-    """Return the essential inputs plus the ignored ones a pad cannot absorb.
-
-    An ignored input between two kept ones, with two essential inputs after
-    it, replaces a pad step (see :data:`_GAP_BLOCK`); only a pad of three or
-    more steps ends with both cells right of the pointer zero, so the last
-    pad takes none.  The others stay inputs of the lookup.  Leading and
-    trailing ones are dropped by the caller.
-    """
-    kept = list(essential)
-    for p in range(essential[0] + 1, essential[-1]):
-        if p in essential:
-            continue
-        later = [e for e in essential if e > p + 1]
-        if p - 1 in kept and p + 1 in essential and later:
-            continue
-        kept.append(p)
-    return sorted(kept)
-
-
 def _reduce(
     truth_table: str, n: int
 ) -> tuple[int, str, list[int], tuple[int, ...], int] | None:
-    """Return (leading ignored, inner table, kept inputs, gaps, trailing ignored).
+    """Return (leading ignored, inner table, essential inputs, gaps, trailing ignored).
 
     ``None`` when every input is essential.  A table that ignores inputs is a
     smaller table wearing extra ones: the caller puts an inert block in front
     for each leading ignored input and a run after the print for each
     trailing one.  An ignored input between two essential ones replaces a
-    lookup pad's last step where one fits (``gaps``).
+    lookup pad step (``gaps``), extending the pad when fresh cells are needed.
     """
     essential = essential_inputs(truth_table, n)
     if len(essential) == n:
         return None
     first = essential[0] if essential else 0
     after = n - 1 - essential[-1] if essential else n
-    kept = _kept_inputs(essential) if essential else essential
-    gaps = tuple(b - a - 1 for a, b in pairwise(kept))
-    return first, read_at(truth_table, kept, n), kept, gaps, after
+    gaps = tuple(b - a - 1 for a, b in pairwise(essential))
+    return first, read_at(truth_table, essential, n), essential, gaps, after
 
 
 @cache
@@ -139,11 +118,9 @@ def _solve(truth_table: str) -> str:
     :mod:`esolangs.tools.minifuck.sim` and :class:`ValueError` is raised
     otherwise.  Cached; no route enumerates candidates.
 
-    Ignored inputs are dropped (mean emitted characters, 10 seeded tables per
-    cell, against the lookup with every input essential): one ignored input
-    -49% at n=8 (-44% at n=5), two -74% (-65%).  The exception is an ignored
-    input immediately before the last essential one: no pad can absorb it,
-    so it stays an input (0%, never larger).
+    Ignored inputs leave the index; an interior run extends its pad enough to
+    cross the preceding setter. Ten seeded n=8 tables ignoring input 6 average
+    5,209.8 characters against 10,239.1 before (49.1% smaller, seed 6072026).
     """
     n = _validate_shape(truth_table)
 
@@ -151,12 +128,11 @@ def _solve(truth_table: str) -> str:
     # it there, put an inert block in front for each ignored input before the
     # essential ones and a run after the print for each one past them.  An
     # ignored input between two essential ones replaces a lookup pad's last
-    # step where one fits; otherwise the full-arity mux, which embeds every
-    # slot in order, takes the table.
+    # step; fresh padding grows only when the ignored run needs it.
     reduced = _reduce(truth_table, n)
     if reduced is not None:
         first, inner_table, kept, gaps, after = reduced
-        if kept == essential_inputs(truth_table, n) and not any(gaps):
+        if not any(gaps):
             inner = _solve(inner_table)
         else:
             inner = _mux_lookup(inner_table, len(kept), gaps=gaps)
@@ -185,8 +161,8 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
     while recursing (six such calls building the 276 tables up to three
     inputs), but the API refuses it.  Narrow layouts pair fresh walks with
     comments so skip chains no longer bind the padding into one long line; they
-    drop ignored inputs as :func:`_solve` does (width 1/8, 10 seeded tables per
-    cell, n=6: one ignored input -47%, two -63%).
+    drop ignored inputs as :func:`_solve` does (width 1, the same ten n=8 tables:
+    9,431.6 characters against 18,543.1 before, 49.1% smaller).
     """
     n = _validate_truth_table(truth_table)
     natural = _solve(truth_table)
@@ -303,7 +279,21 @@ def _balance(table: str, default: str) -> str:
         narrow = tokens(minifuck(table, lower))
         width = balanced_token_width(narrow, minimum=lower, maximum=floor - 1)
         candidates.append(minifuck(table, width))
-    return min(candidates, key=balance_score)
+    best = min(candidates, key=balance_score)
+    gaps = tuple(b - a - 1 for a, b in pairwise(essential_inputs(table, n)))
+    if gaps and (gaps[-1] or max(gaps) > 1):
+        # Dropping the penultimate selector gave 40x39 against the old square
+        # at n=6. Comments after the last instruction recover the square.
+        rows = best.split("\n")
+        width = max(map(len, rows))
+        height = len(rows)
+        square = (
+            best + "\n" * (width - height)
+            if height < width
+            else best + " " * (height - len(rows[-1]))
+        )
+        return min(best, square, key=balance_score)
+    return best
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:

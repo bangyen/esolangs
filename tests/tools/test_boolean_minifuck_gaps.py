@@ -2,6 +2,8 @@
 
 import importlib
 
+import pytest
+
 from esolangs.tools.minifuck import _solve
 from esolangs.tools.minifuck.mux import (
     _probe_frame,
@@ -37,17 +39,60 @@ def test_degenerate_column_rules_execute_or_decline() -> None:
             assert runner.run_minifuck(runner.instantiate(template, bits)) == expected
 
 
-def test_unabsorbable_ignored_input_stays_while_the_rest_drop() -> None:
-    """Input 1 is absorbed, 4 (before the last essential) kept, 6 dropped."""
+def test_every_ignored_input_drops_from_the_lookup() -> None:
+    """Interior inputs 1 and 4, and trailing input 6, leave the table index."""
     from esolangs import generate
     from esolangs._evaluate import _evaluate
+    from esolangs.tools.minifuck import _reduce
     from esolangs.tools.minifuck.mux import _mux_lookup
 
     inner = "0110100110010111"
     bits = ((r >> 6 - i & 1 for i in (0, 2, 3, 5)) for r in range(128))
     table = "".join(inner[int("".join(map(str, b)), 2)] for b in bits)
+    assert _reduce(table, 7) == (0, inner, [0, 2, 3, 5], (1, 0, 1), 1)
     assert _evaluate("Minifuck", generate("Minifuck", table), inputs=7) == table
     assert len(_solve(table)) < 0.4 * len(_mux_lookup(table, 7))
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("n", "gaps"), [(2, (1,)), (2, (3,)), (3, (3, 0))])
+@pytest.mark.parametrize("paired", [False, True])
+def test_extended_pads_compute_every_small_table(
+    n: int, gaps: tuple[int, ...], *, paired: bool
+) -> None:
+    from esolangs.tools.minifuck.mux import _mux_lookup
+    from tests.tools.minifuck_support import _MinifuckCase
+
+    runner = _MinifuckCase()
+    inputs = n + sum(gaps)
+    positions = [0]
+    for gap in gaps:
+        positions.append(positions[-1] + gap + 1)
+    for value in range(1 << (1 << n)):
+        table = f"{value:0{1 << n}b}"
+        template = _mux_lookup(table, n, paired=paired, gaps=gaps)
+        for row in range(1 << inputs):
+            bits = [row >> shift & 1 for shift in range(inputs - 1, -1, -1)]
+            index = int("".join(str(bits[p]) for p in positions), 2)
+            assert (
+                runner.run_minifuck(runner.instantiate(template, bits)) == table[index]
+            )
+
+
+@pytest.mark.parametrize(
+    ("table", "characters", "width"),
+    [("1010101001010000", 570, 24), ("01" * 16 + "10" * 16, 474, 22)],
+)
+def test_balanced_projection_pads_only_after_the_program(
+    table: str, characters: int, width: int
+) -> None:
+    from esolangs import generate
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.wrap import balance_score
+
+    template = generate("Minifuck", table, balance=True)
+    assert balance_score(template) == (0, characters, width)
+    assert _evaluate("Minifuck", template, inputs=len(table).bit_length() - 1) == table
 
 
 def test_failed_unary_column_rule_aborts_without_a_program() -> None:
