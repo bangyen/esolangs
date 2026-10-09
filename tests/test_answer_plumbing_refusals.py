@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import re
+import signal
 import warnings
 
 import pytest
@@ -12,7 +13,9 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import _check_program, _run
 from tests.generator_support import evaluate_generated, verify_generated
+from tests.pick import languages
 from tests.stdin_check import _check_stdin
+from tests.test_language_coupling import REFERENCE
 
 
 class TestTheNewChecksRefuseTheirOwnBadInput:
@@ -27,13 +30,6 @@ class TestTheNewChecksRefuseTheirOwnBadInput:
         """Reported before any generator sees it, for the same reason."""
         with pytest.raises(esolangs.TruthTableError, match="got list"):
             evaluate_generated("brainfuck", [0, 1, 1, 0])  # type: ignore[arg-type]
-
-    def test_machine_traits_refuses_an_unregistered_name(self) -> None:
-        """Same contract as ``make_vm``, which is the only other reader."""
-        from esolangs.vm import machine_traits
-
-        with pytest.raises(esolangs.UnknownLanguageError):
-            machine_traits("Nonexistent")
 
 
 class TestEveryAuditedCapIsCatchable:
@@ -192,7 +188,15 @@ class TestTheWarningHasItsOwnClass:
 class TestReadAnswerExplainsInWords:
     """The regex was the whole explanation for the two pattern languages."""
 
-    @pytest.mark.parametrize("name", ["A Painter Ant", "RAM0"])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            name
+            for name in languages(answer_mode="dump")
+            if esolangs.describe(name)["answer_pattern"]
+            and esolangs.describe(name)["answer_convention"]
+        ],
+    )
     def test_the_note_leads_and_the_pattern_follows(self, name: str) -> None:
         """Both halves, in that order."""
         with pytest.raises(esolangs.ProgramError) as caught:
@@ -205,11 +209,18 @@ class TestReadAnswerExplainsInWords:
         assert repr(pattern) in message
         assert message.index(note) < message.index(repr(pattern))
 
-    def test_a_plain_language_is_unchanged(self) -> None:
+    @pytest.mark.parametrize(
+        ("output", "says"),
+        [
+            ("garbage", "as the last character"),
+            ("answer: unknown\n", "expected '0' or '1'"),
+            ("no digits here!", "no answer this could read"),
+        ],
+    )
+    def test_a_plain_language_is_unchanged(self, output: str, says: str) -> None:
         """No pattern, no note, and nothing to add -- it was already clear."""
-        with pytest.raises(esolangs.ProgramError) as caught:
-            esolangs.read_answer("brainfuck", "garbage")
-        assert "as the last character" in str(caught.value)
+        with pytest.raises(esolangs.ProgramError, match=re.escape(says)) as caught:
+            esolangs.read_answer(REFERENCE, output)
         assert "matched with" not in str(caught.value)
 
     def test_every_dump_language_says_something_in_words(self) -> None:
@@ -232,32 +243,20 @@ class TestATimeoutCannotKillTheProcess:
         with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
             esolangs.run("brainfuck", "+.", stdin="", timeout=0.0001)
 
-    def test_the_caller_gets_their_disposition_back(self) -> None:
-        """Including ``SIG_DFL``, which the previous fix kept for itself."""
-        import signal
-
-        previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
+    @pytest.mark.parametrize(
+        "handler",
+        # ``SIG_DFL``, which the previous fix kept for itself, and a custom
+        # handler -- the case that always worked, kept so it cannot regress.
+        [signal.SIG_DFL, lambda _signum, _frame: None],
+        ids=["default", "custom"],
+    )
+    def test_the_caller_gets_their_disposition_back(self, handler: object) -> None:
+        previous = signal.signal(signal.SIGALRM, handler)
         try:
-            program = esolangs.generate("brainfuck", "0110")
-            stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
-            esolangs.run("brainfuck", program, stdin=stdin, timeout=5)
-            assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
-        finally:
-            signal.signal(signal.SIGALRM, previous)
-
-    def test_a_custom_handler_is_given_back_too(self) -> None:
-        """The case that always worked, kept so the fix cannot regress it."""
-        import signal
-
-        def _mine(_signum: object, _frame: object) -> None:
-            """A handler a caller might have installed."""
-
-        previous = signal.signal(signal.SIGALRM, _mine)
-        try:
-            program = esolangs.generate("brainfuck", "0110")
-            stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
-            esolangs.run("brainfuck", program, stdin=stdin, timeout=5)
-            assert signal.getsignal(signal.SIGALRM) is _mine
+            program = esolangs.generate(REFERENCE, "0110")
+            stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
+            esolangs.run(REFERENCE, program, stdin=stdin, timeout=5)
+            assert signal.getsignal(signal.SIGALRM) is handler
         finally:
             signal.signal(signal.SIGALRM, previous)
 

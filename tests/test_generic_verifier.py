@@ -97,10 +97,6 @@ class TestTheFactsThatMakeItPossible:
         with pytest.raises(esolangs.ArgumentError, match="answers by terminating"):
             esolangs.read_answer("123", "VO")
 
-    def test_an_unreadable_output_is_reported_not_guessed(self) -> None:
-        with pytest.raises(esolangs.ProgramError, match="no answer this could read"):
-            esolangs.read_answer("brainfuck", "no digits here!")
-
     def test_a_timeout_is_distinguishable_from_a_faulting_halt(self) -> None:
         """``except HaltError`` would score an invalid-op halt as a 1."""
         with pytest.raises(esolangs.ExecutionTimeoutError) as exc:

@@ -8,10 +8,16 @@ import pytest
 import esolangs
 from esolangs._isolated import _decode, _worker
 from tests.generator_support import evaluate_generated, verify_generated
+from tests.pick import first
+
+#: A run that never halts by itself, and one that answers by terminating.
+_UNUSUAL = [first(self_halts=False), first(answer_mode="termination")]
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("language", ["Suffolk", "123", "Piet"])
+@pytest.mark.parametrize(
+    "language", [*_UNUSUAL, first(source_kind="raster", boolean_generator=True)]
+)
 def test_generated_xor_runs_every_row_in_a_worker(language):
     with ThreadPoolExecutor(max_workers=1) as pool:
         assert pool.submit(verify_generated, language, "0110", isolated=True).result()
@@ -217,7 +223,7 @@ def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(protocol_chi
     assert child.reaped
 
 
-@pytest.mark.parametrize("language", ["Suffolk", "123"])
+@pytest.mark.parametrize("language", _UNUSUAL)
 def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
     from esolangs import _isolated
 

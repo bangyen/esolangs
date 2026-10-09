@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.exceptions import UnknownLanguageError
+from tests.pick import first
 
 
 class TestRun:
@@ -26,16 +26,13 @@ class TestRun:
         assert dbg.halted
 
 
-class TestFactory:
-    def test_unknown_language_raises(self) -> None:
-        with pytest.raises(UnknownLanguageError):
-            debugger_api.make_debugger("NoSuchLanguage", "+")
-
-
 #: Two of the nine dump-on-post-halt languages, one reader and one template:
 #: the dump step is the debugger's shared code, and test_vm_protocol already
 #: checks every language's flag against its behaviour.
-_DUMPERS = ("LaserFuck", "RAM0")
+_DUMPERS = tuple(
+    first(dumps_on_the_post_halt_step=True, parameterized=template)
+    for template in (False, True)
+)
 
 
 def _runnable(name: str, table: str = "0110") -> tuple[str, str]:

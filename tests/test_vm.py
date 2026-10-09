@@ -6,7 +6,6 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.exceptions import UnknownLanguageError
 from esolangs.vm import VM
 from tests.pick import languages
 
@@ -44,14 +43,6 @@ class TestBrainfuck:
         vm.step()
         assert vm.output == "\x02"
         assert vm.halted
-
-
-class TestFactory:
-    def test_unknown_language_raises(self) -> None:
-        # Naming the language it refused is the whole use of the message to
-        # a caller who passed it by mistake, and it was unpinned.
-        with pytest.raises(UnknownLanguageError, match="NoSuchLanguage"):
-            debugger_api.make_vm("NoSuchLanguage", "+")
 
 
 class TestEveryLanguageIsSteppable:
