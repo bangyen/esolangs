@@ -634,6 +634,7 @@ class TestNttRecovery:
             1, (root_sets[0], root_sets[1]), 20
         )
 
+    @pytest.mark.medium
     def test_a_large_program_is_recovered_exactly(self) -> None:
         """Past the threshold, every planted factor comes back and nothing
         else -- the execution-gate witness for the search half.

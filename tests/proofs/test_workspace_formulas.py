@@ -418,6 +418,14 @@ FORMULAS = ledger_formulas(
 )
 
 
+#: Smallest-arity cases that still measure past the medium band run alone
+#: (Container-7 5.7s; 6-5-7 4.9s and Fargo-6 4.6s overrun under load): the
+#: per-step state measurement dominates, so they run in the slow band.
+_SLOW_AT_MIN: frozenset[tuple[str, int]] = frozenset(
+    {("Container", 7), ("6-5", 7), ("Fargo", 6)}
+)
+
+
 def _formula_cases() -> list[object]:
     ledgers = (EXECUTION_FORMULAS, FORMULAS)
     cases = sorted(
@@ -433,7 +441,8 @@ def _formula_cases() -> list[object]:
             name,
             n,
             marks=pytest.mark.medium
-            if any(name in ledger and n == min(ledger[name][2]) for ledger in ledgers)
+            if (name, n) not in _SLOW_AT_MIN
+            and any(name in ledger and n == min(ledger[name][2]) for ledger in ledgers)
             else pytest.mark.slow,
         )
         for name, n in cases

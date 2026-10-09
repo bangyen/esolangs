@@ -141,6 +141,7 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
         )
 
 
+@pytest.mark.medium
 def test_rows_without_a_tree_route_are_the_ones_the_ledger_names(
     ledger: Ledger,
 ) -> None:
