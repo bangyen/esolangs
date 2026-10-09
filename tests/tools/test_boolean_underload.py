@@ -7,10 +7,13 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.underload import run
-from esolangs.tools.helpers import TEMPLATE_CHAR
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    constant_span_test,
+)
 from esolangs.tools.underload import PAIR, underload, underload_setters
 from tests.generator_support import run_filled, verify_generated
-from tests.tools.plain_oracles import underload_plain as _plain
 from tests.tools.sample_tables import five_input_sample
 from tests.witness_tables import witnesses
 
@@ -76,7 +79,7 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
         (three, 21032, 17850),
         (five_input_sample(), 58565, 44756),
     ):
-        plain = [len(_plain(table)) for table in tables]
+        plain = [len(underload_plain(table)) for table in tables]
         shared = [len(underload(table)) for table in tables]
         assert (sum(plain), sum(shared)) == (before, after)
         assert all(s <= p for s, p in zip(shared, plain, strict=True))
@@ -126,3 +129,23 @@ def test_short_selectors_execute_larger_carried_trees(n: int) -> None:
         for width in [1, 4]:
             for row in [0, 1, 2**n // 3, 2**n - 1]:
                 assert _run(table, row, width) == table[row]
+
+
+def underload_plain(truth_table: str, *, short: bool = False) -> str:
+    """Return the unshared promise tree, each leaf printing its own bit."""
+    from esolangs.tools.underload import _SHORT_PAIR, PAIR, TEMPLATE_CHAR, _reflected
+
+    n = _validate_truth_table(truth_table)
+    reflected = _reflected(truth_table, n)
+    constant = constant_span_test(reflected)
+
+    def tree(level: int, lo: int, hi: int) -> str:
+        if constant(lo, hi):
+            return "!" * (n - level) + f"({reflected[lo]})S"
+        mid = (lo + hi) // 2
+        return f"({tree(level + 1, lo, mid)})~({tree(level + 1, mid, hi)})~^" + (
+            "^" if short else ""
+        )
+
+    slots = TEMPLATE_CHAR * (len((_SHORT_PAIR if short else PAIR)[0]) * n)
+    return slots + f"({tree(0, 0, len(reflected))})^"

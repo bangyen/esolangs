@@ -7,10 +7,13 @@ import pytest
 import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.interpreters.other.intercal import run
-from esolangs.tools.helpers import best_input_order
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    best_input_order,
+    constant_span_test,
+)
 from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, intercal
 from tests.generator_support import run_filled
-from tests.tools.plain_oracles import intercal_plain as _intercal_ordered
 
 
 def _run(table: str, row: int) -> str:
@@ -36,7 +39,7 @@ def test_levels_select_inputs_in_the_shorter_order() -> None:
     old = new = 0
     for value in range(256):
         table = f"{value:08b}"
-        before = len(_intercal_ordered(table, (0, 1, 2)))
+        before = len(intercal_plain(table, (0, 1, 2)))
         after = len(_unshared(table))
         assert after <= before, table
         old, new = old + before, new + after
@@ -52,7 +55,7 @@ def _five_input_sample() -> list[str]:
 
 
 def _unshared(table: str) -> str:
-    return best_input_order(table, _intercal_ordered)
+    return best_input_order(table, intercal_plain)
 
 
 def test_repeated_subexpressions_are_assigned_once() -> None:
@@ -86,3 +89,24 @@ def test_narrow_balance_regime_edge_executes(table):
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("INTERCAL", table, balance=True)
     assert _evaluate("INTERCAL", balanced, inputs=len(table).bit_length() - 1) == table
+
+
+def intercal_plain(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one order's template; level ``k`` selects input ``perm[k]``."""
+    from esolangs.tools.intercal import _Expr, _mux, _program
+
+    n = _validate_truth_table(truth_table)
+    constant = constant_span_test(truth_table)
+
+    def tree(level: int, lo: int, hi: int) -> _Expr:
+        if constant(lo, hi):
+            return _Expr("constant", int(truth_table[lo]))
+        mid = (lo + hi) // 2
+        # In name order large variable numbers occur near the root, where
+        # their decimal spelling is repeated least; this keeps source size
+        # linear in T.  A reorder moves them only through the greedy cap
+        # (n = 10), where no name is longer than two digits.
+        zero, one = tree(level + 1, lo, mid), tree(level + 1, mid, hi)
+        return _mux(_Expr("input", n - 1 - perm[level]), zero, one)
+
+    return _program(n, [], tree(0, 0, len(truth_table)))
