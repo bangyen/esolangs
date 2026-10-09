@@ -21,8 +21,10 @@ from esolangs.interpreters.stack_based.grapheme import (
 from esolangs.tagged import _Tagged
 from esolangs.tui import History, replay
 from esolangs.vm import complete_vm, make_vm
+from tests.cli.test_cli import call_main
 from tests.cli.test_cli_suggest import repaired
 from tests.cli_support import call_both
+from tests.stdin_check import _check_stdin
 from tests.test_dialects import Unreadable
 from tests.witness_tables import witnesses
 
@@ -363,3 +365,65 @@ class TestGrapheme:
         assert vm.halted
         assert vm.output == "1"  # Y printed the duplicated int 1
         assert vm.ip == (len("FAFEKEGY"),)
+
+
+class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
+    """`encode` refused these bytes all along; `run` answered them."""
+
+    @pytest.mark.parametrize("line", [" 1", "2", "01"])
+    def test_plain_run_accepts_a_non_boolean_line(
+        self, line: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """General execution does not impose a Boolean input alphabet."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0101"))
+        _out, err = call_both(
+            ["run", "brainfuck", str(path)], capsys, stdin=f"0\n{line}\n"
+        )
+        assert "spells its bits" not in err
+
+    def test_a_correct_encoding_is_silent_and_right(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Doing it right must stay quiet, or the check is noise."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0101"))
+        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="01")
+        assert out.strip() == "1"
+        assert err == ""
+
+    def test_the_alphabet_check_reads_the_declared_alphabet(self) -> None:
+        """Grapheme's own bits are %/A, so 0/1 is what is wrong there."""
+        _check_stdin("Grapheme", "%\nA\n")
+        # 0/1 is wrong *here*, and the specific message is the one that
+        # fires: the general stray-line rule runs last so a language with
+        # something better to say keeps saying it.
+        with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
+            _check_stdin("Grapheme", "0\n1\n")
+
+
+class TestTheShapeWarningFiresOnlyWhenItShould:
+    """The last silent-wrong path: stdin in the shape a reader expects."""
+
+    def test_an_ordinary_language_is_never_warned_about(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The languages that read 0/1 lines must stay silent."""
+        path = tmp_path / "bf.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="10")
+        assert out == "1"
+        assert err == ""
+
+    def test_the_warning_does_not_change_the_answer(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It is advice; the run is exactly what it was."""
+        path = tmp_path / "g.txt"
+        path.write_text(esolangs.generate("Grapheme", "0110"))
+        warned = call_main(["run", "Grapheme", str(path)], capsys, stdin="1\n0\n")
+        capsys.readouterr()
+        stdin = esolangs.encode_inputs("Grapheme", [1, 0])
+        right = call_main(["run", "Grapheme", str(path)], capsys, stdin=stdin)
+        assert warned == "0"
+        assert right == "1"

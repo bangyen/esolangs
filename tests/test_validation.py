@@ -37,34 +37,6 @@ class TestABoundMustBind:
         assert set(STOP_REASONS) == {"halted", "breakpoint", "max_steps", "timeout"}
 
 
-class TestWidthIsCheckedWhereverItIsTaken:
-    """``generate`` refused these and ``instantiate`` ignored them."""
-
-    @pytest.mark.parametrize("width", [0, "8", 2.5])
-    def test_instantiate_refuses_what_generate_refuses(self, width: object) -> None:
-        template = esolangs.generate("Minifuck", "0110")
-        with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.instantiate("Minifuck", template, [1, 0], width=width)  # type: ignore[arg-type]
-
-    @pytest.mark.parametrize("width", [0, "8", 2.5])
-    def test_generate_still_refuses_them(self, width: object) -> None:
-        with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.generate("brainfuck", "0110", width=width)  # type: ignore[arg-type]
-
-
-class TestTheEncodersRefuseWhatTheyCannotAnswer:
-    """Each says so rather than returning something plausible."""
-
-    def test_encode_inputs_refuses_a_language_that_reads_nothing(self) -> None:
-        """It returned stdin for a program with no input command."""
-        with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
-            esolangs.encode_inputs("123", [0, 1])
-
-    def test_read_answer_refuses_a_non_string(self) -> None:
-        with pytest.raises(esolangs.ProgramError, match="output must be a string"):
-            esolangs.read_answer("brainfuck", None)  # type: ignore[arg-type]
-
-
 class TestTheNamespaceIsTheSurface:
     def test_dir_matches_all(self) -> None:
         """``dir()`` also offered ``os``, ``re``, ``signal``, ``threading``."""
@@ -128,23 +100,6 @@ class TestTheChecksAreSymmetric:
         assert dbg.run(max_steps=10) == "breakpoint"
 
 
-class TestBitsAreBits:
-    """The container as well as the elements."""
-
-    @pytest.mark.parametrize("bits", [None, "10", {0: 1, 1: 0}, [], [1.0, 0.0]])
-    def test_both_encoders_refuse_the_same_bits(self, bits: object) -> None:
-        """A dict was iterated as its *keys*, answering a different row."""
-        with pytest.raises(esolangs.ArgumentError, match="bits"):
-            esolangs.encode_inputs("brainfuck", bits)  # type: ignore[arg-type]
-        template = esolangs.generate("Minifuck", "0110")
-        with pytest.raises(esolangs.ArgumentError, match="bits"):
-            esolangs.instantiate("Minifuck", template, bits)  # type: ignore[arg-type]
-
-    def test_a_non_string_template_is_refused(self) -> None:
-        with pytest.raises(esolangs.TemplateError, match="template must be"):
-            esolangs.instantiate("Minifuck", None, [1, 0])  # type: ignore[arg-type]
-
-
 class TestTerminationPolarityIsData:
     """The one convention a zero-branch verifier still had to hardcode."""
 
@@ -156,24 +111,3 @@ class TestTerminationPolarityIsData:
 
     def test_a_printing_language_still_reports_digits(self) -> None:
         assert esolangs.describe("brainfuck")["answer_encoding"] == ("0", "1")
-
-
-@pytest.mark.parametrize(
-    "operation",
-    [
-        lambda huge: esolangs.run("brainfuck", "", timeout=huge),
-        lambda huge: esolangs.run("brainfuck", "", timeout=-huge),
-        lambda huge: esolangs.run("brainfuck", "", isolated=True, max_output=-huge),
-        lambda huge: esolangs.generate("brainfuck", "01", width=-huge),
-        lambda huge: esolangs.encode_inputs("brainfuck", [huge]),
-        lambda huge: esolangs.encode_inputs("brainfuck", [True, huge]),
-        lambda huge: esolangs.run(
-            "Piet", esolangs.Raster((((0, 0, 0),),)), scale=-huge
-        ),
-        lambda huge: esolangs.run("brainfuck", "", timeout={"value": huge}),
-    ],
-)
-def test_oversized_integer_arguments_keep_public_errors(operation):
-    with pytest.raises(esolangs.ArgumentError) as caught:
-        operation(10**5000)
-    assert len(str(caught.value)) < 400

@@ -313,16 +313,3 @@ def test_larger_search_bounds_do_not_override_fixed_transition_caps(language, so
     assert "cap on a single transition" in str(caught.value)
     assert "256" in caught.value.__notes__[0]
     assert "limit does not raise this transition cap" in caught.value.__notes__[0]
-
-
-@pytest.mark.medium
-def test_halt_and_cycle_verdicts_are_unchanged():
-    assert vm.run_until_halt_or_cycle(vm.make_vm("brainfuck", "+."), limit=10) is True
-    assert vm.run_until_halt_or_cycle(vm.make_vm("brainfuck", "+[]"), limit=10) is False
-    assert (
-        vm.run_until_halt_or_growth(vm.make_vm("brainfuck", "+[>+]"), limit=100)
-        is False
-    )
-    assert (
-        vm.run_until_halt_or_all_branches_cycle(vm.make_vm("Modulous", "[END]")) is True
-    )

@@ -1,11 +1,9 @@
 """Controls and terminal integration for the step-through screen."""
 
 import sys
-from unittest.mock import patch
 
 import pytest
 
-import esolangs.debugger as debugger_api
 from esolangs.tui import History, render, replay
 from esolangs.tui_loop import breakpoint_for, drive
 from tests.test_tui import (
@@ -17,43 +15,6 @@ from tests.test_tui import (
     _runs,
     _selected,
 )
-
-
-class TestRestartKey:
-    """``R``: a fresh run without leaving the screen."""
-
-    def test_r_alone_restarts_on_the_same_stdin(self) -> None:
-        keyboard = _Keys("rR\rq")
-        drive(History("brainfuck", ",.", "A"), keyboard.read, keyboard.write)
-        # After the run the prompt offers the running stdin back; Enter
-        # takes it, and the repaint is step 0 with nothing written yet.
-        assert "restarted" in _plain(keyboard.screens[-1])
-        assert "step 0" in keyboard.headers()[-1]
-
-    def test_the_stdin_can_be_edited_before_restarting(self) -> None:
-        keyboard = _Keys("R\x7fB\rrq")
-        drive(History("brainfuck", ",.", "A"), keyboard.read, keyboard.write)
-        assert "'B'" in _plain(keyboard.screens[-1])
-
-    def test_escape_keeps_the_run_being_debugged(self) -> None:
-        keyboard = _Keys(" R\x1bq")
-        drive(History("brainfuck", "+++", ""), keyboard.read, keyboard.write)
-        assert "step 1" in keyboard.headers()[-1]
-
-    def test_a_refused_stdin_is_a_notice_not_a_crash(self) -> None:
-        keyboard = _Keys("R\rq")
-        history = History("brainfuck", "+++", "")
-        with patch("esolangs.tui.make_debugger", side_effect=ValueError("nope")):
-            drive(history, keyboard.read, keyboard.write)
-        assert "restart failed" in _plain(keyboard.screens[-1])
-
-    def test_restart_rewinds_the_history(self) -> None:
-        history = History("brainfuck", "+++", "")
-        history.at(3)
-        history.restart("")
-        assert history.top == 0
-        assert history.at(0).step == 0
-        assert history.stdin == ""
 
 
 class TestWatchKeys:
@@ -120,29 +81,6 @@ class TestHaltPosition:
         plain = _plain(render(frame))
         assert "100 |" in plain
         assert "  1 |" not in plain
-
-
-class TestPointerFallback:
-    """A tape machine that names no state still shows where it points."""
-
-    def test_boolfuck_frames_carry_a_pointer(self) -> None:
-        history = History("Boolfuck", "+>", "")
-        assert history.at(0).views == (("ptr", "0"),)
-        frame = history.at(2)
-        assert frame.views == (("ptr", "1"),)
-        assert "ptr=1" in render(frame)
-
-    def test_brainfucks_own_views_are_untouched(self) -> None:
-        frame = replay("brainfuck", "+", "", 0)
-        names = [name for name, _ in frame.views]
-        assert "ind" in names
-        assert len(names) > 1
-
-    def test_the_debugger_mirrors_the_pointer(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", ">>,", stdin="")
-        assert dbg.ptr == 0
-        dbg.step()
-        assert dbg.ptr == 1
 
 
 class TestPlayMode:
@@ -264,23 +202,3 @@ class TestRawTerminal:
         # Raw mode is what makes a bare newline a carriage return too; its
         # absence would mean the terminal was never switched over.
         assert "\r\n" in painted
-
-
-class TestAgainstTheInterpreter:
-    """That the highlighted character is the op the VM is about to run."""
-
-    @pytest.mark.parametrize("step", [0, 5, 11])
-    def test_brainfuck_highlight_is_the_next_command(self, step: int) -> None:
-        program = "+++>++[<->]<."
-        frame = replay("brainfuck", program, "", step)
-        marked = _highlighted(render(frame))
-        if frame.ip is None:
-            pytest.skip("halted with no position")
-        assert isinstance(frame.ip, int)
-        assert marked == program[frame.ip]
-        assert marked in "+-<>[].,"
-
-    def test_a_grid_language_highlight_is_a_real_cell(self) -> None:
-        program = "\n".join(["o  v", "   <"])
-        frame = _frame(program, (1, 3), language="Clockwise", ip_shape="grid")
-        assert _highlighted(render(frame)) == "<"

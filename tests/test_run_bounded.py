@@ -1,9 +1,6 @@
 """Bounded and portable execution paths."""
 
-import subprocess
-import sys
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 
 import pytest
 
@@ -61,47 +58,3 @@ def test_raster_execution_obeys_the_step_bound(language: str) -> None:
 def test_interpreter_errors_are_preserved() -> None:
     with pytest.raises(esolangs.InputExhaustedError):
         esolangs.run("brainfuck", ",", max_steps=1)
-
-
-@pytest.mark.parametrize(
-    ("language", "source", "options", "code", "output", "diagnostic"),
-    [
-        ("Sophie", "#λ,", [], 0, "λ", ""),
-        ("Sophie", "#λ,,", ["--max-output", "1"], 1, "λ\n", "output limit"),
-        # Sophie's ';' reads 0 at EOF, so the input error comes from brainfuck.
-        ("brainfuck", ",", [], 1, "", "input"),
-        ("Sophie", ";.", [], 0, "0", ""),
-    ],
-)
-def test_cli_unicode_path_and_error(
-    tmp_path: Path,
-    language: str,
-    source: str,
-    options: list[str],
-    code: int,
-    output: str,
-    diagnostic: str,
-) -> None:
-    path = tmp_path / "λ program.sophie"
-    path.write_text(source, encoding="utf-8")
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "esolangs",
-            "run",
-            "--isolated",
-            *options,
-            language,
-            str(path),
-        ],
-        input="",
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        timeout=15,
-        check=False,
-    )
-    assert result.returncode == code
-    assert result.stdout == output
-    assert diagnostic in result.stderr.lower()

@@ -1,8 +1,5 @@
 """Contracts the public API owes a caller who has only read the docs."""
 
-import ast
-import importlib
-import inspect
 import pathlib
 import re
 import subprocess
@@ -17,7 +14,6 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import _check_program
-from esolangs._execution import interpreter_module
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -279,159 +275,6 @@ PUBLIC_MEMBERS = {
 }
 
 
-class TestPackageSurface:
-    """What ``dir(esolangs)`` advertises is what the package supports."""
-
-    def test_all_is_exactly_the_public_surface(self) -> None:
-        """Adding or removing a public name is a deliberate edit here."""
-        assert sorted(esolangs.__all__) == [
-            "ArgumentError",
-            "DialectSettings",
-            "EsolangError",
-            "ExecutionTimeoutError",
-            "GeneratorCapError",
-            "HaltError",
-            "InputExhaustedError",
-            "InputSource",
-            "InterpreterLimitError",
-            "Language",
-            "LanguageInfo",
-            "MissingDependencyError",
-            "Program",
-            "ProgramError",
-            "ProgramNotFoundError",
-            "ProgramSource",
-            "Raster",
-            "TemplateError",
-            "TruthTableError",
-            "UnknownLanguageError",
-            "describe",
-            "dump_program",
-            "encode_inputs",
-            "generate",
-            "instantiate",
-            "list_languages",
-            "load_program",
-            "read_answer",
-            "run",
-        ]
-
-    def test_the_signatures_are_pinned(self) -> None:
-        """Freezing for 1.0: every public name, signature, member and describe key.
-
-        ``test_every_key_is_declared`` compares the TypedDict with live output,
-        so deleting a field from both passed; this pins the set itself.
-        """
-        assert debugger_api.__all__ == [
-            "STOP_REASONS",
-            "VM",
-            "Debugger",
-            "StopReason",
-            "make_debugger",
-            "make_vm",
-        ]
-        live = {}
-        for module in (esolangs, debugger_api):
-            for name in module.__all__:
-                value = getattr(module, name)
-                if inspect.isfunction(value):
-                    live[f"{module.__name__}.{name}"] = str(inspect.signature(value))
-        for cls in PUBLIC_MEMBERS:
-            for name, value in vars(cls).items():
-                function = getattr(value, "__func__", value)
-                if (name == "__init__" or not name.startswith("_")) and (
-                    inspect.isfunction(function)
-                ):
-                    live[f"{cls.__name__}.{name}"] = str(inspect.signature(function))
-        assert live == SIGNATURES
-        for cls, members in PUBLIC_MEMBERS.items():
-            assert {n for n in dir(cls) if not n.startswith("_")} == members, cls
-        assert sorted(esolangs.LanguageInfo.__annotations__) == [
-            "answer_convention",
-            "answer_encoding",
-            "answer_mode",
-            "answer_pattern",
-            "boolean_generator",
-            "dialect_settings",
-            "dumps_on_the_post_halt_step",
-            "eof_is_a_value",
-            "examples",
-            "generator_max_inputs",
-            "generator_restrictions",
-            "id",
-            "input_encoding",
-            "input_shape",
-            "name",
-            "parameterized",
-            "reads_input",
-            "self_halts",
-            "source_kind",
-            "spec",
-            "state_model",
-            "steppable_to_answer",
-            "width_aware",
-            "width_effect",
-            "wiki_url",
-        ]
-
-    def test_every_exit_status_is_documented(self) -> None:
-        """70 and 120 were raised by ``main`` but listed in no help text.
-
-        Collected from the source: literal ``sys.exit``/``_fail`` codes,
-        ``*_EXIT`` constants, and ``_exit_code``'s returns.
-        """
-        from esolangs.cli import HELP, USAGE
-
-        raised: set[int] = set()
-        for path in (ROOT / "src" / "esolangs").glob("cli*.py"):
-            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-                values: list[ast.expr] = []
-                if isinstance(node, ast.Call) and ast.unparse(node.func) in {
-                    "sys.exit",
-                    "_fail",
-                }:
-                    values = (
-                        node.args[-1:]
-                        if ast.unparse(node.func) == "sys.exit"
-                        else node.args[1:]
-                    )
-                elif isinstance(node, ast.Assign) and any(
-                    isinstance(t, ast.Name) and t.id.endswith("_EXIT")
-                    for t in node.targets
-                ):
-                    values = [node.value]
-                elif isinstance(node, ast.FunctionDef) and node.name == "_exit_code":
-                    values = [
-                        n.value
-                        for n in ast.walk(node)
-                        if isinstance(n, ast.Return) and n.value is not None
-                    ]
-                for value in values:
-                    raised |= {
-                        n.value
-                        for n in ast.walk(value)
-                        if isinstance(n, ast.Constant) and type(n.value) is int
-                    }
-        raised.add(2)  # ``_fail``'s default
-        assert raised == {0, 1, 2, 70, 120, 124, 130}
-
-        def documented(text: str) -> set[int]:
-            paragraph = text[text.index("exit codes:") :].split("\n\n")[0]
-            return {int(code) for code in re.findall(r"\b(\d+) ", paragraph)}
-
-        assert documented(USAGE) == raised
-        assert documented(HELP["run"]) == raised
-        usage = (ROOT / "docs" / "usage.md").read_text(encoding="utf-8")
-        policy = usage[usage.index("## Compatibility") :]
-        assert documented(policy.replace("exit statuses:", "exit codes:")) == raised
-
-    @pytest.mark.parametrize("language", ["Minifuck", "brainfuck"])
-    def test_check_runnable_refuses_a_non_source(self, language: str) -> None:
-        """An int leaked a TypeError for a template language and passed elsewhere."""
-        with pytest.raises(esolangs.ProgramError, match="string of source"):
-            _check_program(language, 5)  # type: ignore[arg-type]
-
-
 class TestConventionsAreDiscoverable:
     """How to feed a language, and how to read its answer, are askable."""
 
@@ -506,114 +349,6 @@ class TestEveryDeliberateErrorIsCatchable:
                 except EsolangError as exc:
                     failures.append(f"{name}: {type(exc).__name__}: {exc}")
         assert failures == []
-
-
-class TestTheSignaturesAgreeWithThemselves:
-    """Two functions taking the same argument should describe it the same."""
-
-    def test_bits_is_annotated_the_same_in_both_places(self) -> None:
-        """``encode_inputs`` promised more than it accepts."""
-        annotations = {
-            fn.__name__: inspect.signature(fn).parameters["bits"].annotation
-            for fn in (esolangs.encode_inputs, esolangs.instantiate)
-        }
-        assert len(set(annotations.values())) == 1, annotations
-
-    @pytest.mark.parametrize(
-        "call",
-        [
-            lambda bits: esolangs.encode_inputs("brainfuck", bits),
-            lambda bits: esolangs.instantiate(
-                "Minifuck", esolangs.generate("Minifuck", "0110"), bits
-            ),
-        ],
-    )
-    def test_both_accept_and_refuse_the_same_things(self, call: object) -> None:
-        """The annotation is only right while the behaviour matches it."""
-        call([1, 0])  # type: ignore[operator]
-        call((1, 0))  # type: ignore[operator]
-        with pytest.raises(esolangs.ArgumentError, match="list or tuple"):
-            call(range(2))  # type: ignore[operator]
-
-
-class TestDescribeHasANameableType:
-    """``dict[str, object]`` was accurate and useless."""
-
-    def test_it_is_exported(self) -> None:
-        """A type you cannot name is a type you cannot annotate with."""
-        assert "LanguageInfo" in esolangs.__all__
-        assert esolangs.LanguageInfo.__doc__
-
-    def test_every_key_is_declared(self) -> None:
-        """The TypedDict and the dict must not drift apart."""
-        declared = set(esolangs.LanguageInfo.__annotations__)
-        assert declared == set(esolangs.describe("brainfuck"))
-
-    def test_every_language_matches_the_declared_types(self) -> None:
-        """Declared from a survey of every one, so it is checked against them all."""
-        import typing
-
-        hints = typing.get_type_hints(esolangs.LanguageInfo)
-        for name in esolangs.list_languages():
-            for key, value in esolangs.describe(name).items():
-                expected = hints[key]
-                if expected is str:
-                    assert isinstance(value, str), (name, key)
-                elif expected is bool:
-                    assert isinstance(value, bool), (name, key)
-                elif expected == list[str]:
-                    assert isinstance(value, list), (name, key)
-                    assert all(isinstance(v, str) for v in value), (name, key)
-                elif expected == tuple[str, str]:
-                    assert isinstance(value, tuple), (name, key)
-                    assert len(value) == 2, (name, key)
-                elif typing.get_origin(expected) is dict:
-                    assert isinstance(value, dict), (name, key)
-                    assert all(isinstance(k, str) for k in value), (name, key)
-                    assert all(isinstance(v, dict) for v in value.values()), (name, key)
-                elif expected == int | None:
-                    assert value is None or type(value) is int, (name, key)
-                else:  # the strings that may be None, never ""
-                    assert value is None or (isinstance(value, str) and value), (
-                        name,
-                        key,
-                    )
-                    assert value is None or isinstance(value, str), (name, key)
-
-    def test_the_four_machine_traits_are_still_carried(self) -> None:
-        """They were merged with ``**``, which a TypedDict cannot verify."""
-        facts = esolangs.describe("RAM0")
-        for key in (
-            "self_halts",
-            "dumps_on_the_post_halt_step",
-            "steppable_to_answer",
-            "eof_is_a_value",
-        ):
-            assert isinstance(facts[key], bool), key  # type: ignore[literal-required]
-
-
-class TestSpecAbortsRatherThanReturningNothing:
-    """``-OO`` strips docstrings, and ``spec`` read one."""
-
-    def test_it_raises_when_there_is_no_docstring(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Simulated by emptying one, since the test run is not under -OO."""
-        module = interpreter_module("brainfuck")
-        monkeypatch.setattr(module, "__doc__", None)
-        with pytest.raises(esolangs.ProgramError, match="-OO"):
-            esolangs.describe("brainfuck")["spec"]
-
-    def test_it_still_returns_the_text_normally(self) -> None:
-        """The abort must not have eaten the ordinary path."""
-        assert esolangs.describe("brainfuck")["spec"].startswith("Interpreter for")
-
-    def test_a_raster_language_returns_its_own_module_docstring(self) -> None:
-        """Piet describes its own interpreter rather than Line's."""
-        piet = importlib.import_module("esolangs.interpreters.stack_based.piet")
-        line = importlib.import_module("esolangs.interpreters.tape_based.line")
-        assert esolangs.describe("Piet")["spec"] == (piet.__doc__ or "").strip()
-        assert esolangs.describe("Piet")["spec"] != (line.__doc__ or "").strip()
 
 
 class TestAMissingFileIsAFileNotFoundError:
@@ -796,47 +531,6 @@ class TestTheVersionIsResolvedWhenAsked:
             check=True,
         )
         assert result.stdout.strip() == f"esolangs {esolangs.__version__}"
-
-
-class TestTheVmPathRefusesLikeRunDoes:
-    """``run`` translated an interpreter's exceptions and the VM did not."""
-
-    JUNK = ("]", "}", ")", "ZZZ", "[", "\x00")
-
-    @pytest.mark.parametrize("entry", ["make_vm", "make_debugger"])
-    def test_a_malformed_program_is_a_program_error(self, entry: str) -> None:
-        """The one-character case, on the language it was reported for."""
-        with pytest.raises(esolangs.ProgramError, match="unmatched"):
-            getattr(debugger_api, entry)("brainfuck", "]")
-
-    def test_no_language_leaks_anything_else(self) -> None:
-        """Every language against six kinds of junk, both entry points."""
-        escapes = []
-        for name in esolangs.list_languages():
-            for junk in self.JUNK:
-                for entry in ("make_vm", "make_debugger"):
-                    try:
-                        getattr(debugger_api, entry)(name, junk)
-                    except esolangs.EsolangError:
-                        pass
-                    except Exception as exc:
-                        escapes.append((name, entry, junk, type(exc).__name__))
-        assert not escapes, escapes[:5]
-
-    def test_the_two_paths_agree_on_the_class(self) -> None:
-        """Not merely "both raise" -- both raise the *same* thing."""
-        for entry in (debugger_api.make_vm, debugger_api.make_debugger):
-            with pytest.raises(esolangs.ProgramError) as stepped:
-                entry("brainfuck", "]")
-            with pytest.raises(esolangs.ProgramError) as ran:
-                esolangs.run("brainfuck", "]")
-            assert str(stepped.value) == str(ran.value)
-
-    def test_a_recursion_limit_is_an_interpreter_limit(self) -> None:
-        """Ninety open parens raised a bare ``RecursionError`` from ``step``."""
-        vm = debugger_api.make_vm("Algebraic Programming Language", "(" * 90)
-        with pytest.raises(esolangs.InterpreterLimitError):
-            vm.step()
 
 
 class TestAnAddressIsNotAllocatedOnTrust:

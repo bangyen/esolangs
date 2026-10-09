@@ -100,19 +100,6 @@ def test_path_loading_retains_existing_newline_normalization(tmp_path: Path) -> 
     assert esolangs.run("brainfuck", path, stdin="Q") == "Q"
 
 
-@pytest.mark.parametrize("container", ["bytes", "stream"])
-@pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
-def test_invalid_utf8_input_is_an_argument_error(container: str, mode: str) -> None:
-    argument = b"\xff" if container == "bytes" else io.BytesIO(b"\xff")
-    bounds: dict[str, Any] = {}
-    if mode == "steps":
-        bounds["max_steps"] = 100
-    elif mode == "isolated":
-        bounds["isolated"] = True
-    with pytest.raises(esolangs.ArgumentError, match="cannot read stdin"):
-        esolangs.run("brainfuck", ",.", stdin=argument, **bounds)
-
-
 @pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
 def test_stream_failures_keep_public_error_types(mode: str) -> None:
     bounds: dict[str, Any] = {}

@@ -1,14 +1,20 @@
 """Line through the shared API, CLI and machinery."""
 
 import json
+import sys
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs import DialectSettings, Raster
 from esolangs._evaluate import _evaluate
+from esolangs.cli import main
 from esolangs.tui import History, render
+from tests.cli.test_cli import _FakeStdin, call_main
 from tests.cli.test_cli_portable import save_generated
+from tests.cli_support import call_both
 from tests.test_tui import _highlighted
 
 
@@ -61,3 +67,90 @@ def test_line_highlight_tracks_ink_after_crop_and_scale() -> None:
         assert _highlighted(render(frame)) == "#"
     else:
         pytest.fail("identity did not halt within 100 steps")
+
+
+class TestTheSmallInconsistencies:
+    """Each one was a place this CLI did not do what it does everywhere else."""
+
+    def test_a_repeated_isolated_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Every value-taking option refused a repeat; this flag did not."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--isolated", "--isolated", "brainfuck", str(path)],
+                capsys,
+                stdin="0\n1\n",
+            )
+        assert exc.value.code == 2
+        assert "--isolated given more than once" in capsys.readouterr().err
+
+    @pytest.mark.medium
+    def test_a_no_op_width_says_so(
+        self, capsysbinary: pytest.CaptureFixture[bytes]
+    ) -> None:
+        with (
+            patch.object(
+                sys, "argv", ["esolangs", "generate", "--width", "10", "Line", "0100"]
+            ),
+            patch.object(sys, "stdin", _FakeStdin("")),
+        ):
+            main()
+        captured = capsysbinary.readouterr()
+        assert b"no effect on Line" in captured.err
+        image = esolangs.Raster.from_png(captured.out)
+        assert esolangs.run("Line", image, stdin="0\n0\n") == "0"
+
+    def test_a_breakpoint_that_never_fires_says_so(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It looked exactly like a program that never reached it."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        _out, err = call_both(
+            [
+                "debug",
+                "--break-on-output",
+                "Z",
+                "--steps",
+                "5000",
+                "brainfuck",
+                str(path),
+            ],
+            capsys,
+            stdin="0\n1\n",
+        )
+        assert "no breakpoint matched" in err
+
+    def test_a_breakpoint_that_fires_is_not_reported_as_missed(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The other half, so the note means something."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        out, err = call_both(
+            [
+                "debug",
+                "--break-on-output",
+                "1",
+                "--steps",
+                "5000",
+                "brainfuck",
+                str(path),
+            ],
+            capsys,
+            stdin="01",
+        )
+        assert "stopped: breakpoint" in out
+        assert "no breakpoint matched" not in err
+
+
+def test_source_kind_cannot_change_language_contract():
+    document = json.loads(
+        esolangs.dump_program("Line", esolangs.generate("Line", "01"))
+    )
+    document["language"] = "brainfuck"
+    with pytest.raises(esolangs.ProgramError):
+        esolangs.load_program("Brainfuck", json.dumps(document))

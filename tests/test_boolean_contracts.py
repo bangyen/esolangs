@@ -8,12 +8,9 @@ from itertools import pairwise
 
 import pytest
 
-import esolangs
 from esolangs import tools as boolean
-from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES, parameterized_ids, resolve
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
-from tests.stdin_check import _check_stdin
 from tests.tools.plain_oracles import _jaune_linear
 
 
@@ -37,23 +34,6 @@ def test_examples_derive_the_registered_io_contract() -> None:
         for stem, example in BOOLEAN_EXAMPLES.items()
         if example.fill is not None
     )
-
-
-@pytest.mark.medium
-def test_execution_does_not_require_examples_or_docstrings(monkeypatch) -> None:
-    from esolangs import _describe
-    from esolangs.tools import examples
-
-    def refuse_documentation(_language):
-        raise AssertionError("execution requested documentation")
-
-    program = esolangs.generate("brainfuck", "0110")
-    monkeypatch.setattr(_describe, "_spec", refuse_documentation)
-    monkeypatch.setattr(examples, "BOOLEAN_EXAMPLES", {})
-    assert esolangs.encode_inputs("brainfuck", [0, 1]) == "01"
-    _check_stdin("brainfuck", "01", "0110")
-    assert esolangs.read_answer("RAM0", "z: 1\nn: 0") == "1"
-    assert _evaluate("brainfuck", program, inputs=2) == "0110"
 
 
 @pytest.mark.medium

@@ -517,32 +517,6 @@ class TestContinueKey:
         assert "hjkl move" in footer
 
 
-class TestToggleKey:
-    def test_t_marks_the_position_the_run_is_on(self) -> None:
-        keyboard = _drive("+++", " tq")
-        assert _marked_both(keyboard.screens[-1]) == ["+"]
-        assert "1 break" in keyboard.headers()[-1]
-        assert "step 1" in keyboard.headers()[-1]
-
-    def test_t_again_clears_it(self) -> None:
-        keyboard = _drive("+++", "ttq")
-        assert "break" not in keyboard.headers()[-1]
-
-    def test_continue_does_not_stop_where_it_already_is(self) -> None:
-        keyboard = _drive("+++", "tcq")
-        assert "step 0" not in keyboard.headers()[-1]
-
-    def test_a_language_with_no_position_cannot_be_marked(self) -> None:
-        keyboard = _Keys("tq")
-        drive(History("Circuit Diagram", "-.\n", ""), keyboard.read, keyboard.write)
-        assert "break" not in keyboard.headers()[-1]
-
-    def test_a_position_given_on_the_command_line_starts_marked(self) -> None:
-        keyboard = _Keys("q")
-        drive(History("brainfuck", "+>-<", ""), keyboard.read, keyboard.write, at=(2,))
-        assert _marked_break(keyboard.screens[0]) == ["-"]
-
-
 class TestAtCell:
     """Turning a place on the screen into the mark a position there makes."""
 

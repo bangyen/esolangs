@@ -1,10 +1,12 @@
 """Alight through the shared API, CLI and machinery."""
 
+import json
 from pathlib import Path
 
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
 from tests.cli_support import call_both
@@ -91,3 +93,60 @@ def test_foreign_language_guard_precedes_retained_choices():
     )
     with pytest.raises(esolangs.ProgramError, match="generated for"):
         esolangs.run("Brainfuck", source)
+
+
+def test_short_settings_and_portable_flags(capsys, tmp_path):
+    output, error = call_both(
+        [
+            "generate",
+            "-p",
+            "-s",
+            '{"expression_syntax":"postfix"}',
+            "Alight",
+            "0110",
+        ],
+        capsys,
+    )
+    assert error == ""
+    assert json.loads(output)["language"] == "Alight"
+    path = tmp_path / "program.json"
+    path.write_text(output, encoding="utf-8")
+    output, error = call_both(["generate", "-p", "brainfuck", "0110"], capsys)
+    assert error == ""
+    path.write_text(output, encoding="utf-8")
+    stdin = esolangs.encode_inputs("brainfuck", [1, 0], truth_table="0110")
+    output, error = call_both(["run", "-p", str(path)], capsys, stdin)
+    assert output.strip() == "1"
+    assert error == ""
+
+
+class TestBreakAtChecksTheKindOfPosition:
+    """Both wrong-kind breakpoints were stored and could never fire."""
+
+    def test_a_tuple_is_refused_where_the_ip_is_an_index(self) -> None:
+        """brainfuck's ip is an int."""
+        program = esolangs.generate("brainfuck", "0110")
+        debugger = debugger_api.make_debugger("brainfuck", program, stdin="0\n1\n")
+        # The message names the kind ("an index"), not the value at hand.
+        with pytest.raises(esolangs.ArgumentError, match=r"is an index.*never fire"):
+            debugger.break_at((1, 2))
+
+    def test_an_index_is_refused_where_the_ip_is_a_coordinate(self) -> None:
+        """Alight's is a 4-tuple."""
+        program = esolangs.generate("Alight", "0110")
+        debugger = debugger_api.make_debugger("Alight", program, stdin="0\n1\n")
+        with pytest.raises(esolangs.ArgumentError, match="could never fire"):
+            debugger.break_at(10)
+
+    def test_the_right_kind_is_accepted(self) -> None:
+        """And still fires, which is the point of checking the other."""
+        program = esolangs.generate("brainfuck", "0110")
+        debugger = debugger_api.make_debugger("brainfuck", program, stdin="0\n1\n")
+        debugger.break_at(0)
+        assert debugger.run(max_steps=100) == "breakpoint"
+
+    def test_the_arity_is_not_checked(self) -> None:
+        """It varies within a run, so checking it would refuse valid ones."""
+        program = esolangs.generate("Alight", "0110")
+        debugger = debugger_api.make_debugger("Alight", program, stdin="0\n1\n")
+        debugger.break_at((1, 2))  # wrong arity for Alight, accepted

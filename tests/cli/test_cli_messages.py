@@ -29,71 +29,6 @@ class TestTheHintsStayQuietWhenTheyDoNotApply:
         assert "generate --bits" not in err
 
 
-class TestTheShapeWarningFiresOnlyWhenItShould:
-    """The last silent-wrong path: stdin in the shape a reader expects."""
-
-    def test_an_ordinary_language_is_never_warned_about(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The languages that read 0/1 lines must stay silent."""
-        path = tmp_path / "bf.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="10")
-        assert out == "1"
-        assert err == ""
-
-    def test_the_warning_does_not_change_the_answer(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It is advice; the run is exactly what it was."""
-        path = tmp_path / "g.txt"
-        path.write_text(esolangs.generate("Grapheme", "0110"))
-        warned = call_main(["run", "Grapheme", str(path)], capsys, stdin="1\n0\n")
-        capsys.readouterr()
-        stdin = esolangs.encode_inputs("Grapheme", [1, 0])
-        right = call_main(["run", "Grapheme", str(path)], capsys, stdin=stdin)
-        assert warned == "0"
-        assert right == "1"
-
-
-class TestTheAdvisoryNotesAreRenderedOnce:
-    """The library warns; this command renders, and does not also duplicate."""
-
-    def test_a_surplus_line_is_noted_without_pythons_framing(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A raw UserWarning would print this file's path and a line of it."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "00010111"))
-        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="110011")
-        assert out == "1"
-        assert "read 3 of the 6 lines" not in err
-        assert "UserWarning" not in err
-        assert "cli.py" not in err
-
-    def test_an_empty_program_file_is_noted(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It ran and printed nothing, at exit 0, with no explanation."""
-        path = tmp_path / "empty.txt"
-        path.write_text("")
-        _out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="0\n0\n")
-        assert "is empty" in err
-
-    def test_a_mixed_none_watch_history_is_legended(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The all-None case was annotated; the mixed one needed it more."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("Streetcode", "0110"))
-        out, _err = call_both(
-            ["debug", "--steps", "30", "--watch-cell", "0", "Streetcode", str(path)],
-            capsys,
-            stdin="0\n1\n",
-        )
-        assert "did not exist yet" in out
-
-
 class TestSmallerReportsFromRoundFifteen:
     """Each one was information that was wrong or hard to find."""
 
@@ -136,84 +71,6 @@ class TestSmallerReportsFromRoundFifteen:
         """A reader had two fields to compose; templates got a sentence."""
         out = call_main(["describe", name], capsys)
         assert phrase in out
-
-
-class TestTheSmallInconsistencies:
-    """Each one was a place this CLI did not do what it does everywhere else."""
-
-    def test_a_repeated_isolated_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Every value-taking option refused a repeat; this flag did not."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["run", "--isolated", "--isolated", "brainfuck", str(path)],
-                capsys,
-                stdin="0\n1\n",
-            )
-        assert exc.value.code == 2
-        assert "--isolated given more than once" in capsys.readouterr().err
-
-    @pytest.mark.medium
-    def test_a_no_op_width_says_so(
-        self, capsysbinary: pytest.CaptureFixture[bytes]
-    ) -> None:
-        with (
-            patch.object(
-                sys, "argv", ["esolangs", "generate", "--width", "10", "Line", "0100"]
-            ),
-            patch.object(sys, "stdin", _FakeStdin("")),
-        ):
-            main()
-        captured = capsysbinary.readouterr()
-        assert b"no effect on Line" in captured.err
-        image = esolangs.Raster.from_png(captured.out)
-        assert esolangs.run("Line", image, stdin="0\n0\n") == "0"
-
-    def test_a_breakpoint_that_never_fires_says_so(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It looked exactly like a program that never reached it."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        _out, err = call_both(
-            [
-                "debug",
-                "--break-on-output",
-                "Z",
-                "--steps",
-                "5000",
-                "brainfuck",
-                str(path),
-            ],
-            capsys,
-            stdin="0\n1\n",
-        )
-        assert "no breakpoint matched" in err
-
-    def test_a_breakpoint_that_fires_is_not_reported_as_missed(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The other half, so the note means something."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        out, err = call_both(
-            [
-                "debug",
-                "--break-on-output",
-                "1",
-                "--steps",
-                "5000",
-                "brainfuck",
-                str(path),
-            ],
-            capsys,
-            stdin="01",
-        )
-        assert "stopped: breakpoint" in out
-        assert "no breakpoint matched" not in err
 
 
 # 1.8s over 45 tests: drives the CLI as a subprocess.
@@ -372,28 +229,6 @@ def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys):
     output, err = call_both(["run", "--timeout", "5.0", "brainfuck", str(path)], capsys)
     assert output == "\x01"
     assert err == ""
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("language", "source", "hint", "code", "output"),
-    [
-        ("brainfuck", "[", "close this '[' with ']'", 2, ""),
-        ("Modulous", "[PSH INT 65][PRT][SWP]", "push two values before SWP", 1, "A\n"),
-        ("brainfuck", "+.,", "at least 1 input character", 1, "\x01\n"),
-    ],
-)
-def test_isolated_cli_preserves_error_hint_and_partial_output(
-    language, source, hint, code, output, tmp_path: Path, capsys
-):
-    path = tmp_path / "program.txt"
-    path.write_text(source)
-    direct = _failure(["run", language, str(path)], capsys, code)
-    isolated = _failure(["run", "--isolated", language, str(path)], capsys, code)
-    assert direct == isolated
-    assert direct[0] == output
-    assert hint in direct[1]
-    assert direct[1].count("hint:") == 1
 
 
 def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes():

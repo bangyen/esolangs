@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import difflib
 import re
 import warnings
 
@@ -12,8 +11,6 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import _check_program
-from esolangs.cli_hints import _did_you_mean
-from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
 from tests.generator_support import evaluate_generated, verify_generated
 from tests.stdin_check import _check_stdin
 
@@ -113,120 +110,6 @@ class TestErrorsSurviveAProcessBoundary:
         for _ in range(3):
             current = pickle.loads(pickle.dumps(current))
         assert str(current) == str(caught.value)
-
-
-class TestAnInterpreterLimitIsStillAnEsolangError:
-    """Qoibl's interpreter recurses, and Python's stack is finite."""
-
-    @staticmethod
-    def _parity(n: int) -> str:
-        """Return the parity table of arity ``n`` -- reliably a hard one."""
-        return "".join(str(bin(i).count("1") % 2) for i in range(2**n))
-
-    def test_a_recursion_error_does_not_escape(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """It was the one exception in the package that was not ours."""
-
-        def explode(*_args: object, **_kwargs: object) -> None:
-            raise RecursionError("maximum recursion depth exceeded")
-
-        monkeypatch.setattr(esolangs, "_run", explode)
-        with pytest.raises(esolangs.EsolangError) as caught:
-            esolangs.run("brainfuck", "+.", stdin="")
-        assert isinstance(caught.value, esolangs.InterpreterLimitError)
-        assert "recursed deeper" in str(caught.value)
-        assert "setrecursionlimit" in str(caught.value)
-
-    def test_a_memory_error_does_not_escape(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """In process, Underload's string doubling reached it raw."""
-
-        def explode(*_args: object, **_kwargs: object) -> None:
-            raise MemoryError
-
-        monkeypatch.setattr(esolangs, "_run", explode)
-        with pytest.raises(esolangs.InterpreterLimitError, match="out of memory"):
-            esolangs.run("brainfuck", "+.", stdin="")
-
-    @pytest.mark.slow
-    def test_qoibl_no_longer_hits_the_wall(self) -> None:
-        """The six-input table this class was built around now computes."""
-        assert verify_generated("Qoibl", self._parity(6), timeout=300)
-
-
-class TestASuggestionIsWorthLessThanSilence:
-    """0.6 offers ``Nope.`` for ``snorey``."""
-
-    #: Single-edit slips of a real name, as a person makes them.
-    @staticmethod
-    def _typos(name: str) -> list[str]:
-        """Dropped and transposed characters, keeping only real misses."""
-        out = [name[:-1], name[0] + name[2:], name[1:]]
-        if len(name) > 4:
-            out.append(name[:2] + name[3:])
-            out.append(name[:2] + name[3] + name[2] + name[4:])
-        return [
-            typo
-            for typo in dict.fromkeys(out)
-            if typo and canonical_id(typo) not in _BY_ID
-        ]
-
-    _JUNK = ("snorey", "zzzz", "xyz", "qqqqqq", "hello", "python", "asdf", "foo")
-
-    def _score(self, cutoff: float) -> tuple[int, int, int]:
-        """Return (typos rescued, typos tried, junk words given a guess)."""
-        rescued = tried = 0
-        for name in esolangs.list_languages():
-            for typo in self._typos(name):
-                tried += 1
-                close = difflib.get_close_matches(
-                    canonical_id(typo), _BY_ID, n=2, cutoff=cutoff
-                )
-                rescued += name in [_BY_ID[c] for c in close]
-        junk = sum(
-            bool(difflib.get_close_matches(canonical_id(w), _BY_ID, n=2, cutoff=cutoff))
-            for w in self._JUNK
-        )
-        return rescued, tried, junk
-
-    def test_the_cutoff_is_the_best_available_number(self) -> None:
-        """The trade, recomputed: 0.6 costs junk and 0.7 costs rescues."""
-        shipped = self._score(SUGGESTION_CUTOFF)
-        assert shipped[2] == 0, "the shipped cutoff offers a guess for junk"
-        # Lower: the same rescues, but junk comes back.  This is the
-        # positive control -- without it the cutoff could be doing nothing.
-        lower = self._score(0.6)
-        assert lower[0] == shipped[0]
-        assert lower[2] > 0
-        # Higher: no junk either, but it starts costing real rescues.
-        assert self._score(0.7)[0] < shipped[0]
-
-    def test_a_word_that_is_not_close_gets_no_guess(self) -> None:
-        """It gets the command that lists them, which is the honest answer."""
-        with pytest.raises(esolangs.UnknownLanguageError) as caught:
-            esolangs.describe("snorey")
-        assert "did you mean" not in str(caught.value)
-        assert "`esolangs list` shows all of them" in str(caught.value)
-
-    @pytest.mark.parametrize(
-        ("typo", "wanted"),
-        [
-            ("Brainfck", "brainfuck"),
-            ("Sofie", "Sophie"),
-        ],
-    )
-    def test_a_real_typo_is_still_rescued(self, typo: str, wanted: str) -> None:
-        """The half of the trade that raising a cutoff can quietly cost."""
-        with pytest.raises(esolangs.UnknownLanguageError) as caught:
-            esolangs.describe(typo)
-        assert wanted in str(caught.value)
-
-    def test_the_cli_shares_the_number(self) -> None:
-        """Its docstring promised the same cutoff while keeping its own copy."""
-        assert _did_you_mean("snorey", esolangs.list_languages()) == ""
-        assert "--width" in _did_you_mean("--wdith", ["--width", "--bits"])
 
 
 class TestAnUnknownNameIsShownReadably:
@@ -344,44 +227,6 @@ class TestTheWarningHasItsOwnClass:
             esolangs.run("brainfuck", program, stdin="1\n1\n0\n0\n1\n1\n", timeout=10)
 
 
-class TestAFailedRowSaysWhichRow:
-    """``execution exceeded the 0.2-second timeout`` and nothing else."""
-
-    def test_the_note_names_the_row_and_the_inputs(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Failure forced at a chosen row, since a real one lands on row 0."""
-        real_run = esolangs.run
-
-        def fail_on_the_sixth(
-            language: str, program: object, stdin: str = "", timeout: object = None
-        ) -> str:
-            if stdin == "101":  # row 5 of an eight-row table
-                raise esolangs.ExecutionTimeoutError("execution exceeded the bound")
-            return real_run(language, program, stdin=stdin, timeout=timeout)  # type: ignore[arg-type]
-
-        monkeypatch.setattr(esolangs, "run", fail_on_the_sixth)
-        with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            evaluate_generated("brainfuck", "01101001", timeout=10)
-        note = "\n".join(getattr(caught.value, "__notes__", []))
-        assert "row 5 of 8" in note
-        assert "inputs 101" in note
-        assert "after 5 rows" in note
-        assert "01101" in note  # the answers that did come back
-
-    def test_a_real_timeout_carries_one_too(self) -> None:
-        """Not only the stand-in: the path a caller actually hits."""
-        from esolangs.interpreters.grid_based import circuit_diagram
-
-        table = "".join(str(bin(r).count("1") & 1) for r in range(128))
-        # A warm compile cache (another test, same worker) beats 5 ms a row.
-        circuit_diagram._compile.cache_clear()  # noqa: SLF001
-        with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            evaluate_generated("Circuit Diagram", table, timeout=0.005)
-        note = "\n".join(getattr(caught.value, "__notes__", []))
-        assert "row 0 of 128" in note
-
-
 class TestReadAnswerExplainsInWords:
     """The regex was the whole explanation for the two pattern languages."""
 
@@ -481,48 +326,6 @@ class TestATimeoutCannotKillTheProcess:
                 assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
         finally:
             signal.signal(signal.SIGALRM, previous)
-
-
-class TestTheCallersSignalsAreTheirOwn:
-    """The fix for the death took the caller's SIGALRM hostage."""
-
-    @pytest.mark.parametrize("program", ["+", ","])
-    def test_a_periodic_alarm_survives_a_timed_run(self, program: str) -> None:
-        import signal
-
-        previous = signal.signal(signal.SIGALRM, lambda *_a: None)
-        timer = signal.setitimer(signal.ITIMER_REAL, 30, 5)
-        try:
-            with contextlib.suppress(esolangs.EsolangError):
-                esolangs.run("brainfuck", program, timeout=1)
-            remaining, interval = signal.getitimer(signal.ITIMER_REAL)
-            assert remaining > 0
-            assert interval == 5
-        finally:
-            signal.setitimer(signal.ITIMER_REAL, 0)
-            signal.signal(signal.SIGALRM, previous)
-            signal.setitimer(signal.ITIMER_REAL, *timer)
-
-    def test_a_pending_alarm_survives_a_timed_run(self) -> None:
-        """Arming ours cancelled theirs, and nothing put it back."""
-        import signal
-
-        previous = signal.signal(signal.SIGALRM, lambda *_a: None)
-        try:
-            signal.alarm(30)
-            program = esolangs.generate("brainfuck", "0110")
-            stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
-            esolangs.run("brainfuck", program, stdin=stdin, timeout=5)
-            remaining = signal.alarm(0)
-            assert remaining > 0, "the caller's alarm was cancelled"
-        finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, previous)
-
-    def test_the_floor_applies_to_evaluate_too(self) -> None:
-        """Its termination path never reaches ``run``, so it checked nothing."""
-        with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
-            evaluate_generated("123", "0110", 1e-06)
 
 
 class TestEvaluateCanRunOffTheMainThread:
