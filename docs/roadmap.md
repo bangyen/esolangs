@@ -84,11 +84,14 @@ bounds, and the weighted-description theorem.
 Generator gaps against the canonical pieces in
 [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
-- **Dig offset routes.** Aligned leaves share spare rows or columns;
-  interleaved classes use two lanes and stretch branch counters around a
-  gutter (n=10: 5,175 cells, 292 commands against 312). Offset copies remain
-  unshared: direct extensions hit retained stamps. Route them within the
-  execution bound or record an obstruction for the attempted rule.
+- **Dig offset routes.** Aligned and interleaved leaves share lanes
+  (n=10: 5,175 cells, 292 commands against 312). Direct extensions and
+  one-cell doglegs to outward owners remain excluded: with seed-2026
+  64-entry leaves and prefix `0000000000000001`, the eastward bridge
+  from (-13, -14) hits a westward arrow at (-13, 20). The rejected
+  layout has no output on row 0 after four reads and 313 commands.
+  The aligned `0110` control executes all 256 rows within 208 commands.
+  Next: separate opposing bridges while preserving the execution bound.
 - **Back bend routes stay out.** They add under one point on tiled n=8,
   and raise worst commands at n=6/7 from 122/221 to 154/306, past the
   execution ledger's bound.
