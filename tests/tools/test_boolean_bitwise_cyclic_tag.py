@@ -2,7 +2,9 @@
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
+from esolangs._evaluate import _evaluate
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.queue_based.bitwise_cyclic_tag import (
     _Machine as BctMachine,
@@ -12,6 +14,7 @@ from esolangs.interpreters.queue_based.bitwise_cyclic_tag import (
 )
 from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.tools.wrap import balance_program, balance_score
 from tests.tools.reader_support import _TABLES
 from tests.witness_tables import parity as _parity
 from tests.witness_tables import row_bits as _bits
@@ -89,3 +92,32 @@ def test_bitwise_cyclic_tag_does_not_cascade_a_one() -> None:
     """A 1 answer must not run on into the rows below it."""
     assert _bct_answer("1000", 0) == "1"
     assert _bct_answer("1" + "0" * 15, 0) == "1"
+
+
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_deletes_inputs_and_literal_answer(n, bit):
+    table = bit * (1 << n)
+    template = esolangs.generate("Bitwise Cyclic Tag", table)
+    assert template == "0," + "$" * n + bit
+    assert len(template) == n + 3
+    legacy = "0" * n + "1101" + bit + "00," + "$" * n + "1"
+    for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
+        program = esolangs.generate("Bitwise Cyclic Tag", table, **options)
+        assert _evaluate("Bitwise Cyclic Tag", program, inputs=n) == table
+        if options.get("balance"):
+            assert balance_score(program) <= balance_score(
+                balance_program(legacy, "bitwise_cyclic_tag")
+            )
+    for row in range(1 << n):
+        io = ScriptedIO("")
+        machine = BctMachine(_bct_program(table, row), io)
+        for _ in range(n + 1):
+            assert not machine.halted
+            machine.step()
+        assert machine.halted
+        assert machine.read == n + 1
+        assert machine.answer == bit
+        assert machine.program == "0"
+        machine.step()
+        assert io.getvalue() == bit
