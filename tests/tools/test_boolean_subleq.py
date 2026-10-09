@@ -7,7 +7,66 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.subleq import _Machine
+from esolangs.tools.subleq import _packed_build, subleq
 from tests.generator_support import assert_an_ignored_input_costs
+
+
+def _execute_count(program: str, text: str) -> tuple[str, int, int]:
+    io = ScriptedIO(text + "extra")
+    machine = _Machine(program, io)
+    steps = 0
+    while not machine.halted:
+        machine.step()
+        steps += 1
+        assert steps < 2_000_000
+    return io.getvalue(), io.position(), steps
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [1, 2, 3])
+def test_forced_chunk_banks_compute_every_small_table(n: int) -> None:
+    for value in range(1 << (1 << n)):
+        table = f"{value:0{1 << n}b}"
+        literal = _packed_build(table, direct=True, keep_constant_layout=True)
+        banked = _packed_build(
+            table, direct=True, keep_constant_layout=True, share_chunks=True
+        )
+        for row in range(1 << n):
+            text = f"{row:0{n}b}"
+            before = _execute_count(literal, text)
+            after = _execute_count(banked, text)
+            assert before[:2] == after[:2] == (table[row], n)
+            assert after[2] == before[2] + 2
+
+
+@pytest.mark.medium
+def test_repeated_chunks_share_payloads_at_sixteen_inputs() -> None:
+    n = 16
+    table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+    literal = _packed_build(table, direct=True)
+    banked = subleq(table)
+    assert (len(literal), len(banked)) == (30737, 26677)
+    payloads = {
+        str(-int(table[start : start + n][::-1], 2))
+        for start in range(0, len(table), n)
+    }
+    assert len(payloads) == 2
+    assert all(banked.split().count(payload) == 1 for payload in payloads)
+    for row in (0, 16, 255, 65535):
+        text = f"{row:0{n}b}"
+        before = _execute_count(literal, text)
+        after = _execute_count(banked, text)
+        assert before[:2] == after[:2] == (table[row], n)
+        assert after[2] == before[2] + 2
+
+
+@pytest.mark.medium
+def test_banked_decoder_reaches_the_execution_bound() -> None:
+    n = 16
+    table = "0" + "1" * ((1 << n) - 1)
+    output, reads, steps = _execute_count(subleq(table), "1" * n)
+    assert (output, reads) == ("1", n)
+    assert steps == 8 * (1 << n) + (7 * n + 5) * ((1 << n) // n - 1) + 23 * n - 6
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])

@@ -97,18 +97,18 @@ def _inject(n: int, _: str) -> int:
 
 
 def _subleq(n: int, _: str) -> int:
-    """I instructions over operands up to B + 17, C chunks, the registers."""
-    i, chunks = 8 * n + 45, -(-(2**n) // n)
+    """Payload bits, signed references, two patched operands and registers."""
+    i, chunks = 8 * n + 47, -(-(2**n) // n)
     b = 3 * i
     registers = (
         bl(3 * i - 3) + 5 * bl(n) + 2 * n + 33 + max(n, bl(n) + 1) + max(1, n - 1)
     )
     return (
         2**n
-        + chunks
+        + 2 * chunks
+        + (chunks + 2) * bl(b + 17 + 2 * chunks)
         + i * bl(b)
         + (2 * i - 1) * bl(b + 17)
-        + bl(b + 17 + chunks)
         + registers
     )
 

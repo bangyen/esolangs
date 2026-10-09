@@ -84,11 +84,29 @@ def _sbleq_constant(inputs: int, bit: str, *, direct: bool = False) -> str:
 def _sbleq_packed(
     truth_table: str, *, direct: bool = False, keep_constant_layout: bool = False
 ) -> str:
+    """Return the shortest literal or banked decoder, folding constant roots."""
+    literal = _packed_build(
+        truth_table, direct=direct, keep_constant_layout=keep_constant_layout
+    )
+    if len(set(truth_table)) == 1:
+        return literal
+    banked = _packed_build(truth_table, direct=direct, share_chunks=True)
+    return min(literal, banked, key=len)
+
+
+def _packed_build(
+    truth_table: str,
+    *,
+    direct: bool = False,
+    keep_constant_layout: bool = False,
+    share_chunks: bool = False,
+) -> str:
     """Emit a linear-size packed-table decoder for S*bleq.
 
     An ignored input is read into ``TMP``, which the next read overwrites,
     and never joins the index; the table is packed over the rest, so its
     chunks hold one bit per essential input. Constants read and print a literal.
+    A bank stores each equal payload once; two instructions resolve its reference.
     """
     total = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1 and not keep_constant_layout:
@@ -99,6 +117,20 @@ def _sbleq_packed(
     else:
         weights = [1] * total
     n = sum(map(bool, weights))
+    chunks = [
+        -int(truth_table[start : start + n][::-1], 2)
+        for start in range(0, len(truth_table), n)
+    ]
+    unique = list(dict.fromkeys(chunks))
+    slot_of = {value: i for i, value in enumerate(unique)}
+    data_names = (
+        [
+            *(f"REF{i}" for i in range(len(chunks))),
+            *(f"BANK{i}" for i in range(len(unique))),
+        ]
+        if share_chunks
+        else [f"CHUNK{i}" for i in range(len(chunks))]
+    )
     instructions: list[tuple[int | str, int | str, str]] = []
     labels: dict[str, int] = {}
     values: dict[str, int] = {
@@ -191,7 +223,13 @@ def _sbleq_packed(
 
     mark("selected")
     clear("TABLE")
-    load_chunk = emit("TABLE", "CHUNK0")
+    patch_clear = load_reference = -1
+    if share_chunks:
+        # Clear the upcoming load's source operand, then load a bank address
+        # by subtracting its negative reference. Only this operand is patched.
+        patch_clear = emit(0, 0)
+        load_reference = emit(0, "REF0")
+    load_chunk = emit("TABLE", 0 if share_chunks else "CHUNK0")
     copy("SHIFT", "OFFSET")
     increment("SHIFT")
 
@@ -223,17 +261,31 @@ def _sbleq_packed(
     emit("OUTPUT" if direct else -3, "OUT")
     jump("halt" if direct else "@HALT")
 
-    # Negative packed values let one subtraction load a positive chunk.
-    chunks = [
-        -sum(
-            int(bit) << offset
-            for offset, bit in enumerate(truth_table[start : start + n])
-        )
-        for start in range(0, len(truth_table), n)
-    ]
+    def write_data(memory: list[int], address: dict[str, int]) -> None:
+        for name, value in values.items():
+            memory[address[name]] = value
+        if share_chunks:
+            for i, value in enumerate(unique):
+                memory[address[f"BANK{i}"]] = value
+            for i, value in enumerate(chunks):
+                memory[address[f"REF{i}"]] = -address[f"BANK{slot_of[value]}"]
+        else:
+            for i, value in enumerate(chunks):
+                memory[address[f"CHUNK{i}"]] = value
+
+    def patch_loads(memory: list[int]) -> None:
+        source = 0 if direct else 1
+        destination = 1 - source
+        load = load_reference if share_chunks else load_chunk
+        memory[3 * load_operand_increment + destination] = 3 * load + source
+        if share_chunks:
+            field = 3 * load_chunk + source
+            memory[3 * patch_clear] = field
+            memory[3 * patch_clear + 1] = field
+            memory[3 * load_reference + destination] = field
 
     if direct:
-        names = [*values, *(f"CHUNK{i}" for i in range(len(chunks)))]
+        names = [*values, *data_names]
         base = 3 * len(instructions)
         address = {name: base + i for i, name in enumerate(names)}
         memory = [0] * (base + len(names))
@@ -254,15 +306,12 @@ def _sbleq_packed(
             else:
                 triple = [direct_operand(b), direct_operand(a), c]
             memory[3 * i : 3 * i + 3] = triple
-        for name, value in values.items():
-            memory[address[name]] = value
-        for i, value in enumerate(chunks):
-            memory[address[f"CHUNK{i}"]] = value
-        memory[3 * load_operand_increment + 1] = 3 * load_chunk
+        write_data(memory, address)
+        patch_loads(memory)
         return " ".join(map(str, memory))
 
     target_names = [f"TARGET{i}" for i in range(len(instructions))]
-    names = [*values, *target_names, *(f"CHUNK{i}" for i in range(len(chunks)))]
+    names = [*values, *target_names, *data_names]
     base = 3 * len(instructions)
     address = {name: base + i for i, name in enumerate(names)}
     memory = [0] * (base + len(names))
@@ -278,11 +327,8 @@ def _sbleq_packed(
             memory[c] = 3 * (i + 1) if target == "next" else 3 * labels[target]
         memory[3 * i : 3 * i + 3] = [operand(a), operand(b), c]
 
-    for name, value in values.items():
-        memory[address[name]] = value
-    for i, value in enumerate(chunks):
-        memory[address[f"CHUNK{i}"]] = value
-    memory[3 * load_operand_increment] = 3 * load_chunk + 1
+    write_data(memory, address)
+    patch_loads(memory)
     return " ".join(map(str, memory))
 
 
@@ -385,8 +431,13 @@ def _balance(table: str, default: str) -> str:
         legacy = _sbleq_hoisted(table, tuple(range(n)), share=True)
         if len(table) > 16:
             legacy = min(
-                legacy, _sbleq_packed(table, keep_constant_layout=True), key=len
+                legacy, _packed_build(table, keep_constant_layout=True), key=len
             )
+        return min(candidate, balance_program(legacy, "sbleq"), key=balance_score)
+    if len(table) > 16:
+        legacy = min(
+            in_input_order(table, _sbleq_shared), _packed_build(table), key=len
+        )
         return min(candidate, balance_program(legacy, "sbleq"), key=balance_score)
     return candidate
 

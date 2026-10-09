@@ -3,14 +3,14 @@
 Chunks contain n bits apiece: O(T/n) decimal values of O(n) digits. The
 O(n) read instructions use O(log T) address digits, hence O(n**2) source,
 which is O(T). Selection scans chunks; division extracts the requested bit.
-Packed chunks have no subtrees to fold or share.
+Repeated chunks share one payload through an address array when it is shorter.
 """
 
 from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Payload, Shape
-from esolangs.tools.sbleq import _sbleq_packed
+from esolangs.tools.sbleq import _packed_build, _sbleq_packed
 from esolangs.tools.wrap import balance_program, balance_score, wrap_grid
 
 
@@ -26,12 +26,10 @@ def _payload(state: Any) -> Payload:
 
 
 def _balance(table: str, default: str) -> str:
-    """Retain the old constant decoder when its grid is more balanced."""
+    """Retain the literal decoder when its grid is more balanced."""
     candidate = balance_program(default, "subleq")
-    if len(set(table)) == 1:
-        legacy = _sbleq_packed(table, direct=True, keep_constant_layout=True)
-        return min(candidate, balance_program(legacy, "subleq"), key=balance_score)
-    return candidate
+    legacy = _packed_build(table, direct=True, keep_constant_layout=True)
+    return min(candidate, balance_program(legacy, "subleq"), key=balance_score)
 
 
 LANGUAGE = Language(

@@ -221,16 +221,16 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Subleq"
 labels = ["finite lookup"]
 qualification = """\
-    direct-jump packed decoder with byte reads and self-modifying chunk selection"""
+    direct-jump packed decoder; repeated chunks share one payload through references"""
 scaling = "linear: T/n packed chunks of n bits, O(n) decoder"
 execution = """\
-    linear: worst 8T + (7n+5)(⌊T/n⌋-1) + 23n - 8 steps: the last full chunk, all ones"""
+    linear: at most 8T + (7n+5)(⌊T/n⌋-1) + 23n - 6 steps: bank selection adds two"""
 workspace = """\
-    linear: at most T + C + I·bl(B) + (2I-1)bl(B+17) + bl(B+17+C) + R bits: each \
-    chunk plus sign"""
+    linear: at most T + 2C + (C+2)bl(B+17+2C) + I·bl(B) + (2I-1)bl(B+17) + R \
+    bits: payloads and references"""
 evidence = "docs/proofs/index.md#generator-ledger"
 definitions = [
-    "I = 8n + 45, B = 3I, C = ⌈T/n⌉",
+    "I = 8n + 47, B = 3I, C = ⌈T/n⌉",
     "R = bl(3I-3) + 5bl(n) + 2n + 33 + max(n, bl(n)+1) + max(1, n-1), the registers",
 ]
 
