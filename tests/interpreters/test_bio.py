@@ -8,6 +8,7 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.bio import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.runner import run_printing
 from tests.raises import raises_message
 
 
@@ -39,9 +40,8 @@ class TestBIOBasicCommands:
             run("0OX;1IX;", io=IO())
         assert f.getvalue() == "\x01"
 
-        with redirect_stdout(io.StringIO()) as f:
-            run("0oY;1Iy;", io=IO())
-        assert f.getvalue() == "\x01"
+        f = run_printing(run, "0oY;1Iy;")
+        assert f == "\x01"
 
 
 class TestBIOWhileLoops:
@@ -67,9 +67,8 @@ class TestBIOWhileLoops:
 class TestBIOEdgeCases:
     def test_line_comments_are_stripped(self) -> None:
         """``//`` runs to the end of its line, as the wiki writes it."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox; //increment x\n1ix; //print it\n", io=IO())
-        assert f.getvalue() == "\x01"
+        f = run_printing(run, "0ox; //increment x\n1ix; //print it\n")
+        assert f == "\x01"
 
     @pytest.mark.parametrize(
         "code",
@@ -99,9 +98,8 @@ class TestBIOEdgeCases:
                 run(code, io=IO())
 
     def test_empty_while_loop(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ix{};1ix;", io=IO())
-        assert f.getvalue() == "\x00"
+        f = run_printing(run, "0ix{};1ix;")
+        assert f == "\x00"
 
 
 class TestBIOIntegration:
@@ -128,16 +126,6 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 4
-
-    def test_nonterminating_loop_is_detected_as_a_cycle(self) -> None:
-        """A loop whose body never changes a register revisits a snapshot."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.bio import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert (
-            run_until_halt_or_cycle(_Machine("0ox;0ix{0ix{};};", ScriptedIO())) is False
-        )
 
 
 def _machine(code: object) -> object:
@@ -189,9 +177,8 @@ class TestWikiExamples:
 
     def test_addition(self) -> None:
         """``0ox; 0oy; 0ix{ 1ox; 0oy; }; 1iy;`` computes 1 + 1."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox; 0oy;\n0ix{ 1ox; 0oy; };\n1iy;", io=IO())
-        assert f.getvalue() == chr(2)
+        f = run_printing(run, "0ox; 0oy;\n0ix{ 1ox; 0oy; };\n1iy;")
+        assert f == chr(2)
 
     def test_multiplication(self) -> None:
         """The wiki's multiplication example computes 5 * 5."""
@@ -204,6 +191,5 @@ class TestWikiExamples:
 
     def test_subtraction_example_is_wrong_on_the_wiki(self) -> None:
         """The wiki's subtraction example adds instead of subtracting."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox; 0ox; 0oy;\n0iy{ 0ox; 1oy; };\n1ix;", io=IO())
-        assert f.getvalue() == chr(3)
+        f = run_printing(run, "0ox; 0ox; 0oy;\n0iy{ 0ox; 1oy; };\n1ix;")
+        assert f == chr(3)

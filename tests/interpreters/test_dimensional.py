@@ -8,14 +8,13 @@ from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.dimensional import _Machine as Dimensional
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import run_lines
 from tests.raises import assert_rejected_with_hint, raises_message
 
 dim = importlib.import_module("esolangs.interpreters.tape_based.dimensional")
 
 
-def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    return run_program(dim.run, code, "".join(f"{line}\n" for line in inputs or []))
+run_and_capture = run_lines(dim.run)
 
 
 class TestDimensional:

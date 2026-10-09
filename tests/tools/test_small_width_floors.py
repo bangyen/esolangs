@@ -5,15 +5,7 @@ import pytest
 import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.exceptions import TemplateError
-
-
-def languages(**facts: object) -> list[str]:
-    """Languages whose ``describe()`` has these facts (no tests/ imports here)."""
-    return [
-        name
-        for name in esolangs.list_languages()
-        if all(esolangs.describe(name)[k] == v for k, v in facts.items())
-    ]
+from tests.pick import languages
 
 
 @pytest.mark.medium

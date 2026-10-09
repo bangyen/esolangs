@@ -12,12 +12,10 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.cursorless_io import PositionlessIO
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import run_lines
 from tests.raises import assert_rejected_with_hint, raises_message
 
-
-def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+run_and_capture = run_lines(run)
 
 
 class TestBFStack:

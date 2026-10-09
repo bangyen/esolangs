@@ -10,6 +10,7 @@ import tempfile
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -18,6 +19,7 @@ from esolangs import Program
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES, RUNNERS, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
+from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "bundle_one.py"
@@ -33,14 +35,8 @@ def _display_name(stem: str) -> str | None:
     return _BY_ID.get(canonical_id(stem.replace("-", " ")))
 
 
-def load_script() -> object:
-    """Import the bundler as a module, mirroring the other script tests."""
-    spec = importlib.util.spec_from_file_location("bundle_one", SCRIPT)
-    assert spec is not None
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+def load_script() -> Any:
+    return load(SCRIPT)
 
 
 def _load_bundle(tmp_path: Path) -> object:

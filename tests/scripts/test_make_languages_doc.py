@@ -1,11 +1,13 @@
 """Generated README and usage sections stay in sync with the registry."""
 
-import importlib.util
 import re
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import pytest
+
+from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "generate_docs.py"
@@ -28,13 +30,8 @@ _SHAPES_START, _SHAPES_END = _markers("INPUT-SHAPES")
 _API_START, _API_END = _markers("PUBLIC-API")
 
 
-def load_script() -> object:
-    spec = importlib.util.spec_from_file_location("make_languages_doc", SCRIPT)
-    assert spec is not None
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+def load_script() -> Any:
+    return load(SCRIPT)
 
 
 def test_readme_counts_match_the_registry() -> None:

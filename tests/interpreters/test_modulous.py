@@ -12,16 +12,14 @@ from esolangs.vm import (
     run_until_halt_or_cycle,
 )
 from tests.interpreters.cursorless_io import PositionlessIO
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import run_lines
 from tests.raises import (
     assert_halts_with_hint,
     assert_rejected_with_hint,
     raises_message,
 )
 
-
-def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+run_and_capture = run_lines(run)
 
 
 _OUTPUT = {

@@ -1,25 +1,21 @@
 """``tests/tools/mutate_generator.py`` selects the suites and shapes the run."""
 
-import importlib.util
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
+
+from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "tests" / "tools" / "mutate_generator.py"
 TOOLS_TESTS = REPO_ROOT / "tests" / "tools"
 
 
-def load_script() -> object:
-    """Import the harness as a module, mirroring the other script tests."""
-    spec = importlib.util.spec_from_file_location("mutate_generator", SCRIPT)
-    assert spec is not None
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+def load_script() -> Any:
+    return load(SCRIPT)
 
 
 class TestTestFiles:

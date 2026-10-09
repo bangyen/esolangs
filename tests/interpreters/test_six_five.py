@@ -6,13 +6,12 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.six_five import _Machine as SixFive
 from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import run_lines
 
 sixfive = importlib.import_module("esolangs.interpreters.tape_based.six_five")
 
 
-def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    return run_program(sixfive.run, code, "".join(f"{line}\n" for line in inputs or []))
+run_and_capture = run_lines(sixfive.run)
 
 
 class TestSixFive:
