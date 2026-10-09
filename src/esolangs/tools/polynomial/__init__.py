@@ -16,6 +16,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.tools.constant_projection import balanced_projection
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -24,7 +25,7 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.polynomial.algebra import primes, render_product
 from esolangs.tools.polynomial.resources import estimate_generation
-from esolangs.tools.wrap import _polynomial
+from esolangs.tools.wrap import _polynomial, balance_program
 
 # Instruction cap.  Analytic n=10 worst case is 1659
 # (``test_polynomial_cap_admits_every_n10_table``); kept at the old 1934,
@@ -313,7 +314,9 @@ def _polynomial_dag(truth_table: str, park: int | None = None) -> list[list[int]
     return instrs
 
 
-def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
+def _polynomial_hybrid(
+    truth_table: str, k: int, *, keep_root_park: bool = False
+) -> list[list[int]]:
     """Emit ``k`` tree levels above a state machine per surviving residual.
 
     The whole family: ``k == n`` is the plain tree, ``k == 0`` one machine,
@@ -341,7 +344,10 @@ def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
             # enough, since the park below overwrites what it left.
             for _ in range(bit, n):
                 instrs.append([0, 2])
-            instrs.append([-(_ASCII_ZERO + 1 + park), 1])
+            # Only an ancestor tests the parked value. Removing the root
+            # store saves 13.5% on both eight-input constants (750 -> 649 chars).
+            if bit or keep_root_park:
+                instrs.append([-(_ASCII_ZERO + 1 + park), 1])
             return
         if bit == k:
             instrs.extend(_polynomial_dag("".join(truth_table[r] for r in rows), park))
@@ -366,6 +372,24 @@ def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
     return len(_polynomial_hybrid(truth_table, k))
 
 
+def balance_polynomial(table: str, default: str) -> str:
+    """Retain the old root parking store when its polynomial balances better."""
+    if len(set(table)) > 1:
+        return balance_program(default, "polynomial")
+    n = _validate_truth_table(table)
+    # Constants previously chose between the full root and a one-input root
+    # followed by the trailing reads; every hybrid depth gives the same leaf.
+    legacy = min(
+        _polynomial_assemble(_polynomial_hybrid(table, n, keep_root_park=True)),
+        _polynomial_assemble(
+            _polynomial_hybrid(table[0] * 2, 1, keep_root_park=True)
+            + [[0, 2]] * (n - 1)
+        ),
+        key=len,
+    )
+    return balanced_projection(default, legacy, "polynomial")
+
+
 LANGUAGE = Language(
     "Polynomial",
     "register_based.polynomial",
@@ -375,6 +399,9 @@ LANGUAGE = Language(
     "table dependent",
     boolean=polynomial,
     documented_sizes=(1_745_528, 5_458_693, 3.1),
+
+
+    balance=balance_polynomial,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

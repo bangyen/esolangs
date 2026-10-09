@@ -572,7 +572,7 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
 
-    From eight inputs an unconstrained build uses the H-layout instead;
+    From eight inputs an unconstrained nonconstant build uses the H-layout;
     :mod:`.hlayout` gives why, and why at eight.
 
     What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
@@ -583,7 +583,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """
     _validate_truth_table(truth_table)
     inputs = len(truth_table).bit_length() - 1
-    if width is None and inputs >= 8 and "1" in truth_table:
+    # Constants need only the scalar clock gate, not a minterm lattice.
+    if width is None and inputs >= 8 and "1" in truth_table and "0" in truth_table:
         return _h_term_layout(truth_table).render()
     flat = _circuit_diagram_at(truth_table, None)
     if width is None or grid_width(flat) <= width:

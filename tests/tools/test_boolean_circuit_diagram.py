@@ -592,3 +592,28 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
             language, balanced, stdin=esolangs.encode_inputs(language, bits)
         )
         assert esolangs.read_answer(language, output) == table[row]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_wide_constant_uses_only_its_scalar_clock_frame(bit):
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.circuit_diagram import _circuit_diagram_at
+
+    table = bit * 256
+    program = boolean.circuit_diagram(table)
+    assert program == _circuit_diagram_at(table, None)
+    assert _evaluate("Circuit Diagram", program, inputs=8) == table
+
+
+@pytest.mark.medium
+def test_wide_constant_balance_keeps_the_old_square_candidate():
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+
+    table = "1" * 256
+    legacy = _h_term_layout(table).render()
+    program = esolangs.generate("Circuit Diagram", table, balance=True)
+    assert balance_score(program) <= balance_score(legacy)
+    assert len(program) <= len(legacy)
+    assert _evaluate("Circuit Diagram", program, inputs=8) == table

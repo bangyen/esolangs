@@ -1,7 +1,8 @@
 """The H-layout: an O(T)-area Circuit Diagram drawing for eight inputs and up.
 
 :func:`circuit_diagram` switches to it from eight inputs when no width is
-asked for.  That is a growth choice, not a size one: the flat drawing's
+asked for and the table is nonconstant. That is a growth choice, not a size
+one: the flat drawing's
 width grows with the depth, so its area is Theta(T log T) -- 2.2x to 2.8x
 per added input, measured n=6..11 -- while the H-layout is O(T) with a
 constant about twelve times larger (n=8 dense: 145 KB flat, 1.78 MB H).
