@@ -108,3 +108,43 @@ class TestFactor:
         for row in (0, 1, 2**12, 2**13 - 2, 2**13 - 1):
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_bf(code, bits) == table[row], row
+
+
+@pytest.mark.medium
+def test_shared_residual_measures_encoded_size_and_executes_within_ledger() -> None:
+    from esolangs.tools.factor import _encode, _program
+    from tests.generator_support import assert_shared_program
+
+    zero = "0001011101101001" * 4
+    one = "0110100100010111" * 4
+    table = zero + one + one + zero
+    plain = str(_encode(_program(table)))
+    assert_shared_program(
+        "Factor",
+        table,
+        plain,
+        265 * 8 + 231,
+        lambda _: (
+            7 * 8
+            + 12
+            + (2 * 8 + 1).bit_length()
+            + (8).bit_length()
+            + (51 * 2 ** (8 - 2) + 16 * 8 + 14).bit_length()
+        ),
+    )
+
+
+@pytest.mark.parametrize(("bit", "expected"), [(0, "1"), (1, "0")])
+def test_one_input_not_stays_within_the_command_ledger(bit, expected) -> None:
+    from esolangs.debugger import make_vm
+    from esolangs.tools.factor import factor
+
+    program = factor("10")
+    assert len(program) == 142
+    machine = make_vm("Factor", program, stdin=str(bit))
+    for _ in range(496):
+        if machine.halted:
+            break
+        machine.step()
+    assert machine.halted
+    assert machine.output == expected

@@ -32,18 +32,10 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    constant_span_test,
     move_text,
-    subtree_ids,
 )
-from esolangs.tools.shared_block import (
-    BranchCost,
-    add_cost,
-    dispatch_cost,
-    merge_cost,
-    normal_cost,
-    repeated_block,
-)
+from esolangs.tools.shared_block import repeated_block
+from esolangs.tools.shared_flag import flag_tree_body
 from esolangs.tools.wrap import wrap_chars
 
 _SCRATCH = -1
@@ -70,17 +62,6 @@ def _boolfuck_tree(
     """Emit a tree, optionally deferring a block into its first unused flag."""
     n = _validate_truth_table(truth_table)
     result = 2 * n
-    fold_zero = shared is not None
-    pending = 2 * shared[0] + 1 if shared is not None else 2 * n - 1
-    ids = subtree_ids(truth_table)
-    is_constant = constant_span_test(truth_table)
-
-    def bit(i: int) -> int:
-        return 2 * i
-
-    def flag(i: int) -> int:
-        return 2 * i + 1
-
     parts: list[str] = []
     count = 0
 
@@ -96,115 +77,29 @@ def _boolfuck_tree(
         emit(move_text(pos, target, ">", "<"))
         pos = target
 
-    def constant(i: int, combo: int) -> str | None:
-        """Shared value of the level-``i`` subtree at ``combo``, else None."""
-        span = 1 << (n - i)
-        return truth_table[combo] if is_constant(combo, combo + span) else None
-
-    def branch(i: int, combo: int) -> BranchCost:
-        """Emit one side of node ``i``: a folded leaf or the child subtree."""
-        start = count
-        value = constant(i + 1, combo)
-        if value is None:
-            return node(i + 1, combo)
-        if value == "1":
-            move(result)
-            emit("+")
-        # value == "0": the leaf emits nothing
-        return count - start, None
-
-    def node(i: int, combo: int) -> BranchCost:
-        """Emit node ``i``: test bit ``i``, run one side, leave flag_i = 0."""
-        start = count
-        if (
-            shared is not None
-            and i == shared[0]
-            and ids[i][combo >> (n - i)] == ids[i][shared[1] >> (n - i)]
-        ):
-            move(pending)
-            emit("+")
-            return None, count - start
-        bit_cell = bit(i)
-        flg = flag(i)
-        one = combo | (1 << (n - 1 - i))
-        below = ids[i + 1]
-        if below[combo >> (n - i - 1)] == below[one >> (n - i - 1)]:
-            return branch(i, combo)  # halves agree: bit i cannot matter
-        if fold_zero and constant(i + 1, combo) == "0":
-            move(bit_cell)
-            emit("[")
-            common = count - start
-            emit("+")
-            body_start = count
-            one_cost = branch(i, one)
-            one_flat = count - body_start
-            move(bit_cell)
-            emit("]")
-            return merge_cost(
-                add_cost(one_cost, count - start - one_flat + 1),
-                (common, None),
-            )
-        move(flg)
-        emit("+")  # flag_i = 1 (it is 0 by invariant)
-        move(bit_cell)
-        emit("[")
-        one_start = count
-        emit("+")  # a set bit clears itself and enters the one-side
-        move(flg)
-        emit("+")  # the one-side ran: flag_i = 0
-        body_start = count
-        one_cost = branch(i, one)
-        one_flat = count - body_start
-        move(bit_cell)
-        emit("]")  # bit is 0 now, so this exits
-        one_cost = add_cost(one_cost, count - one_start - one_flat + 1)
-        between = count
-        move(flg)
-        emit("[")
-        common = one_start - start + count - between
-        zero_start = count
-        emit("+")  # the flag survived only when the bit was 0
-        body_start = count
-        zero_cost = branch(i, combo)
-        zero_flat = count - body_start
-        move(flg)
-        emit("]")
-        zero_cost = add_cost(zero_cost, count - zero_start - zero_flat + 1)
-        return add_cost(merge_cost(one_cost, zero_cost), common)
-
     # Read phase: value bit of byte i to cell 2i, other 7 bits to scratch.
     for i in range(n):
-        move(bit(i))
+        move(2 * i)
         emit(",")
         move(_SCRATCH)
         emit("," * 7)
 
     # Decision tree over the stored bits.
     read_cost = count
-    tree_cost = node(0, 0)
+    body, tree_cost = flag_tree_body(
+        truth_table, tuple(range(n)), pos, result, shared=shared, flip=True
+    )
+    emit(body)
+    pos = result
     tail_start = count
-    if shared is not None:
-        depth, row = shared
-        move(pending)
-        dispatch_test = count - tail_start + 1
-        emit("[+")
-        body_start = count
-        shared = None
-        body_cost = node(depth, row)
-        body_flat = count - body_start
-        move(pending)
-        emit("]")
-        active = count - tail_start - body_flat + normal_cost(body_cost) + 1
-        tree_cost = dispatch_cost(tree_cost, active, dispatch_test)
-        tail_start = count
 
     # Print the ASCII answer byte: R, 0,0,0, 1,1, 0,0 (little-endian).
     move(result)
     emit(";")
-    move(flag(0))  # every flag is 0 again here
+    move(1)  # every flag is 0 again here
     emit(";;;+;;+;;")
 
-    return "".join(parts), read_cost + normal_cost(tree_cost) + count - tail_start
+    return "".join(parts), read_cost + tree_cost + count - tail_start
 
 
 LANGUAGE = Language(

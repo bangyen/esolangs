@@ -4,7 +4,9 @@ Ascending primes encode Brainfuck instructions by residue modulo eleven
 and run length by exponent. A compact tree tests inputs in stream order
 and puts the answer in the final input's unused flag. Multiplication loops
 build and subtract the ASCII offsets; only this tree is encoded.  Equal
-sibling halves merge; the code has no call, so other repeats are copied.
+sibling halves merge; one repeated residual is emitted after the prefix,
+using its first unused level flag when the encoded integer is shorter and
+the unchanged command bound admits it.
 An ignored cell is read but not dedented.
 """
 
@@ -23,6 +25,7 @@ from esolangs.tools.helpers import (
     input_weights,
     move_text,
 )
+from esolangs.tools.shared_flag import shared_flag_tree
 from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["factor"]
@@ -84,7 +87,7 @@ def _encode(code: str) -> int:
     return heap[0][2] if heap else 1
 
 
-def _program(truth_table: str) -> str:
+def _program(truth_table: str, *, shared: bool = False) -> str:
     """Build the compact tree in input order, using the final input's flag.
 
     The tree tests the essential inputs only, so its last level is the last
@@ -136,7 +139,27 @@ def _program(truth_table: str) -> str:
         binary_leaves=True,
         result=result,
     )
-    return build + reads + dedent + body + move_text(pos, result, ">", "<") + "."
+    if truth_table == "10":
+        # NOT at one input exceeded its 496-command bound by two moves.
+        # Set the answer's extra one while already passing its cell.
+        build = ">+" + build[1:]
+        body, pos = "[->-<]", 0
+    prefix = build + reads + dedent
+    plain = prefix + body + move_text(pos, result, ">", "<") + "."
+    if not shared:
+        return plain
+    candidate = shared_flag_tree(table, perm, after_reads, result, binary_leaves=True)
+    if candidate is None:
+        return plain
+    body, commands = candidate
+    program = prefix + body + "."
+    # Six offset-building trips and 48 dedent trips, with no opener retest.
+    prelude = 199 * n + 48 * len(perm) + 240
+    return (
+        program
+        if prelude + commands + 1 <= 265 * n + 231 and len(program) <= len(plain)
+        else plain
+    )
 
 
 def factor(truth_table: str) -> str:
@@ -147,9 +170,16 @@ def factor(truth_table: str) -> str:
     digit cap is raised to a bit-length estimate (``log10(2) < 0.30103``,
     never under-counting) and put back.
     """
-    number = _encode(_program(truth_table))
-    with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
-        return str(number)
+    plain = _program(truth_table)
+    candidate = _program(truth_table, shared=True)
+
+    def encoded(code: str) -> str:
+        number = _encode(code)
+        with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
+            return str(number)
+
+    program = encoded(plain)
+    return min(program, encoded(candidate), key=len) if candidate != plain else program
 
 
 LANGUAGE = Language(

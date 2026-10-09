@@ -10,6 +10,7 @@ from esolangs.tools.helpers import (
     in_input_order,
     move_text,
 )
+from esolangs.tools.shared_flag import shared_flag_tree
 from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["bf_tree", "brainfuck"]
@@ -29,7 +30,8 @@ def bf_tree(truth_table: str) -> str:
     Bits use cells 2i, flags 2i+1; branches clear both, and one final print
     reads the result. Flags cut n=10 sparse from 2,646 to 754 chars;
     folding and shared output cut n=10 XOR from 77,939 to 18,495.  Equal
-    sibling halves merge; the code has no call, so other repeats are copied.
+    sibling halves merge; a repeated residual uses its first unused level flag
+    and is emitted once after the prefix, within the existing command bound.
     An ignored input before the last kept one is read bare into the next
     kept cell, whose read overwrites it: 1.9% smaller at n=8 with one ignored,
     6.7% with two. A trailing one keeps its subtract; left at 48/49 it breaks
@@ -38,7 +40,7 @@ def bf_tree(truth_table: str) -> str:
     return in_input_order(truth_table, _bf_ordered)
 
 
-def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _bf_ordered(truth_table: str, perm: tuple[int, ...], *, share: bool = True) -> str:
     """Emit a permuted table; node i tests cell 2*perm[i], reads stay ordered."""
     n = _validate_truth_table(truth_table)
 
@@ -56,6 +58,8 @@ def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             pending += ","
     cells = [(_RIGHT * 2).join(reads)]
     pos = 2 * max(n - 1, 0)
+    header = cells[0]
+    tree_start = pos
 
     # The tree itself.
     body, pos = decision_tree_body(truth_table, _RIGHT, _LEFT, perm, pos)
@@ -65,7 +69,20 @@ def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     cells.append(move_text(pos, 2 * n, _RIGHT, _LEFT))
     cells.append("+" * _ASCII_ZERO)
     cells.append(".")
-    return "".join(cells)
+    plain = "".join(cells)
+    if not share:
+        return plain
+    shared = shared_flag_tree(truth_table, perm, tree_start, 2 * n)
+    if shared is None:
+        return plain
+    body, commands = shared
+    candidate = header + body + "+" * _ASCII_ZERO + "."
+    return (
+        candidate
+        if len(header) + commands + _ASCII_ZERO + 1 <= 69 * n + 44
+        and len(candidate) < len(plain)
+        else plain
+    )
 
 
 LANGUAGE = Language(
