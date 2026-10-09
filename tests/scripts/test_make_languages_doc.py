@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from tests.scripts.script_support import load
+from tests.test_language_coupling import REFERENCE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "generate_docs.py"
@@ -220,10 +221,12 @@ def test_language_listing_only_lists_available_interpreters(
 ) -> None:
     module = load_script()
     monkeypatch.setitem(
-        module.LANGUAGES, "Line", replace(module.LANGUAGES["Line"], interpreter=None)
+        module.LANGUAGES,
+        REFERENCE,
+        replace(module.LANGUAGES[REFERENCE], interpreter=None),
     )
     rendered = module.render_languages_section()
-    assert "- [Line]" not in rendered
+    assert f"- [{REFERENCE}]" not in rendered
     assert f"Show all {len(module.LANGUAGES) - 1} languages" in rendered
 
 

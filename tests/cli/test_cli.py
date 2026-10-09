@@ -11,6 +11,9 @@ import esolangs
 from esolangs.cli import main
 from tests.cli_support import _FakeStdin, _program, _refused
 from tests.pick import first
+from tests.test_language_coupling import REFERENCE
+
+_RASTER = first(source_kind="raster", boolean_generator=True)
 
 RASTER = first(source_kind="raster", boolean_generator=True)
 TEMPLATED = first(parameterized=True)
@@ -47,28 +50,31 @@ class TestInProcess:
     ) -> None:
         """Raster ``generate`` writes the image to the byte stream."""
         with (
-            patch.object(sys, "argv", ["esolangs", "generate", "Piet", "0110"]),
+            patch.object(sys, "argv", ["esolangs", "generate", _RASTER, "0110"]),
             patch.object(sys, "stdin", _FakeStdin("")),
         ):
             main()
         out = capsysbinary.readouterr().out
         assert out.startswith(b"\x89PNG\r\n\x1a\n")
         image = esolangs.Raster.from_png(out)
-        assert esolangs.run("Piet", image, stdin="1\n0\n") == "1"
+        stdin = esolangs.encode_inputs(_RASTER, [1, 0])
+        assert (
+            esolangs.read_answer(_RASTER, esolangs.run(_RASTER, image, stdin=stdin))
+            == "1"
+        )
 
     def test_run_feeds_stdin(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        from esolangs import tools as boolean
-
         program = tmp_path / "prog.txt"
-        program.write_text(boolean.circlefuck("1101"))
-        out = call_main(["run", "Circlefuck", str(program)], capsys, stdin="10")
-        assert out == "0"
+        program.write_text(esolangs.generate(REFERENCE, "1101"))
+        stdin = esolangs.encode_inputs(REFERENCE, [1, 0])
+        out = call_main(["run", REFERENCE, str(program)], capsys, stdin=stdin)
+        assert esolangs.read_answer(REFERENCE, out) == "0"
 
     def test_run_missing_args(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
-            call_main(["run", "Sophie"], capsys)
+            call_main(["run", REFERENCE], capsys)
         assert exc.value.code == 2
 
     def test_run_unknown_language(
@@ -323,13 +329,15 @@ class TestProgramFailuresAreReported:
         assert "read past the end of input" in result.stderr
 
     def test_an_unfilled_template_is_refused_by_name(self, tmp_path: Path) -> None:
-        """Minifuck ran it and printed a confident wrong answer."""
-        generated = run_cli("generate", "Minifuck", "0110")
-        path = tmp_path / "mf.txt"
+        """An unfilled run once ran, and printed a confident wrong answer."""
+        name = first(parameterized=True, boolean_generator=True)
+        generated = run_cli("generate", name, "0110")
+        path = tmp_path / "template.txt"
         path.write_text(generated.stdout.rstrip("\n"))
-        result = run_cli("run", "Minifuck", str(path))
+        result = run_cli("run", name, str(path))
         assert result.returncode == 2
-        assert "unfilled runs of '$'" in result.stderr
+        char = esolangs.generate(name, "0110").char
+        assert f"unfilled runs of {char!r}" in result.stderr
         assert "Traceback" not in result.stderr
 
     @pytest.mark.slow

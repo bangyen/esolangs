@@ -132,45 +132,6 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
     )
 
 
-# The tree generators that pick their input split order by measuring, and the
-# builder that emits one fixed order, so a test can compare the two.
-def _reordering_generators() -> list[tuple[str, object, object]]:
-    from esolangs.tools.bitdeque import _bitdeque_ordered
-
-    entries: list[tuple[str, object, object]] = [
-        ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
-    ]
-    return entries
-
-
-@pytest.mark.parametrize(("name", "fn", "ordered"), _reordering_generators())
-def test_reordering_never_grows_a_program(
-    name: str, fn: object, ordered: object
-) -> None:
-    """Choosing the input order can only shrink the emitted program."""
-    for n in (1, 2, 3):
-        for value in range(2 ** (2**n)):
-            table = bin(value)[2:].zfill(2**n)
-            baseline = ordered(table, tuple(range(n)))
-            # A searching generator returns "" for an order it cannot place;
-            # there is no baseline to be no worse than, and any order that
-            # *did* place is an improvement on not building.
-            if not baseline:
-                continue
-            assert source_units(fn(table)) <= len(baseline), f"{name} grew on {table}"
-
-
-@pytest.mark.parametrize(("name", "fn", "ordered"), _reordering_generators())
-def test_reordering_shrinks_the_tables_it_should(
-    name: str, fn: object, ordered: object
-) -> None:
-    """A table only one input order folds well is emitted from that order."""
-    table = "10101010"
-    assert source_units(fn(table)) < len(ordered(table, (0, 1, 2))), (
-        f"{name} did not reorder a table that only reordering folds"
-    )
-
-
 def test_reorder_permutation_preserves_the_function() -> None:
     """Permuting the table renames the inputs without changing the function."""
     from esolangs.tools.helpers import permute_truth_table

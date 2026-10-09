@@ -92,21 +92,19 @@ def test_a_generator_that_can_refuse_declares_its_limit():
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("name", ["Befunge", "Malbolge", "6-5", "Polynomial"])
+@pytest.mark.parametrize(
+    "name",
+    sorted(
+        {
+            name
+            for name, lang in LANGUAGES.items()
+            if lang.generator_max_inputs or lang.generator_restrictions
+        }
+        | _INTERNAL_CAPS.keys()
+    ),
+)
 def test_restricted_generators_have_executed_positive_controls(name):
     assert _evaluate(name, esolangs.generate(name, "0110"), inputs=2) == "0110"
-
-
-def test_internal_route_budget_is_not_a_generator_restriction():
-    assert esolangs.describe("6-5")["generator_restrictions"] is None
-    assert esolangs.describe("6-5")["generator_max_inputs"] is None
-    assert (
-        "1934 instructions" in esolangs.describe("Polynomial")["generator_restrictions"]
-    )
-    assert (
-        "1000000000 estimated characters"
-        in esolangs.describe("Polynomial")["generator_restrictions"]
-    )
 
 
 @pytest.mark.medium

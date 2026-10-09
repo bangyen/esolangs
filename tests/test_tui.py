@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.tui import (
     Frame,
@@ -18,6 +19,7 @@ from esolangs.tui import (
     replay,
 )
 from esolangs.tui_loop import CLEAR, breakpoint_for, drive
+from tests.pick import languages
 
 #: Any styled run: its SGR parameters, and the text they cover.
 _STYLED = re.compile("\x1b\\[([0-9;]+)m(.*?)\x1b\\[0m")
@@ -173,22 +175,20 @@ class TestRender:
         assert _highlighted(render(_frame("+>-<", 2, memory=(0,)))) == "-"
 
     def test_highlights_the_right_cell_of_a_grid(self) -> None:
-        frame = _frame("abc\ndef", (1, 2), language="Streetcode", ip_shape="grid")
+        frame = _frame("abc\ndef", (1, 2), ip_shape="grid")
         assert _highlighted(render(frame)) == "f"
 
     def test_a_grid_tuple_from_a_language_that_says_nothing_is_not_marked(self) -> None:
-        # Grapheme's (2, 5) is pc 5 one call deep, not row 2 column 5.
-        frame = _frame("abc\ndef", (1, 2), language="Grapheme")
+        # A call stack's (2, 5) is pc 5 one call deep, not row 2 column 5.
+        frame = _frame("abc\ndef", (1, 2))
         assert _highlighted(render(frame)) is None
 
     def test_a_line_shape_marks_the_whole_line(self) -> None:
-        frame = _frame(
-            "abc\ndef", (1,), language="Algebraic Programming Language", ip_shape="line"
-        )
+        frame = _frame("abc\ndef", (1,), ip_shape="line")
         assert _highlighted(render(frame)) == "def"
 
     def test_an_unlocatable_ip_leaves_the_program_unmarked(self) -> None:
-        screen = render(_frame("abc", None, language="Circuit Diagram"))
+        screen = render(_frame("abc", None))
         assert _highlighted(screen) is None
         # The raw value is still on the header.
         assert "ip None" in screen
@@ -676,7 +676,12 @@ class TestWatch:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("language", ["Line", "Piet"])
+# Scaled: a fixed-codel raster (``width_aware`` False) answers wrongly at
+# scale 2 under ``run`` too, so only the codel-sized ones are replayed.
+@pytest.mark.parametrize(
+    "language",
+    languages(source_kind="raster", boolean_generator=True, width_aware=True),
+)
 def test_raster_history_replays_the_original_pixels(language: str) -> None:
     from esolangs import generate
     from esolangs.raster import Raster
@@ -684,12 +689,13 @@ def test_raster_history_replays_the_original_pixels(language: str) -> None:
     source = generate(language, "01", scale=2)
     assert isinstance(source, Raster)
     source = Raster.from_png(source.to_png())
-    history = History(language, source, "1\n")
+    stdin = esolangs.encode_inputs(language, [1])
+    history = History(language, source, stdin)
     first = history.at(0)
     frame = history.find(0, None, 1000)
     assert frame.halted
-    assert frame.output == "1"
+    assert esolangs.read_answer(language, frame.output) == "1"
     assert frame.ip_shape == "grid"
-    assert replay(language, source, "1\n", frame.step) == frame
+    assert replay(language, source, stdin, frame.step) == frame
     assert history.at(0) == first
     assert render(frame)

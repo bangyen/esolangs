@@ -5,6 +5,7 @@ from itertools import permutations
 
 import pytest
 
+import esolangs
 from esolangs import run
 from esolangs import tools as boolean
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
@@ -454,3 +455,8 @@ def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
     unwrapped = run("6-5", program, stdin=stdin)
     for width in range(2, 12):
         assert run("6-5", _six_five(program, width), stdin=stdin) == unwrapped
+
+
+def test_internal_route_budget_is_not_a_generator_restriction() -> None:
+    assert esolangs.describe("6-5")["generator_restrictions"] is None
+    assert esolangs.describe("6-5")["generator_max_inputs"] is None

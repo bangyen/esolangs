@@ -12,6 +12,15 @@ from esolangs.cli import main
 from esolangs.cli_io import _write_output
 from tests.cli.test_cli import _FakeStdin, _program, call_main
 from tests.cli_support import _failure, _refused, call_both
+from tests.pick import first, languages
+
+#: A language whose input bits are not spelled 0 and 1.
+_SPELLED = next(
+    n
+    for n in languages(boolean_generator=True)
+    if esolangs.describe(n)["input_encoding"] != ("0", "1")
+)
+_PADDED = first(input_shape="char_stream_padded")
 
 
 class TestTheHintsStayQuietWhenTheyDoNotApply:
@@ -59,9 +68,9 @@ class TestSmallerReportsFromRoundFifteen:
     @pytest.mark.parametrize(
         ("name", "phrase"),
         [
-            ("Clockwise", "adjacent bit characters"),
-            ("Fargo", "one decimal row index"),
-            ("Taglate", "padded with a leading"),
+            (first(input_shape="char_stream_cyclic"), "adjacent bit characters"),
+            (first(input_shape="row_index"), "one decimal row index"),
+            (_PADDED, "padded with a leading"),
             ("brainfuck", "adjacent bit characters"),
         ],
     )
@@ -82,19 +91,20 @@ class TestRoundSixQol:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`run --help` used to answer this with a `python -c` incantation."""
-        assert call_main(["encode", "Grapheme", "10"], capsys) == "A\n%\n"
-        assert call_main(["encode", "Taglate", "101"], capsys) == "0101"
+        zero, one = esolangs.describe(_SPELLED)["input_encoding"]  # type: ignore[misc]
+        assert call_main(["encode", _SPELLED, "10"], capsys) == f"{one}\n{zero}\n"
+        assert call_main(["encode", _PADDED, "101"], capsys) == "0101"
 
     def test_encode_then_run_computes_the_table(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The pipeline the help now recommends, on the awkward language."""
         path = tmp_path / "tg.txt"
-        path.write_text(esolangs.generate("Taglate", "10010110"))
+        path.write_text(esolangs.generate(_PADDED, "10010110"))
         got = ""
         for row in range(8):
-            stdin = call_main(["encode", "Taglate", f"{row:03b}"], capsys)
-            got += call_main(["run", "Taglate", str(path)], capsys, stdin=stdin)[-1:]
+            stdin = call_main(["encode", _PADDED, f"{row:03b}"], capsys)
+            got += call_main(["run", _PADDED, str(path)], capsys, stdin=stdin)[-1:]
         assert got == "10010110"
 
     def test_version_is_accepted_after_a_subcommand(

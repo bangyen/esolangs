@@ -18,7 +18,6 @@ from esolangs.vm import (
     run_until_halt_or_growth,
 )
 from tests.generator_support import CHECK
-from tests.tools.boolean_runners import one_two_three_result
 
 BASE_DIR = Path(__file__).parents[2]
 
@@ -44,7 +43,12 @@ VM_LANGUAGE = {
 # -- ``bits`` is just data, and a wrong one regenerates a looping file --
 # so :func:`test_halt_convention_examples_halt` checks the committed
 # program terminates *before* anything runs it unbounded.
-HALT_CONVENTION = {"123", "arrowqueue"}
+HALT_CONVENTION = {
+    stem
+    for stem in BOOLEAN_GENERATED
+    if esolangs.describe(canonical_id(stem.replace("-", " ")))["answer_mode"]
+    == "termination"
+}
 
 # The command every staleness message names.
 REGENERATE = "`uv run python scripts/generate.py examples`"
@@ -132,15 +136,9 @@ def test_halt_convention_examples_halt(name: str) -> None:
 
 def _halts(name: str, program: str, _inputs: list[str]) -> bool:
     """Whether ``name``'s committed program terminates, by cycle detection."""
-    from esolangs.vm import run_until_halt_or_cycle
-
-    if name == "arrowqueue":
-        from esolangs.interpreters.grid_based.arrowqueue import _Machine as AQ
-
-        return run_until_halt_or_cycle(AQ(program.splitlines()))
-    if name == "123":
-        return one_two_three_result(program) == "0"
-    raise AssertionError(f"unsupported termination example: {name}")
+    language = canonical_id(name.replace("-", " "))
+    stdin = BOOLEAN_GENERATED[name].stdin
+    return run_until_halt_or_cycle(make_vm(language, program, stdin=stdin))
 
 
 def test_every_boolean_generator_has_an_example() -> None:

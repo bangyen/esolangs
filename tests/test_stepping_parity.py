@@ -10,6 +10,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.vm import machine_traits, run_until_halt
+from tests.pick import first
 
 #: Enough for every generated boolean program in the suite to finish; the
 #: slowest needs a few hundred thousand.
@@ -45,7 +46,8 @@ class TestTheTraitsAreReportedBeforeAMachineExists:
 
     def test_describe_agrees_with_the_machine(self) -> None:
         """The class attribute and the live wrapper must not drift apart."""
-        for name in ("brainfuck", "Suffolk", "RAM0", "A Painter Ant", "LaserFuck"):
+        names = [first(answer_mode=mode) for mode in ("output", "dump", "termination")]
+        for name in [*names, first(self_halts=False)]:
             facts = esolangs.describe(name)
             for key, value in machine_traits(name).items():
                 assert facts[key] == value, (name, key)
