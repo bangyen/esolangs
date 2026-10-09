@@ -136,7 +136,6 @@ class TestParameterizedArrowQueue:
     @pytest.mark.parametrize(
         "table",
         [
-            "0" * 32,
             "0" * 31 + "1",
             "1" * 31 + "0",
             "0" * 16 + "1" * 16,
@@ -192,3 +191,53 @@ class TestParameterizedArrowQueue:
                 len(self.instantiate(template, row_bits(c, n))) for c in range(2**n)
             }
             assert len(sizes) == 1, f"{table}: {sizes}"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_halts_or_replenishes_one_heading_with_setters_off_path(n, bit):
+    import esolangs
+    from esolangs._evaluate import _evaluate
+    from esolangs.interpreters.grid_based.arrowqueue import _Machine
+    from esolangs.tools.arrowqueue import _program
+    from esolangs.tools.wrap import balance_score
+    from esolangs.vm import run_until_halt_or_cycle
+
+    table = bit * (1 << n)
+    template = esolangs.generate("ArrowQueue", table)
+    assert template.count(TEMPLATE_CHAR) == n
+    assert len(template) < len(_program(table, keep_constant_cascade=True))
+    for options in ({}, {"width": 1}, {"width": 5}, {"width": 6}, {"balance": True}):
+        program = esolangs.generate("ArrowQueue", table, **options)
+        assert _evaluate("ArrowQueue", program, inputs=n) == table
+        if options.get("balance"):
+            old = min(
+                (
+                    _program(table, width, keep_constant_cascade=True)
+                    for width in (None, 1, 5, 6)
+                ),
+                key=balance_score,
+            )
+            assert balance_score(program) <= balance_score(old)
+    for row in range(1 << n):
+        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+        filled = _instantiate_arrowqueue(template, bits)
+        machine = _Machine(filled.splitlines())
+        if bit == "0":
+            machine.step()
+            assert machine.halted
+            assert machine.queue == ()
+        else:
+            for _ in range(3):
+                machine.step()
+            assert machine.snapshot() == (1, 2, 0, ())
+            stable = machine.snapshot()
+            for _ in range(6):
+                machine.step()
+                assert len(machine.queue) <= 1
+                assert not machine.halted
+            assert machine.snapshot() == stable
+        assert run_until_halt_or_cycle(_Machine(filled.splitlines()), limit=32) == (
+            bit == "0"
+        )

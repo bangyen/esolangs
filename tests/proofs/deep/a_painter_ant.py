@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.tools.a_painter_ant import a_painter_ant
-from esolangs.tools.helpers import TEMPLATE_CHAR
+from esolangs.tools.helpers import TEMPLATE_CHAR, input_weights
 from tests.tools.a_painter_ant_trace import run
 from tests.tools.fills import fill
 from tests.witness_tables import row_bits
@@ -35,6 +35,9 @@ def corridor_end(table: str) -> int:
 
 def expected_grid(table: str) -> dict[tuple[int, int], int]:
     """The white cells the head is meant to paint: corridor and one-answers."""
+    table = input_weights(table, len(table).bit_length() - 1)[1]
+    if len(set(table)) == 1:
+        return {(0, 0): 1}
     end = corridor_end(table)
     grid = {(x, 0): 1 for x in range(end + 1)}
     grid.update({(x, 1): 1 for x in range(end + 1) if table[x] == "1"})
@@ -96,9 +99,10 @@ def check_l2(max_n: int = 10) -> list[str]:
             white = {cell for cell, colour in outcome.grid.items() if colour == 1}
             assert white == set(expected_grid(table)), (n, table)
             assert outcome.position == (0, 0), (n, table)
-            end = corridor_end(table)
-            assert len(set(table[end:])) == 1, (n, table)
-            assert end == 0 or table[end - 1] != table[end], (n, table)
+            kept = input_weights(table, n)[1]
+            end = corridor_end(kept)
+            assert len(set(kept[end:])) == 1, (n, table)
+            assert end == 0 or kept[end - 1] != kept[end], (n, table)
         lines.append(f"  n={n}: {len(tables)} tables, head exact")
     return lines
 
@@ -117,7 +121,12 @@ def check_l3(max_w: int = 10) -> list[str]:
             if bit == 0:
                 assert run(head + "nESN", 1).position == outcome.position
     for end in powers:
-        short = a_painter_ant("1" * end + "0" * (size - end))
+        table = "1" * end + "0" * (size - end)
+        if end > 1:
+            # An odd number of one rows makes every input essential, so
+            # projection cannot shorten the corridor this lemma measures.
+            table = "0" + table[1:]
+        short = a_painter_ant(table)
         head = short[: short.index(TEMPLATE_CHAR)]
         for w in powers:
             outcome = run(head + "N" + "E" * w + "SN", 1)
@@ -130,6 +139,16 @@ def check_l3(max_w: int = 10) -> list[str]:
 
 def phases(template: str) -> list[str]:
     """Name each template position: ``head``, ``run``, ``walk``, ``ret``, ``read``."""
+    if template.startswith("P"):
+        n = template.count(TEMPLATE_CHAR)
+        suffix = template[1 + 2 * n :]
+        assert suffix in ("", "p")
+        assert template[1 : 1 + 2 * n] == (TEMPLATE_CHAR + "S") * n
+        return [
+            "head",
+            *(name for _ in range(n) for name in ("run", "ret")),
+            *(["read"] if suffix else []),
+        ]
     out: list[str] = []
     first = template.index(TEMPLATE_CHAR)
     out.extend(["head"] * first)

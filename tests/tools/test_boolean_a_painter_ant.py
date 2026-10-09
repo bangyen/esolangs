@@ -201,7 +201,7 @@ class TestAPainterAnt:
 
     def test_the_corridor_stops_where_the_trailing_run_starts(self) -> None:
         """Answers equal to the one before them to the end get no cell."""
-        for table, cells in (("0000", 1), ("0111", 2), ("01101111", 5)):
+        for table, cells in (("0111", 2), ("01101111", 5)):
             head = a_painter_ant(table).split(TEMPLATE_CHAR)[0]
             assert head.startswith("N" + "W" * (cells - 1) + "P")
             assert head.count("e") == cells - 1
@@ -211,9 +211,9 @@ class TestAPainterAnt:
                 assert self._check(table, list(bits)) == int(table[index])
 
     def test_three_input_total(self) -> None:
-        """The 256 three-input templates total 14,269 characters."""
+        """The 256 three-input templates total 14,257 characters."""
         total = sum(len(a_painter_ant(f"{value:08b}")) for value in range(256))
-        assert total == 14269
+        assert total == 14257
 
     def test_linear_strip_executes_dense_wide_table(self) -> None:
         """Every row reaches its adjacent strip cell and remains cycle-stable."""
@@ -256,6 +256,51 @@ def _shapes(n: int) -> tuple[str, str]:
     parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
     dense = "".join("1" if (i * 7 + 3) % 5 < 2 else "0" for i in range(2**n))
     return parity, dense
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_setters_restore_one_origin_and_keep_passes_stable(n, bit):
+    import esolangs
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.a_painter_ant import _program
+    from esolangs.tools.helpers import mark_runs, unmark
+    from esolangs.tools.wrap import balance_program, balance_score
+
+    table = bit * (1 << n)
+    template = a_painter_ant(table)
+    assert template == "P" + "$S" * n + ("p" if bit == "0" else "")
+    assert len(template) == 2 * n + 2 - int(bit)
+    legacy = _program(table, keep_constant_walk=True)
+    assert len(template) < len(legacy)
+    for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
+        program = esolangs.generate("A Painter Ant", table, **options)
+        assert _evaluate("A Painter Ant", program, inputs=n) == table
+        if options.get("balance"):
+            marked = mark_runs(legacy, TEMPLATE_CHAR, (PAIR,) * n)
+            old = unmark(balance_program(marked, "a_painter_ant"), TEMPLATE_CHAR, n)
+            assert balance_score(program) <= balance_score(old)
+    for row in range(1 << n):
+        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+        filled = _instantiate_apa(template, bits)
+        machine = _APAMachine(filled)
+        machine.step()
+        for _ in bits:
+            machine.step()
+            machine.step()
+            assert (machine.x, machine.y) == (0, 0)
+            assert machine.grid == {(0, 0): 1}
+        if bit == "0":
+            machine.step()
+        assert machine.ip == 0
+        assert machine.grid == {(0, 0): int(bit)}
+        stable = machine.snapshot()
+        render = machine.render()
+        for _ in range(9 * len(filled)):
+            machine.step()
+        assert machine.snapshot() == stable
+        assert machine.render() == render
 
 
 def _render_after_passes(program: str, passes: int) -> str:

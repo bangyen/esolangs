@@ -54,7 +54,7 @@ def test_arrowqueue_narrow_leaf_ring_executes_the_witness_tables(width: int) -> 
 
 def test_arrowqueue_leaf_gap_floor_and_corpus_size() -> None:
     assert max(map(len, arrowqueue("0110", 1).splitlines())) == 4
-    assert sum(len(arrowqueue(format(v, "08b"), 1)) for v in range(256)) == 52113
+    assert sum(len(arrowqueue(format(v, "08b"), 1)) for v in range(256)) == 51971
 
 
 def test_arrowqueue_compact_rings_at_larger_arity() -> None:

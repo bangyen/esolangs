@@ -95,7 +95,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 ## Notes
 
 - **123** -- 123 answers by terminating: it halts for a 0 result and loops forever for a 1, so only the halting branch is committed. Its output is not the answer and is not compared -- the merge pops through location -2 and prints whatever that cell holds, which for this program is the two bytes 'VO with a diaeresis'
-- **a-painter-ant** -- A Painter Ant has no output: it paints a grid and the answer is the answer cell the ant rests on below its white corridor, shown by 'o' (on black, a zero) or '@' (on white, a one)
+- **a-painter-ant** -- A Painter Ant has no output: it paints a grid and the answer is the colour of the cell the ant rests on, shown by 'o' (on black, a zero) or '@' (on white, a one)
 - **algebraic-programming-language** -- an executed line prints its result, so the answer ends in a newline
 - **arrowqueue** -- ArrowQueue answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The headings printed are its interpreter-only queue dump, which the verdict does not read: the answer is that the program halted at all
 - **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells
