@@ -5,7 +5,6 @@
 
 "scripts/benchmark.py" = 3
 "scripts/check_generator_sizes.py" = 3
-"scripts/generate_docs.py" = 1
 "scripts/mutate_weekly.py" = 5
 "scripts/profile_vandevelo.py" = 1
 "scripts/screens/resources.py" = 7
@@ -65,7 +64,7 @@
 "tests/scripts/test_bundle_one.py" = 9
 "tests/scripts/test_check_generator_sizes.py" = 4
 "tests/scripts/test_examples.py" = 6
-"tests/scripts/test_make_languages_doc.py" = 3
+"tests/scripts/test_make_languages_doc.py" = 2
 "tests/scripts/test_mutate_generator.py" = 12
 "tests/scripts/test_mutate_one.py" = 2
 "tests/scripts/test_new_language.py" = 4
@@ -84,7 +83,6 @@
 "tests/test_run_isolated.py" = 5
 "tests/test_source_containers.py" = 5
 "tests/test_stepping_parity.py" = 4
-"tests/test_tui.py" = 6
 "tests/test_validation.py" = 2
 "tests/test_vm.py" = 3
 "tests/test_vm_protocol.py" = 10

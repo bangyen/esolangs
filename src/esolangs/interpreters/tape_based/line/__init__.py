@@ -92,17 +92,6 @@ def _compiled(program: Raster, scale: int | None = None) -> _Compiled:
     )
 
 
-def _source_view(program: Raster) -> str:
-    """Return the cropped, normalized pixel grid used by the walker."""
-    from .extract import crop_to_content, normalize_scale
-
-    mask = normalize_scale(crop_to_content(from_grey(_grey_rows(program.rows))))
-    return "\n".join(
-        "".join("#" if mask[y, x] else " " for x in range(mask.width))
-        for y in range(mask.height)
-    )
-
-
 class _Machine:
     """A Line run: immutable code and state with I/O handled by the shell."""
 

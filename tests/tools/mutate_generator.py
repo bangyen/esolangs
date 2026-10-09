@@ -138,7 +138,7 @@ _KINDS = {
         include_init=True,
     ),
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT, needs_scripts=True),
-    # The package root: ``vm``, ``debug``, ``tui``, ``cli``, ``registry``.
+    # The package root: ``vm``, ``debug``, ``cli``, ``registry``.
     #
     # These are the modules ``mutate_one`` cannot reach.  It mutates a
     # *bundle* -- an interpreter inlined with its shared modules into one

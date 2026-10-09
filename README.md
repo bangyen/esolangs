@@ -80,32 +80,6 @@ to build stdin.
 
 Feeding it the two adjacent input characters prints their XOR.
 
-## Stepping a program
-
-<!-- TUI-FRAME:START -->
-
-Generate a program with `esolangs generate Flowchart 0110 > flowchart.txt`, then run
-`esolangs debug --tui --stdin 01 Flowchart flowchart.txt` in a terminal.
-Here is Flowchart at step 14:
-
-```
-Flowchart  step 14  ip (1, 79, 0, -1)  running
---------------------------------------------------------------------------
-1 |  ]─\ \─/{ }\─┐                                 ┌< ]──┐
-2 | ]─\ \─\{ }/─< >─/ /─/ /─/ /─/ /─/ /─/ /─/ /─/ /┴────< >─/ /─\[ ]/─{ ]─
---------------------------------------------------------------------------
-memory   0 1 1 0
-stack    (empty)
-output   ''
-views    deques={0: [0, 1], 1: [1, 0]}  pointers=[_Pointer(row=1, col=79,
-hjkl move | t break | space step | c continue | r run | b back | q quit
-R restart | w/W watch | G to ip | 0-9 count | p play | +/- speed
-```
-
-See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging) for controls.
-
-<!-- TUI-FRAME:END -->
-
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs for each of the 79

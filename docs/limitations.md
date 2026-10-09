@@ -31,10 +31,9 @@ stepping parses pixels; the other raster languages emit and execute pixels.
 
 ## Source positions
 
-`esolangs debug --tui` marks only a source position. `ip_shape` is `offset`,
-`grid`, `line`, or `opaque` -- `tests/test_vm_protocol.py` sweeps every language
-and refuses an undeclared or misspelled value. Opaque positions have no program
-mark.
+VM instruction positions declare `ip_shape`: `offset`, `grid`, `line`, or
+`opaque`. `tests/test_vm_protocol.py` checks every language and rejects
+undeclared or misspelled values. Opaque positions have no source coordinate.
 
 Line extraction accepts anti-aliased PNGs only when strokes retain a connected
 dark core. The 3px scan fixture executes addition; a one-third-pixel shift of

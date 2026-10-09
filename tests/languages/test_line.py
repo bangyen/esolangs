@@ -13,11 +13,9 @@ from esolangs._evaluate import _evaluate
 from esolangs.cli import main
 from esolangs.interpreters.tape_based.line.extract import detect_scale, normalize_scale
 from esolangs.interpreters.tape_based.line.mask import Mask
-from esolangs.tui import History, render
 from tests.cli.test_cli import _FakeStdin, call_main
 from tests.cli.test_cli_portable import save_generated
 from tests.cli_support import call_both
-from tests.test_tui import _highlighted
 
 
 @pytest.mark.medium
@@ -51,24 +49,6 @@ def test_invalid_png(value):
     document["source"] = value
     with pytest.raises(esolangs.ProgramError):
         esolangs.load_program("Line", json.dumps(document))
-
-
-@pytest.mark.medium
-def test_line_highlight_tracks_ink_after_crop_and_scale() -> None:
-    from esolangs import generate
-    from esolangs.raster import Raster
-
-    source = generate("Line", "01", scale=3)
-    assert isinstance(source, Raster)
-    history = History("Line", Raster.from_png(source.to_png()), "1\n")
-    for step in range(100):
-        frame = history.at(step)
-        if frame.halted:
-            assert frame.output == "1"
-            break
-        assert _highlighted(render(frame)) == "#"
-    else:
-        pytest.fail("identity did not halt within 100 steps")
 
 
 class TestTheSmallInconsistencies:

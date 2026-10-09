@@ -1,11 +1,10 @@
-"""``esolangs debug``: the breakpoint/watch VM session and its TUI."""
+"""``esolangs debug``: the breakpoint/watch VM session."""
 
 from __future__ import annotations
 
 import sys
 
 from esolangs import _check_runnable, describe
-from esolangs._program import Program
 from esolangs.cli_args import (
     _check_count,
     _errors,
@@ -13,7 +12,6 @@ from esolangs.cli_args import (
     _integer,
     _nonnegative,
     _pop_cell,
-    _pop_flags,
     _pop_options,
     _pop_portable,
     _pop_set_pairs,
@@ -37,44 +35,7 @@ from esolangs.cli_io import (
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
 from esolangs.interpreters.source_hints import error_text
-from esolangs.settings import DialectSettings, dialect_options
-from esolangs.tui_loop import breakpoint_for, run_tui
-
-
-def _run_tui_session(
-    language: str,
-    program: Program,
-    stdin: str,
-    options: dict[str, str],
-    cell: tuple[int, int] | None,
-    settings: DialectSettings | None = None,
-) -> None:
-    """Hand the run to the step-through screen, with what it can draw.
-
-    A *position* goes to the screen as well as to the condition, since it is
-    the one kind of breakpoint that can be marked on the program; a cell or
-    an output breakpoint is a fact about state with nowhere to put a mark.
-    ``--watch-cell`` means the same thing on both sides -- one cell's value
-    over time -- and the screen shows it as a row that grows as you step.
-    """
-    at = (int(options["--break-at"]),) if "--break-at" in options else ()
-    stop = breakpoint_for(cell=cell, output=options.get("--break-on-output"))
-    watch = int(options["--watch-cell"]) if "--watch-cell" in options else None
-    try:
-        if settings is None:
-            run_tui(language, program, stdin, stop=stop, at=at, watch=watch)
-        else:
-            run_tui(
-                language,
-                program,
-                stdin,
-                stop=stop,
-                at=at,
-                watch=watch,
-                settings=settings,
-            )
-    except ValueError as exc:
-        _fail(exc)
+from esolangs.settings import dialect_options
 
 
 def _debug(rest: list[str]) -> None:
@@ -97,12 +58,10 @@ def _debug(rest: list[str]) -> None:
     rest, set_pairs = _pop_set_pairs(rest)
     rest, options = _pop_options(rest, options_taken)
     rest, portable = _pop_portable(rest)
-    rest, flags = _pop_flags(rest, {"--tui"})
-    tui = "--tui" in flags
     # Before the positional count, matching ``run``: a forgotten number made
     # the language the timeout's value and the complaint landed on the file.
     limit = _timeout_of(options)
-    rest = _split_positional(rest, set(), options_taken | {"--tui", "--portable"})
+    rest = _split_positional(rest, set(), options_taken | {"--portable"})
     if not (portable and len(rest) == 1):
         _check_count("debug", rest, 2)
     content = None
@@ -137,24 +96,10 @@ def _debug(rest: list[str]) -> None:
         settings=settings,
         content=content,
     )
-    # The key loop owns the terminal's stdin, so a piped stream cannot also
-    # be the program's input: the two would race for the same descriptor.
-    # ``--stdin`` is how a TUI run feeds its program instead.
-    if tui and not sys.stdin.isatty():
-        # Not exempted by ``--stdin``: following that advice turned the
-        # refusal into curses failing with ``(19, 'Operation not supported
-        # by device')`` at exit 70.  ``--stdin`` is the program's input,
-        # not a terminal for the TUI.
-        _fail(
-            "--tui reads keys from a terminal, and this stdin is not one. "
-            "--stdin says where the program's input comes from and does not "
-            "substitute; run the TUI from a terminal, or drop --tui and use "
-            "--break-at/--break-on-cell/--break-on-output"
-        )
     stdin = (
         options["--stdin"]
         if "--stdin" in options
-        else ("" if tui else _read_stdin(limit, _stdin_hint(facts)))
+        else _read_stdin(limit, _stdin_hint(facts))
     )
     # The same two refusals ``run`` makes.  Debugging a program is no reason
     # to skip them: an unfilled template stepped confidently to `output: '0'`
@@ -163,14 +108,6 @@ def _debug(rest: list[str]) -> None:
     # report a fault rather than propagate it.
     try:
         _check_runnable(language, program)
-        if tui:
-            # Built through the same refusals, then handed to the screen --
-            # which owns the stepping from here, so nothing below runs.
-            if settings is None:
-                _run_tui_session(language, program, stdin, options, cell)
-            else:
-                _run_tui_session(language, program, stdin, options, cell, settings)
-            return
         dbg = make_debugger(language, program, stdin=stdin, settings=settings)
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
@@ -184,10 +121,6 @@ def _debug(rest: list[str]) -> None:
             _fail("--break-on-output needs some text; every output contains ''")
         dbg.break_on_output(options["--break-on-output"])
         breakpoints_set = True
-    # A position and a cell are the other two conditions ``Debugger`` has
-    # always had, and they are wired here as well as into the screen so the
-    # two agree about what can be asked for -- a flag that worked under
-    # ``--tui`` and nowhere else would be the stranger arrangement.
     if "--break-at" in options:
         dbg.break_at(int(options["--break-at"]))
         breakpoints_set = True

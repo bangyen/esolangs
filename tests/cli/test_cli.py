@@ -243,112 +243,6 @@ class TestBreakpointOptions:
         assert "cell 0: [1, 2, 3]" in out
 
 
-class TestTuiFlag:
-    """``--tui`` hands the run to the step-through screen."""
-
-    @pytest.fixture(autouse=True)
-    def _pretend_a_terminal(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Say that a terminal is present, because pytest's stdin is not one."""
-        monkeypatch.setattr(_FakeStdin, "isatty", lambda _self: True)
-
-    def test_it_calls_the_screen_with_the_program_and_input(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        # The key loop owns the terminal, so what is pinned here is the
-        # handoff: the flag is recognised, stripped from the positionals,
-        # and the right three arguments reach the screen.
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "01",
-                    "brainfuck",
-                    _program(tmp_path, ",."),
-                ],
-                capsys,
-            )
-        screen.assert_called_once()
-        language, program, stdin = screen.call_args.args
-        assert (language, program, stdin) == ("brainfuck", ",.", "01")
-
-    def test_breakpoints_reach_the_screen(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The same flags the batch debugger takes drive the continue key."""
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "--break-on-cell",
-                    "0=2",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        stop = screen.call_args.kwargs["stop"]
-        assert stop is not None
-        # The predicate reads a frame, so it can be checked without a run.
-        frame = esolangs.tui.Frame(
-            language="brainfuck",
-            program="+++",
-            ip=2,
-            step=2,
-            halted=False,
-            memory=(2,),
-            stack=(),
-            output="",
-        )
-        assert stop(frame)
-
-    def test_a_position_reaches_the_screen_as_a_drawn_mark(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--break-at`` is the one breakpoint that has somewhere to be drawn."""
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "--break-at",
-                    "2",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        assert screen.call_args.kwargs["at"] == (2,)
-        # A position needs no predicate: the screen stops on what it marks.
-        assert screen.call_args.kwargs["stop"] is None
-
-    def test_a_watched_cell_reaches_the_screen(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--watch-cell`` means the same on both sides, shown as a row."""
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "--watch-cell",
-                    "2",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        assert screen.call_args.kwargs["watch"] == 2
-
-
 class TestHelp:
     """Every command documents itself, because `--help` is what gets typed."""
 
@@ -517,10 +411,9 @@ _REFUSALS = {
         "debug --break-on-cell=-1=3 brainfuck prog:+",
         "index must not be negative",
     ),
-    "a_piped_stream_is_refused": ("debug --tui brainfuck prog:,.", "terminal", "Z"),
-    "stdin_does_not_buy_a_terminal": (
-        "debug --tui --stdin 1 brainfuck prog:,.",
-        "terminal",
+    "removed_tui_is_refused": (
+        "debug --tui brainfuck prog:+",
+        "unknown option: --tui",
     ),
     "an_unknown_option_is_named": (
         "debug --frobnicate brainfuck prog:+",

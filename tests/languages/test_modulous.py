@@ -136,14 +136,6 @@ def test_cli_prints_runtime_hints(command, tmp_path: Path, capsys):
 
 
 @pytest.mark.medium
-def test_tui_displays_a_runtime_hint():
-    from esolangs.tui import render, replay
-
-    frame = replay("Modulous", "[JMP F]", "", step=1)
-    assert "hint: supply the required operand" in render(frame, width=120)
-
-
-@pytest.mark.medium
 def test_hints_do_not_discard_partial_output():
     with pytest.raises(esolangs.ProgramError, match="missing operand") as caught:
         esolangs.run("Modulous", "[PSH INT 65][PRT][JMP F]", timeout=1)
@@ -164,14 +156,11 @@ def test_runtime_error_keeps_partial_output_and_one_hint(isolated):
 
 
 @pytest.mark.medium
-def test_vm_and_tui_display_runtime_hints():
-    from esolangs.tui import render, replay
-
+def test_vm_displays_runtime_hints():
     machine = make_vm("Modulous", "[SWP]", stdin="")
     with pytest.raises(HaltError) as caught:
         machine.step()
     assert caught.value.__notes__ == ["hint: push two values before SWP"]
-    assert "hint: push two values" in render(replay("Modulous", "[SWP]", "", step=1))
 
 
 @pytest.mark.medium

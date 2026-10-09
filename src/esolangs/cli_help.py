@@ -23,16 +23,12 @@ commands:
         [--seed N] [--scale N] [--settings JSON]
         [--set KEY=VALUE] [--portable] <language> <file>
                                 run a program through its interpreter
-    debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
+    debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S]
           [--break-at N] [--break-on-cell I=V] [--break-on-output S]
           [--settings JSON] [--set KEY=VALUE] [--portable]
           <language> <file>
                                 run under the debugger and report where it
-                                stopped, plus any watched cell's history;
-                                --tui steps interactively instead, showing the
-                                program with the current op highlighted; its
-                                own footer lists the keys, and `esolangs debug
-                                --help` names them
+                                stopped, plus any watched cell's history
     suggest <language> <program-file>
                                 preview unambiguous command spelling edits;
                                 the program is neither run nor modified
@@ -317,28 +313,13 @@ options:
                        program that never halts, which is what the four
                        terminate-as-answer languages are.
   --stdin TEXT         feed TEXT verbatim using the language's input unit.
-                       The only way to give a debugged program
-                       input, since the Python API cannot feed a live
-                       debugger either.
+                       Without this option, read the program input from stdin.
   -p, --portable       load JSON saved by generate --portable.  The language
                        may be omitted because the JSON names it.
                        --settings overrides individual saved choices.
   -s, --settings JSON  dialect overrides shared with generate and run.
   --set KEY=VALUE      one dialect override without JSON, repeatable and
                        applied after --settings.
-  --tui                step through the program in an interactive
-                       full-screen view.  hjkl move the selector (a
-                       leading count walks it further, g prompts for a
-                       place, G returns it to the run), t marks a
-                       breakpoint under it, space steps, b steps back, c
-                       continues to the next breakpoint or the halt, r runs
-                       to the end, R restarts on new stdin, w/W add and
-                       drop a watched cell, p plays with +/- setting the
-                       speed, q leaves.  Needs a terminal to read keys
-                       from.
 
-Every flag above is also listed by `esolangs --help`.  This text used to
-name four of the nine, which made the summary more informative than the
-page that is supposed to expand it.
 """,
 }

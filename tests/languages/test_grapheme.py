@@ -4,7 +4,6 @@ import json
 import warnings
 from io import StringIO
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -12,7 +11,6 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
-from esolangs.cli_debug import _run_tui_session
 from esolangs.debugger import make_debugger
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import _Machine
@@ -20,7 +18,6 @@ from esolangs.interpreters.stack_based.grapheme import (
     suggest_corrections as _grapheme_corrections,
 )
 from esolangs.tagged import _Tagged
-from esolangs.tui import History, replay
 from esolangs.vm import complete_vm, make_vm
 from tests.cli.test_cli import call_main
 from tests.cli_support import assert_repair_runs, call_both, repaired
@@ -293,22 +290,6 @@ def test_cli_debug_uses_settings(tmp_path: Path, capsys):
     )
     assert "halted: yes" in output
     assert "output: '10'" in output
-
-
-def test_tui_settings_reach_wrapper():
-    settings = DialectSettings(integer_conversion="after_each_letter")
-    with patch("esolangs.cli_debug.run_tui") as run:
-        _run_tui_session("Grapheme", "FAFY", "", {}, None, settings)
-    assert run.call_args.kwargs["settings"] is settings
-
-
-def test_tui_replay_retains_settings():
-    settings = DialectSettings(integer_conversion="after_each_letter")
-    history = History("Grapheme", "FAFYPPPP", settings=settings)
-    history.budget = 1
-    assert history.at(8).output == "10"
-    assert history.at(4).output == "10"
-    assert history.at(2) == replay("Grapheme", "FAFYPPPP", "", 2, settings=settings)
 
 
 @pytest.mark.medium

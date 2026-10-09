@@ -26,7 +26,6 @@ _EXAMPLES_START, _EXAMPLES_END = _markers("EXAMPLES")
 _BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END = _markers("BOOLEAN-COUNT")
 _SHAPES_START, _SHAPES_END = _markers("INPUT-SHAPES")
 _API_START, _API_END = _markers("PUBLIC-API")
-_TUI_START, _TUI_END = _markers("TUI-FRAME")
 
 
 def load_script() -> object:
@@ -162,32 +161,6 @@ def test_an_unheaded_category_names_where_to_add_it() -> None:
     }
     with pytest.raises(ValueError, match="_README_HEADINGS"):
         module.render_languages_section()
-
-
-def test_the_tui_frame_has_no_trailing_whitespace() -> None:
-    """`trailing-whitespace` runs on README.md and would strip the padding."""
-    module = load_script()
-    rendered = module.render_tui_section()
-    assert not [line for line in rendered.splitlines() if line != line.rstrip()]
-
-
-def test_the_tui_frame_draws_the_generators_own_program() -> None:
-    """Not a mock-up: each drawn row is a row of the generated program."""
-    module = load_script()
-    import esolangs
-
-    program = esolangs.generate("Flowchart", "0110")
-    rows = program.splitlines()
-    drawn = [
-        line.split("|", 1)
-        for line in module.render_tui_section().splitlines()
-        if re.fullmatch(r"\s*\d+ \|.*", line)
-    ]
-    assert drawn, "no numbered program rows on the screen"
-    for number, body in drawn:
-        # The pane is windowed by column, so the drawn text is a slice of
-        # the row it is numbered with -- one-based, as the screen shows it.
-        assert body.strip() in rows[int(number) - 1], (number, body)
 
 
 def _marked(text: str, start: str, end: str) -> str:

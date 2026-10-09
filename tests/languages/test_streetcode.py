@@ -6,67 +6,11 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.tui import Mark, render
 from tests.cli_support import call_both
 from tests.generator_support import evaluate_generated, overruns
 from tests.samples import STREETCODE, STREETCODE_GAP
-from tests.test_tui import _frame, _highlighted, _marked_both, _marked_break, _sgr
 from tests.test_validation import _debugger
 from tests.test_vm import _run_all
-
-
-class TestBreakpointMarks:
-    """A place the run will stop, told apart from the place it is now."""
-
-    def test_a_breakpoint_is_painted_in_its_own_colour(self) -> None:
-        screen = render(_frame("+>-<", 0), breaks=(Mark(0, 2),))
-        assert _marked_break(screen) == ["-"]
-        assert _highlighted(screen) == "+"
-
-    def test_a_breakpoint_under_the_cursor_shows_as_both(self) -> None:
-        screen = render(_frame("+>-<", 2), breaks=(Mark(0, 2),))
-        assert _marked_both(screen) == ["-"]
-        assert _highlighted(screen) is None
-        assert _marked_break(screen) == []
-
-    def test_every_combination_of_states_looks_different(self) -> None:
-        seen = [
-            _sgr(render(_frame("+>-<", 2))),
-            _sgr(render(_frame("+>-<", 0), breaks=(Mark(0, 2),))),
-            _sgr(render(_frame("+>-<", 2), breaks=(Mark(0, 2),))),
-            _sgr(render(_frame("+>-<", 0), picked=Mark(0, 2))),
-            _sgr(render(_frame("+>-<", 0), breaks=(Mark(0, 2),), picked=Mark(0, 2))),
-        ]
-        assert len(set(seen)) == len(seen), seen
-
-    def test_several_breakpoints_on_one_row_are_all_painted(self) -> None:
-        screen = render(_frame("abcdef", 0), breaks=(Mark(0, 2), Mark(0, 4)))
-        assert _marked_break(screen) == ["c", "e"]
-
-    def test_breakpoints_on_different_rows_are_all_painted(self) -> None:
-        screen = render(_frame("ab\ncd", 0), breaks=(Mark(0, 1), Mark(1, 1)))
-        assert _marked_break(screen) == ["b", "d"]
-
-    def test_a_position_that_does_not_locate_is_not_painted(self) -> None:
-        assert _marked_break(render(_frame("abc", 0), breaks=(Mark(9, 0),))) == []
-
-    def test_a_grid_breakpoint_is_painted_at_its_cell(self) -> None:
-        frame = _frame("abc\ndef", (0, 0), language="Streetcode", ip_shape="grid")
-        assert _marked_break(render(frame, breaks=(Mark(1, 2),))) == ["f"]
-
-    def test_the_header_counts_them(self) -> None:
-        assert "2 breaks" in render(
-            _frame("abcdef", 0), breaks=(Mark(0, 2), Mark(0, 4))
-        )
-        assert "1 break" in render(_frame("abcdef", 0), breaks=(Mark(0, 2),))
-
-    def test_no_count_when_there_are_none(self) -> None:
-        assert "break" not in render(_frame("abc", 0)).splitlines()[0]
-
-    def test_a_breakpoint_scrolled_out_of_view_is_not_painted(self) -> None:
-        program = "." * 400 + "@" + "." * 400
-        screen = render(_frame(program, 800), width=60, breaks=(Mark(0, 0),))
-        assert _marked_break(screen) == []
 
 
 class TestABreakpointMustBeAbleToFire:
