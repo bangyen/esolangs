@@ -336,10 +336,16 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
     return out.text()
 
 
+def _dialect(rotation: str = "backward") -> None:
+    """Validate which way ROTfuck's command cycle turns."""
+    validate_rotation(rotation)
+
+
 LANGUAGE = Language(
     "ROTfuck",
     "tape_based.rotfuck",
     boolean=rotfuck,
+    dialect=_dialect,
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,
     contract=BooleanContract(

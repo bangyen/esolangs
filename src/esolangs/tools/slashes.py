@@ -62,12 +62,13 @@ LANGUAGE = Language(
     "other.slashes",
     id="slashes",
     aliases=("Slashalash",),
+    path_like_source=True,
     boolean=slashes,
-    # Not a tree: an indexed table rewrite, not a tree.
+    # Not a tree: an indexed table rewrite.
     shape=Shape.LOOKUP,
     contract=BooleanContract(
         note="Inputs fill the binary row index before unary table selection.",
     ),
     no_wrap="newlines are literal output and substitution data",
-    example=Example(pair=("a", "b")),
+    example=Example(pair=("a", "b"), unfilled=_is_unfilled_template),
 )

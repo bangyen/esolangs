@@ -1,11 +1,15 @@
 """Boolean-function generator for RAM0."""
 
+from collections.abc import Callable
+from typing import Any
+
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     in_input_order,
+    same_tokens,
     subtree_ids,
     subtree_slot,
 )
@@ -201,10 +205,16 @@ def _balance(table: str, default: str) -> str:
     )
 
 
+def _same_layout(template: str, plain: str, _layout: Callable[[int], Any]) -> bool:
+    """Instructions tokenize on whitespace, which its wrapper turns to newlines."""
+    return same_tokens(template, plain)
+
+
 LANGUAGE = Language(
     "RAM0",
     "register_based.ram0",
     boolean=ram0,
+    same_layout=_same_layout,
     contract=BooleanContract(
         answer_mode="dump",
         answer_pattern=r"z: (\d+)",

@@ -750,3 +750,18 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
     whitespace-only program is returned as it came."""
     assert _mammalian("", 40) == ""
     assert _mammalian("   \n ", 40) == "   \n "
+
+
+def test_bio_layouts_differ_only_in_whitespace() -> None:
+    same_layout = LANGUAGES["BIO"].same_layout
+    assert same_layout is not None
+    assert same_layout("a\n b", "a b", lambda _width: "")
+    assert not same_layout("ab c", "a b", lambda _width: "")
+
+
+def test_smallfuck_matches_a_narrow_layout_without_its_newlines() -> None:
+    same_layout = LANGUAGES["Smallfuck"].same_layout
+    assert same_layout is not None
+    narrow = {1: "*\n<", 4: "*>\n*"}
+    assert same_layout("*>*", "*>*<", lambda width: narrow[width])
+    assert same_layout("*>\n*<", "*>*<", lambda width: narrow[width])

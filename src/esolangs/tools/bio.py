@@ -1,5 +1,8 @@
 """Boolean template generator for bio."""
 
+from collections.abc import Callable
+from typing import Any
+
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import (
@@ -73,10 +76,16 @@ _BIO_DOUBLE = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
 _BIO_SKIP = ("0ix{1ox;0oy;};", "0ix{1ox;};0iy{1oy;0ox;};")
 
 
+def _same_layout(template: str, plain: str, _layout: Callable[[int], Any]) -> bool:
+    """BIO discards whitespace."""
+    return "".join(template.split()) == "".join(plain.split())
+
+
 LANGUAGE = Language(
     "BIO",
     "register_based.bio",
     boolean=bio,
+    same_layout=_same_layout,
     # Not a tree: one nested level per row whatever the table says.
     shape=Shape.LOOKUP,
     contract=BooleanContract(),

@@ -1038,6 +1038,7 @@ LANGUAGE = Language(
     "SLOW ACV MAMMALIAN",
     "tape_based.slow_acv_mammalian",
     boolean=slow_acv_mammalian,
+    dialect=MammalianModuli,
     # Not a tree: a branch-free chain into a flat leaf table.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

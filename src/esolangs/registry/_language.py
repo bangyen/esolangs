@@ -56,6 +56,8 @@ class Example:
     expected_compared: bool = True
     kwargs: tuple[tuple[str, int], ...] = ()
     scale: int = 1
+    #: Whether text is unfilled, where ``char`` is also source (``///``).
+    unfilled: Callable[[str], bool] | None = None
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,8 @@ class Language:
     aliases: tuple[str, ...] = ()
     # Source: ``split`` passes ``run()`` one string per line.
     split: bool = False
+    #: Source that looks like a file path is still source (``///`` rules).
+    path_like_source: bool = False
     source_kind: SourceKind = SourceKind.TEXT
     # The Boolean generator, its limits, and how its programs read inputs
     # and give the answer (default: a 0/1 line per input, the bit printed).
@@ -77,13 +81,17 @@ class Language:
     generator_max_inputs: int | None = None
     generator_restrictions: str = ""
     shape: Shape = Shape.TREE
+    #: Validates ``DialectSettings``: one defaulted keyword per setting.
+    dialect: Callable[..., Any] | None = None
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
     wrap: Callable[[str, int], str] | None = None
     #: Why ``wrap`` is absent, when a break would change the program.
     no_wrap: str = ""
-    #: ``balance(table, default)``: the squarest layout, for width-taking
-    #: generators whose regimes a plain reflow cannot compare.
+    #: Whether a template is one of the generator's ``layout(width)``s of
+    #: its default build ``plain``; default: equal up to wrapping newlines.
+    same_layout: Callable[[str, str, Callable[[int], Any]], bool] | None = None
+    #: ``balance(table, default)``: the squarest layout a reflow cannot find.
     balance: Callable[..., Any] | None = None
     #: What an exhausted read does instead of raising ``EOFError``.
     eof: str = ""

@@ -10,8 +10,10 @@ subtree to fold or share.
 """
 
 import re
+from collections.abc import Callable
 from functools import cache
 from itertools import pairwise
+from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
@@ -22,6 +24,7 @@ from esolangs.tools.helpers import (
     essential_inputs,
     mark_runs,
     read_at,
+    same_up_to_wrapping,
     unmark,
 )
 from esolangs.tools.minifuck.mux import (
@@ -303,10 +306,23 @@ def _balance(table: str, default: str) -> str:
     return min(candidates, key=balance_score)
 
 
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Newlines absorb skips: compare the narrow layouts without them."""
+    for width in (1, 4):
+        narrow = str(layout(width))
+        if narrow.startswith("q\n"):
+            # Exact layouts were checked by the caller.
+            continue
+        if template.replace("\n", "") == narrow.replace("\n", ""):
+            return True
+    return same_up_to_wrapping(template, plain)
+
+
 LANGUAGE = Language(
     "Minifuck",
     "tape_based.minifuck",
     boolean=minifuck,
+    same_layout=_same_layout,
     # Not a tree: a route search; its size tracks the search, not the table.
     shape=Shape.LOOKUP,
     contract=BooleanContract(),
