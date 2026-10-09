@@ -90,7 +90,6 @@
 "tests/test_answer_plumbing_refusals.py" = 8
 "tests/test_answer_stdin.py" = 10
 "tests/test_api.py" = 6
-"tests/test_boolean_contracts.py" = 18
 "tests/test_branch_gaps.py" = 2
 "tests/test_debug.py" = 7
 "tests/test_docs.py" = 1

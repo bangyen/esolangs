@@ -3,6 +3,11 @@
 import random
 import re
 
+import pytest
+
+from esolangs import tools as boolean
+from tests.generator_support import assert_parity_at_most_doubles
+
 
 class TestParameterizedRam0:
     """Input-by-substitution boolean generator for the no-input language RAM0."""
@@ -107,3 +112,8 @@ class TestParameterizedRam0:
         for row in (0, 1, 2, 7, 31, 32, 62, 63):
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
             assert self.run_ram0(self.instantiate(template, bits)) == table[row]
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.ram0, range(11, 15))

@@ -1,5 +1,7 @@
 """Generator round-trip checks for the development suite."""
 
+from itertools import pairwise
+
 import esolangs
 from esolangs._evaluate import _DEFAULT, _Default, _evaluate
 from tests.stdin_check import _validate_shape_for_evaluate
@@ -69,3 +71,12 @@ def overruns(name: str, table: str) -> tuple[int, int]:
     ]
     over = [margin for margin in counted if margin > 0]
     return len(over), max(over, default=0)
+
+
+def assert_parity_at_most_doubles(generator, arities, slack=0):
+    """A parity table's source at most doubles per input, plus ``slack``."""
+    sizes = [
+        len(generator("".join(str(r.bit_count() & 1) for r in range(2**n))))
+        for n in arities
+    ]
+    assert all(b <= 2 * a + slack for a, b in pairwise(sizes)), sizes

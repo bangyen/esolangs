@@ -6,7 +6,10 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from tests.generator_support import assert_an_ignored_input_costs
+from tests.generator_support import (
+    assert_an_ignored_input_costs,
+    assert_parity_at_most_doubles,
+)
 from tests.tools.boolean_runners import (
     run_qoibl,
 )
@@ -80,3 +83,8 @@ def test_constant_table_reads_cost_one_line_each() -> None:
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """One read into a register the next write clears."""
     assert_an_ignored_input_costs("Qoibl", 6, 30)
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.qoibl, range(7, 11), 800)

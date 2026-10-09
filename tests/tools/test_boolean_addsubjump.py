@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs import tools as boolean
+from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import (
     run_addsubjump,
     run_addsubjump_from,
@@ -42,3 +43,8 @@ class TestAddSubJump:
                 got = run_addsubjump_from(program, feed)
                 assert got == table[combo], f"{table} inputs {bits}"
                 assert not list(feed), f"{table} inputs {bits} left input unread"
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.addsubjump, range(11, 15))

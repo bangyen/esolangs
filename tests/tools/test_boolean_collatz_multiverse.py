@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import (
     run_collatz_multiverse,
 )
@@ -152,3 +153,8 @@ class TestCollatzMultiverse:
             for n in (7, 8)
         ]
         assert sizes[1] < 2 * sizes[0] + 256
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.collatz_multiverse, (7, 8), 255)

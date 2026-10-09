@@ -6,7 +6,10 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from tests.generator_support import assert_an_ignored_input_costs
+from tests.generator_support import (
+    assert_an_ignored_input_costs,
+    assert_parity_at_most_doubles,
+)
 from tests.tools.boolean_runners import (
     run_inject,
 )
@@ -134,3 +137,8 @@ class TestInject:
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """Its declaration and ``readto``."""
     assert_an_ignored_input_costs("Inject", 6, 15)
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.inject, range(11, 15))
