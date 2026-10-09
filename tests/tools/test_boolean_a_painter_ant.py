@@ -9,8 +9,10 @@ from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _APAMachi
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
 from esolangs.tools.a_painter_ant import PAIR, a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
-from tests.tools.fills import _instantiate_apa
+from tests.tools.fills import fill
 from tests.tools.test_boolean_contract import _parity
+
+_instantiate_apa = fill("A Painter Ant")
 
 
 # 2.0s over 45 tests: runs the generated program.

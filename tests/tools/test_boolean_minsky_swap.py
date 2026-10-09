@@ -20,7 +20,9 @@ class TestParameterizedMinskySwap:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way a caller does, not the way this file did."""
-        from tests.tools.fills import _fill_minsky_swap
+        from tests.tools.fills import fill
+
+        _fill_minsky_swap = fill("Minsky Swap")
 
         return _fill_minsky_swap(tpl, bits)
 
@@ -103,7 +105,9 @@ class TestParameterizedMinskySwap:
         """``_fill_minsky_swap`` spells a set bit above the LSB too."""
         from esolangs.tools import minsky_swap
         from esolangs.tools.examples import AND2
-        from tests.tools.fills import _fill_minsky_swap
+        from tests.tools.fills import fill
+
+        _fill_minsky_swap = fill("Minsky Swap")
 
         program = _fill_minsky_swap(minsky_swap(AND2), list(bits))
         assert self.run_minsky_swap(program) == AND2[(bits[0] << 1) | bits[1]]

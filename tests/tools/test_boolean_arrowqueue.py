@@ -7,7 +7,9 @@ import pytest
 
 from esolangs.tools.arrowqueue import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
-from tests.tools.fills import _instantiate_arrowqueue
+from tests.tools.fills import fill
+
+_instantiate_arrowqueue = fill("ArrowQueue")
 
 
 class TestParameterizedArrowQueue:

@@ -1,45 +1,39 @@
-"""Execute the narrow fresh-cell and single-character constructions."""
+"""Execute the narrowest layouts, and fill narrow templates like plain ones."""
 
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.exceptions import TemplateError
 
 
+def languages(**facts: object) -> list[str]:
+    """Languages whose ``describe()`` has these facts (no tests/ imports here)."""
+    return [
+        name
+        for name in esolangs.list_languages()
+        if all(esolangs.describe(name)[k] == v for k, v in facts.items())
+    ]
+
+
 @pytest.mark.medium
-@pytest.mark.parametrize("language", ["BF-PDA", "FALSE", "Home Row", "RAM0"])
-def test_narrow_small_tokens_keep_larger_input_order(language: str) -> None:
-    for n in range(4, 7):
-        table = "".join(
-            str((row * 17 + row // 3).bit_count() % 2) for row in range(1 << n)
-        )
-        program = esolangs.generate(language, table, width=1)
-        if language != "RAM0":
-            assert max(map(len, program.splitlines())) == 1
-        for row, expected in enumerate(table):
-            bits = [int(char) for char in format(row, f"0{n}b")]
-            code = (
-                esolangs.instantiate(language, program, bits)
-                if language != "FALSE"
-                else program
-            )
-            stdin = "".join(map(str, bits)) if language == "FALSE" else ""
-            output = esolangs.run(language, code, stdin=stdin, max_steps=100_000)
-            assert (
-                output.startswith(f"z: {expected}\n")
-                if language == "RAM0"
-                else output == expected
-            )
+@pytest.mark.parametrize(
+    "language", languages(source_kind="text", boolean_generator=True)
+)
+@pytest.mark.parametrize("n", [4, 6])
+def test_width_one_layouts_compute_the_table(language: str, n: int) -> None:
+    table = "".join(str((row * 17 + row // 3).bit_count() % 2) for row in range(1 << n))
+    program = esolangs.generate(language, table, width=1)
+    assert _evaluate(language, program, inputs=n) == table
 
 
-def test_factored_setters_reduce_public_template_floors() -> None:
-    for name, floor in (("BF-PDA", 1), ("Home Row", 1), ("RAM0", 1)):
-        template = esolangs.generate(name, "0110", width=1)
-        assert max(map(len, template.splitlines())) == floor
-        for row in range(4):
-            bits = [int(char) for char in format(row, "02b")]
-            code = esolangs.instantiate(name, template, bits, truth_table="0110")
-            plain = esolangs.instantiate(name, str(template), bits, truth_table="0110")
-            assert code == plain
-            with pytest.raises(TemplateError, match="template"):
-                esolangs.instantiate(name, str(template), bits, truth_table="0001")
+@pytest.mark.parametrize("name", languages(parameterized=True))
+def test_narrow_templates_fill_like_their_text(name: str) -> None:
+    template = esolangs.generate(name, "0110", width=1)
+    for row in range(4):
+        bits = [int(char) for char in format(row, "02b")]
+        code = esolangs.instantiate(name, template, bits, truth_table="0110")
+        plain = esolangs.instantiate(name, str(template), bits, truth_table="0110")
+        assert code == plain
+        with pytest.raises(TemplateError, match="template"):
+            esolangs.instantiate(name, str(template), bits, truth_table="0001")

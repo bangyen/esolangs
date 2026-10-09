@@ -12,8 +12,10 @@ from esolangs.interpreters.other.crement import _Machine
 from esolangs.tools.crement import PAIR, _crement_ordered, crement
 from esolangs.tools.helpers import TEMPLATE_CHAR, best_input_order, runs
 from esolangs.vm import run_until_halt_or_cycle
-from tests.tools.fills import instantiate_crement
+from tests.tools.fills import fill
 from tests.tools.sample_tables import five_input_sample
+
+instantiate_crement = fill("Crement")
 
 
 def _result(program: str) -> str:

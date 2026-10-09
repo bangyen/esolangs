@@ -21,13 +21,17 @@ class TestEvalBoolean:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from tests.tools.fills import _fill_eval
+        from tests.tools.fills import fill
+
+        _fill_eval = fill("Eval")
 
         return _fill_eval(tpl, bits)
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
-        from tests.tools.fills import _fill_eval
+        from tests.tools.fills import fill
+
+        _fill_eval = fill("Eval")
 
         for n in (1, 2, 3):
             template = _X * n
@@ -123,7 +127,9 @@ class TestEvalBoolean:
     def test_reorder_ops_run_outside_the_placeholders(self) -> None:
         """The rearrangement is emitted code, not a change to the fills."""
         from esolangs import tools as generators
-        from tests.tools.fills import _fill_eval
+        from tests.tools.fills import fill
+
+        _fill_eval = fill("Eval")
 
         # A table whose cheapest order is not the free one.
         table = "00001101"

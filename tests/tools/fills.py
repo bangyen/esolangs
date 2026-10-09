@@ -1,61 +1,13 @@
-"""The parameterized substitutions by name, for suites that fill a template."""
+"""Template filling for suites that build programs from a generated template."""
 
-from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
-from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
-from esolangs.tools.back import PAIR as BACK_PAIR
-from esolangs.tools.bfpda import BFPDA_PAIR
-from esolangs.tools.bio import BIO_PAIR
-from esolangs.tools.bitdeque import BITDEQUE_PAIR
-from esolangs.tools.crement import crement_setters
-from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
-from esolangs.tools.examples import _fill_from, uniform
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.home_row import HOME_ROW_PAIR
-from esolangs.tools.minifuck.sim import PAIR as MINIFUCK_PAIR
-from esolangs.tools.minsky_swap import minsky_swap_setters
-from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
-from esolangs.tools.ram0 import PAIR as RAM0_PAIR
+from functools import partial
 
-__all__ = [
-    "_fill_back",
-    "_fill_bfpda",
-    "_fill_bio",
-    "_fill_bitdeque",
-    "_fill_eval",
-    "_fill_home_row",
-    "_fill_minifuck",
-    "_fill_minsky_swap",
-    "_fill_nocomment",
-    "_fill_ram0",
-]
-
-_fill_bio = _fill_from(uniform(BIO_PAIR))
-_fill_nocomment = _fill_from(uniform(NOCOMMENT_PAIR))
-_fill_bitdeque = _fill_from(uniform(BITDEQUE_PAIR))
-_fill_bfpda = _fill_from(uniform(BFPDA_PAIR))
-_fill_back = _fill_from(uniform(BACK_PAIR))
-_fill_minsky_swap = _fill_from(minsky_swap_setters)
-_fill_ram0 = _fill_from(uniform(RAM0_PAIR))
-_fill_home_row = _fill_from(uniform(HOME_ROW_PAIR))
-_fill_eval = _fill_from(uniform(EVAL_PAIR))
-_fill_minifuck = _fill_from(uniform(MINIFUCK_PAIR))
+import esolangs
 
 
-def _instantiate_apa(template: str, bits: list[int]) -> str:
-    """Fill an A Painter Ant template's input runs (``n`` zero, ``N`` one)."""
-    return fill_runs(template, TEMPLATE_CHAR, (APA_PAIR,) * len(bits), bits)
-
-
-def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
-    """Fill an ArrowQueue template's input runs (``.`` zero, ``~`` one)."""
-    return fill_runs(template, TEMPLATE_CHAR, (ARROWQUEUE_PAIR,) * len(bits), bits)
-
-
-def instantiate_crement(template: str, bits: list[int]) -> str:
-    """Fill each input's run with the jump line that spells its bit."""
-    return fill_runs(
-        template, TEMPLATE_CHAR, crement_setters(template, len(bits)), bits
-    )
+def fill(name: str):
+    """``(template, bits) -> program`` for a parameterized language."""
+    return partial(esolangs.instantiate, name)
 
 
 def _run_form(pair: tuple[str, str], n: int) -> str:

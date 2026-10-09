@@ -199,7 +199,9 @@ def check_l3(max_n: int = 8) -> list[str]:
 
 def _fill(template: str, bits: str) -> str:
     """Instantiate through the *shipped* fill, not a local copy of it."""
-    from tests.tools.fills import _fill_bio
+    from tests.tools.fills import fill
+
+    _fill_bio = fill("BIO")
 
     return _fill_bio(template, [int(b) for b in bits])
 

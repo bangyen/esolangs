@@ -24,7 +24,9 @@ class TestParameterizedBitdeque:
         # earlier duplicate here kept passing after the load order changed
         # under it, so the suite disagreed with the harness it is meant to
         # mirror.
-        from tests.tools.fills import _fill_bitdeque
+        from tests.tools.fills import fill
+
+        _fill_bitdeque = fill("Bitdeque")
 
         return _fill_bitdeque(tpl, bits)
 

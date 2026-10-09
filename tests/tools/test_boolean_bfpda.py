@@ -16,14 +16,18 @@ class TestParameterizedBfpda:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from tests.tools.fills import _fill_bfpda
+        from tests.tools.fills import fill
+
+        _fill_bfpda = fill("BF-PDA")
 
         return _fill_bfpda(tpl, bits)
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is four characters whichever bit it carries."""
         from esolangs.tools.bfpda import BFPDA_PAIR
-        from tests.tools.fills import _fill_bfpda
+        from tests.tools.fills import fill
+
+        _fill_bfpda = fill("BF-PDA")
 
         for n in (1, 2, 3):
             template = _run_form(BFPDA_PAIR, n)

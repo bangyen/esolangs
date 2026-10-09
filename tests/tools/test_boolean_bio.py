@@ -22,7 +22,9 @@ class TestParameterizedBIO:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from tests.tools.fills import _fill_bio
+        from tests.tools.fills import fill
+
+        _fill_bio = fill("BIO")
 
         return _fill_bio(tpl, bits)
 
@@ -55,7 +57,9 @@ class TestParameterizedBIO:
         """A zero pads against the unread ``z``, so the program's length
         does not reveal the inputs."""
         from esolangs.tools.bio import BIO_PAIR
-        from tests.tools.fills import _fill_bio
+        from tests.tools.fills import fill
+
+        _fill_bio = fill("BIO")
 
         for n in (1, 2, 3):
             template = _run_form(BIO_PAIR, n)
