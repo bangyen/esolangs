@@ -1193,6 +1193,14 @@ For cursor execution, phase changes use their frequent primary anchors.
 Each feature's secondary live guard crosses once; the mapping flag's
 secondary guards cross once, and decoder register watchers are fixed in
 number. Hence `D+H=O(k+n+F)` and normal execution has `O(T)` word work.
+The cursor now switches to a forward scan once the first rule in a
+strictly factor-removing suffix fires. Earlier failed guards cannot become
+true when exponents only decrease. Each failed suffix guard is inspected
+once; successful guards repeat until exhausted, without minimum-tree
+updates. At ten inputs, three seeded queries retain exactly the same
+firing sequences and answers while reducing tree updates by 538, 527 and
+528 respectively. This removes cleanup tree overhead; the generation sieve
+remains super-linear in bit work.
 Generation, loading and execution still fit `O(T log T)` bit work in the
 materialized-word model. The retained generation sieve supplies the same
 matching lower bound. Removing rank selection therefore removes one

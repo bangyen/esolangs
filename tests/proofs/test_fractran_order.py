@@ -337,7 +337,15 @@ def test_dense_cursor_work_and_sparse_threshold_routing() -> None:
                     assert steps < 200 * k + 100
                 assert io.getvalue().strip() == str(1 + int(table[row]))
                 if machine._cursor is not None:
-                    assert machine.inspections == steps - 1
+                    cursor = machine._cursor
+                    assert cursor.cleanup_position == len(cursor.index.rules)
+                    # The tree finds the suffix's first live rule; thereafter
+                    # each failed suffix guard is inspected at most once.
+                    assert (
+                        steps - 1
+                        <= machine.inspections
+                        <= steps - 1 + (len(cursor.index.rules) - cursor.cleanup_start)
+                    )
                     assert machine._cursor.factor_updates <= 3 * steps
                     assert machine._cursor.guard_updates <= 4 * (steps + k)
 

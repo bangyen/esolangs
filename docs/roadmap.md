@@ -105,10 +105,9 @@ Generator gaps against the canonical pieces in
 Stalled problems, one line each; detail lives in the linked proof page. A
 line changes only when its next step does.
 
-- **FRACTRAN bit-linear pipeline.** Next: execute a forward cleanup scan
-  for direct chunks in place of minimum-tree updates; factor removal cannot
-  enable an earlier failed guard. Prime generation and literal conversion
-  remain, with the materialized sieve forcing `Theta(T log T)` generation
+- **FRACTRAN bit-linear pipeline.** Forward cleanup now executes without
+  minimum-tree updates. Next: remove the materialized prime sieve's
+  `Theta(T log T)` generation cost; literal conversion remains too
   ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
 - **Brainfuck behaviour count.** Cancelling tested-cell updates with balance
   confined to `{-1,0,1}` are certified. Next: cover larger excursions or
