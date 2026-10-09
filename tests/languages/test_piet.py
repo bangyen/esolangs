@@ -12,7 +12,16 @@ from esolangs._execution import interpreter_module
 from esolangs.exceptions import TemplateError
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
+from tests.pick import languages
 from tests.test_api_contracts import XOR
+
+
+def first_other_raster() -> str:
+    """Another raster language than Piet; a skip if there is none."""
+    others = [name for name in languages(source_kind="raster") if name != "Piet"]
+    if not others:
+        pytest.skip("no other raster language is registered")
+    return others[0]
 
 
 def test_bound_raster_language_loads_and_evaluates_png(tmp_path):
@@ -60,11 +69,13 @@ class TestSpecAbortsRatherThanReturningNothing:
         assert esolangs.describe("brainfuck")["spec"].startswith("Interpreter for")
 
     def test_a_raster_language_returns_its_own_module_docstring(self) -> None:
-        """Piet describes its own interpreter rather than Line's."""
+        """Piet describes its own interpreter rather than another raster's."""
         piet = importlib.import_module("esolangs.interpreters.stack_based.piet")
-        line = importlib.import_module("esolangs.interpreters.tape_based.line")
+        other = importlib.import_module(
+            "esolangs.interpreters." + LANGUAGES[first_other_raster()].interpreter
+        )
         assert esolangs.describe("Piet")["spec"] == (piet.__doc__ or "").strip()
-        assert esolangs.describe("Piet")["spec"] != (line.__doc__ or "").strip()
+        assert esolangs.describe("Piet")["spec"] != (other.__doc__ or "").strip()
 
 
 @pytest.mark.parametrize(

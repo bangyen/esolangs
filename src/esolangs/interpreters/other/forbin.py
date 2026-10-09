@@ -71,6 +71,14 @@ from esolangs.interpreters.other._forbin_parse import (
 )
 from esolangs.interpreters.source_hints import syntax_error
 
+#: Functions here that call an IO effect outside the ``run``/``_Machine``
+#: shells, read by the interpreter-convention sweep.  ``_call`` is a
+#: documented, nonconforming recursive evaluator: a read or write happens
+#: part-way down a recursive descent, so making it pure would need an
+#: explicit continuation stack and ordered I/O effects.  ``_BitReader.read``
+#: is the same boundary under its helper type.
+REACHES_IO = frozenset({"_BitReader.read", "_call"})
+
 
 class _BitReader:
     """Serves the input one bit at a time, most significant first."""

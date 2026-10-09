@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.pick import first
+from tests.pick import one
 
 
 class TestRun:
@@ -29,10 +29,11 @@ class TestRun:
 #: Two of the nine dump-on-post-halt languages, one reader and one template:
 #: the dump step is the debugger's shared code, and test_vm_protocol already
 #: checks every language's flag against its behaviour.
-_DUMPERS = tuple(
-    first(dumps_on_the_post_halt_step=True, parameterized=template)
+_DUMPERS = [
+    name
     for template in (False, True)
-)
+    for name in one(dumps_on_the_post_halt_step=True, parameterized=template)
+]
 
 
 def _runnable(name: str, table: str = "0110") -> tuple[str, str]:

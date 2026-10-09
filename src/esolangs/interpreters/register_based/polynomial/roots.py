@@ -993,7 +993,7 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
     """
     _require_sympy()
     if len(coefficients) - 1 > _NTT_MIN_DEGREE:
-        from esolangs.polynomial_resources import estimate_cold_parse
+        from esolangs.tools.polynomial.resources import estimate_cold_parse
 
         estimate = estimate_cold_parse(list(coefficients))
         root_sets = tuple(_roots_mod(list(coefficients), f) for f in _NTT_FIELDS)

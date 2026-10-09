@@ -8,15 +8,15 @@ import pytest
 import esolangs
 from esolangs._isolated import _decode, _worker
 from tests.generator_support import evaluate_generated, verify_generated
-from tests.pick import first
+from tests.pick import one
 
 #: A run that never halts by itself, and one that answers by terminating.
-_UNUSUAL = [first(self_halts=False), first(answer_mode="termination")]
+_UNUSUAL = [*one(self_halts=False), *one(answer_mode="termination")]
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize(
-    "language", [*_UNUSUAL, first(source_kind="raster", boolean_generator=True)]
+    "language", [*_UNUSUAL, *one(source_kind="raster", boolean_generator=True)]
 )
 def test_generated_xor_runs_every_row_in_a_worker(language):
     with ThreadPoolExecutor(max_workers=1) as pool:

@@ -21,7 +21,9 @@ from tests.witness_tables import row_bits
 _TEXT = [
     lang
     for lang in LANGUAGES.values()
-    if lang.boolean and lang.source_kind is SourceKind.TEXT
+    if lang.boolean
+    and lang.source_kind is SourceKind.TEXT
+    and esolangs.describe(lang.name)["answer_mode"] == "output"
 ]
 # One of each route: the shared character balancer, a grid wrapper with no
 # balancer, a language's own balancer, and a template filled per row.
@@ -40,7 +42,12 @@ BALANCED = sorted(
             for lang in _TEXT
             if lang.balance is not None and lang.balance.__name__ != "_balance"
         ),
-        first(parameterized=True, boolean_generator=True),
+        first(
+            parameterized=True,
+            boolean_generator=True,
+            answer_mode="output",
+            self_halts=True,
+        ),
     }
 )
 _MAMMAL = next(
