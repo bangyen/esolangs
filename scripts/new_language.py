@@ -27,6 +27,7 @@ import itertools
 import json
 import keyword
 import re
+import shlex
 import subprocess
 import sys
 import tomllib
@@ -783,7 +784,7 @@ def _report(name: str, gaps: list[Gap]) -> None:
     print(f"{name}: {len(gaps)} step(s) left")
     for gap in gaps:
         print(f"- {gap.where}: {gap.fix}")
-    print(f"rerun: python scripts/new_language.py check {name!r}")
+    print(f"after fixing these: just check-language {shlex.quote(name)}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -864,7 +865,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(
             f"{args.name}: integrated; next: "
-            f"python scripts/new_language.py finish {args.name!r}"
+            f"just finish-language {shlex.quote(args.name)}"
         )
         return 0
     if args.command == "finish":
@@ -880,11 +881,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(str(exc))
     for path in paths:
         print(f"created {path.relative_to(ROOT)}")
-    print(
-        "next: implement the interpreter (see docs/CONTRIBUTING.md#interpreter-"
-        "conventions) and generator, then run "
-        f"`python scripts/new_language.py check {args.name!r}` for the rest"
+    implementation = (
+        "interpreter" if args.interpreter_only else "interpreter and generator"
     )
+    print(f"next: implement the {implementation} in the created source files")
+    print("conventions: docs/CONTRIBUTING.md#interpreter-conventions")
+    print(f"then: just check-language {shlex.quote(args.name)}")
     return 0
 
 

@@ -120,3 +120,31 @@ def test_check_with_open_steps_is_not_a_failure(
     monkeypatch.setattr(new_language, "check", lambda _: [gap])
     assert new_language.main(["check", "Tiny"]) == 0
     assert "1 step(s) left" in capsys.readouterr().out
+
+
+@pytest.mark.usefixtures("root")
+@pytest.mark.parametrize("interpreter_only", [False, True])
+def test_start_prints_the_matching_contributor_workflow(
+    *, interpreter_only: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
+    args = ["start", "Tiny Lang", "--category", new_language.CATEGORIES[0]]
+    if interpreter_only:
+        args.append("--interpreter-only")
+    assert new_language.main(args) == 0
+    output = capsys.readouterr().out
+    next_step = next(line for line in output.splitlines() if line.startswith("next:"))
+    assert ("generator" in next_step) is not interpreter_only
+    assert "then: just check-language 'Tiny Lang'" in output
+
+
+def test_gap_report_prints_a_shell_safe_followup(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import shlex
+
+    name = "Tiny's $Lang"
+    new_language._report(  # noqa: SLF001
+        name, [new_language.Gap("source", "implement the interpreter")]
+    )
+    command = capsys.readouterr().out.split("after fixing these: ")[1].strip()
+    assert shlex.split(command) == ["just", "check-language", name]
