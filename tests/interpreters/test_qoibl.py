@@ -4,31 +4,74 @@ import inspect
 import io
 import sys
 from contextlib import redirect_stdout
+from typing import Any, ClassVar
 from unittest.mock import patch
 
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.register_based import qoibl
-from esolangs.interpreters.register_based.qoibl import run, tokenize
+from esolangs.interpreters.register_based.qoibl import _Machine, run, tokenize
+from tests.interpreters.contract import EmptyProgramContract, SnapshotContract
 from tests.interpreters.runner import run_printing
 
+_SET1_3 = "we y we yy we"  # var[1] = 3
+_SET1_7 = "we y we yyy we"  # var[1] = 7
+_SET2_3 = "we ye we yy we"  # var[2] = 3
 
-class TestQoiblBasicOperations:
-    def test_print_character(self) -> None:
-        code: list[str] = ["tt yeeyeee tt"]  # 'H' in binary
-        f = run_printing(run, code)
-        assert f == "H"
 
-    def test_assignment_and_access(self) -> None:
-        code: list[str] = [
-            "we y we yyeeee we",  # var[1] = 48
-            "tt qe y qe tt",  # print var[1]
-        ]
-        f = run_printing(run, code)
-        assert f == chr(48)  # '0'
+def _binary(op: str) -> str:
+    """Print ``var[1] <op> var[2]``."""
+    return f"tt qe y qe {op} qe ye qe tt"
 
+
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        (["tt yeeyeee tt"], "H"),
+        (["we y we yyeeee we", "tt qe y qe tt"], "0"),
+        *[
+            ([f"tt {bits} tt"], chr(int(bits.replace("e", "0").replace("y", "1"), 2)))
+            for bits in (
+                *("ee", "ey", "ye", "yy", "eee", "eey"),
+                *("eye", "eyy", "yee", "yey", "yye", "yyy"),
+            )
+        ],
+        ([_SET1_3, _SET2_3, _binary("yr ee yr")], chr(1)),  # ==
+        ([_SET1_7, _SET2_3, _binary("yr ey yr")], chr(1)),  # >
+        ([_SET1_7, _SET2_3, _binary("yr yy yr")], chr(1)),  # != true
+        ([_SET1_3, _SET2_3, _binary("yr yy yr")], chr(0)),  # != false
+        # The orderings are strict: false when the operands are equal.
+        ([_SET1_3, _SET2_3, _binary("yr ye yr")], chr(0)),
+        ([_SET1_3, _SET2_3, _binary("yr ey yr")], chr(0)),
+        ([_SET1_3, _SET2_3, _binary("ry ee ry")], chr(6)),  # +
+        ([_SET1_7, _SET2_3, _binary("ry yy ry")], chr(2)),  # //
+        (  # while loop decrements 3 -> 1
+            [
+                _SET1_3,
+                "rr qe y qe yr ey yr y rr we y we qe y qe ry ey ry y we rr",
+                "tt qe y qe tt",
+            ],
+            chr(1),
+        ),
+        (["tt qe yyy qe tt"], chr(0)),  # an undefined variable reads 0
+        (  # nested: var[3] = var[1] + var[2]
+            [
+                _SET1_3,
+                _SET2_3,
+                "we yyy we qe y qe ry ee ry qe ye qe we",
+                "tt qe yyy qe tt",
+            ],
+            chr(6),
+        ),
+    ],
+)
+def test_program_prints(code: list[str], expected: str) -> None:
+    assert run_printing(run, code) == expected
+
+
+class TestQoiblBehaviour:
     def test_input_operation(self) -> None:
         code: list[str] = [
             "we y we et we",
@@ -41,97 +84,10 @@ class TestQoiblBasicOperations:
             run(code, IO())
         assert f.getvalue() == "A"
 
-
-class TestQoiblBinaryNumbers:
-    def test_binary_numbers(self) -> None:
-        test_cases = [
-            ("ee", 0),
-            ("ey", 1),
-            ("ye", 2),
-            ("yy", 3),
-            ("eee", 0),
-            ("eey", 1),
-            ("eye", 2),
-            ("eyy", 3),
-            ("yee", 4),
-            ("yey", 5),
-            ("yye", 6),
-            ("yyy", 7),
-        ]
-
-        for binary_str, expected in test_cases:
-            code: list[str] = [f"tt {binary_str} tt"]
-            f = run_printing(run, code)
-            assert f == chr(expected), f"Failed for {binary_str}"
-
-
-class TestQoiblConditionals:
-    def test_equality_condition(self) -> None:
-        code: list[str] = [
-            "we y we yy we",  # var[1] = 3
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe yr ee yr qe ye qe tt",  # print var[1] == var[2]
-        ]
-        f = run_printing(run, code)
-        assert f == chr(1)  # True
-
-    def test_greater_than_condition(self) -> None:
-        code: list[str] = [
-            "we y we yyy we",  # var[1] = 7
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe yr ey yr qe ye qe tt",  # print var[1] > var[2]
-        ]
-        f = run_printing(run, code)
-        assert f == chr(1)  # True
-
-    def test_inequality_condition(self) -> None:
-        """``yr yy yr`` is ``!=``: 1 for 7 vs 3, 0 for 3 vs 3."""
-        for big, expected in (("yyy", 1), ("yy", 0)):
-            code: list[str] = [
-                f"we y we {big} we",  # var[1]
-                "we ye we yy we",  # var[2] = 3
-                "tt qe y qe yr yy yr qe ye qe tt",
-            ]
-            f = run_printing(run, code)
-            assert f == chr(expected), big
-
     def test_a_trailing_fragment_after_a_statement_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="malformed Qoibl expression"):
             run(["tt y tt w"], IO())
 
-    def test_the_orderings_are_strict(self) -> None:
-        """``ye`` and ``ey`` are false when the two operands are equal."""
-        for op in ("ye", "ey"):
-            code: list[str] = [
-                "we y we yy we",  # var[1] = 3
-                "we ye we yy we",  # var[2] = 3
-                f"tt qe y qe yr {op} yr qe ye qe tt",
-            ]
-            f = run_printing(run, code)
-            assert f == chr(0), op
-
-
-class TestQoiblMathOperations:
-    def test_addition(self) -> None:
-        code: list[str] = [
-            "we y we yy we",  # var[1] = 3
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe ry ee ry qe ye qe tt",  # print var[1] + var[2]
-        ]
-        f = run_printing(run, code)
-        assert f == chr(6)
-
-    def test_division(self) -> None:
-        code: list[str] = [
-            "we y we yyy we",  # var[1] = 7
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe ry yy ry qe ye qe tt",  # print var[1] // var[2]
-        ]
-        f = run_printing(run, code)
-        assert f == chr(2)  # 7 // 3 = 2
-
-
-class TestQoiblExamples:
     def test_one_digit_adder(self) -> None:
         code: list[str] = [
             "we e we yyeeee we",  # var[0] = 2
@@ -149,28 +105,6 @@ class TestQoiblExamples:
         ):
             run(code, IO())
         assert f.getvalue() == "5"  # Should print 5
-
-    def test_while_loop(self) -> None:
-        code: list[str] = [
-            "we y we yy we",  # var[1] = 3
-            "rr qe y qe yr ey yr y rr we y we qe y qe ry ey ry y we rr",
-            "tt qe y qe tt",  # print var[1]
-        ]
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, IO())
-        assert f.getvalue() == chr(1)  # decremented 3 -> 1
-
-
-class TestQoiblEdgeCases:
-    def test_empty_program(self) -> None:
-        code: list[str] = []
-        f = run_printing(run, code)
-        assert f == ""
-
-    def test_undefined_variable_access(self) -> None:
-        code: list[str] = ["tt qe yyy qe tt"]  # print var[7] (undefined)
-        f = run_printing(run, code)
-        assert f == chr(0)
 
     def test_variable_indices_stay_within_the_256_cell_list(self) -> None:
         from esolangs.exceptions import HaltError
@@ -211,15 +145,12 @@ class TestQoiblEdgeCases:
         with pytest.raises(ValueError, match="arithmetic"):
             run(["ry"], IO())
 
-    def test_nested_expressions(self) -> None:
-        code: list[str] = [
-            "we y we yy we",  # var[1] = 3
-            "we ye we yy we",  # var[2] = 3
-            "we yyy we qe y qe ry ee ry qe ye qe we",  # var[3] = var[1] + var[2]
-            "tt qe yyy qe tt",  # print var[3]
-        ]
-        f = run_printing(run, code)
-        assert f == chr(6)
+
+class TestContract(EmptyProgramContract, SnapshotContract):
+    run = staticmethod(lambda code: run_printing(run, code))
+    empty_program: ClassVar[Any] = []
+    machine = staticmethod(lambda code: _Machine(code, ScriptedIO("")))
+    stepping_program = "we y we yyeeee we\ntt qe y qe tt"
 
 
 WIKI_PROGRAMS = {
@@ -286,18 +217,6 @@ class TestQoiblTokenizer:
     def test_ignores_characters_outside_the_alphabet(self) -> None:
         """The spec ignores anything that is not part of an instruction."""
         assert tokenize("tt! yeeyeee? tt") == [["tt", "yeeyeee", "tt"]]
-
-
-class TestQoiblCycleDetection:
-    def test_the_snapshot_moves_when_a_statement_runs(self) -> None:
-        """A step that assigns changes the snapshot, so it is not a cycle."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.qoibl import _Machine
-
-        state = _Machine("we y we yyeeee we\ntt qe y qe tt", ScriptedIO(""))
-        before = state.snapshot()
-        state.step()
-        assert state.snapshot() != before
 
 
 class TestQoiblIncompleteTokens:

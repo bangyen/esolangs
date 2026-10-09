@@ -11,6 +11,7 @@ from esolangs.vm import (
     run_until_halt_or_all_branches_cycle,
     run_until_halt_or_cycle,
 )
+from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_lines
 from tests.raises import (
@@ -249,15 +250,6 @@ class TestStepMachine:
         # which is what the VM's run loop does.
         assert _Machine("", IO()).halted
 
-    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        from esolangs.interpreters.stack_based.modulous import _Machine
-
-        state = _Machine("[PSH INT 5][PRT INT][END]", IO())
-        before = state.snapshot()
-        hash(before)  # must not raise
-        state.step()
-        assert state.snapshot() != before
-
     def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle(self) -> None:
         """An input port with no cursor reports position 0 after every read."""
         from esolangs.interpreters.stack_based.modulous import _Machine
@@ -377,3 +369,8 @@ def test_modulous_declines_input_and_caps_a_wide_draw() -> None:
         run_until_halt_or_all_branches_cycle(wide, limit=100000)
     assert "cap on a single transition" in str(caught.value)
     assert "limit does not raise this transition cap" in caught.value.__notes__[0]
+
+
+class TestContract(SnapshotContract):
+    machine = staticmethod(lambda code: Modulous(code, IO()))
+    stepping_program = "[PSH INT 5][PRT INT][END]"

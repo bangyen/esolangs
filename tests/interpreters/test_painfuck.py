@@ -86,119 +86,69 @@ _OUTPUT = {
 }
 
 
-@pytest.mark.parametrize(("targets", "expected"), _OUTPUT.values(), ids=list(_OUTPUT))
-def test_output(targets, expected) -> None:
-    assert run_program(targets) == expected
+# (targets, stdin, coin, expected); the ``_OUTPUT`` entries run without input.
+_CASES = [
+    *[(targets, "", None, expected) for targets, expected in _OUTPUT.values()],
+    ("pue", "", None, "\x02"),
+    ("ppue", "", None, "\x04"),
+    ("ssssssshoe", "", None, "-4"),  # half_rounds_a_negative_down
+    ("ssshoe", "", None, "-2"),
+    ("prpprpppoe", "", None, "6"),  # right_moves_two
+    ("prpprppplloe", "", None, "4"),  # left_moves_one
+    ("prpprppploe", "", None, "0"),  # grown_tape_is_zero
+    ("prroe", "", None, "0"),
+    ("jue", "A\n", None, "A"),  # read_byte
+    ("jiue", "6\n65\n", None, "A"),  # read_number
+    ("pcsu", "", None, "\xfb"),  # repeat_next
+    ("pcue", "", None, "\x02\x02\x02\x02\x02\x02\x02"),
+    ("tue", "", None, "\x00"),  # leading_t_repeats_nothing
+    ("t", "", None, ""),
+    ("pe", "", None, ""),  # halt
+    ("p", "", None, ""),
+    ("vsu", "", None, "\xff"),  # conditional_skip
+    ("pvsu", "", None, "\x02"),
+    ("pvuu", "", None, "\x02"),
+    ("cju", "abcdefgh", None, "g"),  # repeated_read_reads_each_time
+    ("jtu", "abcde", None, "d"),
+    ("pyu", "", 1, ""),  # random_skip
+    ("pyu", "", 0, "\x02"),
+    ("cypoe", "", 0, "14"),  # repeated_skip_flips_per_repeat
+    ("cypoe", "", 1, "0"),
+    ("cpoe", "", 0, "14"),
+    ("ypoe", "", 0, "2"),
+    ("ypoe", "", 1, "0"),
+    ("ppwue", "", None, "\x00"),  # copy_neighbor
+    ("ppwque", "", None, "\x00"),
+    ("ploe", "", None, "0"),  # left_of_cell_zero_is_fresh
+    ("plllrrloe", "", None, "2"),
+    ("pcllrrrroe", "", None, "2"),
+    ("plldoe", "", None, "2"),  # reset_returns_to_start
+    ("lpdoe", "", None, "0"),
+    ("pkue", "", None, "\x04"),  # square
+    ("ppkue", "", None, "\x10"),
+    ("psckue", "", None, "\x01"),  # repeated_square_fixes_one
+    ("ckue", "", None, "\x00"),
+]
 
 
-class TestPainfuck:
-    def test_increment_and_print(self) -> None:
-        assert run_program("pue") == "\x02"
-        assert run_program("ppue") == "\x04"
+@pytest.mark.parametrize(("targets", "stdin", "coin", "expected"), _CASES)
+def test_output(targets: str, stdin: str, coin: int | None, expected: str) -> None:
+    assert run_program(targets, stdin, coin) == expected
 
-    def test_half_rounds_a_negative_down(self) -> None:
-        """Halving a negative odd value rounds down, not toward zero."""
-        assert run_program("ssssssshoe") == "-4"
-        assert run_program("ssshoe") == "-2"  # -3 -> -2, not -1
 
-    def test_the_pointer_moves_by_two_right_and_one_left(self) -> None:
-        """``r`` and ``l`` move by their own distances, from where they are."""
-        assert run_program("prpprpppoe") == "6"
-        assert run_program("prpprppplloe") == "4"
+def test_read_number_rejects_garbage() -> None:
+    with pytest.raises(HaltError):
+        run_program("ip", "12x\n")
 
-    def test_growing_the_tape_fills_with_zeros(self) -> None:
-        """``r`` past the end appends empty cells, not marked ones."""
-        assert run_program("prpprppploe") == "0"
-        assert run_program("prroe") == "0"
 
-    def test_read_byte(self) -> None:
-        assert run_program("jue", "A\n") == "A"
-
-    def test_read_number(self) -> None:
-        assert run_program("jiue", "6\n65\n") == "A"
-
-    def test_read_number_rejects_garbage(self) -> None:
-        with pytest.raises(HaltError):
-            run_program("ip", "12x\n")
-
-    def test_repeat_next(self) -> None:
-        # c repeats the next command 7 times; s subtracts 1 each -> -5
-        assert run_program("pcsu") == "\xfb"
-        # c repeating u prints 7 times
-        assert run_program("pcue") == "\x02\x02\x02\x02\x02\x02\x02"
-
-    def test_repeat_previous_with_nothing_before_it(self) -> None:
-        """A leading ``t`` has no earlier command, so it repeats nothing."""
-        assert run_program("tue") == "\x00"
-        assert run_program("t") == ""
-
-    def test_halt(self) -> None:
-        assert run_program("pe") == ""
-        assert run_program("p") == ""
-
-    def test_conditional_skip(self) -> None:
-        # v executes the next command only when the cell is zero, else
-        # skips it ("Do next command if value on tape is zero").
-        assert run_program("vsu") == "\xff"
-        assert run_program("pvsu") == "\x02"
-        assert run_program("pvuu") == "\x02"
-
-    def test_a_repeated_byte_read_reads_each_time(self) -> None:
-        """``c``/``t`` repeat ``j`` itself: 7 or 3 more reads, not one."""
-        assert run_program("cju", "abcdefgh") == "g"
-        assert run_program("jtu", "abcde") == "d"
-
-    def test_random_skip(self) -> None:
-        """``y`` skips the next command on a coin flip; pin both outcomes."""
-        assert run_program("pyu", coin=1) == ""
-        assert run_program("pyu", coin=0) == "\x02"
-
-    def test_repeated_skip_decides_each_repeat_separately(self) -> None:
-        """A repeated ``y`` flips once per repeat, not once for the run."""
-        assert run_program("cypoe", coin=0) == "14"  # every repeat survives
-        assert run_program("cypoe", coin=1) == "0"  # every repeat dropped
-        assert run_program("cpoe", coin=0) == "14"  # a y-free run matches
-        # Unrepeated, every reading agrees: this is the case the wiki states.
-        assert run_program("ypoe", coin=0) == "2"
-        assert run_program("ypoe", coin=1) == "0"
-
-    def test_error(self) -> None:
-        with pytest.raises(HaltError):
-            run_program("b")  # loop close with an empty stack
-
-    def test_copy_neighbor(self) -> None:
-        assert run_program("ppwue") == "\x00"  # copy 0 from the right neighbor
-        assert run_program("ppwque") == "\x00"  # copy back
-
-    def test_left_of_cell_zero_is_a_fresh_zero_cell(self) -> None:
-        """``l`` at the leftmost cell grows the tape onto a new zero cell."""
-        assert run_program("ploe") == "0"
-        # three new cells; r r l walks 4 right and 1 back, onto the start
-        assert run_program("plllrrloe") == "2"
-        # a repeated ``l`` grows by its overshoot: 8 new cells, and four
-        # ``r`` (two each) walk back onto the start cell
-        assert run_program("pcllrrrroe") == "2"
-
-    def test_reset_returns_to_the_start_cell_after_growing_left(self) -> None:
-        """``d`` goes back to the cell the run began on, not the leftmost."""
-        assert run_program("plldoe") == "2"
-        assert run_program("lpdoe") == "0"
-
-    def test_square(self) -> None:
-        assert run_program("pkue") == "\x04"  # 2*2
-        assert run_program("ppkue") == "\x10"  # 4*4
-
-    def test_repeated_square_leaves_zero_and_one_fixed(self) -> None:
-        assert run_program("psckue") == "\x01"
-        assert run_program("ckue") == "\x00"
+def test_unmatched_loop_close_is_an_error() -> None:
+    with pytest.raises(HaltError):
+        run_program("b")
 
 
 class TestStepMachine:
     def test_step_tracks_tape_and_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.painfuck import _Machine
-
-        machine = _Machine("pp", ScriptedIO())
+        machine = Painfuck("pp", ScriptedIO())
         assert (machine.ind, list(machine.tape)) == (0, [0])
         machine.step()  # p adds 2
         assert list(machine.tape) == [2]
@@ -209,10 +159,7 @@ class TestStepMachine:
 
     def test_the_vm_view_reports_the_tape_and_the_loop_stack(self) -> None:
         """``ind``/``memory``/``stack`` are what the VM shows over painfuck's state."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.painfuck import _Machine
-
-        machine = _Machine(_encode("pabe"), ScriptedIO())
+        machine = Painfuck(_encode("pabe"), ScriptedIO())
         assert (machine.ind, machine.memory, machine.stack) == (0, [0], [])
         machine.step()  # p adds 2, so the loop is entered rather than skipped
         assert machine.memory == [2]
@@ -223,11 +170,8 @@ class TestStepMachine:
 
     def test_an_eof_read_still_writes_back_what_the_step_spent(self) -> None:
         """EOF propagates, but the cursor the step already moved is kept."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.painfuck import _Machine
-
         for prog in ("i", "j"):
-            machine = _Machine(_encode(prog), ScriptedIO(""))  # nothing to read
+            machine = Painfuck(_encode(prog), ScriptedIO(""))  # nothing to read
             assert machine.ind == 0
             with pytest.raises(EOFError):
                 machine.step()
@@ -235,25 +179,19 @@ class TestStepMachine:
 
     def test_an_eof_keeps_the_repeated_reads_already_done(self) -> None:
         """Pins EOF mid-repeat: ``ci`` reads 5, then EOF; the 5 survives."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.painfuck import _Machine
-
-        machine = _Machine(_encode("ci"), ScriptedIO("5\n"))
+        machine = Painfuck(_encode("ci"), ScriptedIO("5\n"))
         with pytest.raises(EOFError):  # one step: c binds to the i
             machine.step()
         assert (machine.tape, machine.ind, machine.rep) == ((5,), 2, 5)
 
     def test_a_fault_keeps_what_the_step_already_did(self) -> None:
         """A ``_Halted`` fault writes its effects and state back before raising."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.painfuck import _Machine
-
-        machine = _Machine(_encode("i"), ScriptedIO("hello\n"))
+        machine = Painfuck(_encode("i"), ScriptedIO("hello\n"))
         with pytest.raises(HaltError):
             machine.step()
         assert machine.ind == 1  # the cursor the faulting step moved is kept
 
-        loose = _Machine(_encode("b"), ScriptedIO(""))
+        loose = Painfuck(_encode("b"), ScriptedIO(""))
         with pytest.raises(HaltError, match="unmatched 'b'"):
             loose.step()
         assert loose.ind == 1
@@ -426,10 +364,7 @@ class TestRepeatCollapsing:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.painfuck import _Machine
-
-    return _Machine(code, ScriptedIO())
+    return Painfuck(code, ScriptedIO())
 
 
 class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
@@ -447,19 +382,9 @@ def test_hints_for_bad_programs_and_input():
     assert_halts_with_hint("Painfuck", "i", HaltError.DEFAULT, "decimal integer", "x")
 
 
-def _painfuck_source(targets: str) -> str:
-    """Encode direct Painfuck commands through its source translation."""
-    cycles = ("pevkjzwr", "yuctsobqihald")
-    out: list[str] = []
-    for index, target in enumerate(targets):
-        cycle = next(cycle for cycle in cycles if target in cycle)
-        out.append(cycle[(cycle.index(target) - index) % len(cycle)])
-    return "".join(out)
-
-
 def test_painfuck_all_coin_outcomes_can_be_proved_to_loop() -> None:
     """Either ``y`` outcome reaches a loop close and returns to ``a``."""
-    code = _painfuck_source("paybb")
+    code = _encode("paybb")
     machine = Painfuck(code, ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(machine) is False
     # A later draw could escape; snapshot proofs refuse random machines.
@@ -470,7 +395,7 @@ def test_painfuck_all_coin_outcomes_can_be_proved_to_loop() -> None:
 
 
 def test_painfuck_one_halting_coin_refutes_an_all_branches_hang() -> None:
-    code = _painfuck_source("payb")
+    code = _encode("payb")
     machine = Painfuck(code, ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(machine) is True
     halting = Painfuck(code, ScriptedIO(), FirstDraw(1))
@@ -482,7 +407,7 @@ def test_painfuck_one_halting_coin_refutes_an_all_branches_hang() -> None:
 
 def test_painfuck_a_malformed_loop_is_a_terminal_branch() -> None:
     """An unmatched ``b`` ends its branch instead of escaping the search."""
-    machine = Painfuck(_painfuck_source("b"), ScriptedIO())
+    machine = Painfuck(_encode("b"), ScriptedIO())
     start = machine.branching_snapshot()
     assert machine.branching_halted(start) is False
 
@@ -505,7 +430,7 @@ def test_painfuck_later_coin_can_escape_repeated_visible_state() -> None:
             return int(self.draws == 5)
 
     coins = DelayedEscape()
-    machine = Painfuck(_painfuck_source("payb"), ScriptedIO(), coins)
+    machine = Painfuck(_encode("payb"), ScriptedIO(), coins)
     assert run_until_halt(machine, limit=64) is True
     assert coins.draws == 5
 
@@ -513,12 +438,10 @@ def test_painfuck_later_coin_can_escape_repeated_visible_state() -> None:
 def test_branching_search_leaves_input_and_wide_coin_paths_undecided() -> None:
     # The direct target 'j' reads; sibling paths must not share a cursor.
     with pytest.raises(TimeoutError, match="needs input"):
-        run_until_halt_or_all_branches_cycle(
-            Painfuck(_painfuck_source("j"), ScriptedIO("A\n"))
-        )
+        run_until_halt_or_all_branches_cycle(Painfuck(_encode("j"), ScriptedIO("A\n")))
     # c repeats y 49 times: the frontier is limited at the transition,
     # before its 2**49 outcomes are materialized.
     with pytest.raises(TimeoutError, match="coin outcomes"):
         run_until_halt_or_all_branches_cycle(
-            Painfuck(_painfuck_source("ccy"), ScriptedIO()), limit=4
+            Painfuck(_encode("ccy"), ScriptedIO()), limit=4
         )

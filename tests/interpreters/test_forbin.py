@@ -43,185 +43,22 @@ def walk_until_halt_or_ancestor(machine: object, limit: int = 64) -> bool:
     )
 
 
-class TestOutput:
-    def test_out_literals(self) -> None:
-        code = "main { out 0,1,0,0,1,0,0,0; }"
-        assert run_program(code) == "H"
-
-    def test_out_arbitrary_byte(self) -> None:
-        code = "main { out 1,1,1,1,1,1,1,1; }"
-        assert run_program(code) == "\xff"
-
-    def test_empty_program_rejected(self) -> None:
-        with pytest.raises(ValueError, match="no main"):
-            run_program("loop { out 0,0,0,0,0,0,0,0; }")
-
-    def test_out_wrong_arity_halts(self) -> None:
-        with pytest.raises(HaltError, match="8 bit"):
-            run_program("main { out 0,0,0,0,0,0,0; }")
+@pytest.mark.parametrize(
+    ("program", "error", "match"),
+    [
+        ("loop { out 0,0,0,0,0,0,0,0; }", ValueError, "no main"),
+        ("main { out 0,0,0,0,0,0,0; }", HaltError, "8 bit"),
+        ("main { out 0,0,0,0,0,0,0,x; }", HaltError, "undeclared"),
+    ],
+)
+def test_rejected(program: str, error: type[Exception], match: str) -> None:
+    with pytest.raises(error, match=match):
+        run_program(program)
 
 
-class TestInput:
-    def test_in_reads_a_byte_msb_first(self) -> None:
-        # 'A' is 0b01000001
-        code = "main { a,b,c,d,e,f,g,h = (in 0); out a,b,c,d,e,f,g,h; }"
-        assert run_program(code, "A") == "A"
-
-    def test_in_running_out_raises_eof(self) -> None:
-        code = "main { a,b,c,d,e,f,g,h = (in 0); }"
-        with pytest.raises(EOFError):
-            run(code, ScriptedIO(""))
-
-    def test_truth_machine_zero(self) -> None:
-        """A "0" byte is echoed and the program halts."""
-        code = "\n".join(
-            [
-                "main {",
-                "  a,b,c,d,e,f,g,h = (in 0);",
-                "  out a,b,c,d,e,f,g,h;",
-                "  for _:!h..h {",
-                "    loop 0;",
-                "  }",
-                "}",
-                "loop {",
-                "  out 0,0,1,1,0,0,0,1;",
-                "  loop 0;",
-                "}",
-            ]
-        )
-        assert run_program(code, "0") == "0"
-
-
-class TestLoops:
-    def test_range_loops_once_and_twice(self) -> None:
-        # 0..0 runs once (i=0), 0..1 runs twice (i=0,1)
-        code = """
-            main {
-              n = 0;
-              for i:0..0 { n = !n; }
-              out 0,0,0,0,0,0,0,n;
-              n = 0;
-              for i:0..1 { n = !n; }
-              out 0,0,0,0,0,0,0,n;
-            }
-        """
-        assert run_program(code) == "\x01\x00"
-
-    def test_range_as_if_statement(self) -> None:
-        # for _:!c..c runs the body iff c is 1 (twice, since 0..1 iterates)
-        code = """
-            main {
-              c = 0;
-              for _:!c..c { out 0,1,0,0,0,0,0,1; }
-              c = 1;
-              for _:!c..c { out 0,1,0,0,0,0,0,1; }
-            }
-        """
-        assert run_program(code) == "AA"
-
-    def test_iteration_loop_over_variables(self) -> None:
-        code = """
-            main {
-              any = 0;
-              for i:(0, 0, 1) { for _:!i..i { any = 1; } }
-              out 0,0,0,0,0,0,0,any;
-            }
-        """
-        assert run_program(code) == "\x01"
-
-    def test_iteration_wildcard_expands(self) -> None:
-        code = """
-            main {
-              s = 0;
-              for (i, j):((1, *)) { for _:!i..i { s = 1; } }
-              out 0,0,0,0,0,0,0,s;
-            }
-        """
-        assert run_program(code) == "\x01"
-
-    def test_underscore_loop_variable(self) -> None:
-        code = "main { for _:0..1 { out 0,1,0,0,0,0,0,1; } }"
-        assert run_program(code) == "AA"
-
-
-class TestFunctions:
-    def test_not(self) -> None:
-        code = "main { a = 1; a = !a; out 0,0,0,0,0,0,0,a; }"
-        assert run_program(code) == "\x00"
-
-    def test_unpassed_parameter_is_zero(self) -> None:
-        """Unpassed parameters are set to 0 (per the wiki)."""
-        code = """
-            main {
-              f a, b { out 0,0,0,0,0,0,0,b; }
-              r = (f 1);
-            }
-        """
-        assert run_program(code) == "\x00"
-
-    def test_bare_block_is_function_literal(self) -> None:
-        """A bare {code} block is a function literal in value position."""
-        code = """
-            main {
-              x = { return 1; };
-              out 0,0,0,0,0,0,0,(x 0);
-            }
-        """
-        assert run_program(code) == "\x01"
-
-    def test_function_returns(self) -> None:
-        code = """
-            one { return 1; }
-            main {
-              a = (one 0);
-              out 0,0,0,0,0,0,0,a;
-            }
-        """
-        assert run_program(code) == "\x01"
-
-    def test_forward_reference(self) -> None:
-        # loop is defined after main but still callable
-        code = """
-            main {
-              h = 0;
-              for _:!h..h { helper 0; }
-            }
-            helper { out 1,1,1,1,1,1,1,1; }
-        """
-        assert run_program(code) == ""
-
-    def test_recursion(self) -> None:
-        code = """
-            main {
-              a,b,c,d,e,f,g,h = (in 0);
-              out a,b,c,d,e,f,g,h;
-              for _:!h..h { again 0; }
-            }
-            again { out 0,0,1,1,0,0,0,1; }
-        """
-        # input '0' (h=0): no recursion
-        assert run_program(code, "0") == "0"
-
-    def test_function_as_argument(self) -> None:
-        # the wiki's eq helper, called via a passed function
-        code = """
-            eq a, b {
-              equal = 0;
-              for _:a..b { equal = !equal; }
-              return equal;
-            }
-            main {
-              x = 1;
-              y = 1;
-              r = (eq x, y);
-              out 0,0,0,0,0,0,0,r;
-            }
-        """
-        assert run_program(code) == "\x01"
-
-    def test_undeclared_identifier_halts(self) -> None:
-        with pytest.raises(HaltError, match="undeclared"):
-            run_program("main { out 0,0,0,0,0,0,0,x; }")
+def test_in_running_out_raises_eof() -> None:
+    with pytest.raises(EOFError):
+        run("main { a,b,c,d,e,f,g,h = (in 0); }", ScriptedIO(""))
 
 
 class TestStepMachine:
@@ -235,51 +72,6 @@ class TestStepMachine:
         while not machine.halted:
             machine.step()
         assert machine.io.getvalue() == "\x00"
-
-    def test_statement_call_inside_a_for_loop_body_pushes_a_frame(self) -> None:
-        # a statement-position call inside a for-loop body is stepped
-        # through _step_for's own frame-push, not _exec_stmt's
-        code = """
-            helper { out 0,1,0,0,1,0,0,0; }
-            main { for _:0..0 { helper 0; } }
-        """
-        assert run_program(code) == "H"
-
-    def test_bare_return_at_top_level_pops_the_frame(self) -> None:
-        # a return statement run directly by step() (not through a pushed
-        # frame) still pops the current frame via its own got-is-not-None path
-        code = "main { return 1; out 0,0,0,0,0,0,0,1; }"
-        assert run_program(code) == ""
-
-    def test_return_inside_a_for_loop_body_pops_the_frame(self) -> None:
-        # a return statement inside a for-loop body, run through
-        # _step_for's own statement handling, also pops the frame
-        code = "main { for _:0..0 { return 1; } out 0,0,0,0,0,0,0,1; }"
-        assert run_program(code) == ""
-
-    def test_return_inside_a_non_range_for_loop_in_a_nested_call(self) -> None:
-        # a return inside a for-loop body, reached through the recursive
-        # _run/_exec_stmt/_exec_block path (an expression-position call),
-        # propagates out through _exec_block's own got-is-not-None return
-        code = """
-            f {
-              for i:(1, 0) { return i; }
-              return 0;
-            }
-            main {
-              r = (f 0);
-              out 0,0,0,0,0,0,0,r;
-            }
-        """
-        assert run_program(code) == "\x01"
-
-    def test_wildcard_loop_in_an_expression_position_call(self) -> None:
-        """``(*, 1)`` expands only the wildcard column in the recursive path too."""
-        code = """
-            f { for (i, j):((*, 1)) { out 0,1,0,0,0,0,i,j; } return 1; }
-            main { r = (f 0); }
-        """
-        assert run_program(code) == "AC"
 
     def test_snapshot_is_hashable(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -494,36 +286,124 @@ class TestSnapshotWithoutTheCycleDetector:
 
 
 @pytest.mark.parametrize(
-    ("program", "expected"),
+    ("program", "stdin", "expected"),
     [
         # Wiki "Variable assignments": multiple assignment works as in Python.
-        ("main { a, b = 1, 0; a, b = b, a; out 0,1,0,0,0,0,a,b; }", "A"),
+        ("main { a, b = 1, 0; a, b = b, a; out 0,1,0,0,0,0,a,b; }", "", "A"),
         # Wiki "Iteration loops": (i, j):(*, *) loops over every combination.
-        ("main { i, j = 0, 0; for (i, j):(*, *) { out 0,1,0,0,0,0,i,j; } }", "@ABC"),
+        (
+            "main { i, j = 0, 0; for (i, j):(*, *) { out 0,1,0,0,0,0,i,j; } }",
+            "",
+            "@ABC",
+        ),
         # Wiki: variables can be global.
-        ("x = 1;\nmain { out 0,1,0,0,0,0,0,x; }", "A"),
+        ("x = 1;\nmain { out 0,1,0,0,0,0,0,x; }", "", "A"),
         # Wiki "With arguments": (arg1, ..., argN @ {code}).
-        ("main { f = (a, b @ { out 0,1,0,0,0,0,a,b; }); f 1, 0; }", "B"),
+        ("main { f = (a, b @ { out 0,1,0,0,0,0,a,b; }); f 1, 0; }", "", "B"),
         # Wiki "Function literals": {code} 0; runs code.
-        ("main { { out 0,1,0,0,0,0,0,1; } 0; }", "A"),
+        ("main { { out 0,1,0,0,0,0,0,1; } 0; }", "", "A"),
         # A definition in a loop body belongs to the enclosing function.
-        ("main { i = 0; for i:0..0 { g { out 0,1,0,0,0,0,0,1; } } g 0; }", "A"),
+        ("main { i = 0; for i:0..0 { g { out 0,1,0,0,0,0,0,1; } } g 0; }", "", "A"),
+        ("main { out 0,1,0,0,1,0,0,0; }", "", "H"),
+        ("main { out 1,1,1,1,1,1,1,1; }", "", "ÿ"),
+        # 'A' is 0b01000001
+        ("main { a,b,c,d,e,f,g,h = (in 0); out a,b,c,d,e,f,g,h; }", "A", "A"),
+        # A "0" byte is echoed and the program halts.
+        (
+            "main { a,b,c,d,e,f,g,h = (in 0); out a,b,c,d,e,f,g,h; for _:!h..h { loop "
+            "0; } } loop { out 0,0,1,1,0,0,0,1; loop 0; }",
+            "0",
+            "0",
+        ),
+        # 0..0 runs once (i=0), 0..1 runs twice (i=0,1)
+        (
+            "main { n = 0; for i:0..0 { n = !n; } out 0,0,0,0,0,0,0,n; n = 0; for "
+            "i:0..1 { n = !n; } out 0,0,0,0,0,0,0,n; }",
+            "",
+            "\x01\x00",
+        ),
+        # for _:!c..c runs the body iff c is 1 (twice, since 0..1 iterates)
+        (
+            "main { c = 0; for _:!c..c { out 0,1,0,0,0,0,0,1; } c = 1; for _:!c..c { "
+            "out 0,1,0,0,0,0,0,1; } }",
+            "",
+            "AA",
+        ),
+        (
+            "main { any = 0; for i:(0, 0, 1) { for _:!i..i { any = 1; } } out "
+            "0,0,0,0,0,0,0,any; }",
+            "",
+            "\x01",
+        ),
+        (
+            "main { s = 0; for (i, j):((1, *)) { for _:!i..i { s = 1; } } out "
+            "0,0,0,0,0,0,0,s; }",
+            "",
+            "\x01",
+        ),
+        ("main { for _:0..1 { out 0,1,0,0,0,0,0,1; } }", "", "AA"),
+        ("main { a = 1; a = !a; out 0,0,0,0,0,0,0,a; }", "", "\x00"),
+        # Unpassed parameters are set to 0 (per the wiki).
+        ("main { f a, b { out 0,0,0,0,0,0,0,b; } r = (f 1); }", "", "\x00"),
+        # A bare {code} block is a function literal in value position.
+        ("main { x = { return 1; }; out 0,0,0,0,0,0,0,(x 0); }", "", "\x01"),
+        ("one { return 1; } main { a = (one 0); out 0,0,0,0,0,0,0,a; }", "", "\x01"),
+        # loop is defined after main but still callable
+        (
+            "main { h = 0; for _:!h..h { helper 0; } } helper { out 1,1,1,1,1,1,1,1; }",
+            "",
+            "",
+        ),
+        # input '0' (h=0): no recursion
+        (
+            "main { a,b,c,d,e,f,g,h = (in 0); out a,b,c,d,e,f,g,h; for _:!h..h { "
+            "again 0; } } again { out 0,0,1,1,0,0,0,1; }",
+            "0",
+            "0",
+        ),
+        # the wiki's eq helper, called via a passed function
+        (
+            "eq a, b { equal = 0; for _:a..b { equal = !equal; } return equal; } main "
+            "{ x = 1; y = 1; r = (eq x, y); out 0,0,0,0,0,0,0,r; }",
+            "",
+            "\x01",
+        ),
+        # a statement-position call inside a for-loop body is stepped
+        # through _step_for's own frame-push, not _exec_stmt's
+        ("helper { out 0,1,0,0,1,0,0,0; } main { for _:0..0 { helper 0; } }", "", "H"),
+        # a return statement run directly by step() (not through a pushed
+        # frame) still pops the current frame via its own got-is-not-None path
+        ("main { return 1; out 0,0,0,0,0,0,0,1; }", "", ""),
+        # a return statement inside a for-loop body, run through
+        # _step_for's own statement handling, also pops the frame
+        ("main { for _:0..0 { return 1; } out 0,0,0,0,0,0,0,1; }", "", ""),
+        # a return inside a for-loop body, reached through the recursive
+        # _run/_exec_stmt/_exec_block path (an expression-position call),
+        # propagates out through _exec_block's own got-is-not-None return
+        (
+            "f { for i:(1, 0) { return i; } return 0; } main { r = (f 0); out "
+            "0,0,0,0,0,0,0,r; }",
+            "",
+            "\x01",
+        ),
+        # ``(*, 1)`` expands only the wildcard column in the recursive path too.
+        (
+            "f { for (i, j):((*, 1)) { out 0,1,0,0,0,0,i,j; } return 1; } main { r = "
+            "(f 0); }",
+            "",
+            "AC",
+        ),
+        ("main { x = 1; g { out 0,1,0,0,0,0,0,x; } g 0; }", "", "A"),
+        # Wiki: ``code`` and ``{code} 0;`` "are the same".
+        ("main { x = 0; {x = 1;} 0; out 0,1,0,0,0,0,0,x; }", "", "A"),
     ],
 )
-def test_wiki_syntax_forms(program: str, expected: str) -> None:
-    assert run_program(program) == expected
+def test_output(program: str, stdin: str, expected: str) -> None:
+    assert run_program(program, stdin) == expected
 
 
 class TestScopingIsLexical:
     """A variable is local "to a function (and its children)"."""
-
-    def test_a_literal_writes_the_enclosing_variable(self) -> None:
-        """Wiki: ``code`` and ``{code} 0;`` "are the same"."""
-        assert run_program("main { x = 0; {x = 1;} 0; out 0,1,0,0,0,0,0,x; }") == "A"
-
-    def test_a_nested_function_reads_its_parents_locals(self) -> None:
-        code = "main { x = 1; g { out 0,1,0,0,0,0,0,x; } g 0; }"
-        assert run_program(code) == "A"
 
     def test_a_top_level_function_does_not_see_its_callers_locals(self) -> None:
         with pytest.raises(HaltError, match="undeclared identifier 'x'"):
