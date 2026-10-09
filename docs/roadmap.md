@@ -88,7 +88,9 @@ Generator gaps against the canonical pieces in
   share offset copies when the ledger permits: ignored-prefix parity
   uses 1,960 cells and 304 commands; sparse/disjoint controls save
   21%/19%. Full-input controls still exceed the bound, and retained stamps
-  can block bridges. Keep the existing route when area would grow.
+  can block bridges. Root-half owners grow the sparse control from
+  3,808 to 5,041 cells; arrival-weighted centers reproduce the eight
+  admitted controls. Keep these variants out; shorten bridge geometry.
 - **Back bend routes stay out.** They add under one point on tiled n=8,
   and raise worst commands at n=6/7 from 122/221 to 154/306, past the
   execution ledger's bound.
