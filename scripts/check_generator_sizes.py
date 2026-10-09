@@ -36,7 +36,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from benchmark import measure  # noqa: E402
+from benchmark import evidence_session, measure  # noqa: E402
 
 import esolangs  # noqa: E402
 from esolangs.registry import LANGUAGES  # noqa: E402
@@ -84,33 +84,34 @@ SCHEMA = 3
 
 def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
     """Return one full benchmark record per (language, table), timings and all."""
-    records = [
-        measure(
-            name,
-            table,
-            repeat=repeat,
-            row=(1 << (len(table).bit_length() - 1)) - 1,
-            step_cap=STEP_CAP,
-            all_rows=True,
+    with evidence_session():
+        records = [
+            measure(
+                name,
+                table,
+                repeat=repeat,
+                row=(1 << (len(table).bit_length() - 1)) - 1,
+                step_cap=STEP_CAP,
+                all_rows=True,
+            )
+            # A language with no generator has no size to record; Deadfish is
+            # carried for its fame and marked ``int``.
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["boolean_generator"]
+            for table in TABLES
+        ]
+        records.extend(
+            measure(
+                name,
+                table,
+                repeat=repeat,
+                row=len(table) - 1,
+                step_cap=STEP_CAP,
+                sample_rows=(0, 1, len(table) // 2, len(table) - 1),
+            )
+            for name in BOUNDARIES
+            for table in boundary_tables(name)
         )
-        # A language with no generator has no size to record; Deadfish is
-        # carried for its fame and marked ``int``.
-        for name in esolangs.list_languages()
-        if esolangs.describe(name)["boolean_generator"]
-        for table in TABLES
-    ]
-    records.extend(
-        measure(
-            name,
-            table,
-            repeat=repeat,
-            row=len(table) - 1,
-            step_cap=STEP_CAP,
-            sample_rows=(0, 1, len(table) // 2, len(table) - 1),
-        )
-        for name in BOUNDARIES
-        for table in boundary_tables(name)
-    )
     for record in records:
         failed = next(
             (

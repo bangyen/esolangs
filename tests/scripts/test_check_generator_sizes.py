@@ -1,8 +1,13 @@
 """Tests for the emitted-size and step-count baseline gate."""
 
+import hashlib
 import json
 from typing import Any
 
+import pytest
+
+import esolangs
+from scripts import benchmark as b
 from scripts.check_generator_sizes import (
     BASELINE,
     BOUNDARIES,
@@ -161,3 +166,26 @@ def test_sweep_checks_and_pins_every_small_table_row(monkeypatch):
         assert [row["row"] for row in executions] == list(range(len(table)))
         assert all(row["matches"] is True for row in executions)
         assert len(pinned[table]["commands_by_row"]) == len(table)
+
+
+def test_executed_artifact_and_provenance():
+    r = b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=10000, all_rows=True)
+    p = esolangs.generate("Brainfuck", "01")
+    assert all(row["matches"] for row in r["executions"])
+    assert r["schema"] == 6
+    assert r["provenance"]["generated_artifact_sha256"] == b.artifact_hash(p)
+    assert all(row["artifact_sha256"] == b.artifact_hash(p) for row in r["executions"])
+    assert len(r["provenance"]["commit"]) == 40
+    assert isinstance(r["provenance"]["dirty"], bool)
+    assert b.artifact_hash("é") == hashlib.sha256(b"text\0" + "é".encode()).hexdigest()
+    pixel = (0, 0, 0)
+    assert b.artifact_hash(esolangs.Raster(((pixel, pixel),))) != b.artifact_hash(
+        esolangs.Raster(((pixel,), (pixel,)))
+    )
+
+
+def test_checkout_change_invalidates_benchmark(monkeypatch):
+    identities = iter([{"commit": "before"}, {"commit": "after"}])
+    monkeypatch.setattr(b, "source_identity", lambda: next(identities))
+    with pytest.raises(RuntimeError, match="checkout changed"):
+        b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=100)

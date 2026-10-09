@@ -52,11 +52,13 @@ import functools
 import os
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -109,6 +111,10 @@ FULL_PYTEST_MARKS = "not weekly"
 # the wait never looks stalled, long enough that a normal run prints only a
 # handful of lines.
 HEARTBEAT_SECONDS = 20.0
+
+# CI allows 15 minutes for pytest; ordinary checks must finish in one minute.
+STEP_DEADLINES = {"pytest": 900.0, "exception leaks": 120.0}
+DEFAULT_STEP_DEADLINE = 60.0
 
 # Not a STEPS entry: it reads the coverage data file `pytest` writes, and
 # `pytest` is LONG_STEP -- launched with Popen and left running while the
@@ -780,23 +786,50 @@ def _should_stream(steps: int, *, quiet: bool, verbose: bool) -> bool:
     return steps == 1 and not quiet
 
 
+def _stop_process_tree(proc: subprocess.Popen[str]) -> None:
+    """Kill the step's process tree and reap its direct child."""
+    if os.name == "posix":
+        with suppress(ProcessLookupError):
+            os.killpg(proc.pid, signal.SIGKILL)
+    else:
+        subprocess.run(
+            ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+            capture_output=True,
+            check=False,
+        )
+        if proc.poll() is None:
+            proc.kill()
+    proc.wait()
+
+
 def _wait_with_heartbeat(
     proc: subprocess.Popen[str], name: str, start: float
 ) -> tuple[str, int]:
-    """Collect *proc*'s output, saying every ``HEARTBEAT_SECONDS`` it is alive.
-
-    Waiting in one blocking call left the push silent for the minutes the
-    stack takes, which reads as a hang -- long enough to invite the Ctrl-C
-    that skips the checks.  Waiting in slices costs nothing, and it is what
-    lets the output be captured at all: a captured step prints nothing until
-    it ends, so without this the silence would get worse, not better.
-    """
-    while True:
-        try:
-            output, _ = proc.communicate(timeout=HEARTBEAT_SECONDS)
-            return output, proc.returncode
-        except subprocess.TimeoutExpired:
-            print(f"[....] {name} still running ({time.time() - start:.0f}s elapsed)")
+    """Collect output until the step's deadline; kill descendants on timeout."""
+    limit = STEP_DEADLINES.get(name, DEFAULT_STEP_DEADLINE)
+    deadline = start + limit
+    try:
+        while True:
+            remaining = deadline - time.monotonic()
+            try:
+                output, _ = proc.communicate(
+                    timeout=max(0.0, min(HEARTBEAT_SECONDS, remaining))
+                )
+                return output or "", proc.returncode
+            except subprocess.TimeoutExpired:
+                if time.monotonic() >= deadline:
+                    _stop_process_tree(proc)
+                    output, _ = proc.communicate()
+                    return (
+                        output or ""
+                    ) + f"\n{name}: deadline exceeded ({limit:g}s)\n", 124
+                print(
+                    f"[....] {name} still running "
+                    f"({time.monotonic() - start:.0f}s elapsed)"
+                )
+    except BaseException:
+        _stop_process_tree(proc)
+        raise
 
 
 def _report(name: str, elapsed: float, returncode: int, output: str | None) -> bool:
@@ -830,7 +863,7 @@ def _run_steps(
     """
     failed: list[str] = []
     timings: list[tuple[str, float]] = []
-    wall_start = time.time()
+    wall_start = time.monotonic()
     clean_cache: VerifiedCache | None = None
     cache_keys: dict[str, str | None] = {}
 
@@ -840,7 +873,7 @@ def _run_steps(
             failed.append(name)
 
     def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
-        start = time.time()
+        start = time.monotonic()
         # Only the captured branch has output to replay; the streaming one
         # already wrote it straight to the terminal.
         captured: str | None = None
@@ -851,26 +884,21 @@ def _run_steps(
                 cached = clean_cache.load(key)
                 if cached is not None:
                     print(f"[cache] {name}: identical verified inputs")
-                    record(name, time.time() - start, 0, cached)
+                    record(name, time.monotonic() - start, 0, cached)
                     return
-        if stream:
-            returncode = subprocess.run(cmd, env=step_env).returncode
-        else:
-            # Captured, but not in one blocking call: a captured step prints
-            # nothing until it ends, and the leak sweep runs for half a
-            # minute.  Waiting in slices costs nothing and keeps it legible.
-            captured, returncode = _wait_with_heartbeat(
-                subprocess.Popen(
-                    cmd,
-                    env=step_env,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                ),
-                name,
-                start,
-            )
-        record(name, time.time() - start, returncode, captured)
+        captured, returncode = _wait_with_heartbeat(
+            subprocess.Popen(
+                cmd,
+                env=step_env,
+                stdout=None if stream else subprocess.PIPE,
+                stderr=None if stream else subprocess.STDOUT,
+                text=True,
+                start_new_session=os.name == "posix",
+            ),
+            name,
+            start,
+        )
+        record(name, time.monotonic() - start, returncode, captured)
         if key is not None and returncode == 0 and captured is not None:
             assert clean_cache is not None
             clean_cache.remember(key, captured, returncode)
@@ -922,13 +950,14 @@ def _run_steps(
         long_step = None
     if long_step is not None:
         _, cmd, step_env = long_step
-        long_start = time.time()
+        long_start = time.monotonic()
         proc = subprocess.Popen(
             cmd,
             env=step_env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            start_new_session=os.name == "posix",
         )
         print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
 
@@ -938,7 +967,7 @@ def _run_steps(
             child: subprocess.Popen[str], started: float
         ) -> tuple[str, int, float]:
             output, returncode = _wait_with_heartbeat(child, LONG_STEP, started)
-            return output, returncode, time.time() - started
+            return output, returncode, time.monotonic() - started
 
         # Drain immediately: waiting until the shadow ends can fill the pipe
         # and stall pytest. The collector also measures its actual finish.
@@ -989,7 +1018,7 @@ def _run_steps(
 
     for name in failed:
         print(f"[FAIL] {name}", *_rerun_hint(name), sep="\n")
-    return len(failed), timings, time.time() - wall_start
+    return len(failed), timings, time.monotonic() - wall_start
 
 
 def main() -> int:

@@ -102,6 +102,10 @@ benchmark language table *args:
 sizes *args:
     {{PYTHON}} scripts/check_generator_sizes.py {{args}}
 
+# Merge downloaded artifacts, one complete CI run per directory.
+refresh-ci-timings *args:
+    {{PYTHON}} scripts/refresh_ci_timings.py --serial-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate {{args}}
+
 # create interpreter, generator and test stubs; pass e.g. --category tape_based
 new-language name *args:
     {{PYTHON}} scripts/new_language.py start "{{name}}" {{args}}

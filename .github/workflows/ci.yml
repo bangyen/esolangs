@@ -265,8 +265,8 @@ jobs:
       with:
         name: slow-test-durations-${{ matrix.shard }}
         path: |
-          test-durations.json
-          certificate-durations.json
+          test-durations*.json
+          certificate-durations*.json
         if-no-files-found: error
         retention-days: 7
 

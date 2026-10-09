@@ -3,15 +3,23 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import platform
 import signal
 import statistics
+import subprocess
+import sys
 import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import fields, is_dataclass
 from fractions import Fraction
 from itertools import chain, compress
 from operator import is_not
+from pathlib import Path
 from typing import Any, cast
 
 import esolangs
@@ -25,6 +33,62 @@ from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
 _MEMO_TYPES = (tuple, frozenset, Fraction)
+
+
+def artifact_hash(program: esolangs.Program) -> str:
+    """Hash UTF-8 text or dimensioned RGB rows without PNG encoder variation."""
+    if isinstance(program, str):
+        payload = b"text\0" + program.encode("utf-8")
+    else:
+        payload = b"rgb\0" + json.dumps(program.rows, separators=(",", ":")).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def source_identity() -> dict[str, Any]:
+    """Identify the checkout; refuse evidence without readable Git state."""
+    root = Path(__file__).resolve().parents[1]
+
+    def git(*args: str) -> bytes:
+        return subprocess.run(
+            ["git", *args], cwd=root, capture_output=True, check=True
+        ).stdout
+
+    untracked = hashlib.sha256()
+    for name in sorted(
+        git("ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
+    ):
+        if name:
+            untracked.update(name + b"\0")
+            untracked.update(
+                hashlib.sha256((root / name.decode()).read_bytes()).digest()
+            )
+    return {
+        "untracked_sha256": untracked.hexdigest(),
+        "commit": git("rev-parse", "HEAD").decode().strip(),
+        "dirty": bool(git("status", "--porcelain", "--untracked-files=normal")),
+        "tracked_diff_sha256": hashlib.sha256(
+            git("diff", "HEAD", "--binary")
+        ).hexdigest(),
+        "checkout": str(root),
+    }
+
+
+_EVIDENCE: ContextVar[dict[str, Any] | None] = ContextVar(
+    "benchmark_evidence", default=None
+)
+
+
+@contextmanager
+def evidence_session() -> Iterator[None]:
+    """Check checkout state once around a sweep, before publishing its records."""
+    identity = source_identity()
+    token = _EVIDENCE.set(identity)
+    try:
+        yield
+        if source_identity() != identity:
+            raise RuntimeError("checkout changed during benchmark")
+    finally:
+        _EVIDENCE.reset(token)
 
 
 def _bits(row: int, inputs: int) -> list[int]:
@@ -217,6 +281,7 @@ def _execute(
     *,
     track_store: bool = False,
     facts: LanguageInfo | None = None,
+    source_digest: str | None = None,
 ) -> dict[str, Any]:
     if facts is None:
         facts = esolangs.describe(language)
@@ -234,6 +299,9 @@ def _execute(
     if track_store and facts["answer_mode"] == "termination":
         raise ValueError("store tracking requires a halting-answer language")
     result: dict[str, Any] = {
+        "artifact_sha256": source_digest
+        if source_digest is not None
+        else artifact_hash(source),
         "row": row,
         "expected_answer": table[row],
         "actual_answer": None,
@@ -326,7 +394,7 @@ def _commands(
     cap: int,
 ) -> int | None:
     """Return steps to halt for the size screens, checking the same artifact."""
-    result = _execute(language, program, table, row, cap, None)
+    result = _execute(language, program, table, row, cap, None, source_digest="")
     if result["matches"] is False:
         raise ValueError(f"{language} row {row}: wrong generated answer")
     return cast("int | None", result["commands"])
@@ -363,6 +431,7 @@ def measure(
         raise esolangs.ArgumentError(
             "benchmark timeout needs a Unix main thread; pass timeout=None"
         )
+    identity = _EVIDENCE.get() or source_identity()
     timings: list[int] = []
     program: esolangs.Program | None = None
     for _ in range(repeat):
@@ -372,6 +441,7 @@ def measure(
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
     facts = esolangs.describe(language)
+    digest = artifact_hash(program)
     rows = range(len(table)) if all_rows else sample_rows or (row,)
     executions = [
         _execute(
@@ -383,12 +453,21 @@ def measure(
             timeout,
             track_store=track_store,
             facts=facts,
+            source_digest=None if facts["parameterized"] else digest,
         )
         for at in rows
     ]
     selected = next(item for item in executions if item["row"] == row)
+    if _EVIDENCE.get() is None and source_identity() != identity:
+        raise RuntimeError("checkout changed during benchmark")
     return {
-        "schema": 5,
+        "schema": 6,
+        "provenance": {
+            **identity,
+            "python": sys.version,
+            "platform": platform.platform(),
+            "generated_artifact_sha256": digest,
+        },
         "track_store": track_store,
         "language": facts["name"],
         "truth_table": table,

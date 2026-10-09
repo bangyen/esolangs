@@ -88,8 +88,8 @@ jobs:
       with:
         name: test-durations-${{ matrix.python-version }}
         path: |
-          test-durations.json
-          certificate-durations.json
+          test-durations*.json
+          certificate-durations*.json
 
   # Generation *time* is the one axis the per-PR gate cannot judge: it is
   # machine- and load-dependent, and a threshold loose enough not to flake on

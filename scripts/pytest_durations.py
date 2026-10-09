@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
+import os
+import platform
 from collections import defaultdict
 from pathlib import Path
 from typing import Protocol
@@ -27,14 +30,27 @@ class Recorder:
         """Start an empty timing collection."""
         self.path = path
         self.durations: dict[str, float] = {}
+        self.collected: set[str] = set()
+        self.finished: set[str] = set()
+
+    def pytest_collection_finish(self, session: pytest.Session) -> None:
+        """Record the selected corpus in a serial session."""
+        self.collected.update(item.nodeid for item in session.items)
+
+    @pytest.hookimpl(optionalhook=True)
+    def pytest_xdist_node_collection_finished(self, ids: list[str]) -> None:
+        """Workers must agree on collection before xdist can run."""
+        self.collected.update(ids)
 
     def pytest_runtest_logreport(self, report: TestReport) -> None:
         """Accumulate every phase; zero-duration reports need no estimate."""
+        if report.when == "teardown":
+            self.finished.add(report.nodeid)
         self.durations[report.nodeid] = (
             self.durations.get(report.nodeid, 0) + report.duration
         )
 
-    def pytest_sessionfinish(self) -> None:
+    def pytest_sessionfinish(self, exitstatus: int) -> None:
         """Write the measured corpus even when tests fail."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(
@@ -48,6 +64,24 @@ class Recorder:
             )
             + "\n",
             encoding="utf-8",
+        )
+
+        metadata = {
+            "schema": 1,
+            "run": {
+                "id": os.environ.get("GITHUB_RUN_ID"),
+                "attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+                "commit": os.environ.get("GITHUB_SHA"),
+                "python": platform.python_version(),
+                "platform": platform.system(),
+            },
+            "exitstatus": int(exitstatus),
+            "collected": sorted(self.collected),
+            "finished": sorted(self.finished),
+            "durations_sha256": hashlib.sha256(self.path.read_bytes()).hexdigest(),
+        }
+        self.path.with_suffix(self.path.suffix + ".meta.json").write_text(
+            json.dumps(metadata, sort_keys=True, indent=1) + "\n", encoding="utf-8"
         )
 
 

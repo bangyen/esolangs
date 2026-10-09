@@ -1,8 +1,11 @@
 """The local gate may skip work, but only work CI is known to redo."""
 
+import json
+import os
 import re
 import subprocess
 import sys
+import time
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -10,6 +13,8 @@ from unittest import mock
 
 import pytest
 
+from scripts import refresh_ci_timings as refresh
+from scripts.pytest_durations import Recorder
 from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -525,3 +530,112 @@ def test_companion_checks_share_one_serial_lane(monkeypatch):
     failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
     assert failures == 0
     assert {name for name, _ in timings} == {"pytest", "first", "second"}
+
+
+@pytest.mark.parametrize(
+    ("stream", "shadow"), [(False, False), (True, False), (False, True)]
+)
+def test_deadline_kills_step_and_its_worker(
+    tmp_path, monkeypatch, capsys, stream, shadow
+):
+    v = load_script()
+    monkeypatch.setattr(v, "STEP_DEADLINES", {"pytest": 0.5})
+    marker = tmp_path / "worker"
+    worker = f"""
+import time
+from pathlib import Path
+path = Path({str(marker)!r})
+while True:
+    path.write_text(str(time.monotonic()))
+    time.sleep(0.01)
+"""
+    parent = (
+        "import subprocess, sys, time; "
+        f"subprocess.Popen([sys.executable, '-c', {worker!r}]); "
+        "print('worker started', flush=True); time.sleep(30)"
+    )
+    steps = [("pytest", [sys.executable, "-c", parent], dict(os.environ))]
+    if shadow:
+        steps.append(("shadow", [sys.executable, "-c", "pass"], dict(os.environ)))
+    start = time.monotonic()
+    failures, _, _ = v._run_steps(steps, stream=stream)  # noqa: SLF001
+    assert failures == 1
+    assert time.monotonic() - start < 3
+    value = marker.read_text()
+    time.sleep(0.1)
+    assert marker.read_text() == value
+    assert "deadline exceeded (0.5s)" in capsys.readouterr().out
+
+
+def record(directory, durations, *, exitstatus=0):
+    recorder = Recorder(directory / "test-durations.json")
+    recorder.collected.update(durations)
+    recorder.durations.update(durations)
+    recorder.finished.update(durations)
+    recorder.pytest_sessionfinish(exitstatus)
+    return recorder.path.with_suffix(".json.meta.json")
+
+
+def test_reproducible_merge(tmp_path):
+    first, second = tmp_path / "first", tmp_path / "second"
+    record(first, {"a": 10, "b": 2, "c": 3})
+    record(second, {"a": 6, "b": 4, "c": 5})
+    output = tmp_path / "weights.json"
+    assert refresh.refresh([first, second], ["a", "b", "c"], output, 2) == [8, 7]
+    before = output.read_bytes()
+    refresh.refresh([second, first], ["c", "b", "a"], output, 2)
+    assert output.read_bytes() == before
+    assert json.loads(before) == {"a": 8, "b": 3, "c": 4}
+
+
+@pytest.mark.parametrize(
+    "fault", ["failed", "unfinished", "missing", "duplicate", "altered", "no_metadata"]
+)
+def test_bad_run_does_not_write_fixture(tmp_path, fault):
+    run = tmp_path / "run"
+    path = record(run, {"a": 1, "b": 2}, exitstatus=1 if fault == "failed" else 0)
+    metadata = json.loads(path.read_text())
+    if fault == "unfinished":
+        metadata["finished"] = ["a"]
+        path.write_text(json.dumps(metadata))
+    elif fault == "missing":
+        path = record(run, {"a": 1})
+    elif fault == "duplicate":
+        record(run / "other-shard", {"a": 1})
+    elif fault == "altered":
+        (run / "test-durations.json").write_text('{"a": 99, "b": 2}')
+    elif fault == "no_metadata":
+        path.unlink()
+    output = tmp_path / "weights.json"
+    output.write_text("preserve")
+    with pytest.raises(ValueError, match="run"):
+        refresh.refresh([run], ["a", "b"], output, 2)
+    assert output.read_text() == "preserve"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("workers", "failed"), [(0, False), (2, False), (0, True)])
+def test_session_completion(tmp_path, workers, failed):
+    root = Path(__file__).resolve().parents[2]
+    test = tmp_path / "test_sample.py"
+    test.write_text(f"def test_sample():\n    assert {not failed}\n")
+    output = tmp_path / "run" / "test-durations.json"
+    env = {**os.environ, "PYTHONPATH": str(root), "PYTEST_ADDOPTS": ""}
+    ini = tmp_path / "pytest.ini"
+    ini.write_text("[pytest]\n")
+    args = [sys.executable, "-m", "pytest", str(test), "-c", str(ini)]
+    args += ["-n", str(workers), "-p", "scripts.pytest_durations"]
+    args += ["--duration-output", str(output)]
+    proc = subprocess.run(
+        args, cwd=root, env=env, capture_output=True, text=True, timeout=15
+    )
+    assert proc.returncode == int(failed), proc.stdout + proc.stderr
+    metadata = json.loads(output.with_suffix(".json.meta.json").read_text())
+    assert (
+        metadata["collected"] == metadata["finished"] == ["test_sample.py::test_sample"]
+    )
+    if failed:
+        with pytest.raises(ValueError, match="failed"):
+            refresh.load_run(output.parent, set(metadata["collected"]))
+    else:
+        assert refresh.load_run(output.parent, set(metadata["collected"]))
