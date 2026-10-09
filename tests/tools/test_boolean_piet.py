@@ -188,3 +188,37 @@ def test_piet_keeps_an_already_better_layout() -> None:
     assert isinstance(source, Raster)
     assert balance("0001", source) is source
     assert _evaluate("Piet", Raster.from_png(source.to_png()), inputs=2) == "0001"
+
+
+@pytest.mark.medium
+def test_compact_folds_execute_without_growing() -> None:
+    from esolangs.tools.piet.balance import _balanced_plan
+
+    total = 0
+    for inputs in range(1, 4):
+        for encoded in range(2 ** (2**inputs)):
+            table = f"{encoded:0{2**inputs}b}"
+            default = generate(table)
+            old = _balanced_plan(_bounded_operations(table), default, compact=False)
+            ceiling = min(old.score(), score(default))[1]
+            image = esolangs.generate("Piet", table, balance=True)
+            assert score(image)[1] <= ceiling
+            assert (
+                _evaluate("Piet", Raster.from_png(image.to_png()), inputs=inputs)
+                == table
+            )
+            if inputs == 3:
+                total += score(image)[1]
+    assert total == 64_572
+
+
+@pytest.mark.parametrize("width", [13, 19, 30])
+def test_compact_turns_and_halt_execute(width: int) -> None:
+    table = "00010111"
+    image = esolangs.generate("Piet", table, width=width)
+    assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=3) == table
+
+
+def test_compact_majority_is_smaller() -> None:
+    image = esolangs.generate("Piet", "00010111", balance=True)
+    assert (len(image.rows[0]), len(image.rows)) == (17, 17)

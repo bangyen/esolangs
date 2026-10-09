@@ -37,6 +37,7 @@ class _Plan(NamedTuple):
     height: int
     next_fit: int
     rows: list[_Row]
+    compact: bool = False
 
     def score(self) -> tuple[int, int, int]:
         return abs(self.width - self.height), self.width * self.height, self.width
@@ -59,7 +60,9 @@ def _bounded_operations(table: str) -> list[_Operation]:
     return [*min(options, key=_area), _push(2), _Operation(_POP)]
 
 
-def _plan(operations: list[_Operation], columns: int, stop: int) -> _Plan:
+def _plan(
+    operations: list[_Operation], columns: int, stop: int, *, compact: bool = False
+) -> _Plan:
     """Return the folded shape and first future greedy-fit change."""
 
     def needed(at: int) -> int:
@@ -88,11 +91,15 @@ def _plan(operations: list[_Operation], columns: int, stop: int) -> _Plan:
             x += used + 2
             widest = max(widest, x)
         else:
-            x -= used + 4
+            x -= used + (3 if compact else 4)
         direction = -direction
-        y += 4
+        y += (2 if direction == -1 else 3) if compact else 4
+    # A two-row gap lets the halt column touch the preceding instruction row.
+    if compact and len(rows) > 1 and rows[-2].direction == 1:
+        rows[-1] = rows[-1]._replace(y=rows[-1].y + 2)
+        y += 2
     width = widest + (2 if len(rows) > 1 else 1)
-    return _Plan(width, y + 2, stop, rows)
+    return _Plan(width, y + 2, stop, rows, compact)
 
 
 def _emit(operations: list[_Operation], plan: _Plan) -> Raster:
@@ -125,13 +132,19 @@ def _emit(operations: list[_Operation], plan: _Plan) -> Raster:
             for offset in (-1, 0, 1):
                 put(x, y + offset, colour)
             break
-        # Turn down with value 1 (right edge) or 3 (left edge); the down-left
-        # turn needs the extra pop+push(1) to flip the chooser.
+        # Compact turns use a two-row right turn and an L-shaped push(3)
+        # on the left. Keep the final right turn tall to isolate the halt.
         value = 1 if row.direction == 1 else 3
         block(_push(value), row.direction, 0)
         block(_Operation(_POINTER), row.direction, 0)
-        block(_push(value), 0, 1)
-        if value == 1:
+        if plan.compact and value == 3:
+            for dx, dy in ((0, 0), (0, 1), (1, 1)):
+                put(x + dx, y + dy, colour)
+            colour = _next_colour(colour, _push(3).change)
+            x, y = x + 1, y + 2
+        else:
+            block(_push(value), 0, 1)
+        if value == 1 and (not plan.compact or number == len(plan.rows) - 2):
             block(_Operation(_POP), 0, 1)
             block(_push(1), 0, 1)
         block(_Operation(_POINTER), 0, 1)
@@ -145,27 +158,55 @@ def folded(table: str, columns: int) -> Raster:
     """Return a folded Piet program, with a thirteen-column routing floor."""
     check_width(columns)
     operations = _bounded_operations(table)
-    return _emit(operations, _plan(operations, max(_MIN_COLUMNS, columns), columns + 1))
+    return _emit(
+        operations,
+        _plan(operations, max(_MIN_COLUMNS, columns), columns + 1, compact=True),
+    )
 
 
-def balance(table: str, default: Raster) -> Raster:
+def _balanced_plan(
+    operations: list[_Operation], default: Raster, *, compact: bool
+) -> _Plan:
     """Balance the strip and all bounded-block row-fit layouts."""
-    operations = _bounded_operations(table)
     cells = sum(operation.size for operation in operations)
-    target = max(_MIN_COLUMNS, isqrt(4 * cells - 1) + 7)
-    selected = _plan(operations, target, target + 1)
+    pitch = 3 if compact else 4
+    target = max(_MIN_COLUMNS, isqrt(pitch * cells - 1) + 7)
+    selected = _plan(operations, target, target + 1, compact=compact)
     width, height = len(default.rows[0]), len(default.rows)
     default_score = abs(width - height), width * height, width
     gap = min(selected.score(), default_score)[0]
-    # Every full row holds W-10..W cells; height is 4*rows-1 and width W-1..W.
-    # Outside these quadratic bounds no layout can improve the current gap.
+    # Full rows hold W-10..W cells; width is W-1..W. The old height is
+    # 4*rows-1; compact height lies in 2*rows+1..3*rows+1. These quadratic
+    # bounds exclude widths that cannot improve the current aspect gap.
     lower = max(_MIN_COLUMNS, (isqrt((gap + 1) ** 2 + 16 * cells) - gap - 1) // 2)
     upper = max(target, (gap + 15 + isqrt((gap - 5) ** 2 + 16 * cells)) // 2 + 2)
+    if compact:
+        lower = max(_MIN_COLUMNS, (isqrt((gap + 1) ** 2 + 8 * cells) - gap - 1) // 2)
+        upper = max(target, (gap + 15 + isqrt((gap - 5) ** 2 + 12 * cells)) // 2 + 2)
     while lower <= upper:
-        plan = _plan(operations, lower, upper + 1)
+        plan = _plan(operations, lower, upper + 1, compact=compact)
         if plan.score() < selected.score():
             selected = plan
         lower = plan.next_fit
+    return selected
+
+
+def balance(table: str, default: Raster) -> Raster:
+    """Balance folded paths, retaining the old area ceiling."""
+    # Seed 20261009, 200 random tables/arity: n=7 area 255101 -> 228867;
+    # n=8 441706 -> 322460 codels. Exhaustive n=3: 79068 -> 64572.
+    operations = _bounded_operations(table)
+    old = _balanced_plan(operations, default, compact=False)
+    compact = _balanced_plan(operations, default, compact=True)
+    default_score = (
+        abs(len(default.rows[0]) - len(default.rows)),
+        len(default.rows[0]) * len(default.rows),
+        len(default.rows[0]),
+    )
+    old_score = min(old.score(), default_score)
+    selected = old
+    if compact.score()[1] <= old_score[1] and compact.score() < old_score:
+        selected = compact
     if default_score <= selected.score():
         return default
     return _emit(operations, selected)
