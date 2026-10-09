@@ -226,3 +226,11 @@ def test_entry_point_shares_the_run() -> None:
     from esolangs.interpreters.stack_based.piet_plus_plus import __main__ as entry
 
     assert entry.run is piet_plus_plus.run
+
+
+@pytest.mark.parametrize("scale", [1, 2, 3])
+def test_enlarged_generated_programs_detect_their_scale(scale: int) -> None:
+    import esolangs
+
+    source = esolangs.generate("Piet++", "01", scale=scale)
+    assert esolangs.run("Piet++", source) == "1"

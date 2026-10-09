@@ -25,8 +25,10 @@ Judgment calls for what the page leaves open:
 - A Write lands at once; the next step reads the updated image, so a
   rewritten current codel changes its own block, and one written black
   halts the run (the page gives no way off a black codel).
-- A codel is one pixel ("a block of color equivalent to a single pixel"):
-  no scale is detected; an explicit ``scale`` reads enlarged images.
+- A codel is one pixel ("a block of color equivalent to a single pixel")
+  of the codel grid; like Piet, the grid's scale is detected when omitted
+  (so enlarged images such as ``generate(..., scale=2)`` read correctly),
+  and an explicit ``scale`` overrides detection.
 - Add with a stack keeps stack order: an integer above a stack goes on its
   top, below it on its bottom, and stack ``B`` below stack ``T`` makes
   ``B``'s elements the bottom of ``T``.
@@ -124,7 +126,7 @@ class _Machine:
     ip_shape = "grid"
 
     def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
-        rows = program._normalized(scale or 1)  # noqa: SLF001
+        rows = program._normalized(scale)  # noqa: SLF001
         self.rows = [list(row) for row in rows]
         self._program_key = (
             len(rows[0]),
@@ -340,5 +342,5 @@ class _Machine:
 
 
 def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
-    """Execute a Piet++ image; a codel is one pixel unless ``scale`` says more."""
+    """Execute a Piet++ image; detecting its codel scale unless ``scale`` is given."""
     drive(_Machine(program, io, scale=scale))
