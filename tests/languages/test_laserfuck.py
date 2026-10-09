@@ -114,7 +114,7 @@ class TestASeedMakesARunRepeat:
             esolangs.run("LaserFuck", self.PROGRAM, timeout=5, seed=seed)  # type: ignore[arg-type]
 
     def test_the_languages_that_draw_are_the_ones_named(self) -> None:
-        """The message lists them, so the list has to be right."""
+        """The message lists them and ``random`` marks them, so both must be right."""
         drawing = [
             name
             for name in esolangs.list_languages()
@@ -126,7 +126,10 @@ class TestASeedMakesARunRepeat:
         seed_help = " ".join(HELP["run"].split("\n  --seed N", 1)[1].split())
         for name in drawing:
             assert name in str(caught.value)
-            assert name in seed_help, f"run --help's --seed omits {name}"
+            assert esolangs.describe(name)["random"], name
+        # The help points at ``describe``'s fact rather than copying the list.
+        assert "describe --json" in seed_help
+        assert "`random`" in seed_help
         assert "languages that draw" in str(esolangs.run.__doc__)
 
     def test_the_languages_that_terminate_are_the_ones_named(self) -> None:

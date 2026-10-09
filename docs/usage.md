@@ -295,7 +295,8 @@ Call-stack and 3-D positions show raw `ip` without source highlighting.
 
 `describe(language)` returns the language’s API metadata:
 `source_kind`, `input_shape`, `input_encoding`, `answer_mode`, `answer_encoding`,
-`width_effect`, `parameterized`, `reads_input` and the rest.
+`width_effect`, `parameterized`, `reads_input`, `random` (the interpreter draws
+at random, so `run(seed=...)` applies) and the rest.
 `esolangs describe --json <language>` prints it; `esolangs list --details`
 shows the `gen`, `tmpl`, and `ex` markers.
 
