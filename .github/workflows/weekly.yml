@@ -68,15 +68,21 @@ jobs:
     # has no merge base, so the gate would skip and print nothing useful.
     # Per-PR CI reports it with `--partial`; the blocking form is the local
     # command that report prints.
+    # Preserve the native construction cap without competing xdist workers.
+    - name: Check the preserving certificate without competing workers
+      run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.pytest_durations --duration-output certificate-durations.json
+
     - name: Test with pytest (full suite, including the slow band)
-      run: uv run python -m pytest -n auto -p scripts.pytest_durations --duration-output test-durations.json
+      run: uv run python -m pytest -n auto -k "not test_preserving_certificate" -p scripts.pytest_durations --duration-output test-durations.json
 
     - name: Retain measured test durations
       if: always()
       uses: actions/upload-artifact@v7
       with:
         name: test-durations-${{ matrix.python-version }}
-        path: test-durations.json
+        path: |
+          test-durations.json
+          certificate-durations.json
 
   # Generation *time* is the one axis the per-PR gate cannot judge: it is
   # machine- and load-dependent, and a threshold loose enough not to flake on

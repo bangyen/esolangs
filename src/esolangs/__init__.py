@@ -21,6 +21,7 @@ import inspect
 import re
 import signal
 import threading
+import time as _time
 from collections.abc import Callable, Sequence
 from functools import cache, partial
 from typing import Any, TypedDict, cast
@@ -785,20 +786,49 @@ def _run_timed_signal(
     # raising into its own teardown left the timer armed and the default
     # SIGALRM disposition killed one run in three.  Clearing this is one store.
     armed = True
+    old = signal.getsignal(signal.SIGALRM)
+    started = _time.monotonic()
+    pending, interval = signal.getitimer(signal.ITIMER_REAL)
+    caller_deadline = started + pending if pending else None
+    deadline = started + timeout
 
     def _timeout_handler(_signum: int, _frame: object) -> None:
+        nonlocal caller_deadline
         # coverage cannot trace a raise inside a signal handler
         if not armed:  # pragma: no cover - a late alarm, not an overrun
             return
+        now = _time.monotonic()
+        if caller_deadline is not None and now >= caller_deadline:
+            caller_deadline = (
+                caller_deadline
+                + (int((now - caller_deadline) // interval) + 1) * interval
+                if interval
+                else None
+            )
+            if callable(old):
+                old(_signum, cast("Any", _frame))
+            elif old == signal.SIG_DFL:
+                signal.signal(signal.SIGALRM, old)
+                signal.raise_signal(signal.SIGALRM)
+            now = _time.monotonic()
+            if now < deadline:
+                next_deadline = (
+                    min(deadline, caller_deadline)
+                    if caller_deadline is not None
+                    else deadline
+                )
+                signal.setitimer(
+                    signal.ITIMER_REAL, max(0.000001, next_deadline - _time.monotonic())
+                )
+                return
         raise ExecutionTimeoutError(
             f"execution exceeded the {timeout}-second timeout"
         )  # pragma: no cover
 
-    # The caller's alarm, saved and put back.  Arming our own cancels
-    # theirs, so a ``signal.alarm(30)`` set before a timed run came back
-    # with zero seconds left and would never have fired.
-    old = signal.signal(signal.SIGALRM, _timeout_handler)
-    pending, interval = signal.setitimer(signal.ITIMER_REAL, timeout)
+    # Dispatch the earlier deadline: replacing a caller's timer let a nested
+    # 0.05-second guard return successfully after 0.159 seconds.
+    signal.signal(signal.SIGALRM, _timeout_handler)
+    signal.setitimer(signal.ITIMER_REAL, min(timeout, pending) if pending else timeout)
     try:
         run_fn(program, io_obj)
     finally:
@@ -811,8 +841,9 @@ def _run_timed_signal(
         signal.signal(signal.SIGALRM, signal.SIG_IGN)
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, old)
-        if pending:
-            # Whatever was left of the caller's alarm, resumed.  Not exact
-            # -- the run's own duration is not deducted -- but a timer that
-            # fires late is a great deal better than one silently cancelled.
-            signal.setitimer(signal.ITIMER_REAL, pending, interval)
+        if caller_deadline is not None:
+            signal.setitimer(
+                signal.ITIMER_REAL,
+                max(0.000001, caller_deadline - _time.monotonic()),
+                interval,
+            )

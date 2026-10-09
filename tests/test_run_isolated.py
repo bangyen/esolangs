@@ -232,3 +232,48 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
         evaluate_generated(language, "0110", isolated=True)
     assert caught.value.partial_output == "prefix"
     assert any("row 0" in note for note in caught.value.__notes__)
+
+
+@pytest.mark.parametrize("max_output", [None, 1])
+@pytest.mark.parametrize("startup", [0.4, 1.2])
+def test_process_creation_consumes_the_worker_deadline(
+    monkeypatch, max_output, startup
+):
+    from esolangs import _isolated
+    from esolangs._isolated import _launch
+
+    clock = [0.0]
+    calls = []
+
+    class Child:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def kill(self):
+            calls.append("kill")
+
+        def communicate(self, *_args, **kwargs):
+            calls.append(kwargs.get("timeout"))
+            return '{"result":""}', ""
+
+    def spawn(*_args, **_kwargs):
+        clock[0] += startup
+        return Child()
+
+    def bounded(_child, _request, timeout):
+        calls.append(timeout)
+        return ""
+
+    monkeypatch.setattr(_isolated, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(_isolated.subprocess, "Popen", spawn)
+    monkeypatch.setattr(_isolated, "_bounded_output", bounded)
+    if startup > 1:
+        with pytest.raises(esolangs.ExecutionTimeoutError):
+            _launch("{}", 1, max_output=max_output)
+        assert calls == ["kill", None]
+    else:
+        assert _launch("{}", 1, max_output=max_output) == ""
+        assert calls == [pytest.approx(0.6)]

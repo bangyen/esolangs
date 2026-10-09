@@ -10,7 +10,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import _check_program
+from esolangs import _check_program, _run
 from tests.generator_support import evaluate_generated, verify_generated
 from tests.stdin_check import _check_stdin
 
@@ -311,3 +311,158 @@ class TestDivergenceIsProvenNotWaitedOut:
     def test_the_proven_answer_is_the_table(self, name: str) -> None:
         """The answers must be the ones the clock used to give, exactly."""
         assert evaluate_generated(name, "00011011") == "00011011"
+
+
+def test_nested_signal_guard_keeps_the_outer_deadline():
+    import time
+
+    from esolangs.interpreters.io import ScriptedIO
+
+    def inner(*_args):
+        time.sleep(0.1)
+
+    def outer(*_args):
+        _run(inner, "", ScriptedIO(""), 1)
+
+    with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.02-second"):
+        _run(outer, "", ScriptedIO(""), 0.02)
+
+
+def test_signal_guard_deducts_elapsed_time_from_pending_alarm(monkeypatch):
+    import signal
+    import time
+
+    from esolangs.interpreters.io import ScriptedIO
+
+    clock = [0.0]
+    monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+    previous = signal.signal(signal.SIGALRM, lambda *_args: None)
+    saved = signal.setitimer(signal.ITIMER_REAL, 10)
+    try:
+
+        def work(*_args):
+            clock[0] = 1
+
+        _run(work, "", ScriptedIO(""), 5)
+        remaining, _interval = signal.getitimer(signal.ITIMER_REAL)
+        assert 8.9 < remaining < 9.1
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+        signal.setitimer(signal.ITIMER_REAL, *saved)
+
+
+def test_periodic_caller_alarm_fires_during_guard():
+    import signal
+    import time
+
+    from esolangs.interpreters.io import ScriptedIO
+
+    calls = []
+    previous = signal.signal(signal.SIGALRM, lambda *_args: calls.append(1))
+    saved = signal.setitimer(signal.ITIMER_REAL, 0.01, 0.01)
+    try:
+        _run(lambda *_args: time.sleep(0.06), "", ScriptedIO(""), 1)
+        assert len(calls) >= 2
+        remaining, interval = signal.getitimer(signal.ITIMER_REAL)
+        assert remaining > 0
+        assert interval == 0.01
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+        signal.setitimer(signal.ITIMER_REAL, *saved)
+
+
+def test_ignored_caller_alarm_does_not_cancel_execution():
+    import signal
+    import time
+
+    from esolangs.interpreters.io import ScriptedIO
+
+    previous = signal.signal(signal.SIGALRM, signal.SIG_IGN)
+    saved = signal.setitimer(signal.ITIMER_REAL, 0.01)
+    try:
+        _run(lambda *_args: time.sleep(0.03), "", ScriptedIO(""), 1)
+        assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+        signal.setitimer(signal.ITIMER_REAL, *saved)
+
+
+@pytest.mark.medium
+def test_default_caller_alarm_keeps_its_termination_behavior():
+    import signal
+    import subprocess
+    import sys
+
+    code = """
+import signal
+import time
+from esolangs import _run
+from esolangs.interpreters.io import ScriptedIO
+signal.signal(signal.SIGALRM, signal.SIG_DFL)
+signal.setitimer(signal.ITIMER_REAL, 0.02)
+_run(lambda *_args: time.sleep(0.1), '', ScriptedIO(''), 1)
+"""
+    child = subprocess.run([sys.executable, "-c", code], timeout=2, check=False)
+    assert child.returncode == -signal.SIGALRM
+
+
+def test_default_alarm_is_forwarded_to_the_restored_disposition(monkeypatch):
+    import signal
+    import time
+
+    from esolangs.interpreters.io import ScriptedIO
+
+    clock = [0.0]
+    forwarded = []
+    monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(signal, "raise_signal", forwarded.append)
+    previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
+    saved = signal.setitimer(signal.ITIMER_REAL, 1)
+    try:
+
+        def work(*_args):
+            clock[0] = 2
+            handler = signal.getsignal(signal.SIGALRM)
+            assert callable(handler)
+            handler(signal.SIGALRM, None)
+            assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
+
+        _run(work, "", ScriptedIO(""), 3)
+        assert forwarded == [signal.SIGALRM]
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+        signal.setitimer(signal.ITIMER_REAL, *saved)
+
+
+def test_caller_handler_time_counts_against_execution_deadline(monkeypatch):
+    import signal
+    import time
+
+    from esolangs.interpreters.io import ScriptedIO
+
+    clock = [0.0]
+    monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+
+    def caller(*_args):
+        clock[0] = 2
+
+    previous = signal.signal(signal.SIGALRM, caller)
+    saved = signal.setitimer(signal.ITIMER_REAL, 0.2)
+    try:
+
+        def work(*_args):
+            clock[0] = 0.3
+            handler = signal.getsignal(signal.SIGALRM)
+            assert callable(handler)
+            handler(signal.SIGALRM, None)
+
+        with pytest.raises(esolangs.ExecutionTimeoutError, match="1-second"):
+            _run(work, "", ScriptedIO(""), 1)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+        signal.setitimer(signal.ITIMER_REAL, *saved)

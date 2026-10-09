@@ -175,6 +175,7 @@ def _launch(request: str, timeout: float, *, max_output: int | None = None) -> s
     """Run one JSON request, killing and reaping on deadline."""
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(sys.path)
+    deadline = monotonic() + timeout
     with subprocess.Popen(  # nosec B603 -- fixed executable and code, no shell.
         [sys.executable, "-c", "from esolangs._isolated import _worker; _worker()"],
         stdin=subprocess.PIPE,
@@ -184,11 +185,16 @@ def _launch(request: str, timeout: float, *, max_output: int | None = None) -> s
         encoding="utf-8",
         env=env,
     ) as child:
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            child.kill()
+            output, _stderr = child.communicate()
+            return _decode(output, expired=True)
         if max_output is not None:
-            return _bounded_output(child, request, timeout)
+            return _bounded_output(child, request, remaining)
         expired = False
         try:
-            output, _stderr = child.communicate(request, timeout=timeout)
+            output, _stderr = child.communicate(request, timeout=remaining)
         except subprocess.TimeoutExpired:
             expired = True
             child.kill()
