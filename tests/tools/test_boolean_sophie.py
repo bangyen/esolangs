@@ -9,13 +9,13 @@ from esolangs import tools as boolean
 from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO
 from esolangs.tools.polynomial import _polynomial_states
 from esolangs.tools.sophie import _SOPHIE_CHARACTERS, _SOPHIE_RESERVED
-from tests.tools.boolean_oracles import (
-    _sophie_dag,
-    _sophie_tree,
-)
 from tests.tools.boolean_runners import (
     run_sophie,
     run_sophie_from,
+)
+from tests.tools.polynomial_support import (
+    _sophie_dag,
+    _sophie_tree,
 )
 from tests.tools.test_wrap_preserves_meaning import _WIDTHS, _evaluate
 from tests.witness_tables import row_bits

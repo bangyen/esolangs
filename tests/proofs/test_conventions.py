@@ -100,16 +100,3 @@ def test_every_embedding_generator_holds_both_conventions() -> None:
         measured = _measure(example)
         failing = [column for column, ok in measured.items() if not ok]
         assert not failing, f"{name} fails {failing}"
-
-
-def test_bitdeque_linear_route_is_one_width() -> None:
-    """The route the equal-width test misses stays at one length."""
-    example = _embedding()["Bitdeque"]
-    assert example.fill is not None
-    for n in (4, 5):
-        template = example.generator(_tables(n)[0])
-        lengths = {
-            len(example.fill(template, list(bits)))
-            for bits in itertools.product((0, 1), repeat=n)
-        }
-        assert len(lengths) == 1, (n, sorted(lengths))

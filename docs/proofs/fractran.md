@@ -15,7 +15,7 @@ Sharing costs no execution. The diagram gives every distinct subtable one
 state, so it names `O(T / log T)` primes, and a run still fires at most a
 fraction a level, one for the leaf, and a clear a set input left unread:
 `n + 1` fractions on `O(n log n)`-bit values. Both constructions are executed
-in `tests/proofs/deep/fractran_shared.py`.
+in `tests/proofs/deep/fractran.py`.
 
 ## Setup
 
@@ -268,7 +268,7 @@ continuation, agree. The clears come after every state fraction, so they
 fire only once the leaf has spent the last state. It is checked by
 execution: every row of every table at every arity from one to nine, over
 random, constant, parity and half-split tables, in
-`tests/proofs/deep/fractran_shared.py` (10,220 rows at the pinned seed) and
+`tests/proofs/deep/fractran.py` (10,220 rows at the pinned seed) and
 in `tests/proofs/test_fractran_bound.py`.
 
 *Cost.* Depth `d` holds at most `2**d` prefixes and at most `2**2**(n-d)`

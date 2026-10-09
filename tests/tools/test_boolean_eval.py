@@ -106,7 +106,7 @@ class TestEvalBoolean:
         """The pricing model matches every candidate and picks the shortest."""
         from esolangs.tools.eval_lang import _eval_ordered
         from esolangs.tools.helpers import permute_truth_table
-        from tests.tools.eval_reorders import _eval_cost, _eval_stack_programs
+        from tests.tools.eval_support import _eval_cost, _eval_stack_programs
 
         for n in (1, 2, 3):
             for value in range(2 ** (2**n)):
@@ -141,7 +141,7 @@ class TestEvalBoolean:
         """Two stacks with a reverse and a cross-move permute the bits."""
         from math import factorial
 
-        from tests.tools.eval_reorders import _eval_stack_programs
+        from tests.tools.eval_support import _eval_stack_programs
 
         for n in (2, 3, 4):
             assert len(_eval_stack_programs(n)) == factorial(n)
@@ -150,7 +150,7 @@ class TestEvalBoolean:
 
     def test_reorder_catalog_invariants(self) -> None:
         """The built words are capped, deduplicated and (length, ~<*<=)-sorted."""
-        from tests.tools.eval_reorders import (
+        from tests.tools.eval_support import (
             _EVAL_MAX_OPS,
             _eval_reorders,
         )
@@ -165,7 +165,7 @@ class TestEvalBoolean:
 
     def test_reorder_words_are_the_capped_reachable_set(self) -> None:
         """Every built word replays, and the built set is exactly the cap's."""
-        from tests.tools.eval_reorders import _eval_stack_programs
+        from tests.tools.eval_support import _eval_stack_programs
 
         assert len(_eval_stack_programs(12)) == 735
         assert len(_eval_stack_programs(13)) == 735
@@ -176,7 +176,7 @@ class TestEvalBoolean:
         """The catalog fold reproduces the search it replaced, byte for byte."""
         from collections import deque
 
-        from tests.tools.eval_reorders import _EVAL_MAX_OPS, _eval_stack_programs
+        from tests.tools.eval_support import _EVAL_MAX_OPS, _eval_stack_programs
 
         def searched(n: int) -> dict[tuple[int, ...], str]:
             start: tuple[tuple[int, ...], tuple[int, ...], int] = (

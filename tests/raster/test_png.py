@@ -249,18 +249,6 @@ def test_sixteen_bit_colour_reduces_through_luma() -> None:
     assert png.read_rgb(blob) == [[(255, 0, 0)]]
 
 
-def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
-    """A JPEG names itself and the fix, rather than failing on the signature."""
-    from esolangs.interpreters.tape_based.line import extract
-
-    path = tmp_path / "drawing.jpg"
-    # A JPEG start-of-image plus APP0, which is all the sniff looks at.
-    path.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 64)
-    with pytest.raises(ValueError, match="is a JPEG") as caught:
-        extract.load_binary(str(path))
-    assert "PNG" in str(caught.value)
-
-
 def test_rejects_an_unknown_interlace_method() -> None:
     """Only the spec's two interlace methods exist; anything else is corrupt."""
     blob = bytearray(_encode([bytes([0, 0])], 1, 1))

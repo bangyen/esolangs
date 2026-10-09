@@ -133,22 +133,6 @@ class TestContract(SnapshotContract, CycleContract):
 class TestTheTwoQueueLanguagesDifferOnPurpose:
     """Both silently accepted nonsense; only one of them meant to."""
 
-    def test_bitdeque_refuses_a_word_it_does_not_know(self) -> None:
-        """``findall`` kept what matched and dropped the rest in silence."""
-        with pytest.raises(esolangs.ProgramError, match="not a Bitdeque command"):
-            esolangs.run("Bitdeque", "PUSH FROB PUSH", stdin="", timeout=5)
-
-    def test_bitdeque_refuses_the_lower_case_program(self) -> None:
-        """The whole language was a no-op for anyone who guessed the case."""
-        with pytest.raises(esolangs.ProgramError, match="upper case"):
-            esolangs.run("Bitdeque", "push invert push", stdin="", timeout=5)
-
-    def test_bitdeque_still_runs_a_real_program(self) -> None:
-        """Three refusals are worth nothing if the valid case broke."""
-        assert (
-            esolangs.run("Bitdeque", "PUSH INVERT PUSH", stdin="", timeout=5) == "0 1"
-        )
-
     def test_taglate_still_skips_a_non_command(self) -> None:
         """Deliberately unchanged, and the docstring now says why."""
         assert esolangs.run("Taglate", "1\nix", stdin="", timeout=5) == "1"

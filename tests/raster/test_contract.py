@@ -49,7 +49,9 @@ def test_a_raster_hashes_by_pixels() -> None:
 def test_a_raster_language_has_no_template_to_instantiate() -> None:
     """``instantiate`` reaches ``_is_template_for`` first, which must refuse it."""
     with pytest.raises(esolangs.TemplateError):
-        esolangs.instantiate("Piet", "not a template", [0], truth_table="0110")
+        esolangs.instantiate(
+            RASTER_LANGUAGES[0], "not a template", [0], truth_table="0110"
+        )
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)

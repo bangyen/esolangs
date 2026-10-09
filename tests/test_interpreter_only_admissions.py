@@ -9,6 +9,8 @@ import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.vm import make_vm
 from tests.generator_support import CHECK
+from tests.pick import languages
+from tests.samples import SAMPLES
 
 _CENSUS = tomllib.loads(
     (Path(__file__).parent / "fixtures/curation.toml").read_text(encoding="utf-8")
@@ -33,16 +35,10 @@ def test_every_language_was_admitted_by_a_recorded_route() -> None:
     assert grandfathered == {"123", "BF-PDA", "BIO", "Jaune", "NoComment", "Sophie"}
 
 
-@pytest.mark.parametrize(
-    ("language", "code", "stdin", "output"),
-    [
-        ("HQ9+", "h+q", "unused", "Hello, world!\nh+q"),
-        ("Nope.", "", "unused", "Nope."),
-        ("Unary", "0" * 108, "Z", "Z"),
-    ],
-)
-def test_api_and_vm(language: str, code: str, stdin: str, output: str) -> None:
-    assert esolangs.run(language, code, stdin=stdin) == output
+@pytest.mark.parametrize("language", languages(boolean_generator=False))
+def test_api_and_vm(language: str) -> None:
+    code, stdin = SAMPLES[language]
+    output = esolangs.run(language, code, stdin=stdin)
     vm = make_vm(language, code, stdin=stdin)
     while not vm.halted:
         hash(vm.snapshot())
