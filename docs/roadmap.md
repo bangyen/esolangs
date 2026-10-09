@@ -84,10 +84,6 @@ bounds, and the weighted-description theorem.
 Generator gaps against the canonical pieces in
 [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
-- **Canonical-gap screen.** Run every generator on every path (default,
-  width, balance, dialect) to n=8 against the three canonical pieces, with
-  execution and a positive control; price it before launch. It should find
-  the two gaps below and any others.
 - **Dig width paths.** Aligned leaves share spare-column routes within the
   execution bound (n=8 A B B A: 1,155 cells, 208 commands). Narrow requests
   retain the 26-column two-leaf stencil. Unaligned or colliding groups

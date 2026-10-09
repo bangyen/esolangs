@@ -10,7 +10,7 @@ cold parse is polynomial in the source length for every source.
 import functools
 import math
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from typing import Any, NamedTuple
 
 try:
@@ -362,7 +362,7 @@ def _quadratic_candidates_ntt(
     prime_count: int,
     root_sets: tuple[set[int], set[int]],
     real_bound: int,
-) -> set[tuple[int, int]]:
+) -> Iterator[tuple[int, int]]:
     """Propose ``(a, p**(2*b))`` pairs from the two fields' root sets.
 
     Roots pairing at distance ``2*i*p**b`` in the first field propose every
@@ -379,12 +379,12 @@ def _quadratic_candidates_ntt(
         field_data.append(
             (modulus, pow(generator, (modulus - 1) // 4, modulus), roots, mask)
         )
-    candidates: set[tuple[int, int]] = set()
     for index, base in enumerate(  # pragma: no branch - ends on the break
         sp.primerange(2, prime_count * prime_count + 3)
     ):
         if index >= prime_count:
             break
+        candidates: set[tuple[int, int]] = set()
         # If the instruction prime equals one field, its conjugate roots
         # coincide there.  Pair in the other field and use the collision as
         # the cross-check; every generated prime is therefore recoverable.
@@ -413,7 +413,7 @@ def _quadratic_candidates_ntt(
             power0 = power0 * base % m0
             power1 = power1 * base % m1
             square *= base * base
-    return candidates
+        yield from sorted(candidates)
 
 
 def _ntt_real_bound(degree: int) -> int:
@@ -460,7 +460,7 @@ def _divide_quadratic_mod(
 
 
 def _divide_out_quadratics(
-    coefficients: list[int], candidates: set[tuple[int, int]]
+    coefficients: list[int], candidates: Iterable[tuple[int, int]]
 ) -> tuple[list[tuple[int, int]], list[int]]:
     """Divide the candidate quadratics out of the polynomial, exactly.
 
@@ -470,7 +470,8 @@ def _divide_out_quadratics(
     found: list[tuple[int, int]] = []
     remainder = coefficients
     remainder_mod = [k % _TRIAL_MODULUS for k in coefficients]
-    for real, square in sorted(candidates):
+    ordered = sorted(candidates) if isinstance(candidates, set) else candidates
+    for real, square in ordered:
         while len(remainder) >= 3:
             quotient_mod = _divide_quadratic_mod(remainder_mod, real, square)
             if quotient_mod is None:
@@ -481,6 +482,8 @@ def _divide_out_quadratics(
             found.append((real, square))
             remainder = quotient
             remainder_mod = quotient_mod
+        if len(remainder) <= 1:
+            break
     return found, remainder
 
 
@@ -1008,6 +1011,8 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
         roots = [_Root(root, 0) for root in peeled]
         if len(remainder) > 1:
             prime_count = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
+            # Streaming stops the prime window once exact division consumes
+            # the source; dense n=8 otherwise times out collecting unused pairs.
             candidates = _quadratic_candidates_ntt(
                 prime_count,
                 (root_sets[0], root_sets[1]),

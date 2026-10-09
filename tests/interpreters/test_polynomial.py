@@ -418,6 +418,13 @@ class TestRootsHelpers:
         found, rest = _divide_out_quadratics(coefficients, {(0, 1)})
         assert (found, rest) == ([], coefficients)
 
+    def test_exact_consumption_stops_a_lazy_candidate_stream(self) -> None:
+        def candidates():
+            yield 7, 4
+            raise AssertionError("consumed polynomial requested another candidate")
+
+        assert _divide_out_quadratics([1, -14, 53], candidates()) == ([(7, 4)], [1])
+
     def test_a_lead_divisible_by_the_prime_is_not_squarefree_mod_it(self) -> None:
         assert not _squarefree_mod([5, 1, 1], 5)
 
