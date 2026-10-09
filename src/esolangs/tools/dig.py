@@ -1,6 +1,6 @@
 """Boolean-function generator for Dig."""
 
-import heapq
+from itertools import pairwise
 
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
@@ -584,88 +584,7 @@ def _dig_leaf_inputs(
     )
 
 
-#: A mole on a cell, about to leave it in a heading.
-type _Mole = tuple[tuple[int, int], int]
-
-
-def _dig_wire(
-    cells: dict[tuple[int, int], str],
-    corridors: list[tuple[tuple[int, int], int, int]],
-    wires: list[tuple[tuple[int, int], int]],
-    entries: dict[int, tuple[tuple[int, int], int]],
-) -> bool:
-    """Lay arrows carrying each wire's mole to its original leaf's entry.
-
-    A wire is a shared leaf's point and the original it stands for.  A
-    mole walks blank and inert cells straight; an arrow is laid only on a
-    cell no wall, fall or earlier route owns, and it may join an earlier
-    route's arrow.  The entry turn takes a mole from any side, but its own
-    climb leaves on the side the mole must not come from, so it is entered
-    from ahead or from the operand side.  Fewest turns first.  False when a
-    wire has no route.
-    """
-    fall = {
-        (end[0] + _DIG_DIRECTIONS[h][0] * k, end[1] + _DIG_DIRECTIONS[h][1] * k)
-        for end, h, distance in corridors
-        for k in range(1, distance)
-    }
-    rows = [row for row, _ in cells]
-    cols = [col for _, col in cells]
-    box = (min(rows) - 1, max(rows) + 1, min(cols) - 1, max(cols) + 1)
-    laid: dict[tuple[int, int], int] = {}
-    used: set[tuple[int, int]] = set()
-    for point, original in wires:
-        entry, heading = entries[original]
-        ahead = _DIG_DIRECTIONS[heading]
-        side = _DIG_DIRECTIONS[(heading + 1) % 4]
-        arrivals = {ahead, (-side[0], -side[1])}
-        back: dict[_Mole, _Mole | None] = {}
-        queue: list[tuple[int, tuple[int, int], int, _Mole | None]] = [
-            (1, point, d, None) for d in range(4)
-        ]
-        goal = None
-        while queue:
-            cost, cell, d, prev = heapq.heappop(queue)
-            if (cell, d) in back:
-                continue
-            back[cell, d] = prev
-            nxt = (cell[0] + _DIG_DIRECTIONS[d][0], cell[1] + _DIG_DIRECTIONS[d][1])
-            if laid.get(nxt) == original or (
-                nxt == entry and _DIG_DIRECTIONS[d] in arrivals
-            ):
-                goal = (cell, d)
-                break
-            char = cells.get(nxt)
-            if (
-                not (box[0] <= nxt[0] <= box[1] and box[2] <= nxt[1] <= box[3])
-                or nxt in laid
-                or (char is not None and char in _DIG_OPAQUE)
-            ):
-                continue
-            heapq.heappush(queue, (cost + 1, nxt, d, (cell, d)))
-            # The root's entry ray runs left of the tree along row 0.
-            if (
-                char is None
-                and nxt not in fall
-                and nxt not in used
-                and not (nxt[0] == 0 > nxt[1])
-            ):
-                for turn in (d + 1, d + 3):
-                    heapq.heappush(queue, (cost + 1000, nxt, turn % 4, (cell, d)))
-        if goal is None:
-            return False
-        step: _Mole | None = goal
-        while step is not None:
-            cell, d = step
-            used.add(cell)
-            step = back[step]
-            if step is None or step[1] != d:
-                cells[cell] = "^>'<"[d]
-                laid[cell] = original
-    return True
-
-
-def _dig_alternating(truth_table: str, n: int, share: str | None = None) -> str | None:
+def _dig_alternating(truth_table: str, n: int) -> str:
     """Lay a Dig tree whose leaves are flat tables, branch axis rotating.
 
     The last six inputs are not branched on at all: a leaf holds their whole
@@ -683,20 +602,6 @@ def _dig_alternating(truth_table: str, n: int, share: str | None = None) -> str 
     for skip in skips:
         consumed.append(consumed[-1] + 1 + skip)
     flat_box = _dig_flat_leaf("0" * (len(truth_table) >> depth), high, low)[4]
-    # A repeated flat leaf is laid once; the later copy is a wire to it.
-    size = len(truth_table) >> depth
-    shared: dict[int, int] = {}
-    if share:
-        kept: dict[str, int] = {}
-        for lo in range(0, len(truth_table), size)[:: -1 if share == "last" else 1]:
-            if not constant(lo, lo + size):
-                twin = kept.setdefault(truth_table[lo : lo + size], lo)
-                if twin != lo:
-                    shared[lo] = twin
-    if share and not shared:
-        return None
-    entries: dict[int, tuple[tuple[int, int], int]] = {}
-    wires: list[tuple[tuple[int, int], int]] = []
 
     def short_leaf(level: int, lo: int) -> str:
         return _dig_leaf(n - consumed[level], int(truth_table[lo]), aligned=False)
@@ -715,7 +620,7 @@ def _dig_alternating(truth_table: str, n: int, share: str | None = None) -> str 
             if constant(lo, hi):
                 boxes[level, lo] = (0, len(short_leaf(level, lo)) - 1, 0, 0)
             elif level == depth:
-                boxes[level, lo] = (0, 0, 0, 0) if lo in shared else flat_box
+                boxes[level, lo] = flat_box
             else:
                 half = (lo + hi) // 2
                 left, right = box(level + 1, lo, half), box(level + 1, half, hi)
@@ -794,12 +699,7 @@ def _dig_alternating(truth_table: str, n: int, share: str | None = None) -> str 
             )
             return
         if level == depth:
-            if lo in shared:
-                place(point, "^")  # an arrow, so no wire crosses it unrouted
-                wires.append((point, shared[lo]))
-            else:
-                entries[lo] = (point, heading)
-                leaf(point, heading, truth_table[lo:hi])
+            leaf(point, heading, truth_table[lo:hi])
             return
         # The operand digit sits one cell off the block.  Which side is
         # forced -- a reader takes the first digit of up, right, down, left,
@@ -829,8 +729,6 @@ def _dig_alternating(truth_table: str, n: int, share: str | None = None) -> str 
     # reach it without crossing the tree.
     node(0, (0, 0), 1, 0, len(truth_table))
     _dig_alt_clear(cells, reads, corridors)
-    if not _dig_wire(cells, corridors, wires, entries):
-        return None
     min_row = min(row for row, _ in cells)
     min_col = min(col for _, col in cells)
     row_shift, col_shift = 2 - min_row, 2 - min_col
@@ -847,6 +745,109 @@ def _dig_alternating(truth_table: str, n: int, share: str | None = None) -> str 
     cells[(0, 0)] = "'"
     cells[(root_row, 0)] = ">"
 
+    return _render(cells, dense=True)
+
+
+def _dig_shared_pair(truth_table: str, n: int) -> str | None:
+    """Share two distinct 64-entry leaves behind an eight-input prefix.
+
+    The two 24-row leaves overlap one empty corner row. East and west
+    prefix branches select the same leaves in opposite orders; their rays
+    merge before either entry. Worst path: 60 prefix + 158 leaf commands.
+    """
+    if n != 8:
+        return None
+    blocks = [truth_table[i : i + 64] for i in range(0, 256, 64)]
+    upper, lower = blocks[:2], blocks[2:]
+    if upper[0] != upper[1]:
+        a, b = upper
+    elif lower[0] != lower[1]:
+        b, a = lower
+    else:
+        return None  # only the first prefix bit matters
+    if any(block not in (a, b) for block in blocks):
+        return None
+    if upper == lower:
+        return None  # only the second prefix bit matters
+    cells: dict[tuple[int, int], str] = {}
+    reads: _Reads = []
+    corridors: list[tuple[tuple[int, int], int, int]] = []
+
+    def place(point: tuple[int, int], char: str) -> None:
+        if point in cells:
+            raise AssertionError(f"two cells at {point}")
+        cells[point] = char
+
+    for row, table in ((11, a), (34, b)):
+        chars, spins, wants, _exit, _box = _dig_flat_leaf(table, [4, 2, 1], [4, 2, 1])
+
+        def onto(point: tuple[int, int], row: int = row) -> tuple[int, int]:
+            return point[0] + row, point[1] + 11
+
+        for point, char in chars.items():
+            place(onto(point), char)
+        for point, heading in spins.items():
+            place(onto(point), ">'<^"[heading])
+        reads.extend(
+            (onto(point), onto(want), frozenset(onto(p) for p in pending))
+            for point, want, pending in wants
+        )
+    rays: list[tuple[tuple[int, int], int, int]] = []
+    junctions: set[tuple[int, int]] = set()
+    for row, col, heading, words in (
+        (17, 1, 1, None),
+        (14, 5, 1, upper),
+        (24, 9, 3, lower),
+    ):
+        constant = words is not None and words[0] == words[1]
+        code = "$~" if constant else _DIG_ALT_BRANCH
+        d_col = _DIG_DIRECTIONS[heading][1]
+        for offset, char in enumerate(code):
+            place((row, col + d_col * offset), char)
+        place((row - 1, col), "1" if constant else "2")
+        reads.append(((row, col), (row - 1, col), frozenset()))
+        if not constant:
+            reads.append(((row, col + 3 * d_col), (row, col + 2 * d_col), frozenset()))
+        if words is None:
+            continue
+        ray_col = col + len(code) * d_col if constant else col + 3 * d_col
+        targets = (11 if words[0] == a else 34,) if constant else (11, 34)
+        if constant:
+            place((row, ray_col), "^" if targets[0] < row else "'")
+        for target in targets:
+            rays.append(((row, ray_col), 0 if target < row else 2, abs(target - row)))
+            junctions.add((target, ray_col))
+    # The lower branch enters from the east: its zero steers south to B.
+    for point, char in (
+        ((0, 0), "'"),
+        ((17, 0), ">"),
+        ((14, 4), ">"),
+        ((26, 4), ">"),
+        ((26, 10), "^"),
+        ((24, 10), "<"),
+    ):
+        place(point, char)
+    for point in junctions:
+        place(point, ">")
+    for row in (11, 34):
+        cols = [*sorted(col for y, col in junctions if y == row), 11]
+        corridors.extend(
+            ((row, left), 1, right - left) for left, right in pairwise(cols)
+        )
+    corridors.extend(rays)
+    corridors.extend(
+        (
+            ((0, 0), 2, 17),
+            ((17, 0), 1, 1),
+            ((17, 4), 0, 3),
+            ((17, 4), 2, 9),
+            ((14, 4), 1, 1),
+            ((26, 4), 1, 6),
+            ((26, 10), 0, 2),
+            ((24, 10), 3, 1),
+        )
+    )
+    _dig_alt_clear(cells, reads, corridors)
     return _render(cells, dense=True)
 
 
@@ -907,19 +908,19 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Past
     four inputs the default stops branching six inputs short and gives each
     leaf their whole table as one rectangle of digits, indexed by two ``$``
-    counts (:func:`_dig_flat_leaf`), keeping the area O(T).  ``width`` keeps
-    the one- or two-band layouts (:func:`_dig_columns`), the narrower
-    returned when under the floor; two-input XOR below width eight uses a
+    counts (:func:`_dig_flat_leaf`), keeping the area O(T).  ``width`` admits
+    the unshared alternating layout when it fits, alongside the one- or
+    two-band layouts (:func:`_dig_columns`); widths below the floor return
+    the narrowest candidate; two-input XOR below width eight uses a
     four-column polynomial stencil.
 
     A constant span at any level is a row of reads and a print, its box sized
     alone (seeded n=7/8/9 area, one half constant: -14.7% / -20.0% / -25.4%;
     constant 64-entry blocks -12.3% / -34.2% / -24.3%; random unchanged).
-    A repeated flat leaf is laid once and the later copies are arrows
-    walking the mole to it (:func:`_dig_wire`), keeping the first or the last
-    copy, whichever is shorter than the unshared tree (two 64-row blocks
-    mixed over the quarters, characters: n=8 -33.4%, n=9 -28.7%; random and
-    one-constant-half tables have none and are unchanged).
+    Eight-input prefixes over two 64-entry leaves use fixed merging rays
+    (1,222 cells and at most 218 commands), including width paths. Other
+    groups remain unshared: searched wires exceeded the execution ledger
+    (265 vs 220 commands on an eight-input repeated-leaf table).
     """
     n = _validate_truth_table(truth_table)
     built = _dig_build(truth_table, n, width, share=share)
@@ -942,10 +943,9 @@ def _dig_build(
     """Return :func:`dig`'s layout for every table, ignored inputs included."""
     if width is not None and 0 < width < 8 and truth_table == "0110":
         return _dig_xor_pair()
+    pair = _dig_shared_pair(truth_table, n) if share else None
     if width is None and n > 4:
-        kept = (None, "first", "last") if share else (None,)
-        tried = (_dig_alternating(truth_table, n, copy) for copy in kept)
-        return min(filter(None, tried), key=len)
+        return min(filter(None, (pair, _dig_alternating(truth_table, n))), key=len)
     flat = _dig_grid(truth_table, n, None)
     if n < 2:
         return flat
@@ -955,11 +955,23 @@ def _dig_build(
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
     if width is None:
         return min((flat, banded), key=len)
-    if grid_width(flat) <= width:
-        return flat
-    if grid_width(banded) <= width:
-        return banded
-    candidates: tuple[str, ...] = (flat, banded)
+    if n <= 4:
+        if grid_width(flat) <= width:
+            return flat
+        if grid_width(banded) <= width:
+            return banded
+    candidates: tuple[str, ...] = (
+        (flat, banded) if pair is None else (flat, banded, pair)
+    )
+    fitting = [p for p in candidates if grid_width(p) <= width]
+    if n > 4:
+        # Width 40 used 11,250 banded cells on the n=8 repeated-leaf case;
+        # the 35-column unshared layout needs 1,925.
+        alternating = _dig_alternating(truth_table, n)
+        if grid_width(alternating) <= width:
+            fitting.append(alternating)
+    if fitting:
+        return min(fitting, key=len)
     # A bounded flat width keeps the rotated entry padding O(T).
     if n <= 4:
         candidates += (_dig_quarter_turn(flat),)

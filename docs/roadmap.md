@@ -88,13 +88,10 @@ Generator gaps against the canonical pieces in
   width, balance, dialect) to n=8 against the three canonical pieces, with
   execution and a positive control; price it before launch. It should find
   the two gaps below and any others.
-- **Dig width paths.** A repeated flat leaf is shared on the default and
-  balance paths (tiled n=8 -22.7%), never under `width`. Either route its
-  wires in the narrow layout or record why none fit.
-- **Dig wire rule.** Replace the per-build fewest-turns search with a fixed
-  route that keeps the saving and the execution bound. The current searched
-  route takes 265 commands on an executed n=8 repeated-leaf table, above
-  the ledger's 220; straight routes also exceed it.
+- **Dig width paths.** Fixed routes share two distinct 64-entry leaves at
+  n=8 (26 columns, 1,222 cells, at most 218 commands; unshared: 1,925 cells,
+  220 commands). Larger or unmatched groups remain unshared. Route them
+  within the execution bound or record why none fit.
 - **Back bend routes stay out.** They add under one point on tiled n=8,
   and raise worst commands at n=6/7 from 122/221 to 154/306, past the
   execution ledger's bound.

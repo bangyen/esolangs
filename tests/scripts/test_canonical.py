@@ -10,8 +10,8 @@ from scripts.screens import canonical
 def test_positive_controls_execute_and_expose_the_known_gaps() -> None:
     assert canonical.controls() == {
         "constant_characters_saved": 8,
-        "shared_grid_cells_saved": 700,
-        "width_gap_grid_cells": 10_025,
+        "shared_grid_cells_saved": 703,
+        "width_gap_grid_cells": 10_028,
     }
 
 

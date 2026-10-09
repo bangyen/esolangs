@@ -103,14 +103,15 @@ class TestDig:
         for row in range(0, 256, 17):
             assert run_dig(program, list(format(row, "08b"))) == table[row]
 
-    def test_a_table_whose_wires_cannot_all_be_laid_still_answers(self) -> None:
-        """A copy with no route is dropped, leaving a program that computes."""
+    def test_unmatched_leaf_groups_still_answer(self) -> None:
+        """Three-leaf nine-input groups keep the unshared layout."""
         import random
 
         rng = random.Random(262)
         blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(3)]
         table = "".join(blocks[i] for i in (1, 1, 1, 0, 0, 2, 0, 2))
         program = boolean.dig(table)
+        assert program == boolean.dig(table, share=False)
         for row in range(0, 512, 37):
             assert run_dig(program, list(format(row, "09b"))) == table[row]
 
@@ -270,3 +271,105 @@ def test_narrow_balance_regime_edge_executes(table):
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Dig", table, balance=True)
     assert _evaluate("Dig", balanced, inputs=len(table).bit_length() - 1) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [35, 40, 10_000])
+def test_wide_requests_admit_the_unshared_alternating_grid(width: int) -> None:
+    """The repeated-leaf case fits 35 columns and keeps the 220-step bound."""
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_grid
+
+    rng = random.Random(2026)
+    a, b = ("".join(rng.choice("01") for _ in range(64)) for _ in range(2))
+    table = a + b + b + a
+    program = boolean.dig(table, width, share=False)
+    rows = program.splitlines()
+    assert max(map(len, rows)) <= width
+    assert len(rows) * max(map(len, rows)) == 1925
+    banded = _dig_grid(table, 8, 5).splitlines()
+    assert len(banded) * max(map(len, banded)) == 11250
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 220:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, 8)
+        worst = max(worst, steps)
+    assert worst == 220
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [None, 1, 8, 26, 40])
+def test_shared_pair_uses_fixed_routes_within_the_execution_bound(
+    width: int | None,
+) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+
+    rng = random.Random(2026)
+    a, b = ("".join(rng.choice("01") for _ in range(64)) for _ in range(2))
+    table = a + b + b + a
+    program = boolean.dig(table, width)
+    rows = program.splitlines()
+    assert (len(rows), max(map(len, rows)), len(program)) == (47, 26, 1091)
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 220:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, 8)
+        worst = max(worst, steps)
+    assert worst == 218
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("a", "b"), [("01" * 32, "10" * 32), ("0" * 64, "1" * 64)])
+def test_fixed_pair_reads_ignored_and_constant_leaf_inputs(a: str, b: str) -> None:
+    from esolangs.interpreters.grid_based.dig import run
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_shared_pair
+
+    table = a + b + b + a
+    program = _dig_shared_pair(table, 8)
+    assert program is not None
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
+        run(program.splitlines(), io)
+        assert (io.getvalue(), io.reads) == (expected, 8)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("pattern", [format(mask, "04b") for mask in range(16)])
+def test_two_leaf_prefixes_keep_the_execution_ledger(pattern: str) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    table = "".join(blocks[int(bit)] for bit in pattern)
+    rows = boolean.dig(table).splitlines()
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 220:
+            machine.step()
+            steps += 1
+        assert machine.halted, (pattern, row, steps)
+        assert (io.getvalue(), io.reads) == (expected, 8)
