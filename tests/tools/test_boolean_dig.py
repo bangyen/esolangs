@@ -90,6 +90,29 @@ class TestDig:
         )
         assert all(row.strip() for row in folded.splitlines())
 
+    def test_a_repeated_flat_leaf_is_shared_and_still_computes(self) -> None:
+        """Quarters A B B A hold two leaves' worth of text, not four."""
+        import random
+
+        rng = random.Random(5)
+        a, b, c, d = ("".join(rng.choice("01") for _ in range(64)) for _ in range(4))
+        table = a + b + b + a
+        program = boolean.dig(table)
+        assert len(program) < 0.7 * len(boolean.dig(a + b + c + d))
+        for row in range(0, 256, 17):
+            assert run_dig(program, list(format(row, "08b"))) == table[row]
+
+    def test_a_table_whose_wires_cannot_all_be_laid_still_answers(self) -> None:
+        """A copy with no route is dropped, leaving a program that computes."""
+        import random
+
+        rng = random.Random(262)
+        blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(3)]
+        table = "".join(blocks[i] for i in (1, 1, 1, 0, 0, 2, 0, 2))
+        program = boolean.dig(table)
+        for row in range(0, 512, 37):
+            assert run_dig(program, list(format(row, "09b"))) == table[row]
+
     def test_unaligned_leaf_chains_seven_input_reads(self) -> None:
         """A folded flat leaf needs two windows beyond its six-read tail."""
         from esolangs.interpreters.grid_based.dig import run

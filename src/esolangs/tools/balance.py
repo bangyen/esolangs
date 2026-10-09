@@ -123,6 +123,7 @@ def _dig(table: str, default: str) -> str:
     # The full tree stays: a reduced one can be less square.
     candidates = [
         default,
+        dig(table, share=False),
         flat,
         _dig_grid(table, n, None, reduce=False),
         dig(table, 1),
