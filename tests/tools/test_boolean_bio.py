@@ -77,3 +77,15 @@ class TestParameterizedBIO:
             setters = esolangs.generate("BIO", "01" * (2 ** (n - 1))).setters
             assert set(setters) == {("0oz;", "0ox;")}, n
             assert len(setters) == n
+
+    def test_trailing_run_is_one_level(self) -> None:
+        """Entries 2..7 are flat: one bare level re-tests x to zero, still correct."""
+        import esolangs
+
+        table = "01000000"
+        template = esolangs.generate("BIO", table)
+        assert template.split("$$$$")[-1].count("0ix{") == 3
+        for row in range(8):
+            bits = [row >> s & 1 for s in (2, 1, 0)]
+            program = self.instantiate(template, bits)
+            assert self.run_bio(program, []) == table[row]

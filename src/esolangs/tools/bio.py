@@ -26,7 +26,7 @@ def bio(truth_table: str) -> str:
     the only tables projection lengthens, by 28 characters) and was retired;
     telescoping saves 39.6% at n=7 over resetting y per row.  Each row is one
     nested loop that sets where the walk stops, so no row is dropped; loops
-    nest and none is called, so none is shared.
+    nest and none is called, so none is shared.  A trailing flat run is one level.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
@@ -50,10 +50,11 @@ def _bio(truth_table: str, weights: list[int]) -> str:
             read = True
         else:
             pack += _BIO_SKIP[0] + setter + _BIO_SKIP[1]
+    ops = [yop(truth_table[j - 1], truth_table[j]) for j in range(1, 2**n)]
+    while len(ops) > 1 and not ops[-1] and not ops[-2]:
+        ops.pop()
     # Loop ``j`` wraps ``j + 1``: opens, then closes, joined once (O(2**n)).
-    opens = [
-        "0ix{1ox;" + yop(truth_table[j - 1], truth_table[j]) for j in range(1, 2**n)
-    ]
+    opens = ["0ix{1ox;" + op for op in ops]
     init = "0oy;" if truth_table[0] == "1" else ""
     closes = "};" * len(opens)
     return pack + init + "".join(opens) + closes + "0oy;" * _ASCII_ZERO + "1iy;"

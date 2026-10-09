@@ -62,6 +62,12 @@ def levels(program: str) -> list[str]:
     return out
 
 
+def collapsed(kept: str) -> int:
+    """Levels the generator drops: a trailing flat run is one level."""
+    flat = len(kept) - 1 - len(kept.rstrip(kept[-1]))
+    return max(flat - 1, 0)
+
+
 def check_l1(max_n: int = 7) -> list[str]:
     """L1: the recovered adjustments telescope to ``table[V]`` at every row."""
     lines = []
@@ -78,8 +84,9 @@ def check_l1(max_n: int = 7) -> list[str]:
             program = bio(table)
             kept = indexed(table, program)
             adjust = levels(program)
-            assert len(adjust) == len(kept) - 1, (
-                f"n={n}: recovered {len(adjust)} levels, expected {len(kept) - 1}"
+            expected = len(kept) - 1 - collapsed(kept)
+            assert len(adjust) == expected, (
+                f"n={n}: recovered {len(adjust)} levels, expected {expected}"
             )
             start = 1 if lookup(program).startswith(_RISE) else 0
             assert start == int(kept[0]), (
@@ -88,7 +95,8 @@ def check_l1(max_n: int = 7) -> list[str]:
             y = start
             for index in range(len(kept)):
                 if index:
-                    step = adjust[index - 1]
+                    # Past the last level the entries are flat.
+                    step = adjust[index - 1] if index <= len(adjust) else ""
                     if step == _RISE:
                         y = 1
                     elif step == _FALL:
@@ -154,16 +162,17 @@ def check_l2(max_n: int = 9) -> list[str]:
             f"n={n}: depth returned to zero {returns_to_zero} times, so the "
             f"levels are siblings rather than one nested chain"
         )
-        assert program.count("{") == size - 1, (
-            f"n={n}: {program.count('{')} levels, expected {size - 1}"
+        expected = size - 1 - collapsed(table)
+        assert program.count("{") == expected, (
+            f"n={n}: {program.count('{')} levels, expected {expected}"
         )
         flats = sum(1 for a, b in itertools.pairwise(table) if a == b)
-        assert levels(program).count("") == flats, (
+        assert levels(program).count("") == flats - collapsed(table), (
             f"n={n}: flat edges emitted an adjustment"
         )
         lines.append(
-            f"  n={n}: {size - 1:3d} levels nested to depth {size - 1:3d}, "
-            f"{flats:3d} flat edges free"
+            f"  n={n}: {expected:3d} levels nested to depth {expected:3d}, "
+            f"{flats - collapsed(table):3d} flat edges free"
         )
     return lines
 
