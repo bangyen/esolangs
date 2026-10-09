@@ -204,6 +204,14 @@ Use `scripts/screens/` to bound the upside first.
 To take a language out, `just remove-language "Name"` deletes what `check`
 asks for, regenerates, and lists the prose mentions left to edit.
 
+A language should live in its own files: its generator module's
+`LANGUAGE`, its interpreter, and its own test files. A fact another file
+keys by a language's name (a list of names in a shared test, a branch on
+an id) is coupling, and `tests/test_language_coupling.py` holds each
+file's count of them to `tests/fixtures/coupling.toml`, which only goes
+down. Put such a fact on `Language`, or the test in the language's own
+test file.
+
 ### The Boolean I/O contract
 
 A generated program reads the inputs and prints the answer the way its
