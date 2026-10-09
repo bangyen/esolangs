@@ -10,7 +10,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fargo import run
 from esolangs.tools.fargo import _arm_expression, fargo
 from esolangs.tools.helpers import anf_coefficients
-from tests.tools.test_boolean_contract import _nested_dense
+from tests.witness_tables import nested_dense
 
 
 def _scalar_coefficients(table: str) -> list[int]:
@@ -40,7 +40,7 @@ def test_reduced_constants_keep_their_coefficient(table: str) -> None:
 @pytest.mark.parametrize("n", [6, 7, 8, 9, 15, 16, 17])
 def test_packed_arm_word_work_and_execution(n: int) -> None:
     """Word visits stay bounded per row; dense inputs are positive controls."""
-    table = _nested_dense(n)
+    table = nested_dense(n)
     coefficients = anf_coefficients(table)
     visits = 0
 
@@ -72,7 +72,7 @@ def test_packed_layout_scaling_executes(width: int | None) -> None:
     """Measure rendered text past the bounded route and execute every build."""
     sizes = []
     for n in (8, 10, 12):
-        table = _nested_dense(n)
+        table = nested_dense(n)
         program = fargo(table, width=width)
         sizes.append(len(program))
         for row in (0, (1 << n) // 3, (1 << n) - 1):

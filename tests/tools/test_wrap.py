@@ -12,7 +12,6 @@ from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.examples import BooleanExample
 from esolangs.tools.wrap import (
-    DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
     _bio,
@@ -21,9 +20,7 @@ from esolangs.tools.wrap import (
     _mammalian,
     _packlang,
     _polynomial,
-    _six_five,
     _span,
-    _taglate,
     takes_width,
     wrap_chars,
     wrap_grid,
@@ -33,6 +30,7 @@ from esolangs.tools.wrap import (
 )
 from tests.divergence import diverges, terminates
 from tests.generator_support import CHECK
+from tests.witness_tables import parity
 
 # A 2-input table (XOR), which every boolean generator can build.  Used
 # where a test needs *a* program rather than the language's own example.
@@ -162,11 +160,6 @@ def test_every_generator_has_a_width_policy() -> None:
     assert not missing, f"{sorted(missing)} have no width policy; {CHECK}"
 
 
-def _table(arity: int) -> str:
-    """The parity (XOR) table on ``arity`` inputs."""
-    return "".join(str(bin(row).count("1") & 1) for row in range(2**arity))
-
-
 def _example(name: str) -> BooleanExample:
     """The boolean example for ``name``, which the sweep is driven by."""
     return EXAMPLE_BY_ID[LANGUAGES[name].id]
@@ -292,7 +285,7 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         return
     structural = LANGUAGES[name].id in MULTILINE
     for arity in range(1, 5):
-        grown = _grown(name, _table(arity), None)
+        grown = _grown(name, parity(arity), None)
         # A newline disqualifies a grown program only where it means layout.
         # A :data:`MULTILINE` language starts with a structural row its
         # wrapper keeps and folds the rest, so the question there is whether
@@ -301,7 +294,7 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         foldable = grown.split("\n", 1)[1] if structural and "\n" in grown else grown
         if ("\n" in grown and not structural) or len(foldable) <= 40:
             continue
-        narrowed = _grown(name, _table(arity), 40)
+        narrowed = _grown(name, parity(arity), 40)
         assert narrowed.count("\n") > grown.count("\n"), f"{name}: wrapper never fired"
         return
     pytest.fail(f"{name}: no table up to 4 inputs produced a program long enough")
@@ -387,9 +380,9 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
     tables = _HONOUR_TABLES
     if name == "inject":
-        tables = {**tables, "parity5": _table(5)}
+        tables = {**tables, "parity5": parity(5)}
     if name == "thue":
-        tables = {**tables, "parity4": _table(4)}
+        tables = {**tables, "parity4": parity(4)}
     for label, table in tables.items():
         arity = len(table).bit_length() - 1
         bits = "0" * arity
@@ -420,9 +413,9 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     relaid = 0
     tables = _HONOUR_TABLES
     if name == "inject":
-        tables = {**tables, "parity5": _table(5)}
+        tables = {**tables, "parity5": parity(5)}
     if name == "thue":
-        tables = {**tables, "parity4": _table(4)}
+        tables = {**tables, "parity4": parity(4)}
     for label, table in tables.items():
         arity = len(table).bit_length() - 1
         for combo in range(2**arity):
@@ -481,25 +474,6 @@ def test_already_multiline_programs_are_left_alone() -> None:
     assert wrap_program(program, "decleq", 4) == program
 
 
-@pytest.mark.parametrize(
-    ("program", "token"),
-    [
-        ("+=30.", "=30"),
-        ("+:x.", ":x"),
-        ("+>~3.", ">~3"),
-        ("+!12.", "!12"),
-        ("+?7.", "?7"),
-        ("+$4.", "$4"),
-        ("+{2}.", "{2"),
-    ],
-)
-def test_dimensional_keeps_every_operand_with_its_command(
-    program: str, token: str
-) -> None:
-    """A break inside any of these changes what the program does."""
-    assert token in wrap_program(program, "dimensional", 1).split("\n")
-
-
 def test_wrap_tokens_refuses_a_pattern_that_does_not_tile() -> None:
     """A pattern that drops characters returns the program unwrapped."""
     assert wrap_tokens("aXbXc", 2, "[abc]") == "aXbXc"
@@ -510,67 +484,6 @@ def test_wrap_space_delimited_never_splits_a_token() -> None:
     wrapped = wrap_space_delimited("1 22 333333 4", 3)
     assert "333333" in wrapped.split("\n")
     assert wrapped.replace("\n", " ") == "1 22 333333 4"
-
-
-def test_polynomial_never_strands_a_sign_on_its_own_line() -> None:
-    """The raggedness this wrapper exists to fix: a line that is just a sign."""
-    program = generate("Polynomial", TABLE, width=DEFAULT_WIDTH)
-    assert "\n" in program
-    assert not [line for line in program.split("\n") if line.strip() in ("+", "-")]
-
-
-def test_polynomial_starts_a_term_only_on_a_line_of_its_own() -> None:
-    """The layout: a term starts a line, and only ever at the start of one."""
-    program = generate("Polynomial", TABLE, width=DEFAULT_WIDTH)
-    lines = program.split("\n")
-    # Line 1 is ``f(x) = <term>``: ``f(x)``, ``=`` and the unsigned term.
-    assert lines[0].startswith("f(x) = ")
-    assert len(lines[0].split()) == 3
-    for line in lines[1:]:
-        # Either a line that starts a term -- ``<sign> <term>`` -- or a row
-        # carrying the previous one over, which is one unbroken run.
-        assert len(line.split()) == (2 if line.startswith(("+ ", "- ")) else 1)
-
-
-def test_polynomial_carries_a_term_over_without_inventing_a_sign() -> None:
-    """A row continuing a term is bare: the sign belongs to the term's start."""
-    # Four-input parity: XOR's coefficients no longer reach the width now
-    # that the generator spells itself on the cheap opcodes.
-    program = generate("Polynomial", "0110100110010110", width=DEFAULT_WIDTH)
-    carried = [
-        line for line in program.split("\n")[1:] if not line.startswith(("+ ", "- "))
-    ]
-    assert carried, "the table is too small to fold a term -- pick a wider one"
-    assert all(line.strip() and " " not in line for line in carried)
-
-
-def test_polynomial_keeps_the_header_with_the_first_term() -> None:
-    """``f(x)`` and ``=`` are not terms and do not get lines of their own."""
-    assert _polynomial("f(x) = x^2 - 3x + 7", 80).split("\n")[0] == "f(x) = x^2"
-
-
-def test_polynomial_meets_the_width_it_is_given() -> None:
-    """Every row fits, at every width -- the coefficients fold too."""
-    program = generate("Polynomial", TABLE)
-    for width in (13, 40, 80, 200):
-        for line in _polynomial(program, width).split("\n"):
-            assert len(line) <= width
-
-
-def test_polynomial_keeps_an_oversized_term_with_its_sign() -> None:
-    """A term wider than the width keeps its sign rather than shedding it."""
-    wrapped = _polynomial("f(x) = x^2 - 123456789x + 7", 12)
-    assert "- 123456789x" in wrapped.split("\n")
-
-
-def test_polynomial_leaves_a_trailing_sign_alone() -> None:
-    """A sign with no term after it is kept rather than dropped."""
-    assert _polynomial("f(x) = x +", 80) == "f(x) = x\n+"
-
-
-def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
-    """Two signs in a row: the first has no term, and is kept as a line."""
-    assert _polynomial("f(x) = x + - 7", 80) == "f(x) = x\n+\n- 7"
 
 
 def test_wrap_grid_right_aligns_into_columns() -> None:
@@ -626,87 +539,9 @@ def test_wrap_grid_never_straddles_a_row_boundary() -> None:
     assert "1234567" in wrapped.split("\n")[1]
 
 
-def test_mammalian_uses_seed_sized_cells() -> None:
-    """Every command starts on the SEED-sized lattice."""
-    wrapped = _mammalian(
-        "SEED SEED DIGEST ACCEPT LEAPFROG PRONOUNCE CONFLAGRATE SEED", 39
-    )
-    assert wrapped.split("\n") == [
-        "SEED SEED DIGEST    ACCEPT    LEAPFROG",
-        "PRONOUNCE CONFLAGRATE    SEED",
-    ]
-    for row in wrapped.split("\n"):
-        assert all(match.start() % 5 == 0 for match in re.finditer(r"\S+", row))
-
-
 def test_wrap_chars_breaks_anywhere() -> None:
     """The single-character families break at exactly the width."""
     assert wrap_chars("abcdef", 2) == "ab\ncd\nef"
-
-
-# A three-level nest around a short ramp, in the shape the boolean BIO
-# generator emits: each level decrements ``x`` and the innermost tops ``y``
-# up before the closers unwind.
-_NESTED_BIO = "0ox; 0ix{1ox;0ix{1ox;0oy;};};0oy;0oy;1iy;"
-
-
-def _bio_tokens(program: str) -> list[str]:
-    """The commands BIO's own parser keeps, in order."""
-    return re.findall(r"[01][oOiI][xXyYzZ](?:\{|;)|\};", program)
-
-
-def test_bio_indents_a_nested_program_by_depth() -> None:
-    """Each loop level is two spaces deeper than the one outside it."""
-    lines = _bio(_NESTED_BIO, DEFAULT_WIDTH).split("\n")
-    indents = [len(line) - len(line.lstrip(" ")) for line in lines]
-    assert indents == [0, 2, 4, 2, 0, 0]
-
-
-def test_bio_keeps_a_brace_with_the_command_that_opens_it() -> None:
-    """``{`` marks the body of the ``0i?`` before it and never leads a line."""
-    lines = _bio(_NESTED_BIO, DEFAULT_WIDTH).split("\n")
-    assert not any(line.lstrip(" ").startswith("{") for line in lines)
-    assert [line for line in lines if line.rstrip().endswith("{")]
-
-
-def test_bio_indent_preserves_the_command_sequence() -> None:
-    """Indenting is whitespace only: the parser sees the same commands."""
-    wrapped = _bio(_NESTED_BIO, DEFAULT_WIDTH)
-    assert _bio_tokens(wrapped) == _bio_tokens(_NESTED_BIO)
-
-
-def test_bio_leaves_a_flat_program_packed() -> None:
-    """A program under two levels deep gains no indentation."""
-    flat = "0ox;0ix{1ox;0oy;};0oy;1iy;"
-    wrapped = _bio(flat, DEFAULT_WIDTH)
-    assert not any(line.startswith(" ") for line in wrapped.split("\n"))
-
-
-def test_bio_packs_a_ramp_to_the_width_at_its_own_indent() -> None:
-    """A long straight run costs rows at its level, not one long line."""
-    program = "0ox;0ix{" + "0oy;" * 40 + "0ix{1ox;};};"
-    lines = _bio(program, 20).split("\n")
-    assert max(len(line) for line in lines) <= 20
-    # The ramp sits inside the outer loop, so every one of its rows is
-    # indented rather than only the first.
-    ramp = [line for line in lines if "0oy" in line]
-    assert len(ramp) > 1
-    assert all(line.startswith("  ") for line in ramp)
-
-
-def test_bio_indent_stops_growing_before_it_crowds_the_line() -> None:
-    """A deep program keeps room to pack, and still unwinds its closers."""
-    depth = 40
-    program = "0ox;" + "0ix{" * depth + "1ox;" + "};" * depth
-    lines = _bio(program, 20).split("\n")
-    assert max(len(line) for line in lines) <= 20
-    assert _bio_tokens("\n".join(lines)) == _bio_tokens(program)
-
-
-def test_bio_indent_leaves_no_trailing_whitespace() -> None:
-    """No line carries the separator the boolean generator writes."""
-    wrapped = _bio(_NESTED_BIO, DEFAULT_WIDTH)
-    assert all(line == line.rstrip() for line in wrapped.split("\n"))
 
 
 def test_wrappers_refuse_input_they_do_not_recognize() -> None:
@@ -714,54 +549,3 @@ def test_wrappers_refuse_input_they_do_not_recognize() -> None:
     # An empty program has no tokens to pack, in either packer.
     assert wrap_space_delimited("", 40) == ""
     assert wrap_grid("", 40) == ""
-    # BIO's tokens have to tile the program exactly; a stray character means
-    # the regex did not account for something, so the program is left alone.
-    assert _bio("0ox;!!!", 40) == "0ox;!!!"
-    # Unknown punctuation must survive Packlang lexical folding verbatim.
-    unknown = "package t { invalid@token; }"
-    assert _packlang(unknown, 1) == unknown
-    # Taglate needs a queue seed *and* commands below it.
-    assert _taglate("seed-only", 40) == "seed-only"
-
-
-def test_polynomial_leaves_a_program_too_short_to_have_a_header() -> None:
-    """The ``f(x) =`` header is three terms; a shorter program has none."""
-    assert _polynomial("1", 10) == "1"
-
-
-def test_six_five_keeps_an_operand_with_its_command() -> None:
-    """``7``/``8`` take the next character, so a break never lands between."""
-    program = "657812A"
-    for width in range(2, 10):
-        for line in _six_five(program, width).split("\n"):
-            assert not line.endswith(("7", "8")), f"width {width} split an operand"
-
-
-def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
-    """``7n`` skips the next *token*, and a newline is one."""
-    program = "70621A"
-    unwrapped = _run("6-5", program)
-    for width in range(2, 12):
-        assert _run("6-5", _six_five(program, width)) == unwrapped
-
-
-def test_mammalian_hands_back_a_program_with_no_words() -> None:
-    """The grid wrapper needs at least one token to size a row, so a
-    whitespace-only program is returned as it came."""
-    assert _mammalian("", 40) == ""
-    assert _mammalian("   \n ", 40) == "   \n "
-
-
-def test_bio_layouts_differ_only_in_whitespace() -> None:
-    same_layout = LANGUAGES["BIO"].same_layout
-    assert same_layout is not None
-    assert same_layout("a\n b", "a b", lambda _width: "")
-    assert not same_layout("ab c", "a b", lambda _width: "")
-
-
-def test_smallfuck_matches_a_narrow_layout_without_its_newlines() -> None:
-    same_layout = LANGUAGES["Smallfuck"].same_layout
-    assert same_layout is not None
-    narrow = {1: "*\n<", 4: "*>\n*"}
-    assert same_layout("*>*", "*>*<", lambda width: narrow[width])
-    assert same_layout("*>\n*<", "*>*<", lambda width: narrow[width])

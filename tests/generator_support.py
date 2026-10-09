@@ -4,7 +4,10 @@ from itertools import pairwise
 
 import esolangs
 from esolangs._evaluate import _DEFAULT, _Default, _evaluate
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.stdin_check import _validate_shape_for_evaluate
+from tests.witness_tables import parity, row_bits
 
 
 def evaluate_generated(
@@ -75,8 +78,19 @@ def overruns(name: str, table: str) -> tuple[int, int]:
 
 def assert_parity_at_most_doubles(generator, arities, slack=0):
     """A parity table's source at most doubles per input, plus ``slack``."""
-    sizes = [
-        len(generator("".join(str(r.bit_count() & 1) for r in range(2**n))))
-        for n in arities
-    ]
+    sizes = [len(generator(parity(n))) for n in arities]
     assert all(b <= 2 * a + slack for a, b in pairwise(sizes)), sizes
+
+
+def run_filled(run, template: str, setters, row: int, n: int, char: str = "") -> str:
+    """Fill ``template`` with row ``row``'s ``n`` bits, run it, return its output."""
+    io = ScriptedIO("")
+    run(fill_runs(template, char or TEMPLATE_CHAR, setters, row_bits(row, n)), io)
+    return io.getvalue()
+
+
+def run_lines(run, program: str, bits: str) -> tuple[str, int]:
+    """Run a grid ``program`` on ``bits``; return its output and reads."""
+    io = ScriptedIO(bits)
+    run(program.splitlines(), io)
+    return io.getvalue(), io.reads

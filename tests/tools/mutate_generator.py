@@ -44,6 +44,8 @@ _TOOLS_SUPPORT = (
     Path("tests/witness_tables.py"),
     Path("tests/generator_support.py"),
     Path("tests/pick.py"),
+    # Shared tests name ``REFERENCE`` from here rather than a language.
+    Path("tests/test_language_coupling.py"),
     # ``generator_support`` validates tables through this oracle.
     Path("tests/stdin_check.py"),
     Path("tests/__init__.py"),

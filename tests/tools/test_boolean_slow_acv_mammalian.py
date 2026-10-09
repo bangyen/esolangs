@@ -1,6 +1,7 @@
 """Covers :mod:`esolangs.tools.slow_acv_mammalian`."""
 
 import random
+import re
 from functools import cache
 from math import gcd
 
@@ -15,6 +16,9 @@ from esolangs.tools.slow_acv_mammalian import (
     _trampoline_len,
     _w_raise,
     _w_raise_len,
+)
+from esolangs.tools.wrap import (
+    _mammalian,
 )
 from tests.witness_tables import witnesses
 
@@ -802,3 +806,23 @@ def test_equal_modulus_eleven_input_read_calibration(row: int) -> None:
     assert steps < 11_148
     assert peak <= 731
     assert len(source) <= 345_354
+
+
+def test_mammalian_uses_seed_sized_cells() -> None:
+    """Every command starts on the SEED-sized lattice."""
+    wrapped = _mammalian(
+        "SEED SEED DIGEST ACCEPT LEAPFROG PRONOUNCE CONFLAGRATE SEED", 39
+    )
+    assert wrapped.split("\n") == [
+        "SEED SEED DIGEST    ACCEPT    LEAPFROG",
+        "PRONOUNCE CONFLAGRATE    SEED",
+    ]
+    for row in wrapped.split("\n"):
+        assert all(match.start() % 5 == 0 for match in re.finditer(r"\S+", row))
+
+
+def test_mammalian_hands_back_a_program_with_no_words() -> None:
+    """The grid wrapper needs at least one token to size a row, so a
+    whitespace-only program is returned as it came."""
+    assert _mammalian("", 40) == ""
+    assert _mammalian("   \n ", 40) == "   \n "

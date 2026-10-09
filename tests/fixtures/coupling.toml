@@ -72,7 +72,6 @@
 "tests/tools/mutate_generator.py" = 2
 "tests/tools/plain_oracles.py" = 5
 "tests/tools/reader_support.py" = 3
-"tests/tools/test_balance.py" = 8
 "tests/tools/test_balance_remaining.py" = 2
 "tests/tools/test_boolean_contract.py" = 11
 "tests/tools/test_boolean_oracle_execution.py" = 3
@@ -81,6 +80,5 @@
 "tests/tools/test_boolean_runs.py" = 6
 "tests/tools/test_boolean_sophie.py" = 1
 "tests/tools/test_collatz_narrow_cells.py" = 2
-"tests/tools/test_one_column_grids.py" = 4
 "tests/tools/test_raster_balance.py" = 1
 "tests/tools/test_short_names.py" = 1

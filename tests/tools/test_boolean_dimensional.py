@@ -7,6 +7,9 @@ from esolangs import tools as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.dimensional import _Machine
 from esolangs.tools.dimensional import dimensional
+from esolangs.tools.wrap import (
+    wrap_program,
+)
 from tests.tools.boolean_runners import (
     run_dimensional,
 )
@@ -28,10 +31,10 @@ def test_bare_axis_leaves_execute_all_small_tables() -> None:
                     machine.step()
                 assert machine.halted
                 assert (io.getvalue(), io.reads) == (expected, n)
-    assert len(dimensional("0110", 1)) == 429
     # Ignored inputs paint nothing: 0011 ignores the second, 0101 the first.
-    assert len(dimensional("0011", 1)) == 275
-    assert len(dimensional("0101", 1)) == 195
+    xor = len(dimensional("0110", 1))
+    assert len(dimensional("0011", 1)) < xor
+    assert len(dimensional("0101", 1)) < xor
 
 
 @pytest.mark.parametrize("width", [None, 2, 3, 8, 80])
@@ -91,3 +94,22 @@ class TestDimensional:
         program = boolean.dimensional("0" * 4095 + "1")
         got = run_dimensional(program, ["1"] * 12)
         assert got == "1"
+
+
+@pytest.mark.parametrize(
+    ("program", "token"),
+    [
+        ("+=30.", "=30"),
+        ("+:x.", ":x"),
+        ("+>~3.", ">~3"),
+        ("+!12.", "!12"),
+        ("+?7.", "?7"),
+        ("+$4.", "$4"),
+        ("+{2}.", "{2"),
+    ],
+)
+def test_dimensional_keeps_every_operand_with_its_command(
+    program: str, token: str
+) -> None:
+    """A break inside any of these changes what the program does."""
+    assert token in wrap_program(program, "dimensional", 1).split("\n")

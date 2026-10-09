@@ -14,6 +14,7 @@ from esolangs.tools.helpers import TEMPLATE_CHAR, best_input_order, runs
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.fills import fill
 from tests.tools.sample_tables import five_input_sample
+from tests.witness_tables import dense
 
 instantiate_crement = fill("Crement")
 
@@ -21,10 +22,6 @@ instantiate_crement = fill("Crement")
 def _result(program: str) -> str:
     """The termination answer: a halt is 0, a proven state cycle is 1."""
     return "0" if run_until_halt_or_cycle(_Machine(program)) else "1"
-
-
-def _dense(n: int) -> str:
-    return "".join("1" if (i * 7 + 3) % 5 < 2 else "0" for i in range(2**n))
 
 
 def _check(table: str) -> None:
@@ -53,7 +50,7 @@ class TestCrementTree:
             _check("".join(random.choice("01") for _ in range(2**n)))
 
     def test_template_embeds_each_input_once_in_order(self) -> None:
-        template = crement(_dense(3))
+        template = crement(dense(3))
         setters = (PAIR,) * 3
         assert "{X" not in template
         assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)

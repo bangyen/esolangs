@@ -10,7 +10,7 @@ from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_
 from esolangs.tools.a_painter_ant import PAIR, a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from tests.tools.fills import fill
-from tests.tools.test_boolean_contract import _parity
+from tests.witness_tables import parity as _parity
 
 _instantiate_apa = fill("A Painter Ant")
 

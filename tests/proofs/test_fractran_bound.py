@@ -13,6 +13,7 @@ from esolangs.interpreters.other.fractran import _choose, _parse
 from esolangs.tools.fractran import PAIR, fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs.deep.fractran_shared import row_addressed, rows, spelled
+from tests.witness_tables import row_bits
 
 #: A fraction list, as the interpreter holds it.
 type _Fractions = tuple[tuple[int, int], ...]
@@ -20,16 +21,11 @@ type _Fractions = tuple[tuple[int, int], ...]
 _TABLES = ("01", "0110", "1101", "10010110", "00011101", "11101000")
 
 
-def _bits(row: int, n: int) -> list[int]:
-    """``row`` as ``n`` bits, most significant first."""
-    return [(row >> (n - 1 - i)) & 1 for i in range(n)]
-
-
 def _program(table: str, row: int) -> tuple[int, _Fractions]:
     """The generated program for ``table``, with ``row``'s bits filled in."""
     n = len(table).bit_length() - 1
     text = row_addressed(table)
-    filled = fill_runs(text, TEMPLATE_CHAR, [PAIR] * n, _bits(row, n))
+    filled = fill_runs(text, TEMPLATE_CHAR, [PAIR] * n, row_bits(row, n))
     start, fractions, _offsets = _parse(filled)
     return start, fractions
 
@@ -319,7 +315,7 @@ def test_source_floor_is_worst_case_not_per_program(bit: str) -> None:
     assert TEMPLATE_CHAR in template
     assert len(template) < len(table) / math.log2(15) - 1
     for row in range(len(table)):
-        code = fill_runs(template, TEMPLATE_CHAR, [PAIR] * 10, _bits(row, 10))
+        code = fill_runs(template, TEMPLATE_CHAR, [PAIR] * 10, row_bits(row, 10))
         start, fractions, _offsets = _parse(code)
         _fired, halted = _trace(start, fractions)
         assert halted == (2 if bit == "1" else 1)

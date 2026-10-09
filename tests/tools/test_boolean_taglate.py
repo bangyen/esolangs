@@ -3,6 +3,9 @@
 import pytest
 
 from esolangs import tools as boolean
+from esolangs.tools.wrap import (
+    _taglate,
+)
 from tests.tools.boolean_runners import (
     run_taglate,
 )
@@ -144,3 +147,7 @@ def test_public_narrow_generator_route() -> None:
     program = esolangs.generate("taglate", "0110", width=1)
     assert max(map(len, program.splitlines())) == 1
     assert run_taglate(program, ["0", "1"]) == "1"
+
+
+def test_taglate_needs_a_seed_and_commands_below_it() -> None:
+    assert _taglate("seed-only", 40) == "seed-only"

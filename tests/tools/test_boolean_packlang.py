@@ -9,7 +9,11 @@ from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.packlang import run as packlang_run
-from esolangs.tools.wrap import balance_score, wrap_program
+from esolangs.tools.wrap import (
+    _packlang,
+    balance_score,
+    wrap_program,
+)
 
 
 class TestPacklangPaintedArray:
@@ -126,3 +130,8 @@ def test_literal_policy_is_checked_and_does_not_leak():
     before = boolean.packlang("0110")
     boolean.packlang("0110", literal_policy="binary_digits")
     assert boolean.packlang("0110") == before
+
+
+def test_packlang_keeps_unknown_punctuation_verbatim() -> None:
+    unknown = "package t { invalid@token; }"
+    assert _packlang(unknown, 1) == unknown

@@ -2,7 +2,9 @@
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
+from esolangs.tools.super_snusp import balance_super_snusp
 
 
 class TestSuperSNUSPWidth:
@@ -150,3 +152,13 @@ class TestSuperSNUSP:
         from esolangs.tools.super_snusp import super_snusp
 
         assert len(super_snusp(table)) == length
+
+
+def test_super_snusp_balance_rejects_long_literals() -> None:
+    with pytest.raises(ValueError, match="at most two cells"):
+        balance_super_snusp("123.")
+
+
+def test_xor_has_one_column() -> None:
+    xor = esolangs.generate("Super SNUSP", "0110", width=1)
+    assert max(map(len, xor.splitlines())) == 1

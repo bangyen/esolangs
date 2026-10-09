@@ -17,7 +17,7 @@ from tests.generator_support import CHECK
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import _dense, run_to_answer
-from tests.tools.test_boolean_contract import _parity
+from tests.witness_tables import parity as _parity
 
 
 def _taglate(n: int) -> int:

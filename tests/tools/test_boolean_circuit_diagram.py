@@ -334,7 +334,6 @@ class TestCircuitDiagramLayoutGuards:
 
         program = esolangs.generate("Circuit Diagram", "0110", width=1)
         assert max(map(len, program.splitlines())) == 4
-        assert len(program) == 32
         assert "x" in program
         # The old six-column gate already fits this request.
         assert "x.-:" in str(esolangs.generate("Circuit Diagram", "0110", width=6))

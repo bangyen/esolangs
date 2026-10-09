@@ -7,7 +7,7 @@ from esolangs.tools.wrap import balance_program, balance_score, wrap_program
 from tests.tools.boolean_runners import (
     run_decleq,
 )
-from tests.tools.test_boolean_contract import _parity
+from tests.witness_tables import parity as _parity
 
 
 class TestDecleq:

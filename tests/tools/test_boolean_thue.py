@@ -12,7 +12,8 @@ from esolangs.interpreters.other.thue import _Machine, _matches
 from esolangs.interpreters.other.thue import run as run_thue
 from esolangs.interpreters.randomness import Seeded
 from esolangs.tools.thue import thue
-from tests.tools.reader_support import _TABLES, _bits
+from tests.tools.reader_support import _TABLES
+from tests.witness_tables import row_bits as _bits
 from tests.witness_tables import witnesses
 
 

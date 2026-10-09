@@ -86,7 +86,7 @@ class TestFactor:
         """No digit budget: the 500000-digit refusal is gone (dense n=13)."""
         from esolangs.interpreters.tape_based.factor import _parse, decode
         from esolangs.tools.factor import _encode
-        from tests.tools.test_boolean_contract import _dense
+        from tests.witness_tables import dense as _dense
 
         n = 13
         table = _dense(n)

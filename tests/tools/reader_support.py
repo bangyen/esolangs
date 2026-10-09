@@ -7,6 +7,7 @@ from typing import Any
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES
+from tests.witness_tables import row_bits
 
 
 def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]]:
@@ -32,14 +33,10 @@ _TABLES = [
 ]
 
 
-def _bits(row: int, n: int) -> list[int]:
-    return [(row >> (n - 1 - i)) & 1 for i in range(n)]
-
-
 def _read_answer(name: str, table: str, row: int) -> tuple[str, int]:
     """Return what the generated program printed, and how many inputs it read."""
     generate, run = _reader(name)
     n = len(table).bit_length() - 1
-    io = ScriptedIO(esolangs.encode_inputs(name, _bits(row, n)))
+    io = ScriptedIO(esolangs.encode_inputs(name, row_bits(row, n)))
     run(generate(table), io)
     return io.getvalue(), io.reads
