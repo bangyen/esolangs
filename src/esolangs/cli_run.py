@@ -103,10 +103,11 @@ def _run(rest: list[str]) -> None:
         _fail("--isolated given more than once")
     if not (portable and len(rest) == 1):
         _check_count("run", rest, 2)
+    content = None
     if portable and len(rest) == 1:
         path = rest[0]
         with _errors():
-            language = _portable_language(path, timeout)
+            language, content = _portable_language(path, timeout)
     else:
         language, path = rest[0], rest[1]
     settings = _settings_of(options, set_pairs, language=language)
@@ -131,7 +132,12 @@ def _run(rest: list[str]) -> None:
             f"--timeout SECONDS to bound it\n"
         )
     program = _read_program(
-        path, timeout, language=language, portable=portable, settings=settings
+        path,
+        timeout,
+        language=language,
+        portable=portable,
+        settings=settings,
+        content=content,
     )
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     try:

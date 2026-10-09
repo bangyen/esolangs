@@ -105,10 +105,11 @@ def _debug(rest: list[str]) -> None:
     rest = _split_positional(rest, set(), options_taken | {"--tui", "--portable"})
     if not (portable and len(rest) == 1):
         _check_count("debug", rest, 2)
+    content = None
     if portable and len(rest) == 1:
         path = rest[0]
         with _errors():
-            language = _portable_language(path, limit)
+            language, content = _portable_language(path, limit)
     else:
         language, path = rest[0], rest[1]
     numbers = {
@@ -129,7 +130,12 @@ def _debug(rest: list[str]) -> None:
             dialect_options(language, settings)
         facts = describe(language)
     program = _read_program(
-        path, limit, language=language, portable=portable, settings=settings
+        path,
+        limit,
+        language=language,
+        portable=portable,
+        settings=settings,
+        content=content,
     )
     # The key loop owns the terminal's stdin, so a piped stream cannot also
     # be the program's input: the two would race for the same descriptor.
