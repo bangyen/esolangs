@@ -106,6 +106,8 @@ def bfstack(truth_table: str) -> str:
     two prefix bits once and writes each block once, when that is shorter.
     """
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        return ",<" * n + ">" + "+" * (_ASCII_ZERO + int(truth_table[0])) + ".<"
     if n <= _BLOCK_INPUTS or 0 < len(essential_inputs(truth_table, n)) <= _BLOCK_INPUTS:
         return _bfstack_small(truth_table, n)
     constant = constant_span_test(truth_table)

@@ -1,0 +1,38 @@
+"""Canonical screens retain execution failures and meaningful positive controls."""
+
+from unittest.mock import patch
+
+import pytest
+
+from scripts.screens import canonical
+
+
+def test_positive_controls_execute_and_expose_the_known_gaps() -> None:
+    assert canonical.controls() == {
+        "constant_characters_saved": 8,
+        "shared_grid_cells_saved": 700,
+        "width_gap_grid_cells": 10_025,
+    }
+
+
+def test_execution_errors_are_not_generation_refusals() -> None:
+    with (
+        patch.object(canonical, "paths", return_value={"default": {}}),
+        patch.object(canonical, "corpus", return_value={"zero": "00"}),
+        patch.object(canonical, "execute", side_effect=ValueError("bad output")),
+        pytest.raises(ValueError, match="bad output"),
+    ):
+        canonical.audit("brainfuck", 1, all_rows=False)
+
+
+def test_generation_refusals_are_retained() -> None:
+    with (
+        patch.object(canonical, "paths", return_value={"default": {}}),
+        patch.object(canonical, "corpus", return_value={"zero": "00"}),
+        patch.object(
+            canonical.esolangs, "generate", side_effect=ValueError("arity cap")
+        ),
+    ):
+        records = canonical.audit("brainfuck", 1, all_rows=False)
+    assert records[0]["status"] == "refused"
+    assert records[0]["reason"] == "arity cap"

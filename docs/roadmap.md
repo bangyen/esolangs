@@ -88,14 +88,13 @@ Generator gaps against the canonical pieces in
   width, balance, dialect) to n=8 against the three canonical pieces, with
   execution and a positive control; price it before launch. It should find
   the two gaps below and any others.
-- **BFStack constant fold.** A constant n=4 table emits 67 characters where
-  a constant leaf takes 59.
 - **Dig width paths.** A repeated flat leaf is shared on the default and
   balance paths (tiled n=8 -22.7%), never under `width`. Either route its
   wires in the narrow layout or record why none fit.
-- **Dig wire rule.** Routes to a shared leaf come from a per-build
-  fewest-turns search. Replace the search with a fixed route if one keeps
-  the saving.
+- **Dig wire rule.** Replace the per-build fewest-turns search with a fixed
+  route that keeps the saving and the execution bound. The current searched
+  route takes 265 commands on an executed n=8 repeated-leaf table, above
+  the ledger's 220; straight routes also exceed it.
 - **Back bend routes stay out.** They add under one point on tiled n=8,
   and raise worst commands at n=6/7 from 122/221 to 154/306, past the
   execution ledger's bound.
