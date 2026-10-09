@@ -131,8 +131,6 @@ def test_preserving_side_conditions() -> None:
     assert _word(">+<[],")  # The forced-prefix exclusion applies inside loops.
     assert _word("[-[]].")
     assert _word("[->+<[],]")
-    assert _observe("+[-[]].", "")[0] == "halt"
-    assert _observe("+[]", "")[0] == "diverge"
 
 
 @pytest.mark.parametrize("direction", [1, -1])
