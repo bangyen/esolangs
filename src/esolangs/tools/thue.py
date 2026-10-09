@@ -10,9 +10,9 @@ Thue draws which rewrite to make; these rules leave nothing to draw (every
 state reached has one rule at one position), so the answer is reproducible
 unpinned, as the classics tests assert to ``n = 3`` under several draws.
 
-A constant half is stored once (:func:`_thue_folded`, shorter from nine
-inputs).  A repeated block is not shared: the rules rewrite every pair of the
-one string, and none can name a block to reuse.
+A constant half is stored once (:func:`_fold`, shorter from nine inputs) on
+every path; balanced n=9/10 -24%/-35%.  A repeated block is not shared: the
+rules rewrite every pair of the one string, and none can name a block to reuse.
 """
 
 from __future__ import annotations
@@ -79,6 +79,7 @@ _QUEUED_RULES = "\n".join(
 #: leaves out ``K``, ``S`` and ``J``, which its rules match.
 _NAME_ALPHABET = "".join(c for c in ascii_letters if c not in "abLMRECD")
 _QUEUED_NAME_ALPHABET = "".join(c for c in _NAME_ALPHABET if c not in "KSJ")
+_FOLD_NAME_ALPHABET = "".join(c for c in _QUEUED_NAME_ALPHABET if c not in "ZYWV")
 
 
 def _chunk_marker(index: int, digits: int, alphabet: str = _NAME_ALPHABET) -> str:
@@ -103,13 +104,8 @@ def thue(truth_table: str, width: int | None = None) -> str:
     out at the rest; the queue's five rules lose below that saving.  Plain
     and queued layouts compete on every path, nearest the width first.
     """
-    layouts = [
-        _thue_layout(table, rounds, width) for table, rounds in _tables(truth_table)
-    ]
+    layouts = [_thue_layout(*layout, width) for layout in _tables(truth_table)]
     limit = width if width and width > 0 else None
-    folded = _thue_folded(truth_table)
-    if folded is not None and (limit is None or _widest(folded) <= limit):
-        layouts.append(folded)
 
     def overshoot(layout: str) -> int:
         return 0 if limit is None else max(0, _widest(layout) - limit)
@@ -131,8 +127,8 @@ _FOLD_RULES = (
 )
 
 
-def _thue_folded(truth_table: str) -> str | None:
-    """Return the queued layout storing one half of a table whose other is constant.
+def _fold(truth_table: str) -> tuple[str, str, tuple[str, ...]] | None:
+    """Return ``(kept half, rounds, extra rules)`` storing one half of a table.
 
     The fold's nine rules cost about 110 characters, so it wins from nine
     inputs (-19% at n=9, -32% at n=10 on a constant half); ``None`` when no
@@ -156,40 +152,51 @@ def _thue_folded(truth_table: str) -> str | None:
         "Z" if i == essential[0] else "K" if i in essential else "S"
         for i in reversed(range(n))
     )
-    rules = "\n".join(
-        [
-            _QUEUED_RULES.removesuffix("\n::="),
-            *_FOLD_RULES,
-            f"{keep}WR::=R",
-            f"{other}WR::=VR",
-            f"VRE::=R{'ab'[constant == '1']}E",
-            "::=",
-        ]
+    extra = (
+        *_FOLD_RULES,
+        f"{keep}WR::=R",
+        f"{other}WR::=VR",
+        f"VRE::=R{'ab'[constant == '1']}E",
     )
-    return f"{rules}\nL{rounds}R{_thue_entries(kept)}E"
+    return kept, rounds, extra
 
 
-def _tables(truth_table: str) -> list[tuple[str, str | None]]:
-    """Return the ``(table, rounds)`` layouts; queued only if an input is ignored."""
+_Layout = tuple[str, str | None, tuple[str, ...]]
+
+
+def _tables(truth_table: str) -> list[_Layout]:
+    """Return the ``(table, rounds, extra rules)`` layouts.
+
+    Queued only if an input is ignored; folded only if a half is constant.
+    """
     n = _validate_truth_table(truth_table)
-    layouts: list[tuple[str, str | None]] = [(truth_table, None)]
+    layouts: list[_Layout] = [(truth_table, None, ())]
     essential = essential_inputs(truth_table, n)
     if len(essential) < n:
         rounds = "".join("K" if i in essential else "S" for i in reversed(range(n)))
-        layouts.append((read_at(truth_table, essential, n), rounds))
+        layouts.append((read_at(truth_table, essential, n), rounds, ()))
+    if (fold := _fold(truth_table)) is not None:
+        layouts.append(fold)
     return layouts
 
 
-def _thue_layout(table: str, rounds: str | None, width: int | None) -> str:
+def _thue_layout(
+    table: str, rounds: str | None, extra: tuple[str, ...], width: int | None
+) -> str:
     """Return one layout: plain, or queued with a ``K``/``S`` round per input."""
     queued = rounds is not None
     entries = _thue_entries(table)
     base = _QUEUED_RULES if queued else _RULES
+    if extra:
+        base = "\n".join([base.removesuffix("\n::="), *extra, "::="])
     start = f"L{rounds}R" if queued else "LM"
     program = f"{base}\n{start}{entries}E"
     if width is None or width <= 0 or _widest(program) <= width:
         return program
-    if queued:
+    if extra:
+        # Contracting would merge the fold's ``KRaE`` with the final ``LRaE``.
+        rules_text = base
+    elif queued:
         # ``KR`` and ``LR`` contract once a sweep completes, as ``LR`` does below.
         rules_text = _QUEUED_RULES.replace("KR", "C").replace("LR", "C")
         rules_text = rules_text.removesuffix("::=") + "KR::=C\nLR::=C\n::="
@@ -205,7 +212,7 @@ def _thue_layout(table: str, rounds: str | None, width: int | None) -> str:
     # One-symbol nodes fit only bounded arities; larger trees retain chunks.
     if not queued and length <= 8 and width < 9:
         return _thue_short_tree(table)
-    alphabet = _QUEUED_NAME_ALPHABET if queued else _NAME_ALPHABET
+    alphabet = _alphabet(rounds, extra)
     digits = _marker_digits(length, len(alphabet))
     # Payload covers its names' overhead, keeping even the narrowest source O(T).
     payload = max(digits, width - digits - max(digits, 2) - 3)
@@ -221,6 +228,13 @@ def _thue_layout(table: str, rounds: str | None, width: int | None) -> str:
     # No input marker exists until expansion finishes and R sweeps back to L.
     head = "L" + (rounds or "")
     return "\n".join([*rules, "::=", head + _chunk_marker(0, digits, alphabet)])
+
+
+def _alphabet(rounds: str | None, extra: tuple[str, ...]) -> str:
+    """Return the chunk-name symbols no rule of the layout matches."""
+    if extra:
+        return _FOLD_NAME_ALPHABET
+    return _NAME_ALPHABET if rounds is None else _QUEUED_NAME_ALPHABET
 
 
 def _thue_entries(truth_table: str) -> str:
@@ -279,17 +293,18 @@ def balance_thue(truth_table: str, default: str) -> str:
     """
     candidates = [default, thue(truth_table, 1)]
     cap = max(map(len, default.split("\n")))
-    for table, rounds in _tables(truth_table):
+    for table, rounds, extra in _tables(truth_table):
         size = len(table)
-        alphabet = _NAME_ALPHABET if rounds is None else _QUEUED_NAME_ALPHABET
-        digits = _marker_digits(size, len(alphabet))
+        digits = _marker_digits(size, len(_alphabet(rounds, extra)))
         base = _RULES if rounds is None else _QUEUED_RULES
-        offset = len(base.splitlines()) + 3 - 2 * digits - 3
+        offset = len(base.splitlines()) + len(extra) + 3 - 2 * digits - 3
         root = (offset + isqrt(offset * offset + 4 * size)) // 2
         overhead = digits + max(digits, 2) + 3
         maximum = max(digits, cap - 1 - overhead)
         candidates.extend(
-            _thue_layout(table, rounds, min(maximum, max(digits, payload)) + overhead)
+            _thue_layout(
+                table, rounds, extra, min(maximum, max(digits, payload)) + overhead
+            )
             for payload in (root - 1, root, root + 1, root + 2)
         )
     return min(candidates, key=balance_score)

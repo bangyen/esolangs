@@ -1,5 +1,6 @@
 """Executed deterministic chunk expansion for narrow Thue sources."""
 
+import itertools
 import random
 
 import pytest
@@ -218,12 +219,14 @@ def test_narrow_layouts_drop_ignored_inputs() -> None:
 
 def test_a_constant_half_is_stored_once_and_stays_deterministic() -> None:
     """The fold's one-entry collapse still reads every line, one rule a step."""
-    from esolangs.tools.thue import _thue_folded
+    from esolangs.tools.thue import _fold, _thue_layout
 
     half = "01101001"
-    for table in (half + "0" * 8, "1" * 8 + half, half[:4] * 2 + "1" * 8):
-        program = _thue_folded(table)
-        assert program is not None
+    tables = (half + "0" * 8, "1" * 8 + half, half[:4] * 2 + "1" * 8)
+    for table, width in itertools.product(tables, (None, 8)):
+        fold = _fold(table)
+        assert fold is not None
+        program = _thue_layout(*fold, width)
         n = len(table).bit_length() - 1
         for row in range(len(table)):
             io = ScriptedIO("\n".join(f"{row:0{n}b}"))
@@ -235,4 +238,6 @@ def test_a_constant_half_is_stored_once_and_stays_deterministic() -> None:
     rng = random.Random(0)
     half = "".join(rng.choice("01") for _ in range(256))
     dense = half + "".join(rng.choice("01") for _ in range(256))
-    assert len(generate("Thue", half + "1" * 256)) < 0.85 * len(generate("Thue", dense))
+    for options in ({}, {"balance": True}):
+        folded = generate("Thue", half + "1" * 256, **options)
+        assert len(folded) < 0.85 * len(generate("Thue", dense, **options))
