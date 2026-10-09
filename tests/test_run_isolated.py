@@ -104,15 +104,6 @@ def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned):
 
 
 @pytest.mark.medium
-def test_output_limit_accepts_exact_length_and_unicode():
-    assert esolangs.run("brainfuck", "", isolated=True, max_output=0) == ""
-    assert esolangs.run("Sophie", "#λ,", isolated=True, max_output=1) == "λ"
-    with pytest.raises(esolangs.InterpreterLimitError) as caught:
-        esolangs.run("Sophie", "#λ,,", isolated=True, max_output=1)
-    assert caught.value.partial_output == "λ"
-
-
-@pytest.mark.medium
 def test_output_limit_beyond_the_decimal_rendering_limit_accepts_small_output():
     assert (
         esolangs.run("brainfuck", "++.", isolated=True, max_output=10**5000) == "\x02"

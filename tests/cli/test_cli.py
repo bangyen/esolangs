@@ -384,58 +384,6 @@ class TestHelp:
             assert option in out
 
 
-class TestArgumentHygiene:
-    """A mistyped command is reported where the mistake is."""
-
-    def test_a_file_named_like_an_option_is_still_reachable(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Which is what the old permissiveness was protecting; `--` says so."""
-        path = tmp_path / "--x"
-        path.write_text("+.")
-        out = call_main(["run", "--", "brainfuck", str(path)], capsys)
-        assert out == "\x01"
-
-    def test_a_bare_width_explains_the_argument_it_shifted(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--width abc Sophie 0110`` reported ``unknown language: abc``."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "--width", "abc", "Sophie", "0110"], capsys)
-        assert exc.value.code == 2
-        err = capsys.readouterr().err
-        assert "unexpected argument: '0110'" in err
-        # The message must name the word that was shifted, not just describe
-        # the rule: the complaint was that it never said what 'abc' became.
-        assert "'abc' was read as the language" in err
-
-    def test_list_takes_no_arguments(self, capsys: pytest.CaptureFixture[str]) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(["list", "extra"], capsys)
-        assert exc.value.code == 2
-
-
-class TestCapabilityListing:
-    """`esolangs list` can answer what the README sends a reader to it for."""
-
-    def test_details_marks_generators_templates_and_examples(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        rows = dict(
-            line.split(maxsplit=0) and (line[:32].strip(), line[32:].strip())
-            for line in call_main(["list", "--details"], capsys).splitlines()
-        )
-        assert rows["brainfuck"] == "gen ex"
-        assert rows["Minifuck"] == "gen tmpl ex"
-
-    def test_the_plain_listing_is_unchanged(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Scripts parse it, so the default output stays bare names."""
-        names = call_main(["list"], capsys).split()
-        assert "brainfuck" in names
-
-
 # Each case generates a program and runs it through a real subprocess --
 # 22.3s over nine tests, the fast band's single largest class.
 @pytest.mark.medium

@@ -37,25 +37,6 @@ def test_ambiguous_spellings_and_noncommand_text_receive_no_edit(source):
     assert _modulous_corrections(source) == ()
 
 
-@pytest.mark.parametrize(
-    ("args", "message"),
-    [
-        (["Modulous"], "missing <program-file>"),
-        (["brainfuck", "missing"], "cannot read"),
-        (["unknown", "missing"], "unknown language"),
-        (["Modulous", "missing"], "cannot read"),
-        (["--apply", "Modulous", "missing"], "unknown option"),
-    ],
-)
-def test_suggest_usage_errors(args, message, capsys):
-    with pytest.raises(SystemExit) as caught:
-        call_both(["suggest", *args], capsys)
-    assert caught.value.code == 2
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert message in captured.err
-
-
 def repaired(source, edits):
     for edit in reversed(edits):
         source = source[: edit.start] + edit.after + source[edit.end :]

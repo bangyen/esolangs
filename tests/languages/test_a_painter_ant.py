@@ -5,6 +5,7 @@ import pytest
 import esolangs
 from esolangs._execution import interpreter_errors
 from tests.cli.test_cli import call_main
+from tests.cli_support import call_both
 from tests.generator_support import evaluate_generated
 
 
@@ -65,3 +66,41 @@ class TestAPaintersMarkMustBeInAGrid:
     def test_a_real_grid_still_reads(self) -> None:
         """The check is worth nothing if it costs the actual answers."""
         assert evaluate_generated("A Painter Ant", "0110") == "0110"
+
+
+class TestPrintedCommandsCanBePasted:
+    """The tool emitted commands it cannot itself parse."""
+
+    SPACED = "A Painter Ant"
+
+    def test_the_spec_line_is_quoted(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """And unspaced names stay unquoted, since quoting them is noise."""
+        out, _err = call_both(["describe", self.SPACED], capsys)
+        assert f'--spec "{self.SPACED}"' in out
+        plain, _err = call_both(["describe", "brainfuck"], capsys)
+        assert "--spec brainfuck" in plain
+
+    def test_the_quoted_command_actually_runs(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The point of quoting it, and the thing a test can check."""
+        out, _err = call_both(["describe", "--spec", self.SPACED], capsys)
+        assert out.startswith("Interpreter for A Painter Ant")
+
+    def test_the_template_hint_is_quoted(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``encode`` on a template language points at ``generate --bits``."""
+        with pytest.raises(SystemExit):
+            call_main(["encode", self.SPACED, "10"], capsys)
+        assert f'"{self.SPACED}"' in capsys.readouterr().err
+
+    def test_every_spaced_name_is_quoted_in_its_describe(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Every name, since one unquoted survivor is the whole bug again."""
+        spaced = [n for n in esolangs.list_languages() if " " in n]
+        assert len(spaced) == 10
+        for name in spaced:
+            out, _err = call_both(["describe", name], capsys)
+            assert f'--spec "{name}"' in out, name

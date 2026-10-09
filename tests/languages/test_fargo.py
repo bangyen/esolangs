@@ -108,3 +108,21 @@ class TestFargo:
         assert vm.output == "0"
         vm.step()  # the frame pops, and the run is over
         assert (vm.stack, vm.halted) == ([], True)
+
+
+class TestEncodeInputsCanCheckItsArity:
+    """The one function whose purpose is to stop a silent mis-encoding."""
+
+    def test_a_wrong_bit_count_is_refused_when_the_table_is_given(self) -> None:
+        """Three bits at a four-row table encoded as cheerfully as two."""
+        with pytest.raises(esolangs.ArgumentError, match="2 inputs, but 3 bits"):
+            esolangs.encode_inputs("Fargo", [1, 0, 1], truth_table="0110")
+
+    def test_the_right_count_passes(self) -> None:
+        """And still encodes the shape it always did."""
+        assert esolangs.encode_inputs("Fargo", [1, 0], truth_table="0110") == "2\n"
+
+    def test_a_malformed_table_is_named_as_one(self) -> None:
+        """Not reported as a bit-count mismatch against a nonsense arity."""
+        with pytest.raises(esolangs.TruthTableError):
+            esolangs.encode_inputs("brainfuck", [1, 0], truth_table="011")

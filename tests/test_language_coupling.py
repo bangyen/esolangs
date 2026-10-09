@@ -22,6 +22,8 @@ from esolangs.registry import LANGUAGES, Language
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = ROOT / "tests/fixtures/coupling.toml"
+#: The language shared tests use as their example: naming it is not coupling.
+REFERENCE = "brainfuck"
 #: Files ``new_language.py remove`` edits by itself.
 MANAGED = frozenset(
     {
@@ -98,7 +100,7 @@ def _counts() -> dict[str, int]:
         text=True,
         check=True,
     ).stdout.split()
-    owned = [_own(lang) for lang in LANGUAGES.values()]
+    owned = [_own(lang) for name, lang in LANGUAGES.items() if name != REFERENCE]
     counts: dict[str, int] = {}
     for path in files:
         if path in MANAGED or not path.startswith(("src/", "tests/", "scripts/")):

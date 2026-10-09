@@ -11,7 +11,8 @@ from esolangs.interpreters.stack_based.modulous import (
     suggest_corrections as _modulous_corrections,
 )
 from esolangs.vm import make_vm
-from tests.cli_support import call_both
+from tests.cli.test_cli import call_main
+from tests.cli_support import _failure, call_both
 
 
 class TestModulousSaysWhatWentWrong:
@@ -195,3 +196,124 @@ def test_fixed_input_does_not_make_branch_input_forkable():
     assert "seeded single-path run" in caught.value.__notes__[0]
     assert "does not decide all random paths" in caught.value.__notes__[0]
     assert esolangs.run("Modulous", source, stdin="42\n", seed=1, timeout=1) == "42"
+
+
+# 2.0s over 21 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+# 2.0s over 21 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+# 2.0s over 21 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+class TestOutputSurvivesAFailure:
+    """A run that failed emitted nothing at all, and it had the bytes."""
+
+    PRINTS_THEN_FAILS = '[PSH STR "Hi"][PRT STR][PRT STR][POP][END]'
+    LOOPS_PRINTING = "[PSH INT 9][PRT INT][JMP B 2][END]"
+
+    def test_a_halt_carries_what_was_printed(self) -> None:
+        """The attribute, which is what the CLI reads."""
+        with pytest.raises(esolangs.HaltError) as caught:
+            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
+        assert caught.value.partial_output == "Hi"
+
+    def test_it_is_in_the_traceback_too(self) -> None:
+        """The note, for anyone who only sees the traceback."""
+        with pytest.raises(esolangs.HaltError) as caught:
+            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
+        assert "printed 'Hi'" in "\n".join(getattr(caught.value, "__notes__", []))
+
+    def test_a_timeout_carries_it(self) -> None:
+        """The case that matters most: a loop you meant to be finite."""
+        with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+            esolangs.run("Modulous", self.LOOPS_PRINTING, stdin="", timeout=0.01)
+        assert caught.value.partial_output.startswith("999")
+
+    def test_an_error_before_the_run_carries_nothing(self) -> None:
+        """Empty is the honest answer when the program never started."""
+        with pytest.raises(esolangs.UnknownLanguageError) as unknown:
+            esolangs.run("nosuchlang", "+", stdin="")
+        assert unknown.value.partial_output == ""
+        with pytest.raises(esolangs.ProgramError) as bad:
+            esolangs.run("brainfuck", "[[[", stdin="")
+        assert bad.value.partial_output == ""
+
+    def test_a_successful_run_is_unchanged(self) -> None:
+        """The attribute is for failures; success returns as it always did."""
+        assert esolangs.run("brainfuck", "+++.", stdin="") == "\x03"
+
+    def test_the_cli_prints_it_before_the_error(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        """On stdout, where a successful run puts it, so a pipe sees the same."""
+        path = tmp_path / "m.txt"
+        path.write_text(self.PRINTS_THEN_FAILS)
+        with pytest.raises(SystemExit) as exit_code:
+            call_main(["run", "--timeout", "5", "Modulous", str(path)], capsys)
+        captured = capsys.readouterr()
+        assert captured.out.startswith("Hi")
+        assert "stack is empty" in captured.err
+        assert exit_code.value.code == 1
+
+    def test_the_cli_says_nothing_extra_when_there_was_nothing(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        """A program that printed nothing must not gain a blank line."""
+        path = tmp_path / "m.txt"
+        path.write_text("[POP][END]")
+        with pytest.raises(SystemExit):
+            call_main(["run", "--timeout", "5", "Modulous", str(path)], capsys)
+        assert capsys.readouterr().out == ""
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("language", "source", "hint", "code", "output"),
+    [
+        ("brainfuck", "[", "close this '[' with ']'", 2, ""),
+        ("Modulous", "[PSH INT 65][PRT][SWP]", "push two values before SWP", 1, "A\n"),
+        ("brainfuck", "+.,", "at least 1 input character", 1, "\x01\n"),
+    ],
+)
+def test_isolated_cli_preserves_error_hint_and_partial_output(
+    language, source, hint, code, output, tmp_path: Path, capsys
+):
+    path = tmp_path / "program.txt"
+    path.write_text(source)
+    direct = _failure(["run", language, str(path)], capsys, code)
+    isolated = _failure(["run", "--isolated", language, str(path)], capsys, code)
+    assert direct == isolated
+    assert direct[0] == output
+    assert hint in direct[1]
+    assert direct[1].count("hint:") == 1
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (["Modulous"], "missing <program-file>"),
+        (["brainfuck", "missing"], "cannot read"),
+        (["unknown", "missing"], "unknown language"),
+        (["Modulous", "missing"], "cannot read"),
+        (["--apply", "Modulous", "missing"], "unknown option"),
+    ],
+)
+def test_suggest_usage_errors(args, message, capsys):
+    with pytest.raises(SystemExit) as caught:
+        call_both(["suggest", *args], capsys)
+    assert caught.value.code == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert message in captured.err
+
+
+@pytest.mark.medium
+def test_halt_and_cycle_verdicts_are_unchanged():
+    assert vm.run_until_halt_or_cycle(vm.make_vm("brainfuck", "+."), limit=10) is True
+    assert vm.run_until_halt_or_cycle(vm.make_vm("brainfuck", "+[]"), limit=10) is False
+    assert (
+        vm.run_until_halt_or_growth(vm.make_vm("brainfuck", "+[>+]"), limit=100)
+        is False
+    )
+    assert (
+        vm.run_until_halt_or_all_branches_cycle(vm.make_vm("Modulous", "[END]")) is True
+    )

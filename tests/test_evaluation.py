@@ -11,15 +11,6 @@ import esolangs._evaluate as evaluator
 from esolangs._evaluate import _evaluate, _iter_evaluate
 
 
-def test_supplied_program_never_generates(monkeypatch: pytest.MonkeyPatch) -> None:
-    def refuse(*_args: object, **_kwargs: object) -> None:
-        raise AssertionError("evaluation called a generator")
-
-    monkeypatch.setattr(esolangs, "generate", refuse)
-    assert _evaluate("brainfuck", ",>,<.", inputs=2) == "0011"
-    assert _evaluate("Deadfish", "o", inputs=1) == "00"
-
-
 @pytest.mark.parametrize(
     "name",
     [

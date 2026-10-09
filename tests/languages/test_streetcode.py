@@ -1,10 +1,13 @@
 """Streetcode through the shared API, CLI and machinery."""
 
+from pathlib import Path
+
 import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.tui import Mark, render
+from tests.cli_support import call_both
 from tests.samples import STREETCODE, STREETCODE_GAP
 from tests.test_tui import _frame, _highlighted, _marked_both, _marked_break, _sgr
 from tests.test_validation import _debugger
@@ -114,3 +117,41 @@ class TestStreetcode:
         vm = debugger_api.make_vm("Streetcode", STREETCODE_GAP)
         assert _run_all(vm) == ""
         assert vm.memory == [1, 0, 1]
+
+
+class TestTheAdvisoryNotesAreRenderedOnce:
+    """The library warns; this command renders, and does not also duplicate."""
+
+    def test_a_surplus_line_is_noted_without_pythons_framing(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A raw UserWarning would print this file's path and a line of it."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "00010111"))
+        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="110011")
+        assert out == "1"
+        assert "read 3 of the 6 lines" not in err
+        assert "UserWarning" not in err
+        assert "cli.py" not in err
+
+    def test_an_empty_program_file_is_noted(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It ran and printed nothing, at exit 0, with no explanation."""
+        path = tmp_path / "empty.txt"
+        path.write_text("")
+        _out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="0\n0\n")
+        assert "is empty" in err
+
+    def test_a_mixed_none_watch_history_is_legended(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The all-None case was annotated; the mixed one needed it more."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("Streetcode", "0110"))
+        out, _err = call_both(
+            ["debug", "--steps", "30", "--watch-cell", "0", "Streetcode", str(path)],
+            capsys,
+            stdin="0\n1\n",
+        )
+        assert "did not exist yet" in out

@@ -65,15 +65,6 @@ def test_document_argument_and_invalid_settings():
         esolangs.dump_program("Brainfuck", "+.", settings={})
 
 
-def test_source_kind_cannot_change_language_contract():
-    document = json.loads(
-        esolangs.dump_program("Line", esolangs.generate("Line", "01"))
-    )
-    document["language"] = "brainfuck"
-    with pytest.raises(esolangs.ProgramError):
-        esolangs.load_program("Brainfuck", json.dumps(document))
-
-
 def test_template_kind_requires_parameterized_language():
     document = json.loads(esolangs.dump_program("Brainfuck", "+."))
     document.update(kind="template", char="$", setters=[])

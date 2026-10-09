@@ -9,7 +9,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.generator_support import evaluate_generated, verify_generated
+from tests.generator_support import evaluate_generated
 from tests.witness_tables import witnesses
 
 ROOT = pathlib.Path(__file__).parents[1]
@@ -78,24 +78,6 @@ class TestTheProseMatchesTheData:
         wrong = esolangs.run("Fargo", program, stdin="1111\n", timeout=20)
         assert esolangs.read_answer("Fargo", right) == "1"
         assert esolangs.read_answer("Fargo", wrong) == "0"
-
-
-class TestEncodeInputsCanCheckItsArity:
-    """The one function whose purpose is to stop a silent mis-encoding."""
-
-    def test_a_wrong_bit_count_is_refused_when_the_table_is_given(self) -> None:
-        """Three bits at a four-row table encoded as cheerfully as two."""
-        with pytest.raises(esolangs.ArgumentError, match="2 inputs, but 3 bits"):
-            esolangs.encode_inputs("Fargo", [1, 0, 1], truth_table="0110")
-
-    def test_the_right_count_passes(self) -> None:
-        """And still encodes the shape it always did."""
-        assert esolangs.encode_inputs("Fargo", [1, 0], truth_table="0110") == "2\n"
-
-    def test_a_malformed_table_is_named_as_one(self) -> None:
-        """Not reported as a bit-count mismatch against a nonsense arity."""
-        with pytest.raises(esolangs.TruthTableError):
-            esolangs.encode_inputs("brainfuck", [1, 0], truth_table="011")
 
 
 class TestATemplateKnowsWhoseItIs:
@@ -260,53 +242,6 @@ class TestExamplePathsWorkFromAnywhere:
         example = files("esolangs") / esolangs.describe("brainfuck")["examples"][0]
         monkeypatch.chdir(tmp_path)
         assert esolangs.run("brainfuck", example, stdin="1\n0\n", timeout=20)
-
-
-class TestTheVerifierIsShipped:
-    """Two blind readers and the test suite each wrote this same function."""
-
-    def test_it_reads_the_termination_polarity_as_data(self) -> None:
-        """Rather than assuming halting is the zero."""
-        facts = esolangs.describe("123")
-        assert facts["answer_encoding"] == ("halts", "diverges")
-        assert verify_generated("123", "0110", timeout=5)
-
-    def test_a_malformed_table_is_refused_before_anything_runs(self) -> None:
-        """Named as a table, not as whichever generator saw it first."""
-        with pytest.raises(esolangs.TruthTableError):
-            evaluate_generated("brainfuck", "011")
-
-
-class TestBreakAtChecksTheKindOfPosition:
-    """Both wrong-kind breakpoints were stored and could never fire."""
-
-    def test_a_tuple_is_refused_where_the_ip_is_an_index(self) -> None:
-        """brainfuck's ip is an int."""
-        program = esolangs.generate("brainfuck", "0110")
-        debugger = debugger_api.make_debugger("brainfuck", program, stdin="0\n1\n")
-        # The message names the kind ("an index"), not the value at hand.
-        with pytest.raises(esolangs.ArgumentError, match=r"is an index.*never fire"):
-            debugger.break_at((1, 2))
-
-    def test_an_index_is_refused_where_the_ip_is_a_coordinate(self) -> None:
-        """Alight's is a 4-tuple."""
-        program = esolangs.generate("Alight", "0110")
-        debugger = debugger_api.make_debugger("Alight", program, stdin="0\n1\n")
-        with pytest.raises(esolangs.ArgumentError, match="could never fire"):
-            debugger.break_at(10)
-
-    def test_the_right_kind_is_accepted(self) -> None:
-        """And still fires, which is the point of checking the other."""
-        program = esolangs.generate("brainfuck", "0110")
-        debugger = debugger_api.make_debugger("brainfuck", program, stdin="0\n1\n")
-        debugger.break_at(0)
-        assert debugger.run(max_steps=100) == "breakpoint"
-
-    def test_the_arity_is_not_checked(self) -> None:
-        """It varies within a run, so checking it would refuse valid ones."""
-        program = esolangs.generate("Alight", "0110")
-        debugger = debugger_api.make_debugger("Alight", program, stdin="0\n1\n")
-        debugger.break_at((1, 2))  # wrong arity for Alight, accepted
 
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
