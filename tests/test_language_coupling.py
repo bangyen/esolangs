@@ -90,6 +90,8 @@ def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
             f"tests/tools/test_boolean_{stem}",
             f"tests/tools/test_{stem}_",
             f"tests/proofs/deep/{stem}.py",
+            f"tests/proofs/test_{stem}_",
+            f"tests/proofs/_{stem}_",
             f"tests/tools/{stem}_support.py",
         ]
     spellings = {lang.name, *lang.aliases, *stems} | {"." + stem for stem in stems}

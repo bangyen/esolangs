@@ -1,9 +1,6 @@
 """Independent grammar and execution controls for preserved-cell prefixes."""
 
 import itertools
-import json
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -23,6 +20,7 @@ from scripts.grammar_certificate import check_grammar
 from scripts.preserving_certificate import check_certificate
 from tests.proofs._brainfuck_balanced import Matrix, patterns
 from tests.proofs._brainfuck_count import ALPHABET, accepts, automaton, minimize
+from tests.proofs._checker_cli import run_checker
 from tests.proofs.test_brainfuck_count import _observe
 from tests.proofs.test_brainfuck_divergence import _word as _nonzero_word
 
@@ -237,27 +235,14 @@ def test_preserving_checker_cli(tmp_path: Path) -> None:
     matrices: list[Matrix] = [[{}] for _ in classes]
     for state in (EMPTY, (False, 0, 1, 1, 0, 0, 0, 0), (False, 0, 1, 2, 0, 0, 0, 0)):
         matrices[classes.index(state)][0][0] = 1
-    path = tmp_path / "preserving.json"
-    path.write_text(
-        json.dumps(
-            {
-                "rows": rows,
-                "classes": classes,
-                "matrices": matrices,
-                "scale": 1,
-                "bound": [7, 1],
-                "factors": list(",-+<>[]"),
-            }
-        )
+    data = {
+        "rows": rows,
+        "classes": classes,
+        "matrices": matrices,
+        "scale": 1,
+        "bound": [7, 1],
+        "factors": list(",-+<>[]"),
+    }
+    assert "exact preserving-prefix supersolution" in run_checker(
+        tmp_path, "preserving_certificate.py", data
     )
-    script = (
-        Path(__file__).resolve().parents[2] / "scripts" / "preserving_certificate.py"
-    )
-    result = subprocess.run(
-        [sys.executable, str(script), str(path)],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    assert "exact preserving-prefix supersolution" in result.stdout

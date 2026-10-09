@@ -1,9 +1,6 @@
 """Balanced-word counting, sound bi-tape mirrors and integer certificates."""
 
 import itertools
-import json
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -11,6 +8,7 @@ import pytest
 from scripts.balanced_certificate import _product, _sum, check_certificate
 from scripts.grammar_certificate import check_grammar
 from tests.proofs._brainfuck_count import ALPHABET, accepts, automaton, minimize
+from tests.proofs._checker_cli import run_checker
 from tests.proofs.test_brainfuck_count import _observe, _sole_loop_word
 
 
@@ -257,14 +255,6 @@ def test_balanced_checker_cli(tmp_path: Path, *, rotation: bool) -> None:
     if rotation:
         data["nonprint"] = [{0: 5}]
         data["bodies"] = [{0: 6}]
-    path = tmp_path / "balanced.json"
-    path.write_text(json.dumps(data))
-    script = Path(__file__).resolve().parents[2] / "scripts" / "balanced_certificate.py"
-    result = subprocess.run(
-        [sys.executable, str(script), str(path)],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=True,
+    assert "exact balanced supersolution" in run_checker(
+        tmp_path, "balanced_certificate.py", data
     )
-    assert "exact balanced supersolution" in result.stdout
