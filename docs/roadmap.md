@@ -120,10 +120,11 @@ line changes only when its next step does.
 - **Factor leading constant.** Next: a sound local rewrite lowering the
   lower side's Perron root, or a cheaper weighted command stream
   ([factor](proofs/factor.md#open-problems)).
-- **Malbolge's first unreachable arity.** Next: construct native query
-  initialization and the obstructed-record selector; the verified handoff's
-  existing continuation corrupts saved parity
-  ([malbolge-scaling](proofs/malbolge-scaling.md#open-problems)).
+- **Malbolge's first unreachable arity.** Seventeen remains open. Native
+  components pass separate controls, but the reduced LAST-only layout is
+  8,432 cells short before the full query and relocation selector. Next:
+  share initialization and query control, then relocate records before capture
+  ([malbolge-scaling](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09)).
 - **Vandevelo structural scaling.** Next: settle Cohen and Shinkar's
   `O(log n)` DNF-of-parities gap, which bounds output and so generation
   time; on the build side, a `certify` that rebuilds a level only when its

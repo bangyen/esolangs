@@ -85,11 +85,13 @@ dense, parity, constant tables were executed exhaustively at each shipped
 arity. Construction details and measurements are in
 [malbolge-scaling](proofs/malbolge-scaling.md).
 
-Seventeen remains open. A prepared complete query and separate legal-source
-initialization and handoff components pass exhaustive input controls, but no
-source installs the query and relocates obstructed records around an arbitrary
-full truth table. The handoff's existing continuation corrupts a saved parity
-word. See [the controls](proofs/malbolge-scaling.md#native-input-and-prepared-query-controls-2026-10-08).
+Seventeen remains open. Native capture, semantic readout, footer dispatch and
+terminal-output components execute separately; no source computes an arbitrary
+full 17-input truth table. Raw record addresses can overlap executing code,
+so relocation must precede capture. The reduced LAST-only layout is short by
+8,432 cells before adding the remaining query, selector and metadata. This is
+a deficit for that construction, not an impossibility bound. See
+[the latest controls](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09).
 The shipped cap remains sixteen.
 
 Counting bounds each family independently of mixer quality:

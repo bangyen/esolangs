@@ -1436,17 +1436,66 @@ the handoff source SHA-256 is
 These artifacts are not shipped or available from the archived commit cited
 at the start of this document.
 
+## Native components and layout gap (2026-10-09)
+
+These controls establish separate native components, not a complete
+17-input generator. Each emitted source has 59,049 legal characters;
+instruction-field counts below measure reserved control fields, not shorter
+source files. All sampled executions start at source address zero.
+
+A temporary donor pointer reduces the dynamic capture and three-projection
+reader from 14,407 to 13,330 control fields. Independent replay passes 71
+inputs, both parity branches, protected exports, all 47 label pairs and
+memory outside the declared writes. Omitting the pointer's ninth rotation
+rejects the four control inputs. The sample is not a universal readout proof:
+row 1192 captures header 41,939 and neighbor 41,940 inside executing code;
+their values change from 53/52 to 170/72 before restoration. Relocation is
+required before capture.
+
+Combining that initializer with a LAST-only terminal path uses 9,878
+once-only instruction fields and five kernel entries. Independent replay
+passes 62 of 71 candidate inputs, both output bits and both parity branches,
+with seven causal omission families. Nine records are explicitly excluded
+because they intersect the active reservations. This path outputs ASCII
+`0` or `1`; it does not select the footer's record operand or execute the
+remaining query states.
+
+The exact reservation union for this path contains 18,329 cells, including
+7,840 prefix fields, 32 runtime kernel fields and 564 landing fields.
+It obstructs 3,585 three-cell records, requiring 10,755 relocation cells;
+only 2,323 cells remain after reserving the unobstructed records. The deficit
+is 8,432 cells before the remaining query, selector or metadata. The old
+prepared query is not reserved in this calculation. A separate bootstrap/layout scaffold left 767 cells after relocating
+341 records; that count does not include these later components. Neither figure proves a global bound on n=17.
+
+Independent footer-tree replay passes 71 inputs, all eight footer values,
+protected/outside-memory checks and 14 causal controls. It uses 10,184
+instruction fields, of which 7,378 initialize masks and callbacks. A separate
+nine-rotation service passes 71 inputs, two visits to the same physical
+callback, 18 rotations and three causal controls. Its 5,701-field initializer
+and 28 runtime fields remain too costly to append independently.
+
+Reproducers and evidence are retained locally in the ignored research archive
+`notes/malbolge-research/four-research-tracks-2026-10-09/notes/subagents/root-layout/`: `replay_native_dynamic_donor_alias.py`,
+`native_alias_q4_folded_terminal.py`, `alias_q4_capacity_audit.py`,
+`dynamic_three_consumer_universal.py`, `replay_native_footer_tree.py` and
+`replay_native_nine_rotation_service.py`, with their JSON evidence and source
+images. They are research artifacts, not shipped tests. The combined terminal
+source SHA-256 is
+`56fb68752f4fb1f86f3b89c3b17ec9f3117948513231fbb97eaa1aa19c155826`.
+
 ## Open problems
 
 **Malbolge's first unreachable arity.** The shipped cap is 16 inputs.
-Counting excludes some 18-input tables; 17 remains undecided, and a
-build needs more than two table bits per cell across almost the whole
-store. Packing uses 49,152 cells. A prepared complete query and native input
-prefix now execute separately; their joint reservations leave 1,255 cells
-after allowing for 329 obstructed table records. Native installation of the
-query and an executed record selector remain unresolved. Next: construct the
-initializer and relocation without damaging the saved interface, or change
-the query architecture. See [the latest controls](#native-input-and-prepared-query-controls-2026-10-08).
+Counting excludes some 18-input tables; 17 remains undecided. Native input,
+readout, dispatch and terminal components pass separate controls, but no
+complete source handles an arbitrary 17-input truth table. The reduced
+LAST-only construction has an 8,432-cell layout deficit before the remaining
+query, selector and metadata. Next: substantially reduce or share native
+initialization and query control, compose all query states, and relocate
+obstructed records before capture. Full-table execution and the repository
+verification gate are required before raising the cap.
+See [the latest controls](#native-components-and-layout-gap-2026-10-09).
 Proving impossibility instead needs a density lemma: cut the count by
 `2**46076`, or bound a normal-form representative's dependence by
 24,434 cells. A per-program dependence cut is false (`'o'*59046 + '/<v'`
