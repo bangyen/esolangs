@@ -17,7 +17,6 @@ from __future__ import annotations
 import re
 
 from esolangs._drive import drive
-from esolangs._suggest import Correction, keyword_correction
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -196,26 +195,3 @@ def run(code: str, io: IO) -> None:
 
 if __name__ == "__main__":
     script_main(run)
-
-
-def suggest_corrections(source: str) -> tuple[Correction, ...]:
-    """Return command edits, skipping the token consumed as each GOTO target."""
-    corrections = []
-    target = False
-    for token in re.finditer(r"\S+", source):
-        word = token.group()
-        if target:
-            target = False
-            continue
-        correction = None
-        if word.isalpha() and word.isascii():
-            correction = keyword_correction(
-                word,
-                token.start(),
-                _COMMANDS,
-                case_reason="command keywords are uppercase",
-            )
-        if correction is not None:
-            corrections.append(correction)
-        target = (correction.after if correction is not None else word) == "GOTO"
-    return tuple(corrections)

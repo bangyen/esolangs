@@ -14,13 +14,10 @@ from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import _Machine
-from esolangs.interpreters.stack_based.grapheme import (
-    suggest_corrections as _grapheme_corrections,
-)
 from esolangs.tagged import _Tagged
 from esolangs.vm import complete_vm, make_vm
 from tests.cli.test_cli import call_main
-from tests.cli_support import assert_repair_runs, call_both, repaired
+from tests.cli_support import call_both
 from tests.stdin_check import _check_stdin
 from tests.test_api_contracts import XOR
 from tests.test_dialects import Unreadable
@@ -67,26 +64,6 @@ def test_portable_choices_and_memory_budget_reach_worker(tmp_path, capsys, monke
     )
     assert (output, error) == ("1", "")
     assert calls == [budget]
-
-
-@pytest.mark.parametrize(
-    ("source", "output"),
-    [
-        ("EaE", ""),
-        ("eabey", "AB"),
-    ],
-)
-def test_grapheme_case_corrections_include_literals(source, output, tmp_path, capsys):
-    edits = _grapheme_corrections(source)
-    assert repaired(source, edits) == source.upper()
-    assert all(edit.after == edit.before.upper() for edit in edits)
-    assert esolangs.run("Grapheme", repaired(source, edits), timeout=1) == output
-    path = tmp_path / "program"
-    path.write_text(source)
-    out, err = call_both(["suggest", "Grapheme", str(path)], capsys)
-    assert "->" in out
-    assert not err
-    assert path.read_text() == source
 
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
@@ -409,16 +386,6 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
         right = call_main(["run", "Grapheme", str(path)], capsys, stdin=stdin)
         assert warned == "0"
         assert right == "1"
-
-
-def test_grapheme_repair_executes(tmp_path, capsys):
-    assert_repair_runs("Grapheme", "FAFy", "1", tmp_path, capsys)
-
-
-def test_grapheme_case_preview_preserves_other_characters():
-    source = "Eé1?E\naY"
-    assert repaired(source, _grapheme_corrections(source)) == "Eé1?E\nAY"
-    assert not _grapheme_corrections("EABEYFAFY")
 
 
 def test_the_input_alphabet() -> None:

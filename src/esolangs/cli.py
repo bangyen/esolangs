@@ -84,7 +84,6 @@ from esolangs.cli_io import (
     _read_stdin,
 )
 from esolangs.cli_run import _run
-from esolangs.cli_suggest import _suggest
 from esolangs.exceptions import (
     EsolangError,
 )
@@ -522,7 +521,6 @@ def _dispatch() -> None:
         "encode": _encode,
         "generate": _generate,
         "run": _run,
-        "suggest": _suggest,
         "read-answer": _read_answer,
         "debug": _debug,
     }[cmd](rest)

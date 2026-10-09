@@ -35,7 +35,6 @@ import re
 from typing import cast
 
 from esolangs._drive import drive
-from esolangs._suggest import Correction, keyword_correction
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.source_hints import syntax_error
@@ -285,35 +284,3 @@ def run(code: str, io: IO) -> None:
 
 if __name__ == "__main__":
     script_main(run)
-
-
-def suggest_corrections(source: str) -> tuple[Correction, ...]:
-    """Return unambiguous keyword edits for ``esolangs suggest``."""
-    corrections: list[Correction] = []
-    offset = 0
-    for line in source.splitlines(keepends=True):
-        suffix = re.search(r",\s*([A-Za-z]+)\s+([A-Za-z]+)\.\s*$", line)
-        if suffix is not None:
-            edits = []
-            for group, vocabulary in ((1, ("DO", "NOT")), (2, ("PRINT",))):
-                correction = keyword_correction(
-                    suffix.group(group), suffix.start(group), vocabulary
-                )
-                if correction is not None:
-                    edits.append(correction)
-            repaired = line
-            for edit in reversed(edits):
-                repaired = repaired[: edit.start] + edit.after + repaired[edit.end :]
-            if _LINE.fullmatch(repaired):
-                corrections.extend(
-                    Correction(
-                        edit.start + offset,
-                        edit.end + offset,
-                        edit.before,
-                        edit.after,
-                        edit.reason,
-                    )
-                    for edit in edits
-                )
-        offset += len(line)
-    return tuple(corrections)

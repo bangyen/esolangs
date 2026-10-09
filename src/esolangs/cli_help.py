@@ -29,9 +29,6 @@ commands:
           <language> <file>
                                 run under the debugger and report where it
                                 stopped, plus any watched cell's history
-    suggest <language> <program-file>
-                                preview unambiguous command spelling edits;
-                                the program is neither run nor modified
   Contract adapters (your data in, checked data out):
     encode <language> <bits>    print the stdin that feeds those bits
     read-answer <language>      read a program's output on stdin and print
@@ -70,28 +67,6 @@ examples:
 
 
 HELP = {
-    "suggest": """usage: esolangs suggest <language> <program-file>
-
-Preview command spelling corrections with 1-based line and column numbers.
-Accepts every language; spelling edits cover Modulous, Bitdeque, Packlang,
-BrainIf, Grapheme and Collatz Multiverse. Other languages explain why no edits
-are offered. Edits fix keyword case or a unique
-one-edit match (insertion, deletion, substitution or adjacent swap).
-Modulous and Bitdeque preview commands; Bitdeque skips GOTO targets.
-Packlang previews required package, datatype, Then and Do keywords. Variable
-and function names, comments and speculative declarations are untouched.
-Ambiguous matches and operands receive no proposed edit.
-BrainIf previews required command words; Grapheme previews letter case throughout
-the source, including literals; Collatz Multiverse previews DO/NOT PRINT after
-a valid assignment.
-
-The program is neither run nor modified. Apply chosen edits yourself, then
-run the program to check its behavior. No suggestions does not mean valid.
-
-example:
-  esolangs generate Modulous 0110 > program.txt
-  esolangs suggest Modulous program.txt
-""",
     "encode": """usage: esolangs encode <language> <bits>
 
 Print the stdin that feeds <bits> to a <language> program, so it can be

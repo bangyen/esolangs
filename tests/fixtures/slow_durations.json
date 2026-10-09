@@ -74,7 +74,6 @@
  "tests/test_docs.py::test_every_documented_command_runs[list --help]": 0.0028716249944409356,
  "tests/test_docs.py::test_every_documented_command_runs[read-answer --help]": 1.7433244999992894,
  "tests/test_docs.py::test_every_documented_command_runs[run --help]": 1.3750587919930695,
- "tests/test_docs.py::test_every_documented_command_runs[suggest --help]": 1.0679736669990234,
  "tests/test_docs.py::test_every_documented_command_runs[usage]": 7.797488248994341,
  "tests/test_generic_verifier.py::test_every_language_verifies_with_no_per_language_knowledge[00010111]": 0.6442959169944515,
  "tests/test_generic_verifier.py::test_every_language_verifies_with_no_per_language_knowledge[0001]": 0.31693883398838807,

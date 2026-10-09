@@ -43,7 +43,6 @@ from collections.abc import Callable, Mapping
 from difflib import get_close_matches
 from typing import Never, cast
 
-from esolangs._suggest import Correction, keyword_correction
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -572,21 +571,3 @@ def run(code: str, io: IO, rng: Randomness | None = None) -> None:
 
 if __name__ == "__main__":
     script_main(run)
-
-
-def suggest_corrections(source: str) -> tuple[Correction, ...]:
-    """Return unique one-edit command corrections in balanced Modulous source."""
-    _reject_stray_text(source)
-    corrections = []
-    for token in _TOKEN.finditer(source):
-        keyword = re.match(r"\s*([A-Za-z]+)(?=\s|$)", token.group(1))
-        if keyword is None:
-            continue
-        word = keyword.group(1)
-        start = token.start(1) + keyword.start(1)
-        correction = keyword_correction(
-            word, start, _DISPATCH, case_reason="command keywords are uppercase"
-        )
-        if correction is not None:
-            corrections.append(correction)
-    return tuple(corrections)

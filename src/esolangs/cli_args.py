@@ -35,7 +35,6 @@ _ARGUMENTS = {
     "encode": ("<language>", "<bits>"),
     "generate": ("<language>", "<truth-table>"),
     "run": ("<language>", "<program-file>"),
-    "suggest": ("<language>", "<program-file>"),
     "debug": ("<language>", "<program-file>"),
     "describe": ("<language>",),
     "read-answer": ("<language>",),

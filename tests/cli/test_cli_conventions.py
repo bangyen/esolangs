@@ -119,7 +119,6 @@ class TestTheTopLevelUsageKeepsUp:
         assert generator < USAGE.index("generate ") < caller
         assert caller < USAGE.index("run ") < adapters
         assert caller < USAGE.index("debug ") < adapters
-        assert caller < USAGE.index("suggest ") < adapters
         assert adapters < USAGE.index("encode ") < catalog
         assert adapters < USAGE.index("read-answer ") < catalog
         assert catalog < USAGE.index("list ")

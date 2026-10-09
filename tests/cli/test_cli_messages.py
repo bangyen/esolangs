@@ -278,6 +278,7 @@ _REFUSALS = {
         "describe brainfuck zzz",
         "unexpected argument",
     ),
+    "removed_suggest_is_refused": ("suggest", "unknown command: suggest"),
     "an_unknown_subcommand_is_suggested": ("lst", "did you mean list"),
     "a_negative_watch_cell_is_refused": (
         "debug --watch-cell -1 brainfuck prog:+++",
