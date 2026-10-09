@@ -18,16 +18,14 @@
 "src/esolangs/tools/subleq.py" = 1
 "tests/duration_policy.py" = 1
 "tests/proofs/test_bands.py" = 2
-"tests/proofs/test_resource_bounds.py" = 3
 "tests/scripts/test_bundle_one.py" = 1
 "tests/scripts/test_examples.py" = 1
 "tests/scripts/test_mutate_one.py" = 1
 "tests/test_answer_stdin.py" = 1
 "tests/test_debug.py" = 2
-"tests/test_generator_conventions.py" = 1
 "tests/test_interpreter_only_admissions.py" = 6
 "tests/test_source_containers.py" = 1
 "tests/tools/plain_oracles.py" = 5
 "tests/tools/reader_support.py" = 3
 "tests/tools/test_balance_remaining.py" = 2
-"tests/tools/test_boolean_contract.py" = 8
+"tests/tools/test_boolean_contract.py" = 5

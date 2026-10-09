@@ -610,6 +610,7 @@ LANGUAGE = Language(
     "Circuit Diagram",
     "grid_based.circuit_diagram",
     boolean=circuit_diagram,
+    documented_sizes=(1_780_773, 2_505_897, 1.4),
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

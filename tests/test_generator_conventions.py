@@ -66,15 +66,8 @@ def test_declared_arity_cap_is_enforced(name, cap):
         esolangs.generate(name, "0" * (1 << (cap + 1)))
 
 
-#: Generators whose ``GeneratorCapError`` never reaches a caller, and why;
-#: one removed since drops out.
-_INTERNAL_CAPS = {
-    name: reason
-    for name, reason in {
-        "6-5": "the stream-ordered tree is tried only when its labels fit",
-    }.items()
-    if name in LANGUAGES
-}
+#: Generators whose ``GeneratorCapError`` never reaches a caller.
+_INTERNAL_CAPS = {name for name, lang in LANGUAGES.items() if lang.internal_cap}
 
 
 def test_a_generator_that_can_refuse_declares_its_limit():
@@ -93,7 +86,6 @@ def test_a_generator_that_can_refuse_declares_its_limit():
         f"{undeclared} raise GeneratorCapError; set generator_max_inputs= or "
         "generator_restrictions= in its LANGUAGE"
     )
-    assert _INTERNAL_CAPS.keys() <= LANGUAGES.keys()
 
 
 @pytest.mark.medium
@@ -105,7 +97,7 @@ def test_a_generator_that_can_refuse_declares_its_limit():
             for name, lang in LANGUAGES.items()
             if lang.generator_max_inputs or lang.generator_restrictions
         }
-        | _INTERNAL_CAPS.keys()
+        | _INTERNAL_CAPS
     ),
 )
 def test_restricted_generators_have_executed_positive_controls(name):

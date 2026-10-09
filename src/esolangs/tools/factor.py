@@ -156,6 +156,7 @@ LANGUAGE = Language(
     "Factor",
     "tape_based.factor",
     boolean=factor,
+    documented_sizes=(12_592, 24_463, 2.1),
     contract=BooleanContract(
         input_shape="char_stream",
     ),

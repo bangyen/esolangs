@@ -259,3 +259,12 @@ def test_output_limit_accepts_exact_length_and_unicode():
     with pytest.raises(esolangs.InterpreterLimitError) as caught:
         esolangs.run("Sophie", "#λ,,", isolated=True, max_output=1)
     assert caught.value.partial_output == "λ"
+
+
+@pytest.mark.medium
+def test_resource_bounds() -> None:
+    """The resource audit counts a UTF-8 byte per source unit."""
+    from scripts.screens.resources import audit, corpus
+
+    result = audit("Sophie", 3, corpus(3)["parity"])
+    assert result["source_utf8_bits"] == 8 * result["source_units"]

@@ -414,15 +414,11 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: Timings are deliberately absent.  The document states a few and calls
 #: them approximate, and asserting one here would fail whenever the machine
 #: is busy -- which, on a suite that runs four workers, is always.
-#: A language removed since drops out.
+#: Each language holds its own row as ``documented_sizes=``.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    name: sizes
-    for name, sizes in {
-        "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
-        "Polynomial": (1_745_528, 5_458_693, 3.1),
-        "Factor": (12_592, 24_463, 2.1),
-    }.items()
-    if name in LANGUAGES
+    name: lang.documented_sizes
+    for name, lang in LANGUAGES.items()
+    if lang.documented_sizes is not None
 }
 
 
@@ -490,8 +486,8 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
     at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
     sizes = (len(esolangs.generate(name, dense(n))) for n in (8, 9))
     assert tuple(sizes) == (at_eight, at_nine), (
-        f"{name}'s dense n=8 and n=9 sizes moved; update its row in "
-        "_DOCUMENTED_SIZES in tests/tools/test_boolean_contract.py"
+        f"{name}'s dense n=8 and n=9 sizes moved; update its "
+        "documented_sizes= in its LANGUAGE"
     )
     assert at_nine / at_eight == pytest.approx(ratio, abs=0.35)
 
@@ -514,6 +510,6 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
     size, name = biggest
     assert size < 600_000, (
         f"{name} emits {size} characters for a dense n=9 table; shrink its "
-        "generator, or add it to _DOCUMENTED_SIZES in "
-        "tests/tools/test_boolean_contract.py with its n=8 and n=9 sizes"
+        "generator, or document it and set documented_sizes= in its LANGUAGE "
+        "with its n=8 and n=9 sizes"
     )
