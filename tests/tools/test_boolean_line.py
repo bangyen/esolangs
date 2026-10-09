@@ -276,3 +276,102 @@ def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(module, "_has_goto", reject)
     monkeypatch.setattr(module, "_returns_to", reject)
     render(line_boolean("10010110"), acyclic=True)
+
+
+@pytest.mark.medium
+def test_shared_ancestor_return_executes_within_ledger() -> None:
+    """A consumed prefix bit selects one physical residual after returning."""
+    from esolangs.tools.line import _render_node, line
+    from esolangs.tools.line.render import _has_goto
+    from esolangs.tools.line.shared import shared_tree
+    from tests.generator_support import assert_shared_program
+
+    residual = "00010111" * 8
+    table = residual * 3 + "0" * len(residual)
+    plain = Raster(_render_node(line_boolean(table)))
+    shared = shared_tree(table)
+    assert shared is not None
+    assert _has_goto(shared[0])
+    assert _has_goto(line(table)._payload)  # noqa: SLF001 - physical sharing control
+    assert_shared_program(
+        "Line",
+        table,
+        plain,
+        shared[1],
+        lambda _: 47,
+        size=lambda p: len(p.rows) * len(p.rows[0]),
+    )
+
+
+@pytest.mark.medium
+def test_shared_return_retains_unshared_balance_and_scale() -> None:
+    """The emitted return extracts at scale two and balancing retains old trees."""
+    from esolangs.tools.line import _render_node, balance, line
+    from esolangs.tools.line.render import _has_goto
+    from esolangs.tools.line.shared import shared_canvas, shared_tree
+
+    residual = "00010111" * 8
+    table = residual * 3 + "1" * len(residual)
+    program = line(table)
+    assert _has_goto(program._payload)  # noqa: SLF001 - physical sharing control
+    plain = Raster(_render_node(line_boolean(table)))
+
+    def score(raster):
+        h, w = len(raster.rows), len(raster.rows[0])
+        return abs(w - h), w * h, w
+
+    assert score(balance(table, program)) <= score(balance(table, plain))
+    # Force extraction instead of the retained generated graph.
+    scaled = Raster(program.upscaled(2).rows)
+    assert _evaluate("Line", scaled, inputs=8) == table
+    shared = shared_tree(table)
+    assert shared is not None
+    assert shared_canvas(shared[0], 1) is None
+
+
+def test_shared_return_refuses_an_interior_tip() -> None:
+    """A matching residual inside the body's box retains the old tree."""
+    from esolangs.tools.helpers import permute_truth_table
+    from esolangs.tools.line.shared import shared_canvas, shared_tree
+
+    residual = "01" * 16
+    other = "0110" * 8
+    table = residual * 4 + other + residual * 2 + other
+    table = permute_truth_table(table, (1, 0, *range(2, 8)))
+    shared = shared_tree(table)
+    assert shared is not None
+    assert shared_canvas(shared[0], 10**12) is None
+
+
+def test_shared_candidate_preserves_the_small_tree_fallback() -> None:
+    """An admissible return still loses to the five-input pixel layout."""
+    from esolangs.tools.line import _grey_rows, line
+    from esolangs.tools.line.shared import shared_tree
+    from esolangs.tools.line.small_tree import small_tree_canvas
+
+    residual = "01" * 4
+    table = residual * 3 + "1" * len(residual)
+    assert shared_tree(table) is not None
+    expected = _grey_rows(small_tree_canvas(line_boolean(table)))
+    assert line(table).rows == expected
+    assert _evaluate("Line", Raster(line(table).rows), inputs=5) == table
+
+
+@pytest.mark.medium
+def test_balance_retains_a_more_balanced_shared_raster() -> None:
+    """A shared return can improve both area and the old orientation's shape."""
+    from esolangs.tools.line import _render_node, balance, line
+    from esolangs.tools.line.render import _has_goto
+
+    residual = "0010" * 16
+    table = residual * 3 + "0" * len(residual)
+    program = line(table)
+    plain = Raster(_render_node(line_boolean(table)))
+    balanced = balance(table, program)
+    previous = balance(table, plain)
+    assert _has_goto(balanced._payload)  # noqa: SLF001 - physical sharing control
+    h, w = len(balanced.rows), len(balanced.rows[0])
+    old_h, old_w = len(previous.rows), len(previous.rows[0])
+    assert abs(w - h) < abs(old_w - old_h)
+    assert w * h < old_w * old_h
+    assert _evaluate("Line", Raster(balanced.rows), inputs=8) == table

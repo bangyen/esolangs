@@ -618,10 +618,10 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Line"
 labels = ["tree"]
 qualification = """\
-    finite decision trees read inputs and choose a Boolean leaf; separated strokes \
-    preserve every branch"""
+    finite decision trees read inputs and choose a Boolean leaf; one guarded ancestor \
+    return shares a residual through a consumed input"""
 scaling = "linear: alternating subtree extents bound rectangular area by O(T)"
-execution = "poly n: worst 5n commands, one fork per level"
+execution = "poly n: worst 5n commands; shared returns retain this bound"
 workspace = """\
     poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) \
     bits past n = 4"""

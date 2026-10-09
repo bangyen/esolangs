@@ -9,13 +9,16 @@ is read but never tested.  A leaf prints the cell it just tested, after
 one ``+`` or ``-`` when the entry differs from that bit; a constant has no
 test and prints the unread cell ``n``.  ``truth_table`` is a binary string of
 length ``2**n``, MSB first.  Arms use measured subtree extents with a
-two-cell gap.
+two-cell gap. A bounded ancestor return shares a repeated nonconstant
+residual when it saves area within 5n commands: clear a consumed input
+and re-enter its zero arm. Reads and the tape footprint stay unchanged.
 """
 
 from __future__ import annotations
 
 import re
 from functools import lru_cache
+from typing import cast
 
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
 from esolangs.registry._language import Language, SourceKind
@@ -116,8 +119,25 @@ def _grey_rows(canvas: Canvas) -> Rows:
 @lru_cache(maxsize=8)
 def _generate(truth_table: str) -> Raster:
     """Return a Line raster computing ``truth_table``."""
+    from .shared import shared_canvas, shared_tree
+
     node = line_boolean(truth_table)
-    if _validate_truth_table(truth_table) <= _SMALL_MAX:
+    n = _validate_truth_table(truth_table)
+    shared = shared_tree(truth_table)
+    canvas = None
+    if shared is not None:
+        if n <= _SMALL_MAX:
+            canvas = small_tree_canvas(node)
+            area = canvas.width * canvas.height
+        else:
+            top, bottom, left, right = tree_extents(node)[id(node)]
+            area = (bottom - top + 2) * (right - left + 2) * _UNIT**2
+        draw = shared_canvas(shared[0], area)
+        if draw is not None:
+            return lazy_raster(lambda: _grey_rows(draw()), shared[0])
+    if canvas is not None:
+        return lazy_raster(lambda: _grey_rows(canvas), node)
+    if n <= _SMALL_MAX:
         return lazy_raster(lambda: _grey_rows(small_tree_canvas(node)), node)
     return lazy_raster(lambda: _render_node(node), node)
 
@@ -127,13 +147,25 @@ def line(truth_table: str, *, scale: int = 1) -> Raster:
     return _generate(truth_table).upscaled(scale)
 
 
-def balance(truth_table: str, _default: Raster) -> Raster:
+def balance(truth_table: str, default: Raster) -> Raster:
     """Choose the most balanced compact or previous forward/reverse tree."""
 
     def score(node: Node, *, compact: bool) -> tuple[int, int, int]:
         y0, y1, x0, x1 = tree_extents(node, compact=compact)[id(node)]
         width, height = (x1 - x0 + 2) * _UNIT, (y1 - y0 + 2) * _UNIT
         return abs(width - height), width * height, width
+
+    def retain_shared(score: tuple[int, int, int]) -> bool:
+        from .render import _has_goto
+
+        if not _has_goto(cast("Node | None", default._payload)):  # noqa: SLF001 - generator-owned graph
+            return False
+        height, width = len(default.rows), len(default.rows[0])
+        return (
+            abs(width - height),
+            width * height,
+            width,
+        ) <= score and width * height <= score[1]
 
     nodes = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
     if _validate_truth_table(truth_table) <= _SMALL_MAX:
@@ -157,6 +189,14 @@ def balance(truth_table: str, _default: Raster) -> Raster:
             else old
         )
         canvas, node = chosen
+        if retain_shared(
+            (
+                abs(canvas.width - canvas.height),
+                canvas.width * canvas.height,
+                canvas.width,
+            )
+        ):
+            return default
         return lazy_raster(lambda: _grey_rows(canvas), node)
     compact_score, selected = min(
         ((score(node, compact=True), node) for node in nodes), key=lambda p: p[0]
@@ -168,6 +208,8 @@ def balance(truth_table: str, _default: Raster) -> Raster:
     compact = compact_score <= old_score
     if not compact:
         selected = old_selected
+    if retain_shared(min(compact_score, old_score)):
+        return default
     return lazy_raster(lambda: _render_node(selected, compact=compact), selected)
 
 

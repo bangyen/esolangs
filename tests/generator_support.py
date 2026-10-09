@@ -105,7 +105,6 @@ def assert_shared_program(
 
     n = len(table).bit_length() - 1
     program = esolangs.generate(language, table)
-    assert isinstance(program, str)
     assert size(program) < size(plain)
     parameterized = esolangs.describe(language)["parameterized"]
     for row, expected in enumerate(table):
