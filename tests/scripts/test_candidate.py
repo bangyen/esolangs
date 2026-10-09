@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from scripts.screens import candidate
+from scripts.screens.candidate import _worst
 
 
 def test_shorter_text_with_larger_grid_is_reported_as_growth(capsys) -> None:
@@ -42,3 +43,19 @@ def test_empty_screen_rejected_before_loading(options):
     ):
         candidate.main(["brainfuck", "unused.py:build", *options])
     assert caught.value.code == 2
+
+
+@pytest.mark.parametrize("timeout", ["0", "-1", "nan", "inf"])
+def test_invalid_timeout_rejected_before_loading(timeout):
+    with (
+        patch.object(candidate, "_load", side_effect=AssertionError("loaded")),
+        pytest.raises(SystemExit) as caught,
+    ):
+        candidate.main(["brainfuck", "unused.py:build", "--timeout", timeout])
+    assert caught.value.code == 2
+
+
+@pytest.mark.medium
+def test_unsupported_stepping_candidate_is_bounded():
+    assert _worst("a_painter_ant", "nn$", "00", [0], 0.02) == (1, 0)
+    assert _worst("a_painter_ant", "N$", "00", [1], 0.5) == (0, 0)
