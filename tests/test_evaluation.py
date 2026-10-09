@@ -64,21 +64,6 @@ def test_timeout_is_not_a_boolean_answer() -> None:
     assert any("row 0" in note for note in exc.value.__notes__)
 
 
-def test_termination_input_exhaustion_is_a_fault(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import esolangs._evaluate as evaluate_module
-
-    def exhausted(*_args: object, **_kwargs: object) -> None:
-        raise esolangs.InputExhaustedError(2, 1)
-
-    program = esolangs.generate("ArrowQueue", "01")
-    monkeypatch.setattr(evaluate_module, "make_vm", exhausted)
-    with pytest.raises(esolangs.InputExhaustedError) as exc:
-        _evaluate("ArrowQueue", program, inputs=1)
-    assert any("row 0" in note for note in exc.value.__notes__)
-
-
 @pytest.mark.medium
 @pytest.mark.parametrize("streaming", [False, True])
 def test_isolated_row_output_limit_resets_per_row(streaming):
@@ -230,18 +215,6 @@ def test_total_deadline_bounds_a_growing_machine(isolated):
 def test_loading_errors_keep_their_public_type_under_a_deadline(isolated):
     with pytest.raises(esolangs.ProgramError):
         _evaluate("brainfuck", b"\xff", inputs=1, isolated=isolated, total_timeout=5)
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("isolated", [False, True])
-def test_termination_answers_still_require_a_proof_with_a_total_budget(isolated):
-    source = esolangs.generate("123", "0110")
-    assert (
-        _evaluate(
-            "123", source, inputs=2, timeout=None, total_timeout=5, isolated=isolated
-        )
-        == "0110"
-    )
 
 
 @pytest.mark.parametrize("budget", [0, True, float("inf"), 0.00001])

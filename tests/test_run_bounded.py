@@ -22,13 +22,6 @@ def test_bounded_run_matches_whole_program_execution(language: str) -> None:
     ) == esolangs.run(language, program, stdin=stdin)
 
 
-def test_bounded_run_executes_generated_xor() -> None:
-    program = esolangs.generate("Fargo", "0110")
-    for row, expected in enumerate("0110"):
-        stdin = esolangs.encode_inputs("Fargo", tuple(map(int, format(row, "02b"))))
-        assert esolangs.run("Fargo", program, stdin=stdin, max_steps=1000) == expected
-
-
 def test_step_exhaustion_keeps_partial_output() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError, match="max_steps") as caught:
         esolangs.run("brainfuck", "+.[]", max_steps=10)
@@ -68,16 +61,6 @@ def test_raster_execution_obeys_the_step_bound(language: str) -> None:
 def test_interpreter_errors_are_preserved() -> None:
     with pytest.raises(esolangs.InputExhaustedError):
         esolangs.run("brainfuck", ",", max_steps=1)
-
-
-def test_worker_thread_loads_unicode_path(tmp_path: Path) -> None:
-    source = tmp_path / "λ program.sophie"
-    source.write_text("#λ,", encoding="utf-8")
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        result = pool.submit(
-            esolangs.run, "Sophie", source, isolated=True, max_output=1
-        )
-        assert result.result(timeout=10) == "λ"
 
 
 @pytest.mark.parametrize(

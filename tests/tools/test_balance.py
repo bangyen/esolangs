@@ -53,19 +53,6 @@ def test_cli_balance(capsys: pytest.CaptureFixture[str]) -> None:
         call_main(["generate", "--balance", "--width", "Brainfuck", "0110"], capsys)
 
 
-def test_balance_raster_retains_layout(monkeypatch: pytest.MonkeyPatch) -> None:
-    from dataclasses import replace
-
-    from esolangs.registry import LANGUAGES
-
-    monkeypatch.setitem(LANGUAGES, "Piet", replace(LANGUAGES["Piet"], balance=None))
-    default = esolangs.generate("Piet", "0110")
-    balanced = esolangs.generate("Piet", "0110", balance=True)
-    assert isinstance(default, esolangs.Raster)
-    assert isinstance(balanced, esolangs.Raster)
-    assert balanced.to_png() == default.to_png()
-
-
 @pytest.mark.parametrize("language", ["fractran", "sbleq", "slow_acv_mammalian"])
 @pytest.mark.parametrize("cell", [1, 4, 7])
 def test_equal_cells_reach_the_global_minimum(language: str, cell: int) -> None:
@@ -82,13 +69,6 @@ def test_equal_cells_reach_the_global_minimum(language: str, cell: int) -> None:
             key=balance_score,
         )
         assert balance_score(balanced) == balance_score(optimum)
-
-
-@pytest.mark.parametrize("program", ["", "1 22 333 4444"])
-def test_nonuniform_cells_retain_tokens(program: str) -> None:
-    balanced = balance_program(program, "fractran")
-    assert balanced.split() == program.split()
-    assert balance_score(balanced) <= balance_score(program)
 
 
 def test_super_snusp_balance_rejects_long_literals() -> None:

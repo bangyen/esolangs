@@ -4,10 +4,12 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from esolangs._evaluate import _evaluate
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import run as run_fractran
 from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.tools.wrap import balance_program, balance_score
 from tests.generator_support import evaluate_generated
 from tests.tools.reader_support import _TABLES, _bits
 from tests.witness_tables import witnesses
@@ -151,3 +153,21 @@ def test_fractran_phase_parity_retains_larger_layout_execution(n: int) -> None:
                 esolangs.read_answer("FRACTRAN", esolangs.run("FRACTRAN", filled))
                 == table[row]
             )
+
+
+@pytest.mark.parametrize("program", ["", "1 22 333 4444"])
+def test_nonuniform_cells_retain_tokens(program: str) -> None:
+    balanced = balance_program(program, "fractran")
+    assert balanced.split() == program.split()
+    assert balance_score(balanced) <= balance_score(program)
+
+
+def test_fractran_parity_representation_omits_empty_width_regimes():
+    from esolangs.tools.fractran import _balance as _fractran
+
+    parity = esolangs.generate("FRACTRAN", "0110", width=4)
+    balanced = _fractran("0110", parity)
+    assert balanced in [
+        esolangs.generate("FRACTRAN", "0110", width=width) for width in (1, 4, 8)
+    ]
+    assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"

@@ -5,7 +5,7 @@ import json
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, Raster
+from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
 from esolangs.tagged import _Tagged
 from tests.test_dialects import CASES
@@ -20,62 +20,12 @@ def test_restored_isolated_execution(language):
 
 
 @pytest.mark.medium
-def test_raw_text_preserves_newlines_and_explicit_settings():
-    source = "FAFY\n"
-    choices = DialectSettings(integer_conversion="after_each_letter")
-    restored = esolangs.load_program(
-        "Grapheme", esolangs.dump_program("Grapheme", source, settings=choices)
-    )
-    assert str(restored) == source
-    assert restored.settings == choices
-    assert esolangs.run("Grapheme", restored) == "10"
-
-
-def test_large_integer_setting_is_rejected():
-    document = json.loads(esolangs.dump_program("SLOW ACV MAMMALIAN", "SEED"))
-    document["settings"] = {"cell_modulus": {"integer": hex(1 << 20_000)}}
-    with pytest.raises(esolangs.ProgramError):
-        esolangs.load_program("SLOW ACV MAMMALIAN", json.dumps(document))
-
-
-@pytest.mark.medium
 @pytest.mark.parametrize("choices", [None, DialectSettings()])
 def test_default_settings_distinction(choices):
     document = esolangs.dump_program("Brainfuck", _Tagged("+.", "brainfuck", choices))
     restored = esolangs.load_program("brainfuck", document)
     assert restored.settings == choices
     assert esolangs.run("Brainfuck", restored) == "\x01"
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("scale", [1, 2])
-def test_raw_png_round_trip_executes(scale):
-    settings = DialectSettings()
-    source = esolangs.generate("Line", "01", scale=scale, settings=settings)
-    raw = Raster.from_png(source.to_png())
-    assert raw.settings is None
-    restored = esolangs.load_program(
-        "Line", esolangs.dump_program("Line", raw, settings=settings)
-    )
-    assert restored.rows == source.rows
-    assert _evaluate("Line", restored, inputs=1) == "01"
-
-
-@pytest.mark.medium
-def test_filled_template_becomes_portable_text():
-    source = esolangs.generate("Bitdeque", "0110", settings=DialectSettings())
-    filled = esolangs.instantiate("Bitdeque", source, [1, 0])
-    document = esolangs.dump_program("Bitdeque", filled)
-    assert json.loads(document)["kind"] == "text"
-    assert esolangs.run("Bitdeque", esolangs.load_program("Bitdeque", document)) == "1"
-
-
-def test_foreign_language_is_rejected():
-    source = esolangs.generate("Bitdeque", "0110", settings=DialectSettings())
-    with pytest.raises(esolangs.ProgramError):
-        esolangs.dump_program("Brainfuck", source)
-    with pytest.raises(esolangs.ProgramError, match="program language"):
-        esolangs.load_program("Brainfuck", esolangs.dump_program("Bitdeque", source))
 
 
 @pytest.mark.parametrize(
@@ -108,36 +58,6 @@ def test_invalid_fields(field, value):
         esolangs.load_program("Brainfuck", json.dumps(document))
 
 
-@pytest.mark.parametrize("value", ["!", "abcd", "é"])
-def test_invalid_png(value):
-    document = json.loads(
-        esolangs.dump_program("Line", esolangs.generate("Line", "01"))
-    )
-    document["source"] = value
-    with pytest.raises(esolangs.ProgramError):
-        esolangs.load_program("Line", json.dumps(document))
-
-
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
-        ("char", 1),
-        ("char", "$$"),
-        ("setters", None),
-        ("setters", [["x"]]),
-        ("setters", [["x", "yy"]]),
-        ("setters", []),
-    ],
-)
-def test_invalid_template_fields(field, value):
-    document = json.loads(
-        esolangs.dump_program("Bitdeque", esolangs.generate("Bitdeque", "0110"))
-    )
-    document[field] = value
-    with pytest.raises(esolangs.ProgramError):
-        esolangs.load_program("Bitdeque", json.dumps(document))
-
-
 def test_document_argument_and_invalid_settings():
     with pytest.raises(esolangs.ArgumentError, match="JSON string"):
         esolangs.load_program("Brainfuck", b"{}")
@@ -159,15 +79,3 @@ def test_template_kind_requires_parameterized_language():
     document.update(kind="template", char="$", setters=[])
     with pytest.raises(esolangs.ProgramError, match="template char does not match"):
         esolangs.load_program("Brainfuck", json.dumps(document))
-
-
-@pytest.mark.medium
-def test_bound_language_round_trip():
-    language = esolangs.Language("Bitdeque")
-    source = language.generate("0110", settings=DialectSettings())
-    document = language.dump_program(source)
-    restored = language.load_program(document)
-    assert _evaluate(language.name, restored, inputs=2) == "0110"
-    filled = language.instantiate(source, [1, 0])
-    document = language.dump_program(filled, settings=DialectSettings())
-    assert language.run(language.load_program(document)) == "1"

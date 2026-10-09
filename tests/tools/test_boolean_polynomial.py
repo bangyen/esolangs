@@ -4,8 +4,11 @@ import random
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
+from esolangs._evaluate import _evaluate
 from esolangs.tools.polynomial import _polynomial_dag, _polynomial_states
+from esolangs.tools.wrap import balance_score, wrap_program
 from tests.tools.boolean_oracles import (
     _polynomial_tree,
 )
@@ -223,3 +226,23 @@ class TestPolynomial:
                 got = run_polynomial_from(program, feed)
                 assert got == table[combo], f"{table} inputs {bits}"
                 assert not list(feed), f"{table} inputs {bits} left input unread"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "table", ["01", "10", "0110", "0001", "10010110", "0110100110010110"]
+)
+def test_polynomial_balanced_folds_compute_the_table(table):
+    from esolangs.tools.wrap import _polynomial_terms
+
+    default = esolangs.generate("Polynomial", table)
+    balanced = esolangs.generate("Polynomial", table, balance=True)
+    layouts = [default] + [
+        wrap_program(default, "polynomial", width)
+        for width in range(1, max(map(len, _polynomial_terms(default))) + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert (
+        _evaluate("Polynomial", balanced, inputs=len(table).bit_length() - 1) == table
+    )

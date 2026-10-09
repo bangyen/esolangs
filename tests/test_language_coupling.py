@@ -80,6 +80,7 @@ def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
             f"tests/{stem}/",
             f"tests/fixtures/{stem}",
             f"tests/interpreters/test_{stem}",
+            f"tests/languages/test_{stem}.py",
             f"tests/tools/test_boolean_{stem}",
             f"tests/tools/test_{stem}_",
         ]

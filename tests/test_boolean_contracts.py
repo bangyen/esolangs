@@ -3,7 +3,6 @@
 import subprocess
 import sys
 from collections.abc import Callable, Iterable
-from dataclasses import replace
 from functools import partial
 from itertools import pairwise
 
@@ -92,26 +91,6 @@ else:
         check=False,
     )
     assert result.returncode == 0, result.stderr
-
-
-@pytest.mark.medium
-def test_termination_polarity_comes_from_the_registry(monkeypatch) -> None:
-    language = LANGUAGES["Vandevelo"]
-    program = esolangs.generate("Vandevelo", "0110")
-    monkeypatch.setitem(
-        LANGUAGES,
-        "Vandevelo",
-        replace(
-            language,
-            contract=replace(language.contract, answer_values=("diverges", "halts")),
-        ),
-    )
-    assert _evaluate("Vandevelo", program, inputs=2) == "1001"
-
-
-def test_termination_diagnostic_does_not_score_a_timeout() -> None:
-    with pytest.raises(esolangs.ArgumentError, match="timeout is undecided"):
-        esolangs.read_answer("123", "1")
 
 
 def _parity(n: int) -> str:

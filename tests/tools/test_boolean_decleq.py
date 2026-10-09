@@ -3,6 +3,7 @@
 import random
 
 from esolangs import tools as boolean
+from esolangs.tools.wrap import balance_program, balance_score, wrap_program
 from tests.tools.boolean_runners import (
     run_decleq,
 )
@@ -83,3 +84,21 @@ class TestDecleq:
         assert instrs.count([17, 17, 0]) == 4 + 2 + 1  # the index weights
         tables = [format(i, "08b") for i in range(256)]
         assert sum(len(boolean.decleq(t)) for t in tables) == 326_910
+
+
+def test_mixed_digit_operands_share_one_grid_cell():
+    # All three subleq OISCs share wrap_grid, so the language is not an axis.
+    language = "decleq"
+    for count in range(3, 65):
+        program = " ".join(("1", "22", "333")[index % 3] for index in range(count))
+        balanced = balance_program(program, language)
+        optimum = min(
+            [program]
+            + [
+                wrap_program(program, language, width)
+                for width in range(1, len(program) + 1)
+            ],
+            key=balance_score,
+        )
+        assert balance_score(balanced) == balance_score(optimum)
+        assert balanced.split() == program.split()

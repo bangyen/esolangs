@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.interpreters.tape_based.line.extract import extract
 from esolangs.interpreters.tape_based.line.simulate import (
@@ -14,8 +15,10 @@ from esolangs.interpreters.tape_based.line.simulate import (
     compile_program,
     run_compiled,
 )
+from esolangs.raster import Raster, png
 from esolangs.tools.line import line_boolean
 from esolangs.tools.line.render import Node, render
+from esolangs.tools.line.tree_layout import tree_extents
 
 
 def _forks(node: Node | None) -> int:
@@ -186,3 +189,32 @@ def test_six_inputs_keep_the_rendered_layout() -> None:
     for balanced in (False, True):
         program = esolangs.generate("Line", table, balance=balanced)
         assert _evaluate("Line", program.to_png(), inputs=6) == table
+
+
+@pytest.mark.medium
+def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
+    leaf = Node("+", next=Node("+", next=Node("o")))
+    for root in (leaf, Node("?", zero=leaf, nonzero=leaf), Node("?", zero=leaf)):
+        compact = render(root, acyclic=True)
+        legacy = render(root)
+        assert render(root, acyclic=True, compact=False).pixels == legacy.pixels
+        assert compact.width * compact.height <= legacy.width * legacy.height
+        for value in (0, 1):
+            sources = [
+                Raster.from_png(png.write_grey(canvas.pixels))
+                for canvas in (compact, legacy)
+            ]
+            assert esolangs.run("Line", sources[0], stdin=str(value)) == esolangs.run(
+                "Line", sources[1], stdin=str(value)
+            )
+    assert (
+        esolangs.run(
+            "Line",
+            Raster.from_png(png.write_grey(render(leaf, acyclic=True).pixels)),
+            stdin="",
+        )
+        == "2"
+    )
+    leaf.goto = Node("o")
+    with pytest.raises(ValueError, match="goto"):
+        tree_extents(leaf)

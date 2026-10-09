@@ -1,7 +1,6 @@
 """Execution keeps the same behavior across source and input containers."""
 
 import io
-from dataclasses import replace
 from pathlib import Path
 from threading import Event
 from typing import Any
@@ -12,7 +11,6 @@ import esolangs
 from esolangs import _check_program
 from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
-from esolangs.registry import LANGUAGES, SourceKind
 
 
 @pytest.mark.parametrize("language", ["brainfuck", "Piet", "Line"])
@@ -95,19 +93,6 @@ def test_binary_stdin_uses_the_same_unicode_character_stream(stdin: Any) -> None
     assert esolangs.run("brainfuck", ",.", stdin=stdin) == "é"
 
 
-def test_raster_interpreter_owns_loading_and_scale_support(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    program = esolangs.generate("Piet", "01", scale=2)
-    monkeypatch.setitem(
-        LANGUAGES,
-        "Piet",
-        replace(LANGUAGES["Piet"], source_kind=SourceKind.TEXT, boolean=None),
-    )
-    assert esolangs.run("Piet", program.to_png(), stdin="1", scale=2) == "1"
-    assert esolangs.run("Piet", program, stdin="1", scale=2, max_steps=100) == "1"
-
-
 def test_path_loading_retains_existing_newline_normalization(tmp_path: Path) -> None:
     path = tmp_path / "source.txt"
     path.write_bytes(b"+,\r\n.\r\n")
@@ -153,24 +138,6 @@ def test_stream_failures_keep_public_error_types(mode: str) -> None:
             esolangs.run("brainfuck", stream, **bounds)  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError):
             esolangs.run("brainfuck", ",.", stdin=stream, **bounds)  # type: ignore[arg-type]
-
-
-# Isolated cases spawn a worker: the medium band, like test_run_isolated.
-@pytest.mark.parametrize(
-    "mode", ["normal", "steps", pytest.param("isolated", marks=pytest.mark.medium)]
-)
-def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -> None:
-    bounds: dict[str, Any] = {}
-    if mode == "steps":
-        bounds["max_steps"] = 100
-    elif mode == "isolated":
-        bounds["isolated"] = True
-    assert esolangs.run("Befunge", "&.@", stdin=b"-12345", **bounds) == "-12345 "
-    with pytest.raises(
-        esolangs.ArgumentError, match="input must be an integer"
-    ) as error:
-        esolangs.run("Befunge", '"A",&.@', stdin=io.StringIO("invalid"), **bounds)
-    assert error.value.partial_output == "A"
 
 
 @pytest.mark.parametrize("blocked", ["program", "stdin"])

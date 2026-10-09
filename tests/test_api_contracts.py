@@ -30,7 +30,6 @@ from esolangs.exceptions import (
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import takes_width
 from tests.generator_support import CHECK, evaluate_generated
-from tests.stdin_check import _check_stdin
 
 XOR = "0110"
 ROOT = pathlib.Path(__file__).parents[1]
@@ -509,26 +508,6 @@ class TestEveryDeliberateErrorIsCatchable:
         assert failures == []
 
 
-class TestInstantiateValidates:
-    """A wrong call is refused where it is made, not one layer downstream."""
-
-    def test_the_bit_count_must_match_the_slots(self) -> None:
-        template = esolangs.generate("Minifuck", XOR)
-        with pytest.raises(TemplateError, match="2 inputs, but 1 bit was given"):
-            esolangs.instantiate("Minifuck", template, [1])
-
-    def test_a_bit_must_be_a_bit(self) -> None:
-        """``2`` was substituted silently into a program that then lied."""
-        template = esolangs.generate("Minifuck", XOR)
-        with pytest.raises(esolangs.ArgumentError, match="must each be 0 or 1"):
-            esolangs.instantiate("Minifuck", template, [2, 0])
-
-    def test_a_non_string_template_is_refused_before_provenance(self) -> None:
-        """With a table, ``_is_template_for`` called ``.replace`` on the value."""
-        with pytest.raises(TemplateError, match="must be the string"):
-            esolangs.instantiate("Minifuck", 5, [1], width=None, truth_table=XOR)  # type: ignore[arg-type]
-
-
 class TestTheSignaturesAgreeWithThemselves:
     """Two functions taking the same argument should describe it the same."""
 
@@ -882,21 +861,6 @@ class TestAnAddressIsNotAllocatedOnTrust:
         assert evaluate_generated("S*bleq", "0110", timeout=30) == "0110"
 
 
-class TestDecleqNegativeAddressing:
-    """A write past the left end escaped as a bare ``IndexError``."""
-
-    def test_it_halts_instead_of_leaking(self) -> None:
-        """Four characters, reduced from a 20,000-character random program."""
-        with pytest.raises(esolangs.HaltError, match="past the left end"):
-            esolangs.run("Decleq", "4 -8", stdin="", timeout=2)
-
-    def test_the_documented_negative_write_is_unchanged(self) -> None:
-        """Indexing from the right is deliberate and pinned elsewhere."""
-        vm = debugger_api.make_vm("Decleq", "0 -1 3")
-        vm.step()
-        assert list(vm.memory)[:3] == [0, -1, -1]
-
-
 class TestThePathGuardKnowsMoreThanTxt:
     """It tested for a literal ``.txt`` and nothing else."""
 
@@ -923,41 +887,3 @@ class TestThePathGuardKnowsMoreThanTxt:
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
         """``~~`` is two ArrowQueue commands and was refused."""
         assert not esolangs._looks_like_a_path(program), program  # noqa: SLF001
-
-
-class TestAHugeRowIndexIsRefusedNotCrashed:
-    """CPython caps int<->str at 4300 digits; both directions leaked it."""
-
-    def test_check_stdin_refuses_a_row_index_past_the_digit_cap(self) -> None:
-        """``isdecimal`` passes for 4301 nines; ``int`` is what refuses them."""
-        with pytest.raises(ArgumentError):
-            _check_stdin("Fargo", "9" * 4301, "01")
-
-    def test_encode_inputs_refuses_a_row_index_past_the_digit_cap(self) -> None:
-        """Fargo reads a decimal row index, and 15000 bits name too many digits."""
-        with pytest.raises(ArgumentError):
-            esolangs.encode_inputs("Fargo", [1] * 15000)
-
-
-def test_evaluate_refuses_a_timeout_off_the_main_thread() -> None:
-    """The termination path drove ``_run`` directly and leaked ``SIGALRM``'s error."""
-    box: list[BaseException] = []
-
-    def work() -> None:
-        try:
-            evaluate_generated("123", "0110")
-        except BaseException as exc:
-            box.append(exc)
-
-    thread = threading.Thread(target=work)
-    thread.start()
-    thread.join(30)
-    assert not thread.is_alive()
-    assert len(box) == 1
-    assert isinstance(box[0], ArgumentError)
-
-
-def test_a_raster_is_not_a_path() -> None:
-    """``_looks_like_a_path`` is typed for text; a Raster must answer False."""
-    program = esolangs.generate("Piet", "01")
-    assert not esolangs._looks_like_a_path(program)  # noqa: SLF001

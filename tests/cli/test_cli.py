@@ -37,17 +37,6 @@ def call_main(
     return str(capsys.readouterr().out)
 
 
-# Every test here spawns `python -m esolangs.cli`; 2.8s over nine tests.
-@pytest.mark.medium
-class TestSubprocess:
-    def test_run(self, tmp_path: Path) -> None:
-        program = tmp_path / "prog.soph"
-        program.write_text(esolangs.generate("Sophie", "0110"))
-        result = run_cli("run", "Sophie", str(program), stdin="01")
-        assert result.returncode == 0
-        assert result.stdout == "1"
-
-
 class TestInProcess:
     def test_generating_a_raster_writes_png_bytes(
         self, capsysbinary: pytest.CaptureFixture[bytes]
@@ -92,18 +81,6 @@ class TestInProcess:
         with pytest.raises(SystemExit) as exc:
             call_main([], capsys)
         assert exc.value.code == 2
-
-
-class TestPackageEntryPoint:
-    """python -m esolangs dispatches to the CLI via esolangs/__main__.py."""
-
-    def test_run_as_main(self, capsys: pytest.CaptureFixture[str]) -> None:
-        import runpy
-
-        with patch.object(sys, "argv", ["esolangs", "generate", "Sophie", "0110"]):
-            runpy.run_module("esolangs", run_name="__main__")
-        out = capsys.readouterr().out
-        assert esolangs.run("Sophie", out, stdin="01") == "1"
 
 
 class TestWidthOption:

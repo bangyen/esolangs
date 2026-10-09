@@ -37,35 +37,6 @@ class TestABoundMustBind:
         assert set(STOP_REASONS) == {"halted", "breakpoint", "max_steps", "timeout"}
 
 
-class TestABreakpointMustBeAbleToFire:
-    """A breakpoint that can never match is worse than a refused one."""
-
-    @pytest.mark.parametrize("ip", ["x", 1.5, None])
-    def test_a_non_position_is_refused(self, ip: object) -> None:
-        with pytest.raises(esolangs.ArgumentError, match="ip must be"):
-            _debugger().break_at(ip)  # type: ignore[arg-type]
-
-    def test_a_grid_coordinate_is_still_accepted(self) -> None:
-        """A 2D language's ``ip`` is a tuple, so that spelling must pass."""
-        program = esolangs.generate("Streetcode", "0110")
-        dbg = debugger_api.make_debugger(
-            "Streetcode", program, stdin=esolangs.encode_inputs("Streetcode", [0, 1])
-        )
-        assert isinstance(dbg.ip, tuple)
-        dbg.break_at(dbg.ip)
-        assert dbg.run(max_steps=5) == "breakpoint"
-
-    def test_a_non_integer_cell_value_is_refused(self) -> None:
-        with pytest.raises(esolangs.ArgumentError, match="value must be"):
-            _debugger().break_on_cell(0, "x")  # type: ignore[arg-type]
-
-    @pytest.mark.parametrize("index", [-5, "x"])
-    def test_a_bad_watch_index_is_refused(self, index: object) -> None:
-        """``watch_cell(-5)`` raised a bare IndexError from a later run."""
-        with pytest.raises(esolangs.ArgumentError, match="index"):
-            _debugger().watch_cell(index)  # type: ignore[arg-type]
-
-
 class TestWidthIsCheckedWhereverItIsTaken:
     """``generate`` refused these and ``instantiate`` ignored them."""
 
@@ -187,27 +158,6 @@ class TestTerminationPolarityIsData:
         assert esolangs.describe("brainfuck")["answer_encoding"] == ("0", "1")
 
 
-class TestNameResolutionIsTrulyCaseInsensitive:
-    """The usage text promises it for every name, including the odd ones."""
-
-    @pytest.mark.parametrize(
-        "spelling", ["CV(N)(C)", "cv(n)(c)", "CV(n)(c)", "cvnc", "CVNC"]
-    )
-    def test_the_overridden_name_folds_too(self, spelling: str) -> None:
-        """Its id came from an exact-key override, so only one case matched."""
-        assert esolangs.describe(spelling)["name"] == "CV(N)(C)"
-
-
-def test_memory_address_at_the_cell_limit_is_refused():
-    from esolangs._validate import _MAX_CELLS, check_address
-    from esolangs.exceptions import InterpreterLimitError
-
-    assert check_address(_MAX_CELLS - 1, "S*bleq") == _MAX_CELLS - 1
-    for address in (_MAX_CELLS, _MAX_CELLS + 1):
-        with pytest.raises(InterpreterLimitError, match="cell limit"):
-            check_address(address, "S*bleq")
-
-
 @pytest.mark.parametrize(
     "operation",
     [
@@ -227,10 +177,3 @@ def test_oversized_integer_arguments_keep_public_errors(operation):
     with pytest.raises(esolangs.ArgumentError) as caught:
         operation(10**5000)
     assert len(str(caught.value)) < 400
-
-
-def test_oversized_memory_addresses_keep_the_allocation_error():
-    from esolangs._validate import check_address
-
-    with pytest.raises(esolangs.InterpreterLimitError, match="integer with"):
-        check_address(10**5000, "S*bleq")

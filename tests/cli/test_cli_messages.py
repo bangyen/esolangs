@@ -14,29 +14,6 @@ from tests.cli.test_cli import _FakeStdin, _program, call_main
 from tests.cli_support import _failure, _refused, call_both
 
 
-class TestMessagesNameTheThingThatIsWrong:
-    """Small, and each one sent a reader to the wrong word."""
-
-    def test_encode_points_at_a_flag_not_a_python_call(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """`instantiate()` is not reachable from a shell."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["encode", "Minifuck", "10"], capsys)
-        assert exc.value.code == 2
-        err = capsys.readouterr().err
-        assert "instantiate()" not in err
-        assert "esolangs generate --bits" in err
-
-    def test_the_details_legend_is_printed_with_the_details(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It lived in `list --help` only, so the columns arrived unexplained."""
-        out = call_main(["list", "--details"], capsys)
-        assert out.splitlines()[0].strip().startswith("language")
-        assert "gen=generator" in out.splitlines()[0]
-
-
 class TestTheHintsStayQuietWhenTheyDoNotApply:
     """Each hint added this round rewrites one message and no others."""
 
@@ -115,39 +92,6 @@ class TestTheAdvisoryNotesAreRenderedOnce:
             stdin="0\n1\n",
         )
         assert "did not exist yet" in out
-
-
-class TestAMultiWordNameSuggestsQuoting:
-    """`describe A Painter Ant` blamed the third word."""
-
-    def test_the_joined_positionals_are_suggested(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The suggester can already resolve it; it was never asked."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["describe", "A", "Painter", "Ant"], capsys)
-        assert exc.value.code == 2
-        err = capsys.readouterr().err
-        assert "quote" in err.lower()
-        assert "A Painter Ant" in err
-
-
-class TestModulousSaysWhatWentWrong:
-    """Four halts raised ``HaltError`` with the empty string as a message."""
-
-    @pytest.mark.parametrize(
-        ("program", "expected"),
-        [
-            ("[POP][END]", "stack is empty"),
-            ('[PSH STR "x"][SWP][END]', "SWP needs two values"),
-            ("[PRT VAR9][END]", "not a defined variable"),
-            ("[RND 0][END]", "at least 1"),
-        ],
-    )
-    def test_each_halt_names_its_cause(self, program: str, expected: str) -> None:
-        """Not the class, the sentence: an empty message helps nobody."""
-        with pytest.raises(esolangs.HaltError, match=expected):
-            esolangs.run("Modulous", program, stdin="")
 
 
 class TestSmallerReportsFromRoundFifteen:
@@ -413,19 +357,6 @@ def test_truth_table_hint_and_corrected_cli_program(bad, good, hint, tmp_path, c
     assert err == ""
 
 
-def test_template_hint_names_cli_bits_and_correction_runs(tmp_path, capsys):
-    _, err = _failure(["generate", "--bits", "0", "Minifuck", "0110"], capsys)
-    assert "hint: pass exactly 2 0/1 digits to --bits, one per input" in err
-    assert "instantiate()" not in err
-    program, err = call_both(["generate", "--bits", "01", "Minifuck", "0110"], capsys)
-    assert err == ""
-    path = tmp_path / "generated.mini"
-    path.write_text(program)
-    answer, err = call_both(["run", "Minifuck", str(path)], capsys)
-    assert answer.strip() == "1"
-    assert err == ""
-
-
 def test_reader_template_hint_names_cli_encode(capsys):
     _, err = _failure(["generate", "--bits", "01", "brainfuck", "0110"], capsys)
     assert "hint: pipe input from esolangs encode brainfuck <bits>" in err
@@ -441,12 +372,6 @@ def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys):
     output, err = call_both(["run", "--timeout", "5.0", "brainfuck", str(path)], capsys)
     assert output == "\x01"
     assert err == ""
-
-
-def test_generator_cap_hint_reaches_cli(capsys):
-    _, err = _failure(["generate", "Befunge", "0010" * (1 << 12)], capsys)
-    assert "fixed 80x25 grid" in err
-    assert err.count("hint:") == 1
 
 
 @pytest.mark.medium
@@ -486,19 +411,6 @@ def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes():
 def test_text_generator_scale_hint_uses_cli_flag(capsys):
     _, err = _failure(["generate", "--scale", "2", "brainfuck", "0110"], capsys)
     assert "hint: omit --scale for text languages" in err
-
-
-def test_template_rewording_keeps_notes_and_quotes_language():
-    from esolangs.cli_hints import _template_hint
-
-    error = esolangs.TemplateError(
-        "unfilled slots; fill them with esolangs.instantiate("
-    )
-    error.add_note("hint: keep the original template")
-    assert _template_hint(error, "A Painter Ant") == (
-        "unfilled slots; fill them with: esolangs generate --bits <bits> "
-        '"A Painter Ant" <table>\nhint: keep the original template'
-    )
 
 
 #: Commands refused with exit code 2, and what stderr must say.
