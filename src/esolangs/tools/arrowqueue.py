@@ -83,19 +83,6 @@ def _cascade(truth_table: str) -> list[str]:
     return [*rows, *_DRAINED_RING] if truth_table[-1] == "1" else rows
 
 
-def _compact(rows: list[str]) -> list[str]:
-    """Drop the wholly blank rows and columns from the template's body.
-
-    A blank line carries only straight travel; the header's glyphs sit past
-    column 4, which every branch marks.
-    """
-    width = max(map(len, rows))
-    padded = [row.ljust(width) for row in rows]
-    kept = [row for row in padded if row.strip()]
-    columns = [x for x in range(width) if any(row[x] != " " for row in kept)]
-    return ["".join(row[x] for x in columns).rstrip() for row in kept]
-
-
 def _balance(table: str, default: str) -> str:
     """Compare the tree and cascades with one, five and six columns."""
     return min(

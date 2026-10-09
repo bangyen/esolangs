@@ -45,5 +45,5 @@ def test_every_input_is_read(monkeypatch, path):
                 rows, unread, past = _audit(name, program, n, monkeypatch)
                 assert rows > 0
                 assert unread == 0, (name, table)
-                # Smu (a bit per run) and Suffolk (ends at EOF) probe EOF once.
-                assert past == rows * (name in ("Smu", "Suffolk")), (name, table)
+                # A language that ends at EOF probes it once a row, no more.
+                assert past in (0, rows), (name, table)

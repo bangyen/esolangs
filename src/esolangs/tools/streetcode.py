@@ -682,8 +682,6 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
         # makes those the width floor while preserving right-hand driving.
         return _streetcode_narrow(_streetcode_flat(truth_table, n), width)
     return shortest(*programs)
-    rotated = [_streetcode_rotate(program) for program in programs]
-    return shortest(*programs, *rotated)
 
 
 def _balance(table: str, default: str) -> str:
