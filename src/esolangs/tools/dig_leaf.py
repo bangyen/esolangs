@@ -1,5 +1,11 @@
 """Flat lookup stamps for the Dig generator."""
 
+# A reader's count comes from one adjacent digit.
+_DIG_SPAN = 9
+_DIG_PRINT = "{}:@"
+_DIG_OPAQUE = "^>'<#$@"
+_DIG_DIGITS = "0123456789;"
+
 #: Local headings rotate with the stamp. Each operator has one adjacent
 #: operand, so rotation cannot change which digit it reads.
 _DIG_FORWARD, _DIG_SIDE, _DIG_BACK, _DIG_RETRACE = 0, 1, 2, 3
@@ -156,3 +162,33 @@ def _dig_flat_leaf(table: str, high: list[int], low: list[int]) -> _Stamp:
     turns[stamp(bot, 3, stepper)[0], 1] = _DIG_RETRACE
     width = max(far, 3 + painter[4][1])
     return chars, turns, reads, (0, 0), (0, width, top - 1, back)
+
+
+def _render(cells: dict[tuple[int, int], str], *, dense: bool) -> str:
+    """Paint ``cells`` into rows of text; ``dense`` keeps empty rows.
+
+    Rows are painted into a rectangle of blanks, but the mole never walks
+    past the last command on a row, so the trailing filler is inert and is
+    trimmed rather than committed.
+    """
+    span = max(col for _, col in cells) + 1
+    rows = (
+        range(max(row for row, _ in cells) + 1)
+        if dense
+        else sorted({row for row, _ in cells})
+    )
+    index = {row: i for i, row in enumerate(rows)}
+    grid = [[" "] * span for _ in rows]
+    for (row, col), char in cells.items():
+        grid[index[row]][col] = char
+    return "\n".join("".join(row).rstrip() for row in grid)
+
+
+def _dig_constant_leaf(reads: int, value: int) -> str:
+    """Consume all inputs through single-digit windows, then print value."""
+    out = ""
+    while reads > _DIG_SPAN - 3:
+        take = min(_DIG_SPAN - 1, reads - (_DIG_SPAN - 3))
+        out += f"${take + 1}" + "~" * take
+        reads -= take
+    return out + f"${reads + 3}" + "~" * reads + _DIG_PRINT.format(value)

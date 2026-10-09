@@ -84,11 +84,11 @@ bounds, and the weighted-description theorem.
 Generator gaps against the canonical pieces in
 [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
-- **Dig offset routes.** Heading-separated doglegs clear the opposing
-  bridges, but executed n=9 parity / n=10 sparse-prefix routes cost
-  290/339 commands against 256/312 and grow 2,556/4,828 cells to
-  2,627/4,970. Keep aligned and interleaved lanes; shorten the cross-bank
-  walk before admitting offset routes.
+- **Dig offset routes.** Centered owners and heading-separated doglegs
+  share offset copies when the ledger permits: ignored-prefix parity
+  uses 1,960 cells and 304 commands; sparse/disjoint controls save
+  21%/19%. Full-input controls still exceed the bound, and retained stamps
+  can block bridges. Keep the existing route when area would grow.
 - **Back bend routes stay out.** They add under one point on tiled n=8,
   and raise worst commands at n=6/7 from 122/221 to 154/306, past the
   execution ledger's bound.

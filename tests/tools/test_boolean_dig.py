@@ -669,7 +669,7 @@ def test_parallel_gutter_refuses_a_tenth_armed_cell() -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("ignored", [1, 2])
-def test_ignored_prefix_chooses_grid_area_over_text_length(ignored: int) -> None:
+def test_ignored_prefix_keeps_the_smallest_shared_grid(ignored: int) -> None:
     import random
 
     from esolangs.interpreters.grid_based.dig import _Machine
@@ -683,11 +683,11 @@ def test_ignored_prefix_chooses_grid_area_over_text_length(ignored: int) -> None
     n = 9 + ignored
     integrated = _dig_build(table, n, None, share=True)
     wrapped = _dig_discards(ignored) + "\n" + boolean.dig(base)
-    assert len(wrapped) < len(integrated)
+    assert len(integrated) < len(wrapped)
     program = boolean.dig(table)
     assert program == integrated
     rows = program.splitlines()
-    assert len(rows) * max(map(len, rows)) == (2627 if ignored == 1 else 2698)
+    assert len(rows) * max(map(len, rows)) == 1960
     assert len(wrapped.splitlines()) * max(map(len, wrapped.splitlines())) == (
         2736 if ignored == 1 else 2772
     )
@@ -712,3 +712,111 @@ def test_balance_keeps_the_square_discard_wrapper() -> None:
     assert (len(balanced), max(map(len, balanced))) == (12, 12)
     for row, expected in enumerate(table):
         assert run_dig(program, list(format(row, "03b"))) == expected
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("ignored", [1, 2])
+@pytest.mark.parametrize(
+    ("pattern", "area", "commands"),
+    [
+        ("01101001", 1960, 304),
+        ("0000000000000001", 3808, 362),
+        ("0220200231131331", 3976, 339),
+    ],
+)
+def test_centered_offset_owner_executes_every_row(
+    ignored: int, pattern: str, area: int, commands: int
+) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_center_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    table = "".join(blocks[int(bit)] for bit in pattern) * (1 << ignored)
+    n = (len(table) - 1).bit_length()
+    program = _dig_center_shared(table, n)
+    assert program is not None
+    assert boolean.dig(table) == program
+    rows = program.splitlines()
+    assert len(rows) * max(map(len, rows)) == area
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= commands:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, n)
+        worst = max(worst, steps)
+    assert worst == commands
+
+
+@pytest.mark.parametrize(
+    "pattern", ["01101001", "0000000000000001", "0220200231131331", "1230301230121230"]
+)
+def test_centered_offset_owner_keeps_the_existing_command_bound(pattern: str) -> None:
+    import random
+
+    from esolangs.tools.dig import _dig_center_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    table = "".join(blocks[int(bit)] for bit in pattern)
+    assert _dig_center_shared(table, (len(table) - 1).bit_length()) is None
+
+
+@pytest.mark.parametrize("ignored", [1, 2])
+def test_centered_offset_owner_does_not_replace_a_smaller_parallel_route(
+    ignored: int,
+) -> None:
+    import random
+
+    from esolangs.tools.dig import _dig_center_shared, _dig_parallel_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    table = "".join(blocks[int(bit)] for bit in "1230301230121230") * (1 << ignored)
+    candidate = _dig_center_shared(table, 10 + ignored)
+    assert candidate is not None
+    rows = candidate.splitlines()
+    assert len(rows) * max(map(len, rows)) == 6461
+    assert boolean.dig(table) == _dig_parallel_shared(table, 10 + ignored)
+
+
+@pytest.mark.parametrize("width", [42, 60])
+def test_centered_offset_owner_respects_requested_width(width: int) -> None:
+    import random
+
+    from esolangs.tools.dig import _dig_center_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    table = "".join(blocks[int(bit)] for bit in "0000000000000001") * 2
+    candidate = _dig_center_shared(table, 11)
+    assert candidate is not None
+    program = boolean.dig(table, width=width)
+    assert (program == candidate) == (width == 60)
+    assert max(map(len, program.splitlines())) <= width
+    for row in (0, 1023, 2047):
+        assert run_dig(program, list(format(row, "011b"))) == table[row]
+
+
+@pytest.mark.parametrize("width", [1, 8, 34])
+def test_centered_offset_owner_lowers_the_narrow_floor(width: int) -> None:
+    import random
+
+    from esolangs.tools.dig import _dig_center_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    table = "".join(blocks[int(bit)] for bit in "01101001") * 2
+    program = boolean.dig(table, width=width)
+    assert program == _dig_center_shared(table, 10)
+    assert max(map(len, program.splitlines())) == 35
+    for row in (0, 511, 1023):
+        assert run_dig(program, list(format(row, "010b"))) == table[row]
