@@ -295,6 +295,11 @@ def _dig_center_shared(truth_table: str, n: int) -> str | None:
     return _dig_layout(truth_table, n, sharing=True, offset=True) if n > 8 else None
 
 
+def _dig_size(program: str) -> tuple[int, int]:
+    """Rank grid area first, then text length for ties."""
+    return len(program.splitlines()) * grid_width(program), len(program)
+
+
 def _dig_center_choice(table: str, n: int, current: str, width: int | None) -> str:
     """Shrink area while fitting width or lowering its existing floor."""
     candidate = _dig_center_shared(table, n)
@@ -309,10 +314,7 @@ def _dig_center_choice(table: str, n: int, current: str, width: int | None) -> s
     ):
         return current
 
-    def area(program: str) -> int:
-        return len(program.splitlines()) * grid_width(program)
-
-    return candidate if area(candidate) < area(current) else current
+    return candidate if _dig_size(candidate)[0] < _dig_size(current)[0] else current
 
 
 def _dig_shared_pair(truth_table: str, n: int) -> str | None:
@@ -496,9 +498,9 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
     built = _dig_build(truth_table, n, width, share=share)
     essential = essential_inputs(truth_table, n)
     if width is None and not essential:
-        # A constant reads every input down one column and prints.
+        # The n=8 column uses 16 cells against the row's 51, despite more text.
         column = _dig_discards(n, truth_table[0] + ":") + "\n@"
-        return min(built, column, key=len)
+        return min(built, column, key=_dig_size)
     if width is None and essential and 0 < essential[0] == n - len(essential):
         # Inputs before the first essential one can be read and dropped above
         # the smaller table's program, when that uses less area.
@@ -508,10 +510,7 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
         return min(
             built,
             _dig_discards(essential[0]) + "\n" + inner,
-            key=lambda program: (
-                len(program.splitlines()) * grid_width(program),
-                len(program),
-            ),
+            key=_dig_size,
         )
     return built
 

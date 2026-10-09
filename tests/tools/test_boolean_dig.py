@@ -66,10 +66,13 @@ class TestDig:
         assert len(banded) < len(flat)
         assert boolean.dig(table, width=18) == banded
 
-    def test_a_constant_table_is_one_line(self) -> None:
+    def test_a_constant_table_is_one_column(self) -> None:
         """Nothing to branch on, so the whole grid is a single leaf."""
         program = boolean.dig("1111")
-        assert program.split("\n") == ["'", ">$5~~1:@"]
+        assert len(program.splitlines()) == 8
+        assert max(map(len, program.splitlines())) == 1
+        for row in range(4):
+            assert run_dig(program, list(format(row, "02b"))) == "1"
 
     def test_a_constant_leaf_is_a_row_of_reads(self) -> None:
         """A constant half sizes its own box, so the grid shrinks."""
@@ -820,3 +823,33 @@ def test_centered_offset_owner_lowers_the_narrow_floor(width: int) -> None:
     assert max(map(len, program.splitlines())) == 35
     for row in (0, 511, 1023):
         assert run_dig(program, list(format(row, "010b"))) == table[row]
+
+
+@pytest.mark.parametrize("n", range(1, 9))
+@pytest.mark.parametrize("value", ["0", "1"])
+def test_constant_columns_use_grid_area_and_read_every_input(
+    n: int, value: str
+) -> None:
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_build
+
+    table = value * (1 << n)
+    program = boolean.dig(table)
+    rows = program.splitlines()
+    integrated = _dig_build(table, n, None, share=True)
+    previous = integrated.splitlines()
+    assert max(map(len, rows)) == 1
+    assert len(rows) < len(previous) * max(map(len, previous))
+    if n == 8:
+        assert (len(rows), len(previous) * max(map(len, previous))) == (16, 51)
+    for row in range(1 << n):
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(rows, io)
+        commands = 0
+        while not machine.halted and commands <= len(rows):
+            machine.step()
+            commands += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (value, n)
+        assert commands == len(rows)
