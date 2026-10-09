@@ -65,6 +65,41 @@ def test_helper_change_invalidates_a_cached_fingerprint(source_tree) -> None:
     assert leaks._fingerprint("other.fixture", []) != before  # noqa: SLF001
 
 
+@pytest.mark.usefixtures("source_tree")
+def test_shared_scans_preserve_fingerprints(monkeypatch) -> None:
+    modules = ("other.fixture", "shared")
+    expected = [leaks._fingerprint(module, []) for module in modules]  # noqa: SLF001
+    scanned = []
+    original = leaks._imports  # noqa: SLF001
+
+    def scan(path):
+        scanned.append(path)
+        return original(path)
+
+    monkeypatch.setattr(leaks, "_imports", scan)
+    monkeypatch.setattr(
+        leaks, "_changed_files", lambda: ["src/esolangs/interpreters/shared/aux.py"]
+    )
+    imports = {}
+    picked, _ = leaks._select(  # noqa: SLF001
+        list(modules), {module: (module, False) for module in modules}, imports
+    )
+    assert picked == list(modules)
+    assert [leaks._fingerprint(module, [], imports) for module in modules] == expected  # noqa: SLF001
+    assert len(scanned) == len(set(scanned))
+
+
+def test_a_new_scan_finds_new_transitive_imports(source_tree) -> None:
+    before = leaks._fingerprint("other.fixture", [], {})  # noqa: SLF001
+    helper = source_tree / "src/esolangs/interpreters/shared/aux.py"
+    helper.write_text("from ..other import unrelated\n")
+    assert leaks._fingerprint("other.fixture", [], {}) != before  # noqa: SLF001
+    unrelated = source_tree / "src/esolangs/interpreters/other/unrelated.py"
+    changed = leaks._fingerprint("other.fixture", [], {})  # noqa: SLF001
+    unrelated.write_text("value = 1\n")
+    assert leaks._fingerprint("other.fixture", [], {}) != changed  # noqa: SLF001
+
+
 def test_package_children_are_included(source_tree) -> None:
     sources = leaks._sources("shared")  # noqa: SLF001
     assert source_tree / "src/esolangs/interpreters/shared/aux.py" in sources

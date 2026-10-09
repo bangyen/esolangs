@@ -210,7 +210,9 @@ from _scope import changed_files as _changed_files
 
 
 def _select(
-    langs: list[str], runners: dict[str, tuple[str, bool]]
+    langs: list[str],
+    runners: dict[str, tuple[str, bool]],
+    imports: dict[pathlib.Path, set[str]] | None = None,
 ) -> tuple[list[str], str]:
     """Return the languages worth sweeping, and why that set was chosen."""
     changed = _changed_files()
@@ -237,7 +239,7 @@ def _select(
         name
         for name in langs
         if (changed_examples and stems.get(LANGUAGES[name].id) in changed_examples)
-        or changed_paths.intersection(_sources(runners[name][0]))
+        or changed_paths.intersection(_sources(runners[name][0], imports))
     ]
     if not picked:
         return [], "no interpreter changed"
@@ -419,9 +421,13 @@ def _imports(path: pathlib.Path) -> set[str]:
     return found
 
 
-def _sources(module: str) -> list[pathlib.Path]:
+def _sources(
+    module: str, imports: dict[pathlib.Path, set[str]] | None = None
+) -> list[pathlib.Path]:
     """Return interpreter sources, imported helpers and shared cache inputs."""
     pkg = _ROOT / "src" / "esolangs"
+    if imports is None:
+        imports = {}
     if not module.startswith("esolangs."):
         module = "esolangs." + (
             module if module.startswith("interpreters.") else "interpreters." + module
@@ -454,7 +460,9 @@ def _sources(module: str) -> list[pathlib.Path]:
             pkg / "tools" / "__init__.py"
         ):
             continue
-        for name in _imports(path):
+        if path not in imports:
+            imports[path] = _imports(path)
+        for name in imports[path]:
             dependency = _module_path(name)
             if dependency is None:
                 if name.startswith("esolangs."):
@@ -464,10 +472,14 @@ def _sources(module: str) -> list[pathlib.Path]:
     return sorted({_HERE, _ROOT / "scripts" / "_scope.py", *sources, *shared})
 
 
-def _fingerprint(module: str, examples: list[Program]) -> str:
+def _fingerprint(
+    module: str,
+    examples: list[Program],
+    imports: dict[pathlib.Path, set[str]] | None = None,
+) -> str:
     """Hash everything a sweep of ``module`` reads; a change to any part re-sweeps."""
     h = hashlib.sha256()
-    for path in _sources(module):
+    for path in _sources(module, imports):
         h.update(path.read_bytes())
         h.update(b"\0")
     for text in examples:
@@ -551,6 +563,7 @@ def main() -> None:
 
     args = [a for a in sys.argv[1:] if a != "--all"]
     langs = sorted(INTERPRETERS)
+    imports: dict[pathlib.Path, set[str]] = {}
     if "--all" in sys.argv[1:]:
         why = "--all"
     else:
@@ -560,6 +573,7 @@ def main() -> None:
                 name: (module.removeprefix("esolangs."), False)
                 for name, module in INTERPRETERS.items()
             },
+            imports,
         )
     print(f"sweeping {len(langs)} language(s): {why}", flush=True)
     if not langs:
@@ -574,7 +588,7 @@ def main() -> None:
     print(f"languages without example programs: {len(missing)}", flush=True)
 
     cache = _load_cache()
-    keys = {n: _fingerprint(INTERPRETERS[n], examples[n]) for n in langs}
+    keys = {n: _fingerprint(INTERPRETERS[n], examples[n], imports) for n in langs}
     cached = [n for n in langs if cache.get(n) == keys[n]]
     if cached:
         print(f"unchanged since last clean sweep: {len(cached)}", flush=True)
