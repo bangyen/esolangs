@@ -676,11 +676,9 @@ class TestWatch:
 
 
 @pytest.mark.medium
-# Scaled: a fixed-codel raster (``width_aware`` False) answers wrongly at
-# scale 2 under ``run`` too, so only the codel-sized ones are replayed.
 @pytest.mark.parametrize(
     "language",
-    languages(source_kind="raster", boolean_generator=True, width_aware=True),
+    languages(source_kind="raster", boolean_generator=True),
 )
 def test_raster_history_replays_the_original_pixels(language: str) -> None:
     from esolangs import generate
