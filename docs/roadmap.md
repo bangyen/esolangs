@@ -92,7 +92,9 @@ Generator gaps against the canonical pieces in
   3,808 to 5,041 cells; arrival-weighted centers reproduce the eight
   admitted controls. Midpoint relocation overlaps retained stamps;
   projection onto free intervals grows the controls. Keep these variants
-  out; shorten bridge geometry.
+  out. Direct cross-bank turns collide; owner-facing doglegs cross other
+  callers' direction cells. Both fail all twelve controls. Shorten bridges
+  without merging opposing approach lanes.
 - **Back bend routes stay out.** They add under one point on tiled n=8,
   and raise worst commands at n=6/7 from 122/221 to 154/306, past the
   execution ledger's bound.
