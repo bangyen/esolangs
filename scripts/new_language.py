@@ -51,9 +51,14 @@ COMMANDS = ("start", "check", "finish", "remove", "bounds")
 
 def _slug(name: str) -> str:
     """Return the registry's id for ``name``, refused unless importable."""
-    from esolangs.registry import canonical_id
+    from esolangs.registry import LANGUAGES, canonical_id
 
+    if name in LANGUAGES:
+        return LANGUAGES[name].id
     slug = canonical_id(name)
+    taken = {lang.id: other for other, lang in LANGUAGES.items()}
+    if slug in taken:
+        raise ValueError(f"{name!r} slugs to {slug!r}, {taken[slug]}'s id")
     if not slug.isidentifier() or keyword.iskeyword(slug):
         # ``class`` passed the old check and scaffolded an import line that
         # was a SyntaxError.
@@ -371,6 +376,7 @@ def quick_tests(name: str) -> list[str]:
     its formula rows at their smallest arity, and the docstring conventions.
     """
     from esolangs.registry import LANGUAGES, example_stems
+    from esolangs.registry._language import Shape
 
     lang = LANGUAGES[name]
     nodes = [
@@ -390,12 +396,11 @@ def quick_tests(name: str) -> list[str]:
     if lang.boolean is None:
         return nodes
     nodes += ["tests/proofs/test_ledger.py", "tests/proofs/test_schemes.py"]
-    gen = lang.boolean.__name__
-    if gen not in _tests_attr("tools.test_boolean_contract", "_UNSHAPED"):
+    if lang.shape is not Shape.LOOKUP:
         # A tree generator must fold an input the table ignores.
         nodes.append(
             "tests/tools/test_boolean_contract.py"
-            f"::test_generator_shape_is_what_the_catalogue_says[{gen}]"
+            f"::test_generator_shape_is_what_the_catalogue_says[{name}]"
         )
     stem = example_stems().get(lang.id, "")
     if stem:

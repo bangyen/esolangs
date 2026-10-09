@@ -1,7 +1,7 @@
 """Boolean generator for Suffolk: steps telescope; with no jump, nothing is shared."""
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -116,6 +116,8 @@ LANGUAGE = Language(
     "Suffolk",
     "tape_based.suffolk",
     boolean=suffolk,
+    # A sum, not a tree: a lookup over the essential inputs only.
+    shape=Shape.REDUCING,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

@@ -14,7 +14,7 @@ from functools import cache
 from itertools import pairwise
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_shape,
@@ -307,6 +307,8 @@ LANGUAGE = Language(
     "Minifuck",
     "tape_based.minifuck",
     boolean=minifuck,
+    # Not a tree: a route search; its size tracks the search, not the table.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(),
     # ``[`` skips the character after it.
     wrap=_minifuck,

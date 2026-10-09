@@ -27,7 +27,7 @@ from itertools import pairwise, product
 
 from esolangs._dialects import PacklangLiterals
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -316,6 +316,8 @@ LANGUAGE = Language(
     "Packlang",
     "other.packlang",
     boolean=packlang,
+    # Not a tree: one painted array cell per differing row, read by index.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

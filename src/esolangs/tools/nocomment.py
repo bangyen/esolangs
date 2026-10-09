@@ -7,7 +7,7 @@ has no subtree to fold or share.
 from collections.abc import Callable
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     TEMPLATE_CHAR,
@@ -251,6 +251,8 @@ LANGUAGE = Language(
     "NoComment",
     "tape_based.nocomment",
     boolean=nocomment,
+    # A sum, not a tree: a lookup over the essential inputs only.
+    shape=Shape.REDUCING,
     contract=BooleanContract(),
     wrap=wrap_chars,
     example=Example(pair=PAIR),

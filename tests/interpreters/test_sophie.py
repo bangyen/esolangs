@@ -10,6 +10,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.sophie import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import assert_rejected_with_hint
 
 
 class TestSophieBasicCommands:
@@ -282,3 +283,8 @@ class TestContract(SnapshotContract, CycleContract):
 
 if __name__ == "__main__":
     pytest.main([__file__])
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Sophie", "#$[", "matching partner")

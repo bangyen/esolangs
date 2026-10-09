@@ -5,7 +5,7 @@ import pytest
 from esolangs.interpreters.tape_based.circlefuck import parse, run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_program
-from tests.raises import raises_message
+from tests.raises import assert_rejected_with_hint, raises_message
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -211,3 +211,8 @@ def test_halting_on_at_changes_the_snapshot() -> None:
     machine.step()
     assert machine.halted
     assert machine.snapshot() != before
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Circlefuck", r"\xG0", "two hex digits")

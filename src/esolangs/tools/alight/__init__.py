@@ -4,10 +4,9 @@ Derived, not transliterated (the page is unimplemented).  Alight's
 ``at{list, index}`` takes the index as an expression, so the table is a
 string literal and the input bits fold into its row by Horner's rule,
 ``row = ((b0 * 2 + b1) * 2 + b2)...``, minus their ASCII offset: O(n)
-commands over an O(2**n) literal, no branching.  That is why ``alight``
-sits in the contract test's ``_UNSHAPED`` list: a 0%
-fold is the construction working: a literal has no subtrees to fold or share.
-The reads are unconditional and first.
+commands over an O(2**n) literal, no branching.  That is why its
+``shape`` is ``LOOKUP``: a 0% fold is the construction working: a literal has
+no subtrees to fold or share.  The reads are unconditional and first.
 """
 
 from typing import Any
@@ -15,7 +14,7 @@ from typing import Any
 from esolangs._dialects import expression_syntax as validate_expression_syntax
 from esolangs._dialects import list_update as validate_list_update
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 
 __all__ = ["alight"]
@@ -353,6 +352,8 @@ LANGUAGE = Language(
     "Alight",
     "grid_based.alight",
     boolean=alight,
+    # Not a tree: a Horner row index into a string literal.
+    shape=Shape.LOOKUP,
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

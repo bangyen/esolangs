@@ -15,32 +15,6 @@ from esolangs.raster import Raster
 from esolangs.vm import make_vm
 from tests.cli_support import call_both
 
-# Actual malformed sources, including runtime validation and shared parsers.
-_BAD_SOURCE = [
-    ("AddSubJump", "ASJ 1", "2 to 4 address operands"),
-    ("Alight", "begin;vra x;end;", "did you mean 'var'"),
-    ("Algebraic Programming Language", "1(2)", "1*(2)"),
-    ("brainfuck", "[", "close this '['"),
-    ("BFStack", ">[", "close the loop"),
-    ("Bitdeque", "PUHS", "did you mean 'PUSH'"),
-    ("Cyclic tag", "0,1;", "semicolons only before"),
-    ("Subleq", "x", "decimal integers"),
-    ("BrainIf", "if 0 move up", "move left or move right"),
-    ("BrainIf", "if 0 incremnt", "did you mean 'increment'"),
-    ("SLOW ACV MAMMALIAN", "PRONOUNCEE", "did you mean 'PRONOUNCE'"),
-    ("Circlefuck", r"\xG0", "two hex digits"),
-    ("Unary", "1", "only 0"),
-    ("Fargo", "% 0\n$", "pending prefix call"),
-    ("Packlang", "?", "punctuation"),
-    ("RAM0", "1" * 4301, "PYTHONINTMAXSTRDIGITS"),
-    ("Sophie", "#$[", "matching partner"),
-    ("FALSE", "[", "close the lambda"),
-    ("FRACTRAN", "2 3/0", "nonzero denominator"),
-    ("Malbolge", "?", "position-dependent"),
-    ("Thue", "a::=b", "line containing only ::="),
-    ("Unlambda", "`i", "exactly two expressions"),
-]
-
 
 @pytest.mark.medium
 @pytest.mark.parametrize("guard", [0, 1])
@@ -61,16 +35,6 @@ def test_brainif_unknown_command_is_a_cli_source_error(guard, tmp_path, capsys):
 def test_mammalian_rejects_unknown_words_before_output(word):
     with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
         esolangs.run("SLOW ACV MAMMALIAN", f"PRONOUNCE {word}", timeout=1)
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(("language", "source", "hint"), _BAD_SOURCE)
-def test_rejected_source_retains_a_repair_hint(language, source, hint):
-    with pytest.raises(ValueError, match=r".+") as caught:
-        # Rejection is at load (ms); the bound only stops a hang, and 0.2s
-        # tripped on a contended release runner.
-        esolangs.run(language, source, timeout=2)
-    assert any(hint in note for note in caught.value.__notes__)
 
 
 @pytest.mark.medium

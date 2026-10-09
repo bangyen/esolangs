@@ -42,7 +42,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.other.malbolge import _XLAT1, _XLAT2, _crazy
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _validate_truth_table
 from esolangs.tools.wrap import wrap_chars
 
@@ -775,6 +775,8 @@ LANGUAGE = Language(
     "other.malbolge",
     generator_max_inputs=MAX_INPUTS,
     boolean=malbolge,
+    # Not a tree: straight-line code into a fixed 59049-cell store.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         note="the answer is one character and is printed with no newline",
         input_shape="char_stream",

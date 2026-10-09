@@ -21,7 +21,7 @@ from itertools import product
 from esolangs._dialects import ROTFUCK_CYCLES
 from esolangs._dialects import rotation as validate_rotation
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -340,6 +340,8 @@ LANGUAGE = Language(
     "ROTfuck",
     "tape_based.rotfuck",
     boolean=rotfuck,
+    # A sum, not a tree: a lookup over the essential inputs only.
+    shape=Shape.REDUCING,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

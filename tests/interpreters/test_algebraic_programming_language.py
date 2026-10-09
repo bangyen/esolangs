@@ -14,7 +14,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import raises_message
+from tests.raises import assert_rejected_with_hint, raises_message
 
 # The wiki's own examples, which are the specification's ground truth.
 TRUTH_MACHINE = "x? = x & x?\nn?"
@@ -542,3 +542,8 @@ def test_snapshot_distinguishes_a_float_input_by_its_bits() -> None:
     one.step()
     other.step()
     assert one.snapshot() != other.snapshot()
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Algebraic Programming Language", "1(2)", "1*(2)")

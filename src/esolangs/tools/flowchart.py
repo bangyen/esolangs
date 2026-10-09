@@ -16,7 +16,7 @@ from collections import Counter
 from itertools import pairwise
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -547,6 +547,8 @@ LANGUAGE = Language(
     "Flowchart",
     "grid_based.flowchart",
     boolean=flowchart,
+    # Not a tree: one deque push per entry.
+    shape=Shape.LOOKUP,
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

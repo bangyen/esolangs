@@ -6,7 +6,7 @@ A packed literal has no subtrees to fold or share.
 from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 
 __all__ = ["qoibl"]
@@ -107,6 +107,8 @@ LANGUAGE = Language(
     "Qoibl",
     "register_based.qoibl",
     boolean=qoibl,
+    # Not a tree: the table is one binary literal the reads divide down.
+    shape=Shape.LOOKUP,
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

@@ -54,7 +54,7 @@ sys.path.insert(0, str(_ROOT / "src"))
 from esolangs._program import Program
 from esolangs.exceptions import EsolangError
 from esolangs.raster import Raster
-from esolangs.registry import INTERPRETERS, example_stems
+from esolangs.registry import INTERPRETERS, LANGUAGES, example_stems
 from esolangs.vm import make_vm, run_until_halt
 
 # Exceptions an interpreter is allowed to raise at the API boundary.
@@ -473,10 +473,8 @@ def _worker(target: str) -> None:
     factors its program with sympy before a step runs), which no step cap
     or in-process alarm can bound.
     """
-    from esolangs.registry import canonical_id
-
     langs = sorted(INTERPRETERS)
-    slug_of = {name: canonical_id(name) for name in langs}
+    slug_of = {name: LANGUAGES[name].id for name in langs}
     by_slug = _examples_by_slug()
     examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
 
@@ -494,8 +492,6 @@ def _worker(target: str) -> None:
 
 def main() -> None:
     """Sweep every registered language and report any that leaks."""
-    from esolangs.registry import canonical_id
-
     if "--worker" in sys.argv[1:]:
         _worker(sys.argv[sys.argv.index("--worker") + 1])
         return
@@ -518,7 +514,7 @@ def main() -> None:
         return
 
     # RUNNERS is keyed by display name; the example files by canonical id.
-    slug_of = {name: canonical_id(name) for name in langs}
+    slug_of = {name: LANGUAGES[name].id for name in langs}
     by_slug = _examples_by_slug()
     examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
     missing = [n for n, v in examples.items() if not v]

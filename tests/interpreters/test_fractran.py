@@ -10,6 +10,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import _choose, _Machine, _parse, run
 from esolangs.interpreters.other.fractran import index as fractran_index
 from tests.interpreters.runner import run_program
+from tests.raises import assert_rejected_with_hint
 
 #: Conway's PRIMEGAME.  The powers of two it passes through are the primes.
 PRIMEGAME = (
@@ -182,3 +183,8 @@ def test_sieve_products_have_linear_fractional_bit_weight(
         assert set(products) == composites
         assert len(products) == len(composites)
         assert weight <= 11 * bound
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("FRACTRAN", "2 3/0", "nonzero denominator")

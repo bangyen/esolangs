@@ -8,6 +8,7 @@ from esolangs import tools
 from esolangs.interpreters.grid_based.b_tapemark import run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.helpers import essential_inputs
+from tests.generator_support import assert_an_ignored_input_costs
 from tests.witness_tables import witnesses
 
 
@@ -138,3 +139,9 @@ def test_narrow_weighted_arms_and_fitting_layouts() -> None:
     assert _Builder().render() == ""
     with pytest.raises(AssertionError, match="layout collision"):
         horizontal.put(0, 0, "v")
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """Its stage, crossing no ``|``."""
+    assert_an_ignored_input_costs("B-tapemark", 5, 177)

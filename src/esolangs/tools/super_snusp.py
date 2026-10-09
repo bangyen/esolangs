@@ -8,7 +8,7 @@ import re
 from math import isqrt
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
     _validate_truth_table,
     input_weights,
@@ -194,6 +194,8 @@ LANGUAGE = Language(
     "Super SNUSP",
     "grid_based.super_snusp",
     boolean=super_snusp,
+    # A sum, not a tree: a lookup over the essential inputs only.
+    shape=Shape.REDUCING,
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

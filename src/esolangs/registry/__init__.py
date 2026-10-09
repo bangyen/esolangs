@@ -201,6 +201,13 @@ def parameterized_ids() -> frozenset[str]:
 
 # Canonical id -> display name, the index :func:`resolve` matches against.
 _BY_ID: dict[str, str] = {lang.id: name for name, lang in LANGUAGES.items()}
+# Casefolded display names and aliases, for names the slug rule cannot reach
+# (``piet++`` slugs to Piet's ``piet``; ``cv(n)(c)`` to ``cv_n_c``).
+_BY_FOLDED: dict[str, str] = {
+    spelling.casefold(): name
+    for name, lang in LANGUAGES.items()
+    for spelling in (name, *lang.aliases)
+}
 
 
 #: Characters a wiki slug may keep: RFC 3986's unreserved set and sub-delims,
@@ -243,7 +250,7 @@ def resolve(name: str) -> str:
         )
     if name in LANGUAGES:
         return name
-    match = _BY_ID.get(canonical_id(name))
+    match = _BY_FOLDED.get(name.strip().casefold()) or _BY_ID.get(canonical_id(name))
     if match is not None:
         return match
     close = difflib.get_close_matches(

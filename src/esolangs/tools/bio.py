@@ -1,7 +1,7 @@
 """Boolean template generator for bio."""
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     TEMPLATE_CHAR,
@@ -77,6 +77,8 @@ LANGUAGE = Language(
     "BIO",
     "register_based.bio",
     boolean=bio,
+    # Not a tree: one nested level per row whatever the table says.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(),
     wrap=_wrap_bio,
     example=Example(pair=BIO_PAIR),

@@ -13,11 +13,6 @@ from tests.proofs._roadmap import SETTLED, TOTAL, Audit, AuditRow, load
 from tests.proofs.deep.execution import EXEMPT as _EXECUTION_EXEMPT
 from tests.proofs.deep.execution import exempt_generators as execution_exempt
 from tests.proofs.deep.linearity import exempt_generators
-from tests.tools.test_boolean_contract import (
-    _LANGUAGE_SUPERLINEAR_SCALING,
-    _LINEAR_SCALING,
-    _OPEN_SCALING,
-)
 
 #: Every verdict the audit's three scaling columns are allowed to carry.
 #: Listed so a typo cannot quietly reclassify a row: anything unrecognized
@@ -31,11 +26,6 @@ _TOTALITY_VERDICTS = {TOTAL, "Cap", "Exception"}
 def audit() -> Audit:
     """The parsed scaling audit, read once for the module."""
     return load()
-
-
-def _display(keys: set[str]) -> set[str]:
-    """Registry keys as the display names the documents use."""
-    return {BY_BOOLEAN[key].name for key in keys}
 
 
 def test_the_audit_names_real_generators(audit: Audit) -> None:
@@ -78,13 +68,6 @@ def test_the_totality_column_is_the_ledger(audit: Audit) -> None:
         if row.totality != TOTAL
     }
     assert audited == ledger
-
-
-def test_the_suites_hand_kept_sets_match_the_audit(audit: Audit) -> None:
-    """The contract suite's scaling sets are the audit, spelled twice."""
-    unresolved = _display(_OPEN_SCALING | _LANGUAGE_SUPERLINEAR_SCALING)
-    assert unresolved == audit.unsettled
-    assert _display(_LINEAR_SCALING) & audit.unsettled == set()
 
 
 def test_the_scaling_column_is_the_audit(audit: Audit) -> None:
@@ -138,12 +121,6 @@ def test_the_execution_exempt_set_is_the_unmeasured_column() -> None:
     }
     assert set(exempt) == set(_EXECUTION_EXEMPT) | qualified == unmeasured
     assert all(why for why in exempt.values())
-
-
-def test_the_contract_covers_generators_the_original_queue_missed() -> None:
-    """The point of the registry-wide contract: it is wider than the queue."""
-    queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
-    assert queue < set(BY_BOOLEAN)
 
 
 def test_vandevelo_remains_held_to_both_regressions(audit: Audit) -> None:

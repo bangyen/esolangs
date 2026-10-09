@@ -11,6 +11,7 @@ from esolangs.interpreters.other.fargo import (
     run,
 )
 from esolangs.vm import run_until_halt_or_ancestor
+from tests.raises import assert_rejected_with_hint
 
 # The wiki's truth machine, verbatim apart from the zero-width spaces it
 # renders inside the first two lines (kept in TestWikiExamples below).
@@ -312,3 +313,8 @@ class TestMachine:
             if other.frames:
                 others.append(other.frame_entry_key(other.frames[-1]))
         assert keys != others
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Fargo", "% 0\n$", "pending prefix call")

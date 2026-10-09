@@ -11,7 +11,7 @@ walk arrives at cell ``index`` and fires it, and no row can drop.  Emission is
 from __future__ import annotations
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 from esolangs.tools.wrap import wrap_chars
 
@@ -43,6 +43,8 @@ LANGUAGE = Language(
     "Bitwise Cyclic Tag",
     "queue_based.bitwise_cyclic_tag",
     boolean=bitwise_cyclic_tag,
+    # Not a tree: no branch, so every table of an arity is one length.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         note="Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs "
         "are bits of the initial data-string, and the answer is the "

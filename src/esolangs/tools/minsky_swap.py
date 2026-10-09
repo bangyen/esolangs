@@ -1,7 +1,7 @@
 """Boolean template for minsky swap; a row is one ``~``, so no span shrinks."""
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 from esolangs.tools.wrap import balance_score
 
@@ -125,6 +125,8 @@ LANGUAGE = Language(
     "Minsky Swap",
     "register_based.minsky_swap",
     boolean=minsky_swap,
+    # Not a tree: each input adds its weight; a ``~`` cascade picks one of two leaves.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         answer_mode="dump",
         note="Minsky Swap has no output instruction and dumps its "

@@ -3,7 +3,7 @@
 from math import isqrt
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _validate_truth_table, input_weights
 from esolangs.tools.wrap import balance_score
 
@@ -67,6 +67,8 @@ LANGUAGE = Language(
     "EGL",
     "grid_based.egl",
     boolean=egl,
+    # Not a tree: one painted grid cell per entry, walked to by weighted guards.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

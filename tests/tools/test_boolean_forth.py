@@ -6,7 +6,7 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.helpers import essential_inputs, permute_truth_table
-from tests.generator_support import verify_generated
+from tests.generator_support import assert_an_ignored_input_costs, verify_generated
 from tests.tools.sample_tables import five_input_sample
 
 
@@ -133,3 +133,9 @@ class TestForth:
         """Only the characters Forþ reads are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.forth(table)) <= set("*+,-.:123456789;ABCDEFcv{}"), table
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """``,0*+``."""
+    assert_an_ignored_input_costs("Forþ", 6, 4)

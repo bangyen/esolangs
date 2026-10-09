@@ -10,7 +10,7 @@ ant counts through every row, so no subtree folds or is shared.
 """
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -53,6 +53,8 @@ LANGUAGE = Language(
     "A Painter Ant",
     "grid_based.a_painter_ant",
     boolean=a_painter_ant,
+    # Not a tree: one corridor cell per row, walked by the inputs' weights.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         answer_mode="dump",
         answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",

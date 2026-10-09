@@ -6,7 +6,7 @@ A grid has no subtrees to fold or share.
 from math import isqrt
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _parity_bias, _validate_truth_table, input_weights
 
 
@@ -87,6 +87,8 @@ LANGUAGE = Language(
     "Fish",
     "grid_based.fish",
     boolean=fish,
+    # Not a tree: an indexed table read, not a tree.
+    shape=Shape.LOOKUP,
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",
