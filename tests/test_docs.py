@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import pathlib
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -13,7 +14,7 @@ from urllib.parse import unquote
 
 import pytest
 
-from esolangs import generate, run
+from esolangs import encode_inputs, generate, run
 from esolangs.cli import HELP, USAGE
 from esolangs.registry import LANGUAGES
 
@@ -241,8 +242,16 @@ def test_every_local_markdown_link_resolves() -> None:
 
 _README = pathlib.Path(__file__).resolve().parents[1] / "README.md"
 
-_LANGUAGE = "Sophie"
 _TABLE = "0110"  # XOR
+
+
+def _readme_language() -> str:
+    """Return the language the README's first example generates."""
+    text = _README.read_text(encoding="utf-8")
+    match = re.search(r"`esolangs generate (.+?) 0110` emits", text)
+    assert match is not None, "the README's example names no language"
+    (language,) = shlex.split(match.group(1))
+    return language
 
 
 def _readme_program() -> str:
@@ -255,16 +264,17 @@ def _readme_program() -> str:
 
 
 def test_readme_program_is_what_the_generator_emits() -> None:
-    assert _readme_program() == generate(_LANGUAGE, _TABLE)
+    assert _readme_program() == generate(_readme_language(), _TABLE)
 
 
 def test_readme_program_computes_xor_on_every_row() -> None:
     """All four rows, not just one: a program that printed a constant
     would pass a single-row check."""
     program = _readme_program()
+    language = _readme_language()
     for row, expected in enumerate(_TABLE):
-        stdin = "".join(f"{bit}" for bit in format(row, "02b"))
-        assert run(_LANGUAGE, program, stdin=stdin) == expected
+        stdin = encode_inputs(language, [row >> 1, row & 1])
+        assert run(language, program, stdin=stdin) == expected
 
 
 def test_readme_states_the_real_length() -> None:

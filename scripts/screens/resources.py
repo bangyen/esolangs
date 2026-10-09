@@ -115,7 +115,11 @@ def main() -> None:
     args = parser.parse_args()
     if not 1 <= args.max_inputs <= 10:
         parser.error("--max-inputs must be between 1 and 10")
+    from esolangs.registry import LANGUAGES
+
     for language in ("Sophie", "BFStack", "Subleq"):
+        if language not in LANGUAGES:
+            continue  # removed since; its bounds left with it
         for n in range(1, args.max_inputs + 1):
             for family, table in corpus(n).items():
                 print(json.dumps({"family": family, **audit(language, n, table)}))

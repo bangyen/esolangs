@@ -200,11 +200,20 @@ class TestParseTarget:
         modules = script._modules("tools")  # noqa: SLF001
         assert "wrap" in modules
         assert "boolean" not in modules
-        assert {"malbolge", "malbolge.core", "malbolge.digits"} <= set(modules)
-        assert script._parse_target("tools/malbolge.core") == ("tools", "malbolge.core")  # noqa: SLF001
-        assert script._KINDS["streetcode"].rel_target("geometry") == (  # noqa: SLF001
-            "esolangs/interpreters/grid_based/streetcode/geometry.py"
-        )
+        # A generator package lists itself and each of its modules.
+        nested = sorted(m for m in modules if "." in m)
+        assert nested, "no generator is a package; retire this check"
+        assert nested[0].split(".", 1)[0] in modules
+        assert script._parse_target(f"tools/{nested[0]}") == ("tools", nested[0])  # noqa: SLF001
+        # An interpreter package is a kind of its own, rooted at its directory.
+        packaged = [
+            kind
+            for kind in script._KINDS.values()  # noqa: SLF001
+            if kind.rel_target("x").startswith("esolangs/interpreters/")
+        ]
+        assert packaged, "no interpreter is a package; retire this check"
+        for kind in packaged:
+            assert (REPO_ROOT / "src" / kind.rel_target("__init__")).is_file()
         kind = script._KINDS["tools"]  # noqa: SLF001
         assert kind.rel_target("wrap") == "esolangs/tools/wrap.py"
 

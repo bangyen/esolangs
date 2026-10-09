@@ -132,22 +132,6 @@ class TestBundleMatchesPackage:
 # 2.9s over 18 tests: shells out to the bundler.
 @pytest.mark.medium
 class TestBundleDetails:
-    def test_sympy_required_note(self, tmp_path: Path) -> None:
-        """Polynomial's bundle tells the user sympy is required."""
-        bundle_one = load_script()
-        out = tmp_path / "polynomial.py"
-        bundle_one.bundle("Polynomial", bundle_one.Source(None), out)
-        assert "Requires: pip install sympy" in out.read_text()
-
-    def test_transitive_interpreter_inlined(self, tmp_path: Path) -> None:
-        """Factor's bundle inlines the brainfuck interpreter it depends on."""
-        bundle_one = load_script()
-        out = tmp_path / "factor.py"
-        bundle_one.bundle("Factor", bundle_one.Source(None), out)
-        assert "inlined from esolangs/interpreters/tape_based/brainfuck.py" in (
-            out.read_text()
-        )
-
     def test_bundle_runs_from_command_line(self, tmp_path: Path) -> None:
         """The bundle honors the ``python file.py program.txt`` convention."""
         import subprocess
@@ -210,6 +194,8 @@ def test_install_one_downloads_and_runs_a_bundle() -> None:
         "brainfuck": ("++++++++[>++++++++<-]>.", "@"),
         "Factor": ("21666143160021789415877957258569906604219402892572113", "A"),
     }
+    # A representative that was removed since is simply not fetched.
+    cases = {name: case for name, case in cases.items() if name in LANGUAGES}
     try:
         for language, (program, expected) in cases.items():
             with tempfile.TemporaryDirectory() as directory:

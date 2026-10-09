@@ -53,6 +53,8 @@ _TOOLS_SUPPORT = (
     Path("tests/raises.py"),
     Path("tests/interpreters/__init__.py"),
     Path("tests/interpreters/runner.py"),
+    # Sophie's retired oracles, which its generator tests measure against.
+    Path("tests/tools/sophie_support.py"),
 )
 
 # The root suites' own reach outside ``tests/``.  ``tests/*.py`` is copied

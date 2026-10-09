@@ -13,7 +13,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import _check_program
 from tests.generator_support import evaluate_generated, verify_generated
-from tests.pick import first, languages
+from tests.pick import first, languages, one
 from tests.stdin_check import _check_stdin
 from tests.test_language_coupling import REFERENCE
 
@@ -304,7 +304,7 @@ class TestEvaluateCanRunOffTheMainThread:
             first(self_halts=False, boolean_generator=True),
             first(answer_mode="termination", boolean_generator=True),
             first(answer_mode="dump", boolean_generator=True),
-            first(input_shape="row_index"),
+            *one(input_shape="row_index"),
         ]
         with cf.ThreadPoolExecutor(4) as pool:
             got = list(pool.map(lambda n: verify_generated(n, "0110", None), names))

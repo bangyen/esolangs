@@ -7,6 +7,8 @@ import re
 import pytest
 
 import esolangs
+from esolangs.registry import LANGUAGES
+from tests.pick import languages
 
 
 def _parameterized_generators():
@@ -135,13 +137,12 @@ def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
 
 
 class TestGeneratorEdgePaths:
-    def test_parameterized_validation(self) -> None:
-        """bio/back reject malformed truth tables."""
-        from esolangs import tools as generators
-
+    @pytest.mark.parametrize("name", languages(parameterized=True)[:2])
+    def test_parameterized_validation(self, name: str) -> None:
+        """A template generator rejects malformed truth tables."""
+        generate = LANGUAGES[name].boolean
+        assert generate is not None
         with pytest.raises(ValueError, match="power-of-two"):
-            generators.bio("011")
+            generate("011")
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            generators.bio("0123")
-        with pytest.raises(ValueError, match="power-of-two"):
-            generators.back("011")
+            generate("0123")

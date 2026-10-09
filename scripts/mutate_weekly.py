@@ -22,9 +22,24 @@ TARGETS = (
 SECONDS_PER_TARGET = 240
 
 
+def _present(kind: str, target: str) -> bool:
+    """Whether the pair's language and generator module are both still here."""
+    sys.path.insert(0, str(ROOT / "src"))
+    from esolangs.registry import LANGUAGES
+
+    module = ROOT / "src/esolangs" / target
+    return kind in LANGUAGES and (
+        module.with_suffix(".py").is_file() or (module / "__init__.py").is_file()
+    )
+
+
 def targets_for(date: datetime.date) -> tuple[str, str]:
-    """Return the pair for an absolute week, including across year boundaries."""
-    return TARGETS[(date.toordinal() // 7) % len(TARGETS)]
+    """Return the pair for an absolute week, including across year boundaries.
+
+    A pair whose language was removed drops out of the rotation.
+    """
+    targets = [pair for pair in TARGETS if _present(*pair)]
+    return targets[(date.toordinal() // 7) % len(targets)]
 
 
 def run_target(kind: str, target: str, output: Path) -> bool:

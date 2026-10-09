@@ -9,6 +9,7 @@ import pytest
 
 import esolangs
 from esolangs.cli import HELP, USAGE
+from esolangs.registry import wiki_url
 from tests.cli.test_cli import call_main
 from tests.pick import first
 
@@ -53,10 +54,10 @@ class TestWikiUrlsAreUsable:
 
     def test_non_ascii_is_escaped(self) -> None:
         """Raw bytes work in a browser and are refused by a strict client."""
-        name = next(n for n in esolangs.list_languages() if not n.isascii())
-        slug = str(esolangs.describe(name)["wiki_url"]).rsplit("/", 1)[1]
-        assert slug.isascii()
-        assert "%" in slug
+        slug = wiki_url("Þorn").rsplit("/", 1)[1]
+        assert slug == "%C3%9Eorn"
+        for name in esolangs.list_languages():
+            assert esolangs.describe(name)["wiki_url"] == wiki_url(name)
 
     @pytest.mark.parametrize(
         "name", [n for n in esolangs.list_languages() if set(n) & set("()*~ ")]
@@ -79,8 +80,10 @@ class TestWikiUrlsAreUsable:
     def test_the_readme_uses_the_same_builder(self) -> None:
         """The second copy of the slug logic is what made this ship twice."""
         readme = (Path(__file__).parents[2] / "README.md").read_text()
-        assert "https://esolangs.org/wiki/For%C3%BE" in readme
-        assert "https://esolangs.org/wiki/Forþ" not in readme
+        for name in esolangs.list_languages():
+            assert f"({wiki_url(name)})" in readme, name
+            raw = f"https://esolangs.org/wiki/{name.replace(' ', '_')}"
+            assert raw == wiki_url(name) or f"({raw})" not in readme, name
 
 
 class TestTheTopLevelUsageKeepsUp:

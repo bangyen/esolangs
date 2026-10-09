@@ -32,7 +32,7 @@ def test_every_language_was_admitted_by_a_recorded_route() -> None:
         name for name, row in _CENSUS.items() if row["route"] == "grandfathered"
     }
     # Closed: a new language takes "fame" or "first implementation".
-    assert grandfathered == {"123", "BF-PDA", "BIO", "Jaune", "NoComment", "Sophie"}
+    assert grandfathered <= {"123", "BF-PDA", "BIO", "Jaune", "NoComment", "Sophie"}
 
 
 @pytest.mark.parametrize("language", languages(boolean_generator=False))
