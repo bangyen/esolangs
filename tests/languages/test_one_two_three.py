@@ -172,17 +172,17 @@ class TestATimeoutIsNotAProgramError:
             call_main(["run", "brainfuck", _program(tmp_path, ",")], capsys, stdin="")
         assert exc.value.code == 1
 
-    def test_a_termination_languages_timeout_says_it_is_the_answer(
+    def test_a_termination_languages_timeout_is_undecided(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """It read as a failure when it was the result."""
+        """A timeout alone cannot establish a Boolean result."""
         program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
         with pytest.raises(SystemExit) as exc:
             call_main(
                 ["run", "--timeout", _LOOPS, "123", _program(tmp_path, program)], capsys
             )
         assert exc.value.code == 124
-        assert "this timeout is the answer 1" in capsys.readouterr().err
+        assert "the Boolean answer is undecided" in capsys.readouterr().err
 
 
 class TestAnUnboundedRunSaysSo:
@@ -317,7 +317,7 @@ def test_run_timeout_is_the_one_for_a_termination_language(
             capsys,
         )
     assert exc.value.code == 124
-    assert "answers 1 by not terminating" in capsys.readouterr().err
+    assert "the Boolean answer is undecided" in capsys.readouterr().err
 
 
 def test_run_halt_is_the_zero_for_a_termination_language(

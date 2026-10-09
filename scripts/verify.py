@@ -139,11 +139,10 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "src/esolangs/tools/examples.py",
         "tests/proofs/deep/",
     ),
-    # Only an interpreter (or the sweep itself) can introduce a leak.
+    # Helpers outside interpreters can introduce leaks too. The sweep's
+    # dependency graph narrows this to the languages that import them.
     "exception leaks": (
-        "src/esolangs/interpreters/",
-        "src/esolangs/tools/line/",
-        "src/esolangs/raster/",
+        "src/esolangs/",
         "scripts/verify_no_exception_leaks.py",
     ),
 }

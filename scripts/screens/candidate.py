@@ -29,8 +29,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from _build import ignore, random_table, tiled
-from benchmark import _execute, _source_size
+from _build import ignore, random_table, source_size, tiled
+from benchmark import _execute
 
 import esolangs
 from esolangs.registry import LANGUAGES, resolve
@@ -137,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
             tally = stats[family]
             tally.tables += 1
             tally.changed += str(new) != str(old)
-            tally.ratios.append(_source_size(new) / _source_size(old))
+            tally.ratios.append(source_size(language, new) / source_size(language, old))
             tally.larger += tally.ratios[-1] > 1
             wrong, steps = _worst(language, new, table, rows)
             tally.wrong += wrong

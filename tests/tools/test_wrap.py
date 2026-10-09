@@ -337,7 +337,7 @@ def _behaviour(name: str, program: str, stdin: str) -> str:
         return (
             "halts"
             if terminates(name, program, stdin, _RUN_TIMEOUT)
-            else "diverges (cycle or timeout)"
+            else "diverges (cycle proven)"
         )
     if diverges(name, program, stdin):
         return "diverges (cycle proven)"

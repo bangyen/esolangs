@@ -35,8 +35,10 @@ script, and skipped while that hash stands; a leak is never remembered.
 ``LEAKSWEEP_CACHE=0`` sweeps regardless.
 """
 
+import ast
 import concurrent.futures as cf
 import hashlib
+import importlib.util
 import json
 import os
 import pathlib
@@ -222,8 +224,14 @@ def _select(
         return langs, "no diff available, sweeping everything"
     if any(f.endswith(_SHARED) for f in changed):
         return langs, "shared interpreter machinery changed"
+    if any(
+        name.startswith("src/esolangs/") and not (_ROOT / name).is_file()
+        for name in changed
+    ):
+        return langs, "source removed; dependency resolution is incomplete"
+    changed_paths = {(_ROOT / name).resolve() for name in changed}
     picked = [
-        n for n in langs if any(runners[n][0].replace(".", "/") in f for f in changed)
+        name for name in langs if changed_paths.intersection(_sources(runners[name][0]))
     ]
     if not picked:
         return [], "no interpreter changed"
@@ -380,29 +388,81 @@ def _examples_by_slug() -> dict[str, list[Program]]:
     return by_slug
 
 
-def _sources(module: str) -> list[pathlib.Path]:
-    """Return every file a sweep of interpreter ``module`` executes.
+def _module_path(module: str) -> pathlib.Path | None:
+    """Resolve a local import without importing its code."""
+    if not module.startswith("esolangs."):
+        return None
+    path = _ROOT / "src" / module.replace(".", "/")
+    if path.with_suffix(".py").is_file():
+        return path.with_suffix(".py")
+    init = path / "__init__.py"
+    return init if init.is_file() else None
 
-    ``module`` is relative to ``esolangs.interpreters`` (``RUNNERS`` form).
-    Every path must exist: a missing one hashed as empty would remember a
-    sweep that never read the interpreter.
-    """
+
+def _imports(path: pathlib.Path) -> set[str]:
+    """Return absolute local import names, including package submodules."""
+    parts = path.relative_to(_ROOT / "src").with_suffix("").parts
+    package = ".".join(parts[:-1])
+    found: set[str] = set()
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            found.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if node.level:
+                module = importlib.util.resolve_name("." * node.level + module, package)
+            found.add(module)
+            found.update(
+                name
+                for alias in node.names
+                if _module_path(name := f"{module}.{alias.name}") is not None
+            )
+    return found
+
+
+def _sources(module: str) -> list[pathlib.Path]:
+    """Return interpreter sources, imported helpers and shared cache inputs."""
     pkg = _ROOT / "src" / "esolangs"
-    relative = (
-        module.removeprefix("esolangs.")
-        if module.startswith("esolangs.")
-        else "interpreters." + module
+    if not module.startswith("esolangs."):
+        module = "esolangs." + (
+            module if module.startswith("interpreters.") else "interpreters." + module
+        )
+    entry = _module_path(module)
+    if entry is None:
+        raise FileNotFoundError(f"interpreter source not found: {module}")
+    shared = {pkg / name for name in _SHARED}
+    pending = (
+        list(entry.parent.rglob("*.py")) if entry.name == "__init__.py" else [entry]
     )
-    path = pkg / relative.replace(".", "/")
-    sources = sorted(path.rglob("*.py")) if path.is_dir() else [path.with_suffix(".py")]
-    if path.is_dir():
-        sources.extend(sorted((pkg / "raster").rglob("*.py")))
-    return [
-        _HERE,
-        _ROOT / "scripts" / "_scope.py",
-        *sources,
-        *(pkg / f for f in _SHARED),
-    ]
+    pending.extend(shared)
+    sources: set[pathlib.Path] = set()
+    while pending:
+        path = pending.pop()
+        if path in sources:
+            continue
+        sources.add(path)
+        for parent in path.parents:
+            init = parent / "__init__.py"
+            if parent == pkg:
+                if init.is_file():
+                    sources.add(init)
+                break
+            if init.is_file() and init not in sources:
+                pending.append(init)
+        # Shared inputs already invalidate every language; expanding registry
+        # imports here would also pull in every unrelated generator.
+        if (path in shared and path.is_relative_to(pkg / "registry")) or path == (
+            pkg / "tools" / "__init__.py"
+        ):
+            continue
+        for name in _imports(path):
+            dependency = _module_path(name)
+            if dependency is None:
+                if name.startswith("esolangs."):
+                    raise FileNotFoundError(f"imported source not found: {name}")
+            elif dependency not in sources:
+                pending.append(dependency)
+    return sorted({_HERE, _ROOT / "scripts" / "_scope.py", *sources, *shared})
 
 
 def _fingerprint(module: str, examples: list[Program]) -> str:

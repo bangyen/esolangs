@@ -421,3 +421,11 @@ def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch) -> N
         "tests/tools/test_boolean_target.py",
         "tests/tools/test_contracts.py",
     ]
+
+
+def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
+    verify = load_script()
+    assert any(
+        "src/esolangs/_traits.py".startswith(prefix)
+        for prefix in verify.STEP_SCOPE["exception leaks"]
+    )

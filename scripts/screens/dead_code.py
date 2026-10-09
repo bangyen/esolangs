@@ -31,7 +31,7 @@ from _build import generators
 import esolangs
 from esolangs._answers import encode_inputs, read_answer
 from esolangs._describe import describe
-from esolangs.exceptions import EsolangError, ExecutionTimeoutError
+from esolangs.exceptions import EsolangError
 from esolangs.registry import resolve
 from esolangs.tagged import _Template
 
@@ -95,12 +95,9 @@ class _Program:
         """Return a termination-answer row's bit, as the private evaluation harness."""
         from esolangs._evaluate import _terminates
 
-        try:
-            return _terminates(
-                self.name, source, stdin, self.timeout, self.halts, self.diverges
-            )
-        except ExecutionTimeoutError:
-            return self.diverges
+        return _terminates(
+            self.name, source, stdin, self.timeout, self.halts, self.diverges
+        )
 
 
 def _runs(text: str, frozen: set[int]) -> list[tuple[int, int]]:

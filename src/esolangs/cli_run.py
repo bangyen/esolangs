@@ -169,10 +169,10 @@ def _run(rest: list[str]) -> None:
         _fail(_template_hint(exc, language))
     except ExecutionTimeoutError as exc:
         if mode == "termination":
-            # The timeout *is* the answer here, so it is not a failure.
+            # A slow halting run can also time out; this is not a verdict.
             sys.stderr.write(
-                f"{exc}\nnote: {name} answers 1 by not terminating, so for a "
-                f"generated truth-table program this timeout is the answer 1\n"
+                f"{exc}\nnote: {name} answers by termination, but a timeout "
+                f"does not establish divergence; the Boolean answer is undecided\n"
             )
             sys.exit(_TIMEOUT_EXIT)
         # Distinct from a program error's 1, following timeout(1), so a
