@@ -360,6 +360,7 @@ LANGUAGE = Language(
     f"{_POLYNOMIAL_MAX_ESTIMATED_CHARS} estimated characters; "
     "table dependent",
     boolean=polynomial,
+    documented_sizes=(1_745_528, 5_458_693, 3.1),
     contract=BooleanContract(
         input_shape="char_stream",
     ),

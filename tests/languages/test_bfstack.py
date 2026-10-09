@@ -54,3 +54,12 @@ class TestEdges:
 
 def test_character_input_preserves_newline() -> None:
     assert_echoes_a_newline("BFStack", ",.")
+
+
+@pytest.mark.medium
+def test_resource_bounds() -> None:
+    """The resource audit counts a UTF-8 byte per source unit."""
+    from scripts.screens.resources import audit, corpus
+
+    result = audit("BFStack", 8, corpus(8)["dense"])
+    assert result["source_utf8_bits"] == 8 * result["source_units"]

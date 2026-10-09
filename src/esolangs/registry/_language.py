@@ -81,6 +81,13 @@ class Language:
     generator_max_inputs: int | None = None
     generator_restrictions: str = ""
     shape: Shape = Shape.TREE
+    #: Why the generator's ``GeneratorCapError`` never reaches a caller,
+    #: when it raises one internally and falls back.
+    internal_cap: str = ""
+    #: The dense n=8 and n=9 sizes and growth per input that
+    #: ``docs/limitations.md`` states, for a generator expensive enough to
+    #: be documented there.
+    documented_sizes: tuple[int, int, float] | None = None
     #: Validates ``DialectSettings``: one defaulted keyword per setting.
     dialect: Callable[..., Any] | None = None
     contract: BooleanContract = field(default_factory=BooleanContract)

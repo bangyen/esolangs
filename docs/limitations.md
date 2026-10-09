@@ -174,7 +174,8 @@ of data, control, cursor and machine flags. Separate peaks need not coincide.
 Python overhead, static parser indexes and I/O state are excluded. At eight
 inputs the sampled peak machine payloads are 18, 756 and 3,066 bits respectively;
 these are measurements, not language-wide space bounds. Construction bounds
-are asserted in the screen and controlled by `tests/proofs/test_resource_bounds.py`.
+are asserted in the screen and controlled by executed checks in each
+language's own tests.
 
 ### Malbolge sampling
 
