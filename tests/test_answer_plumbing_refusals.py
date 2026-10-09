@@ -47,22 +47,6 @@ def _big_table(arity: int = 11) -> str:
     return "".join(rng.choice("01") for _ in range(2**arity))
 
 
-class TestADeliberateRefusalIsAnEsolangError:
-    """The package promises it, and the refusals that broke the promise."""
-
-    def test_it_is_still_a_value_error(self) -> None:
-        """Callers catching ValueError must not be broken by the new class."""
-        assert issubclass(esolangs.GeneratorCapError, ValueError)
-        assert issubclass(esolangs.GeneratorCapError, esolangs.EsolangError)
-
-    @pytest.mark.slow
-    def test_no_private_name_leaks_into_a_message(self) -> None:
-        """A cap message renders its constant's value, not its name."""
-        with pytest.raises(esolangs.GeneratorCapError) as exc:
-            esolangs.generate("Polynomial", _big_table())
-        assert "_POLYNOMIAL" not in str(exc.value)
-
-
 class TestEveryAuditedCapIsCatchable:
     """The n=11 probe that found the first five was bounded by n=11."""
 
@@ -102,21 +86,6 @@ class TestEveryAuditedCapIsCatchable:
             except Exception as exc:
                 escaped.append(f"{name}: {type(exc).__name__}")
         assert not escaped, escaped
-
-
-class TestFactorHasNoDigitBudget:
-    """Its refusal named ``max_digits``, a knob the public API never had."""
-
-    @pytest.mark.slow
-    def test_the_arity_that_used_to_refuse_builds(self) -> None:
-        """Dense n=13 was the 500000-digit refusal; this table is 708448 digits now."""
-        import random
-
-        rng = random.Random(7)
-        table = "".join(rng.choice("01") for _ in range(2**13))
-        program = esolangs.generate("Factor", table)
-        assert program.isdigit()
-        assert len(program) > 500_000
 
 
 class TestErrorsSurviveAProcessBoundary:
@@ -585,40 +554,3 @@ class TestDivergenceIsProvenNotWaitedOut:
         start = time.monotonic()
         evaluate_generated("123", "0110")
         assert time.monotonic() - start < 5.0
-
-
-class TestTheTerminationProofFallsBackToTheClock:
-    """A cycle is not the only way to diverge; growth never repeats a state."""
-
-    def test_the_proof_needs_no_clock_at_all(self) -> None:
-        """Which is the measurement, and also why the clock arm is untested."""
-        assert evaluate_generated("123", "0110", None) == "0110"
-
-
-class TestTerminationTimeoutIsUndecided:
-    def test_timeout_propagates_with_row_context(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        def expired(*_args: object) -> None:
-            raise esolangs.ExecutionTimeoutError("forced timeout")
-
-        monkeypatch.setattr(esolangs, "_run", expired)
-        with pytest.raises(
-            esolangs.ExecutionTimeoutError, match="forced timeout"
-        ) as exc:
-            verify_generated("123", "01")
-        assert any("while evaluating row 0" in note for note in exc.value.__notes__)
-
-    @pytest.mark.medium
-    def test_vm_construction_is_timed(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import time
-
-        from esolangs import _evaluate
-
-        def slow_machine(*_args: object, **_kwargs: object) -> None:
-            time.sleep(1)
-            pytest.fail("construction escaped the timeout")
-
-        monkeypatch.setattr(_evaluate, "make_vm", slow_machine)
-        with pytest.raises(esolangs.ExecutionTimeoutError):
-            evaluate_generated("123", "01", timeout=0.02)

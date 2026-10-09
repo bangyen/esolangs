@@ -2,10 +2,13 @@
 
 import hashlib
 import importlib
+import random
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
+from esolangs.tools.wrap import balance_score
 from tests.witness_tables import witnesses
 
 
@@ -559,3 +562,34 @@ def test_a_repeated_subtree_is_drawn_once_and_still_computes() -> None:
     assert (
         _evaluate("Circuit Diagram", str(circuit_diagram(tiled, 40)), inputs=5) == tiled
     )
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("inputs", [6, 8])
+@pytest.mark.parametrize("affine", [False, True])
+def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
+    from esolangs.tools.circuit_diagram import _circuit_diagram_at
+
+    language = "Circuit Diagram"
+    rng = random.Random(1022 + inputs)
+    table = (
+        "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
+        if affine
+        else "".join(rng.choice("01") for _ in range(1 << inputs))
+    )
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    # Once the flat drawing fits, all larger widths repeat it.
+    widest = max(map(len, _circuit_diagram_at(table, None).split("\n")))
+    layouts = [default] + [
+        esolangs.generate(language, table, width=width)
+        for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run(
+            language, balanced, stdin=esolangs.encode_inputs(language, bits)
+        )
+        assert esolangs.read_answer(language, output) == table[row]

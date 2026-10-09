@@ -563,11 +563,3 @@ class TestTheDetectorsTakeAVM:
 @pytest.mark.parametrize(("program", "limit"), [("", 0), ("+", 1)])
 def test_growth_detector_accepts_halt_at_step_limit(program: str, limit: int) -> None:
     assert run_until_halt_or_growth(make_vm("Brainfuck", program), limit) is True
-
-
-@pytest.mark.parametrize("limit", [0, 1])
-def test_value_growth_detector_accepts_eof_halt_at_step_limit(limit: int) -> None:
-    machine = make_vm("Suffolk", ",")
-    if limit == 0:
-        machine.step()
-    assert run_until_halt_or_value_growth(machine, limit) is True

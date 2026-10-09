@@ -8,13 +8,11 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-import esolangs.debugger as debugger_api
 from esolangs._execution import interpreter_module
 from esolangs.cli import HELP
 from tests.cli.test_cli import _program, call_main
 from tests.cli_support import _LOOPS, _refused, call_both
 from tests.generator_support import evaluate_generated
-from tests.stdin_check import _check_stdin
 
 
 # 5.2s over 33 tests: drives the CLI as a subprocess.
@@ -330,33 +328,6 @@ class TestPrivateEvaluationNeedsNoSeed:
         } == {esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)}
 
 
-class TestALeadingZeroIndexNeverCrashes:
-    """The message explaining a leading zero crashed on one."""
-
-    @pytest.mark.parametrize("value", ["02", "089"])
-    def test_a_non_binary_leading_zero_is_refused_cleanly(self, value: str) -> None:
-        """`int('02', 2)` raises, so the friendly message threw a traceback."""
-        with pytest.raises(esolangs.ArgumentError, match="leading zero"):
-            _check_stdin("Fargo", f"{value}\n")
-
-    @pytest.mark.parametrize("value", ["01", "010"])
-    def test_a_binary_one_still_offers_the_index(self, value: str) -> None:
-        """The helpful half must survive the fix to the crashing half."""
-        with pytest.raises(esolangs.ArgumentError, match="if those are the input bits"):
-            _check_stdin("Fargo", f"{value}\n")
-
-    def test_the_suggested_index_is_right(self) -> None:
-        """`010` as bits is row 2, and the message says so."""
-        with pytest.raises(esolangs.ArgumentError, match="the index is 2"):
-            _check_stdin("Fargo", "010\n")
-
-    def test_a_large_binary_index_is_refused_without_rendering_it(self) -> None:
-        with pytest.raises(esolangs.ArgumentError, match="15001 input bits") as caught:
-            _check_stdin("Fargo", "0" + "1" * 15000)
-        assert "leading zero" in str(caught.value)
-        assert len(str(caught.value)) < 200
-
-
 class TestTheWidthFlagDoesNotEatTheTable:
     """`--width` takes an optional N, so it swallowed the truth table."""
 
@@ -380,19 +351,6 @@ class TestDebugReportsALoadFailure:
             call_main(["debug", "brainfuck", str(path)], capsys, stdin="1\n0\n")
         assert exc.value.code == 2
         assert "looks like a path" in capsys.readouterr().err
-
-
-class TestBreakAtWhereThereIsNoShape:
-    """A machine with no position cannot disagree with a breakpoint's kind."""
-
-    def test_a_language_with_no_ip_accepts_either_kind(self) -> None:
-        """Circuit Diagram's ip is None, so there is nothing to compare."""
-        program = esolangs.generate("Circuit Diagram", "0110")
-        stdin = esolangs.encode_inputs("Circuit Diagram", [0, 1], truth_table="0110")
-        debugger = debugger_api.make_debugger("Circuit Diagram", program, stdin=stdin)
-        assert debugger.ip is None
-        debugger.break_at(3)
-        debugger.break_at((1, 2))
 
 
 def test_run_reports_an_interpreter_warning_once(
@@ -421,23 +379,6 @@ def _portable(tmp_path, language="brainfuck", table="0110", settings=None):
     return path
 
 
-def test_set_pairs_match_settings_json(capsys):
-    by_set, _ = call_both(
-        ["generate", "--set", "expression_syntax=postfix", "Alight", "0110"], capsys
-    )
-    by_json, _ = call_both(
-        [
-            "generate",
-            "--settings",
-            '{"expression_syntax":"postfix"}',
-            "Alight",
-            "0110",
-        ],
-        capsys,
-    )
-    assert by_set == by_json
-
-
 def test_short_settings_and_portable_flags(capsys, tmp_path):
     output, error = call_both(
         [
@@ -463,24 +404,6 @@ def test_short_settings_and_portable_flags(capsys, tmp_path):
     assert error == ""
 
 
-def test_unknown_settings_key_suggests_the_fix(capsys):
-    with pytest.raises(SystemExit) as caught:
-        call_both(
-            [
-                "generate",
-                "--settings",
-                '{"expressoin_syntax":"postfix"}',
-                "Alight",
-                "0110",
-            ],
-            capsys,
-        )
-    assert caught.value.code == 2
-    error = capsys.readouterr().err
-    assert "did you mean expression_syntax" in error
-    assert "Alight accepts: expression_syntax" in error
-
-
 @pytest.mark.parametrize("command", ["run", "debug"])
 def test_portable_language_can_be_omitted(command, capsys, tmp_path):
     path = _portable(tmp_path)
@@ -494,22 +417,6 @@ def test_portable_language_can_be_omitted(command, capsys, tmp_path):
     output, error = call_both(args, capsys, stdin)
     assert expected in output
     assert error == ""
-
-
-def test_describe_leads_with_the_contract(capsys):
-    output, _error = call_both(["describe", "Fargo"], capsys)
-    assert output.startswith("Fargo\ninput: one decimal row index")
-    assert output.index("input:") < output.index("input_shape")
-    assert "proof_status" not in output
-    assert "{'labels'" not in output
-    assert "Interpreter for Fargo" not in output
-    assert "esolangs describe --spec Fargo" in output
-
-
-def test_describe_template_still_hides_stdin_fields(capsys):
-    output, _error = call_both(["describe", "Minifuck"], capsys)
-    assert "input_shape" not in output
-    assert "generate --bits" in output
 
 
 #: Commands refused with exit code 2, and what stderr must say.

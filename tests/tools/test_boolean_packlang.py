@@ -4,8 +4,10 @@ import random
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
+from esolangs.tools.wrap import balance_score, wrap_program
 
 
 class TestPacklangPaintedArray:
@@ -78,3 +80,24 @@ class TestPacklangPaintedArray:
         program = boolean.packlang(tiled)
         assert "Array(Char,128)" not in program
         assert _evaluate("Packlang", program, inputs=7) == tiled
+
+
+@pytest.mark.parametrize("indent", [0, 4, 16, 64])
+def test_packlang_reduced_indent_crossing(indent):
+    from esolangs.tools.packlang import _balance_form
+
+    for table in ("0110", "0001", "10010110"):
+        default = esolangs.generate("Packlang", table)
+        program = "\n".join(
+            " " * indent + row.lstrip() if row else row for row in default.split("\n")
+        )
+        widest = max(map(len, program.split("\n")))
+        balanced = _balance_form(program, 1, widest)
+        layouts = [
+            wrap_program(program, "packlang", width) for width in range(1, widest + 1)
+        ]
+        assert balanced in layouts
+        assert balance_score(balanced) == min(map(balance_score, layouts))
+        assert (
+            _evaluate("Packlang", balanced, inputs=len(table).bit_length() - 1) == table
+        )

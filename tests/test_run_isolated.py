@@ -26,20 +26,6 @@ def test_timeout_retains_streamed_output():
 
 
 @pytest.mark.medium
-def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit():
-    seeds = [*range(8), 10**5000, -(10**5000)]  # strings are refused now
-    direct = [
-        esolangs.run("LaserFuck", "o+++.\n", seed=seed, timeout=5) for seed in seeds
-    ]
-    isolated = [
-        esolangs.run("LaserFuck", "o+++.\n", seed=seed, timeout=5, isolated=True)
-        for seed in seeds
-    ]
-    assert set(direct) == {"", "3"}
-    assert isolated == direct
-
-
-@pytest.mark.medium
 def test_input_error_retains_counts_and_output():
     with pytest.raises(esolangs.InputExhaustedError) as caught:
         esolangs.run("brainfuck", "+.,", isolated=True)
@@ -52,11 +38,6 @@ def test_input_error_retains_counts_and_output():
 def test_refuses_an_invalid_deadline(timeout):
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run("brainfuck", "", timeout=timeout, isolated=True)
-
-
-def test_isolated_evaluation_requires_a_deadline():
-    with pytest.raises(esolangs.ArgumentError, match="finite"):
-        evaluate_generated("Suffolk", "0110", None, isolated=True)
 
 
 def test_decode_missing_result_and_notes():
@@ -260,29 +241,3 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
         evaluate_generated(language, "0110", isolated=True)
     assert caught.value.partial_output == "prefix"
     assert any("row 0" in note for note in caught.value.__notes__)
-
-
-def test_capped_termination_worker_reports_overflow_instead_of_divergence(
-    monkeypatch, capsys
-):
-    import io
-    import sys
-
-    from esolangs import vm
-
-    payload = {
-        "language": "123",
-        "program": "112",
-        "raster": False,
-        "stdin": "",
-        "termination": ["0", "1"],
-        "max_output": 0,
-    }
-    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
-    monkeypatch.setattr(vm, "ScriptedIO", vm.ScriptedIO)
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
-    _worker()
-    messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
-    assert messages[-1]["error"] == "InterpreterLimitError"
-    assert messages[-1]["output_limit"] is True
-    assert "result" not in messages[-1]

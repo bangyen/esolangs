@@ -1,7 +1,5 @@
 """Tests for the breakpoint/watch debugger over the VM."""
 
-import warnings
-
 import pytest
 
 import esolangs
@@ -239,67 +237,6 @@ class TestARunFinishesTheDump:
         history = debugger.watch_cell(0)
         debugger.run(timeout=10)
         assert len(history) == 4  # three increments and the print, no more
-
-
-class TestTheDebuggerWarnsAboutStdinToo:
-    """``run`` warned and the debugger did not, which is backwards."""
-
-    def test_the_debugger_says_what_run_says(self) -> None:
-        """Flowchart under-fed: one line to a two-input program."""
-        program = esolangs.generate("Flowchart", "0110")
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            esolangs.run("Flowchart", program, stdin="1\n", timeout=10)
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            debugger_api.make_debugger("Flowchart", program, stdin="1\n").run(
-                timeout=10
-            )
-
-    def test_a_correct_input_stays_silent(self) -> None:
-        """A warning that fires on correct input is worth less than none."""
-        program = esolangs.generate("Flowchart", "0110")
-        stdin = esolangs.encode_inputs("Flowchart", [1, 0], truth_table="0110")
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            debugger_api.make_debugger("Flowchart", program, stdin=stdin).run(
-                timeout=10
-            )
-
-    def test_it_is_said_once(self) -> None:
-        """``run`` on a halted machine returns at once; re-warning is noise."""
-        program = esolangs.generate("Flowchart", "0110")
-        debugger = debugger_api.make_debugger("Flowchart", program, stdin="1\n")
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            debugger.run(timeout=10)
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            debugger.run(timeout=10)
-
-
-class TestSelfHaltsIsAWarningNotAGuarantee:
-    """``False`` used to promise the step loop never returns.  It can."""
-
-    def test_suffolk_halts_under_a_bare_step_loop(self) -> None:
-        """The refutation, run rather than asserted."""
-        assert esolangs.describe("Suffolk")["self_halts"] is False
-        program = esolangs.generate("Suffolk", "0110")
-        vm = debugger_api.make_vm(
-            "Suffolk", program, stdin=esolangs.encode_inputs("Suffolk", [1, 0])
-        )
-        steps = 0
-        while not vm.halted and steps < 100_000:
-            vm.step()
-            steps += 1
-        assert vm.halted, "Suffolk did not halt, so the old wording was right"
-        assert vm.output == "1"
-
-    def test_the_docstring_no_longer_promises_otherwise(self) -> None:
-        """The wording is the fix, so the wording is what is checked."""
-        doc = debugger_api.VM.self_halts.__doc__ or ""
-        assert "does not promise" in doc
-        assert "Suffolk" in doc
 
 
 #: Two of the nine dump-on-post-halt languages, one reader and one template:

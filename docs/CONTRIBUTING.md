@@ -210,7 +210,11 @@ keys by a language's name (a list of names in a shared test, a branch on
 an id) is coupling, and `tests/test_language_coupling.py` holds each
 file's count of them to `tests/fixtures/coupling.toml`, which only goes
 down. Put such a fact on `Language`, or the test in the language's own
-test file.
+test file: `tests/interpreters/test_<id>.py` for its interpreter,
+`tests/tools/test_boolean_<gen>.py` for its generator, and
+`tests/languages/test_<id>.py` for it through the shared API, CLI, VM and
+debugger. brainfuck is the reference language shared tests use as their
+example.
 
 ### The Boolean I/O contract
 

@@ -54,9 +54,3 @@ def test_api_and_vm(language: str, code: str, stdin: str, output: str) -> None:
     assert esolangs.describe(language)["boolean_generator"] is False
     with pytest.raises(ValueError, match="no boolean generator"):
         esolangs.generate(language, "01")
-
-
-def test_unary_generator_refusal_does_not_deny_runtime_input() -> None:
-    with pytest.raises(esolangs.ArgumentError, match="generator contracts") as caught:
-        esolangs.generate("Unary", "01")
-    assert "reads no input" not in str(caught.value)

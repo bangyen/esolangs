@@ -2,7 +2,6 @@
 
 import contextlib
 import io
-from pathlib import Path
 from typing import cast
 from unittest.mock import patch
 
@@ -250,26 +249,6 @@ def _first_move(name: str, program: str, stdin: str) -> tuple[int, int]:
     return (before[0] != after[0], before[1] != after[1])
 
 
-class TestPathAndTextTrailingNewline:
-    """Path input strips one trailing newline; string input preserves it."""
-
-    def test_lf_ignored_by_cvnc_makes_path_and_text_agree(self, tmp_path: Path) -> None:
-        path = tmp_path / "c.txt"
-        path.write_text(esolangs.generate("CV(N)(C)", "0110", width=3) + "\n")
-        stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], truth_table="0110")
-        assert esolangs.run("CV(N)(C)", path, stdin=stdin, timeout=5) == "0"
-        assert esolangs.run("CV(N)(C)", path.read_text(), stdin=stdin, timeout=5) == "0"
-
-    def test_they_agree_without_one(self, tmp_path: Path) -> None:
-        """The difference is the newline and nothing else."""
-        path = tmp_path / "c.txt"
-        path.write_text(esolangs.generate("CV(N)(C)", "0110"))
-        stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], truth_table="0110")
-        assert esolangs.run("CV(N)(C)", path, stdin=stdin, timeout=5) == esolangs.run(
-            "CV(N)(C)", path.read_text(), stdin=stdin, timeout=5
-        )
-
-
 @pytest.mark.medium
 # A tape language, a grid language, and one that never halts by itself:
 # ``complete_vm`` is the same driver for all of them.
@@ -306,16 +285,6 @@ def test_completion_rejects_invalid_budgets(budget):
 @pytest.mark.medium
 def test_completion_can_opt_out_of_the_step_budget():
     assert complete_vm(make_vm("brainfuck", "+."), max_steps=None) == "\x01"
-
-
-@pytest.mark.medium
-def test_a_non_self_halting_machine_can_already_be_finished():
-    from esolangs.vm import run_until_halt
-
-    vm = make_vm("Suffolk", ",", stdin="1")
-    assert not vm.self_halts
-    assert run_until_halt(vm, 2)
-    assert complete_vm(vm, max_steps=0) == esolangs.run("Suffolk", ",", stdin="1")
 
 
 # Three visits, ten steps apart, whose values climb by a constant 1 with

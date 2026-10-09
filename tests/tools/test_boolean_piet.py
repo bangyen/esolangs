@@ -10,7 +10,9 @@ from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster
 from esolangs.tools.helpers import essential_inputs, read_at
 from esolangs.tools.piet import piet as generate
+from esolangs.tools.piet.balance import _bounded_operations
 from tests.generator_support import verify_generated
+from tests.tools.test_raster_balance import TABLES, score
 
 
 @pytest.mark.parametrize(
@@ -133,3 +135,56 @@ def test_piet_generator_and_interpreter() -> None:
     io = ScriptedIO("1")
     run(program, io)
     assert io.getvalue() == "1"
+
+
+def test_balance_raster_retains_layout(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import replace
+
+    from esolangs.registry import LANGUAGES
+
+    monkeypatch.setitem(LANGUAGES, "Piet", replace(LANGUAGES["Piet"], balance=None))
+    default = esolangs.generate("Piet", "0110")
+    balanced = esolangs.generate("Piet", "0110", balance=True)
+    assert isinstance(default, esolangs.Raster)
+    assert isinstance(balanced, esolangs.Raster)
+    assert balanced.to_png() == default.to_png()
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("table", [*TABLES, "10010110", "00000001", "01011010"])
+def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
+    operations = _bounded_operations(table)
+    candidates = [esolangs.generate("Piet", table)]
+    for width in range(13, sum(op.size for op in operations) + 7):
+        image = esolangs.generate("Piet", table, width=width)
+        assert isinstance(image, Raster)
+        candidates.append(image)
+        assert (
+            esolangs.run(
+                "Piet",
+                Raster.from_png(image.to_png()),
+                stdin="0\n" * (len(table).bit_length() - 1),
+            )
+            == table[0]
+        )
+    balanced = esolangs.generate("Piet", table, balance=True)
+    assert isinstance(balanced, Raster)
+    assert score(balanced) == min(score(image) for image in candidates)
+    assert (
+        _evaluate(
+            "Piet",
+            Raster.from_png(balanced.to_png()),
+            inputs=len(table).bit_length() - 1,
+        )
+        == table
+    )
+
+
+@pytest.mark.medium
+def test_piet_keeps_an_already_better_layout() -> None:
+    from esolangs.tools.piet.balance import balance
+
+    source = esolangs.generate("Piet", "0001", balance=True)
+    assert isinstance(source, Raster)
+    assert balance("0001", source) is source
+    assert _evaluate("Piet", Raster.from_png(source.to_png()), inputs=2) == "0001"

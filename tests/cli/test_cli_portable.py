@@ -80,15 +80,6 @@ def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("scale", [1, 2])
-def test_cli_scaled_raster(tmp_path, capsys, scale):
-    settings = DialectSettings()
-    path = save_generated(tmp_path, capsys, "Line", settings, "--scale", str(scale))
-    restored = esolangs.load_program("Line", path.read_text(encoding="utf-8"))
-    assert _evaluate("Line", restored, inputs=2) == "0110"
-
-
-@pytest.mark.medium
 @pytest.mark.parametrize("language", ["Alight", "Packlang", "Grapheme"])
 def test_portable_isolated_cli(tmp_path, capsys, language):
     settings = dict(CASES)[language]
@@ -114,37 +105,6 @@ def test_portable_isolated_cli(tmp_path, capsys, language):
     )
     assert esolangs.read_answer(language, output) == "1"
     assert error == ""
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("command", ["run", "debug"])
-def test_partial_override_inherits_cell_modulus(tmp_path, capsys, command):
-    source = _Tagged(
-        "SEED " * 255 + "DIGEST PRONOUNCE",
-        "SLOW ACV MAMMALIAN",
-        DialectSettings(cell_modulus=256, io_modulus=255),
-    )
-    path = tmp_path / "program.json"
-    path.write_text(
-        esolangs.dump_program("SLOW ACV MAMMALIAN", source), encoding="utf-8"
-    )
-    output, error = call_both(
-        [
-            command,
-            "--portable",
-            "--settings",
-            '{"io_modulus":256}',
-            "SLOW ACV MAMMALIAN",
-            str(path),
-        ],
-        capsys,
-    )
-    assert error == ""
-    if command == "run":
-        assert output == chr(255)
-    else:
-        assert "halted: yes" in output
-        assert "output: 'ÿ'" in output
 
 
 @pytest.mark.parametrize("command", ["run", "debug"])
@@ -222,45 +182,3 @@ def test_unknown_portable_language_fails_before_file_read(command, capsys):
         call_both([command, "--portable", "NotALang", "never-read.json"], capsys)
     assert caught.value.code == 2
     assert "unknown language" in capsys.readouterr().err
-
-
-@pytest.mark.medium
-def test_portable_choices_and_memory_budget_reach_worker(tmp_path, capsys, monkeypatch):
-    command = "run"
-    from esolangs import _isolated
-
-    budget = 96 * 1024 * 1024
-    source = esolangs.generate(
-        "Grapheme",
-        "01",
-        settings=DialectSettings(integer_conversion="after_each_letter"),
-    )
-    path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program("Grapheme", source), encoding="utf-8")
-    monkeypatch.setattr(_isolated.sys, "platform", "linux")
-    calls = []
-    runner = vars(esolangs)["_run_isolated"]
-
-    def capture(*args, **kwargs):
-        # Check dispatch on every host; the separate Linux test enforces the cap.
-        calls.append(kwargs.pop("max_memory"))
-        assert kwargs["settings"] == source.settings
-        return runner(*args, **kwargs)
-
-    monkeypatch.setattr(esolangs, "_run_isolated", capture)
-    options = ["--isolated"]
-    output, error = call_both(
-        [
-            command,
-            "--portable",
-            *options,
-            "--max-memory",
-            str(budget),
-            "Grapheme",
-            str(path),
-        ],
-        capsys,
-        esolangs.encode_inputs("Grapheme", [1]),
-    )
-    assert (output, error) == ("1", "")
-    assert calls == [budget]

@@ -517,60 +517,6 @@ class TestContinueKey:
         assert "hjkl move" in footer
 
 
-class TestBreakpointMarks:
-    """A place the run will stop, told apart from the place it is now."""
-
-    def test_a_breakpoint_is_painted_in_its_own_colour(self) -> None:
-        screen = render(_frame("+>-<", 0), breaks=(Mark(0, 2),))
-        assert _marked_break(screen) == ["-"]
-        assert _highlighted(screen) == "+"
-
-    def test_a_breakpoint_under_the_cursor_shows_as_both(self) -> None:
-        screen = render(_frame("+>-<", 2), breaks=(Mark(0, 2),))
-        assert _marked_both(screen) == ["-"]
-        assert _highlighted(screen) is None
-        assert _marked_break(screen) == []
-
-    def test_every_combination_of_states_looks_different(self) -> None:
-        seen = [
-            _sgr(render(_frame("+>-<", 2))),
-            _sgr(render(_frame("+>-<", 0), breaks=(Mark(0, 2),))),
-            _sgr(render(_frame("+>-<", 2), breaks=(Mark(0, 2),))),
-            _sgr(render(_frame("+>-<", 0), picked=Mark(0, 2))),
-            _sgr(render(_frame("+>-<", 0), breaks=(Mark(0, 2),), picked=Mark(0, 2))),
-        ]
-        assert len(set(seen)) == len(seen), seen
-
-    def test_several_breakpoints_on_one_row_are_all_painted(self) -> None:
-        screen = render(_frame("abcdef", 0), breaks=(Mark(0, 2), Mark(0, 4)))
-        assert _marked_break(screen) == ["c", "e"]
-
-    def test_breakpoints_on_different_rows_are_all_painted(self) -> None:
-        screen = render(_frame("ab\ncd", 0), breaks=(Mark(0, 1), Mark(1, 1)))
-        assert _marked_break(screen) == ["b", "d"]
-
-    def test_a_position_that_does_not_locate_is_not_painted(self) -> None:
-        assert _marked_break(render(_frame("abc", 0), breaks=(Mark(9, 0),))) == []
-
-    def test_a_grid_breakpoint_is_painted_at_its_cell(self) -> None:
-        frame = _frame("abc\ndef", (0, 0), language="Streetcode", ip_shape="grid")
-        assert _marked_break(render(frame, breaks=(Mark(1, 2),))) == ["f"]
-
-    def test_the_header_counts_them(self) -> None:
-        assert "2 breaks" in render(
-            _frame("abcdef", 0), breaks=(Mark(0, 2), Mark(0, 4))
-        )
-        assert "1 break" in render(_frame("abcdef", 0), breaks=(Mark(0, 2),))
-
-    def test_no_count_when_there_are_none(self) -> None:
-        assert "break" not in render(_frame("abc", 0)).splitlines()[0]
-
-    def test_a_breakpoint_scrolled_out_of_view_is_not_painted(self) -> None:
-        program = "." * 400 + "@" + "." * 400
-        screen = render(_frame(program, 800), width=60, breaks=(Mark(0, 0),))
-        assert _marked_break(screen) == []
-
-
 class TestToggleKey:
     def test_t_marks_the_position_the_run_is_on(self) -> None:
         keyboard = _drive("+++", " tq")
@@ -620,50 +566,6 @@ class TestAtCell:
         assert at_cell(program, "offset", 1, 1) == locate(program, 5)
         assert at_cell(program, "grid", 1, 1) == locate(program, (1, 1, 3), "grid")
         assert at_cell(program, "line", 1, 2) == locate(program, (1,), "line")
-
-
-class TestSelector:
-    """A selector that can reach where the run has not."""
-
-    def test_it_starts_on_the_running_position(self) -> None:
-        assert _selected(_drive("+++", "q").screens[0]) == ["+"]
-
-    @pytest.mark.parametrize(
-        ("keys", "expected"), [("l", ">"), ("j", "<"), ("ljhk", "+")]
-    )
-    def test_the_movement_keys_move_it(self, keys: str, expected: str) -> None:
-        keyboard = _drive("+>\n<-", keys + "q")
-        assert _selected(keyboard.screens[-1]) == [expected]
-
-    def test_moving_does_not_move_the_run(self) -> None:
-        assert "step 0" in _drive("+++", "lllq").headers()[-1]
-
-    def test_it_stops_at_the_edges(self) -> None:
-        keyboard = _drive("+++", "hhhhkkkkq")
-        assert _selected(keyboard.screens[-1]) == ["+"]
-
-    def test_stepping_snaps_it_back_to_the_run(self) -> None:
-        keyboard = _drive("+>-<", "ll q")
-        assert _selected(keyboard.screens[-1]) == [">"]
-
-    def test_a_breakpoint_can_be_set_where_the_run_has_not_reached(self) -> None:
-        keyboard = _drive("+>-<", "lltcq")
-        assert "step 2" in keyboard.headers()[-1]
-
-    def test_marking_ahead_paints_there_not_here(self) -> None:
-        keyboard = _drive("+>-<", "lltq")
-        assert _marked_break(keyboard.screens[-1]) == ["-"]
-        assert _highlighted(keyboard.screens[-1]) == "+"
-
-    def test_the_pane_follows_the_selector(self) -> None:
-        program = "." * 400 + "@" + "." * 400
-        screen = render(_frame(program, 0), width=60, picked=Mark(0, 400))
-        assert _selected(screen) == ["@"]
-
-    def test_a_language_with_no_position_has_no_selector(self) -> None:
-        keyboard = _Keys("llq")
-        drive(History("Circuit Diagram", "-.\n", ""), keyboard.read, keyboard.write)
-        assert _selected(keyboard.screens[-1]) == []
 
 
 class TestBoundaries:
@@ -817,21 +719,3 @@ def test_raster_history_replays_the_original_pixels(language: str) -> None:
     assert replay(language, source, "1\n", frame.step) == frame
     assert history.at(0) == first
     assert render(frame)
-
-
-@pytest.mark.medium
-def test_line_highlight_tracks_ink_after_crop_and_scale() -> None:
-    from esolangs import generate
-    from esolangs.raster import Raster
-
-    source = generate("Line", "01", scale=3)
-    assert isinstance(source, Raster)
-    history = History("Line", Raster.from_png(source.to_png()), "1\n")
-    for step in range(100):
-        frame = history.at(step)
-        if frame.halted:
-            assert frame.output == "1"
-            break
-        assert _highlighted(render(frame)) == "#"
-    else:
-        pytest.fail("identity did not halt within 100 steps")

@@ -4,9 +4,13 @@ from itertools import pairwise
 
 import pytest
 
+import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.interpreters.grid_based.fish import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.fish import fish
+from esolangs.tools.fish import balance_fish, fish
+from esolangs.tools.wrap import balance_score
+from tests.tools.test_balance_remaining import _fish_tables
 from tests.witness_tables import witnesses
 
 
@@ -31,3 +35,17 @@ def test_folded_lookup_executes_every_three_input_table(width: int) -> None:
 def test_source_growth_is_linear_in_the_table() -> None:
     sizes = [len(fish("01" * (1 << (n - 1)))) for n in range(1, 13)]
     assert all(right <= 2 * left for left, right in pairwise(sizes))
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("table", _fish_tables())
+def test_fish_balance_matches_all_power_of_two_folds(table):
+    default = fish(table)
+    balanced = balance_fish(table, default)
+    layouts = [default, fish(table, 1)] + [
+        fish(table, (1 << exponent) + 2) for exponent in range(len(table).bit_length())
+    ]
+    optimum = min(layouts, key=balance_score)
+    assert balance_score(balanced) == balance_score(optimum)
+    assert esolangs.generate("Fish", table, balance=True) == balanced
+    assert _evaluate("Fish", balanced, inputs=len(table).bit_length() - 1) == table

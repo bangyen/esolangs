@@ -1,7 +1,5 @@
 """Hints attached to source, runtime and detector errors."""
 
-from pathlib import Path
-
 import pytest
 
 import esolangs
@@ -13,28 +11,6 @@ from esolangs.interpreters.other._packlang_parse import _Parser
 from esolangs.interpreters.source_hints import keyword_hint
 from esolangs.raster import Raster
 from esolangs.vm import make_vm
-from tests.cli_support import call_both
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("guard", [0, 1])
-def test_brainif_unknown_command_is_a_cli_source_error(guard, tmp_path, capsys):
-    path = tmp_path / "bad.brainif"
-    path.write_text(f"if {guard} incremnt", encoding="utf-8")
-    with pytest.raises(SystemExit) as caught:
-        call_both(["run", "BrainIf", str(path)], capsys)
-    assert caught.value.code == 2
-    captured = capsys.readouterr()
-    assert not captured.out
-    assert "unknown BrainIf command" in captured.err
-    assert "did you mean 'increment'" in captured.err
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("word", ["comment", "seed"])
-def test_mammalian_rejects_unknown_words_before_output(word):
-    with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
-        esolangs.run("SLOW ACV MAMMALIAN", f"PRONOUNCE {word}", timeout=1)
 
 
 @pytest.mark.medium
@@ -47,32 +23,10 @@ def test_vm_load_retains_the_delimiter_and_position(language):
 
 
 @pytest.mark.medium
-def test_vm_runtime_error_keeps_its_hint():
-    vm = make_vm("Modulous", "[JMP F]", stdin="")
-    with pytest.raises(esolangs.ProgramError, match="missing operand") as caught:
-        vm.step()
-    assert "required operand" in caught.value.__notes__[0]
-
-
-@pytest.mark.medium
 def test_isolated_error_keeps_the_hint():
     with pytest.raises(esolangs.ProgramError, match="unmatched") as caught:
         esolangs.run("brainfuck", "[", isolated=True)
     assert caught.value.__notes__ == ["hint: close this '[' with ']'"]
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("command", ["run", "debug"])
-def test_cli_prints_runtime_hints(command, tmp_path: Path, capsys):
-    source = tmp_path / "bad.mod"
-    source.write_text("[JMP F]", encoding="utf-8")
-    args = [command, "--timeout", "1", "Modulous", str(source)]
-    with pytest.raises(SystemExit):
-        call_both(args, capsys)
-    streams = capsys.readouterr()
-    text = streams.out + streams.err
-    assert "missing operand in JMP F" in text
-    assert "hint: supply the required operand" in text
 
 
 @pytest.mark.parametrize(
@@ -125,24 +79,6 @@ def test_bad_png_hint_survives_exception_translation():
     assert "export the image as PNG" in caught.value.__notes__[0]
 
 
-@pytest.mark.parametrize(
-    ("message", "hint"),
-    [
-        ("could not convert string to float: 'x'", "decimal number"),
-        ("bytes must be in range(0, 256)", "between 0 and 255"),
-        ("malformed operand", "describe --spec 'A Painter Ant'"),
-    ],
-)
-def test_unannotated_value_error_keeps_its_diagnostic(message, hint):
-    with (
-        pytest.raises(esolangs.ProgramError, match=r".+") as caught,
-        interpreter_errors("recursion", language="A Painter Ant"),
-    ):
-        raise ValueError(message)
-    assert str(caught.value) == message
-    assert hint in caught.value.__notes__[0]
-
-
 @pytest.mark.medium
 @pytest.mark.parametrize(
     ("language", "scale", "hint"),
@@ -156,23 +92,6 @@ def test_raster_interpreters_retain_geometry_hints(language, scale, hint):
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
         esolangs.run(language, image, scale=scale, timeout=1)
     assert hint in caught.value.__notes__[0]
-
-
-@pytest.mark.medium
-def test_tui_displays_a_runtime_hint():
-    from esolangs.tui import render, replay
-
-    frame = replay("Modulous", "[JMP F]", "", step=1)
-    assert "hint: supply the required operand" in render(frame, width=120)
-
-
-@pytest.mark.medium
-def test_hints_do_not_discard_partial_output():
-    with pytest.raises(esolangs.ProgramError, match="missing operand") as caught:
-        esolangs.run("Modulous", "[PSH INT 65][PRT][JMP F]", timeout=1)
-    assert caught.value.partial_output == "A"
-    assert "hint:" in caught.value.__notes__[0]
-    assert "printed 'A'" in caught.value.__notes__[1]
 
 
 @pytest.mark.medium
@@ -278,37 +197,6 @@ def test_input_exhaustion_keeps_counts_and_one_hint(isolated):
     assert "at least 1 input character" in hints[0]
 
 
-@pytest.mark.parametrize("isolated", [False, True])
-@pytest.mark.medium
-def test_runtime_error_keeps_partial_output_and_one_hint(isolated):
-    with pytest.raises(HaltError) as caught:
-        esolangs.run("Modulous", "[PSH INT 65][PRT][SWP]", isolated=isolated)
-    assert str(caught.value) == "SWP needs two values on the stack and there are 0"
-    assert caught.value.partial_output == "A"
-    assert caught.value.__notes__[0] == "hint: push two values before SWP"
-    assert sum(note.startswith("hint:") for note in caught.value.__notes__) == 1
-
-
-@pytest.mark.medium
-def test_vm_and_tui_display_runtime_hints():
-    from esolangs.tui import render, replay
-
-    machine = make_vm("Modulous", "[SWP]", stdin="")
-    with pytest.raises(HaltError) as caught:
-        machine.step()
-    assert caught.value.__notes__ == ["hint: push two values before SWP"]
-    assert "hint: push two values" in render(replay("Modulous", "[SWP]", "", step=1))
-
-
-@pytest.mark.medium
-def test_cli_displays_runtime_hints(tmp_path, capsys):
-    source = tmp_path / "runtime.mod"
-    source.write_text("[SWP]")
-    with pytest.raises(SystemExit):
-        call_both(["run", "Modulous", str(source)], capsys)
-    assert "hint: push two values before SWP" in capsys.readouterr().err
-
-
 @pytest.mark.medium
 def test_timeout_hint_preserves_the_timeout_class():
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
@@ -327,13 +215,6 @@ def test_recursion_limit_has_a_depth_hint():
     assert caught.value.__notes__ == [
         "hint: reduce expression nesting or recursion depth"
     ]
-
-
-@pytest.mark.medium
-def test_memory_limit_has_an_address_hint():
-    with pytest.raises(esolangs.InterpreterLimitError) as caught:
-        esolangs.run("S*bleq", "100000000000000000000 0 0", timeout=1)
-    assert "smaller memory addresses" in caught.value.__notes__[0]
 
 
 def test_missing_dependency_hint_names_the_environment(monkeypatch):
@@ -409,24 +290,6 @@ def test_detector_bounds_preserve_the_exact_diagnostic(
     assert hint in caught.value.__notes__[0]
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("detector", "hint"),
-    [
-        ("run_until_halt_or_all_branches_cycle", "branching_successors"),
-        ("run_until_halt_or_ancestor", "frame_entry_key"),
-        ("run_until_halt_or_growth", "rightward-growing tape"),
-        ("run_until_halt_or_value_growth", "unbounded affine values"),
-    ],
-)
-def test_unsupported_detectors_name_the_needed_capability(detector, hint):
-    with pytest.raises(TypeError) as caught:
-        getattr(vm, detector)(vm.make_vm("Sophie", ""))
-    assert type(caught.value) is TypeError
-    assert str(caught.value).startswith("Sophie is not ")
-    assert hint in caught.value.__notes__[0]
-
-
 def test_cycle_detector_requires_a_snapshot_machine():
     with pytest.raises(TypeError) as caught:
         vm.run_until_halt_or_cycle(object())
@@ -435,21 +298,6 @@ def test_cycle_detector_requires_a_snapshot_machine():
         "it wraps provides the required members"
     )
     assert "step, halted and snapshot" in caught.value.__notes__[0]
-
-
-@pytest.mark.medium
-def test_fixed_input_does_not_make_branch_input_forkable():
-    source = "[INP INT][PRT INT][END]"
-    with pytest.raises(TimeoutError) as caught:
-        vm.run_until_halt_or_all_branches_cycle(
-            vm.make_vm("Modulous", source, stdin="42\n")
-        )
-    assert str(caught.value) == (
-        "undecided: a branching transition needs input that cannot be safely forked"
-    )
-    assert "seeded single-path run" in caught.value.__notes__[0]
-    assert "does not decide all random paths" in caught.value.__notes__[0]
-    assert esolangs.run("Modulous", source, stdin="42\n", seed=1, timeout=1) == "42"
 
 
 @pytest.mark.medium

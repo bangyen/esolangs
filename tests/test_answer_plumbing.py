@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pathlib
-import re
 from importlib.resources import files
 
 import pytest
@@ -11,7 +10,6 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from tests.generator_support import evaluate_generated, verify_generated
-from tests.stdin_check import _check_stdin
 from tests.witness_tables import witnesses
 
 ROOT = pathlib.Path(__file__).parents[1]
@@ -279,68 +277,6 @@ class TestTheVerifierIsShipped:
             evaluate_generated("brainfuck", "011")
 
 
-class TestWidthEffectSaysWhatWidthDoes:
-    """One flag, three behaviours, and no way to tell them apart."""
-
-    def test_layout_is_exactly_the_width_aware_generators(self) -> None:
-        """The old field is the new field's `layout` case, and only that."""
-        for name in esolangs.list_languages():
-            facts = esolangs.describe(name)
-            assert (facts["width_effect"] == "layout") == facts["width_aware"], name
-
-    @pytest.mark.slow
-    def test_the_declaration_matches_what_width_actually_does(self) -> None:
-        """The drift guard: `none` must really be a no-op."""
-        wrong = []
-        for name in esolangs.list_languages():
-            facts = esolangs.describe(name)
-            if not facts["boolean_generator"]:
-                continue
-            plain = esolangs.generate(name, "0110")
-            narrow = esolangs.generate(name, "0110", width=20)
-            if facts["width_effect"] == "none" and plain != narrow:
-                wrong.append(f"{name}: declared none but --width changed it")
-            # `wrap` and `layout` may coincide on a program already narrower
-            # than the width, so only the `none` direction is decidable here.
-        assert not wrong, "\n".join(wrong)
-
-    def test_a_wrapping_language_really_reflows(self) -> None:
-        """The positive control for the check above, which only tests `none`."""
-        wide = esolangs.generate("Sophie", "0110")
-        narrow = esolangs.generate("Sophie", "0110", width=10)
-        assert "\n" not in wide
-        assert "\n" in narrow
-        assert esolangs.describe("Sophie")["width_effect"] == "wrap"
-
-
-@pytest.mark.filterwarnings("ignore::UserWarning")
-class TestGraphemeReadsWhatTheDocsNowSay:
-    """The stated mechanism was wrong, and so was its stated direction."""
-
-    def test_only_an_a_line_reads_as_one(self) -> None:
-        """'0', '1', 'x' and ' ' are all non-empty and all read as 0."""
-        program = esolangs.generate("Grapheme", "01")
-        answers = {}
-        for line in ("A", "%", "0", "1", "x", " "):
-            output = esolangs.run("Grapheme", program, stdin=line + "\n", timeout=10)
-            answers[line] = esolangs.read_answer("Grapheme", output)
-        assert answers == {
-            "A": "1",
-            "%": "0",
-            "0": "0",
-            "1": "0",
-            "x": "0",
-            " ": "0",
-        }
-
-    def test_naive_input_answers_the_all_zeros_row(self) -> None:
-        """The true consequence: every bit reads 0, so you get row 0."""
-        table = "0001"  # AND: row 0 is 0, row 3 is 1
-        program = esolangs.generate("Grapheme", table)
-        output = esolangs.run("Grapheme", program, stdin="1\n1\n", timeout=10)
-        assert esolangs.read_answer("Grapheme", output) == table[0]
-
-
 class TestBreakAtChecksTheKindOfPosition:
     """Both wrong-kind breakpoints were stored and could never fire."""
 
@@ -499,33 +435,6 @@ class TestTheApiNameListsCannotDriftAgain:
         assert not missing, f"esolangs.__doc__ omits: {missing}"
 
 
-class TestARowIndexNeverHasALeadingZero:
-    """`0010` fed to a 16-row program parses as ten and answers row 10."""
-
-    def test_a_bit_string_typed_as_an_index_is_caught(self) -> None:
-        """No table needed; the message gives the index the bits meant."""
-        with pytest.raises(esolangs.ArgumentError, match=r"leading zero.*index is 2"):
-            _check_stdin("Fargo", "0010\n")
-
-    def test_a_real_index_passes(self) -> None:
-        """Including a single zero, which has no *leading* zero to speak of."""
-        _check_stdin("Fargo", "0\n")
-        _check_stdin("Fargo", "15\n")
-
-
-class TestAPaintersMarkMustBeInAGrid:
-    """Its pattern was ``([o@])``, so any stray ``o`` read as a zero."""
-
-    def test_garbage_is_refused(self) -> None:
-        """It was the one language that read a crash message as an answer."""
-        with pytest.raises(esolangs.ProgramError):
-            esolangs.read_answer("A Painter Ant", "hello world")
-
-    def test_a_real_grid_still_reads(self) -> None:
-        """The check is worth nothing if it costs the actual answers."""
-        assert evaluate_generated("A Painter Ant", "0110") == "0110"
-
-
 class TestTheDebuggerMirrorsSnapshot:
     """Reaching through ``.vm`` is what the mirrors exist to avoid."""
 
@@ -590,57 +499,6 @@ class TestTheTwoWidthKeysCannotDrift:
         assert set(counts) == {"none", "wrap", "layout"}
         assert min(counts.values()) > 1, counts
         assert sum(counts.values()) == len(esolangs.list_languages())
-
-
-class TestEveryDumpSaysWhereTheAnswerIs:
-    """A dump prints the whole final state, so "where" is the question."""
-
-    def test_a_dump_has_a_pattern_or_a_note(self) -> None:
-        """Either a regex that finds the answer, or prose that locates it."""
-        silent = [
-            name
-            for name in esolangs.list_languages()
-            if esolangs.describe(name)["answer_mode"] == "dump"
-            and not esolangs.describe(name)["answer_pattern"]
-            and not esolangs.describe(name)["answer_convention"]
-        ]
-        assert not silent, (
-            f"dump languages that never say where the answer is: {silent}"
-        )
-
-    def test_bitdeques_note_is_true(self) -> None:
-        """It claims the whole dump is the answer bit.  Check that, do not trust it."""
-        note = str(esolangs.describe("Bitdeque")["answer_convention"])
-        assert "the whole dump is the answer" in note
-        template = esolangs.generate("Bitdeque", "0110")
-        for combo in range(4):
-            bits = [(combo >> (1 - i)) & 1 for i in range(2)]
-            program = esolangs.instantiate("Bitdeque", template, bits)
-            dump = esolangs.run("Bitdeque", program, stdin="", timeout=10)
-            assert dump == "0110"[combo], bits
-            assert len(dump) == 1, dump
-
-
-class TestFillingSomethingWithNoSlots:
-    """ "0 inputs" is true and answers a question nobody asked."""
-
-    def test_a_plain_program_says_it_is_not_a_template(self) -> None:
-        """The mistake is "this is not a template", not a count of zero."""
-        with pytest.raises(esolangs.TemplateError, match=re.escape("no run of '$'")):
-            esolangs.instantiate("Minifuck", "abc", [1, 0])
-
-    def test_filling_twice_says_the_same_thing(self) -> None:
-        """The other way to get here, and it looks identical from inside."""
-        template = esolangs.generate("Minifuck", "0110")
-        filled = esolangs.instantiate("Minifuck", template, [1, 0])
-        with pytest.raises(esolangs.TemplateError, match="already been applied"):
-            esolangs.instantiate("Minifuck", filled, [1, 0])
-
-    def test_a_real_slot_mismatch_still_counts(self) -> None:
-        """The count is the right answer when there *are* slots."""
-        template = esolangs.generate("Minifuck", "0110")
-        with pytest.raises(esolangs.TemplateError, match="2 inputs"):
-            esolangs.instantiate("Minifuck", template, [1, 0, 1])
 
 
 class TestEvaluateTakesAWidth:
