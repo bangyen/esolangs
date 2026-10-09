@@ -83,12 +83,6 @@ _SIZE_END = "<!-- COLLECTION-SIZE:END -->"
 _CENSUS_START = "<!-- CURATION-CENSUS:START -->"
 _CENSUS_END = "<!-- CURATION-CENSUS:END -->"
 
-#: The frame the README shows.  Flowchart because the pane is worth seeing:
-#: it is a grid language, so the screenshot shows the 2D program pane and a
-#: tuple ``ip``, neither of which a tape language exercises.  ``replay``
-#: derives the frame from nothing, so this is a coordinate, not a recording.
-#: Without it, :func:`tui_language` takes the first grid language like it.
-_TUI_LANGUAGE = "Flowchart"
 _TUI_TABLE = "0110"
 _TUI_BITS = [0, 1]
 _TUI_STEP = 14
@@ -342,12 +336,13 @@ def render_xor_section() -> str:
 def tui_language() -> str:
     """Return the language the README's frame shows.
 
-    The preferred one while it is registered; otherwise the first grid
+    The one whose ``LANGUAGE`` asks to be shown; otherwise the first grid
     language that reads its inputs as a plain bit stream, so removing a
     language never leaves the README pointing at nothing.
     """
-    if _TUI_LANGUAGE in LANGUAGES:
-        return _TUI_LANGUAGE
+    for name, lang in LANGUAGES.items():
+        if lang.showcase:
+            return name
     return next(
         name
         for name in LANGUAGES

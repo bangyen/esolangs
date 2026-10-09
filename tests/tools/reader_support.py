@@ -19,11 +19,9 @@ def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]
     return lang.boolean, module.run
 
 
-#: The tree readers these shared checks were written for, while registered.
+#: The tree readers whose ``LANGUAGE`` asks for these shared checks.
 _READERS = {
-    name: _reader(name)
-    for name in ("false", "thue", "unlambda")
-    if any(lang.id == name for lang in LANGUAGES.values())
+    lang.id: _reader(lang.id) for lang in LANGUAGES.values() if lang.reader_checked
 }
 
 

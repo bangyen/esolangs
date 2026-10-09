@@ -79,8 +79,7 @@ def _balanced_languages() -> list[str]:
             or _balances_whole_tokens(lang.wrap)
             or (lang.wrap is wrap_chars and lang.contract.parameterized)
         )
-        # A width sweep takes minutes; each has its own balance tests.
-        and name not in {"Polynomial", "SLOW ACV MAMMALIAN"}
+        and not lang.slow_width_sweep
     )
 
 

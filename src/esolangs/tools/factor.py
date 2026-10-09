@@ -155,6 +155,11 @@ def factor(truth_table: str) -> str:
 LANGUAGE = Language(
     "Factor",
     "tape_based.factor",
+    # A one-character mutation can turn the deliberately factorable example
+    # into a huge semiprime, unbounded work before the first VM step.
+    # Twelve digits still exercise the same parser and factorization paths
+    # and are the measured safe bound.
+    fuzz_max_digits=12,
     boolean=factor,
     documented_sizes=(12_592, 24_463, 2.1),
     contract=BooleanContract(

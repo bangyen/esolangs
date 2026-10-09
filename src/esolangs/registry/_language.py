@@ -19,6 +19,7 @@ from esolangs.registry._slug import canonical_id
 # ``generator(truth_table)`` returns a program computing it; the few that lay
 # out two dimensions (LaserFuck) also take a ``width``, hence ``...``.
 Generator = Callable[..., Program]
+Payload = tuple[tuple[int, ...], tuple[int, ...], int, int]
 
 
 class SourceKind(StrEnum):
@@ -58,6 +59,8 @@ class Example:
     scale: int = 1
     #: Whether text is unfilled, where ``char`` is also source (``///``).
     unfilled: Callable[[str], bool] | None = None
+    #: Building it balanced is a medium-length run.
+    slow_build: bool = False
 
 
 @dataclass(frozen=True)
@@ -70,11 +73,13 @@ class Language:
     id: str = ""
     #: Other names :func:`~esolangs.registry.resolve` accepts.
     aliases: tuple[str, ...] = ()
-    # Source: ``split`` passes ``run()`` one string per line.
+    # Source: ``split`` passes ``run()`` one string per line; ``extra`` is
+    # the optional-dependency group its interpreter needs (``math``).
     split: bool = False
     #: Source that looks like a file path is still source (``///`` rules).
     path_like_source: bool = False
     source_kind: SourceKind = SourceKind.TEXT
+    extra: str = ""
     # The Boolean generator, its limits, and how its programs read inputs
     # and give the answer (default: a 0/1 line per input, the bit printed).
     boolean: Generator | None = None
@@ -100,10 +105,27 @@ class Language:
     random: bool = False
     #: What an exhausted read does instead of raising ``EOFError``.
     eof: str = ""
+    #: An underfed program raises its own error rather than read past EOF.
+    underfed_raises: bool = False
     #: The error an empty program raises, when the spec rejects one.
     empty_program: str = ""
     #: The committed AND example, where the default reader does not fit.
     example: Example = field(default_factory=Example)
+    # Growth checks: linear rungs, a size ceiling, a layout switch's arities.
+    scaling_rungs: tuple[int, ...] = (8, 10, 12)
+    size_bound: Callable[[int], int] | None = None
+    layout_switch: tuple[int, ...] = ()
+    # Shared sweeps that run long for it: marked slow, or left to its tests.
+    slow_scaling: bool = False
+    slow_stepping: bool = False
+    slow_width_sweep: bool = False
+    # Tooling: reader checks, payload split (data, control, pc, flag bits),
+    # leak-sweep digits, weekly mutation suites, the README's TUI frame.
+    reader_checked: bool = False
+    payload: Callable[[Any], Payload] | None = None
+    fuzz_max_digits: int | None = None
+    weekly_mutation: tuple[str, ...] = ()
+    showcase: bool = False
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""

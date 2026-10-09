@@ -10,9 +10,10 @@ has no range test, so each listed row is its own nested loop.
 """
 
 from functools import cache
+from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
+from esolangs.registry._language import Language, Payload, Shape
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -161,9 +162,16 @@ def bfstack(truth_table: str) -> str:
     return build(0, 0, len(truth_table))
 
 
+def _payload(state: Any) -> Payload:
+    """Split out the data stack, loop stack and pc; the cursor is I/O state."""
+    data, control, pc, _cursor = state
+    return data, control, pc, 0
+
+
 LANGUAGE = Language(
     "BFStack",
     "stack_based.bfstack",
+    payload=_payload,
     boolean=bfstack,
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,

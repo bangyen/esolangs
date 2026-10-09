@@ -21,9 +21,9 @@ class TestRewriteImports:
         """``import <interp> as m`` is an alias for the module being mutated."""
         script = load_script()
         out = script._rewrite_imports(  # noqa: SLF001
-            "from esolangs.interpreters.grid_based import streetcode as module\n",
+            "from esolangs.interpreters.grid_based import toy as module\n",
             "bundled",
-            "grid_based.streetcode",
+            "grid_based.toy",
         )
         assert out.strip() == "import bundled as module"
 
@@ -31,7 +31,7 @@ class TestRewriteImports:
         """A ``tools`` import is not the interpreter, even spelled alike."""
         script = load_script()
         for line, module in (
-            ("from esolangs.tools import streetcode as gen", "streetcode"),
+            ("from esolangs.tools import toy as gen", "toy"),
             (
                 "from esolangs.tools.polynomial import polynomial as gen",
                 "polynomial.polynomial",
@@ -52,7 +52,7 @@ class TestRewriteImports:
             "from esolangs.registry import RUNNERS",
         ):
             out = script._rewrite_imports(  # noqa: SLF001
-                f"{line}\n", "bundled", "grid_based.streetcode"
+                f"{line}\n", "bundled", "grid_based.toy"
             )
             assert out.strip() == line
 
@@ -79,9 +79,9 @@ class TestRewriteImports:
         """The names a bundled suite needs come from the bundle itself."""
         script = load_script()
         out = script._rewrite_imports(  # noqa: SLF001
-            "from esolangs.interpreters.grid_based.streetcode import _Machine\n",
+            "from esolangs.interpreters.grid_based.toy import _Machine\n",
             "bundled",
-            "grid_based.streetcode",
+            "grid_based.toy",
         )
         assert out.strip() == "from bundled import _Machine"
 

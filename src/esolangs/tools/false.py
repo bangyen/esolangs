@@ -173,6 +173,7 @@ def _balance(table: str, default: str) -> str:
 LANGUAGE = Language(
     "FALSE",
     "stack_based.false",
+    reader_checked=True,
     boolean=false,
     contract=BooleanContract(
         input_shape="char_stream",

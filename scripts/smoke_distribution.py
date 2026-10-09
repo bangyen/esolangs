@@ -13,6 +13,7 @@ from pathlib import Path
 
 import esolangs
 from esolangs._evaluate import _evaluate
+from esolangs.registry import LANGUAGES
 
 
 def _cli(args: list[str], stdin: str = "") -> str:
@@ -136,7 +137,6 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             assert diagnostic in result.stderr, result
         source.write_text(",>,<.", encoding="utf-8")
         assert _evaluate("brainfuck", source, timeout=None, inputs=2) == "0011"
-    registered = set(esolangs.list_languages())
     rasters = [
         name
         for name in esolangs.list_languages()
@@ -229,27 +229,21 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             == "01"
         )
     assert (importlib.util.find_spec("PIL") is not None) == image_extra
-    if "Polynomial" not in registered:
-        pass  # the one language needing the math extra was removed
-    elif math_extra:
-        assert importlib.util.find_spec("sympy") is not None
-        assert (
-            _evaluate(
-                "Polynomial",
-                esolangs.generate("Polynomial", "01"),
-                timeout=None,
-                inputs=1,
-            )
-            == "01"
-        )
-    else:
-        assert importlib.util.find_spec("sympy") is None
-        try:
-            esolangs.run("Polynomial", "f(x) = x - 2")
-        except esolangs.MissingDependencyError:
-            pass
+    # Each language whose interpreter needs the math extra runs with it and
+    # refuses without it; none left means nothing to check.
+    for language in [n for n, lang in LANGUAGES.items() if lang.extra == "math"]:
+        program = esolangs.generate(language, "01")
+        if math_extra:
+            assert importlib.util.find_spec("sympy") is not None
+            assert _evaluate(language, program, timeout=None, inputs=1) == "01"
         else:
-            raise AssertionError("Polynomial ran without its math extra")
+            assert importlib.util.find_spec("sympy") is None
+            try:
+                esolangs.run(language, program, stdin="")
+            except esolangs.MissingDependencyError:
+                pass
+            else:
+                raise AssertionError(f"{language} ran without its math extra")
 
 
 def main() -> None:

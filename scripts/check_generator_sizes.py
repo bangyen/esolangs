@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from benchmark import measure  # noqa: E402
 
 import esolangs  # noqa: E402
+from esolangs.registry import LANGUAGES  # noqa: E402
 
 BASELINE = REPO_ROOT / "tests" / "fixtures" / "generator_sizes.json"
 
@@ -64,8 +65,10 @@ TABLES = benchmark_tables()
 #: return null ``commands`` before stepping rather than on the cap.
 STEP_CAP = 200_000
 
-# Dense parity reaches the named layout switches without folding inputs away.
-BOUNDARIES = {"Befunge": (10, 11), "Circuit Diagram": (7, 8), "Streetcode": (5, 6)}
+# Dense parity reaches each language's layout switch without folding inputs.
+BOUNDARIES = {
+    name: lang.layout_switch for name, lang in LANGUAGES.items() if lang.layout_switch
+}
 
 
 def boundary_tables(name: str) -> tuple[str, ...]:

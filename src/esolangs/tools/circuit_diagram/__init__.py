@@ -76,7 +76,7 @@ from collections.abc import Iterator
 from typing import Any, Literal
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
 from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import (
@@ -609,6 +609,13 @@ def _balance(table: str, default: Any, **options: Any) -> Any:
 LANGUAGE = Language(
     "Circuit Diagram",
     "grid_based.circuit_diagram",
+    layout_switch=(7, 8),
+    example=Example(slow_build=True),
+    # The H-layout is not asymptotic below n=8, so it has no room for a
+    # third rung; the deep contract carries it on a backstop for the same
+    # reason, and its area recurrence is checked with the construction
+    # invariants.
+    scaling_rungs=(8, 9),
     boolean=circuit_diagram,
     documented_sizes=(1_780_773, 2_505_897, 1.4),
     split=True,

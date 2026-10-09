@@ -433,34 +433,27 @@ _LINEAR_SCALING = sorted(
 @pytest.mark.parametrize(
     "name",
     [
-        # Line renders a 2^12-row raster: 24s.
         pytest.param(name, marks=pytest.mark.slow)
-        if name in {"Line", "Streetcode"}
+        if LANGUAGES[name].slow_scaling
         else name
         for name in _LINEAR_SCALING
     ],
 )
 def test_generators_scale_linearly(name: str) -> None:
     """Three same-parity rungs grow by four, whatever the prologue."""
-    fn = LANGUAGES[name].boolean
+    lang = LANGUAGES[name]
+    fn = lang.boolean
     assert fn is not None
-    if name == "Circuit Diagram":
-        # The H-layout is not asymptotic below n=8, so it has no room for a
-        # third rung; the deep contract carries it on a backstop for the
-        # same reason, and its area recurrence is checked with the
-        # construction invariants.
-        sizes = [source_units(fn(parity(n))) for n in (8, 9)]
-        assert sizes[1] <= 2 * sizes[0]
-        return
-    arities = (8, 10, 12)
+    arities = lang.scaling_rungs
     sizes = [source_units(fn(parity(n))) for n in arities]
-    if name == "Minifuck":
-        assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))
+    if lang.size_bound is not None:
+        bound = lang.size_bound
+        assert all(size <= bound(n) for size, n in zip(sizes, arities, strict=True))
         return
-    if name == "Malbolge":
-        # Every Malbolge source loads into 59,049 cells, so every program --
-        # this generator's or any other -- is bounded by a constant.
-        assert all(size <= 59_049 for size in sizes)
+    if len(arities) == 2:
+        # Two rungs: one step of n at most doubles the program.
+        low, high = arities
+        assert sizes[1] <= 2 ** (high - low) * sizes[0]
         return
     # The bound is ``linearity.MAX_DIFF_RATIO``.  That module imports the
     # table shapes from this one, so the constant cannot travel the other

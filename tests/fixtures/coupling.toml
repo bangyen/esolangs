@@ -3,22 +3,8 @@
 # for it to be lowered as mentions go; a language is removable when no file
 # names it.
 
-"scripts/benchmark.py" = 3
-"scripts/check_generator_sizes.py" = 3
-"scripts/generate_docs.py" = 1
-"scripts/mutate_weekly.py" = 5
-"scripts/screens/resources.py" = 7
-"scripts/smoke_distribution.py" = 4
-"scripts/verify_no_exception_leaks.py" = 1
 "src/esolangs/interpreters/grid_based/_circuit_functions.py" = 2
 "tests/duration_policy.py" = 1
 "tests/proofs/test_bands.py" = 2
 "tests/scripts/test_bundle_one.py" = 1
-"tests/scripts/test_examples.py" = 1
-"tests/scripts/test_mutate_one.py" = 1
-"tests/test_answer_stdin.py" = 1
-"tests/test_debug.py" = 2
 "tests/test_interpreter_only_admissions.py" = 6
-"tests/tools/reader_support.py" = 3
-"tests/tools/test_balance_remaining.py" = 2
-"tests/tools/test_boolean_contract.py" = 5

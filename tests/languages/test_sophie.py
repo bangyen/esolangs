@@ -5,6 +5,7 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -261,10 +262,24 @@ def test_output_limit_accepts_exact_length_and_unicode():
     assert caught.value.partial_output == "λ"
 
 
+def _bounds(profile: dict[str, Any]) -> None:
+    """The construction bounds the resource audit holds this generator to."""
+    units = profile["source_units"]
+    commands = profile["worst_row_commands"]
+    memory = profile["peak_memory_cells"]
+    stack = profile["peak_stack_items"]
+    # No loop opcode: each executed command advances the source cursor.
+    assert commands <= units
+    assert memory == 1
+    assert stack == 0
+    assert profile["peak_control_stack_items"] == 0
+    assert profile["peak_machine_bits"] <= 8 + units.bit_length() + 2
+
+
 @pytest.mark.medium
 def test_resource_bounds() -> None:
     """The resource audit counts a UTF-8 byte per source unit."""
     from scripts.screens.resources import audit, corpus
 
-    result = audit("Sophie", 3, corpus(3)["parity"])
+    result = audit("Sophie", 3, corpus(3)["parity"], _bounds)
     assert result["source_utf8_bits"] == 8 * result["source_units"]
