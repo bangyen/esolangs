@@ -35,9 +35,8 @@ type _State = _BFMachine
 #: Sieve batch size for :func:`_factorint`; not a ceiling.
 _SIEVE_CHUNK = 20000
 
-#: Residue width above which a chunk is filtered by a gcd, not a remainder
-#: per prime.  Pays only once the number dwarfs the chunk product; the
-#: committed examples sit below it.
+#: Gcd filtering pays once the residue dwarfs the chunk product;
+#: committed examples sit below this width.
 _BATCH_BITS = 8192
 
 # ``isprime64`` is a proof only below this; above, trial division stays exact.

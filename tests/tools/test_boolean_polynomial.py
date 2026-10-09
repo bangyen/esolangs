@@ -277,6 +277,8 @@ def test_dense_polynomial_eight_executes_every_row(options) -> None:
             )
             == expected
         )
+
+
 def test_polynomial_never_strands_a_sign_on_its_own_line() -> None:
     """The raggedness this wrapper exists to fix: a line that is just a sign."""
     program = generate("Polynomial", "0110", width=DEFAULT_WIDTH)

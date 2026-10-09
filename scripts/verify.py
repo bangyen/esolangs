@@ -634,27 +634,13 @@ MUTATES_TREE = "pre-commit"
 # cheap steps.
 LONG_STEP = "pytest"
 
-# Steps that are *themselves* parallel, so running them beside pytest does not
-# overlap work -- it oversubscribes the machine and makes both slower.  The
-# shadow is only free for steps that use one core.
-#
-# Measured on a 10-core laptop (8 performance), each alone against the same
-# step inside the old all-at-once shadow: pytest 39.8s alone vs 137.3s,
-# bandit 2.7s vs 11.2s, the line suites 2.6s vs 28.5s, the leak sweep
-# (`--all`) 35.6s vs 85.4s scoped.  Nothing was slow; everything was
-# contending.  So the heavy steps wait for pytest to finish and then get the
-# machine to themselves.
+# Unbounded overlap took the leak sweep from 35.6s to 85.4s.
+# Three leak workers plus four pytest workers leave a core
+# for the serial shadow checks; a standalone sweep keeps six.
 LEAK_STEP = "exception leaks"
 HEAVY_STEPS = frozenset({LEAK_STEP})
-
-#: Workers for the leak sweep when *this* runner drives it.  The script's own
-#: default is a deliberate 2, sized for a laptop doing other things; here the
-#: heavy steps run alone with pytest already joined, which is the "cores to
-#: spare" case its comment names.  6 is measured: 70.9s at 2, 35.6s at 6 over
-#: `--all`, and past the 8 performance cores the curve turns back up (the
-#: same shape pyproject records for xdist).  A caller who sets the variable
-#: keeps their value.
 LEAKSWEEP_JOBS = "6"
+OVERLAPPED_LEAKSWEEP_JOBS = "3"
 
 
 def _ensure_dev_deps() -> None:
@@ -736,14 +722,10 @@ def _run_steps(
 ) -> tuple[int, list[tuple[str, float]], float]:
     """Run the planned steps, overlapping the long one with the cheap ones.
 
-    Four phases.  ``pre-commit`` rewrites files, so it runs to completion
-    before anything reads the tree it edits.  Then ``pytest`` is launched and
-    the one-core steps go by in its shadow, which is free.  Then the
-    ``HEAVY_STEPS`` -- parallel in their own right, so the shadow was never
-    free for them -- run with the machine to themselves.  *gate* is the
-    touched-file coverage check, which reads the data file ``pytest`` writes,
-    so it goes between the two: as soon as the data is complete, before the
-    heavy steps make it wait.
+    ``pre-commit`` finishes before readers start. Captured runs overlap
+    pytest with the leak sweep and one serial shadow lane. Streaming runs
+    leave the sweep until afterwards to keep terminal output coherent.
+    Coverage runs after pytest has written its complete data file.
 
     Output is captured and replayed only on failure unless *stream*.  A step
     that is holding the terminal alone can stream it live instead; two can
@@ -799,7 +781,7 @@ def _run_steps(
     long_start = 0.0
     # Nothing to fill the shadow with: run it as an ordinary step, which lets
     # a single-step run (`just test-py`) stream its output live.
-    if long_step is not None and not shadow:
+    if long_step is not None and not shadow and (stream or not heavy):
         run_serial(*long_step)
         long_step = None
     if long_step is not None:
@@ -831,9 +813,12 @@ def _run_steps(
                     run_serial(name, cmd, step_env)
             else:
                 with ThreadPoolExecutor(max_workers=2) as checks:
-                    results = [checks.submit(run_serial, *step) for step in shadow]
+                    results = [
+                        checks.submit(run_serial, *step) for step in [*heavy, *shadow]
+                    ]
                     for result in results:
                         result.result()
+                heavy = []
             output, returncode, elapsed = pending.result()
         record(LONG_STEP, elapsed, returncode, output)
     else:
@@ -940,8 +925,6 @@ def main() -> int:
         # unfiltered on every push, so deselecting them here trades no
         # coverage either.
         step_env = env
-        if name == LEAK_STEP and "LEAKSWEEP_JOBS" not in env:
-            step_env = dict(step_env, LEAKSWEEP_JOBS=LEAKSWEEP_JOBS)
         if name == "pre-commit":
             # Skip the config's mypy hook: the very next step runs mypy over
             # src/ *and* scripts/ from the project env, against the same
@@ -975,6 +958,18 @@ def main() -> int:
                 "verification failed: install required tools or use --allow-incomplete"
             )
             return 1
+
+    if "LEAKSWEEP_JOBS" not in env:
+        overlap = not _should_stream(
+            len(runnable), quiet=quiet, verbose=verbose
+        ) and any(name == LONG_STEP for name, _, _ in runnable)
+        jobs = OVERLAPPED_LEAKSWEEP_JOBS if overlap else LEAKSWEEP_JOBS
+        runnable = [
+            (name, cmd, dict(step_env, LEAKSWEEP_JOBS=jobs))
+            if name == LEAK_STEP
+            else (name, cmd, step_env)
+            for name, cmd, step_env in runnable
+        ]
 
     # The gate speaks only for the suite that actually ran.  A default local
     # run deselects the `slow` tests, so a line covered only by one of those

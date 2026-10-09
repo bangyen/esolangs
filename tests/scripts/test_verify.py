@@ -431,3 +431,30 @@ def test_leak_step_covers_shipped_examples():
     from scripts.verify import STEP_SCOPE
 
     assert "src/esolangs/examples/fixture.txt".startswith(STEP_SCOPE["exception leaks"])
+
+
+@pytest.mark.medium
+def test_leak_sweep_starts_before_pytest_finishes(tmp_path):
+    verify = load_script()
+    ready = tmp_path / "leaks-started"
+    script = (
+        "from pathlib import Path; import time; "
+        f"ready = Path({str(ready)!r}); deadline = time.monotonic() + 2\n"
+        "while not ready.exists() and time.monotonic() < deadline: time.sleep(0.01)\n"
+        "assert ready.exists(), 'leak sweep was serialized after pytest'"
+    )
+    runnable = [
+        ("pytest", [sys.executable, "-c", script], {}),
+        (
+            "exception leaks",
+            [
+                sys.executable,
+                "-c",
+                f"from pathlib import Path; Path({str(ready)!r}).touch()",
+            ],
+            {},
+        ),
+    ]
+    failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
+    assert failures == 0
+    assert {name for name, _ in timings} == {"pytest", "exception leaks"}

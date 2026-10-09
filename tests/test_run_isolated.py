@@ -283,3 +283,45 @@ def test_process_creation_consumes_the_worker_deadline(
     else:
         assert _launch("{}", 1, max_output=max_output) == ""
         assert calls == [pytest.approx(0.6)]
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        (((0, 0, 0),),),
+        (((255, 255, 255),) * 7,) * 5,
+        (
+            ((0, 0, 0), (1, 2, 3), (1, 2, 3)),
+            ((0, 0, 0), (1, 2, 3), (1, 2, 3)),
+            ((255, 0, 17), (0, 0, 0), (4, 5, 6)),
+        ),
+    ],
+)
+def test_raster_transport_preserves_every_pixel(rows):
+    from esolangs._isolated import _raster_rows, _raster_runs
+
+    runs = json.loads(json.dumps(_raster_runs(rows)))
+    assert _raster_rows(runs) == rows
+
+
+@pytest.mark.medium
+def test_worker_executes_compact_raster_pixels(monkeypatch, capsys):
+    import io
+    import sys
+
+    from esolangs._isolated import _raster_runs
+
+    language = one(source_kind="raster", boolean_generator=True)[0]
+    image = esolangs.generate(language, "0110")
+    payload = {
+        "language": language,
+        "program": _raster_runs(image.rows),
+        "raster": True,
+        "stdin": esolangs.encode_inputs(language, [0, 1]),
+        "seed": None,
+    }
+    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+    _worker()
+    messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert esolangs.read_answer(language, messages[-1]["result"]) == "1"

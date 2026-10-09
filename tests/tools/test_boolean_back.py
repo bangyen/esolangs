@@ -328,7 +328,9 @@ def test_selective_bend_preserves_the_command_bound(n: int, seed: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.back import _Machine
     from esolangs.tools.back import back
-    from tests.tools.fills import _fill_back
+    from tests.tools.fills import fill
+
+    _fill_back = fill("Back")
 
     rng = random.Random(seed)
     blocks = ["".join(rng.choice("01") for _ in range(2 ** (n - 3))) for _ in range(3)]

@@ -6,6 +6,7 @@ import json
 import os
 import subprocess  # nosec B404 -- fixed Python worker; source travels over stdin.
 import sys
+from itertools import chain, groupby, repeat
 from queue import Empty, Full, Queue
 from threading import Event, Thread
 from time import monotonic
@@ -15,9 +16,41 @@ from esolangs import exceptions
 from esolangs._source import InputSource, ProgramSource, read_input
 from esolangs._validate import check_timeout, check_whole
 from esolangs.interpreters.source_hints import with_hint
-from esolangs.raster import Raster
+from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
+
+type _RasterRuns = list[tuple[int, list[tuple[int, Pixel]]]]
+
+
+# Scale-3 Line JSON: 13,759,407 -> 18,621 bytes; four rows 5.71s -> 0.62s.
+def _raster_runs(rows: Rows) -> _RasterRuns:
+    """Encode repeated rows and pixels without transmitting renderer payloads."""
+    return [
+        (
+            len(list(repeated_rows)),
+            [(len(list(pixels)), pixel) for pixel, pixels in groupby(row)],
+        )
+        for row, repeated_rows in groupby(rows)
+    ]
+
+
+def _raster_rows(runs: _RasterRuns) -> Rows:
+    """Decode pixel-exact rows, sharing immutable repeats."""
+    return tuple(
+        chain.from_iterable(
+            repeat(
+                tuple(
+                    chain.from_iterable(
+                        repeat((pixel[0], pixel[1], pixel[2]), count)
+                        for count, pixel in row
+                    )
+                ),
+                count,
+            )
+            for count, row in runs
+        )
+    )
 
 
 def _decode(text: str, *, expired: bool) -> str:
@@ -135,7 +168,7 @@ def run_isolated(
                             key for key, value in choices.items() if type(value) is int
                         ],
                         "language": name,
-                        "program": source.rows
+                        "program": _raster_runs(source.rows)
                         if isinstance(source, Raster)
                         else source,
                         "raster": isinstance(source, Raster),
@@ -352,9 +385,7 @@ def _worker() -> None:
                 ) from error
         program = request["program"]
         if request["raster"]:
-            program = Raster(
-                tuple(tuple(tuple(pixel) for pixel in row) for row in program)
-            )
+            program = Raster(_raster_rows(program))
         settings = DialectSettings(
             **{
                 key: int(value, 16)
