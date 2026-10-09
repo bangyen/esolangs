@@ -16,13 +16,12 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _build import ignore, random_table, tiled
+from _build import ignore, random_table, source_size, tiled
 from paths import paths
 
 import esolangs
 from esolangs._evaluate import _terminates
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.raster import Raster
 from esolangs.registry import resolve
 
 
@@ -43,12 +42,7 @@ def corpus(n: int) -> dict[str, str]:
 
 def size(name: str, program: esolangs.Program) -> int:
     """Return the emitted size, grids measured as rectangular area."""
-    if isinstance(program, Raster):
-        return len(program.rows) * max(map(len, program.rows))
-    if esolangs.describe(name)["state_model"] == "grid":
-        rows = program.splitlines()
-        return len(rows) * max(map(len, rows))
-    return len(program)
+    return source_size(name, program)
 
 
 def execute(

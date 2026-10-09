@@ -36,3 +36,20 @@ def test_generation_refusals_are_retained() -> None:
         records = canonical.audit("brainfuck", 1, all_rows=False)
     assert records[0]["status"] == "refused"
     assert records[0]["reason"] == "arity cap"
+
+
+def test_text_grid_size_charges_blank_padding() -> None:
+    from scripts.screens import paths
+
+    program = ">   @\n>"
+    with (
+        patch.object(paths.esolangs, "generate", return_value=program),
+        patch("_build.describe", return_value={"state_model": "grid"}),
+    ):
+        assert paths._size("fixture", "01", {}) == 10  # noqa: SLF001
+        assert canonical.size("fixture", program) == 10
+
+
+def test_text_size_counts_characters() -> None:
+    with patch("_build.describe", return_value={"state_model": "tape"}):
+        assert canonical.size("fixture", "+\n.") == 3

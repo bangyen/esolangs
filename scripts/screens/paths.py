@@ -25,10 +25,9 @@ from typing import Any, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _build import ignore, random_table, tiled
+from _build import ignore, random_table, source_size, tiled
 
 import esolangs
-from esolangs.raster import Raster
 from esolangs.settings import DialectSettings
 
 #: How far a path's ratio may exceed its default's before it is flagged.
@@ -41,9 +40,7 @@ def _size(name: str, table: str, options: dict[str, Any]) -> int | None:
         program = esolangs.generate(name, table, **options)
     except (ValueError, esolangs.ArgumentError):
         return None
-    if isinstance(program, Raster):
-        return len(program.rows) * max(map(len, program.rows))
-    return len(str(program))
+    return source_size(name, program)
 
 
 def paths(name: str) -> dict[str, dict[str, Any]]:

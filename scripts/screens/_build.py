@@ -8,12 +8,24 @@ each puts this directory on ``sys.path`` for the import, as
 import random
 from collections.abc import Callable, Iterator
 
+from esolangs import describe
 from esolangs.raster import Raster
 from esolangs.registry import GENERATORS, resolve
 
 #: Every two- and three-input table, MSB first.
 PAIRS = [format(i, "04b") for i in range(16)]
 TABLES = [format(i, "08b") for i in range(256)]
+
+
+def source_size(name: str, program: object) -> int:
+    """Return characters for text, rectangular cells for grids and raster."""
+    if isinstance(program, Raster):
+        return len(program.rows) * max(map(len, program.rows))
+    source = str(program)
+    if describe(name)["state_model"] == "grid":
+        rows = source.splitlines()
+        return len(rows) * max(map(len, rows), default=0)
+    return len(source)
 
 
 def generators() -> Iterator[tuple[str, Callable[[str], object]]]:

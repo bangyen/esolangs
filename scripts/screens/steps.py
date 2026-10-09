@@ -96,9 +96,16 @@ def _to_verdict(name: str, program: str, row: int, cap: int) -> int | None:
     return start + length
 
 
+class GenerationRefusalError(ValueError):
+    """The generator refused a table before execution."""
+
+
 def total(name: str, table: str, cap: int, *, loops: bool) -> int | None:
     """Return the steps summed over every row, or None if one hit ``cap``."""
-    program = esolangs.generate(name, table)
+    try:
+        program = esolangs.generate(name, table)
+    except ValueError as exc:
+        raise GenerationRefusalError(str(exc)) from exc
     assert isinstance(program, str)
     steps = 0
     for row in range(8):
@@ -129,26 +136,27 @@ def upside(steps: dict[str, int], candidates: Callable[[str], list[str]]) -> flo
     return 100 * (1 - best / own)
 
 
-Row = tuple[int, float, float, float, float, int, float]
+Row = tuple[int, float, float, float, float, int, int, float]
 
 
-def screen(name: str, cap: int) -> Row | None:
-    """Return (steps, order %, outneg %, inpol %, npn %, dropped, seconds)."""
+def screen(name: str, cap: int) -> Row:
+    """Return (steps, order %, outneg %, inpol %, npn %, dropped, refused, seconds)."""
     start = perf_counter()
     loops = esolangs.describe(name)["answer_mode"] == "termination"
     steps: dict[str, int] = {}
-    dropped = 0
+    dropped = refused = 0
     for table in TABLES:
         try:
             count = total(name, table, cap, loops=loops)
-        except ValueError:
+        except GenerationRefusalError:
+            refused += 1
             continue
         if count is None:
             dropped += 1
         else:
             steps[table] = count
     if not steps:
-        return None
+        return 0, 0.0, 0.0, 0.0, 0.0, dropped, refused, perf_counter() - start
     order = upside(steps, lambda t: [permute_truth_table(t, p) for p in PERMS])
     outneg = upside(steps, lambda t: [t, _negate(t)])
     inpol = upside(steps, lambda t: [_flip(t, mask) for mask in range(8)])
@@ -162,7 +170,7 @@ def screen(name: str, cap: int) -> Row | None:
         ],
     )
     elapsed = perf_counter() - start
-    return sum(steps.values()), order, outneg, inpol, npn, dropped, elapsed
+    return sum(steps.values()), order, outneg, inpol, npn, dropped, refused, elapsed
 
 
 def main() -> None:
@@ -175,18 +183,16 @@ def main() -> None:
     for key, _gen in chosen(args.languages):
         if not esolangs.describe(key)["steppable_to_answer"]:
             continue
-        result = screen(key, args.cap)
-        if result is not None:
-            rows.append((key, *result))
+        rows.append((key, *screen(key, args.cap)))
     rows.sort(key=lambda row: (-row[5], row[0]))
     print(
         f"{'language':<32}{'steps':>10}{'order%':>8}{'outneg%':>8}{'inpol%':>8}"
-        f"{'npn%':>7}{'drop':>6}{'sec':>7}"
+        f"{'npn%':>7}{'drop':>6}{'refuse':>8}{'sec':>7}"
     )
-    for key, count, order, outneg, inpol, npn, dropped, elapsed in rows:
+    for key, count, order, outneg, inpol, npn, dropped, refused, elapsed in rows:
         print(
             f"{key:<32}{count:>10}{order:>8.1f}{outneg:>8.1f}{inpol:>8.1f}"
-            f"{npn:>7.1f}{dropped:>6}{elapsed:>7.1f}"
+            f"{npn:>7.1f}{dropped:>6}{refused:>8}{elapsed:>7.1f}"
         )
 
 
