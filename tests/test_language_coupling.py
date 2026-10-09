@@ -39,6 +39,7 @@ MANAGED = frozenset(
         "tests/proofs/test_execution_formulas.py",
         "tests/proofs/test_workspace_formulas.py",
         "tests/proofs/test_schemes.py",
+        "tests/tools/mutate_generator.py",
         "tests/test_language_coupling.py",
     }
 )
@@ -89,11 +90,13 @@ def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
             f"tests/languages/test_{stem}.py",
             f"tests/tools/test_boolean_{stem}",
             f"tests/tools/test_{stem}_",
-            f"tests/proofs/deep/{stem}.py",
+            f"tests/proofs/deep/{stem}",
             f"tests/proofs/test_{stem}_",
             f"tests/proofs/_{stem}_",
-            f"tests/tools/{stem}_support.py",
+            f"tests/tools/{stem}_",
             f"tests/interpreters/{stem}_support.py",
+            f"scripts/profile_{stem}",
+            f"scripts/verify_{stem}_",
         ]
     spellings = {lang.name, *lang.aliases, *stems} | {"." + stem for stem in stems}
     return spellings, tuple(prefixes)

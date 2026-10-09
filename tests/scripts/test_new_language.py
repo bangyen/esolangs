@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import new_language
+from scripts import new_language, remove_language
 
 
 @pytest.fixture
@@ -53,12 +53,12 @@ def test_scaffold_refuses_overwrite(root: Path) -> None:
         new_language.scaffold("Tiny", "other")
 
 
-@pytest.mark.parametrize(
-    ("name", "slug"), [("123", "one_two_three"), ("Piet++", "piet_plus_plus")]
-)
-def test_the_slug_is_the_registry_id(name: str, slug: str) -> None:
+def test_the_slug_is_the_registry_id() -> None:
     """A second slug rule refused ``123`` and gave Piet++ Piet's file."""
-    assert new_language._slug(name) == slug  # noqa: SLF001
+    from esolangs.registry import LANGUAGES
+
+    for name, lang in LANGUAGES.items():
+        assert new_language._slug(name) == lang.id, name  # noqa: SLF001
     with pytest.raises(ValueError, match="keyword"):
         new_language._slug("class")  # noqa: SLF001
 
@@ -73,7 +73,7 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
         'run_gone = _runner("gone")\n'
     )
     modules = {"esolangs.tools.gone"}
-    assert new_language._drop_entries(path, {"gone"}, modules) == 3  # noqa: SLF001
+    assert remove_language._drop_entries(path, {"gone"}, modules) == 3  # noqa: SLF001
     # The import another entry still uses stays.
     assert path.read_text() == (
         "from esolangs.tools.gone import PAIR\n"
@@ -84,7 +84,7 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
 def test_remove_drops_the_whole_limitations_bullet(tmp_path: Path) -> None:
     path = tmp_path / "limitations.md"
     path.write_text("- Gone reads\n  past EOF.\n- Gonero stays.\n  Kept.\n")
-    new_language._drop_bullets(path, "Gone")  # noqa: SLF001
+    remove_language._drop_bullets(path, "Gone")  # noqa: SLF001
     assert path.read_text() == "- Gonero stays.\n  Kept.\n"
 
 
