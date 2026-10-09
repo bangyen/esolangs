@@ -3,6 +3,7 @@
 from esolangs import tools as boolean
 from esolangs.tools.eval_lang import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR
+from tests.witness_tables import row_bits
 
 #: One input's run, as the template spells it.
 _X = TEMPLATE_CHAR * len(PAIR[0])
@@ -60,12 +61,7 @@ class TestEvalBoolean:
             n = len(table).bit_length() - 1
             template = generators.eval(table)
             widths = {
-                len(
-                    self.instantiate(
-                        template, [(c >> (n - 1 - i)) & 1 for i in range(n)]
-                    )
-                )
-                for c in range(2**n)
+                len(self.instantiate(template, row_bits(c, n))) for c in range(2**n)
             }
             assert len(widths) == 1, f"{table} leaks its inputs: {widths}"
 
@@ -241,6 +237,6 @@ class TestEvalBoolean:
         # The template is the exact shape of every program it fills to.
         assert len(template) == len(self.instantiate(template, [0] * n)) == 206
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = self.run_eval(self.instantiate(template, bits))
             assert got == str(int(table[combo])), f"inputs {bits}"

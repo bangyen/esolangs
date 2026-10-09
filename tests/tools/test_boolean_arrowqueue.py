@@ -8,6 +8,7 @@ import pytest
 from esolangs.tools.arrowqueue import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from tests.tools.fills import fill
+from tests.witness_tables import row_bits
 
 _instantiate_arrowqueue = fill("ArrowQueue")
 
@@ -34,7 +35,7 @@ class TestParameterizedArrowQueue:
                 table = "".join(random.choice("01") for _ in range(2**n))
                 template = generators.arrowqueue(table)
                 for combo in range(2**n):
-                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    bits = row_bits(combo, n)
                     got = self.run_arrowqueue(self.instantiate(template, bits))
                     assert got == table[combo], f"{table} inputs {bits}"
 
@@ -47,7 +48,7 @@ class TestParameterizedArrowQueue:
         template = generators.arrowqueue(table)
         sizes = set()
         for row in range(2**n):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(row, n)
             program = self.instantiate(template, bits)
             sizes.add(len(program))
             assert self.run_arrowqueue(program) == table[row], row
@@ -138,7 +139,7 @@ class TestParameterizedArrowQueue:
 
         template = generators.arrowqueue(table)
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = self.run_arrowqueue(self.instantiate(template, bits))
             assert got == table[combo], f"inputs {bits}"
 
@@ -164,7 +165,7 @@ class TestParameterizedArrowQueue:
         n = len(table).bit_length() - 1
         template = generators.arrowqueue(table)
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = self.run_arrowqueue(self.instantiate(template, bits))
             assert got == table[combo], f"inputs {bits}"
         # An ignored input is one setter row; the cascade indexes the rest.
@@ -198,11 +199,6 @@ class TestParameterizedArrowQueue:
         for table, n in (("1111", 2), ("1100", 2), ("11110000", 3)):
             template = generators.arrowqueue(table)
             sizes = {
-                len(
-                    self.instantiate(
-                        template, [(c >> (n - 1 - i)) & 1 for i in range(n)]
-                    )
-                )
-                for c in range(2**n)
+                len(self.instantiate(template, row_bits(c, n))) for c in range(2**n)
             }
             assert len(sizes) == 1, f"{table}: {sizes}"

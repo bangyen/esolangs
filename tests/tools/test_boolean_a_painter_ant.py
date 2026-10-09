@@ -11,6 +11,7 @@ from esolangs.tools.a_painter_ant import PAIR, a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from tests.tools.fills import fill
 from tests.witness_tables import parity as _parity
+from tests.witness_tables import row_bits
 
 _instantiate_apa = fill("A Painter Ant")
 
@@ -222,7 +223,7 @@ class TestAPainterAnt:
         table = "".join(str((row.bit_count() ^ (row >> 2)) & 1) for row in range(2**n))
         template = a_painter_ant(table)
         for row in range(2**n):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(row, n)
             program = _instantiate_apa(template, bits)
             assert cycle_stable(program), row
             assert landing_after(program) == int(table[row]), row

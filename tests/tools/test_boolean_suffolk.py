@@ -6,6 +6,7 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_suffolk,
 )
+from tests.witness_tables import row_bits
 
 
 class TestSuffolk:
@@ -56,6 +57,6 @@ class TestSuffolk:
         n = (len(table) - 1).bit_length()
         program = boolean.suffolk(table)
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = run_suffolk(program, [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"

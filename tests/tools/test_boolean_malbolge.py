@@ -13,7 +13,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import _XLAT1, _load, run
 from esolangs.tools.malbolge.core import _cascade
-from tests.witness_tables import dense, parity
+from tests.witness_tables import dense, parity, row_bits
 
 _module = importlib.import_module("esolangs.tools.malbolge")
 
@@ -24,7 +24,7 @@ def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
     program = boolean.malbolge(table)
     outputs = []
     for value in range(1 << n) if rows is None else rows:
-        bits = [(value >> (n - 1 - i)) & 1 for i in range(n)]
+        bits = row_bits(value, n)
         io = ScriptedIO("".join(f"{bit}" for bit in bits))
         run(program, io)
         outputs.append(io.getvalue())

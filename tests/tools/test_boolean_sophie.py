@@ -18,6 +18,7 @@ from tests.tools.boolean_runners import (
     run_sophie_from,
 )
 from tests.tools.test_wrap_preserves_meaning import _WIDTHS, _evaluate
+from tests.witness_tables import row_bits
 
 
 def _printed_once(program: str) -> str:
@@ -141,7 +142,7 @@ class TestSophie:
         for table, n in (("10101010", 3), ("11111111", 3), ("01101001", 3)):
             program = boolean.sophie(table)
             for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 feed = iter([str(b) for b in bits])
                 got = run_sophie_from(program, feed)
                 assert got == table[combo], f"{table} inputs {bits}"

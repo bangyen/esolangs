@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import WRAPPERS
+from tests.witness_tables import row_bits
 
 # Narrow enough to break somewhere in almost every program, and coprime-ish
 # so the breaks land in different places rather than all at one stride.
@@ -33,7 +34,7 @@ def _evaluate(name: str, table: str, width: int | None) -> str:
     inputs = len(table).bit_length() - 1
     got = ""
     for row in range(len(table)):
-        bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
+        bits = row_bits(row, inputs)
         if parameterized:
             source, stdin = esolangs.instantiate(name, program, bits, width=width), ""
         else:

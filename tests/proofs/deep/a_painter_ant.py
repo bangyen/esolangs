@@ -13,6 +13,7 @@ from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from tests.tools.a_painter_ant_trace import run
 from tests.tools.fills import fill
+from tests.witness_tables import row_bits
 
 _instantiate_apa = fill("A Painter Ant")
 
@@ -24,7 +25,7 @@ COST = 15.0
 
 def bits_of(idx: int, n: int) -> list[int]:
     """Input vector for table index ``idx``, most-significant bit first."""
-    return [(idx >> (n - 1 - k)) & 1 for k in range(n)]
+    return row_bits(idx, n)
 
 
 def corridor_end(table: str) -> int:

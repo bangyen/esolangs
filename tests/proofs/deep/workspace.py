@@ -32,6 +32,7 @@ from tests.proofs.deep.execution import (
 )
 from tests.proofs.deep.linearity import _regime_start
 from tests.witness_tables import parity as _parity
+from tests.witness_tables import row_bits
 
 #: Cost band; see ``__main__.py``.
 BAND = "by-hand"
@@ -83,7 +84,7 @@ def _written(name: str, table: str) -> int | None:
     # First, middle and last of the execution sample: a rung recounts the
     # written state every step, and seven rows put the band at 126s.
     for row in sorted({sampled[0], sampled[len(sampled) // 2], sampled[-1]}):
-        bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
+        bits = row_bits(row, inputs)
         if facts["parameterized"]:
             source, stdin = instantiate(name, program, bits, width=None), ""
         else:

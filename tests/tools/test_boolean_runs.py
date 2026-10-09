@@ -6,6 +6,7 @@ import esolangs
 from esolangs.exceptions import TemplateError
 from esolangs.registry import recover_setters, render_template
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+from tests.witness_tables import row_bits
 
 #: A language and a table its generator builds quickly.
 _CASES = [
@@ -52,7 +53,7 @@ def test_the_template_is_every_programs_length(language: str, table: str) -> Non
     template = esolangs.generate(language, table)
     n = template.inputs
     for row in range(2**n):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+        bits = row_bits(row, n)
         program = esolangs.instantiate(language, template, bits)
         assert len(program) == len(template), (language, bits)
         assert TEMPLATE_CHAR not in program

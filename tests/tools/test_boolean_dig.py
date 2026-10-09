@@ -11,6 +11,7 @@ from esolangs.tools.dig import _DIG_BRANCH, _DIG_STRIDE
 from tests.tools.boolean_runners import (
     run_dig,
 )
+from tests.witness_tables import row_bits
 
 
 class TestDig:
@@ -34,7 +35,7 @@ class TestDig:
             for table in tables:
                 program = boolean.dig(table)
                 for combo in range(size):
-                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    bits = row_bits(combo, n)
                     assert run_dig(program, [str(bit) for bit in bits]) == table[combo]
 
     def test_alternating_layout_has_linear_area(self) -> None:
@@ -151,7 +152,7 @@ class TestDig:
                 columns = max(len(row) for row in narrow.splitlines())
                 assert columns <= max(width, floor), (table, width, columns)
                 for combo in range(2**n):
-                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    bits = row_bits(combo, n)
                     got = run_dig(narrow, [str(b) for b in bits])
                     assert got == str(int(table[combo])), (table, width, bits)
 
@@ -185,7 +186,7 @@ class TestDig:
             flat = boolean.dig(table, 10_000)
             assert boolean.dig(table, 1) == flat, table
             for combo in (0, 2 ** (n - 1), 2**n - 1):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 got = run_dig(flat, [str(b) for b in bits])
                 assert got == str(int(table[combo])), (table, bits)
 

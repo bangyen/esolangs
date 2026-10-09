@@ -9,7 +9,7 @@ from esolangs.tools.wrap import (
 from tests.tools.boolean_runners import (
     run_taglate,
 )
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 class TestTaglate:
@@ -100,7 +100,7 @@ class TestTaglate:
         """The reduction stays correct deeper than the exhaustive sweep."""
         program = boolean.taglate(table)
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             ghost = ["0"] if n % 2 == 1 and n > 1 else []
             got = run_taglate(program, ghost + [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"

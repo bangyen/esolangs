@@ -16,6 +16,7 @@ from esolangs.tools.wrap import (
 from tests.cli.test_cli import call_main
 from tests.pick import first
 from tests.test_language_coupling import REFERENCE
+from tests.witness_tables import row_bits
 
 _TEXT = [
     lang
@@ -63,7 +64,7 @@ def test_balance_executes(name: str, table: str) -> None:
     assert balance_score(program) <= balance_score(default)
     inputs = len(table).bit_length() - 1
     for row, expected in enumerate(table):
-        bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
+        bits = row_bits(row, inputs)
         if esolangs.describe(name)["parameterized"]:
             source, stdin = esolangs.instantiate(name, program, bits), ""
         else:

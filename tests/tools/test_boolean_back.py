@@ -8,7 +8,7 @@ from esolangs.tools.back import _back_ordered
 from esolangs.tools.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from tests.generator_support import assert_an_ignored_input_costs
 from tests.tools.test_boolean_parameterized_contract import _drawing
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 class TestParameterizedBack:
@@ -43,10 +43,7 @@ class TestParameterizedBack:
 
         for n in (1, 2, 3):
             template = generators.back(format(0, f"0{2**n}b"))
-            sizes = {
-                len(_fill_back(template, [(c >> (n - 1 - i)) & 1 for i in range(n)]))
-                for c in range(2**n)
-            }
+            sizes = {len(_fill_back(template, row_bits(c, n))) for c in range(2**n)}
             assert len(sizes) == 1, f"n={n} sizes {sorted(sizes)}"
 
     def test_a_falling_beam_reuses_the_next_zero_subtree(self) -> None:

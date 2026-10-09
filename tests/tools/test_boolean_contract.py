@@ -18,7 +18,7 @@ from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import _BranchingStepMachine, run_until_halt, run_until_halt_or_cycle
 from tests.generator_support import evaluate_generated
 from tests.source_support import source_units
-from tests.witness_tables import dense, parity
+from tests.witness_tables import dense, parity, row_bits
 
 # Every sweep here runs an interpreter over a generated program -- the whole
 # file is the execution gate -- so the module is `medium` and the inner loop
@@ -186,7 +186,7 @@ def test_reorder_permutation_preserves_the_function() -> None:
     for perm in [(0, 1, 2), (2, 0, 1), (2, 1, 0)]:
         permuted = permute_truth_table(table, perm)
         for row in range(2**n):
-            bits = [(row >> (n - 1 - level)) & 1 for level in range(n)]
+            bits = row_bits(row, n)
             original = sum(bits[level] << (n - 1 - i) for level, i in enumerate(perm))
             assert permuted[row] == table[original]
 

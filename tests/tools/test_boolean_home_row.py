@@ -3,6 +3,7 @@
 import random
 
 from tests.tools.fills import _run_form
+from tests.witness_tables import row_bits
 
 
 class TestParameterizedHomeRow:
@@ -52,7 +53,7 @@ class TestParameterizedHomeRow:
             table = "".join(rng.choice("01") for _ in range(2**n))
             template = generators.home_row(table)
             for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 got = self.run_home_row(self.instantiate(template, bits))
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
