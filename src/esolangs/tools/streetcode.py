@@ -9,7 +9,9 @@ columns.
 From six inputs the tree goes away: the table is written one cell per
 entry and the inputs address it (:func:`_streetcode_flat`), which is nine
 rows of street however many entries there are.  The tree folds constant
-subtrees; a repeated one is redrawn, not shared.
+subtrees; a repeated one is redrawn, not shared: at n=5, sharing every
+repeat of 8+ rows for free would save 0.0% (random, const-half) to 0.9%
+(tiled), and the flat lookup already wins 40/40 random, 36/40 tiled tables.
 """
 
 from collections.abc import Callable

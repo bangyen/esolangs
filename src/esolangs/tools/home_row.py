@@ -33,7 +33,8 @@ def home_row(truth_table: str) -> str:
     Rows agreeing with the final answer share its unguarded leaf, and any
     other run of equal rows is one leaf behind ``js`` clamped decrements (n=7
     random -33.3%, tiled -39.8%, one half constant -29.7%, constant blocks
-    -57.4%).  No goto: a leaf is never reached twice, so no repeat is shared.
+    -57.4%).  No goto and ``l`` re-runs only its own block: leaves run once
+    down a linear chain, so a non-adjacent repeat is never reached twice.
     """
     n = _validate_truth_table(truth_table)
     # The leaf chain is up to 2**n leaves, so dropping an ignored input
