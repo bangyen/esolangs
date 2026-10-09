@@ -67,3 +67,8 @@ def test_a_one_line_language_has_its_bits_counted() -> None:
     _check_stdin("Clockwise", "101", "00010111")
     with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
         _check_stdin("Clockwise", "10", "00010111")
+
+
+def test_inputs_are_seven_bits_per_character():
+    assert esolangs.describe("Clockwise")["input_shape"] == "char_stream_cyclic"
+    assert esolangs.encode_inputs("Clockwise", [1, 0, 1]) == "101"

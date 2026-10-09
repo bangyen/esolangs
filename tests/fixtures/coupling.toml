@@ -30,7 +30,6 @@
 "src/esolangs/tools/fractran.py" = 1
 "src/esolangs/tools/subleq.py" = 1
 "tests/cli/test_cli.py" = 10
-"tests/cli/test_cli_catalog.py" = 18
 "tests/cli/test_cli_commands.py" = 3
 "tests/cli/test_cli_conventions.py" = 10
 "tests/cli/test_cli_io.py" = 8
@@ -78,7 +77,6 @@
 "tests/proofs/test_vandevelo_fallback.py" = 7
 "tests/raster/test_contract.py" = 1
 "tests/raster/test_png.py" = 1
-"tests/raster/test_scale.py" = 17
 "tests/scripts/test_bundle_one.py" = 9
 "tests/scripts/test_check_generator_sizes.py" = 4
 "tests/scripts/test_examples.py" = 6
@@ -93,10 +91,8 @@
 "tests/test_branch_gaps.py" = 2
 "tests/test_debug.py" = 7
 "tests/test_docs.py" = 1
-"tests/test_evaluation.py" = 15
 "tests/test_generator_conventions.py" = 9
 "tests/test_generic_verifier.py" = 5
-"tests/test_input_encoding.py" = 16
 "tests/test_interpreter_only_admissions.py" = 10
 "tests/test_memory_budget.py" = 1
 "tests/test_run_bounded.py" = 4

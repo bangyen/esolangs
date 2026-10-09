@@ -99,3 +99,29 @@ def test_a_raster_is_refused_as_a_template() -> None:
     """Typed ``Program`` so generate's result type-checks; no raster embeds."""
     with pytest.raises(TemplateError, match="raster programs read"):
         esolangs.instantiate("Piet", esolangs.generate("Piet", XOR), [0, 1])
+
+
+@pytest.mark.medium
+def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
+    red, light, terminal, black = (255, 0, 0), (255, 192, 192), (192, 0, 192), (0, 0, 0)
+    logical = Raster(
+        ((light, black, terminal), (light, red, terminal), (black, black, terminal))
+    )
+    image = Raster.from_png(logical.upscaled(2).to_png())
+    assert esolangs.run("Piet", image) == "2"
+    assert esolangs.run("Piet", image, scale=1) == "8"
+    assert esolangs.run("Piet", image, scale=2, isolated=True) == "2"
+
+
+def test_empty_piet_operation_path_halts() -> None:
+    from esolangs.tools.piet.balance import _emit, _plan
+
+    image = _emit([], _plan([], 13, 14))
+    assert esolangs.run("Piet", image) == ""
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("scale", [2, 3, 17])
+def test_piet_detects_its_scale(scale: int) -> None:
+    image = esolangs.generate("Piet", "0001", scale=scale)
+    assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=2) == "0001"

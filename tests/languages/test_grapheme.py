@@ -488,3 +488,11 @@ def test_dialect_options_are_a_copy():
     options["integer_conversion"] = "between_letters"
     assert esolangs.run("Grapheme", "FAFY", settings=settings) == "10"
     assert esolangs.run("Grapheme", "FAFY") == "1"
+
+
+def test_a_zero_line_reads_as_true_so_zero_is_percent():
+    assert esolangs.encode_inputs("Grapheme", [1, 0, 1]) == "A\n%\nA\n"
+    assert (
+        _evaluate("Grapheme", esolangs.generate("Grapheme", "10010110"), inputs=3)
+        == "10010110"
+    )

@@ -7,11 +7,15 @@ import pathlib
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.cli_hints import _template_hint
 from esolangs.exceptions import ProgramError, TemplateError
+from tests.pick import languages
+from tests.test_language_coupling import REFERENCE
 
 XOR = "0110"
 PARITY3 = "10010110"
+SIMPLE = ("char_stream", "line_per_bit")
 
 
 def _rows(language: str, table: str) -> str:
@@ -27,48 +31,25 @@ def _rows(language: str, table: str) -> str:
 
 
 class TestTheExceptionalLanguages:
-    """The four whose input shape is not a line per bit."""
+    """The languages whose input shape is not a line per bit."""
 
     @pytest.mark.parametrize(
-        ("language", "bits", "expected"),
+        "language",
         [
-            ("brainfuck", [1, 0, 1], "101"),
-            ("Grapheme", [1, 0, 1], "A\n%\nA\n"),  # a "0" line reads as true
-            ("Clockwise", [1, 0, 1], "101"),  # seven bits per character
-            ("Fargo", [1, 0, 1], "5\n"),  # one number, indexed by bit
-            ("Taglate", [1, 0, 1], "0101"),  # the leading ghost digit
-            ("Taglate", [1, 0], "10"),  # an even arity takes no ghost
+            name
+            for name in languages(boolean_generator=True, parameterized=False)
+            if esolangs.describe(name)["input_shape"] not in SIMPLE
         ],
     )
-    def test_the_encoding_is_what_the_language_reads(
-        self, language: str, bits: list[int], expected: str
-    ) -> None:
-        assert esolangs.encode_inputs(language, bits) == expected
-
-    @pytest.mark.parametrize(
-        ("language", "table"),
-        [
-            ("Grapheme", PARITY3),
-            ("Clockwise", PARITY3),
-            ("Fargo", PARITY3),
-            ("Taglate", PARITY3),
-            ("Taglate", XOR),
-        ],
-    )
+    @pytest.mark.parametrize("table", [XOR, PARITY3])
     def test_the_encoding_computes_the_table(self, language: str, table: str) -> None:
         """Taglate at three inputs used to fail outright; the rest lied."""
         assert _rows(language, table) == table
 
-    def test_describe_reports_the_shape(self) -> None:
-        assert esolangs.describe("Clockwise")["input_shape"] == "char_stream_cyclic"
-        assert esolangs.describe("Fargo")["input_shape"] == "row_index"
-        assert esolangs.describe("brainfuck")["input_shape"] == "char_stream"
-
     def test_every_reading_language_has_an_encoding(self) -> None:
         """``encode_inputs`` indexes the example table, which must cover all."""
-        for name in esolangs.list_languages():
-            if not esolangs.describe(name)["boolean_generator"]:
-                continue
+        assert esolangs.encode_inputs(REFERENCE, [1, 0, 1]) == "101"
+        for name in languages(boolean_generator=True):
             if esolangs.describe(name)["parameterized"]:
                 with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
                     esolangs.encode_inputs(name, [0, 1])
@@ -79,15 +60,12 @@ class TestTheExceptionalLanguages:
 class TestTemplatesAreNotWrapped:
     """A template's run of its character is one token to every wrapper."""
 
-    @pytest.mark.parametrize("language", ["Home Row", "123", "A Painter Ant", "Eval"])
+    @pytest.mark.parametrize("language", languages(parameterized=True))
     def test_a_width_leaves_a_template_intact(self, language: str) -> None:
         """A narrow width used to cut a slot in half, silently; a run is whole."""
         narrow = esolangs.generate(language, XOR, width=5)
-        plain = esolangs.generate(language, XOR)
-        assert narrow.setters == plain.setters
         assert narrow.count(narrow.char) == sum(len(z) for z, _ in narrow.setters)
-        filled = esolangs.instantiate(language, narrow, [0, 1])
-        assert filled.replace("\n", "") == esolangs.instantiate(language, plain, [0, 1])
+        assert _evaluate(language, narrow, inputs=2) == XOR
 
 
 class TestRemainingGuards:
@@ -97,11 +75,11 @@ class TestRemainingGuards:
     def test_a_nonpositive_width_is_refused(self, width: int) -> None:
         """It returned the unwrapped program, looking like it had honoured it."""
         with pytest.raises(ValueError, match="width must be positive"):
-            esolangs.generate("brainfuck", XOR, width=width)
+            esolangs.generate(REFERENCE, XOR, width=width)
 
     def test_a_missing_path_is_a_programerror(self) -> None:
         with pytest.raises(ProgramError, match="cannot read"):
-            esolangs.run("brainfuck", pathlib.Path("nope/missing.txt"))
+            esolangs.run(REFERENCE, pathlib.Path("nope/missing.txt"))
 
     def test_a_non_string_language_is_refused_by_name(self) -> None:
         """It leaked ``'NoneType' object has no attribute 'replace'``."""
