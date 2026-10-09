@@ -15,6 +15,7 @@ from esolangs.tools.helpers import (
 #: Both are one grid cell, so a run is the exact width of its program.
 PAIR = ("-", "+")
 _BACK_INPUT = TEMPLATE_CHAR
+_WRAP_ROWS = 8
 _MIRROR = {"/": "\\", "\\": "/"}
 
 
@@ -77,7 +78,7 @@ def _back_parity(truth_table: str, n: int) -> str | None:
     return "\n".join([*rows, "*"])
 
 
-def back(truth_table: str, width: int | None = None) -> str:
+def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> str:
     r"""Build a Back template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -118,11 +119,17 @@ def back(truth_table: str, width: int | None = None) -> str:
 
     A node whose one-subtree equals the zero-subtree of the next node on its
     level draws none: the beam falls down the column onto that node's mirror,
-    the first cell below, and turns east into the zero side.  Only that node
-    is reachable, so other repeats are drawn again.  Area (rows x longest
-    row), seeded tables, n=6/7: random -21.9% / -23.6%, tiled from two
-    random blocks -17.5% / -35.8%, constant half 0% / -13.1%; n <= 5 is
-    unchanged, the load column setting the height.
+    the first cell below, and turns east into the zero side.  The column
+    wraps, so the level's last node reaches its first the same way, from eight
+    rows up.  Other repeats are drawn again: bending the beam round column 1,
+    the one lane free below the root, to any mirror in its column saves 0.7 /
+    0.8 more points of characters (tiled, n=8/9) but takes the worst commands
+    from 122 / 221 to 154 / 306 at n=6/7, since a bend walks the distance
+    between the nodes.  Area (rows x longest row), seeded tables, n=6/7:
+    random -21.9% / -23.6%, tiled from two random blocks -17.5% / -35.8%,
+    constant half 0% / -13.1%; n <= 5 is unchanged, the load column setting
+    the height.  The wrap, over the next-node fall alone, n=8/9: tiled -9.7% /
+    -6.6% of characters (-16.5% / -9.7% of area), random and constant half 0%.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
@@ -130,7 +137,15 @@ def back(truth_table: str, width: int | None = None) -> str:
         # A constant already folds to one leaf; it keeps every input.
         weights, table = [1] * n, truth_table
     levels = len(table).bit_length() - 1
-    program = _back_ordered(table, tuple(range(levels)), width, weights)
+    # A wrapped fall only removes rows; the shorter build, the plain one on a
+    # tie, is the guard that no table grows.
+    program = min(
+        (
+            _back_ordered(table, tuple(range(levels)), width, weights, wrap=w)
+            for w in ((False, True) if wrap else (False,))
+        ),
+        key=len,
+    )
     if width is not None and width > 0 and max(map(len, program.splitlines())) > width:
         parity = _back_parity(truth_table, n)
         if parity is not None:
@@ -143,6 +158,8 @@ def _back_ordered(
     perm: tuple[int, ...],
     width: int | None = None,
     weights: list[int] | None = None,
+    *,
+    wrap: bool = False,
 ) -> str:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 
@@ -290,7 +307,12 @@ def _back_ordered(
         shared: set[tuple[int, int]] = set()
         for k in range(levels):
             order = level_order(k, shared)
-            follower = dict(pairwise(order))
+            # The last node's beam falls off the bottom and wraps to the top,
+            # where the level's first mirror is the first in the column.  Its
+            # walk is about the rows it saves, but only from eight rows up:
+            # below that it is a few cells saved for a whole column walked.
+            ring = wrap and 2 ** (levels - k - 1) >= _WRAP_ROWS
+            follower = dict(pairwise([*order, *order[:1]] if ring else order))
             tried = {
                 (k, a)
                 for a, b in follower.items()
@@ -306,6 +328,11 @@ def _back_ordered(
                 row = where[k, a][0] + 1
                 while row < height and (row, column) not in grid:
                     row += 1
+                if ring and row == height:
+                    # Off the bottom the beam wraps to the top of the column.
+                    row = 0
+                    while (row, column) not in grid:
+                        row += 1
                 if owner.get((row, column)) == (k, follower[a]):
                     shared.add((k, a))
         return shared

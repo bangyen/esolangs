@@ -99,7 +99,10 @@ def _tapemark(table: str, default: str) -> str:
 def _back(table: str, default: str) -> str:
     """Compare the reflected tree, descending tree and parity column."""
     descending = back(table, max(1, grid_width(default) - 1))
-    return min(default, descending, back(table, 1), key=balance_score)
+    # The unshared layouts stay: sharing can leave a layout less square.
+    plain = back(table, wrap=False)
+    narrow = back(table, max(1, grid_width(plain) - 1), wrap=False)
+    return min(default, descending, plain, narrow, back(table, 1), key=balance_score)
 
 
 def _brainif(table: str, default: str) -> str:

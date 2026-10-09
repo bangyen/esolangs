@@ -57,6 +57,22 @@ class TestParameterizedBack:
             bits = [(row >> (6 - i)) & 1 for i in range(7)]
             assert self.run_back(self.instantiate(program, bits), 7) == table[row]
 
+    def test_a_fall_off_the_bottom_wraps_onto_the_first_mirror(self) -> None:
+        """A last node equal to the first is drawn once, and still answers."""
+        import random
+
+        from esolangs import tools as generators
+
+        rng = random.Random(1)
+        blocks = ["".join(rng.choice("01") for _ in range(8)) for _ in range(3)]
+        pattern = [2, 1, 2, 2, 0, 1, 1, 2, 1, 2, 1, 2, 0, 1, 0, 2]
+        table = "0" * 128 + "".join(blocks[i] for i in pattern)
+        program = generators.back(table)
+        assert len(program) < 0.98 * len(generators.back(table, wrap=False))
+        for row in range(0, 256, 3):
+            bits = [(row >> (7 - i)) & 1 for i in range(8)]
+            assert self.run_back(self.instantiate(program, bits), 8) == table[row]
+
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
         from esolangs import tools as generators
