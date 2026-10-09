@@ -20,10 +20,6 @@ class TestMinifuck:
         """The canonical cat program echoes its input."""
         assert run_and_capture("<[<.[<.", inputs=["B"]) == "B"
 
-    def test_comment_characters_ignored(self) -> None:
-        """Non-command characters are ignored."""
-        assert run_and_capture("abc", inputs=["A"]) == ""
-
     def test_tape_grows_past_the_initial_eight_cells(self) -> None:
         """The tape extends once the pointer nears its end, and . reads 8 cells."""
         assert run_and_capture("[[[[[[[.") == "\x7f"

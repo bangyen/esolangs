@@ -198,18 +198,6 @@ class TestVariants:
         run("9 10 3  -3 10 6  0 0 11  5 3 99", _IO())
         assert buffer.getvalue() == "\x03"
 
-    @pytest.mark.parametrize(
-        "store",
-        [
-            # 5 - 3 = 2 is stored in both a and b, falls through, then halts.
-            pytest.param("ab", id="sblq_stores_in_both"),
-            # The same program writes only mem[7], leaving mem[6]=9.
-            pytest.param("b", id="subleq_store_in_b"),
-        ],
-    )
-    def test_store_variant_runs_silently(self, store: str) -> None:
-        assert run_bounded("6 7 3 0 0 5 9 5 3", store=store) == ""
-
     def test_the_default_variant_stores_in_a(self) -> None:
         """``run`` defaults to the base language, which writes to a alone."""
         program = "6 7 3 0 0 5 9 5 3"

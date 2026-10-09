@@ -102,10 +102,6 @@ class TestBIOEdgeCases:
         assert f == "\x00"
 
 
-class TestBIOIntegration:
-    """Integration tests for BIO interpreter."""
-
-
 class TestStepMachine:
     def test_step_tracks_registers_stack_and_cursor(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -142,10 +138,6 @@ class TestContract(SnapshotContract, CycleContract):
     stepping_program = "0ox;"
     halting_program = "0ox;1ix;"
     looping_program = "0ox;0ix{0ix{};};"
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])
 
 
 class TestWikiExamples:

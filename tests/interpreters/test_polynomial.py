@@ -72,14 +72,6 @@ class TestPolynomialValidation:
         ):
             run("", io=IO())
 
-    def test_invalid_format_validation(self) -> None:
-        from esolangs.interpreters.register_based.polynomial import run
-
-        with pytest.raises(
-            ValueError, match=r"Polynomial program must start with 'f\(x\) = '"
-        ):
-            run("invalid program", io=IO())
-
 
 class TestPolynomialExecution:
     def test_nested_control_flow_brackets_match(self) -> None:

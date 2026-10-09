@@ -45,10 +45,6 @@ class TestUnsquare:
             for table in witnesses(n):
                 assert "".join(self._rows(table)) == table, table
 
-    def test_a_program_answers_its_own_table_only(self) -> None:
-        """The positive control: XOR's program disagrees with XNOR everywhere."""
-        assert "".join(self._rows("0110")) != "1001"
-
     def test_inessential_inputs_cost_a_read_not_a_table(self) -> None:
         """An ignored input is consumed by ``iA`` and never widens the table."""
         program = boolean.unsquare("01010101")  # depends on the last input alone

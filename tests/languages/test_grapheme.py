@@ -390,6 +390,14 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
 
 def test_the_input_alphabet() -> None:
     assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
+def test_grapheme_repair_executes(tmp_path, capsys):
+    assert_repair_runs("Grapheme", "FAFy", "1", tmp_path, capsys)
+
+
+def test_grapheme_case_preview_preserves_other_characters():
+    source = "Eé1?E\naY"
+    assert repaired(source, _grapheme_corrections(source)) == "Eé1?E\nAY"
+    assert not _grapheme_corrections("EABEYFAFY")
 
 
 def test_grapheme_names_its_input_alphabet() -> None:

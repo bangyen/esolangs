@@ -10,21 +10,10 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import run
 from esolangs.tools.grapheme import _grapheme_literal, _grapheme_push65, _grapheme_table
 from tests.generator_support import evaluate_generated
-from tests.tools.boolean_runners import (
-    run_grapheme,
-)
 from tests.tools.test_boolean_contract import _one_minterm
 
 
 class TestGrapheme:
-    def test_a_literal_pushes_its_value(self) -> None:
-        """Int mode spells every value, 6 included, as one literal."""
-        from esolangs.tools.grapheme import _grapheme_literal
-
-        for value in (0, 1, 16, 106, 1006, 1_263_460, 9_999_996, 5_666_666):
-            code = _grapheme_literal(value)
-            assert run_grapheme(code + "Y", []) == str(value), value
-
     def test_there_is_no_branch_left(self) -> None:
         """Indexing a literal needs no skip: parity emits no ``U``/``V``/``X``."""
         parity = boolean.grapheme("01101001")

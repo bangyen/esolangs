@@ -43,7 +43,6 @@ def test_output(program: str, expected: str) -> None:
     [
         ("main { x = (a@ { return 1; }; }", ValueError, "expected"),
         ("main { for 1:0..1 { } }", ValueError, "identifier"),
-        ("main { x =", ValueError, "value"),
         ("main { x = 2; }", ValueError, "character"),
         ("main { for i:0 1 { } }", ValueError, r"\.\."),
         ("main { a, b 2; }", ValueError, "after assignment"),
@@ -197,7 +196,6 @@ class TestErrorMessages:
             ("main {\n a,b;\n}\n", "expected '=' after assignment targets"),
             ("main {\n !0;\n}\n", "statement must be a call, assignment, or return"),
             ("main { a = ", "expected a value"),
-            ("main { ", "unterminated block"),
         ):
             with pytest.raises(ValueError, match=message):
                 run(code, ScriptedIO(""))

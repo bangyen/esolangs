@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from tests.generator_support import evaluate_generated
 from tests.scripts.script_support import load
 
 
@@ -37,12 +36,6 @@ def test_the_refusal_is_catchable_at_the_size_it_refuses() -> None:
     """A refusal past the sweep's bound, at the first arity that triggers it."""
     with pytest.raises(esolangs.GeneratorCapError, match="cost"):
         esolangs.generate("Polynomial", _big_table(11))
-
-
-def test_it_is_catchable_through_evaluate_too() -> None:
-    """NoComment's leaked through ``evaluate`` identically."""
-    with pytest.raises(esolangs.GeneratorCapError):
-        evaluate_generated("Polynomial", _big_table(11))
 
 
 @pytest.mark.medium

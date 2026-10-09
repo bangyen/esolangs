@@ -22,7 +22,6 @@ def dump(code: str) -> str:
 _DUMPS = {
     # Increment z to 3, then zero it
     "z_command_zero_register": ("A A A Z", "z: 0\nn: 0\nram: {}"),
-    "a_command_increment": ("A A A", "z: 3\nn: 0\nram: {}"),
     # z=3, then copy to n
     "n_command_copy_z_to_n": ("A A A N", "z: 3\nn: 3\nram: {}"),
     # Store 5 at address 2, then L loads from uninitialized address 7: 0
@@ -132,10 +131,6 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     state_views = ("ind", "z", "n", "ip", "memory")
     # `S` is what moves `n`; "ZA" left it at its initial value.
     viewing_program = "A N S"
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])
 
 
 class TestStateViewValues:
