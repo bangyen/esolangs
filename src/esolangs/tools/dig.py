@@ -1,6 +1,7 @@
 """Boolean-function generator for Dig."""
 
 from itertools import pairwise
+from typing import cast
 
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
@@ -584,7 +585,7 @@ def _dig_leaf_inputs(
     )
 
 
-def _dig_alternating(truth_table: str, n: int) -> str:
+def _dig_layout(truth_table: str, n: int, *, columns: bool = False) -> str | None:
     """Lay a Dig tree whose leaves are flat tables, branch axis rotating.
 
     The last six inputs are not branched on at all: a leaf holds their whole
@@ -682,15 +683,26 @@ def _dig_alternating(truth_table: str, n: int) -> str:
             for at, want, hold in wants
         )
 
+    entries: dict[tuple[int, int], tuple[str, int, int]] = {}
+    owners: dict[tuple[str, int, int], tuple[int, int]] = {}
+    links: list[tuple[tuple[int, int], tuple[int, int], tuple[int, int]]] = []
+    tails: dict[tuple[int, int], int] = {}
+
     def node(
         level: int,
         point: tuple[int, int],
         heading: int,
         lo: int,
         hi: int,
+        *,
+        paint: bool = True,
     ) -> None:
         if constant(lo, hi):
+            if not paint:
+                return
             code = short_leaf(level, lo)
+            if columns:
+                tails[point] = len(code)
             text(point, heading, code)
             reads.extend(
                 (step(point, heading, i), step(point, heading, i + 1), frozenset())
@@ -699,20 +711,28 @@ def _dig_alternating(truth_table: str, n: int) -> str:
             )
             return
         if level == depth:
-            leaf(point, heading, truth_table[lo:hi])
+            key = (truth_table[lo:hi], heading, point[1])
+            if not paint:
+                entries[point] = key
+                if key not in owners or point[0] > owners[key][0]:
+                    owners[key] = point
+            elif not columns or key not in owners or point == owners[key]:
+                leaf(point, heading, truth_table[lo:hi])
             return
         # The operand digit sits one cell off the block.  Which side is
         # forced -- a reader takes the first digit of up, right, down, left,
         # so the operand goes on the lower-numbered of the two sides and a
         # stray digit opposite it can never be read first.
-        side = min((heading + 1) % 4, (heading - 1) % 4)
-        count = step(point, side)
         skip = skips[level]
-        place(count, str(_DIG_COUNT + skip))
-        reads.append((point, count, frozenset()))
-        text(point, heading, _DIG_ALT_BRANCH[0] + "~" * skip + _DIG_ALT_BRANCH[1:])
         end = step(point, heading, _DIG_END + skip)
-        reads.append((end, step(end, heading, -1), frozenset()))
+        if paint:
+            side = min((heading + 1) % 4, (heading - 1) % 4)
+            count = step(point, side)
+            skip = skips[level]
+            place(count, str(_DIG_COUNT + skip))
+            reads.append((point, count, frozenset()))
+            text(point, heading, _DIG_ALT_BRANCH[0] + "~" * skip + _DIG_ALT_BRANCH[1:])
+            reads.append((end, step(end, heading, -1), frozenset()))
         half = (lo + hi) // 2
         # Two cells off, not one: a leaf reaches far enough sideways that
         # its box, turned a quarter, would otherwise land on this block's
@@ -720,15 +740,116 @@ def _dig_alternating(truth_table: str, n: int) -> str:
         for child_bit, child_bounds in ((0, (lo, half)), (1, (half, hi))):
             child_heading = (heading + (1 if child_bit else -1)) % 4
             distance = 2 - box(level + 1, *child_bounds)[0]
-            corridors.append((end, child_heading, distance))
             child = step(end, child_heading, distance)
-            node(level + 1, child, child_heading, *child_bounds)
+            if paint:
+                corridors.append((end, child_heading, distance))
+                if columns:
+                    links.append((point, end, child))
+            node(level + 1, child, child_heading, *child_bounds, paint=paint)
 
     # Build locally with the root heading east.  Its ray from the west is
     # empty by the same bounds recurrence, so an external L-shaped entry can
     # reach it without crossing the tree.
+    if columns:
+        node(0, (0, 0), 1, 0, len(truth_table), paint=False)
+        counts: dict[tuple[str, int, int], int] = {}
+        for key in entries.values():
+            counts[key] = counts.get(key, 0) + 1
+        shared = {
+            key for key, count in counts.items() if count > 1 and key[1] in (1, 3)
+        }
+        lane_cols = [key[2] - _DIG_DIRECTIONS[key[1]][1] for key in shared]
+        if not shared or len(set(lane_cols)) != len(lane_cols):
+            return None
+        # Leave unmatched copies painted, even if their contents coincide.
+        owners = {key: owner for key, owner in owners.items() if key in shared}
     node(0, (0, 0), 1, 0, len(truth_table))
-    _dig_alt_clear(cells, reads, corridors)
+    lanes: dict[tuple[int, int], tuple[int, int]] = {}
+    if columns:
+        for point, key in entries.items():
+            if key not in owners:
+                continue
+            heading = key[1]
+            lane = step(point, heading, -1)
+            if cells.get(lane, " ") != " ":
+                return None
+            owner = owners[key]
+            cells[lane] = (
+                "^>'<"[heading]
+                if point == owner
+                else "^"
+                if owner[0] < point[0]
+                else "'"
+            )
+            lanes[point] = lane
+        corridors = [
+            (start, h, distance - (step(start, h, distance) in lanes))
+            for start, h, distance in corridors
+        ]
+        by_row: dict[int, list[tuple[int, int]]] = {}
+        for point in lanes:
+            by_row.setdefault(point[0], []).append(point)
+        previous: dict[tuple[str, int, int], tuple[int, int]] = {}
+        for row in sorted(by_row):
+            for point in by_row[row]:
+                key, lane = entries[point], lanes[point]
+                if key in previous:
+                    start = previous[key]
+                    corridors.append((start, 2, lane[0] - start[0]))
+                previous[key] = lane
+    try:
+        _dig_alt_clear(cells, reads, corridors)
+    except AssertionError:
+        if columns:
+            return None
+        raise
+    if columns:
+        # Painted leaf boxes keep their internal blank rows. Only unused
+        # external rows disappear; every shortened corridor is overground.
+        rows = {row: i for i, row in enumerate(sorted({r for r, _ in cells}))}
+        root = rows[0]
+
+        def compact(point: tuple[int, int]) -> tuple[int, int]:
+            return rows[point[0]] - root, point[1]
+
+        cells = {compact(point): char for point, char in cells.items()}
+        costs = {(0, 0): 0}
+        for parent, end, child in links:
+            p, e, c = compact(parent), compact(end), compact(child)
+            costs[child] = (
+                costs[parent]
+                + abs(p[0] - e[0])
+                + abs(p[1] - e[1])
+                + abs(e[0] - c[0])
+                + abs(e[1] - c[1])
+            )
+        row_count, col_count = sum(high) + 1, sum(low) + 1
+        painter = _dig_adder(high, 2)[4][1] - 1
+        stepper = _dig_adder(low, 0)[4][1] - 1
+        far = max(6 + col_count, 5 + stepper)
+        # Sum the flat stamp's walking legs. Only the selected column
+        # changes their length; its maximum is col_count - 1. Data digits
+        # affect the printed answer, never the route.
+        leaf_cost = (
+            (row_count + 14) // 2
+            - 1
+            + 2 * (painter + stepper + far)
+            + 3 * row_count
+            + 2 * (col_count - 1)
+            + 48
+        )
+        worst = max((costs[p] + cost for p, cost in tails.items()), default=0)
+        for point, key in entries.items():
+            travel = 0
+            if key in owners:
+                travel = abs(compact(point)[0] - compact(owners[key])[0])
+            worst = max(worst, costs[point] + travel + leaf_cost)
+        entry_cost = 4 - min(row for row, _ in cells) - min(col for _, col in cells)
+        bound = 128 + (
+            46 * 2 ** ((n - 6) // 2) if n % 2 == 0 else 64 * 2 ** ((n - 7) // 2)
+        )
+        if entry_cost + worst > bound:
+            return None
     min_row = min(row for row, _ in cells)
     min_col = min(col for _, col in cells)
     row_shift, col_shift = 2 - min_row, 2 - min_col
@@ -746,6 +867,20 @@ def _dig_alternating(truth_table: str, n: int) -> str:
     cells[(root_row, 0)] = ">"
 
     return _render(cells, dense=True)
+
+
+def _dig_alternating(truth_table: str, n: int) -> str:
+    """Return the total unshared alternating layout."""
+    return cast("str", _dig_layout(truth_table, n))
+
+
+def _dig_column_shared(truth_table: str, n: int) -> str | None:
+    """Join aligned repeated leaves along spare columns, keeping the lowest copy.
+
+    Reject crossings and paths above the execution ledger. A six-bit leaf's
+    worst walk is the sum of its adder, painter, selector and output legs.
+    """
+    return _dig_layout(truth_table, n, columns=True) if n > 6 else None
 
 
 def _dig_shared_pair(truth_table: str, n: int) -> str | None:
@@ -917,10 +1052,11 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
     A constant span at any level is a row of reads and a print, its box sized
     alone (seeded n=7/8/9 area, one half constant: -14.7% / -20.0% / -25.4%;
     constant 64-entry blocks -12.3% / -34.2% / -24.3%; random unchanged).
-    Eight-input prefixes over two 64-entry leaves use fixed merging rays
-    (1,222 cells and at most 218 commands), including width paths. Other
-    groups remain unshared: searched wires exceeded the execution ledger
-    (265 vs 220 commands on an eight-input repeated-leaf table).
+    Aligned repeated leaves join along spare columns, retaining the lowest
+    copy and dropping unused external rows. Paths must fit the execution
+    ledger (n=8 A B B A: 1,155 cells, 208 commands). Narrow width paths can
+    use the fixed two-leaf stencil (26 columns, at most 218 commands).
+    Groups whose corridors collide or exceed the bound remain unshared.
     """
     n = _validate_truth_table(truth_table)
     built = _dig_build(truth_table, n, width, share=share)
@@ -944,8 +1080,11 @@ def _dig_build(
     if width is not None and 0 < width < 8 and truth_table == "0110":
         return _dig_xor_pair()
     pair = _dig_shared_pair(truth_table, n) if share else None
+    column = _dig_column_shared(truth_table, n) if share else None
     if width is None and n > 4:
-        return min(filter(None, (pair, _dig_alternating(truth_table, n))), key=len)
+        return min(
+            filter(None, (pair, column, _dig_alternating(truth_table, n))), key=len
+        )
     flat = _dig_grid(truth_table, n, None)
     if n < 2:
         return flat
@@ -960,9 +1099,7 @@ def _dig_build(
             return flat
         if grid_width(banded) <= width:
             return banded
-    candidates: tuple[str, ...] = (
-        (flat, banded) if pair is None else (flat, banded, pair)
-    )
+    candidates = tuple(filter(None, (flat, banded, pair, column)))
     fitting = [p for p in candidates if grid_width(p) <= width]
     if n > 4:
         # Width 40 used 11,250 banded cells on the n=8 repeated-leaf case;

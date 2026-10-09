@@ -88,10 +88,10 @@ Generator gaps against the canonical pieces in
   width, balance, dialect) to n=8 against the three canonical pieces, with
   execution and a positive control; price it before launch. It should find
   the two gaps below and any others.
-- **Dig width paths.** Fixed routes share two distinct 64-entry leaves at
-  n=8 (26 columns, 1,222 cells, at most 218 commands; unshared: 1,925 cells,
-  220 commands). Larger or unmatched groups remain unshared. Route them
-  within the execution bound or record why none fit.
+- **Dig width paths.** Aligned leaves share spare-column routes within the
+  execution bound (n=8 A B B A: 1,155 cells, 208 commands). Narrow requests
+  retain the 26-column two-leaf stencil. Unaligned or colliding groups
+  remain unshared; route them within the bound or record why none fit.
 - **Back bend routes stay out.** They add under one point on tiled n=8,
   and raise worst commands at n=6/7 from 122/221 to 154/306, past the
   execution ledger's bound.

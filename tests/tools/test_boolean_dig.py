@@ -308,7 +308,7 @@ def test_wide_requests_admit_the_unshared_alternating_grid(width: int) -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("width", [None, 1, 8, 26, 40])
-def test_shared_pair_uses_fixed_routes_within_the_execution_bound(
+def test_shared_routes_keep_the_execution_bound(
     width: int | None,
 ) -> None:
     import random
@@ -321,7 +321,10 @@ def test_shared_pair_uses_fixed_routes_within_the_execution_bound(
     table = a + b + b + a
     program = boolean.dig(table, width)
     rows = program.splitlines()
-    assert (len(rows), max(map(len, rows)), len(program)) == (47, 26, 1091)
+    wide = width is None or width >= 35
+    assert (len(rows), max(map(len, rows)), len(program)) == (
+        (33, 35, 912) if wide else (47, 26, 1091)
+    )
     worst = 0
     for row, expected in enumerate(table):
         io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
@@ -333,7 +336,7 @@ def test_shared_pair_uses_fixed_routes_within_the_execution_bound(
         assert machine.halted
         assert (io.getvalue(), io.reads) == (expected, 8)
         worst = max(worst, steps)
-    assert worst == 218
+    assert worst == (208 if wide else 218)
 
 
 @pytest.mark.medium
@@ -373,3 +376,72 @@ def test_two_leaf_prefixes_keep_the_execution_ledger(pattern: str) -> None:
             steps += 1
         assert machine.halted, (pattern, row, steps)
         assert (io.getvalue(), io.reads) == (expected, 8)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("ignored", [0, 1, 2])
+def test_column_routes_consume_ignored_prefix_inputs(ignored: int) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_column_shared
+
+    rng = random.Random(2026)
+    a, b = ("".join(rng.choice("01") for _ in range(64)) for _ in range(2))
+    table = (a + b + b + a) * (1 << ignored)
+    n = 8 + ignored
+    program = _dig_column_shared(table, n)
+    assert program is not None
+    rows = program.splitlines()
+    assert len(rows) * max(map(len, rows)) == 1155
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 208:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, n)
+        worst = max(worst, steps)
+    assert worst == 208
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("pattern", "expected_steps"),
+    [("0000000000000001", 297), ("0110100110010110", 279)],
+)
+def test_multiple_copies_merge_along_one_column(
+    pattern: str, expected_steps: int
+) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_column_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    table = "".join(blocks[int(bit)] for bit in pattern)
+    program = _dig_column_shared(table, 10)
+    assert program is not None
+    rows = program.splitlines()
+    unshared = boolean.dig(table, share=False).splitlines()
+    assert len(rows) * max(map(len, rows)) < 0.7 * len(unshared) * max(
+        map(len, unshared)
+    )
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "010b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 312:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, 10)
+        worst = max(worst, steps)
+    assert worst == expected_steps
