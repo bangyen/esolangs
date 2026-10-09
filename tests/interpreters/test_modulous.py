@@ -6,7 +6,11 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.stack_based.modulous import _Machine as Modulous
 from esolangs.interpreters.stack_based.modulous import _named, run
-from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
+from esolangs.vm import (
+    run_until_halt,
+    run_until_halt_or_all_branches_cycle,
+    run_until_halt_or_cycle,
+)
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
 from tests.raises import (
@@ -259,18 +263,17 @@ class TestStepMachine:
     def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle(self) -> None:
         """An input port with no cursor reports position 0 after every read."""
         from esolangs.interpreters.stack_based.modulous import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
 
         machine = _Machine("[INP STR][POP][RST]", PositionlessIO("a\na\n"))
         with pytest.raises(EOFError):
-            run_until_halt_or_cycle(machine, limit=100)
+            run_until_halt(machine, limit=100)
 
 
 class TestBranchingMachine:
     @pytest.mark.parametrize("command", ["PRT", "PRT INT"])
     def test_branching_accepts_valid_output(self, command: str) -> None:
         from esolangs.interpreters.stack_based.modulous import _Machine
-        from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
 
         code = f"[PSH INT 65][{command}][END]"
         io = ScriptedIO("")
@@ -288,7 +291,7 @@ class TestBranchingMachine:
         self, code: str, message: str
     ) -> None:
         from esolangs.interpreters.stack_based.modulous import _Machine
-        from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
 
         for runner in (run_until_halt, run_until_halt_or_all_branches_cycle):
             with pytest.raises(ValueError, match=message):
@@ -297,7 +300,7 @@ class TestBranchingMachine:
     @pytest.mark.parametrize("distance", [1, 100, 101])
     def test_branching_wraps_backward_jumps_like_execution(self, distance: int) -> None:
         from esolangs.interpreters.stack_based.modulous import _Machine
-        from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
 
         code = f"[JMP B {distance}][END]"
         expected = run_until_halt(_Machine(code, ScriptedIO("")), limit=10)
@@ -329,7 +332,8 @@ def test_modulous_reset_loops_and_end_halts() -> None:
     """``RST`` rewinds the cursor forever; ``END`` stops."""
     reset = Modulous("[RST]", ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(reset) is False
-    assert run_until_halt_or_cycle(Modulous("[RST]", ScriptedIO())) is False
+    with pytest.raises(TypeError, match="random machines"):
+        run_until_halt_or_cycle(Modulous("[RST]", ScriptedIO()))
     end = Modulous("[END]", ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(end) is True
 

@@ -10,9 +10,11 @@ from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.vm import (
+    _BranchingStepMachine,
     _FramedMachine,
     _TapeMachine,
     make_vm,
+    run_until_halt,
     run_until_halt_or_ancestor,
     run_until_halt_or_cycle,
     run_until_halt_or_growth,
@@ -172,6 +174,9 @@ BOOLEAN_EXAMPLES = {
 def _prove_halt(vm: object) -> bool:
     """Drive ``vm`` to its halt with the prover its machine supports."""
     machine = getattr(vm, "_machine", vm)
+    if isinstance(machine, _BranchingStepMachine):
+        # A seeded path must actually halt; repeated states omit RNG state.
+        return run_until_halt(vm, limit=100_000)
     if isinstance(machine, _FramedMachine):
         return run_until_halt_or_ancestor(vm)
     if isinstance(machine, _TapeMachine):

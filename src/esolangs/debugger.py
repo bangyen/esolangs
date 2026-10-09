@@ -14,7 +14,7 @@ from time import monotonic
 from typing import Literal, get_args
 
 from esolangs._source import InputSource, ProgramSource
-from esolangs._validate import check_timeout, check_whole
+from esolangs._validate import _argument_repr, check_timeout, check_whole
 from esolangs.exceptions import ArgumentError
 from esolangs.settings import DialectSettings
 from esolangs.vm import VM, complete_vm, make_vm, run_until_halt
@@ -168,7 +168,8 @@ class Debugger:
             and all(isinstance(part, int) and not isinstance(part, bool) for part in ip)
         ):
             raise ArgumentError(
-                f"ip must be a non-negative integer or a tuple of them, got {ip!r}"
+                "ip must be a non-negative integer or a tuple of them, "
+                f"got {_argument_repr(ip)}"
             )
         here = self.vm.ip
         if here is not None and here != ():
@@ -176,7 +177,7 @@ class Debugger:
             if isinstance(here, tuple) != isinstance(ip, tuple):
                 raise ArgumentError(
                     f"this language's ip is {kind} (currently {here!r}), so a "
-                    f"breakpoint on {ip!r} could never fire"
+                    f"breakpoint on {_argument_repr(ip)} could never fire"
                 )
         self._breakpoints.append(lambda vm: vm.ip == ip)
 
@@ -187,7 +188,9 @@ class Debugger:
         """
         check_whole(index, "index")
         if isinstance(value, bool) or not isinstance(value, int):
-            raise ArgumentError(f"value must be an integer, got {value!r}")
+            raise ArgumentError(
+                f"value must be an integer, got {_argument_repr(value)}"
+            )
         self._breakpoints.append(lambda vm: _value_at(vm.memory, index) == value)
 
     def break_on_stack(self, slot: int, value: object) -> None:

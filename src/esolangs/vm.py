@@ -108,7 +108,8 @@ def run_until_halt_or_cycle(
 ) -> bool:
     """Step ``machine`` until it halts or revisits an exact state.
 
-    A repeated snapshot *proves* a hang.  ``True`` on a halt, ``False``
+    Random machines require the all-branches detector.
+    A repeated deterministic snapshot *proves* a hang.  ``True`` on a halt, ``False``
     once a cycle is proven; unbounded growth never repeats and is
     :func:`run_until_halt_or_growth`'s.  Brent's algorithm: O(1)
     snapshots, up to ~2x past the cycle's start, so rely on the verdict,
@@ -128,6 +129,15 @@ def run_until_halt_or_cycle(
             hint=("pass make_vm(...) or a machine with step, halted and snapshot"),
         ),
     )
+    underlying = getattr(machine, "vm", machine)
+    underlying = getattr(underlying, "_machine", underlying)
+    # Befunge's seeded `v \n?@` repeats its visible state, then halts.
+    # Random choices are absent from snapshots; only branching proves a cycle.
+    if not machine.halted and isinstance(underlying, _BranchingStepMachine):
+        raise with_hint(
+            TypeError("random machines cannot prove cycles from repeated snapshots"),
+            "use run_until_halt_or_all_branches_cycle for random machines",
+        )
     tortoise = machine.snapshot()
     power = 1
     length = 0

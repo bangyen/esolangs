@@ -40,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
                     "last": ignore(table, n),
                     "fresh": random_table(n + 1, rng),
                 }
-                built = sizes(gen, [table, *variants.values()])
+                built = sizes(name, gen, [table, *variants.values()])
                 base = built[table]
                 if base is None:
                     continue

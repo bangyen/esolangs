@@ -4,8 +4,7 @@ For each registry language with a boolean generator: build all 256
 three-input tables once, then report ``100 * (1 - sum(min)/sum(identity))``
 where ``min`` is the shortest build over the 6 input orders.  The n=3
 table space is closed under input permutation, so the permuted builds are
-lookups, not builds.  This metric reproduces the deleted ledger's verified
-figures exactly (dig 19.5, flowchart 16.2, modulous 16.4, arrowqueue 7.2).
+lookups, not builds. Text uses characters; grids use rectangular area.
 Run from the repository root: ``python scripts/screens/input_reorder.py``.
 
 Premise, checked by execution: the program built for
@@ -34,10 +33,10 @@ from esolangs.tools.helpers import permute_truth_table
 PERMS = list(permutations(range(3)))
 
 
-def screen(gen: Callable[[str], object]) -> tuple[float, int, float] | None:
+def screen(name: str, gen: Callable[[str], object]) -> tuple[float, int, float] | None:
     """Return (upside %, tables improved, seconds), or None if all rejected."""
     start = perf_counter()
-    built_sizes = sizes(gen, TABLES)
+    built_sizes = sizes(name, gen, TABLES)
     elapsed = perf_counter() - start
     built = [t for t in TABLES if built_sizes[t] is not None]
     if not built:
@@ -61,7 +60,7 @@ def main() -> None:
     """Screen the registry and print one row per language, best first."""
     rows = []
     for key, gen in generators():
-        result = screen(gen)
+        result = screen(key, gen)
         if result is None:
             continue
         rows.append((key, getattr(gen, "__name__", key), *result))

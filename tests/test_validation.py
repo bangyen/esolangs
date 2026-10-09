@@ -111,3 +111,19 @@ class TestTerminationPolarityIsData:
 
     def test_a_printing_language_still_reports_digits(self) -> None:
         assert esolangs.describe("brainfuck")["answer_encoding"] == ("0", "1")
+
+
+@pytest.mark.parametrize("method", ["break_at", "break_on_cell"])
+def test_debugger_rejects_huge_invalid_arguments(method):
+    from esolangs.debugger import make_debugger
+    from esolangs.exceptions import ArgumentError
+
+    debugger = make_debugger("brainfuck", "")
+    huge = 10**5000
+    call = (
+        (lambda: debugger.break_at((huge,)))
+        if method == "break_at"
+        else lambda: debugger.break_on_cell(0, [huge])
+    )
+    with pytest.raises(ArgumentError):
+        call()

@@ -16,7 +16,7 @@ from esolangs.raster import Raster
 from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
 from esolangs.registry._language import Shape
 from esolangs.tools.helpers import essential_inputs
-from esolangs.vm import run_until_halt_or_cycle
+from esolangs.vm import _BranchingStepMachine, run_until_halt, run_until_halt_or_cycle
 from tests.generator_support import evaluate_generated
 from tests.source_support import source_units
 
@@ -77,7 +77,13 @@ def _reads(entry: tuple, table: str) -> int:
     with contextlib.suppress(Exception, SystemExit):
         of = getattr(machine_cls, "of", None)
         build = of if callable(of) else machine_cls
-        run_until_halt_or_cycle(build(source, io))
+        machine = build(source, io)
+        drive = (
+            run_until_halt
+            if isinstance(machine, _BranchingStepMachine)
+            else run_until_halt_or_cycle
+        )
+        drive(machine, limit=100_000)
     return io.reads
 
 

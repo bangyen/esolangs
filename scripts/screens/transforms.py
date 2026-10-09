@@ -14,7 +14,7 @@ where ``min`` is the shortest build over the transformed tables:
     excess over the reorder screen is what polarity and negation add.
 ``ignored``
     For three-input tables with exactly two essential inputs, the mean
-    characters over the two-input build of their projection: what reading
+    source units over the two-input build of their projection: what reading
     an input the function ignores costs (Line and Piet paid this once).
 
 Every figure is an upper bound.  It charges nothing for the transform --
@@ -54,11 +54,11 @@ def _flip(table: str, mask: int) -> str:
 Row = tuple[float, float, float, float, float]
 
 
-def screen(gen: Callable[[str], object]) -> Row | None:
-    """Return (outneg %, inpol %, npn %, ignored chars, seconds), or None."""
+def screen(name: str, gen: Callable[[str], object]) -> Row | None:
+    """Return (outneg %, inpol %, npn %, ignored units, seconds), or None."""
     start = perf_counter()
-    built_sizes = sizes(gen, TABLES)
-    pairs = sizes(gen, PAIRS)
+    built_sizes = sizes(name, gen, TABLES)
+    pairs = sizes(name, gen, PAIRS)
     elapsed = perf_counter() - start
     built = [t for t in TABLES if built_sizes[t] is not None]
     if not built:
@@ -98,7 +98,7 @@ def main() -> None:
     """Screen the registry and print one row per language, best NPN first."""
     rows = []
     for key, gen in generators():
-        result = screen(gen)
+        result = screen(key, gen)
         if result is None:
             continue
         rows.append((key, *result))

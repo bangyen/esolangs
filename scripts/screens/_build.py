@@ -33,7 +33,9 @@ def generators() -> Iterator[tuple[str, Callable[[str], object]]]:
     yield from sorted(GENERATORS.items())
 
 
-def sizes(gen: Callable[[str], object], tables: list[str]) -> dict[str, int | None]:
+def sizes(
+    name: str, gen: Callable[[str], object], tables: list[str]
+) -> dict[str, int | None]:
     """Build every table once; ``None`` marks an arity the generator refuses.
 
     ``ValueError`` is the refusal; anything else is a real failure and
@@ -43,11 +45,7 @@ def sizes(gen: Callable[[str], object], tables: list[str]) -> dict[str, int | No
     for table in tables:
         try:
             program = gen(table)
-            out[table] = (
-                sum(map(len, program.rows))
-                if isinstance(program, Raster)
-                else len(str(program))
-            )
+            out[table] = source_size(name, program)
         except ValueError:
             out[table] = None
     return out

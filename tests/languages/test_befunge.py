@@ -42,3 +42,23 @@ def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -
 def test_befunge_grid_refusal_is_catchable() -> None:
     with pytest.raises(esolangs.GeneratorCapError, match="80x25"):
         esolangs.generate("Befunge", "0010" * (1 << 12))
+
+
+@pytest.mark.parametrize("wrapped", ["vm", "machine", "debugger"])
+def test_random_snapshot_cannot_prove_a_cycle(wrapped):
+    from esolangs.debugger import make_debugger
+    from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
+
+    source = "v \n?@"
+    vm = make_vm("Befunge", source)
+    machine = (
+        vm
+        if wrapped == "vm"
+        else (vm._machine if wrapped == "machine" else make_debugger("Befunge", source))  # noqa: SLF001
+    )
+    with pytest.raises(TypeError, match="random machines"):
+        run_until_halt_or_cycle(machine, limit=1000)
+    run_until_halt(vm, limit=1000)
+    assert vm.halted
+    assert esolangs.run("Befunge", source, seed=0, timeout=1) == ""
+    assert run_until_halt_or_cycle(vm, limit=1000) is True

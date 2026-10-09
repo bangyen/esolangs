@@ -8,7 +8,11 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
 from esolangs.interpreters.tape_based.painfuck import _Machine as Painfuck
-from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
+from esolangs.vm import (
+    run_until_halt,
+    run_until_halt_or_all_branches_cycle,
+    run_until_halt_or_cycle,
+)
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -458,11 +462,10 @@ def test_painfuck_all_coin_outcomes_can_be_proved_to_loop() -> None:
     code = _painfuck_source("paybb")
     machine = Painfuck(code, ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(machine) is False
-    # A single path's snapshot counts its coin draws (a later draw could
-    # escape), so it never repeats: undecided, not a false cycle.
+    # A later draw could escape; snapshot proofs refuse random machines.
     for coin in (0, 1):
         draws = FirstDraw(coin, rest=coin)
-        with pytest.raises(TimeoutError, match="undecided after 64 steps"):
+        with pytest.raises(TypeError, match="random machines"):
             run_until_halt_or_cycle(Painfuck(code, ScriptedIO(), draws), limit=64)
 
 
@@ -471,9 +474,9 @@ def test_painfuck_one_halting_coin_refutes_an_all_branches_hang() -> None:
     machine = Painfuck(code, ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(machine) is True
     halting = Painfuck(code, ScriptedIO(), FirstDraw(1))
-    assert run_until_halt_or_cycle(halting) is True
+    assert run_until_halt(halting, limit=1000) is True
     looping = Painfuck(code, ScriptedIO(), FirstDraw(0, rest=0))
-    with pytest.raises(TimeoutError, match="undecided after 64 steps"):
+    with pytest.raises(TypeError, match="random machines"):
         run_until_halt_or_cycle(looping, limit=64)
 
 
@@ -503,7 +506,7 @@ def test_painfuck_later_coin_can_escape_repeated_visible_state() -> None:
 
     coins = DelayedEscape()
     machine = Painfuck(_painfuck_source("payb"), ScriptedIO(), coins)
-    assert run_until_halt_or_cycle(machine, limit=64) is True
+    assert run_until_halt(machine, limit=64) is True
     assert coins.draws == 5
 
 
