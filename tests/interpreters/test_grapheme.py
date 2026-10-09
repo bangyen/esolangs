@@ -6,7 +6,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.stack_based.grapheme import _Machine as Grapheme
 from esolangs.interpreters.stack_based.grapheme import run
+from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -432,3 +434,16 @@ def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle():
     machine = _Machine("FAFHWMHZ", PositionlessIO("a\n" * 10))
     with pytest.raises(EOFError):
         run_until_halt_or_cycle(machine, limit=100)
+
+
+def test_grapheme_replayed_function_is_detected_as_an_ancestor() -> None:
+    # The function invokes itself without changing the shared state.
+    machine = Grapheme("HKGHKG", ScriptedIO())
+    assert run_until_halt_or_ancestor(machine) is False
+
+
+def test_grapheme_changing_stack_halts() -> None:
+    # The function decrements the count before Q recurs, so each entry
+    # has a different shared stack and reaches the zero base case.
+    code = "FAF" + "H" + "FFTPBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
+    assert run_until_halt_or_ancestor(Grapheme(code, ScriptedIO())) is True

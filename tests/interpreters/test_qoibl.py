@@ -10,6 +10,7 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.register_based import qoibl
 from esolangs.interpreters.register_based.qoibl import run, tokenize
 
 
@@ -451,3 +452,30 @@ class TestTheTokenizerCarriesItsOwnStack:
         """A dead scan must not erase a literal or a complete ``tt y tt``."""
         with pytest.raises(ValueError, match="malformed Qoibl expression"):
             tokenize(source)
+
+
+@pytest.mark.parametrize(
+    ("function", "expression", "message", "hint"),
+    [
+        ("_eval", [], "malformed expression", "nonempty"),
+        ("_eval", ["e", "yr"], "malformed comparison", "operator"),
+        ("_eval", ["e", "ry"], "malformed arithmetic", "operator"),
+        (
+            "_compare",
+            ["e", "yr", "BAD", "yr", "e"],
+            "unrecognized comparison operator",
+            "after yr",
+        ),
+        (
+            "_arithmetic",
+            ["e", "ry", "BAD", "ry", "e"],
+            "unrecognized arithmetic operator",
+            "after ry",
+        ),
+    ],
+)
+def test_qoibl_hand_built_expression_guards(function, expression, message, hint):
+    with pytest.raises(ValueError, match=message) as caught:
+        getattr(qoibl, function)(expression, {}, lambda: 0, lambda _: None)
+    assert str(caught.value) == message
+    assert hint in caught.value.__notes__[0]

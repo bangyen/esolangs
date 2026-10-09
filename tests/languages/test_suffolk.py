@@ -5,7 +5,12 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.debugger import complete_vm
-from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_value_growth
+from esolangs.vm import (
+    make_vm,
+    run_until_halt,
+    run_until_halt_or_cycle,
+    run_until_halt_or_value_growth,
+)
 from tests.generator_support import evaluate_generated
 
 
@@ -53,3 +58,23 @@ def test_a_non_self_halting_machine_can_already_be_finished():
     assert not vm.self_halts
     assert run_until_halt(vm, 2)
     assert complete_vm(vm, max_steps=0) == esolangs.run("Suffolk", ",", stdin="1")
+
+
+def test_the_value_growth_detector_proves_a_climbing_cell() -> None:
+    """Suffolk's ``>>!`` loops climb in value on a tape that never grows."""
+    climbing = ">>!>>!>>!>>!>>!>>!>>!>>!>>>!>>!>>!>><!>>"
+    assert run_until_halt_or_value_growth(make_vm("Suffolk", climbing)) is False
+    lapping = make_vm("Suffolk", "1{z:[}] !. ;")
+    assert run_until_halt_or_value_growth(lapping) is False
+
+
+def test_the_value_growth_detector_declines_a_repeating_program() -> None:
+    """A program that cycles is the cycle detector's, and is not certified."""
+    sample = "!" * 66 + "<."
+    assert run_until_halt_or_cycle(make_vm("Suffolk", sample)) is False
+    with pytest.raises(TimeoutError):
+        run_until_halt_or_value_growth(make_vm("Suffolk", sample), 20_000)
+
+    # `<` alone rewinds to a cell it already read: a repeat, not a climb.
+    with pytest.raises(TimeoutError):
+        run_until_halt_or_value_growth(make_vm("Suffolk", "<"), 5_000)

@@ -2,11 +2,15 @@
 
 import shlex
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+import esolangs
+from esolangs._execution import interpreter_module
+from esolangs._suggest import Correction
 from esolangs.cli import main
 
 EXAMPLES = Path(__file__).parents[1] / "examples"
@@ -79,3 +83,33 @@ def _refused(
         for word in shlex.split(command)
     ]
     return _failure(args, capsys, stdin=stdin)[1]
+
+
+def repaired(source: str, corrections: Sequence[Correction]) -> str:
+    """Apply ``suggest_corrections`` edits, checking each one's ``before``."""
+    for correction in reversed(corrections):
+        assert source[correction.start : correction.end] == correction.before
+        source = (
+            source[: correction.start] + correction.after + source[correction.end :]
+        )
+    return source
+
+
+def assert_repair_runs(
+    language: str,
+    source: str,
+    output: str,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The repaired ``source`` prints ``output``; the CLI previews, not edits."""
+    handler = interpreter_module(language).suggest_corrections
+    edits = handler(source)
+    assert edits
+    assert esolangs.run(language, repaired(source, edits), timeout=1) == output
+    path = tmp_path / "program"
+    path.write_text(source, encoding="utf-8")
+    out, err = call_both(["suggest", language, str(path)], capsys)
+    assert "->" in out
+    assert not err
+    assert path.read_text(encoding="utf-8") == source

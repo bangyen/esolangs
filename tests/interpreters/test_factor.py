@@ -7,7 +7,9 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.tape_based.factor import _Machine as Factor
 from esolangs.interpreters.tape_based.factor import decode, run
+from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
 # The wiki's published programs, decoded from their prime factorizations.
@@ -290,3 +292,19 @@ class TestContract(SnapshotContract, CycleContract):
     stepping_program = "15"
     halting_program = "15"
     looping_program = "3567"
+
+
+def test_factor() -> None:
+    # 3*7*23*47*107: residues mod 11 spell `+[>+]` in prime order.
+    assert decode(2429007) == "+[>+]"
+    machine = Factor("2429007", ScriptedIO())
+    assert run_until_halt_or_growth(machine) is False
+
+    machine = Factor("2429007", ScriptedIO())
+    for _ in range(600):
+        assert not machine.halted
+        machine.step()
+    assert len(machine.tape) > 150
+
+    assert decode(19803) == "+[>]"
+    assert run_until_halt_or_growth(Factor("19803", ScriptedIO())) is True

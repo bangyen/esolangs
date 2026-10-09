@@ -6,6 +6,8 @@ import pytest
 
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.sbleq import _Machine, run
+from esolangs.interpreters.tape_based.sbleq import _Machine as Sbleq
+from esolangs.vm import run_until_halt_or_cycle
 
 
 def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
@@ -273,3 +275,9 @@ class TestIndirectFamily:
     def test_a_negative_operand_names_no_cell_to_read_through(self) -> None:
         with pytest.raises(ValueError, match="names no cell"):
             run("-1 0 0", ScriptedIO(""), indirect=True)
+
+
+def test_sbleq_looping_run_is_detected_as_a_cycle() -> None:
+    # a=0 b=0 c=2: diff is always 0, so it jumps to mem[2] (address 0) forever
+    machine = Sbleq("0 0 0", ScriptedIO(), store="a")
+    assert run_until_halt_or_cycle(machine) is False

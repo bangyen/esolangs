@@ -8,6 +8,7 @@ from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Seeded
 from esolangs.vm import run_until_halt
 from tests.interpreters.runner import run_program
+from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 
 def run_befunge(program: str, stdin: str = "", rng: object = None) -> str:
@@ -228,3 +229,11 @@ def test_division_keeps_the_mutable_runtime_stack() -> None:
     for _ in range(2):
         machine.step()
     assert isinstance(machine.state[2], list)
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_rejected_with_hint(
+        "Befunge", "&@", "whitespace-separated decimal integer", stdin="oops"
+    )
+    assert_halts_with_hint("Befunge", "10/.@", "divides by zero", "divisor")

@@ -1,5 +1,10 @@
 import importlib
 
+import pytest
+
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.tape_based.six_five import _Machine as SixFive
+from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_program
 
@@ -52,7 +57,6 @@ class TestSixFive:
         assert run_and_capture("066666666A0") == ""
 
     def test_negative_cell_output_halts(self) -> None:
-        import pytest
 
         from esolangs.exceptions import HaltError
 
@@ -61,7 +65,6 @@ class TestSixFive:
 
     def test_the_printable_range_ends_at_the_last_codepoint(self) -> None:
         """Both ends of the ``A`` guard, at the value that separates them."""
-        import pytest
 
         from esolangs.exceptions import HaltError
 
@@ -211,3 +214,20 @@ def test_a_comment_after_a_seven_eight_pair_is_still_a_comment() -> None:
     """Pins operand-adjacent comments: in ``78C`` the 8 is 7's operand, so
     the ``C`` starts a comment and the trailing ``A`` never prints twice."""
     assert run_and_capture("666666666666A78CA\n") == "H"
+
+
+def test_six_five() -> None:
+    # `4` marks, `1` moves right by two, `81` jumps back to the marker.
+    assert run_until_halt_or_growth(SixFive("4181", ScriptedIO())) is False
+
+    machine = SixFive("4181", ScriptedIO())
+    for _ in range(600):
+        assert not machine.halted
+        machine.step()
+    assert len(machine.tape) > 250
+
+    # `5` leaves 5s behind with zeros between: the `i >= m` bound again.
+    machine = SixFive("45181", ScriptedIO())
+    assert run_until_halt_or_growth(machine) is False
+    # No jump, so the cursor runs off the end.
+    assert run_until_halt_or_growth(SixFive("41", ScriptedIO())) is True

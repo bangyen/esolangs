@@ -6,6 +6,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
+from esolangs import Raster
 from esolangs._evaluate import _evaluate
 from esolangs._execution import interpreter_module
 from esolangs.registry import LANGUAGES, SourceKind
@@ -82,3 +83,11 @@ def test_oversized_integer_arguments_keep_public_errors(operation):
     with pytest.raises(esolangs.ArgumentError) as caught:
         operation(10**5000)
     assert len(str(caught.value)) < 400
+
+
+@pytest.mark.medium
+def test_raster_interpreter_retains_geometry_hint():
+    image = Raster((((255, 255, 255),),))
+    with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
+        esolangs.run("Piet", image, scale=2, timeout=1)
+    assert "dividing both image dimensions" in caught.value.__notes__[0]

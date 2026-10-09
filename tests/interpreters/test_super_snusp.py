@@ -6,10 +6,13 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.super_snusp import _advance, _floor_root, run
+from esolangs.interpreters.grid_based.super_snusp import _Machine as SuperSnusp
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
 from esolangs.tools.super_snusp import super_snusp
+from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
+from tests.raises import assert_halts_with_hint
 
 
 def run_super(program: str, stdin: str = "") -> str:
@@ -187,3 +190,61 @@ def test_advance_refuses_an_input_the_shell_did_not_supply(
     state = ((0, 0, 0), (0, ((0, 5),)), (1,), False, False)
     with pytest.raises(HaltError):
         _advance(state, [command], random_offset=offset)
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_halts_with_hint("Super SNUSP", '"1_{1[', "negative", "nonnegative shift")
+
+
+def test_root_hint_does_not_require_an_exact_root():
+    assert _floor_root(2, 2) == 1
+    with pytest.raises(HaltError) as caught:
+        _floor_root(-2, 2)
+    assert "even degrees need nonnegative radicands" in caught.value.__notes__[0]
+
+
+def _read_cell(state: object) -> int:
+    """Return the cell under the pointer of a Super SNUSP branching state."""
+    _cursor, (pointer, cells), *_rest = state  # type: ignore[misc]
+    return next((value for index, value in cells if index == pointer), 0)
+
+
+def test_super_snusp_mirror_ring_loops_under_every_draw() -> None:
+    """A mirror ring circulates forever, and no draw escapes it."""
+    code = ['/"\\', "\\ /"]
+    machine = SuperSnusp(code, ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(machine, limit=3000) is False
+    assert run_until_halt_or_cycle(SuperSnusp(code, ScriptedIO())) is False
+
+
+def test_super_snusp_forks_every_value_equals_could_store() -> None:
+    """``=`` picks from the span between the cell and the stack top."""
+    machine = SuperSnusp(['"3{(='], ScriptedIO())
+    state = machine.branching_snapshot()
+    for _ in range(4):  # '"', '3', '{', '(' -- all deterministic
+        successors = machine.branching_successors(state, 100)
+        assert successors is not None
+        assert len(successors) == 1, "only '=' draws"
+        (state,) = successors
+
+    at_equals = machine.branching_successors(state, 100)
+    assert at_equals is not None
+    stored = sorted(_read_cell(nxt) for nxt in at_equals)
+    assert stored == [2, 3], "both ends of the span are reachable"
+
+
+def test_super_snusp_declines_input_and_caps_a_wide_span() -> None:
+    """The two undecided cases, both raising rather than guessing."""
+    for code, stdin in (('",', "A\n"), ('"@', "1\n")):
+        machine = SuperSnusp([code], ScriptedIO(stdin))
+        with pytest.raises(TimeoutError, match="needs input"):
+            run_until_halt_or_all_branches_cycle(machine)
+
+    # '999{' pushes 999 and '>' moves to a fresh zero cell, so '=' spans
+    # 1000 values -- past the per-transition cap whatever the budget.
+    wide = SuperSnusp(['"999{>='], ScriptedIO())
+    with pytest.raises(TimeoutError, match=r"exceeds the .* cap") as caught:
+        run_until_halt_or_all_branches_cycle(wide, limit=100000)
+    assert "cap on a single transition" in str(caught.value)
+    assert "limit does not raise this transition cap" in caught.value.__notes__[0]

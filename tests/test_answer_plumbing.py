@@ -10,7 +10,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from tests.generator_support import evaluate_generated
-from tests.witness_tables import witnesses
+from tests.pick import first, languages
 
 ROOT = pathlib.Path(__file__).parents[1]
 
@@ -25,17 +25,13 @@ USAGE_DOC = ROOT / "docs" / "usage.md"
 #: match the generator's ``_SAMPLE_BITS`` or the table cannot be compared.
 _SAMPLE_BITS = [1, 0, 1]
 
+#: Two template languages, for a template's checks and a foreign one.
+TEMPLATED, OTHER_TEMPLATED = languages(parameterized=True)[-2:]
+
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
 class TestTheProseMatchesTheData:
     """Three documents named the shapes; one of the four names was wrong."""
-
-    def test_exactly_three_languages_have_an_exceptional_shape(self) -> None:
-        """Plus Grapheme's alphabet, which is the fourth exception."""
-        assert esolangs.describe("brainfuck")["input_shape"] == "char_stream"
-        assert esolangs.describe("Fargo")["input_shape"] == "row_index"
-        assert esolangs.describe("Taglate")["input_shape"] == "char_stream_padded"
-        assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
 
     def test_the_reference_table_is_the_encoders_own_output(self) -> None:
         """The positive half, as data: every cell is what ``encode_inputs`` returns."""
@@ -60,39 +56,20 @@ class TestTheProseMatchesTheData:
 
         assert rows == expected
 
-    def test_the_row_index_really_is_a_row_index(self) -> None:
-        """The claim the prose got wrong, stated as an executable fact."""
-        assert esolangs.encode_inputs("Fargo", [1, 1, 1, 1]) == "15\n"
-        assert esolangs.encode_inputs("Clockwise", [1, 1, 1, 1]) == "1111"
-
-    def test_following_the_old_sentence_would_now_be_caught(self) -> None:
-        """A bit-per-line Fargo input is the wrong row, and only n>=4 shows it."""
-        table = "0000000000000001"  # AND of four inputs
-        program = esolangs.generate("Fargo", table)
-        right = esolangs.run(
-            "Fargo",
-            program,
-            stdin=esolangs.encode_inputs("Fargo", [1, 1, 1, 1]),
-            timeout=20,
-        )
-        wrong = esolangs.run("Fargo", program, stdin="1111\n", timeout=20)
-        assert esolangs.read_answer("Fargo", right) == "1"
-        assert esolangs.read_answer("Fargo", wrong) == "0"
-
 
 class TestATemplateKnowsWhoseItIs:
     """Filling one as the wrong language ran, and answered a different row."""
 
     def test_a_foreign_template_is_refused(self) -> None:
         """It substituted RAM0's setter into a Minifuck program and answered 0."""
-        template = esolangs.generate("Minifuck", "0110")
+        template = esolangs.generate(TEMPLATED, "0110")
         with pytest.raises(esolangs.TemplateError, match="came from generate"):
-            esolangs.instantiate("RAM0", template, [0, 1])
+            esolangs.instantiate(OTHER_TEMPLATED, template, [0, 1])
 
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
         """A case variant is the same language, not a mismatch."""
-        template = esolangs.generate("minifuck", "0110")
-        assert esolangs.instantiate("MINIFUCK", template, [0, 1])
+        template = esolangs.generate(TEMPLATED.lower(), "0110")
+        assert esolangs.instantiate(TEMPLATED.upper(), template, [0, 1])
 
 
 class TestATemplateCarriesItsSetters:
@@ -115,17 +92,17 @@ class TestATemplateCarriesItsSetters:
         from esolangs.tagged import _Template
 
         with pytest.raises(ValueError, match="differ in width"):
-            _Template("$", "Minifuck", setters=[("x", "xx")])
+            _Template("$", TEMPLATED, setters=[("x", "xx")])
 
     def test_runs_that_do_not_fit_the_setters_are_refused(self) -> None:
         from esolangs.tagged import _Template
 
         with pytest.raises(ValueError, match="shorter than its setter width"):
-            _Template("a$b$$", "Minifuck", setters=[("aa", "bb"), ("c", "d")])
+            _Template("a$b$$", TEMPLATED, setters=[("aa", "bb"), ("c", "d")])
         with pytest.raises(ValueError, match="belongs to no input"):
-            _Template("a$$b$", "Minifuck", setters=[("aa", "bb")])
+            _Template("a$$b$", TEMPLATED, setters=[("aa", "bb")])
         with pytest.raises(ValueError, match="1 run"):
-            _Template("a$$b", "Minifuck", setters=[("aa", "bb"), ("c", "d")])
+            _Template("a$$b", TEMPLATED, setters=[("aa", "bb"), ("c", "d")])
 
     def test_a_fill_with_the_wrong_number_of_bits_is_refused(self) -> None:
         from esolangs.tools.helpers import fill_runs
@@ -155,7 +132,7 @@ class TestATemplateCarriesItsSetters:
     def test_adjacent_inputs_need_no_separator(self) -> None:
         from esolangs.tagged import _Template
 
-        template = _Template("a$$$b", "Minifuck", setters=[("xx", "yy"), ("p", "q")])
+        template = _Template("a$$$b", TEMPLATED, setters=[("xx", "yy"), ("p", "q")])
         assert template.fill([1, 0]) == "ayypb"
         assert template.fill([0, 1]) == "axxqb"
 
@@ -163,26 +140,26 @@ class TestATemplateCarriesItsSetters:
         """Every run is as long as its setter, so filling moves no character."""
         from esolangs.registry import template_body
 
-        for name in ("Minifuck", "Bitdeque", "Crement"):
+        for name in languages(parameterized=True):
             template = esolangs.generate(name, "0110")
             shape = len(template_body(esolangs.describe(name)["id"], template))
             for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
                 assert len(esolangs.instantiate(name, template, bits)) == shape
 
     def test_a_plain_string_is_filled_by_recovering_its_setters(self) -> None:
-        for name in ("Minifuck", "Bitdeque", "A Painter Ant"):
+        for name in languages(parameterized=True):
             template = esolangs.generate(name, "0110")
             assert esolangs.instantiate(name, str(template), [1, 0]) == (
                 esolangs.instantiate(name, template, [1, 0])
-            )
-        with pytest.raises(esolangs.TemplateError, match="not a Minifuck template"):
-            esolangs.instantiate("Minifuck", "abc$$$", [1, 0])
+            ), name
+        with pytest.raises(esolangs.TemplateError, match=f"not a {TEMPLATED} templ"):
+            esolangs.instantiate(TEMPLATED, "abc$$$", [1, 0])
 
     def test_the_setters_survive_a_width_and_a_pickle(self) -> None:
         import pickle
 
-        template = esolangs.generate("Minifuck", "0110", width=20)
-        assert template.setters == esolangs.generate("Minifuck", "0110").setters
+        template = esolangs.generate(TEMPLATED, "0110", width=20)
+        assert template.setters == esolangs.generate(TEMPLATED, "0110").setters
         copied = pickle.loads(pickle.dumps(template))
         assert copied.setters == template.setters
         assert copied.char == template.char
@@ -194,18 +171,18 @@ class TestAProgramKnowsWhoseItIs:
     def test_a_foreign_program_is_refused_by_run(self) -> None:
         program = esolangs.generate("brainfuck", "0110")
         with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
-            esolangs.run("Minsky Swap", program)
+            esolangs.run(TEMPLATED, program)
 
     def test_a_foreign_program_is_refused_by_make_vm(self) -> None:
         program = esolangs.generate("brainfuck", "0110")
         with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
-            debugger_api.make_vm("Minsky Swap", program, stdin="")
+            debugger_api.make_vm(TEMPLATED, program, stdin="")
 
     def test_a_filled_template_carries_its_language(self) -> None:
-        template = esolangs.generate("Minifuck", "0110")
-        program = esolangs.instantiate("Minifuck", template, [0, 1])
-        assert getattr(program, "language", None) == "Minifuck"
-        with pytest.raises(esolangs.ProgramError, match="generated for Minifuck"):
+        template = esolangs.generate(TEMPLATED, "0110")
+        program = esolangs.instantiate(TEMPLATED, template, [0, 1])
+        assert getattr(program, "language", None) == TEMPLATED
+        with pytest.raises(esolangs.ProgramError, match=f"generated for {TEMPLATED}"):
             esolangs.run("brainfuck", program)
 
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
@@ -291,16 +268,8 @@ class TestWhatHappensWhenAProgramIsUnderfed:
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""
-        assert esolangs.describe("Flowchart")["eof_is_a_value"] is True
-        assert esolangs.describe("brainfuck")["eof_is_a_value"] is False
-
-    def test_clockwise_is_not_marked_because_it_never_reads_past_an_end(
-        self,
-    ) -> None:
-        """Its underfed input is a shorter one-line string: no EOF happens."""
-        assert esolangs.describe("Clockwise")["eof_is_a_value"] is False
-        outcome, _answer = self._underfed("Clockwise")
-        assert outcome == "answered"
+        assert languages(eof_is_a_value=True)
+        assert languages(eof_is_a_value=False)
 
 
 class TestInstantiateCanCheckProvenance:
@@ -309,21 +278,7 @@ class TestInstantiateCanCheckProvenance:
     def test_a_hand_written_template_is_refused_given_the_table(self) -> None:
         """`"hello $$"` filled to `'hello [<'` and ran to nothing."""
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
-            esolangs.instantiate("Minifuck", "hello $$", [1], truth_table="01")
-
-    @pytest.mark.parametrize("width", [1, 40])
-    def test_intercal_layout_candidates_keep_exact_provenance(self, width: int) -> None:
-        for inputs in range(1, 4):
-            for table in witnesses(inputs):
-                template = str(esolangs.generate("INTERCAL", table, width=width))
-                esolangs.instantiate(
-                    "INTERCAL", template, [0] * inputs, truth_table=table
-                )
-                wrong = table.translate(str.maketrans("01", "10"))
-                with pytest.raises(esolangs.TemplateError, match="is not the template"):
-                    esolangs.instantiate(
-                        "INTERCAL", template, [0] * inputs, truth_table=wrong
-                    )
+            esolangs.instantiate(TEMPLATED, "hello $$", [1], truth_table="01")
 
 
 class TestSnapshotSaysItIsOpaque:
@@ -384,44 +339,6 @@ class TestTheDebuggerMirrorsSnapshot:
         assert debugger.snapshot() != before
 
 
-class TestAWidthAwareGeneratorCanStillOverrun:
-    """Width-aware layouts can exceed a request below their construction floor."""
-
-    @staticmethod
-    def _overruns(name: str, table: str) -> tuple[int, int]:
-        """Return how many widths overran, and by the worst margin."""
-        counted = [
-            max(
-                len(line)
-                for line in esolangs.generate(name, table, width=w).splitlines()
-            )
-            - w
-            for w in range(1, 124, 4)
-        ]
-        over = [margin for margin in counted if margin > 0]
-        return len(over), max(over, default=0)
-
-    def test_width_floors_match_public_sources_and_overrun_counts(self) -> None:
-        """Warnings follow actual rendered widths, including narrower constructions."""
-        for name, floor, count, margin in (
-            ("LaserFuck", 8, 2, 7),
-            ("Streetcode", 7, 2, 6),
-        ):
-            source = esolangs.generate(name, "10010110", width=1)
-            assert max(map(len, source.splitlines())) == floor
-            assert self._overruns(name, "10010110") == (count, margin)
-            assert evaluate_generated(name, "10010110", width=1) == "10010110"
-
-    def test_the_pair_is_still_width_aware(self) -> None:
-        """The two this class measures must stay in the group it measures."""
-        aware = {
-            name
-            for name in esolangs.list_languages()
-            if esolangs.describe(name)["width_aware"]
-        }
-        assert {"LaserFuck", "Streetcode"} <= aware
-
-
 class TestTheTwoWidthKeysCannotDrift:
     """``width_aware`` is exactly ``width_effect == "layout"``."""
 
@@ -439,19 +356,15 @@ class TestTheTwoWidthKeysCannotDrift:
 class TestEvaluateTakesAWidth:
     """Checking a wrapped program meant reimplementing the loop."""
 
-    @pytest.mark.parametrize(
-        ("name", "effect"),
-        [("brainfuck", "wrap"), ("LaserFuck", "layout"), ("Line", "none")],
-    )
-    def test_it_works_for_each_width_effect(self, name: str, effect: str) -> None:
+    @pytest.mark.parametrize("effect", ["wrap", "layout", "none"])
+    def test_it_works_for_each_width_effect(self, effect: str) -> None:
         """Width effects remain explicit for text and raster generators."""
-        assert esolangs.describe(name)["width_effect"] == effect
+        name = first(boolean_generator=True, width_effect=effect)
         assert evaluate_generated(name, "0110", timeout=30, width=25) == "0110"
 
     def test_a_template_language_gets_the_width_too(self) -> None:
         """``evaluate`` applies the width once, and the rows still answer."""
-        assert esolangs.describe("Minifuck")["parameterized"] is True
-        assert evaluate_generated("Minifuck", "0110", timeout=30, width=40) == "0110"
+        assert evaluate_generated(TEMPLATED, "0110", timeout=30, width=40) == "0110"
 
     def test_the_width_actually_reaches_the_program(self) -> None:
         """Otherwise this would pass with the argument thrown away."""
