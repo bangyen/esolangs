@@ -4,6 +4,15 @@ from itertools import pairwise
 from typing import cast
 
 from esolangs.registry._language import Language
+from esolangs.tools.dig_leaf import (
+    _dig_adder as _dig_adder,
+)
+from esolangs.tools.dig_leaf import (
+    _dig_flat_leaf as _dig_flat_leaf,
+)
+from esolangs.tools.dig_leaf import (
+    _Reads,
+)
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -314,167 +323,6 @@ _DIG_END = len(_DIG_ALT_BRANCH) - 1
 _DIG_LEAF_BITS = 6
 
 
-#: Local headings inside a stamp, as offsets into the block's own frame:
-#: forward, sideways, back, and back the other way.  A stamp is laid in this
-#: frame and rotated once, at placement, so the same cells serve all four
-#: headings -- which works only because every operand below is the *one*
-#: digit beside its operator, leaving the up-right-down-left order unused.
-_DIG_FORWARD, _DIG_SIDE, _DIG_BACK, _DIG_RETRACE = 0, 1, 2, 3
-
-
-#: Each reader's own cell, the operand it must reach, and the stores that
-#: are still literal semicolons when it runs.
-type _Reads = list[tuple[tuple[int, int], tuple[int, int], frozenset[tuple[int, int]]]]
-
-
-#: A block laid in its own frame: cells, turns as local headings, the reads,
-#: where the mole leaves, and the box as ``(min_x, max_x, min_y, max_y)``.
-type _Stamp = tuple[
-    dict[tuple[int, int], str],
-    dict[tuple[int, int], int],
-    _Reads,
-    tuple[int, int],
-    tuple[int, int, int, int],
-]
-
-
-def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
-    """Read one input per weight and leave their weighted sum plus ``bonus``.
-
-    One ``$`` arms the whole forward leg: ``~ * ;`` per leading bit, then a
-    bare ``~`` for the last, whose weight is one.  An ignored input weighs 0
-    and is a bare ``~`` the next read overwrites, so it may not be last; at
-    least one leading weight is nonzero.  The partial products stay
-    in the grid where ``;`` wrote them, and the return leg one cell to the
-    side adds them back -- a ``+`` under a ``;`` is the only placement that
-    puts a stored operand where the mole can reach it, since a work command
-    reads its neighbours and never the cell it stands on.
-
-    ``bonus`` rides the forward leg instead, added straight onto the first
-    product: the return leg's own operands come from the row above it, and
-    that row is the forward leg, so a constant there would be armed.  The
-    two leaves' counts index from different offsets -- a row count clears
-    the ``$`` that arms it and the blank under it, a column count nothing --
-    which is the whole reason this is a parameter.
-
-    Returns the cells, the turns as local headings, the operand each reader
-    must find, where the mole leaves heading back, and the bounding box.
-    """
-    chars: dict[tuple[int, int], str] = {}
-    reads: _Reads = []
-    stores: list[int] = []
-    spot = 1
-    for weight in weights[:-1]:
-        chars[0, spot] = "~"
-        spot += 1
-        if not weight:
-            continue
-        chars[0, spot], chars[-1, spot] = "*", str(weight)
-        reads.append(((0, spot), (-1, spot), frozenset({(0, spot + 1)})))
-        spot += 1
-        if bonus and not stores:
-            chars[0, spot], chars[-1, spot] = "+", str(bonus)
-            reads.append(((0, spot), (-1, spot), frozenset({(0, spot + 1)})))
-            spot += 1
-        chars[0, spot] = ";"
-        stores.append(spot)
-        spot += 1
-    chars[0, spot] = "~"  # the last bit, whose weight is one
-    chars[-1, 0], chars[0, 0] = str(spot), "$"
-    reads.insert(0, ((0, 0), (-1, 0), frozenset[tuple[int, int]]()))
-    # The return leg's count sits one past the armed run, so the mole walks
-    # over it with the counter spent and it stays a plain digit.
-    hold, first = spot + 1, stores[0]
-    chars[0, hold], chars[1, hold] = str(hold - first), "$"
-    reads.append(((1, hold), (0, hold), frozenset()))
-    for store in stores:
-        chars[1, store] = "+"
-        reads.append(((1, store), (0, store), frozenset()))
-    turns = {(0, hold + 1): _DIG_SIDE, (1, hold + 1): _DIG_BACK}
-    return chars, turns, reads, (1, first - 1), (0, hold + 1, -1, 1)
-
-
-def _dig_flat_leaf(table: str, high: list[int], low: list[int]) -> _Stamp:
-    """Index ``table`` by two adders instead of branching on its bits.
-
-    The first ``high`` inputs become a row count, painted across a whole row
-    so that whichever column the mole ends on finds it; the next ``low``
-    become a column count, which steps the mole over that many ``'`` cells
-    before one turns it into the table.  A ``$`` arming a run of digits
-    leaves the *last* digit it walked in the mole, so the armed run down a
-    column ends on the wanted entry and nothing else has to fetch it.
-
-    The mole crosses the table twice -- painting on the first pass, reading
-    on the second -- so the two adders sit on opposite sides of it and three
-    corridor columns carry the mole between them: one in, one down to the
-    paint row, one back up to the selector.
-    """
-    rows, cols = sum(high) + 1, sum(low) + 1
-    painter, stepper = _dig_adder(high, 2), _dig_adder(low, 0)
-    chars: dict[tuple[int, int], str] = {}
-    turns: dict[tuple[int, int], int] = {}
-    # Rows the leaf spends, counted from the entry: three for each adder,
-    # the table's own band, and the corridors that join them.  The entry
-    # sits at the middle so the box the tree reserves is not lopsided.
-    top = 1 - (rows + 14) // 2
-    sel = top + 3
-    bot = sel + rows + 9
-    back = bot + 2
-    last = sel + rows
-    reads: _Reads = []
-
-    def stamp(row: int, col: int, block: _Stamp) -> tuple[int, int]:
-        cells, spins, wants, exit_at, _box = block
-        chars.update({(row + y, col + x): c for (y, x), c in cells.items()})
-        turns.update({(row + y, col + x): d for (y, x), d in spins.items()})
-        reads.extend(
-            (
-                (row + point[0], col + point[1]),
-                (row + want[0], col + want[1]),
-                frozenset((row + y, col + x) for y, x in hold),
-            )
-            for point, want, hold in wants
-        )
-        return row + exit_at[0], col + exit_at[1]
-
-    turns[0, 0] = _DIG_RETRACE  # climb to the first adder
-    turns[top, 0] = _DIG_FORWARD
-    turns[stamp(top, 3, painter)[0], 2] = _DIG_SIDE
-    turns[sel + 1, 2] = _DIG_FORWARD  # into the paint row
-    chars[sel + 1, 4], chars[sel + 1, 5] = str(cols), "$"
-    reads.append(((sel + 1, 5), (sel + 1, 4), frozenset({(sel + 1, 6)})))
-    # The selector: store the column count, then step over that many turns.
-    turns[sel, 1] = _DIG_FORWARD
-    chars[sel - 1, 3], chars[sel, 3] = "1", "$"
-    chars[sel, 4], chars[sel, 5] = ";", "$"
-    reads.append(((sel, 3), (sel - 1, 3), frozenset({(sel, 4)})))
-    reads.append(((sel, 5), (sel, 4), frozenset()))
-    for col in range(cols):
-        turns[sel, 6 + col] = _DIG_SIDE
-        chars[sel + 1, 6 + col] = ";"
-        chars[sel + 2, 6 + col] = "$"
-        reads.append(((sel + 2, 6 + col), (sel + 1, 6 + col), frozenset()))
-        for row in range(rows):
-            chars[sel + 4 + row, 6 + col] = table[row * cols + col]
-        turns[last + 4, 6 + col] = _DIG_BACK
-    turns[last + 4, 5] = _DIG_SIDE
-    chars[last + 5, 5], chars[last + 5, 6] = "$", "1"
-    chars[last + 6, 5], chars[last + 7, 5] = ":", "@"
-    reads.append(((last + 5, 5), (last + 5, 6), frozenset()))
-    # Down the far side, back along the bottom, and up into the second
-    # adder; then up the near side into the selector.
-    # The far corridor clears the second adder's exit turns: a narrow
-    # table would put them on it.
-    far = max(6 + cols, 4 + stepper[4][1])
-    turns[sel + 1, far] = _DIG_SIDE
-    turns[back, far] = _DIG_BACK
-    turns[back, 2] = _DIG_RETRACE
-    turns[bot, 2] = _DIG_FORWARD
-    turns[stamp(bot, 3, stepper)[0], 1] = _DIG_RETRACE
-    width = max(far, 3 + painter[4][1])
-    return chars, turns, reads, (0, 0), (0, width, top - 1, back)
-
-
 def _dig_alt_clear(
     cells: dict[tuple[int, int], str],
     reads: _Reads,
@@ -584,7 +432,9 @@ def _dig_leaf_inputs(
     )
 
 
-def _dig_layout(truth_table: str, n: int, *, sharing: bool = False) -> str | None:
+def _dig_layout(
+    truth_table: str, n: int, *, sharing: bool = False, parallel: bool = False
+) -> str | None:
     """Lay a Dig tree whose leaves are flat tables, branch axis rotating.
 
     The last six inputs are not branched on at all: a leaf holds their whole
@@ -636,6 +486,8 @@ def _dig_layout(truth_table: str, n: int, *, sharing: bool = False) -> str | Non
         return boxes[level, lo]
 
     cells: dict[tuple[int, int], str] = {}
+    protected: list[tuple[int, int]] = []
+    branches: list[tuple[tuple[int, int], int, int, tuple[int, int]]] = []
     # Each reader against the cell it must read and the stores still
     # pending there, and the blank runs a mole falls along to a child.
     reads: _Reads = []
@@ -650,7 +502,13 @@ def _dig_layout(truth_table: str, n: int, *, sharing: bool = False) -> str | Non
         d_row, d_col = _DIG_DIRECTIONS[heading]
         return (point[0] + d_row * count, point[1] + d_col * count)
 
-    def text(point: tuple[int, int], heading: int, code: str) -> None:
+    def text(
+        point: tuple[int, int], heading: int, code: str, *, rigid: bool = True
+    ) -> None:
+        if parallel and rigid:
+            protected.append(
+                (point[lane_axis], step(point, heading, len(code) - 1)[lane_axis])
+            )
         for offset, char in enumerate(code):
             place(step(point, heading, offset), char)
 
@@ -675,6 +533,10 @@ def _dig_layout(truth_table: str, n: int, *, sharing: bool = False) -> str | Non
         painted = {onto(cell): char for cell, char in chars.items()}
         painted |= {onto(c): "^>'<"[(heading + d) % 4] for c, d in spins.items()}
         min_x, max_x, min_y, max_y = box
+        if parallel:
+            protected.append(
+                (onto((min_y, min_x))[lane_axis], onto((max_y, max_x))[lane_axis])
+            )
         for row in range(min_y, max_y + 1):
             for col in range(min_x, max_x + 1):
                 spot = onto((row, col))
@@ -727,12 +589,19 @@ def _dig_layout(truth_table: str, n: int, *, sharing: bool = False) -> str | Non
         skip = skips[level]
         end = step(point, heading, _DIG_END + skip)
         if paint:
+            if parallel:
+                branches.append((point, heading, skip, end))
             side = min((heading + 1) % 4, (heading - 1) % 4)
             count = step(point, side)
             skip = skips[level]
             place(count, str(_DIG_COUNT + skip))
             reads.append((point, count, frozenset()))
-            text(point, heading, _DIG_ALT_BRANCH[0] + "~" * skip + _DIG_ALT_BRANCH[1:])
+            text(
+                point,
+                heading,
+                _DIG_ALT_BRANCH[0] + "~" * skip + _DIG_ALT_BRANCH[1:],
+                rigid=False,
+            )
             reads.append((end, step(end, heading, -1), frozenset()))
         half = (lo + hi) // 2
         # Two cells off, not one: a leaf reaches far enough sideways that
@@ -763,31 +632,114 @@ def _dig_layout(truth_table: str, n: int, *, sharing: bool = False) -> str | Non
             if count > 1:
                 by_end.setdefault(owners[key][travel_axis], []).append(key)
         shared = set()
-        occupied: dict[int, int] = {}
-        # Earliest-ending disjoint intervals can reuse one lane. A conflicting
-        # class stays painted rather than discarding every other shared class.
+        rails: dict[tuple[str, int, int], int] = {}
+        occupied: dict[int, list[int | None]] = {}
+        # Earliest-ending classes reuse either free lane. Two lanes need
+        # one gutter cell; further overlapping classes stay unshared.
         for lane_end in sorted(by_end):
             for key in by_end[lane_end]:
                 lane_coordinate = key[2] - _DIG_DIRECTIONS[key[1]][lane_axis]
-                if (
-                    lane_coordinate in occupied
-                    and starts[key] <= occupied[lane_coordinate]
-                ):
-                    continue
-                shared.add(key)
-                occupied[lane_coordinate] = lane_end
+                busy = occupied.setdefault(
+                    lane_coordinate, [None] * (2 if parallel else 1)
+                )
+                for rail, last in enumerate(busy):
+                    if last is None or starts[key] > last:
+                        shared.add(key)
+                        rails[key] = rail
+                        busy[rail] = lane_end
+                        break
         if not shared:
             return None
         # Leave unmatched copies painted, even if their contents coincide.
         owners = {key: owner for key, owner in owners.items() if key in shared}
+        if parallel:
+            cuts = sorted(
+                {
+                    key[2] + int(_DIG_DIRECTIONS[key[1]][lane_axis] < 0)
+                    for key, rail in rails.items()
+                    if rail
+                }
+            )
+            if not cuts:
+                return None
     node(0, (0, 0), 1, 0, len(truth_table))
+    if parallel:
+        low_axis = min(point[lane_axis] for point in cells)
+        high_axis = max(point[lane_axis] for point in cells)
+        root_offset = sum(cut <= 0 for cut in cuts)
+        coordinates = {}
+        shift = 0
+        for position in range(low_axis, high_axis + 1):
+            while shift < len(cuts) and cuts[shift] <= position:
+                shift += 1
+            coordinates[position] = position + shift - root_offset
+        # A blank inside an armed leaf or constant read run would spend
+        # its counter. Gutters may cross only the resizable branch blocks.
+        if any(
+            abs(coordinates[a] - coordinates[b]) != abs(a - b) for a, b in protected
+        ):
+            return None
+
+        def expand(point: tuple[int, int]) -> tuple[int, int]:
+            return (
+                (coordinates[point[0]], point[1])
+                if lane_axis == 0
+                else (point[0], coordinates[point[1]])
+            )
+
+        # Repaint a stretched branch with its reads first and its store
+        # beside #. The counter includes the intervening blank cells.
+        branch_readers: set[tuple[int, int]] = set()
+        for point, heading, skip, end in branches:
+            side = min((heading + 1) % 4, (heading - 1) % 4)
+            del cells[step(point, side)]
+            for i in range(_DIG_END + skip + 1):
+                del cells[step(point, heading, i)]
+            branch_readers.update((point, end))
+        cells = {expand(point): char for point, char in cells.items()}
+        reads = [
+            (expand(at), expand(want), frozenset(expand(p) for p in hold))
+            for at, want, hold in reads
+            if at not in branch_readers
+        ]
+        for point, heading, skip, end in branches:
+            first, stop = expand(point), expand(end)
+            distance = abs(first[0] - stop[0]) + abs(first[1] - stop[1])
+            if not _DIG_COUNT + skip <= distance - 1 <= _DIG_SPAN:
+                return None
+            side = min((heading + 1) % 4, (heading - 1) % 4)
+            count_point = step(first, side)
+            if count_point in cells:
+                return None
+            cells[count_point] = str(distance - 1)
+            code = "$" + "~" * (skip + 1) + " " * (distance - skip - 3) + ";#"
+            for i, char in enumerate(code):
+                target = step(first, heading, i)
+                if target in cells:
+                    return None
+                cells[target] = char
+            reads.append((first, count_point, frozenset()))
+            reads.append((stop, step(stop, heading, -1), frozenset()))
+        expanded_corridors = []
+        for start, heading, distance in corridors:
+            begin, finish = expand(start), expand(step(start, heading, distance))
+            expanded_corridors.append(
+                (begin, heading, abs(begin[0] - finish[0]) + abs(begin[1] - finish[1]))
+            )
+        corridors = expanded_corridors
+        entries = {expand(point): key for point, key in entries.items()}
+        owners = {key: expand(point) for key, point in owners.items()}
+        links = [
+            (expand(parent), expand(end), expand(child)) for parent, end, child in links
+        ]
+        tails = {expand(point): cost for point, cost in tails.items()}
     lanes: dict[tuple[int, int], tuple[int, int]] = {}
     if sharing:
         for point, key in entries.items():
             if key not in owners:
                 continue
             heading = key[1]
-            lane = step(point, heading, -1)
+            lane = step(point, heading, -1 - rails[key])
             if cells.get(lane, " ") != " ":
                 return None
             owner = owners[key]
@@ -797,10 +749,13 @@ def _dig_layout(truth_table: str, n: int, *, sharing: bool = False) -> str | Non
                 else "^>'<"[1 if travel_axis == 1 else 2]
             )
             lanes[point] = lane
-        corridors = [
-            (start, h, distance - (step(start, h, distance) in lanes))
-            for start, h, distance in corridors
-        ]
+        shortened = []
+        for start, heading, distance in corridors:
+            child = step(start, heading, distance)
+            if child in lanes:
+                distance -= 1 + rails[entries[child]]
+            shortened.append((start, heading, distance))
+        corridors = shortened
         by_position: dict[int, list[tuple[int, int]]] = {}
         for point in lanes:
             by_position.setdefault(point[travel_axis], []).append(point)
@@ -925,6 +880,15 @@ def _dig_lane_shared(truth_table: str, n: int) -> str | None:
     worst walk is the sum of its adder, painter, selector and output legs.
     """
     return _dig_layout(truth_table, n, sharing=True) if n > 6 else None
+
+
+def _dig_parallel_shared(truth_table: str, n: int) -> str | None:
+    """Join interleaved leaf classes on two lanes separated by a gutter.
+
+    Stretch branch counters around gutters, preserve rigid leaf stamps,
+    and reject collisions or paths past the existing execution ledger.
+    """
+    return _dig_layout(truth_table, n, sharing=True, parallel=True) if n > 6 else None
 
 
 def _dig_shared_pair(truth_table: str, n: int) -> str | None:
@@ -1100,6 +1064,8 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
     last copy and compacting unused external space. Paths must fit the execution
     ledger (n=8 A B B A: 1,155 cells, 208 commands). Narrow width paths can
     use the fixed two-leaf stencil (26 columns, at most 218 commands).
+    Two parallel lanes admit interleaved classes (n=10: 5,175 cells,
+    292 commands), stretching branch counters around their gutter.
     Groups whose corridors collide or exceed the bound remain unshared.
     """
     n = _validate_truth_table(truth_table)
@@ -1125,9 +1091,11 @@ def _dig_build(
         return _dig_xor_pair()
     pair = _dig_shared_pair(truth_table, n) if share else None
     lane = _dig_lane_shared(truth_table, n) if share else None
+    parallel = _dig_parallel_shared(truth_table, n) if share else None
     if width is None and n > 4:
         return min(
-            filter(None, (pair, lane, _dig_alternating(truth_table, n))), key=len
+            filter(None, (pair, lane, parallel, _dig_alternating(truth_table, n))),
+            key=len,
         )
     flat = _dig_grid(truth_table, n, None)
     if n < 2:
@@ -1143,7 +1111,7 @@ def _dig_build(
             return flat
         if grid_width(banded) <= width:
             return banded
-    candidates = tuple(filter(None, (flat, banded, pair, lane)))
+    candidates = tuple(filter(None, (flat, banded, pair, lane, parallel)))
     fitting = [p for p in candidates if grid_width(p) <= width]
     if n > 4:
         # Width 40 used 11,250 banded cells on the n=8 repeated-leaf case;

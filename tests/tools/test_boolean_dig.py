@@ -510,9 +510,9 @@ def test_spare_row_routes_reach_every_width_path(width: int | None) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize(
     ("pattern", "shared", "expected_steps", "expected_area"),
-    [("0220200231131331", True, 301, 4899), ("1230301230121230", False, 312, 7881)],
+    [("0220200231131331", True, 301, 4899), ("1230301230121230", False, 292, 5175)],
 )
-def test_disjoint_lane_groups_share_and_over_budget_groups_fall_back(
+def test_disjoint_and_interleaved_groups_choose_bounded_routes(
     pattern: str, *, shared: bool, expected_steps: int, expected_area: int
 ) -> None:
     import random
@@ -541,3 +541,121 @@ def test_disjoint_lane_groups_share_and_over_budget_groups_fall_back(
         assert (io.getvalue(), io.reads) == (expected, 10)
         worst = max(worst, steps)
     assert worst == expected_steps
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("ignored", [0, 1, 2])
+def test_parallel_lanes_consume_ignored_prefix_inputs(ignored: int) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_parallel_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    table = "".join(blocks[int(bit)] for bit in "1230301230121230") * (1 << ignored)
+    n = 10 + ignored
+    program = _dig_parallel_shared(table, n)
+    assert program is not None
+    rows = program.splitlines()
+    assert (len(rows), max(map(len, rows)), len(program)) == (69, 75, 4479 - ignored)
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 292:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, n)
+        worst = max(worst, steps)
+    assert worst == 292
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("second", ["2301012301232301", "1230301230121230"[::-1]])
+def test_parallel_rows_keep_vertical_leaf_stamps_rigid(second: str) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_parallel_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    table = "".join(blocks[int(bit)] for bit in "1230301230121230" + second)
+    program = _dig_parallel_shared(table, 11)
+    assert program is not None
+    rows = program.splitlines()
+    assert (len(rows), max(map(len, rows)), len(program)) == (151, 72, 9716)
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "011b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 384:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, 11)
+        worst = max(worst, steps)
+    assert worst == 375
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("constant", range(4))
+@pytest.mark.parametrize("value", ["0", "1"])
+def test_parallel_gutters_preserve_constant_leaf_reads(
+    constant: int, value: str
+) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_parallel_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    blocks[constant] = value * 64
+    table = "".join(blocks[int(bit)] for bit in "1230301230121230")
+    program = _dig_parallel_shared(table, 10)
+    assert program is not None
+    rows = program.splitlines()
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "010b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 312:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, 10)
+
+
+@pytest.mark.medium
+def test_parallel_gutter_refuses_a_tenth_armed_cell() -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_parallel_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    base = "".join(blocks[int(bit)] for bit in "1230301230121230")
+    # Seven ignored inputs at the horizontal branch arm fill its counter;
+    # the added gutter would require ten commands from a single digit.
+    table = "".join(base[((row >> 15) << 8) | (row & 255)] for row in range(1 << 17))
+    assert _dig_parallel_shared(table, 17) is None
+    rows = boolean.dig(table).splitlines()
+    for row in (0, table.index("1"), len(table) - 1):
+        io = ScriptedIO("\n".join(format(row, "017b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 2176:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (table[row], 17)

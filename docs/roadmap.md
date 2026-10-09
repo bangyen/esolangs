@@ -84,12 +84,11 @@ bounds, and the weighted-description theorem.
 Generator gaps against the canonical pieces in
 [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
-- **Dig width paths.** Aligned leaves share spare rows or columns, and
-  disjoint groups reuse a lane within the execution bound (n=9 parity
-  prefix: 2,556 cells, 251 commands). Narrow ties prefer the shorter route;
-  the 26-column two-leaf stencil remains. Offset or interleaved groups
-  remain open: extended rays hit retained stamps, and one executed n=10
-  interleaved route costs 328 commands against 312. Find bounded detours.
+- **Dig offset routes.** Aligned leaves share spare rows or columns;
+  interleaved classes use two lanes and stretch branch counters around a
+  gutter (n=10: 5,175 cells, 292 commands against 312). Offset copies remain
+  unshared: direct extensions hit retained stamps. Route them within the
+  execution bound or record an obstruction for the attempted rule.
 - **Back bend routes stay out.** They add under one point on tiled n=8,
   and raise worst commands at n=6/7 from 122/221 to 154/306, past the
   execution ledger's bound.
