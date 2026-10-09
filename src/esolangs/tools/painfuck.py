@@ -162,6 +162,7 @@ def _painfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 LANGUAGE = Language(
     "Painfuck",
     "tape_based.painfuck",
+    random=True,
     boolean=painfuck,
     wrap=wrap_chars,
 )

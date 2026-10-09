@@ -247,6 +247,7 @@ class TestPackageSurface:
             "input_shape",
             "name",
             "parameterized",
+            "random",
             "reads_input",
             "self_halts",
             "source_kind",

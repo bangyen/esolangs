@@ -74,7 +74,7 @@ class TestEveryLanguageIsSteppable:
                 missing[language] = absent
 
         assert missing == {}
-        assert random_languages, "the sweep found no random language"
+        assert random_languages == set(languages(random=True))
 
     def test_stepping_is_reproducible_for_the_random_languages(self) -> None:
         """Each sampled random instruction steps the same way twice."""

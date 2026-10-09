@@ -396,6 +396,7 @@ def _describe(rest: list[str]) -> None:
         ("dumps_on_the_post_halt_step", facts["dumps_on_the_post_halt_step"]),
         ("steppable_to_answer", facts["steppable_to_answer"]),
         ("eof_is_a_value", facts["eof_is_a_value"]),
+        ("random", facts["random"]),
         ("examples", f"{len(facts['examples'])} committed (paths in --json)"),
         ("wiki_url", facts["wiki_url"]),
     ]

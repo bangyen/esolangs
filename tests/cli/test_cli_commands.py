@@ -10,6 +10,7 @@ import esolangs
 from tests.cli.test_cli import _program, call_main
 from tests.cli_support import call_both
 from tests.generator_support import evaluate_generated
+from tests.pick import languages
 
 
 # 5.2s over 33 tests: drives the CLI as a subprocess.
@@ -119,14 +120,11 @@ class TestPrivateEvaluationNeedsNoSeed:
     like a half-migration and is not.
     """
 
-    @pytest.mark.parametrize(
-        "language",
-        ["LaserFuck", "Modulous", "Painfuck"],
-    )
+    @pytest.mark.parametrize("language", languages(random=True, boolean_generator=True))
     def test_a_drawing_language_evaluates_the_same_every_time(
         self, language: str
     ) -> None:
-        """The four that draw, less the slowest, four runs each."""
+        """Every language that draws, four runs each."""
         answers = {evaluate_generated(language, "0110", timeout=30) for _ in range(4)}
         assert answers == {"0110"}
 

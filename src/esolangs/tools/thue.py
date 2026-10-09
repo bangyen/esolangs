@@ -315,6 +315,7 @@ def balance_thue(truth_table: str, default: str) -> str:
 LANGUAGE = Language(
     "Thue",
     "other.thue",
+    random=True,
     boolean=thue,
     # Not a tree: the table is the state, and each read halves it.
     shape=Shape.LOOKUP,
