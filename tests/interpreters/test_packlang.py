@@ -555,3 +555,21 @@ def test_internal_tree_errors_and_explicit_aborts_have_no_repair_hint():
         _node("broken internal tree")
     assert not hasattr(caught.value, "__notes__")
     assert not hasattr(HaltError(), "__notes__")
+
+
+@pytest.mark.medium
+def test_dependency_readings_under_each_literal_policy():
+    for policy, expected in (("decimal", "°±±°"), ("binary_digits", "0110")):
+        io = ScriptedIO("")
+        run(DEPENDENCY, io, literal_policy=policy)
+        assert io.getvalue() == expected
+
+
+@pytest.mark.parametrize("policy", ["decimal", "binary_digits"])
+def test_literal_roundtrip(policy):
+    from esolangs._dialects import PacklangLiterals
+
+    literals = PacklangLiterals(policy)
+    for value in (0, 1, 2, 10, 48, 128, 255):
+        assert literals.parse(literals.emit(value)) == value
+    assert literals.parse("255") == 255

@@ -80,7 +80,7 @@ def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("language", ["Alight", "Packlang", "Grapheme"])
+@pytest.mark.parametrize("language", [name for name, _ in CASES])
 def test_portable_isolated_cli(tmp_path, capsys, language):
     settings = dict(CASES)[language]
     path = save_generated(tmp_path, capsys, language, settings, table="01")

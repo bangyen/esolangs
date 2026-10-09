@@ -35,7 +35,6 @@
 "tests/cli/test_cli_conventions.py" = 10
 "tests/cli/test_cli_io.py" = 8
 "tests/cli/test_cli_messages.py" = 8
-"tests/cli/test_cli_portable.py" = 3
 "tests/cli/test_cli_timeouts.py" = 2
 "tests/duration_policy.py" = 1
 "tests/fuzz/test_interpreters_robustness.py" = 4
@@ -95,7 +94,6 @@
 "tests/test_boolean_contracts.py" = 18
 "tests/test_branch_gaps.py" = 2
 "tests/test_debug.py" = 7
-"tests/test_dialects.py" = 26
 "tests/test_docs.py" = 1
 "tests/test_evaluation.py" = 15
 "tests/test_generator_conventions.py" = 9
@@ -103,7 +101,6 @@
 "tests/test_input_encoding.py" = 16
 "tests/test_interpreter_only_admissions.py" = 10
 "tests/test_memory_budget.py" = 1
-"tests/test_portable_programs.py" = 3
 "tests/test_run_bounded.py" = 4
 "tests/test_run_isolated.py" = 5
 "tests/test_source_containers.py" = 5

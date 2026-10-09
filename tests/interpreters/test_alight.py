@@ -587,3 +587,43 @@ def test_bad_programs_carry_a_repair_hint() -> None:
     assert_halts_with_hint(
         "Alight", 'begin;var v;set v at{"AB",1};end;', "0.5 + k", "0.5, 1.5"
     )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("source", "syntax"),
+    [("65 1 +", "postfix"), ("65+1", "infix"), ("[65, 66] 0.5", "bad")],
+)
+def test_alight_notation(source, syntax):
+    io = ScriptedIO("")
+    if syntax == "bad":
+        with pytest.raises(ValueError, match="one value"):
+            run(f"begin;var a;set a {source};end;", io, expression_syntax="postfix")
+    else:
+        run(f"begin;var a;set a {source};out a;end;", io, expression_syntax=syntax)
+        assert io.getvalue() == "B"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("expr", "expected"),
+    [("right !", "A"), ("left !", "B"), ("at{[65, 66], 1.5}", "B")],
+)
+def test_postfix_unary_and_nested_lists(expr, expected):
+    io = ScriptedIO("")
+    command = (
+        f"set a {expr}" if expr.startswith("at") else f"set a 65;skip {expr};set a 66"
+    )
+    run(f"begin;var a;{command};out a;end;", io, expression_syntax="postfix")
+    assert io.getvalue() == expected
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("expr", ["65 +", "!"])
+def test_postfix_operator_requires_operands(expr):
+    with pytest.raises(ValueError, match="lacks operands"):
+        run(
+            f"begin;var a;set a {expr};end;",
+            ScriptedIO(""),
+            expression_syntax="postfix",
+        )

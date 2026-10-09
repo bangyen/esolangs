@@ -1,12 +1,16 @@
 """Alight generator tests."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
+from esolangs.interpreters.grid_based.alight import run as alight_run
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.tools.alight.balance import _balance_postfix
 from esolangs.tools.wrap import balance_score
 from tests.generator_support import assert_an_ignored_input_costs
 
@@ -194,3 +198,37 @@ class TestAlightWidth:
     def test_width_must_have_one_column(self) -> None:
         with pytest.raises(ValueError, match="at least 1"):
             boolean.alight("0001", 0)
+
+
+_TABLE = "00110110011010100101110010100110"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [None, 100])
+def test_postfix_generated(width):
+    source = boolean.alight(_TABLE, width, expression_syntax="postfix")
+    if width is not None:
+        assert max(map(len, source.splitlines())) <= width
+    for row in range(len(_TABLE)):
+        io = ScriptedIO(format(row, "05b"))
+        alight_run(source, io, expression_syntax="postfix")
+        assert io.getvalue() == _TABLE[row]
+
+
+def test_postfix_settings_are_checked_and_do_not_leak():
+    with pytest.raises(ValueError, match="expression_syntax"):
+        boolean.alight("01", expression_syntax="mixed")
+    with pytest.raises(ValueError, match="width"):
+        boolean.alight("01", 0, expression_syntax="postfix")
+    before = boolean.alight("0110")
+    boolean.alight("0110", expression_syntax="postfix")
+    assert boolean.alight("0110") == before
+
+
+def test_postfix_balance_model_checks_rendering():
+    with (
+        patch("esolangs.tools.alight.balance._alight_folded", return_value="bad"),
+        pytest.raises(AssertionError, match="postfix fold model"),
+    ):
+        _balance_postfix("0110", 2, "x" * 100)
+    assert _balance_postfix("01", 1, "x") == "x"

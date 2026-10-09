@@ -453,3 +453,13 @@ def test_grapheme_changing_stack_halts() -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Grapheme", "abc", "uppercase Latin")
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [("FAFY", "10"), ("FABFY", "120"), ("FZFY", "0"), ("EABFCEJY", "120")],
+)
+def test_after_each_letter_conversion(source, expected):
+    io = ScriptedIO("")
+    run(source, io, integer_conversion="after_each_letter")
+    assert io.getvalue() == expected
