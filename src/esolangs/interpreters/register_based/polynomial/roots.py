@@ -19,7 +19,7 @@ except ModuleNotFoundError:  # optional ``math`` extra
     sp = None
 
 from esolangs.exceptions import MissingDependencyError
-from esolangs.interpreters.tape_based.factor import _isprime64
+from esolangs.factor_primes import isprime64
 
 
 def _require_sympy() -> Any:
@@ -82,7 +82,8 @@ def _prime_power(number: int, max_exponent: int) -> tuple[int, int] | None:
     return None
 
 
-#: Below this, Factor's :func:`_isprime64` is a proof: Miller--Rabin with Sinclair's
+#: Below this, :func:`~esolangs.factor_primes.isprime64` is a proof:
+#: Miller--Rabin with Sinclair's
 #: seven bases is deterministic through ``2**64``.  Above it SymPy's
 #: ``isprime`` is BPSW -- a compositeness verdict is still a witness, but
 #: "prime" is not a proof -- so a probable prime there is certified by
@@ -98,7 +99,7 @@ def _is_proven_prime(number: int) -> bool:
     certifies the rest, so the answer is never probabilistic.
     """
     if number < _EXACT_ISPRIME_LIMIT:
-        return _isprime64(number)
+        return isprime64(number)
     if not _require_sympy().isprime(number):
         return False
     return _aks(number)
