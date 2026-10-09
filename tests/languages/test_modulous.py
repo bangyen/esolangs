@@ -10,6 +10,7 @@ from esolangs.exceptions import HaltError
 from esolangs.vm import make_vm
 from tests.cli.test_cli import call_main
 from tests.cli_support import _failure, call_both
+from tests.test_vm import assert_random_steps_reproduce
 
 
 class TestModulousSaysWhatWentWrong:
@@ -204,3 +205,22 @@ def test_halt_and_cycle_verdicts_are_unchanged():
     assert (
         vm.run_until_halt_or_all_branches_cycle(vm.make_vm("Modulous", "[END]")) is True
     )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "[POT]",  # POP and PRT are both one substitution away.
+        '[PSH STR "[PRTT INT]"][PRT][END]',
+        "",
+        "[123][END]",
+        '["x"][END]',
+    ],
+)
+def test_ambiguous_spellings_and_noncommand_text_receive_no_edit(source):
+    assert _modulous_corrections(source) == ()
+
+
+def test_stepping_through_the_random_instruction_is_reproducible() -> None:
+    """Its random instruction steps the same way twice under one seed."""
+    assert_random_steps_reproduce("Modulous", "[RND 9][PRT INT]")

@@ -259,3 +259,18 @@ def test_shorter_stems_balance_keeps_the_area_ceiling(table: str) -> None:
     image = esolangs.generate("Line", table, balance=True)
     assert len(image.rows[0]) * len(image.rows) <= old.width * old.height
     assert _evaluate("Line", image.to_png(), inputs=3) == table
+def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Raster balancing renders the tree without revisiting a subtree."""
+    import importlib
+
+    from esolangs.tools.line import line_boolean
+    from esolangs.tools.line.render import render
+
+    module = importlib.import_module("esolangs.tools.line.render")
+
+    def reject(*_args: object) -> None:
+        raise AssertionError("tree renderer revisited a subtree")
+
+    monkeypatch.setattr(module, "_has_goto", reject)
+    monkeypatch.setattr(module, "_returns_to", reject)
+    render(line_boolean("10010110"), acyclic=True)

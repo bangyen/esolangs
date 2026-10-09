@@ -72,6 +72,8 @@ to build stdin.
 
 ## Examples
 
+<!-- XOR-EXAMPLE:START -->
+
 `esolangs generate Sophie 0110` emits 20 characters computing XOR:
 
 ```
@@ -79,6 +81,9 @@ to build stdin.
 ```
 
 Feeding it the two adjacent input characters prints their XOR.
+
+<!-- XOR-EXAMPLE:END -->
+
 
 <!-- EXAMPLES:START -->
 

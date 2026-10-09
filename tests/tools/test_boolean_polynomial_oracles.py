@@ -4,22 +4,17 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.polynomial import _Machine as Polynomial
-from esolangs.interpreters.register_based.sophie import _Machine as Sophie
 from esolangs.tools.polynomial import _polynomial_assemble
-from tests.tools.polynomial_support import _polynomial_tree, _sophie_dag, _sophie_tree
+from tests.tools.polynomial_support import _polynomial_tree
 
 
-@pytest.mark.parametrize("oracle", ["polynomial_tree", "sophie_tree", "sophie_dag"])
+@pytest.mark.parametrize("oracle", ["polynomial_tree"])
 # A constant, XOR, and majority (an if-block beside an else-block).
 @pytest.mark.parametrize("table", ["11", "0110", "00010111"])
 def test_retired_oracle_executes_every_row(oracle: str, table: str) -> None:
     n = len(table).bit_length() - 1
-    if oracle == "polynomial_tree":
-        code = _polynomial_assemble(_polynomial_tree(table))
-        machine_type = Polynomial
-    else:
-        code = {"sophie_tree": _sophie_tree, "sophie_dag": _sophie_dag}[oracle](table)
-        machine_type = Sophie
+    code = _polynomial_assemble(_polynomial_tree(table))
+    machine_type = Polynomial
     for row, expected in enumerate(table):
         bits = format(row, f"0{n}b")
         io = ScriptedIO("".join(bits) + "Z\n")

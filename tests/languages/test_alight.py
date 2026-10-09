@@ -12,6 +12,7 @@ from esolangs._evaluate import _evaluate
 from tests.cli_support import call_both
 from tests.test_debug import _step_to_halt
 from tests.test_dialects import Unreadable
+from tests.test_vm_protocol import assert_one_row_moves_along_it
 
 
 def test_set_pairs_match_settings_json(capsys):
@@ -161,3 +162,8 @@ def test_alight_refuses_instead_of_warning() -> None:
     dbg = debugger_api.make_debugger("Alight", program, stdin=short)
     with pytest.raises(esolangs.HaltError, match="eof"):
         _step_to_halt(dbg)
+
+
+def test_its_one_row_program_moves_along_the_columns() -> None:
+    """The row component of ``VM.ip`` stays put on a one-row program."""
+    assert_one_row_moves_along_it("Alight")

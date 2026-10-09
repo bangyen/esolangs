@@ -1,5 +1,4 @@
 {
- "tests/cli/test_cli.py::TestProgramFailuresAreReported::test_the_readme_suffolk_flow_completes": 1.111638782,
  "tests/cli/test_cli_io.py::TestReadingTheProgramFileIsBounded::test_a_fifo_with_no_writer_is_bounded": 2.260550422999998,
  "tests/interpreters/test_qoibl.py::TestTheTokenizerCarriesItsOwnStack::test_a_failed_scan_with_data_is_rejected[e\\n\\nr\\n]": 0.0015931539999982647,
  "tests/interpreters/test_qoibl.py::TestTheTokenizerCarriesItsOwnStack::test_a_failed_scan_with_data_is_rejected[qt y\\nqrt\\nrt]": 0.0007012349999939715,
@@ -27,6 +26,7 @@
  "tests/languages/test_ram0.py::TestStdinCannotHangTheCommandForever::test_a_timeout_bounds_the_read": 2.2762535999999898,
  "tests/languages/test_ram0.py::TestStdinCannotHangTheCommandForever::test_an_unknown_language_is_named_without_reading_stdin": 0.21987473899997667,
  "tests/languages/test_sophie.py::TestWidthEffectSaysWhatWidthDoes::test_the_declaration_matches_what_width_actually_does": 0.20605831800001084,
+ "tests/languages/test_suffolk.py::test_the_readme_suffolk_flow_completes": 2.2799767090182286,
  "tests/languages/test_taglate.py::TestAnswerMode::test_output_mode_means_the_printed_answer_is_the_table": 0.6522345980000352,
  "tests/line/test_raster.py::test_public_run_loads_line_png": 0.036483685000007426,
  "tests/line/test_simulate.py::TestSyntheticLoopMechanism::test_non_halting_loop_hangs_rather_than_returning": 1.0008816020000069,

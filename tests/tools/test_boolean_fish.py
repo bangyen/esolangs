@@ -10,8 +10,11 @@ from esolangs.interpreters.grid_based.fish import run
 from esolangs.tools.fish import balance_fish, fish
 from esolangs.tools.wrap import balance_score
 from tests.generator_support import run_lines
-from tests.tools.test_balance_remaining import _fish_tables
 from tests.witness_tables import witnesses
+
+
+def _fish_tables():
+    return [table for inputs in (1, 6) for table in witnesses(inputs)]
 
 
 def _run(table: str, row: int, width: int | None = None) -> tuple[str, int]:

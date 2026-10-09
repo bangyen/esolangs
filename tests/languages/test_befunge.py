@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from tests.cli_support import _failure
+from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
 
 
 def test_generator_cap_hint_reaches_cli(capsys):
@@ -62,3 +63,5 @@ def test_random_snapshot_cannot_prove_a_cycle(wrapped):
     assert vm.halted
     assert esolangs.run("Befunge", source, seed=0, timeout=1) == ""
     assert run_until_halt_or_cycle(vm, limit=1000) is True
+def test_it_reads_numeric_tokens_on_the_same_line() -> None:
+    assert_reads_tokens_on_one_line("Befunge")

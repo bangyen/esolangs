@@ -4,7 +4,9 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from esolangs.tools.false import false
 from tests.generator_support import verify_generated
+from tests.tools.reader_support import assert_emissions_grow_by_a_line
 from tests.tools.sample_tables import five_input_sample
 from tests.witness_tables import witnesses
 
@@ -65,3 +67,17 @@ def test_false_single_character_floor_executes_every_small_table() -> None:
                     esolangs.run("FALSE", program, stdin=stdin, max_steps=100_000)
                     == expected
                 )
+
+
+def test_folding_shortens_a_constant_table() -> None:
+    """A table whose rows agree collapses below one that folds nothing."""
+    assert len(false("00000000")) < len(false("01101001"))
+
+
+def test_the_plain_tree_grows_by_a_line() -> None:
+    """The shipped build folds and shares subtrees, so the plain tree is measured."""
+    from tests.tools.plain_oracles import false_plain
+
+    assert_emissions_grow_by_a_line(
+        lambda table: false_plain(table, len(table).bit_length() - 1)
+    )

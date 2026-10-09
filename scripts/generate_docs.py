@@ -8,6 +8,7 @@ to hold them, which is why the gates could stop matching wording.
 
 import pathlib
 import re
+import shlex
 import sys
 import tomllib
 from typing import cast
@@ -71,6 +72,8 @@ _SHAPES_START = "<!-- INPUT-SHAPES:START -->"
 _SHAPES_END = "<!-- INPUT-SHAPES:END -->"
 _API_START = "<!-- PUBLIC-API:START -->"
 _API_END = "<!-- PUBLIC-API:END -->"
+_XOR_START = "<!-- XOR-EXAMPLE:START -->"
+_XOR_END = "<!-- XOR-EXAMPLE:END -->"
 _RASTER_START = "<!-- RASTER-SOURCES:START -->"
 _RASTER_END = "<!-- RASTER-SOURCES:END -->"
 _SIZE_START = "<!-- COLLECTION-SIZE:START -->"
@@ -283,6 +286,43 @@ def render_api_section() -> str:
     return "\n".join(lines)
 
 
+def xor_language() -> str:
+    """Return the language whose XOR program the README shows first.
+
+    The shortest XOR among the languages reading their inputs as adjacent
+    characters, so it is short enough to read and never a removed language.
+    """
+    readers = [
+        name
+        for name in LANGUAGES
+        if (facts := esolangs.describe(name))["boolean_generator"]
+        and not facts["parameterized"]
+        and not facts["random"]
+        and facts["answer_mode"] == "output"
+        and facts["input_shape"] == "char_stream"
+        and facts["source_kind"] == "text"
+    ]
+    return min(readers, key=lambda name: len(str(esolangs.generate(name, "0110"))))
+
+
+def render_xor_section() -> str:
+    """Render the README's first example: a generated XOR, and its length."""
+    language = xor_language()
+    program = str(esolangs.generate(language, "0110"))
+    return "\n".join(
+        [
+            f"`esolangs generate {shlex.quote(language)} 0110` emits"
+            f" {len(program)} characters computing XOR:",
+            "",
+            "```",
+            program,
+            "```",
+            "",
+            "Feeding it the two adjacent input characters prints their XOR.",
+        ]
+    )
+
+
 def _join(names: list[str]) -> str:
     """Return ``names`` as an English list: ``A``, ``A and B``, ``A, B and C``."""
     if len(names) < 2:
@@ -394,6 +434,7 @@ def update_readme(root: pathlib.Path = ROOT) -> None:
         (_README_START, _README_END, render_languages_section),
         (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
         (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),
+        (_XOR_START, _XOR_END, render_xor_section),
     ):
         text = _splice(text, start, end, render())
     path.write_text(text)
