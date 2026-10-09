@@ -9,7 +9,7 @@ language that tolerates missing spaces loses them all, which is layout,
 not construction.  A template's input runs are never
 touched, so a deletion holds for every fill of it.
 
-Unlike ``input_reorder.py`` and ``transforms.py`` this is not
+Unlike ``transforms.py`` this is not
 a bound on what a construction could buy: every deletion kept is a program
 that still computes its table.  But it is one program per table, so a
 deletion that relies on that table (a branch no row of it reaches) says

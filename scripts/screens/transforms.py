@@ -1,17 +1,19 @@
 """Screen every boolean generator for symmetry and pruning upside at n=3.
 
-The companion of ``input_reorder.py``: each generator builds all 256
+Each generator builds all 256
 three-input tables (and all 16 two-input ones) once, and every column is a
 lookup over those sizes.  A percentage is ``100 * (1 - sum(min)/sum(own))``
 where ``min`` is the shortest build over the transformed tables:
 
+``order``
+    The 6 input orders; ``impr`` counts tables with a smaller reordered build.
 ``outneg``
     The table or its complement -- build ``not f`` and invert the answer.
 ``inpol``
     Any of the 8 input-polarity flips -- swap an input's 0 and 1 arms.
 ``npn``
     Any complement, flip and input order together (96 candidates), so the
-    excess over the reorder screen is what polarity and negation add.
+    excess over ``order`` is what polarity and negation add.
 ``ignored``
     For three-input tables with exactly two essential inputs, the mean
     source units over the two-input build of their projection: what reading
@@ -51,11 +53,11 @@ def _flip(table: str, mask: int) -> str:
     return "".join(table[row ^ mask] for row in range(len(table)))
 
 
-Row = tuple[float, float, float, float, float]
+Row = tuple[float, int, float, float, float, float, float]
 
 
 def screen(name: str, gen: Callable[[str], object]) -> Row | None:
-    """Return (outneg %, inpol %, npn %, ignored units, seconds), or None."""
+    """Return (order %, improved, outneg %, inpol %, npn %, ignored, seconds)."""
     start = perf_counter()
     built_sizes = sizes(name, gen, TABLES)
     pairs = sizes(name, gen, PAIRS)
@@ -73,6 +75,16 @@ def screen(name: str, gen: Callable[[str], object]) -> Row | None:
             best += min(found, default=built_sizes[table] or 0)
         return 100 * (1 - best / own)
 
+    reordered = {
+        table: min(
+            size
+            for perm in PERMS
+            if (size := built_sizes[permute_truth_table(table, perm)]) is not None
+        )
+        for table in built
+    }
+    order = 100 * (1 - sum(reordered.values()) / own)
+    improved = sum(reordered[t] < (built_sizes[t] or 0) for t in built)
     outneg = upside(lambda t: [t, _negate(t)])
     inpol = upside(lambda t: [_flip(t, mask) for mask in range(8)])
     npn = upside(
@@ -91,7 +103,7 @@ def screen(name: str, gen: Callable[[str], object]) -> Row | None:
             if projected is not None:
                 extra.append((built_sizes[table] or 0) - projected)
     ignored = sum(extra) / len(extra) if extra else float("nan")
-    return outneg, inpol, npn, ignored, elapsed
+    return order, improved, outneg, inpol, npn, ignored, elapsed
 
 
 def main() -> None:
@@ -102,14 +114,14 @@ def main() -> None:
         if result is None:
             continue
         rows.append((key, *result))
-    rows.sort(key=lambda row: (-row[3], row[0]))
+    rows.sort(key=lambda row: (-row[5], row[0]))
     print(
-        f"{'language':<32}{'outneg%':>8}{'inpol%':>8}{'npn%':>7}"
+        f"{'language':<32}{'order%':>8}{'impr':>6}{'outneg%':>8}{'inpol%':>8}{'npn%':>7}"
         f"{'ignored':>9}{'sec':>6}"
     )
-    for key, outneg, inpol, npn, ignored, elapsed in rows:
+    for key, order, improved, outneg, inpol, npn, ignored, elapsed in rows:
         print(
-            f"{key:<32}{outneg:>8.1f}{inpol:>8.1f}{npn:>7.1f}"
+            f"{key:<32}{order:>8.1f}{improved:>6}{outneg:>8.1f}{inpol:>8.1f}{npn:>7.1f}"
             f"{ignored:>9.1f}{elapsed:>6.1f}"
         )
 

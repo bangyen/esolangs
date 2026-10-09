@@ -1,6 +1,6 @@
 """Screen every boolean generator for execution-step upside at n=3.
 
-The execution-time twin of ``input_reorder.py`` and ``transforms.py``: each
+The execution-time twin of ``transforms.py``: each
 generator builds all 256 three-input tables once, and every row of each is
 stepped to its answer with ``benchmark.py``'s counter (the ``commands``
 field ``check_generator_sizes.py`` pins).  A table's cost is its steps
@@ -10,7 +10,7 @@ table's total is the transformed program's.  A percentage is
 ``100 * (1 - sum(min)/sum(own))``, the minimum taken over:
 
 ``order``
-    The 6 input orders, as ``input_reorder.py``.
+    The 6 input orders, as ``transforms.py``.
 ``outneg``
     The table or its complement.
 ``inpol``
