@@ -243,8 +243,10 @@ jobs:
 
     # The certificate's fixed 40-second construction cap aborted alongside
     # xdist workers. Give it the runner alone; retain the same cap.
+    # Run 37972025375: shard 0 took 181s including this 54s step; shard 2
+    # took 78s. Put the serial step on the lighter shard.
     - name: Check the preserving certificate without competing workers
-      if: matrix.shard == 0
+      if: matrix.shard == 2
       run: uv run pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0
 
     - name: Test one slow shard
