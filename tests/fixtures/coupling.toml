@@ -24,10 +24,8 @@
 "tests/test_answer_stdin.py" = 1
 "tests/test_debug.py" = 2
 "tests/test_interpreter_only_admissions.py" = 6
-"tests/test_source_containers.py" = 1
 "tests/test_run_bounded.py" = 4
 "tests/test_stepping_parity.py" = 4
-"tests/tools/plain_oracles.py" = 5
 "tests/tools/reader_support.py" = 3
 "tests/tools/test_balance_remaining.py" = 2
 "tests/tools/test_boolean_contract.py" = 5

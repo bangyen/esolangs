@@ -21,7 +21,7 @@ _RASTERS = languages(source_kind="raster", boolean_generator=True)
 # Isolation forwards whatever the container held, so one container covers it;
 # each isolated case spawns a worker.
 @pytest.mark.parametrize(
-    ("container", "mode"),
+    ("holder", "mode"),
     [
         ("bytes", "normal"),
         ("text_stream", "normal"),
@@ -29,19 +29,19 @@ _RASTERS = languages(source_kind="raster", boolean_generator=True)
         pytest.param("bytes", "isolated", marks=pytest.mark.medium),
     ],
 )
-def test_execution_container_parity(language: str, container: str, mode: str) -> None:
+def test_execution_container_parity(language: str, holder: str, mode: str) -> None:
     program = esolangs.generate(language, "01")
     data = (
         program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
     )
     source: Any = data
-    if container == "text_stream":
+    if holder == "text_stream":
         source = (
             io.BytesIO(data)
             if isinstance(program, esolangs.Raster)
             else io.StringIO(program)
         )
-    elif container == "binary_stream":
+    elif holder == "binary_stream":
         source = io.BytesIO(data)
     stdin = io.BytesIO(b"1")
     bounds: dict[str, Any] = {}
