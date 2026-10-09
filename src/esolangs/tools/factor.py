@@ -18,6 +18,7 @@ from esolangs._digits import digit_limit_for
 from esolangs.factor_primes import prime_segments
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.tools.constant_projection import balanced_projection
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -26,7 +27,7 @@ from esolangs.tools.helpers import (
     move_text,
 )
 from esolangs.tools.shared_flag import shared_flag_tree
-from esolangs.tools.wrap import wrap_chars
+from esolangs.tools.wrap import balance_program, wrap_chars
 
 __all__ = ["factor"]
 
@@ -87,7 +88,9 @@ def _encode(code: str) -> int:
     return heap[0][2] if heap else 1
 
 
-def _program(truth_table: str, *, shared: bool = False) -> str:
+def _program(
+    truth_table: str, *, shared: bool = False, keep_constant_input: bool = False
+) -> str:
     """Build the compact tree in input order, using the final input's flag.
 
     The tree tests the essential inputs only, so its last level is the last
@@ -99,8 +102,9 @@ def _program(truth_table: str, *, shared: bool = False) -> str:
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
     perm = tuple(i for i, weight in enumerate(weights) if weight)
+    normalized = bool(perm) or keep_constant_input
     if len(table) == 1:
-        # A constant already folds to one leaf; it keeps every input.
+        # Keep the tree arity, but a constant never needs ASCII normalization.
         table, perm = truth_table, tuple(range(n))
     result = 2 * n - 1
     scratch, multiplier = result + 1, result + 2
@@ -144,7 +148,7 @@ def _program(truth_table: str, *, shared: bool = False) -> str:
         # Set the answer's extra one while already passing its cell.
         build = ">+" + build[1:]
         body, pos = "[->-<]", 0
-    prefix = build + reads + dedent
+    prefix = build + reads + (dedent if normalized else "")
     plain = prefix + body + move_text(pos, result, ">", "<") + "."
     if not shared:
         return plain
@@ -170,8 +174,15 @@ def factor(truth_table: str) -> str:
     digit cap is raised to a bit-length estimate (``log10(2) < 0.30103``,
     never under-counting) and put back.
     """
-    plain = _program(truth_table)
-    candidate = _program(truth_table, shared=True)
+    return _factor(truth_table)
+
+
+def _factor(truth_table: str, *, keep_constant_input: bool = False) -> str:
+    """Encode the tree, optionally retaining constant-input normalization."""
+    plain = _program(truth_table, keep_constant_input=keep_constant_input)
+    candidate = _program(
+        truth_table, shared=True, keep_constant_input=keep_constant_input
+    )
 
     def encoded(code: str) -> str:
         number = _encode(code)
@@ -180,6 +191,15 @@ def factor(truth_table: str) -> str:
 
     program = encoded(plain)
     return min(program, encoded(candidate), key=len) if candidate != plain else program
+
+
+def balance_factor(truth_table: str, default: str) -> str:
+    """Keep the legacy constant encoding when its wrapped shape is better."""
+    if len(set(truth_table)) > 1:
+        return balance_program(default, "factor")
+    return balanced_projection(
+        default, _factor(truth_table, keep_constant_input=True), "factor"
+    )
 
 
 LANGUAGE = Language(
@@ -196,4 +216,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    balance=balance_factor,
 )

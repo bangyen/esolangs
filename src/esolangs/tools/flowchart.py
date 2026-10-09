@@ -422,7 +422,8 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     """Build a Flowchart program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.
-    Without ``width``, preloads paired answers into deques and selects one
+    Constants read a straight skip chain and print once. Otherwise, without
+    ``width``, preloads paired answers into deques and selects one
     by the input bits; with it, draws a decision tree, stacked if narrower,
     and in the stacked one draws a repeated subtree once when ``width`` leaves
     room for its rail columns and characters and rectangle both shrink.
@@ -451,7 +452,7 @@ def _area(program: str) -> int:
     return grid_width(program) * (program.count("\n") + 1)
 
 
-def _flowchart_deque(truth_table: str) -> str:
+def _flowchart_deque(truth_table: str, *, keep_constant_input: bool = False) -> str:
     r"""Address one preloaded answer by walking the deque cursor to it.
 
     Entries ``2j`` and ``2j + 1`` are pushed onto deque ``j`` in that order,
@@ -471,8 +472,12 @@ def _flowchart_deque(truth_table: str) -> str:
     answer arm, ahead of its pop.
     """
     n = len(truth_table).bit_length() - 1
-    # A constant table keeps one input for the selector to switch on.
-    used = essential_inputs(truth_table, n) or list(range(n))
+    used = essential_inputs(truth_table, n)
+    if not used and not keep_constant_input:
+        # Read only the value bit of the final byte; earlier bytes are skipped.
+        nodes = ["( )", *["/ /"] * (8 * (n - 1) + 1), _set(truth_table[0]), *_ANSWER]
+        return "─".join(reversed(nodes))
+    used = used or list(range(n))
     truth_table = read_at(truth_table, used, n)
     skips = [8 * used[0] + 1] + [8 * (b - a) for a, b in pairwise(used)]
     cells: dict[tuple[int, int], str] = {}
@@ -540,7 +545,10 @@ def _flowchart_deque(truth_table: str) -> str:
 def _balance(table: str, default: str) -> str:
     """Compare deque lookup, flat tree and the supported stacked fallback."""
     flat = _flowchart_render(_flowchart_cells(table))
-    return min(default, flat, flowchart(table, 1), key=balance_score)
+    candidates = [default, flat, flowchart(table, 1)]
+    if len(set(table)) == 1:
+        candidates.append(_flowchart_deque(table, keep_constant_input=True))
+    return min(candidates, key=balance_score)
 
 
 LANGUAGE = Language(
@@ -559,6 +567,6 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
-    eof="reads at the switch, which a program without one skips",
+    eof="reads at input nodes, including the constant skip chain",
     empty_program="Flowchart program has no '( )' start node",
 )

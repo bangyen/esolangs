@@ -26,7 +26,7 @@ class TestFlowchart:
         "table",
         ["00", "01", "0000", "0110", "11111111", "01101001", "0110100110010110"],
     )
-    def test_an_unconstrained_call_uses_the_deque(self, table: str) -> None:
+    def test_an_unconstrained_call_uses_the_default_lookup(self, table: str) -> None:
         """Tree layouts remain available for width requests."""
         assert boolean.flowchart(table) == _flowchart_deque(table)
 
@@ -213,3 +213,45 @@ def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:
     for row in range(16):
         bits = [str((row >> (3 - i)) & 1) for i in range(4)]
         assert run_flowchart(program, bits) == table[row], row
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_lookup_reads_without_deque_or_selector(bit):
+    from tests.generator_support import assert_shared_program
+
+    n = 8
+    table = bit * (1 << n)
+    program = boolean.flowchart(table)
+    assert "< >" not in program
+    assert "\\[ ]/" not in program
+    assert_shared_program(
+        "Flowchart",
+        table,
+        _flowchart_deque(table, keep_constant_input=True),
+        3 * (1 << n) + 9 * n + 4,
+        lambda program: (
+            (7 * (1 << n) + 20 * n + 100) * (len(program).bit_length() + 4)
+            + sum(j.bit_length() + 2 for j in range(1 << (n - 1)))
+            + 2 * len(program).bit_length()
+            + n
+            + 2 * n.bit_length()
+            + 32
+        ),
+        size=lambda program: (
+            len(program.splitlines()) * max(map(len, program.splitlines()))
+        ),
+    )
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 5, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_lookup_retains_balanced_deque(n, bit):
+    import esolangs
+    from esolangs.tools.wrap import balance_score
+
+    table = bit * (1 << n)
+    legacy = _flowchart_deque(table, keep_constant_input=True)
+    assert balance_score(
+        esolangs.generate("Flowchart", table, balance=True)
+    ) <= balance_score(legacy)

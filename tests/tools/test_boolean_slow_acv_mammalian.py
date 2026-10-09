@@ -181,8 +181,11 @@ class TestSlowAcvMammalian:
 
     def test_a_slot_is_the_same_width_for_either_digit(self) -> None:
         """The table's stride is a leaf, and a leaf does not read the sum."""
+        from esolangs.tools.slow_acv_mammalian import _program
+
+        # Constants bypass this dispatch; compare its two leaf digits directly.
         sizes = {
-            len(boolean.slow_acv_mammalian(table))
+            len(_program(table, keep_constant_input=True))
             for table in ("0000", "1111", "0110", "1001", "0111")
         }
         assert len(sizes) == 1
@@ -826,3 +829,41 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
     whitespace-only program is returned as it came."""
     assert _mammalian("", 40) == ""
     assert _mammalian("   \n ", 40) == "   \n "
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("cell", [255, 256])
+@pytest.mark.parametrize("io", [255, 256])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_print_array_is_independent_of_every_input(cell, io, bit):
+    import esolangs
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.slow_acv_mammalian import _program
+
+    table = bit * 256
+    settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
+    program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings)
+    assert len(program) < len(
+        _program(table, cell_modulus=cell, io_modulus=io, keep_constant_input=True)
+    )
+    assert program.split().count("ACCEPT") == 8
+    assert "LEAPFROG" not in program
+    assert (
+        _evaluate("SLOW ACV MAMMALIAN", program, inputs=8, settings=settings) == table
+    )
+
+
+@pytest.mark.parametrize("cell", [255, 256])
+@pytest.mark.parametrize("io", [255, 256])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit):
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+    program = boolean.slow_acv_mammalian(bit * 8, cell_modulus=cell, io_modulus=io)
+    stream = ScriptedIO("0101")
+    machine = _Machine(program, stream, cell_modulus=cell, io_modulus=io)
+    while not machine.halted:
+        machine.step()
+    assert stream.position() == 3
+    assert stream.getvalue() == bit

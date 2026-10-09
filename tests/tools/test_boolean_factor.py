@@ -148,3 +148,37 @@ def test_one_input_not_stays_within_the_command_ledger(bit, expected) -> None:
         machine.step()
     assert machine.halted
     assert machine.output == expected
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_projection_skips_ascii_normalization(bit):
+    from esolangs.tools.factor import _factor
+    from tests.generator_support import assert_shared_program
+
+    n = 8
+    assert_shared_program(
+        "Factor",
+        bit * (1 << n),
+        _factor(bit * (1 << n), keep_constant_input=True),
+        265 * n + 231,
+        lambda _program: (
+            7 * n
+            + 12
+            + (2 * n + 1).bit_length()
+            + n.bit_length()
+            + (51 * 2 ** (n - 2) + 16 * n + 14).bit_length()
+        ),
+    )
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 5, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_projection_retains_balanced_encoding(n, bit):
+    from esolangs.tools.factor import _factor
+    from tests.generator_support import assert_constant_balanced_shape
+
+    table = bit * (1 << n)
+    assert_constant_balanced_shape(
+        "Factor", "factor", table, _factor(table, keep_constant_input=True)
+    )

@@ -232,3 +232,59 @@ def test_postfix_balance_model_checks_rendering():
     ):
         _balance_postfix("0110", 2, "x" * 100)
     assert _balance_postfix("01", 1, "x") == "x"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("syntax", ["infix", "postfix"])
+@pytest.mark.parametrize("update", ["in_place", "copy"])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_lookup_drops_every_index_input(syntax, update, bit):
+    import esolangs
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.alight import _program
+
+    table = bit * 256
+    settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
+    program = esolangs.generate("Alight", table, settings=settings)
+    assert len(program) < len(
+        _program(table, expression_syntax=syntax, keep_constant_input=True)
+    )
+    assert _evaluate("Alight", program, inputs=8, settings=settings) == table
+
+
+@pytest.mark.parametrize("syntax", ["infix", "postfix"])
+@pytest.mark.parametrize("bit", ["0", "1"])
+@pytest.mark.parametrize("width", [None, 1, 8, 40, "balance"])
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [3, 4, 8])
+def test_constant_lookup_executes_every_layout(syntax, bit, width, n):
+    import esolangs
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.alight import _program
+    from esolangs.tools.alight.balance import balance_alight
+    from esolangs.tools.wrap import balance_score
+
+    table = bit * (1 << n)
+    settings = esolangs.DialectSettings(expression_syntax=syntax)
+    program = esolangs.generate(
+        "Alight",
+        table,
+        settings=settings,
+        **({"balance": True} if width == "balance" else {"width": width}),
+    )
+    assert _evaluate("Alight", program, inputs=n, settings=settings) == table
+    if width == "balance":
+        old = _program(table, expression_syntax=syntax, keep_constant_input=True)
+        legacy = balance_alight(
+            table, old, expression_syntax=syntax, keep_constant_input=True
+        )
+        assert balance_score(program) <= balance_score(legacy)
+
+    else:
+        legacy = _program(
+            table, width, expression_syntax=syntax, keep_constant_input=True
+        )
+        assert len(program) <= len(legacy)
+        assert len(program.splitlines()) * max(map(len, program.splitlines())) <= (
+            len(legacy.splitlines()) * max(map(len, legacy.splitlines()))
+        )

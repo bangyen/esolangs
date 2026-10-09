@@ -9,6 +9,7 @@ commands over an O(2**n) literal, no branching.  That is why its
 no subtrees to fold or share.  The reads are unconditional and first.
 """
 
+from math import prod
 from typing import Any
 
 from esolangs._dialects import expression_syntax as validate_expression_syntax
@@ -58,6 +59,20 @@ def _alight_chunk(rows: int, width: int) -> int:
     return chunk
 
 
+def _constant_units(table: str, inputs: int) -> list[list[str]]:
+    """Read into one disposable variable and replace it with the literal."""
+    # Empty tables are the layout model's one-character placeholder.
+    value = str(_ASCII_ZERO + int(table)) if table else "0"
+    return [
+        ["begin"],
+        ["var r"],
+        *[["inp r"] for _ in range(inputs)],
+        [f"set r {value}"],
+        ["out r"],
+        ["end"],
+    ]
+
+
 def _alight_units(
     truth_table: str, n: int, chunk: int, essential: list[bool] | None = None
 ) -> list[list[str]]:
@@ -69,6 +84,8 @@ def _alight_units(
     past a chunk's end is ``nil``, per the wiki).  An input ``essential``
     marks False is a bare ``inp a`` and ``truth_table`` is indexed by the rest.
     """
+    if essential is not None and not any(essential):
+        return _constant_units(truth_table, n)
     units: list[list[str]] = [["begin"], ["var a"], ["var i"], ["var r"]]
     folded = False
     for kept in essential or [True] * n:
@@ -114,6 +131,8 @@ def _alight_flat_compact(
     """
     essential = essential or [True] * n
     m = sum(essential)
+    if not m:
+        return _flatten(_constant_units(truth_table, n))
     names = [chr(code) for code in range(ord("a"), ord("z") + 1) if code != ord("r")]
     names.extend(f"a{index}" for index in range(m - len(names)))
     expr = names[0]
@@ -245,6 +264,20 @@ def alight(
     Postfix folds commands or rotates them into one column.  Only
     two-argument ``at`` is emitted, so every ``list_update`` runs it.
     """
+    return _program(
+        truth_table, width, expression_syntax=expression_syntax, list_update=list_update
+    )
+
+
+def _program(
+    truth_table: str,
+    width: int | None = None,
+    *,
+    expression_syntax: str = "infix",
+    list_update: str = "in_place",
+    keep_constant_input: bool = False,
+) -> str:
+    """Lay out the lookup, optionally retaining constant-input indexing."""
     n = _validate_truth_table(truth_table)
     validate_expression_syntax(expression_syntax)
     validate_list_update(list_update)
@@ -252,9 +285,9 @@ def alight(
         raise ValueError("width must be at least 1")
     weights, projected = input_weights(truth_table, n)
     essential = [bool(weight) for weight in weights]
-    dropped = any(weights) and not all(weights)
+    dropped = not all(weights) and (any(weights) or not keep_constant_input)
     # An ignored input is read and dropped, and the table is indexed by the
-    # rest.  A constant keeps every input.
+    # rest, including the one-entry table of a constant.
     if width is None and dropped:
         if expression_syntax == "postfix":
             return _flatten(_postfix_units(projected, n, len(projected), essential))
@@ -291,7 +324,16 @@ def alight(
     from esolangs.tools.alight.balance import _Plan, _plans  # circular
 
     plan = min(
-        (p for p in _plans(sum(essential)) if p.ready() <= width), key=_Plan.score
+        (
+            p
+            for p in (
+                _plans(sum(essential))
+                if any(essential)
+                else _plans(n, tuple(essential))
+            )
+            if p.ready() <= width
+        ),
+        key=_Plan.score,
     )
     flat = _alight_flat_compact(projected, n, essential)
     if plan.kind < 2:  # a column, or the one row (never the minimum here)
@@ -301,9 +343,24 @@ def alight(
             _alight_units(projected, n, plan.chunk, essential), plan.columns
         )
     units = _alight_units(projected, n, _alight_chunk(len(projected), width), essential)
-    return _smallest(
-        program, _fit(planned, width), _fit(_alight_folded(units, width), width)
-    )
+    candidates = [
+        program,
+        _fit(planned, width),
+        _fit(_alight_folded(units, width), width),
+    ]
+    if not any(essential):
+        # At n=4, width 40, a squarer fold grew 121 to 682 cells.
+        # Preserve the legacy area and length, including a direct column.
+        candidates.extend([_fit(flat, width), "\n".join(flat)])
+        area = prod(_dimensions(program))
+        candidates = [
+            candidate
+            for candidate in candidates
+            if candidate is not None
+            and len(candidate) <= len(program)
+            and prod(_dimensions(candidate)) <= area
+        ]
+    return _smallest(*candidates)
 
 
 def _postfix_units(
@@ -314,6 +371,8 @@ def _postfix_units(
     An input ``essential`` marks False is a bare ``inp a`` the next read
     overwrites, and ``table`` is indexed by the rest.
     """
+    if essential is not None and not any(essential):
+        return _constant_units(table, n)
     units = [["begin"], ["var a"], ["var i"], ["var r"]]
     folded = False
     for kept in essential or [True] * n:
