@@ -385,13 +385,13 @@ def test_column_routes_consume_ignored_prefix_inputs(ignored: int) -> None:
 
     from esolangs.interpreters.grid_based.dig import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.tools.dig import _dig_column_shared
+    from esolangs.tools.dig import _dig_lane_shared
 
     rng = random.Random(2026)
     a, b = ("".join(rng.choice("01") for _ in range(64)) for _ in range(2))
     table = (a + b + b + a) * (1 << ignored)
     n = 8 + ignored
-    program = _dig_column_shared(table, n)
+    program = _dig_lane_shared(table, n)
     assert program is not None
     rows = program.splitlines()
     assert len(rows) * max(map(len, rows)) == 1155
@@ -421,18 +421,114 @@ def test_multiple_copies_merge_along_one_column(
 
     from esolangs.interpreters.grid_based.dig import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.tools.dig import _dig_column_shared
+    from esolangs.tools.dig import _dig_lane_shared
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
     table = "".join(blocks[int(bit)] for bit in pattern)
-    program = _dig_column_shared(table, 10)
+    program = _dig_lane_shared(table, 10)
     assert program is not None
     rows = program.splitlines()
     unshared = boolean.dig(table, share=False).splitlines()
     assert len(rows) * max(map(len, rows)) < 0.7 * len(unshared) * max(
         map(len, unshared)
     )
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "010b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 312:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, 10)
+        worst = max(worst, steps)
+    assert worst == expected_steps
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("ignored", [0, 1, 2])
+def test_vertical_leaves_share_a_spare_row(ignored: int) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_lane_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    table = "".join(blocks[int(bit)] for bit in "01101001") * (1 << ignored)
+    n = 9 + ignored
+    program = _dig_lane_shared(table, n)
+    assert program is not None
+    rows = program.splitlines()
+    assert (len(rows), max(map(len, rows)), len(program)) == (
+        71,
+        36 + ignored,
+        2252 + 67 * ignored,
+    )
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 251 + 3 * ignored:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, n)
+        worst = max(worst, steps)
+    assert worst == 251 + 3 * ignored
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [None, 1, 8, 40])
+def test_spare_row_routes_reach_every_width_path(width: int | None) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    table = "".join(blocks[int(bit)] for bit in "01101001")
+    program = boolean.dig(table, width)
+    rows = program.splitlines()
+    assert (len(rows), max(map(len, rows)), len(program)) == (71, 36, 2252)
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "09b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 251:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, 9)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("pattern", "shared", "expected_steps", "expected_area"),
+    [("0220200231131331", True, 301, 4899), ("1230301230121230", False, 312, 7881)],
+)
+def test_disjoint_lane_groups_share_and_over_budget_groups_fall_back(
+    pattern: str, *, shared: bool, expected_steps: int, expected_area: int
+) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_lane_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    table = "".join(blocks[int(bit)] for bit in pattern)
+    candidate = _dig_lane_shared(table, 10)
+    assert (candidate is not None) == shared
+    program = boolean.dig(table)
+    rows = program.splitlines()
+    assert len(rows) * max(map(len, rows)) == expected_area
     worst = 0
     for row, expected in enumerate(table):
         io = ScriptedIO("\n".join(format(row, "010b")) + "\n")

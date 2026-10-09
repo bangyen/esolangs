@@ -253,12 +253,17 @@ def test_polynomial_balanced_folds_compute_the_table(table):
 def test_dense_polynomial_eight_executes_every_row(options) -> None:
     from esolangs.interpreters.register_based.polynomial import _parse_program
     from esolangs.interpreters.register_based.polynomial.roots import _factor_roots
-    from scripts.screens import canonical
 
     _parse_program.cache_clear()
     _factor_roots.cache_clear()
-    table = canonical.corpus(8)["dense"]
-    program = canonical.esolangs.generate("Polynomial", table, **options)
-    assert (
-        canonical.execute("Polynomial", program, table, options, all_rows=True) == 256
-    )
+    table = format(random.Random(2034).getrandbits(256), "0256b")
+    program = esolangs.generate("Polynomial", table, **options)
+    for row, expected in enumerate(table):
+        stdin = esolangs.encode_inputs("Polynomial", list(map(int, format(row, "08b"))))
+        assert (
+            esolangs.read_answer(
+                "Polynomial",
+                esolangs.run("Polynomial", program, stdin=stdin, timeout=2),
+            )
+            == expected
+        )
