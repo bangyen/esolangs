@@ -132,6 +132,7 @@ class TestStepMachine:
 class TestLongPrograms:
     """Factor programs remain valid past CPython's process-wide digit guard."""
 
+    @pytest.mark.medium
     def test_a_program_past_cpythons_digit_limit_still_parses(self) -> None:
         """4300 digits is a DoS guard on int/str, not a Factor rule."""
         number = 2**20000

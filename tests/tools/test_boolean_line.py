@@ -182,6 +182,7 @@ def test_line_generator_entry_points() -> None:
     assert _evaluate("Line", balanced.to_png(), inputs=1) == "01"
 
 
+@pytest.mark.medium
 def test_six_inputs_keep_the_rendered_layout() -> None:
     """Past the small-tree cut-off both entry points draw through ``render``."""
     import esolangs
