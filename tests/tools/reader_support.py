@@ -19,8 +19,33 @@ def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]
     return lang.boolean, module.run
 
 
-#: The tree readers these shared checks were written for.
-_READERS = {name: _reader(name) for name in ("false", "thue", "unlambda")}
+#: The tree readers these shared checks were written for, while registered.
+_READERS = {
+    name: _reader(name)
+    for name in ("false", "thue", "unlambda")
+    if any(lang.id == name for lang in LANGUAGES.values())
+}
+
+
+def assert_emissions_grow_by_a_line(
+    generate: Callable[[str], Any], *, parity: bool = False
+) -> None:
+    """Successive size differences quadruple, exactly, as ``n`` steps by two.
+
+    Measured on ``01...``, which ignores all but the last input, or on
+    parity, which reads every one, for a generator that drops ignored ones.
+    """
+    sizes = [
+        len(
+            generate(
+                "".join(str(row.bit_count() & 1) for row in range(2**n))
+                if parity
+                else "01" * (2 ** (n - 1))
+            )
+        )
+        for n in (4, 6, 8)
+    ]
+    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) == 4.0
 
 
 _TABLES = [

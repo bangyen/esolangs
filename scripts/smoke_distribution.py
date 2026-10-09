@@ -149,7 +149,15 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             assert diagnostic in result.stderr, result
         source.write_text(",>,<.", encoding="utf-8")
         assert _evaluate("brainfuck", source, timeout=None, inputs=2) == "0011"
-    for language in ("Line", "Piet"):
+    registered = set(esolangs.list_languages())
+    rasters = [
+        name
+        for name in esolangs.list_languages()
+        if esolangs.describe(name)["source_kind"] == "raster"
+        and esolangs.describe(name)["boolean_generator"]
+        and not esolangs.describe(name)["parameterized"]
+    ]
+    for language in rasters[:2]:
         raster = esolangs.generate(language, "0110")
         assert isinstance(raster, esolangs.Raster)
         if image_extra:
@@ -187,32 +195,56 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
         _refuses_timeout()
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_refuses_timeout).result(timeout=5)
-    with ThreadPoolExecutor(max_workers=1) as pool:
+    # A language never halting by itself, and one answering by termination;
+    # each check drops out with the last language of its kind.
+    for language in [
+        name
+        for name in esolangs.list_languages()
+        if not esolangs.describe(name)["self_halts"]
+        and esolangs.describe(name)["boolean_generator"]
+        and esolangs.describe(name)["reads_input"]
+    ][:1]:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            assert (
+                pool.submit(
+                    _evaluate,
+                    language,
+                    esolangs.generate(language, "0110"),
+                    inputs=2,
+                    isolated=True,
+                ).result(timeout=30)
+                == "0110"
+            )
+    terminating = [
+        name
+        for name in esolangs.list_languages()
+        if esolangs.describe(name)["answer_mode"] == "termination"
+        and esolangs.describe(name)["boolean_generator"]
+    ][:1]
+    for language in terminating:
         assert (
-            pool.submit(
-                _evaluate,
-                "Suffolk",
-                esolangs.generate("Suffolk", "0110"),
-                inputs=2,
-                isolated=True,
-            ).result(timeout=30)
-            == "0110"
+            _evaluate(
+                language, esolangs.generate(language, "01"), inputs=1, isolated=True
+            )
+            == "01"
         )
-    assert (
-        _evaluate("123", esolangs.generate("123", "01"), inputs=1, isolated=True)
-        == "01"
-    )
     try:
         esolangs.run("brainfuck", "+[]", timeout=0.5, isolated=True)
     except esolangs.ExecutionTimeoutError:
         pass
     else:
         raise AssertionError("isolated timeout did not stop a loop")
-    assert (
-        _evaluate("123", esolangs.generate("123", "01"), timeout=None, inputs=1) == "01"
-    )
+    for language in terminating:
+        assert (
+            _evaluate(
+                language, esolangs.generate(language, "01"), timeout=None, inputs=1
+            )
+            == "01"
+        )
     assert (importlib.util.find_spec("PIL") is not None) == image_extra
-    if math_extra:
+    if "Polynomial" not in registered:
+        pass  # the one language needing the math extra was removed
+    elif math_extra:
         assert importlib.util.find_spec("sympy") is not None
         assert (
             _evaluate(

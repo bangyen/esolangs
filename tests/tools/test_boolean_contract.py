@@ -420,10 +420,15 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: Timings are deliberately absent.  The document states a few and calls
 #: them approximate, and asserting one here would fail whenever the machine
 #: is busy -- which, on a suite that runs four workers, is always.
+#: A language removed since drops out.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
-    "Polynomial": (1_745_528, 5_458_693, 3.1),
-    "Factor": (12_592, 24_463, 2.1),
+    name: sizes
+    for name, sizes in {
+        "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
+        "Polynomial": (1_745_528, 5_458_693, 3.1),
+        "Factor": (12_592, 24_463, 2.1),
+    }.items()
+    if name in LANGUAGES
 }
 
 

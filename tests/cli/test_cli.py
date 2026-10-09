@@ -261,24 +261,6 @@ class TestProgramFailuresAreReported:
         assert f"unfilled runs of {char!r}" in result.stderr
         assert "Traceback" not in result.stderr
 
-    @pytest.mark.slow
-    def test_the_readme_suffolk_flow_completes(self, tmp_path: Path) -> None:
-        """Generate then run, the README's first pair, for all four rows."""
-        generated = run_cli("generate", "Suffolk", "0110")
-        path = tmp_path / "su.txt"
-        path.write_text(generated.stdout.rstrip("\n"))
-        got = "".join(
-            run_cli(
-                "run",
-                "Suffolk",
-                str(path),
-                stdin=esolangs.encode_inputs("Suffolk", [a, b]),
-            ).stdout
-            for a in (0, 1)
-            for b in (0, 1)
-        )
-        assert got == "0110"
-
 
 class TestOutputAndAbridging:
     """The two output conventions: byte-exact when piped, readable when not."""

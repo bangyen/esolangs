@@ -15,13 +15,11 @@ from esolangs.cli_io import (
 )
 from tests.cli.test_cli import call_main, run_cli
 from tests.cli_support import EXAMPLES
-from tests.pick import languages
+from tests.pick import languages, one_where
 
-#: A language whose input bits are not spelled 0 and 1.
-_SPELLED = next(
-    n
-    for n in languages(boolean_generator=True)
-    if esolangs.describe(n)["input_encoding"] != ("0", "1")
+#: A language whose input bits are not spelled 0 and 1, if one is registered.
+_SPELLED = one_where(
+    lambda d: d["input_encoding"] != ("0", "1"), boolean_generator=True
 )
 
 
@@ -211,14 +209,15 @@ class TestAClosedPipeIsNotAnError:
 class TestProgramFilesLoad:
     """The newline a text file ends with is the file's, not the program's."""
 
+    @pytest.mark.parametrize("spelled", _SPELLED)
     def test_a_generated_file_runs_as_written(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, spelled: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``esolangs generate > f`` wrote a newline three interpreters reject."""
         path = tmp_path / "g.txt"
-        path.write_text(esolangs.generate(_SPELLED, "0110") + "\n")
-        stdin = esolangs.encode_inputs(_SPELLED, [0, 1])
-        assert call_main(["run", _SPELLED, str(path)], capsys, stdin=stdin) == "1"
+        path.write_text(esolangs.generate(spelled, "0110") + "\n")
+        stdin = esolangs.encode_inputs(spelled, [0, 1])
+        assert call_main(["run", spelled, str(path)], capsys, stdin=stdin) == "1"
 
     @pytest.mark.parametrize(
         "name",

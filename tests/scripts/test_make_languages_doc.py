@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from tests.pick import one
 from tests.scripts.script_support import load
 from tests.test_language_coupling import REFERENCE
 
@@ -169,8 +170,11 @@ def test_the_shape_table_carries_the_encoders_output() -> None:
     """A wrong-but-in-sync table cannot pass the sync test above."""
     module = load_script()
     rendered = module.render_input_shapes_section()
-    assert "| Fargo | `row_index` | `0`/`1` | `'5\\n'` |" in rendered
-    assert "| Taglate | `char_stream_padded` | `0`/`1` | `'0101'` |" in (rendered)
+    # Row 5 is 101; a padded stream leads an odd count with a zero.
+    for name in one(input_shape="row_index"):
+        assert f"| {name} | `row_index` | `0`/`1` | `'5\\n'` |" in rendered
+    for name in one(input_shape="char_stream_padded"):
+        assert f"| {name} | `char_stream_padded` | `0`/`1` | `'0101'` |" in rendered
 
 
 def test_boolean_set_names_are_registered() -> None:

@@ -66,9 +66,14 @@ def test_declared_arity_cap_is_enforced(name, cap):
         esolangs.generate(name, "0" * (1 << (cap + 1)))
 
 
-#: Generators whose ``GeneratorCapError`` never reaches a caller, and why.
+#: Generators whose ``GeneratorCapError`` never reaches a caller, and why;
+#: one removed since drops out.
 _INTERNAL_CAPS = {
-    "6-5": "the stream-ordered tree is tried only when its labels fit",
+    name: reason
+    for name, reason in {
+        "6-5": "the stream-ordered tree is tried only when its labels fit",
+    }.items()
+    if name in LANGUAGES
 }
 
 
@@ -110,8 +115,11 @@ def test_restricted_generators_have_executed_positive_controls(name):
 @pytest.mark.medium
 def test_list_exposes_limits_in_both_formats(capsys):
     text = call_main(["list", "--details"], capsys)
-    assert "max-inputs=13" in text
-    assert "1934 instructions" in text
+    for lang in LANGUAGES.values():
+        if lang.generator_max_inputs is not None:
+            assert f"max-inputs={lang.generator_max_inputs}" in text, lang.name
+        if lang.generator_restrictions:
+            assert lang.generator_restrictions in " ".join(text.split()), lang.name
     out = call_main(["list", "--details", "--json"], capsys)
     for row in json.loads(out):
         facts = esolangs.describe(row["name"])

@@ -12,15 +12,13 @@ from esolangs.cli import main
 from esolangs.cli_io import _write_output
 from tests.cli.test_cli import _FakeStdin, _program, call_main
 from tests.cli_support import _failure, _refused, call_both
-from tests.pick import first, languages
+from tests.pick import one, one_where
 
-#: A language whose input bits are not spelled 0 and 1.
-_SPELLED = next(
-    n
-    for n in languages(boolean_generator=True)
-    if esolangs.describe(n)["input_encoding"] != ("0", "1")
+#: A language whose input bits are not spelled 0 and 1, if one is registered.
+_SPELLED = one_where(
+    lambda d: d["input_encoding"] != ("0", "1"), boolean_generator=True
 )
-_PADDED = first(input_shape="char_stream_padded")
+_PADDED = one(input_shape="char_stream_padded")
 
 
 class TestTheHintsStayQuietWhenTheyDoNotApply:
@@ -68,9 +66,12 @@ class TestSmallerReportsFromRoundFifteen:
     @pytest.mark.parametrize(
         ("name", "phrase"),
         [
-            (first(input_shape="char_stream_cyclic"), "adjacent bit characters"),
-            (first(input_shape="row_index"), "one decimal row index"),
-            (_PADDED, "padded with a leading"),
+            *(
+                (n, "adjacent bit characters")
+                for n in one(input_shape="char_stream_cyclic")
+            ),
+            *((n, "one decimal row index") for n in one(input_shape="row_index")),
+            *((n, "padded with a leading") for n in _PADDED),
             ("brainfuck", "adjacent bit characters"),
         ],
     )
@@ -91,20 +92,23 @@ class TestRoundSixQol:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`run --help` used to answer this with a `python -c` incantation."""
-        zero, one = esolangs.describe(_SPELLED)["input_encoding"]  # type: ignore[misc]
-        assert call_main(["encode", _SPELLED, "10"], capsys) == f"{one}\n{zero}\n"
-        assert call_main(["encode", _PADDED, "101"], capsys) == "0101"
+        for name in _SPELLED:
+            zero, one = esolangs.describe(name)["input_encoding"]  # type: ignore[misc]
+            assert call_main(["encode", name, "10"], capsys) == f"{one}\n{zero}\n"
+        for name in _PADDED:
+            assert call_main(["encode", name, "101"], capsys) == "0101"
 
+    @pytest.mark.parametrize("padded", _PADDED)
     def test_encode_then_run_computes_the_table(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, padded: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The pipeline the help now recommends, on the awkward language."""
         path = tmp_path / "tg.txt"
-        path.write_text(esolangs.generate(_PADDED, "10010110"))
+        path.write_text(esolangs.generate(padded, "10010110"))
         got = ""
         for row in range(8):
-            stdin = call_main(["encode", _PADDED, f"{row:03b}"], capsys)
-            got += call_main(["run", _PADDED, str(path)], capsys, stdin=stdin)[-1:]
+            stdin = call_main(["encode", padded, f"{row:03b}"], capsys)
+            got += call_main(["run", padded, str(path)], capsys, stdin=stdin)[-1:]
         assert got == "10010110"
 
     def test_version_is_accepted_after_a_subcommand(

@@ -115,8 +115,10 @@ class TestCapabilityListing:
     def test_details_marks_generators_templates_and_examples(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        # The name column is as wide as the longest name, and names hold
+        # single spaces only, so two or more end it.
         rows = dict(
-            line.split(maxsplit=0) and (line[:32].strip(), line[32:].strip())
+            (*re.split(r"\s{2,}", line.strip(), maxsplit=1), "")[:2]
             for line in call_main(["list", "--details"], capsys).splitlines()
         )
         assert rows["brainfuck"] == "gen ex"

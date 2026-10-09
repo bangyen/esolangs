@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from tests.scripts.script_support import load
+from tests.test_language_coupling import REFERENCE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "mutate.py"
@@ -164,6 +165,6 @@ def test_scratch_directory_under_repo_does_not_inherit_xdist(tmp_path: Path) -> 
     import tomllib
 
     script = load_script()
-    proj, *_ = script._prepare("Bitdeque", tmp_path)  # noqa: SLF001
+    proj, *_ = script._prepare(REFERENCE, tmp_path)  # noqa: SLF001
     config = tomllib.loads((proj / "pyproject.toml").read_text())
     assert config["tool"]["pytest"]["ini_options"]["addopts"] == ["-n", "0"]

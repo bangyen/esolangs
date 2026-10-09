@@ -43,7 +43,9 @@ BALANCED = sorted(
         first(parameterized=True, boolean_generator=True),
     }
 )
-_MAMMAL = next(lang.id for lang in LANGUAGES.values() if lang.wrap is _mammalian)
+_MAMMAL = next(
+    (lang.id for lang in LANGUAGES.values() if lang.wrap is _mammalian), None
+)
 #: One language per token wrapper the global minimum is checked against.
 CELLED = list(
     {

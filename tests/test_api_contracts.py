@@ -41,9 +41,10 @@ class TestNameResolution:
 
     def test_a_near_miss_is_named(self) -> None:
         """A misspelling is a spelling problem; answer it with the spelling."""
+        name = max(esolangs.list_languages(), key=len)
         with pytest.raises(UnknownLanguageError) as exc:
-            esolangs.generate("Sophi", XOR)
-        assert "did you mean Sophie" in str(exc.value)
+            esolangs.generate(name[:-1], XOR)
+        assert f"did you mean {name}" in str(exc.value)
 
 
 class TestParameterizedTemplates:

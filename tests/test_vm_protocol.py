@@ -192,26 +192,30 @@ class TestEveryLanguageImplementsTheSameInterface:
             assert shape != "offset", f"{language} reports a tuple ip as an offset"
 
 
-class TestTheCoordinateOrderIsRowThenColumn:
-    """``VM.ip``'s arity is unstable and the *order* is not, and only one
-    of those was written down.
+# ``VM.ip``'s arity is unstable and its *order* -- row, then column -- is
+# not.  The languages that show it check it from their own test files,
+# through the two helpers below.
+
+
+def assert_one_row_moves_along_it(name: str) -> None:
+    """``name`` lays its generated program on one row and moves along it.
+
+    Each such language calls this from its own test file.
     """
+    program, stdin = _row_for(name)
+    assert program.count("\n") == 0, name  # one row
+    assert _first_move(name, program, stdin)[0] == 0, name
 
-    def test_a_single_row_grid_moves_in_the_second_component(self) -> None:
-        """Alight and Super SNUSP lay their programs on one row."""
-        for name in ("Alight", "Super SNUSP"):
-            program, stdin = _row_for(name)
-            assert program.count("\n") == 0, name  # one row
-            assert _first_move(name, program, stdin)[0] == 0, name
 
-    def test_a_downward_start_moves_in_the_first_component(self) -> None:
-        """Dig, Flowchart, LaserFuck and Streetcode begin vertically."""
-        widths = {"Flowchart": 1}
-        for name in ("Dig", "Flowchart", "LaserFuck", "Streetcode"):
-            program, stdin = _row_for(name, widths.get(name))
-            before, after = _first_move_pair(name, program, stdin)
-            assert before[0] != after[0], name
-            assert before[1] == after[1], name
+def assert_starts_downward(name: str, width: int | None = None) -> None:
+    """``name``'s generated program first moves in the row component.
+
+    Each language that begins vertically calls this from its own test file.
+    """
+    program, stdin = _row_for(name, width)
+    before, after = _first_move_pair(name, program, stdin)
+    assert before[0] != after[0], name
+    assert before[1] == after[1], name
 
 
 def _row_for(name: str, width: int | None = None) -> tuple[str, str]:
