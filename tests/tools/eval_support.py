@@ -102,7 +102,7 @@ def _eval_fill_runs(
 
 
 @cache
-def _eval_reorders(max_ops: int = _EVAL_MAX_OPS) -> tuple[str, ...]:
+def _eval_reorder_catalog(max_ops: int = _EVAL_MAX_OPS) -> tuple[str, ...]:
     """Every reorder word the cap admits, shortest first then ``~*=``."""
     words: set[str] = set()
     for skeleton in _eval_skeletons(max_ops):
@@ -134,7 +134,7 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     # Arrangements are permutations, so ``n!`` claimed is exhaustive, not
     # a heuristic.  Fires at n <= 4; from n = 5 reach is 119 of 120.
     everything = factorial(n)
-    for ops in _eval_reorders():
+    for ops in _eval_reorder_catalog():
         stacks: tuple[list[int], list[int]] = ([], list(range(n)))
         active = _EVAL_TREE_STACK
         for op in ops:

@@ -392,7 +392,7 @@ languages remain rejected from the same image-source screen.
   would change overlapping-rule programs; `--seed` makes the draws repeatable.
   The generator writes rules that never overlap,
   so each state it reaches has exactly one rewrite and the draw cannot change
-  the answer; `tests/tools/test_boolean_classics.py` asserts that over every
+  the answer; `tests/tools/test_boolean_thue.py` asserts that over every
   table to three inputs, and checks the answer under three seeds and the
   unseeded draw.
 - Unlambda's `@` reads a Unicode character, including newlines. At EOF,

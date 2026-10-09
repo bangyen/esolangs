@@ -152,10 +152,10 @@ class TestEvalBoolean:
         """The built words are capped, deduplicated and (length, ~<*<=)-sorted."""
         from tests.tools.eval_support import (
             _EVAL_MAX_OPS,
-            _eval_reorders,
+            _eval_reorder_catalog,
         )
 
-        built = _eval_reorders()
+        built = _eval_reorder_catalog()
         assert len(set(built)) == len(built)
         assert built[0] == ""
         assert all(len(ops) <= _EVAL_MAX_OPS for ops in built)

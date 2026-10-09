@@ -203,10 +203,10 @@ options:
   -s, --settings JSON    dialect overrides, e.g. '{"eof":"zero"}'.
   --set KEY=VALUE    one dialect override without JSON, repeatable and applied
                      after --settings.
-  --seed N           fix the random draws so the run repeats.  Befunge,
-                     Fish, INTERCAL, LaserFuck, Modulous, Painfuck, Super
-                     SNUSP, Thue and thisthat draw.  A seed for a language
-                     that draws nothing is refused rather than ignored.
+  --seed N           fix the random draws so the run repeats.  `esolangs
+                     describe --json <language>` reports `random` for the
+                     languages that draw.  A seed for a language that draws
+                     nothing is refused rather than ignored.
 examples:
   printf '1\n0\n' | esolangs run brainfuck prog.txt
   printf '1\n0\n' | esolangs run --timeout 5 brainfuck prog.txt
