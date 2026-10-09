@@ -1,10 +1,12 @@
 """brainif generator tests."""
 
+from functools import partial
 from itertools import pairwise
 
 import pytest
 
 from esolangs import tools as boolean
+from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import (
     run_brainif,
 )
@@ -204,3 +206,8 @@ def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
     program = generate("BrainIf", table, width=1)
     for row in (0, 1, 777, 2048, 4095):
         assert run_brainif(program, list(format(row, f"0{n}b"))) == table[row]
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(partial(boolean.brainif, width=1000), range(8, 12))

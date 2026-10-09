@@ -11,7 +11,7 @@ from esolangs import tools as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.algebraic_programming_language import _Machine
 from esolangs.tools.helpers import best_input_order
-from tests.generator_support import verify_generated
+from tests.generator_support import assert_parity_at_most_doubles, verify_generated
 from tests.tools.boolean_runners import (
     run_algebraic_programming_language,
 )
@@ -335,3 +335,8 @@ def test_xor_arithmetic_family_reaches_four_columns() -> None:
             )
     assert algebraic_programming_language("0110", 4) == program
     assert max(map(len, algebraic_programming_language("0110", 5).splitlines())) == 5
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.algebraic_programming_language, (7, 8), 31)

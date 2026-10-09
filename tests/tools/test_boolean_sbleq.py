@@ -2,9 +2,12 @@
 
 import random
 
+import pytest
+
 from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
 from esolangs.tools.sbleq import _sbleq_hoisted, _sbleq_packed
+from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import run_sbleq
 from tests.tools.sample_tables import five_input_sample
 
@@ -82,3 +85,8 @@ class TestSbleq:
         for row in range(2**n):
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_sbleq(program, bits) == table[row]
+
+
+@pytest.mark.medium
+def test_parity_source_at_most_doubles_per_input() -> None:
+    assert_parity_at_most_doubles(boolean.sbleq, range(11, 15))
