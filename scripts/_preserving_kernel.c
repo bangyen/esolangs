@@ -31,6 +31,8 @@ static int image(const int *rows, const int *edges, const int *types,
     uint64_t loop_weight = b*b;
     for (int c = 0; c < s; ++c) {
         for (int i = 0; i < h; ++i) {
+            /* At most 256 weights <= 10^10: the grouped sum fits uint64_t. */
+            uint64_t grouped[16] = {0};
             for (int j = 0; j < n; ++j) {
                 uint64_t left = value[((size_t)c*h+i)*n+j];
                 if (!left) continue;
@@ -42,7 +44,11 @@ static int image(const int *rows, const int *edges, const int *types,
                 }
                 int middle = rows[8*j+6];
                 if (middle < 0) continue;
-                int position = positions[middle];
+                grouped[positions[middle]] += left;
+            }
+            for (int position = 0; position < h; ++position) {
+                uint64_t left = grouped[position];
+                if (!left) continue;
                 for (int column = 0; column < k; ++column) {
                     int target = edges[c*(6+k)+6+column];
                     if (target < 0) continue;
