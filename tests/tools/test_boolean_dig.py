@@ -107,14 +107,14 @@ class TestDig:
             assert run_dig(program, list(format(row, "08b"))) == table[row]
 
     def test_unmatched_leaf_groups_still_answer(self) -> None:
-        """Three-leaf nine-input groups keep the unshared layout."""
+        """Three-leaf nine-input groups can use the indexed body."""
         import random
 
         rng = random.Random(262)
         blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(3)]
         table = "".join(blocks[i] for i in (1, 1, 1, 0, 0, 2, 0, 2))
         program = boolean.dig(table)
-        assert program == boolean.dig(table, share=False)
+        assert len(program) < len(boolean.dig(table, share=False))
         for row in range(0, 512, 37):
             assert run_dig(program, list(format(row, "09b"))) == table[row]
 
@@ -330,10 +330,7 @@ def test_shared_routes_keep_the_execution_bound(
     table = a + b + b + a
     program = boolean.dig(table, width)
     rows = program.splitlines()
-    wide = width is None or width >= 35
-    assert (len(rows), max(map(len, rows)), len(program)) == (
-        (33, 35, 912) if wide else (47, 26, 1091)
-    )
+    assert (len(rows), max(map(len, rows)), len(program)) == (44, 15, 521)
     worst = 0
     for row, expected in enumerate(table):
         io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
@@ -345,7 +342,7 @@ def test_shared_routes_keep_the_execution_bound(
         assert machine.halted
         assert (io.getvalue(), io.reads) == (expected, 8)
         worst = max(worst, steps)
-    assert worst == (208 if wide else 218)
+    assert worst == 217
 
 
 @pytest.mark.medium
@@ -504,7 +501,7 @@ def test_spare_row_routes_reach_every_width_path(width: int | None) -> None:
     table = "".join(blocks[int(bit)] for bit in "01101001")
     program = boolean.dig(table, width)
     rows = program.splitlines()
-    assert (len(rows), max(map(len, rows)), len(program)) == (71, 36, 2252)
+    assert (len(rows), max(map(len, rows)), len(program)) == (48, 15, 554)
     for row, expected in enumerate(table):
         io = ScriptedIO("\n".join(format(row, "09b")) + "\n")
         machine = _Machine(rows, io)
@@ -519,7 +516,7 @@ def test_spare_row_routes_reach_every_width_path(width: int | None) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize(
     ("pattern", "shared", "expected_steps", "expected_area"),
-    [("0220200231131331", True, 301, 4899), ("1230301230121230", False, 292, 5175)],
+    [("0220200231131331", True, 291, 1152), ("1230301230121230", False, 291, 1152)],
 )
 def test_disjoint_and_interleaved_groups_choose_bounded_routes(
     pattern: str, *, shared: bool, expected_steps: int, expected_area: int
@@ -686,14 +683,13 @@ def test_ignored_prefix_keeps_the_smallest_shared_grid(ignored: int) -> None:
     n = 9 + ignored
     integrated = _dig_build(table, n, None, share=True)
     wrapped = _dig_discards(ignored) + "\n" + boolean.dig(base)
-    assert len(integrated) < len(wrapped)
     program = boolean.dig(table)
-    assert program == integrated
+    assert program == wrapped
     rows = program.splitlines()
-    assert len(rows) * max(map(len, rows)) == 1960
-    assert len(wrapped.splitlines()) * max(map(len, wrapped.splitlines())) == (
-        2736 if ignored == 1 else 2772
-    )
+    area = len(rows) * max(map(len, rows))
+    assert area == (795 if ignored == 1 else 810)
+    previous = integrated.splitlines()
+    assert area < len(previous) * max(map(len, previous))
     bound = 312 if n == 10 else 384
     for row, expected in enumerate(table):
         io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
@@ -742,7 +738,8 @@ def test_centered_offset_owner_executes_every_row(
     n = (len(table) - 1).bit_length()
     program = _dig_center_shared(table, n)
     assert program is not None
-    assert boolean.dig(table) == program
+    selected = boolean.dig(table).splitlines()
+    assert len(selected) * max(map(len, selected)) < area
     rows = program.splitlines()
     assert len(rows) * max(map(len, rows)) == area
     worst = 0
@@ -788,7 +785,13 @@ def test_centered_offset_owner_does_not_replace_a_smaller_parallel_route(
     assert candidate is not None
     rows = candidate.splitlines()
     assert len(rows) * max(map(len, rows)) == 6461
-    assert boolean.dig(table) == _dig_parallel_shared(table, 10 + ignored)
+    selected = boolean.dig(table).splitlines()
+    parallel = _dig_parallel_shared(table, 10 + ignored)
+    assert parallel is not None
+    previous = parallel.splitlines()
+    assert len(selected) * max(map(len, selected)) < len(previous) * max(
+        map(len, previous)
+    )
 
 
 @pytest.mark.parametrize("width", [42, 60])
@@ -803,7 +806,7 @@ def test_centered_offset_owner_respects_requested_width(width: int) -> None:
     candidate = _dig_center_shared(table, 11)
     assert candidate is not None
     program = boolean.dig(table, width=width)
-    assert (program == candidate) == (width == 60)
+    assert program != candidate
     assert max(map(len, program.splitlines())) <= width
     for row in (0, 1023, 2047):
         assert run_dig(program, list(format(row, "011b"))) == table[row]
@@ -819,8 +822,8 @@ def test_centered_offset_owner_lowers_the_narrow_floor(width: int) -> None:
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
     table = "".join(blocks[int(bit)] for bit in "01101001") * 2
     program = boolean.dig(table, width=width)
-    assert program == _dig_center_shared(table, 10)
-    assert max(map(len, program.splitlines())) == 35
+    assert program != _dig_center_shared(table, 10)
+    assert max(map(len, program.splitlines())) == 16
     for row in (0, 511, 1023):
         assert run_dig(program, list(format(row, "010b"))) == table[row]
 
@@ -853,3 +856,161 @@ def test_constant_columns_use_grid_area_and_read_every_input(
         assert machine.halted
         assert (io.getvalue(), io.reads) == (value, n)
         assert commands == len(rows)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("pattern", "area", "commands"),
+    [
+        ("01101001", 720, 227),
+        ("0000000000000001", 896, 243),
+        ("0220200231131331", 1152, 291),
+        ("1230301230121230", 1152, 291),
+    ],
+)
+def test_indexed_sharing_admits_full_input_controls(
+    pattern: str, area: int, commands: int
+) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig_shared import _dig_indexed_shared
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
+    table = "".join(blocks[int(c)] for c in pattern)
+    n = (len(table) - 1).bit_length()
+    program = _dig_indexed_shared(table, n)
+    assert program is not None
+    assert boolean.dig(table) == program
+    rows = program.splitlines()
+    assert len(rows) * max(map(len, rows)) == area
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= commands:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, n)
+        worst = max(worst, steps)
+    assert worst == commands
+
+
+def test_indexed_sharing_refuses_four_classes_at_nine_inputs() -> None:
+    from esolangs.tools.dig_shared import _dig_indexed_shared
+
+    blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
+    table = "".join(blocks[int(c)] for c in "01230123")
+    assert _dig_indexed_shared(table, 9) is None
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("n", "area", "commands"), [(8, 660, 217), (11, 900, 347), (12, 960, 369)]
+)
+def test_indexed_prefix_decoders_execute_every_row(
+    n: int, area: int, commands: int
+) -> None:
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig_shared import _dig_indexed_shared
+
+    table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+    program = _dig_indexed_shared(table, n)
+    assert program is not None
+    rows = program.splitlines()
+    assert len(rows) * max(map(len, rows)) == area
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= commands:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, n)
+        worst = max(worst, steps)
+    assert worst == commands
+
+
+def test_indexed_sharing_refuses_four_classes_at_eleven_inputs() -> None:
+    from esolangs.tools.dig_shared import _dig_indexed_shared
+
+    blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
+    assert _dig_indexed_shared("".join(blocks) * 8, 11) is None
+
+
+@pytest.mark.medium
+def test_indexed_six_bit_decoder_keeps_four_classes_within_the_ledger() -> None:
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig_shared import _dig_indexed_shared
+
+    blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
+    table = "".join(blocks) * 16
+    program = _dig_indexed_shared(table, 12)
+    assert program is not None
+    rows = program.splitlines()
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "012b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 417:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, 12)
+        worst = max(worst, steps)
+    assert worst == 417
+
+
+@pytest.mark.medium
+def test_indexed_sharing_uses_the_ledger_to_limit_class_count() -> None:
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig_shared import _dig_indexed_shared
+
+    blocks = ["".join(str((row >> bit) & 1) for row in range(64)) for bit in range(6)]
+    blocks.append("".join(str(row.bit_count() % 2) for row in range(64)))
+    table = "".join(blocks[i % 7] for i in range(64))
+    program = _dig_indexed_shared(table, 12)
+    assert program is not None
+    rows = program.splitlines()
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "012b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 489:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, 12)
+        worst = max(worst, steps)
+    assert worst == 489
+    blocks.append("0" * 64)
+    assert _dig_indexed_shared("".join(blocks) * 8, 12) is None
+
+
+@pytest.mark.parametrize(
+    ("high", "low", "classes", "length"),
+    [
+        ([2, 1], [4, 2, 1], 2, 128),
+        ([4, 2, 1], [2, 1], 2, 128),
+        ([4, 2, 1], [4, 2, 1], 11, 704),
+        ([4, 2, 1], [4, 2, 1], 2, 64),
+    ],
+)
+def test_shared_stamps_refuse_unsupported_shapes(
+    high: list[int], low: list[int], classes: int, length: int
+) -> None:
+    from esolangs.tools.dig_leaf import _dig_flat_leaf
+
+    with pytest.raises(AssertionError, match="shared stamps require"):
+        _dig_flat_leaf("0" * length, high, low, classes=classes)

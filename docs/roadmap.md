@@ -84,17 +84,6 @@ bounds, and the weighted-description theorem.
 Generator gaps against the canonical pieces in
 [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
-- **Dig offset routes.** Centered owners and heading-separated doglegs
-  share offset copies when the ledger permits: ignored-prefix parity
-  uses 1,960 cells and 304 commands; sparse/disjoint controls save
-  21%/19%. Full-input controls still exceed the bound, and retained stamps
-  can block bridges. Root-half owners grow the sparse control from
-  3,808 to 5,041 cells; arrival-weighted centers reproduce the eight
-  admitted controls. Midpoint relocation overlaps retained stamps;
-  projection onto free intervals grows the controls. Keep these variants
-  out. Direct cross-bank turns collide; owner-facing doglegs cross other
-  callers' direction cells. Both fail all twelve controls. Shorten bridges
-  without merging opposing approach lanes.
 - **Back bend routes stay out.** They add under one point on tiled n=8,
   and raise worst commands at n=6/7 from 122/221 to 154/306, past the
   execution ledger's bound.

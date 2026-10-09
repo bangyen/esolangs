@@ -23,6 +23,7 @@ from esolangs.tools.dig_leaf import (
 from esolangs.tools.dig_leaf import (
     _dig_flat_leaf as _dig_flat_leaf,
 )
+from esolangs.tools.dig_shared import _dig_indexed_shared
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -302,17 +303,19 @@ def _dig_size(program: str) -> tuple[int, int]:
 
 def _dig_center_choice(table: str, n: int, current: str, width: int | None) -> str:
     """Shrink area while fitting width or lowering its existing floor."""
-    candidate = _dig_center_shared(table, n)
-    if candidate is None:
-        return current
-    if (
-        width is not None
-        and grid_width(candidate) > width
-        and (
-            grid_width(current) <= width or grid_width(candidate) > grid_width(current)
+    candidates = tuple(
+        filter(None, (_dig_center_shared(table, n), _dig_indexed_shared(table, n)))
+    )
+    if width is not None:
+        candidates = tuple(
+            p
+            for p in candidates
+            if grid_width(p) <= width
+            or (grid_width(current) > width and grid_width(p) <= grid_width(current))
         )
-    ):
+    if not candidates:
         return current
+    candidate = min(candidates, key=_dig_size)
 
     return candidate if _dig_size(candidate)[0] < _dig_size(current)[0] else current
 
@@ -492,6 +495,10 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
     use the fixed two-leaf stencil (26 columns, at most 218 commands).
     Two parallel lanes admit interleaved classes (n=10: 5,175 cells,
     292 commands), stretching branch counters around their gutter.
+    A prefix lookup can instead index up to seven shared leaf classes at
+    n=8..12, adding eight rows per class to one six-input body. Full-input
+    parity uses 720 cells and 227 commands at n=9; four-class n=10 controls
+    use 1,152 cells and 291 commands. Candidates must fit the same ledger.
     Groups whose corridors collide or exceed the bound remain unshared.
     """
     n = _validate_truth_table(truth_table)

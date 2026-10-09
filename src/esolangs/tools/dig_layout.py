@@ -4,9 +4,9 @@ from esolangs.tools.dig_leaf import (
     _DIG_DIGITS,
     _DIG_OPAQUE,
     _DIG_SPAN,
-    _dig_adder,
     _dig_constant_leaf,
     _dig_flat_leaf,
+    _dig_flat_walk,
     _Reads,
     _render,
 )
@@ -610,21 +610,7 @@ def _dig_layout(
                 + abs(e[0] - c[0])
                 + abs(e[1] - c[1])
             )
-        row_count, col_count = sum(high) + 1, sum(low) + 1
-        painter = _dig_adder(high, 2)[4][1] - 1
-        stepper = _dig_adder(low, 0)[4][1] - 1
-        far = max(6 + col_count, 5 + stepper)
-        # Sum the flat stamp's walking legs. Only the selected column
-        # changes their length; its maximum is col_count - 1. Data digits
-        # affect the printed answer, never the route.
-        leaf_cost = (
-            (row_count + 14) // 2
-            - 1
-            + 2 * (painter + stepper + far)
-            + 3 * row_count
-            + 2 * (col_count - 1)
-            + 48
-        )
+        leaf_cost = _dig_flat_walk(high, low)
         worst = max((costs[p] + cost for p, cost in tails.items()), default=0)
         for point, key in entries.items():
             travel = 0

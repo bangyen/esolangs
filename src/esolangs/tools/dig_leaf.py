@@ -83,7 +83,9 @@ def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
     return chars, turns, reads, (1, first - 1), (0, hold + 1, -1, 1)
 
 
-def _dig_flat_leaf(table: str, high: list[int], low: list[int]) -> _Stamp:
+def _dig_flat_leaf(
+    table: str, high: list[int], low: list[int], *, classes: int = 1
+) -> _Stamp:
     """Index ``table`` by two adders instead of branching on its bits.
 
     The first ``high`` inputs become a row count, painted across a whole row
@@ -98,15 +100,22 @@ def _dig_flat_leaf(table: str, high: list[int], low: list[int]) -> _Stamp:
     corridor columns carry the mole between them: one in, one down to the
     paint row, one back up to the selector.
     """
-    rows, cols = sum(high) + 1, sum(low) + 1
+    if classes > 1 and (
+        high != [4, 2, 1]
+        or low != [4, 2, 1]
+        or not 2 <= classes <= 10
+        or len(table) != 64 * classes
+    ):
+        raise AssertionError("shared stamps require six-bit classes and digit labels")
+    rows, cols = classes * (sum(high) + 1), sum(low) + 1
     painter, stepper = _dig_adder(high, 2), _dig_adder(low, 0)
     chars: dict[tuple[int, int], str] = {}
     turns: dict[tuple[int, int], int] = {}
     # Rows the leaf spends, counted from the entry: three for each adder,
     # the table's own band, and the corridors that join them.  The entry
     # sits at the middle so the box the tree reserves is not lopsided.
-    top = 1 - (rows + 14) // 2
-    sel = top + 3
+    top = 0 if classes > 1 else 1 - (rows + 14) // 2
+    sel = top + 3 + int(classes > 1)
     bot = sel + rows + 9
     back = bot + 2
     last = sel + rows
@@ -126,7 +135,8 @@ def _dig_flat_leaf(table: str, high: list[int], low: list[int]) -> _Stamp:
         )
         return row + exit_at[0], col + exit_at[1]
 
-    turns[0, 0] = _DIG_RETRACE  # climb to the first adder
+    if classes == 1:
+        turns[0, 0] = _DIG_RETRACE  # climb to the first adder
     turns[top, 0] = _DIG_FORWARD
     turns[stamp(top, 3, painter)[0], 2] = _DIG_SIDE
     turns[sel + 1, 2] = _DIG_FORWARD  # into the paint row
@@ -161,7 +171,38 @@ def _dig_flat_leaf(table: str, high: list[int], low: list[int]) -> _Stamp:
     turns[bot, 2] = _DIG_FORWARD
     turns[stamp(bot, 3, stepper)[0], 1] = _DIG_RETRACE
     width = max(far, 3 + painter[4][1])
+    if classes > 1:
+        # Capture eight rows per class before reading the final six inputs.
+        # The extra return command adds that stored offset to the row count.
+        first = painter[3][1]
+        hold = max(c for (r, c), char in painter[0].items() if r == 1 and char == "$")
+        chars[top, 3 + hold] = str(hold - first)
+        chars[top + 1, 3 + first] = "+"
+        reads.append(((top + 1, 3 + first), (top + 2, 3 + first), frozenset()))
+        chars.update({(2, 8): "$", (2, 7): "*", (2, 6): ";", (2, 9): "2", (3, 7): "8"})
+        turns[2, 1], turns[0, 1] = _DIG_RETRACE, _DIG_FORWARD
+        pending = frozenset({(2, 6)})
+        reads.extend((((2, 8), (2, 9), pending), ((2, 7), (3, 7), pending)))
     return chars, turns, reads, (0, 0), (0, width, top - 1, back)
+
+
+def _dig_flat_walk(high: list[int], low: list[int]) -> int:
+    """Bound the centered flat stamp's walk, including the final halt."""
+    row_count, col_count = sum(high) + 1, sum(low) + 1
+    painter = _dig_adder(high, 2)[4][1] - 1
+    stepper = _dig_adder(low, 0)[4][1] - 1
+    far = max(6 + col_count, 5 + stepper)
+    # Sum the flat stamp's walking legs. Only the selected column
+    # changes their length; its maximum is col_count - 1. Data digits
+    # affect the printed answer, never the route.
+    return (
+        (row_count + 14) // 2
+        - 1
+        + 2 * (painter + stepper + far)
+        + 3 * row_count
+        + 2 * (col_count - 1)
+        + 48
+    )
 
 
 def _render(cells: dict[tuple[int, int], str], *, dense: bool) -> str:
