@@ -42,7 +42,6 @@
 "tests/interpreters/streetcode_support.py" = 1
 "tests/interpreters/test_cvnc.py" = 1
 "tests/interpreters/test_input_convention.py" = 4
-"tests/interpreters/test_semantic_oracles.py" = 24
 "tests/interpreters/test_slashes_subleq.py" = 5
 "tests/interpreters/test_sophie.py" = 2
 "tests/interpreters/test_taglate.py" = 3
