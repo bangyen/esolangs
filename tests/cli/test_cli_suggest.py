@@ -3,13 +3,23 @@
 import pytest
 
 import esolangs
-from esolangs.cli_suggest import (
-    _bitdeque_corrections,
-    _brainif_corrections,
-    _collatz_corrections,
-    _grapheme_corrections,
-    _modulous_corrections,
-    _packlang_corrections,
+from esolangs.interpreters.other.packlang import (
+    suggest_corrections as _packlang_corrections,
+)
+from esolangs.interpreters.queue_based.bitdeque import (
+    suggest_corrections as _bitdeque_corrections,
+)
+from esolangs.interpreters.register_based.collatz_multiverse import (
+    suggest_corrections as _collatz_corrections,
+)
+from esolangs.interpreters.stack_based.grapheme import (
+    suggest_corrections as _grapheme_corrections,
+)
+from esolangs.interpreters.stack_based.modulous import (
+    suggest_corrections as _modulous_corrections,
+)
+from esolangs.interpreters.tape_based.brainif import (
+    suggest_corrections as _brainif_corrections,
 )
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.cli_support import call_both
@@ -375,3 +385,21 @@ def test_packlang_deep_preview_reports_parser_limit(tmp_path, capsys):
     assert captured.out == ""
     assert "source preview exceeds parser recursion depth" in captured.err
     assert "reduce expression nesting" in captured.err
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        # Speculative parsing of a declaration rewrites nothing in it.
+        "Package : IO { Integer main { Array(Integer, 2) a; charPut(65); } } app;",
+        "Package : IO { Integer main { While 0 Do { charPut(65); } "
+        "charPut(65); } } app;",
+    ],
+)
+def test_packlang_speculation_and_spelled_keywords_receive_no_edit(source):
+    assert _packlang_corrections(source) == ()
+
+
+@pytest.mark.parametrize("source", ["[123][END]", '["x"][END]'])
+def test_modulous_tokens_without_a_keyword_receive_no_edit(source):
+    assert _modulous_corrections(source) == ()

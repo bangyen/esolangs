@@ -1,6 +1,8 @@
 """Boolean-function generator for Back."""
 
+from collections.abc import Callable
 from itertools import pairwise
+from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -10,7 +12,9 @@ from esolangs.tools.helpers import (
     constant_span_test,
     grid_width,
     input_weights,
+    layout_width,
     move_text,
+    same_up_to_wrapping,
     subtree_ids,
 )
 from esolangs.tools.wrap import balance_score
@@ -376,10 +380,18 @@ def _balance(table: str, default: str) -> str:
     return min(default, descending, plain, narrow, back(table, 1), key=balance_score)
 
 
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Rebuild a width-fitted grid at the template's own width."""
+    return template == layout(layout_width(template)) or same_up_to_wrapping(
+        template, plain
+    )
+
+
 LANGUAGE = Language(
     "Back",
     "tape_based.back",
     boolean=back,
+    same_layout=_same_layout,
     split=True,
     contract=BooleanContract(
         answer_mode="dump",

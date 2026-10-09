@@ -341,17 +341,27 @@ def _postfix_units(
     return [*units, ["out r"], ["end"]]
 
 
-def _balance(table: str, default: Any, **options: Any) -> Any:
-    """Defer to the ``balance`` submodule, which imports this one."""
+def _balance(table: str, default: Any, *, expression_syntax: str = "infix") -> Any:
+    """Defer to the ``balance`` submodule, which imports this one.
+
+    The notation is a keyword: it changes the reconstructed instructions.
+    """
     from esolangs.tools.alight.balance import balance_alight  # circular
 
-    return balance_alight(table, default, **options)
+    return balance_alight(table, default, expression_syntax=expression_syntax)
+
+
+def _dialect(expression_syntax: str = "infix", list_update: str = "in_place") -> None:
+    """Validate Alight's dialect settings, one keyword per setting."""
+    validate_expression_syntax(expression_syntax)
+    validate_list_update(list_update)
 
 
 LANGUAGE = Language(
     "Alight",
     "grid_based.alight",
     boolean=alight,
+    dialect=_dialect,
     # Not a tree: a Horner row index into a string literal.
     shape=Shape.LOOKUP,
     split=True,

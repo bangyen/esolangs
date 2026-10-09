@@ -58,6 +58,7 @@ from typing import Final, Literal
 
 from esolangs._drive import drive
 from esolangs._grapheme import DEFAULT_GRAPHEME, GraphemeDialect
+from esolangs._suggest import Correction
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -544,3 +545,18 @@ def run(
 
 if __name__ == "__main__":
     script_main(run)
+
+
+def suggest_corrections(source: str) -> tuple[Correction, ...]:
+    """Return unambiguous keyword edits for ``esolangs suggest``."""
+    return tuple(
+        Correction(
+            index,
+            index + 1,
+            char,
+            char.upper(),
+            "Grapheme source requires uppercase Latin letters",
+        )
+        for index, char in enumerate(source)
+        if "a" <= char <= "z"
+    )

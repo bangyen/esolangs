@@ -1,6 +1,8 @@
 """Smallfuck boolean generator: a decision tree with banded result cells."""
 
 import re
+from collections.abc import Callable
+from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -11,6 +13,7 @@ from esolangs.tools.helpers import (
     in_input_order,
     mark_runs,
     move_text,
+    same_up_to_wrapping,
     subtree_ids,
     unmark,
 )
@@ -162,10 +165,19 @@ def _balance(table: str, default: str) -> str:
     return min(candidates, key=balance_score)
 
 
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Newlines carry no commands: compare the narrow layouts without them."""
+    for width in (1, 4):
+        if template.replace("\n", "") == str(layout(width)).replace("\n", ""):
+            return True
+    return same_up_to_wrapping(template, plain)
+
+
 LANGUAGE = Language(
     "Smallfuck",
     "tape_based.smallfuck",
     boolean=smallfuck,
+    same_layout=_same_layout,
     contract=BooleanContract(
         note="Smallfuck defines no I/O; this implementation prints final cell 2",
     ),

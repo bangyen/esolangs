@@ -858,3 +858,23 @@ def _parity_bias(truth_table: str) -> int | None:
         if int(truth_table[row]) != parity[row] ^ bias:
             return None
     return bias
+
+
+def same_up_to_wrapping(template: str, plain: str) -> bool:
+    """Whether ``template`` is ``plain``, or ``plain`` broken by newlines.
+
+    The default ``same_layout`` of a ``Language``.
+    """
+    return template == plain or (
+        "\n" not in plain and template.replace("\n", "") == plain
+    )
+
+
+def same_tokens(template: str, program: object) -> bool:
+    """Whether the two hold the same whitespace-separated tokens."""
+    return isinstance(program, str) and template.split() == program.split()
+
+
+def layout_width(template: str) -> int:
+    """Return the widest line of ``template``: the width it was laid out to."""
+    return max(1, max(map(len, template.splitlines()), default=0))

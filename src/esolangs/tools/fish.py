@@ -87,7 +87,7 @@ LANGUAGE = Language(
     "Fish",
     "grid_based.fish",
     boolean=fish,
-    # Not a tree: an indexed table read, not a tree.
+    # Not a tree: an indexed table read.
     shape=Shape.LOOKUP,
     split=True,
     contract=BooleanContract(

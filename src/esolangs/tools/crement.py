@@ -20,6 +20,9 @@ tables that is 39,156 to 37,862 characters (3.3%); over 200 seeded
 five-input tables, 114,791 to 83,070 (27.6%).
 """
 
+from collections.abc import Callable
+from typing import Any
+
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
@@ -27,6 +30,9 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     grid_width,
     in_input_order,
+    layout_width,
+    same_tokens,
+    same_up_to_wrapping,
     subtree_ids,
 )
 from esolangs.tools.token_balance import balanced_token_width
@@ -180,10 +186,20 @@ def _balance(table: str, default: str) -> str:
     return min(candidates, key=balance_score)
 
 
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Tokens on whitespace; short setters coexist with fitting layouts."""
+    return (
+        same_tokens(template, layout(1))
+        or same_tokens(template, layout(layout_width(template)))
+        or same_up_to_wrapping(template, plain)
+    )
+
+
 LANGUAGE = Language(
     "Crement",
     "other.crement",
     boolean=crement,
+    same_layout=_same_layout,
     contract=BooleanContract(
         answer_mode="termination",
         answer_values=("halts", "diverges"),

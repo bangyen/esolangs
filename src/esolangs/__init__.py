@@ -17,6 +17,7 @@ Names resolve case-insensitively; deliberate errors derive from EsolangError.
 """
 
 import importlib
+import inspect
 import re
 import signal
 import threading
@@ -87,7 +88,7 @@ from esolangs.registry import (
 )
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
-from esolangs.tools.helpers import mark_runs, unmark
+from esolangs.tools.helpers import mark_runs, same_up_to_wrapping, unmark
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
@@ -221,11 +222,10 @@ def generate(
                 resolve(language), settings=settings
             )
         if balancer is not None:
-            # Alight notation changes a balancer's reconstructed instructions.
+            # A dialect setting the balancer names changes what it rebuilds.
+            accepted = inspect.signature(balancer).parameters
             balance_options = {
-                key: value
-                for key, value in options.items()
-                if lang.id == "alight" and key == "expression_syntax"
+                key: value for key, value in options.items() if key in accepted
             }
             text = cast(Callable[..., str], balancer)(
                 truth_table, default, **balance_options
@@ -304,76 +304,21 @@ def _is_template_for(
         return False
     if template == plain:
         return True
-    language_id = LANGUAGES[name].id
     generator = LANGUAGES[name].boolean
     width_aware = generator is not None and _takes_width(generator)
-    observed_width = max(1, max(map(len, template.splitlines()), default=0))
 
     @cache
     def layout(width: int) -> Program:
         return generate(name, truth_table, width=width, settings=settings)
 
-    def same_tokens(program: Program) -> bool:
-        return isinstance(program, str) and template.split() == program.split()
-
     # Layouts may switch representations; their floor is a named candidate,
     # unlike whitespace wrapping, so compare that template exactly too.
     if width_aware and template == layout(1):
         return True
-    if language_id == "minsky_swap" and template in (
-        layout(10),
-        layout(15),
-    ):
-        return True
-    if language_id == "back" and template == layout(observed_width):
-        return True
-    if language_id == "intercal":
-        from esolangs.tools.intercal import _intercal_tokens
-
-        narrow = layout(1)
-        if isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
-            narrow
-        ):
-            return True
-        # Its primitive layout fits between the natural and simplified floors.
-        # Rebuild at the observed bound rather than accepting equivalent syntax.
-        if template == layout(observed_width):
-            return True
-    if language_id in {"minifuck", "smallfuck"} and width_aware:
-        for width in (1, 4):
-            narrow = str(layout(width))
-            if language_id == "minifuck" and narrow.startswith("q\n"):
-                # Exact layouts were checked above; these LF absorb skips.
-                continue
-            if template.replace("\n", "") == narrow.replace("\n", ""):
-                return True
-    if language_id in {"fractran", "bitdeque", "crement"} and width_aware:
-        narrow = layout(1)
-        if same_tokens(narrow):
-            return True
-    if language_id in {"fractran", "crement"}:
-        # Short setters coexist with fitting layouts that retain the old pair.
-        observed = layout(observed_width)
-        if same_tokens(observed):
-            return True
-    if language_id == "underload":
-        from esolangs.tools.underload import _underload_layout_tokens
-
-        for width in (1, 4):
-            narrow = str(layout(width))
-            if isinstance(narrow, str) and _underload_layout_tokens(
-                template
-            ) == _underload_layout_tokens(narrow):
-                return True
-    # BIO discards whitespace; the other three tokenize on it. Their wrappers
-    # replace spaces with newlines, so removing newlines loses token boundaries.
-    if language_id == "bio":
-        return "".join(template.split()) == "".join(plain.split())
-    if language_id in {"bitdeque", "ram0", "fractran"}:
-        return same_tokens(plain)
-    return template == plain or (
-        "\n" not in plain and template.replace("\n", "") == plain
+    same_layout = LANGUAGES[name].same_layout or (
+        lambda template, plain, _layout: same_up_to_wrapping(template, plain)
     )
+    return same_layout(template, plain, layout)
 
 
 def instantiate(
@@ -556,19 +501,20 @@ def _check_runnable(language: str, program: Program) -> None:
             f"program must be a string of source or a Raster, got "
             f"{type(program).__name__}"
         )
-    # /// uses path-shaped strings as substitution rules.
-    if LANGUAGES[name].id != "slashes" and _looks_like_a_path(program):
+    if not LANGUAGES[name].path_like_source and _looks_like_a_path(program):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
             f"Read the file first, or pass pathlib.Path({program!r})"
         )
     char = template_char(LANGUAGES[name].id)
     if char is not None and char in program:
-        if LANGUAGES[name].id == "slashes" and not isinstance(program, _Template):
-            from esolangs.tools.slashes import _is_unfilled_template
-
-            if not _is_unfilled_template(program):
-                return
+        unfilled = LANGUAGES[name].example.unfilled
+        if (
+            unfilled is not None
+            and not isinstance(program, _Template)
+            and not unfilled(program)
+        ):
+            return
         raise TemplateError(
             f"{name}'s generator returns a template, and this one still has "
             f"unfilled runs of {char!r} ({program.count(char)} characters); "

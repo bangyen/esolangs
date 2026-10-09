@@ -5,13 +5,17 @@ variables and named where they recur (:func:`_intercal_shared`).
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     in_input_order,
+    layout_width,
+    same_up_to_wrapping,
 )
 
 TEMPLATE_CHAR = "@"
@@ -253,10 +257,25 @@ def _program(n: int, assigned: list[tuple[int, _Expr]], result: _Expr) -> str:
     )
 
 
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Equivalent statement syntax at the narrowest layout, or the observed fit."""
+    narrow = layout(1)
+    if isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
+        narrow
+    ):
+        return True
+    # Its primitive layout fits between the natural and simplified floors.
+    # Rebuild at the observed bound rather than accepting equivalent syntax.
+    return template == layout(layout_width(template)) or same_up_to_wrapping(
+        template, plain
+    )
+
+
 LANGUAGE = Language(
     "INTERCAL",
     "other.intercal",
     boolean=intercal,
+    same_layout=_same_layout,
     contract=BooleanContract(
         answer_pattern=r"(?s)^(_\n|I)\n$",
         answer_values=("_\n", "I"),

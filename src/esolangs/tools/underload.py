@@ -10,7 +10,9 @@ copy of ``X`` is then ``^``, and a half without one drops it with ``!``.
 """
 
 import re
+from collections.abc import Callable
 from functools import cache
+from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -18,6 +20,7 @@ from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     SubtreeDiagram,
     _validate_truth_table,
+    same_up_to_wrapping,
 )
 from esolangs.tools.token_balance import balanced_token_width
 from esolangs.tools.wrap import balance_score, wrap_tokens
@@ -170,10 +173,20 @@ def _balance(table: str, default: str) -> str:
     )
 
 
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Compare the narrow layouts token by token."""
+    for width in (1, 4):
+        narrow = str(layout(width))
+        if _underload_layout_tokens(template) == _underload_layout_tokens(narrow):
+            return True
+    return same_up_to_wrapping(template, plain)
+
+
 LANGUAGE = Language(
     "Underload",
     "stack_based.underload",
     boolean=underload,
+    same_layout=_same_layout,
     contract=BooleanContract(),
     balance=_balance,
     no_wrap="a break inside a pushed element changes the string it contains",

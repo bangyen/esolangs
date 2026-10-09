@@ -1,6 +1,8 @@
 """Boolean template generator for bitdeque."""
 
 import re
+from collections.abc import Callable
+from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -10,6 +12,7 @@ from esolangs.tools.helpers import (
     best_input_order,
     input_weights,
     runs,
+    same_tokens,
     subtree_ids,
 )
 from esolangs.tools.token_balance import balanced_token_width
@@ -284,10 +287,16 @@ def _balance(table: str, default: str) -> str:
     )
 
 
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Commands tokenize on whitespace, which its wrapper turns to newlines."""
+    return same_tokens(template, layout(1)) or same_tokens(template, plain)
+
+
 LANGUAGE = Language(
     "Bitdeque",
     "queue_based.bitdeque",
     boolean=bitdeque,
+    same_layout=_same_layout,
     contract=BooleanContract(
         answer_mode="dump",
         note="Bitdeque has no output instruction and dumps its deque at "

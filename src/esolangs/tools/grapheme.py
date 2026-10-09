@@ -99,6 +99,7 @@ LANGUAGE = Language(
     "Grapheme",
     "stack_based.grapheme",
     boolean=grapheme,
+    dialect=GraphemeDialect,
     contract=BooleanContract(
         alphabet=("%", "A"),
         note="Grapheme's generator normalizes each input line with "

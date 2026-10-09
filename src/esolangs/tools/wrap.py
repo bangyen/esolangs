@@ -651,6 +651,20 @@ def balance_width(program: str) -> int:
     return isqrt(area - 1) + 1
 
 
+def _token_patterns() -> dict[Callable[[str, int], str], str]:
+    """Each token wrapper's token: it balances over what it breaks between."""
+    return {
+        _dimensional: _DIMENSIONAL_COMMAND,
+        _six_five: _SIX_FIVE_COMMAND,
+        _jaune: _JAUNE_COMMAND,
+        _false: _FALSE_COMMAND,
+        _unlambda: _UNLAMBDA_COMMAND,
+        _sophie: _SOPHIE_COMMAND,
+        _bracket_literal: _BRACKET_LITERAL,
+        _quote_literal: _EVAL_UNIT,
+    }
+
+
 def balance_program(program: str, language_id: str) -> str:
     """Balance whole-token fits and term folds; otherwise estimate source area."""
     wrapper = _wrapper(language_id)
@@ -662,17 +676,7 @@ def balance_program(program: str, language_id: str) -> str:
         tokens = program.split()
         width = balanced_token_width(tokens, " ")
         return min(program, _join_tokens(tokens, width, " "), key=balance_score)
-    patterns = {
-        "dimensional": _DIMENSIONAL_COMMAND,
-        "six_five": _SIX_FIVE_COMMAND,
-        "jaune": _JAUNE_COMMAND,
-        "false": _FALSE_COMMAND,
-        "unlambda": _UNLAMBDA_COMMAND,
-        "sophie": _SOPHIE_COMMAND,
-        "three_x": _BRACKET_LITERAL,
-        "eval": _EVAL_UNIT,
-    }
-    pattern = patterns.get(language_id)
+    pattern = _TOKEN_PATTERNS.get(wrapper) if wrapper is not None else None
     if "\n" not in program and pattern is not None:
         tokens = re.findall(f"{_RUN}|{pattern}", program)
         width = balanced_token_width(tokens)
@@ -709,3 +713,6 @@ def balance_score(program: str) -> tuple[int, int, int]:
     rows = program.split("\n")
     width = max(map(len, rows), default=0)
     return abs(width - len(rows)), len(program), width
+
+
+_TOKEN_PATTERNS = _token_patterns()

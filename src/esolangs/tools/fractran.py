@@ -11,8 +11,10 @@ length, which the interpreter's index factors and buckets by state.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import islice
+from typing import Any
 
 from esolangs.interpreters.other.fractran.index import SMALL_BASE
 from esolangs.registry._contracts import BooleanContract
@@ -22,6 +24,8 @@ from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
+    layout_width,
+    same_tokens,
     subtree_ids,
 )
 from esolangs.tools.token_balance import balanced_token_width
@@ -221,10 +225,19 @@ def _balance(table: str, default: str) -> str:
     return min(candidates, key=balance_score)
 
 
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Fractions tokenize on whitespace; short setters keep the old pair."""
+    return any(
+        same_tokens(template, program)
+        for program in (layout(1), layout(layout_width(template)), plain)
+    )
+
+
 LANGUAGE = Language(
     "FRACTRAN",
     "other.fractran",
     boolean=fractran,
+    same_layout=_same_layout,
     contract=BooleanContract(
         answer_mode="dump",
         answer_values=("1", "2"),

@@ -312,10 +312,16 @@ def _folded(statements: list[str]) -> list[str]:
     return lines
 
 
+def _dialect(literal_policy: str = "decimal") -> None:
+    """Validate how Packlang reads a literal of only 0s and 1s."""
+    PacklangLiterals(policy=literal_policy)
+
+
 LANGUAGE = Language(
     "Packlang",
     "other.packlang",
     boolean=packlang,
+    dialect=_dialect,
     # Not a tree: one painted array cell per differing row, read by index.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

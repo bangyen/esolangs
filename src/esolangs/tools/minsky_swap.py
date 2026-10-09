@@ -1,8 +1,16 @@
 """Boolean template for minsky swap; a row is one ``~``, so no span shrinks."""
 
+from collections.abc import Callable
+from typing import Any
+
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    input_weights,
+    same_up_to_wrapping,
+)
 from esolangs.tools.wrap import balance_score
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
@@ -121,10 +129,16 @@ def _balance(table: str, default: str) -> str:
     )
 
 
+def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
+    """Its 10- and 15-wide layouts switch representation, so match them whole."""
+    return template in (layout(10), layout(15)) or same_up_to_wrapping(template, plain)
+
+
 LANGUAGE = Language(
     "Minsky Swap",
     "register_based.minsky_swap",
     boolean=minsky_swap,
+    same_layout=_same_layout,
     # Not a tree: each input adds its weight; a ``~`` cascade picks one of two leaves.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

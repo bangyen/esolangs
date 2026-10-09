@@ -21,7 +21,7 @@ LANGUAGE = Language(
     "Subleq",
     "tape_based.subleq",
     boolean=subleq,
-    # Not a tree: an indexed table read, not a tree.
+    # Not a tree: an indexed table read.
     shape=Shape.LOOKUP,
     contract=BooleanContract(
         input_shape="char_stream",
