@@ -3,6 +3,36 @@
 This page lists work that is still open. Finished work lives in the git
 history; standing rules and proved limits are in [limitations](limitations.md).
 
+## Canonical generator gaps
+
+Ignored inputs must be dropped, constant subtrees folded, and repeated
+subtrees shared under the existing execution and workspace contracts.
+Current sharing helpers and selected controls do not establish completeness.
+Close each gap with a named construction and native execution, or an
+exemption supported by a structural proof or the measured criterion in
+[Contributing](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
+
+- **Brainfuck:** price sharing across suffix levels and nested definitions;
+  selection currently scores one suffix arity.
+- **SStack and BF-PDA:** share repeated residuals inside bank definitions;
+  bodies currently execute inline. Revisit SStack's bounded numeric labels.
+- **Boolfuck:** extend flag banks and two-input AND/XOR normalization to
+  omitted general and nested sharing cases.
+- **Factor and Painfuck:** revisit flag-pool and depth restrictions; run
+  Factor's outstanding weekly budget probe before relying on that bound.
+- **Line:** extend one selected residual with multiple returns to multiple
+  shared residuals.
+- **thisthat and Circuit Diagram:** resolve duplication in area/resource
+  fallbacks, or establish why alternative sharing cannot profit within the
+  contracts.
+- **Back and Dig:** extend bounded bend routes and pools, respectively, or
+  substantiate their sharing limits.
+- **Exemptions:** re-audit Home Row, ROTfuck, LaserFuck, Dimensional, and
+  other blanket exclusions. Suffolk's NOR construction disproved its old
+  no-jump rationale: computed values can be shared arithmetically.
+- **Audit:** replace the presence-based matrix at `dea798` with evidence
+  for all three canonical requirements and the remaining restrictions.
+
 ## Research follow-up
 
 - **Linear Boolean generators: make generation and output grow only with
