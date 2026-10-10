@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import contextlib
 import io
 import json
 import os
@@ -130,8 +131,12 @@ class Worker:
                 self.process.stdout,
                 self.process.stderr,
             ):
+                # Closing a pipe to a reaped worker flushes and raises
+                # BrokenPipeError; cleanup must not mask the deadline that
+                # triggered it (the worker is killed before this runs).
                 if stream is not None:
-                    stream.close()
+                    with contextlib.suppress(OSError):
+                        stream.close()
             self.process = None
             if check_log and self.log_overflow.is_set():
                 raise RuntimeError("benchmark diagnostic byte limit exceeded")

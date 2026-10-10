@@ -131,11 +131,19 @@ def stop_process_tree(proc: subprocess.Popen[str] | subprocess.Popen[bytes]) -> 
             with suppress(ProcessLookupError):
                 os.killpg(proc.pid, signal.SIGKILL)
         else:
-            subprocess.run(
-                ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-                capture_output=True,
-                check=False,
-            )
+            # Discard taskkill's output rather than capturing it: a killed
+            # descendant can inherit the stdout pipe's write end and keep it
+            # open, so ``capture_output``'s reader thread blocks in join()
+            # until the whole test times out.  A timeout guarantees cleanup
+            # cannot hang even if taskkill does.
+            with suppress(subprocess.TimeoutExpired):
+                subprocess.run(
+                    ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                    timeout=30,
+                )
             if proc.poll() is None:
                 proc.kill()
         proc.wait()

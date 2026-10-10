@@ -42,8 +42,12 @@ def test_reference_bounds_stop_descendants_with_positive_control(tmp_path, overf
             else "time.sleep(10)"
         )
     )
+    # 2s, not 0.3s: the child must spawn a descendant and write its prefix
+    # before the deadline, and 0.3s lost that race under CI load (output came
+    # back empty on 3.12).  2s is still far below the child's 10s sleep, so
+    # the deadline, cap and descendant-kill are exercised exactly as before.
     _exit, output, error, status = reference.run(
-        [sys.executable, "-c", code], b"", 0.3, 4096
+        [sys.executable, "-c", code], b"", 2.0, 4096
     )
     assert status == ("limit" if overflow else "timeout")
     assert output == b"prefix"
