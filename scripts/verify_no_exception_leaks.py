@@ -38,6 +38,7 @@ script, and skipped while that hash stands; a leak is never remembered.
 import ast
 import concurrent.futures as cf
 import hashlib
+import importlib.metadata
 import importlib.util
 import json
 import os
@@ -52,6 +53,9 @@ import typing
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
+sys.path.insert(0, str(_HERE.parent))
+
+from _atomic import write_text
 
 from esolangs._program import Program
 from esolangs.exceptions import EsolangError
@@ -472,13 +476,23 @@ def _sources(
     return sorted({_HERE, _ROOT / "scripts" / "_scope.py", *sources, *shared})
 
 
+def _runtime_identity() -> bytes:
+    """Identify Python and the installed dependency versions used by workers."""
+    inventory = sorted(
+        (distribution.metadata["Name"], distribution.version)
+        for distribution in importlib.metadata.distributions()
+    )
+    return json.dumps([sys.version, sys.implementation.cache_tag, inventory]).encode()
+
+
 def _fingerprint(
     module: str,
     examples: list[Program],
     imports: dict[pathlib.Path, set[str]] | None = None,
+    runtime: bytes | None = None,
 ) -> str:
     """Hash everything a sweep of ``module`` reads; a change to any part re-sweeps."""
-    h = hashlib.sha256()
+    h = hashlib.sha256(_runtime_identity() if runtime is None else runtime)
     for path in _sources(module, imports):
         h.update(path.read_bytes())
         h.update(b"\0")
@@ -504,9 +518,7 @@ def _save_cache(cache: dict[str, str]) -> None:
     """Write the clean fingerprints back, atomically."""
     if not _USE_CACHE:
         return
-    tmp = _CACHE.with_suffix(".tmp")
-    tmp.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
-    tmp.replace(_CACHE)
+    write_text(_CACHE, json.dumps(cache, indent=1, sort_keys=True) + "\n")
 
 
 def _run_worker(lang: str) -> tuple[float, str, _Report | None]:
@@ -588,7 +600,10 @@ def main() -> None:
     print(f"languages without example programs: {len(missing)}", flush=True)
 
     cache = _load_cache()
-    keys = {n: _fingerprint(INTERPRETERS[n], examples[n], imports) for n in langs}
+    runtime = _runtime_identity()
+    keys = {
+        n: _fingerprint(INTERPRETERS[n], examples[n], imports, runtime) for n in langs
+    }
     cached = [n for n in langs if cache.get(n) == keys[n]]
     if cached:
         print(f"unchanged since last clean sweep: {len(cached)}", flush=True)

@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _scope import diff_paths  # noqa: E402
 
 # The gate only speaks for the package coverage is configured to measure
 # (`source = ["src/esolangs"]`).  A touched file in tests/ or scripts/ has no
@@ -45,36 +47,38 @@ def _added_lines(base: str) -> dict[str, set[int]] | None:
     read, which the caller must treat as "cannot tell", never as "nothing
     changed".
     """
-    got = subprocess.run(
-        ["git", "diff", "-U0", base, "--"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-        check=False,
-    )
-    if got.returncode != 0:
+    paths = diff_paths(ROOT, "--diff-filter=ACMT", base, "--")
+    if paths is None:
         return None
-
     added: dict[str, set[int]] = {}
-    current: str | None = None
-    for line in got.stdout.splitlines():
-        if line.startswith("+++ "):
-            current = line[6:] if line.startswith("+++ b/") else None
-            if current is not None:
-                # Deleting code still touches the surviving file: whole-file
-                # coverage must judge it even when no new lines were added.
-                added.setdefault(current, set())
-        elif line.startswith("@@") and current is not None:
-            # "@@ -old,count +new,count @@" -- the new-side start and length
-            # are what the branch is adding.  A hunk that deletes only has
-            # length 0 and contributes nothing.
-            span = line.split("+")[1].split("@@")[0].strip()
-            start, _, count = span.partition(",")
-            length = int(count) if count else 1
-            if length:
-                added.setdefault(current, set()).update(
-                    range(int(start), int(start) + length)
-                )
+    for path in paths:
+        got = subprocess.run(
+            [
+                "git",
+                "--literal-pathspecs",
+                "diff",
+                "--no-renames",
+                "--no-ext-diff",
+                "--no-textconv",
+                "-U0",
+                base,
+                "--",
+                path,
+            ],
+            capture_output=True,
+            cwd=ROOT,
+            check=False,
+            timeout=60,
+        )
+        if got.returncode != 0:
+            return None
+        added[path] = set()
+        for line in got.stdout.splitlines():
+            if line.startswith(b"@@ "):
+                span = line.split(b"+")[1].split(b"@@")[0].strip()
+                start, _, count = span.partition(b",")
+                length = int(count) if count else 1
+                added[path].update(range(int(start), int(start) + length))
     return added
 
 

@@ -15,12 +15,15 @@ Usage:
 import argparse
 import json
 import math
+import os
 import statistics
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _atomic import write_text  # noqa: E402
 
 
 def collect_ids(marker: str) -> list[str]:
@@ -102,6 +105,8 @@ def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
     parser.add_argument("--shard", type=int, required=True, help="this job's slice")
     parser.add_argument("--shards", type=int, required=True, help="slice count")
     parser.add_argument("--durations", type=Path, help="recorded seconds by node ID")
+    parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--exclude-node", action="append", default=[])
     args, rest = parser.parse_known_args(argv)
     if rest[:1] == ["--"]:
         rest = rest[1:]
@@ -117,7 +122,37 @@ def main(argv: list[str] | None = None) -> int:
     args, rest = _parse_args(argv)
     durations = load_durations(args.durations) if args.durations else None
     collected = collect_ids(args.marker)
-    ids = shard_ids(collected, args.shard, args.shards, durations)
+    excluded = set(args.exclude_node)
+    if not excluded <= set(collected):
+        raise ValueError("excluded nodes must belong to the collected corpus")
+    ids = shard_ids(
+        [node for node in collected if node not in excluded],
+        args.shard,
+        args.shards,
+        durations,
+    )
+    if args.manifest is not None:
+        write_text(
+            args.manifest,
+            json.dumps(
+                {
+                    "schema": 1,
+                    "shard": args.shard,
+                    "shards": args.shards,
+                    "marker": args.marker,
+                    "collected": collected,
+                    "selected": ids,
+                    "excluded": sorted(excluded),
+                    "run": {
+                        "id": os.environ.get("GITHUB_RUN_ID"),
+                        "attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+                        "commit": os.environ.get("GITHUB_SHA"),
+                    },
+                },
+                sort_keys=True,
+            )
+            + "\n",
+        )
     if durations:
         known = [durations[node] for node in collected if node in durations]
         fallback = statistics.median(known) if known else 1.0

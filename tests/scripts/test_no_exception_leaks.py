@@ -184,3 +184,37 @@ def test_language_corpus_is_independent_of_other_examples(monkeypatch):
     assert leaks._corpus("fixture", examples) == old  # noqa: SLF001
     examples["fixture"] = ["++."]
     assert leaks._corpus("fixture", examples) != old  # noqa: SLF001
+
+
+def test_runtime_changes_invalidate_clean_fingerprints(source_tree, monkeypatch):
+    assert source_tree.is_dir()
+    from types import SimpleNamespace
+
+    dependency = SimpleNamespace(metadata={"Name": "fixture"}, version="1")
+    monkeypatch.setattr(leaks.importlib.metadata, "distributions", lambda: [dependency])
+    before = leaks._fingerprint("other.fixture", [])  # noqa: SLF001
+    dependency.version = "2"
+    changed = leaks._fingerprint("other.fixture", [])  # noqa: SLF001
+    assert changed != before
+    monkeypatch.setattr(leaks.sys, "version", "different Python")
+    assert leaks._fingerprint("other.fixture", []) != changed  # noqa: SLF001
+
+
+def test_concurrent_cache_publication_keeps_valid_json(tmp_path, monkeypatch):
+    import json
+    from concurrent.futures import ThreadPoolExecutor
+
+    path = tmp_path / "cache.json"
+    monkeypatch.setattr(leaks, "_CACHE", path)
+    monkeypatch.setattr(leaks, "_USE_CACHE", True)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(
+            pool.map(
+                leaks._save_cache,  # noqa: SLF001
+                [{"language": str(index)} for index in range(16)],
+            )
+        )
+    assert json.loads(path.read_text())["language"] in {
+        str(index) for index in range(16)
+    }
+    assert list(tmp_path.iterdir()) == [path]

@@ -81,10 +81,13 @@ def test_deletion_only_diff_keeps_surviving_files(
         "--- a/src/esolangs/deleted.py\n+++ /dev/null\n"
         "@@ -1,2 +0,0 @@\n-removed()\n-removed()\n"
     )
+    monkeypatch.setattr(gate, "diff_paths", lambda *_args: [PATH])
     monkeypatch.setattr(
         gate.subprocess,
         "run",
-        lambda *_args, **_kwargs: subprocess.CompletedProcess([], 0, diff, ""),
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            [], 0, diff.encode(), b""
+        ),
     )
     added = gate._added_lines("BASE")  # noqa: SLF001
     assert added == {PATH: set()}
@@ -339,3 +342,39 @@ def test_one_well_covered_file_cannot_hide_another(tmp_path):
     }
     code, _ = run_gate(tmp_path, files, {path: {1, 2} for path in files})
     assert code == 1
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "space name.py",
+        'quote"name.py',
+        "line\nname.py",
+        "line\r\nname.py",
+        "[literal]*.py",
+        "unicode-é.py",
+    ],
+)
+def test_diff_uses_exact_git_paths(tmp_path, monkeypatch, name):
+    gate = load_script()
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    path = tmp_path / name
+    path.write_text("first = 1\n")
+    subprocess.run(["git", "add", "--", name], cwd=tmp_path, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit",
+            "-qm",
+            "fixture",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+    path.write_text("first = 1\nsecond = 2\n")
+    assert gate._added_lines("HEAD") == {name: {2}}  # noqa: SLF001

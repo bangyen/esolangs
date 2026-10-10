@@ -150,7 +150,18 @@ jobs:
       run: uv sync --group dev --python ${{ matrix.python-version }}
 
     - name: Test with pytest (shard ${{ matrix.shard }} of 2)
-      run: uv run python scripts/pytest_shard.py --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 -- -n auto
+      run: uv run python scripts/pytest_shard.py --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 --manifest test.shard.json -- -n auto -p scripts.pytest_durations --duration-output test-durations.json
+
+    - name: Retain shard selection and completion evidence
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: shard-evidence-test-${{ matrix.python-version }}-${{ matrix.shard }}
+        path: |
+          test.shard.json
+          test-durations*.json
+        if-no-files-found: error
+        retention-days: 7
 
     - name: Retain worker and verification logs
       if: always()
@@ -187,8 +198,8 @@ jobs:
     - name: Test one coverage shard
       run: >
         uv run python scripts/pytest_shard.py --marker "not slow and not weekly"
-        --shard ${{ matrix.shard }} --shards 2 --
-        -n auto --cov --cov-branch --cov-report=
+        --shard ${{ matrix.shard }} --shards 2 --manifest coverage.shard.json --
+        -n auto -p scripts.pytest_durations --duration-output test-durations.json --cov --cov-branch --cov-report=
     - uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.shard }}
@@ -196,6 +207,17 @@ jobs:
         include-hidden-files: true
         if-no-files-found: error
         retention-days: 1
+
+    - name: Retain shard selection and completion evidence
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: shard-evidence-coverage-${{ matrix.shard }}
+        path: |
+          coverage.shard.json
+          test-durations*.json
+        if-no-files-found: error
+        retention-days: 7
 
     - name: Retain worker and verification logs
       if: always()
@@ -290,7 +312,7 @@ jobs:
       run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.pytest_durations --duration-output certificate-durations.json
 
     - name: Test one slow shard
-      run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 -- -n auto -k "not test_preserving_certificate" -p scripts.pytest_durations --duration-output test-durations.json
+      run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 --manifest slow.shard.json --exclude-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -- -n auto -p scripts.pytest_durations --duration-output test-durations.json
 
     - name: Retain measured slow-test durations
       if: always()
@@ -300,6 +322,7 @@ jobs:
         path: |
           test-durations*.json
           certificate-durations*.json
+          slow.shard.json
         if-no-files-found: error
         retention-days: 7
 
@@ -457,3 +480,42 @@ jobs:
           notes/benchmarks/*.log
         if-no-files-found: ignore
         retention-days: 14
+
+  shard-completeness:
+    needs: [test, coverage-tests, slow]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {source: test, python: "3.12", pattern: "shard-evidence-test-3.12-*", marker: "not slow and not weekly", shards: 2}
+          - {source: test, python: "3.13", pattern: "shard-evidence-test-3.13-*", marker: "not slow and not weekly", shards: 2}
+          - {source: test, python: "3.15", pattern: "shard-evidence-test-3.15-*", marker: "not slow and not weekly", shards: 2}
+          - {source: coverage-tests, python: "3.14", pattern: "shard-evidence-coverage-*", marker: "not slow and not weekly", shards: 2}
+          - {source: slow, python: "3.14", pattern: "slow-test-durations-*", marker: "slow and not weekly", shards: 4}
+    steps:
+    - name: Require successful source jobs
+      env:
+        RESULT: ${{ needs[matrix.source].result }}
+      run: test "$RESULT" = success
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v7
+      with:
+        version: "0.13.0"
+    - uses: actions/setup-python@v7
+      if: matrix.python != '3.15'
+      with:
+        python-version: ${{ matrix.python }}
+    - name: Set up Python 3.15 with uv
+      if: matrix.python == '3.15'
+      run: uv python install 3.15.0
+    - name: Install dependencies
+      run: uv sync --group dev --python ${{ matrix.python }}
+    - uses: actions/download-artifact@v8
+      with:
+        pattern: ${{ matrix.pattern }}
+        path: shard-evidence
+    - name: Require complete selection and execution
+      run: uv run python scripts/check_shard_manifests.py shard-evidence --marker "${{ matrix.marker }}" --shards ${{ matrix.shards }}

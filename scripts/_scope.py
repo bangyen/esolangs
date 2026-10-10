@@ -52,6 +52,23 @@ SHARED_TOOLING = (
 )
 
 
+def diff_paths(root: Path, *args: str) -> list[str] | None:
+    """Return exact changed paths, or None when Git cannot establish the diff."""
+    try:
+        got = subprocess.run(
+            ["git", "diff", "--name-only", "--no-renames", "-z", *args],
+            cwd=root,
+            capture_output=True,
+            check=False,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if got.returncode != 0:
+        return None
+    return [os.fsdecode(name) for name in got.stdout.split(b"\0") if name]
+
+
 def changed_files() -> list[str]:
     """Return the repo-relative paths this branch changed, or [] if unknown.
 
@@ -64,15 +81,9 @@ def changed_files() -> list[str]:
     names: list[str] = []
     known = False
     for ref in ("main...HEAD", "origin/main...HEAD", "HEAD~1"):
-        got = subprocess.run(
-            ["git", "diff", "--name-only", "--no-renames", "-z", ref],
-            capture_output=True,
-            cwd=ROOT,
-            check=False,
-            timeout=60,
-        )
-        if got.returncode == 0:
-            names = [os.fsdecode(name) for name in got.stdout.split(b"\0") if name]
+        paths = diff_paths(ROOT, ref)
+        if paths is not None:
+            names = paths
             known = True
             break
     status = subprocess.run(
