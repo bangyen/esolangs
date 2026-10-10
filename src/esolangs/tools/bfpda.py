@@ -89,6 +89,11 @@ def bfpda(truth_table: str) -> str:
     bank = best_bank(truth_table, context, 10 * n + 2, min(map(len, candidates)))
     if bank is not None:
         candidates.append(bank)
+    from esolangs.tools.bfpda_mixed import best_mixed_bank
+
+    mixed = best_mixed_bank(context, 10 * n + 2, min(map(len, candidates)))
+    if mixed is not None:
+        candidates.append(mixed)
     return min(candidates, key=len)
 
 
