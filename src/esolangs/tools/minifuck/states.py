@@ -30,7 +30,25 @@ def two_state(truth_table: str) -> str | None:
         parents = levels[depth]
         gates.append(branches[parents[0]] + branches[parents[-1]])
     bias = levels[-1][0]
+    # The input-embed convention needs every flip's span to be the same
+    # content pair.  Only the setter run changes with a bit, and a level whose
+    # minority sits at an odd branch position takes the reversed pair, so the
+    # spans agree exactly when every orientation does.  Mixed orientations are
+    # the positional decoder's job.
+    if len(set(_orientations(gates))) > 1:
+        return None
     return _emit(gates, bias)
+
+
+def _orientations(gates: list[list[int]]) -> list[str]:
+    """Return the setter orientation each level's guarded update carries."""
+    out: list[str] = []
+    for values in gates:
+        if sum(values) % 2 == 0:
+            out.append("0")
+        else:
+            out.append(str(values.index(1 - int(sum(values) > 2)) & 1))
+    return out
 
 
 def _emit(gates: list[list[int]], bias: int) -> str:
