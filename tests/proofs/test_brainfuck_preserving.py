@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts._brainfuck_preserving import (
+from tests.proofs._brainfuck_preserving import (
     BOUND,
     EMPTY,
     SCALE,
@@ -16,8 +16,8 @@ from scripts._brainfuck_preserving import (
     states,
     typed_counts,
 )
-from scripts.grammar_certificate import check_grammar
-from scripts.preserving_certificate import check_certificate
+from tests.proofs.grammar_certificate import check_grammar
+from tests.proofs.preserving_certificate import check_certificate
 from tests.proofs._brainfuck_balanced import Matrix, patterns
 from tests.proofs._brainfuck_count import ALPHABET, accepts, automaton, minimize
 from tests.proofs._checker_cli import run_checker

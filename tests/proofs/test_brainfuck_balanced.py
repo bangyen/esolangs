@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from scripts.balanced_certificate import _product, _sum, check_certificate
-from scripts.grammar_certificate import check_grammar
+from tests.proofs.balanced_certificate import _product, _sum, check_certificate
+from tests.proofs.grammar_certificate import check_grammar
 from tests.proofs._brainfuck_count import ALPHABET, accepts, automaton, minimize
 from tests.proofs._checker_cli import run_checker
 from tests.proofs.test_brainfuck_count import _observe, _sole_loop_word

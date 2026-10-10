@@ -450,13 +450,13 @@ def test_regular_certificate() -> None:
 
     rows, vector = certificate()
     check_certificate(rows, vector)
-    from scripts.grammar_certificate import check_grammar
+    from tests.proofs.grammar_certificate import check_grammar
     from tests.proofs._brainfuck_count import local_patterns, regular_patterns
 
     assert check_grammar(
         rows, ".,-+<>[]", sorted(local_patterns()), regular_patterns()
     ) >= len(rows)
-    from scripts.perron_certificate import check_certificate as independent_check
+    from tests.proofs.perron_certificate import check_certificate as independent_check
     from tests.proofs._brainfuck_count import ALPHABET, BOUND
 
     independent_check(rows, vector, BOUND, ALPHABET)
@@ -483,7 +483,7 @@ def test_regular_certificate() -> None:
 
 
 def test_independent_grammar_rejects_legal_but_wrong_transitions() -> None:
-    from scripts.grammar_certificate import check_grammar
+    from tests.proofs.grammar_certificate import check_grammar
 
     # The spectral checker can accept this matrix, but it forbids no factors.
     with pytest.raises(ValueError, match="grammar mismatch on '\\+-'"):
@@ -500,7 +500,7 @@ def test_independent_position_monitor_matches_regex_engine() -> None:
     import itertools
     import re
 
-    from scripts.grammar_certificate import _RegexMonitor
+    from tests.proofs.grammar_certificate import _RegexMonitor
 
     alphabet = "+-[]"
     patterns = [r"\[\](?:\+|\[-*\])*\+", r"\[[+\-]*\]\+", r"(?:\+-|\[\])*-"]
@@ -519,7 +519,7 @@ def test_independent_position_monitor_matches_regex_engine() -> None:
 def test_independent_literal_monitor_matches_substring_oracle() -> None:
     import itertools
 
-    from scripts.grammar_certificate import _LiteralMonitor
+    from tests.proofs.grammar_certificate import _LiteralMonitor
 
     factors = ["aaba", "bab", "aba", "bba"]
     monitor = _LiteralMonitor(factors, "ab")
@@ -549,7 +549,7 @@ def test_independent_literal_monitor_matches_substring_oracle() -> None:
 def test_independent_grammar_rejects_unsupported_factors(
     factors, regexes, message
 ) -> None:
-    from scripts.grammar_certificate import check_grammar
+    from tests.proofs.grammar_certificate import check_grammar
 
     with pytest.raises(ValueError, match=message):
         check_grammar([[0, 0]], "ab", factors, regexes)

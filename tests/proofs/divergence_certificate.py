@@ -2,13 +2,10 @@
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from balanced_certificate import Matrix, _product, _scale, _sum
-from grammar_certificate import check_grammar
+from tests.proofs.balanced_certificate import Matrix, _product, _scale, _sum
+from tests.proofs.grammar_certificate import check_grammar
 
 type State = tuple[bool, int, int, int]
 

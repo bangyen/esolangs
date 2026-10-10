@@ -301,11 +301,8 @@ def certificate() -> tuple[list[list[int]], list[int]]:
 
 def check_certificate(rows: list[list[int]], vector: list[int]) -> None:
     """Check M v <= (70347/10000) v using integers only."""
-    import sys
-    from pathlib import Path
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
-    from perron_certificate import check_certificate as check
+    from tests.proofs.perron_certificate import check_certificate as check
 
     try:
         check(rows, vector, BOUND, ALPHABET)

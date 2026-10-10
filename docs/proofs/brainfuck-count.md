@@ -195,7 +195,7 @@ sequence of `.` and `Y` blocks: at zero both print once; at nonzero both run `. 
 ending on the same zero cell or at the same EOF.
 
 The exported certificate now includes its finite factors and regular monitors.
-`scripts/perron_certificate.py --check-grammar` reconstructs acceptance with
+`tests/proofs/perron_certificate.py --check-grammar` reconstructs acceptance with
 failure links for finite factors and first/last/follow position automata for
 regular factors, independently of the builder's Thompson construction and
 minimization. Both use Python's regex parser. Exhausting the reachable product
@@ -311,7 +311,7 @@ removal with EOF, halting and divergence observations.
 Reproduce from the repository root:
 
     uv run python -m tests.proofs._brainfuck_balanced --export notes/brainfuck-balanced.json
-    uv run python scripts/balanced_certificate.py notes/brainfuck-balanced.json
+    uv run python -m tests.proofs.balanced_certificate notes/brainfuck-balanced.json
 
 **Print rotation at every depth.** The rule `[.Y]. -> .[Y.]` holds for every
 balanced `Y`, including reads and divergence: it rotates the same sequence
@@ -350,7 +350,7 @@ rotations from their admissible replacements. Execution controls cover
 reads that reach EOF, zero-entry skips, halting and divergence.
 
     uv run python -m tests.proofs._brainfuck_balanced --rotation --export notes/brainfuck-rotation.json
-    uv run python scripts/balanced_certificate.py notes/brainfuck-rotation.json
+    uv run python -m tests.proofs.balanced_certificate notes/brainfuck-rotation.json
 
 No finite monitor counts the unrestricted bodies. A regular class needs finite,
 depth-agnostic forbidden factors, but `[.Y].` with `Y` balanced pairs its `[`
@@ -368,7 +368,7 @@ A larger finite-factor monitor cannot enforce those classes.
 class counts through window 8.
 
 The unrestricted nonzero-tail rule has an exact typed coefficient constructor
-in `scripts/_brainfuck_divergence.py`. Its atom state records whether any read occurs, the first atom,
+in `tests/proofs/_brainfuck_divergence.py`. Its atom state records whether any read occurs, the first atom,
 the atom count capped at two, and four suffix classes: no eligible loop,
 a loop followed by prints, a print-first loop with no following print,
 or a loop followed by prints, one sign, then prints. A new loop resets the
@@ -411,7 +411,7 @@ the atom transitions.
 
 At `x = 100/689` and integer scale `10^6`, upward-rounded iteration freezes
 at a supersolution with 4,523 nonzero entries across 32 sequence matrices.
-`scripts/divergence_certificate.py` checks the polynomial inequalities with
+`tests/proofs/divergence_certificate.py` checks the polynomial inequalities with
 exact integers and the factor language at 705 state pairs. Summing the
 initial rows gives `K = 7.675935`, hence **`B(C) <= 7.675935 * 6.89^C`**.
 An independent word oracle also checks the matrix coefficients through size
@@ -419,7 +419,7 @@ five; `[[--]+]` is accepted by the finite factors and rejected by the typed
 grammar, a positive control for the added rule. No searched table is committed.
 
     uv run python -m scripts._brainfuck_divergence --export notes/brainfuck-divergence.json
-    uv run python scripts/divergence_certificate.py notes/brainfuck-divergence.json
+    uv run python -m tests.proofs.divergence_certificate notes/brainfuck-divergence.json
 
 The preserving-prefix extension uses the named recursive languages
 
@@ -482,7 +482,7 @@ nonzero-tail grammar accept `[>[-[->[-]<]]<[],]`; the new grammar rejects it,
 a positive control for the added family. No certificate table is committed.
 
     uv run python -m scripts._brainfuck_preserving --export notes/brainfuck-preserving.json
-    uv run python scripts/preserving_certificate.py notes/brainfuck-preserving.json
+    uv run python -m tests.proofs.preserving_certificate notes/brainfuck-preserving.json
 
 Executions also cover cancelling tested-cell updates from all 256 byte
 values, with wrapping non-cancellation as a negative control. Larger

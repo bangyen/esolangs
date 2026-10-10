@@ -1,16 +1,11 @@
 """Count forced divergence after recursively confined preserving prefixes."""
 
-import sys
 from collections import defaultdict
 from functools import lru_cache
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from _brainfuck_divergence import _append, _construct, _export
 
 from tests.proofs._brainfuck_balanced import Matrix, patterns
 from tests.proofs._brainfuck_count import automaton, minimize
+from tests.proofs._brainfuck_divergence import _append, _construct, _export
 
 # Earlier four atom fields, right/left confinement phase (0/1/broken),
 # preserving-prefix phase (root/right1/right2/left1/left2/broken/blocked).
@@ -226,8 +221,8 @@ def matrix_image(
 @lru_cache(maxsize=1)
 def certificate() -> tuple[list[list[int]], list[State], list[Matrix]]:
     """Reconstruct the prefix certificate under the standing construction caps."""
-    from _preserving_kernel import construct
-    from preserving_certificate import check_certificate
+    from tests.proofs._preserving_kernel import construct
+    from tests.proofs.preserving_certificate import check_certificate
 
     rows = minimize(automaton(patterns(), []))
     if len(rows) > 256:
@@ -261,7 +256,7 @@ def certificate() -> tuple[list[list[int]], list[State], list[Matrix]]:
 
 def main() -> None:
     """Rebuild, independently check and optionally export the prefix certificate."""
-    from preserving_certificate import check_certificate
+    from tests.proofs.preserving_certificate import check_certificate
 
     _export(certificate, check_certificate, SCALE, BOUND, "preserving-prefix")
 

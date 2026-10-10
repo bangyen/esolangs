@@ -2,15 +2,12 @@
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from balanced_certificate import Matrix, _product, _sum
-from divergence_certificate import _atom_image, _check_image, _validate
-from divergence_certificate import _next as _base
-from grammar_certificate import check_grammar
+from tests.proofs.balanced_certificate import Matrix, _product, _sum
+from tests.proofs.divergence_certificate import _atom_image, _check_image, _validate
+from tests.proofs.divergence_certificate import _next as _base
+from tests.proofs.grammar_certificate import check_grammar
 
 type State = tuple[bool, int, int, int, int, int, int, int]
 type Loop = tuple[bool, bool, int, bool]

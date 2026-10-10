@@ -1,13 +1,10 @@
 """Count balanced words with unrestricted nonzero-tail divergence removed."""
 
-import sys
 from collections import defaultdict
 from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
 from time import monotonic
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tests.proofs._brainfuck_balanced import SCALE, Matrix, patterns
 from tests.proofs._brainfuck_count import automaton, minimize
@@ -277,6 +274,6 @@ def _export[StateT](
 
 
 if __name__ == "__main__":
-    from divergence_certificate import check_certificate
+    from tests.proofs.divergence_certificate import check_certificate
 
     _export(certificate, check_certificate, SCALE, BOUND, "nonzero-tail")
