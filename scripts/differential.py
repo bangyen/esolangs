@@ -151,8 +151,10 @@ import os
 import random
 import re
 import shlex
+import signal
 import sys
 import tempfile
+import threading
 import time
 from collections import Counter
 from collections.abc import Callable, Sequence
@@ -257,10 +259,17 @@ def run_ours(language: str, program: str, stdin: str, max_steps: int) -> Outcome
 
 def run_ours_fast(language: str, program: str, stdin: str) -> Outcome:
     """Run through ``esolangs.run``, the path users take."""
+    # A bounded in-process run needs SIGALRM on a Unix main thread; elsewhere
+    # (Windows, worker threads) ``esolangs.run`` refuses it, so take the same
+    # call through its subprocess deadline instead.
+    signal_bound = hasattr(signal, "SIGALRM") and (
+        threading.current_thread() is threading.main_thread()
+    )
     try:
-        return Outcome(
-            "halt", _bytes(esolangs.run(language, program, stdin=stdin, timeout=20))
+        output = esolangs.run(
+            language, program, stdin=stdin, timeout=20, isolated=not signal_bound
         )
+        return Outcome("halt", _bytes(output))
     except Exception as exc:
         return Outcome(_ours_status(exc), b"", f"{type(exc).__name__}: {exc}")
 
