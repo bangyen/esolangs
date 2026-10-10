@@ -4,15 +4,65 @@ import random
 
 import pytest
 
-from esolangs.tools.brainfuck import bf_tree
+
+@pytest.mark.medium
+def test_affine_stream_all_small_coefficients_within_ledger():
+    from esolangs.debugger import make_vm
+    from esolangs.tools.brainfuck import _affine_stream
+    from scripts.benchmark import WrittenState
+
+    admitted = 0
+    for n in range(1, 6):
+        for mask in range(1 << n):
+            for bias in (0, 1):
+                table = "".join(
+                    str((row & mask).bit_count() % 2 ^ bias) for row in range(1 << n)
+                )
+                source = _affine_stream(table)
+                if source is None:
+                    continue
+                admitted += 1
+                for row, expected in enumerate(table):
+                    vm = make_vm("brainfuck", source, stdin=f"{row:0{n}b}")
+                    written = WrittenState(vm.snapshot())
+                    commands = 0
+                    while not vm.halted and commands <= 69 * n + 44:
+                        vm.step()
+                        written.sample(vm.snapshot())
+                        commands += 1
+                    assert vm.halted
+                    assert vm.output == expected
+                    assert commands <= 69 * n + 44
+                    assert (
+                        written.bits
+                        <= 2 * n
+                        + 6
+                        + (2 * n).bit_length()
+                        + n.bit_length()
+                        + len(source).bit_length()
+                    )
+    assert admitted > 0
+    assert _affine_stream("0001") is None
 
 
-class TestBfTree:
-    def test_parity_table_is_unfolded(self) -> None:
-        """A table with no constant subtree still spends a leaf per row."""
-        xor3 = "10010110"
-        assert bf_tree(xor3).count("[-") == 14
-        assert bf_tree("11110000").count("[-") == 2
+@pytest.mark.medium
+def test_affine_stream_reduces_cap_parity_within_ledger():
+    from esolangs.tools.brainfuck import _bf_ordered
+    from tests.generator_support import assert_shared_program
+
+    n = 16
+    table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+    previous = _bf_ordered(table, tuple(range(n)))
+    assert_shared_program(
+        "brainfuck",
+        table,
+        previous,
+        69 * n + 44,
+        lambda p: (
+            2 * n + 6 + (2 * n).bit_length() + n.bit_length() + len(p).bit_length()
+        ),
+        rows=[0, 1, 2, 3, 32767, 32768, 65534, 65535],
+    )
 
 
 @pytest.mark.medium

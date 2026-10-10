@@ -1,4 +1,4 @@
-"""Build brainfuck Boolean programs with a folded decision tree."""
+"""Build brainfuck Boolean programs with folded trees or affine streams."""
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -17,7 +17,7 @@ __all__ = ["bf_tree", "brainfuck"]
 
 
 def brainfuck(truth_table: str) -> str:
-    """Return the folded tree for a binary, MSB-first ``2**n`` truth table."""
+    """Return a program for a binary, MSB-first ``2**n`` truth table."""
     return bf_tree(truth_table)
 
 
@@ -25,19 +25,54 @@ _RIGHT, _LEFT = ">", "<"
 
 
 def bf_tree(truth_table: str) -> str:
-    """Return the folded decision tree, consuming every input unconditionally.
+    """Return a compact program, consuming every input unconditionally.
 
-    Bits use cells 2i, flags 2i+1; branches clear both, and one final print
+    Tree bits use cells 2i, flags 2i+1; branches clear both, and one final print
     reads the result. Flags cut n=10 sparse from 2,646 to 754 chars;
     folding and shared output cut n=10 XOR from 77,939 to 18,495.  Equal
     sibling halves merge; repeated residuals use one unused flag per level
     and emit once in depth order, within the existing command bound.
+    Affine tables also stream through three cells: n=16 parity falls from
+    672,691 to 1,186 chars, with at most 66 commands per selected input.
     An ignored input before the last kept one is read bare into the next
     kept cell, whose read overwrites it: 1.9% smaller at n=8 with one ignored,
     6.7% with two. A trailing one keeps its subtract; left at 48/49 it breaks
     the Workspace bound, and ``,[-]`` the execution bound (289 > 251 steps).
     """
-    return in_input_order(truth_table, _bf_ordered)
+    tree = in_input_order(truth_table, _bf_ordered)
+    affine = _affine_stream(truth_table)
+    return min((tree, affine), key=len) if affine is not None else tree
+
+
+def _affine_stream(table: str) -> str | None:
+    """Stream an admitted affine table through one bit and a toggle scratch."""
+    n = _validate_truth_table(table)
+    bias = int(table[0])
+    coefficients = [int(table[1 << (n - i - 1)]) ^ bias for i in range(n)]
+    expected = [bias]
+    for coefficient in reversed(coefficients):
+        expected += [value ^ coefficient for value in expected]
+    if any(str(value) != bit for value, bit in zip(expected, table, strict=True)):
+        return None
+    # Input, accumulator, scratch occupy cells 0, 1, 2. Each selected read
+    # costs at most 66 commands; a trailing ignored read must leave a bit
+    # rather than ASCII beside the final ASCII output to retain workspace.
+    parts = [">+<" if bias else ""]
+    commands = 3 * bias + 50
+    for i, coefficient in enumerate(coefficients):
+        if coefficient:
+            parts.append("," + "-" * _ASCII_ZERO + "[->>+<[->-<]>[-<+>]<<]")
+            commands += 66
+        elif i == n - 1:
+            parts.append("," + "-" * _ASCII_ZERO)
+            commands += 49
+        else:
+            parts.append(",")
+            commands += 1
+    if commands > 69 * n + 44:
+        return None
+    parts.append(">" + "+" * _ASCII_ZERO + ".")
+    return "".join(parts)
 
 
 def _bf_ordered(truth_table: str, perm: tuple[int, ...], *, share: bool = True) -> str:

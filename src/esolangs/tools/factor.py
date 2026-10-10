@@ -230,7 +230,7 @@ LANGUAGE = Language(
     # and are the measured safe bound.
     fuzz_max_digits=12,
     boolean=factor,
-    documented_sizes=(12_592, 24_463, 2.1),
+    documented_sizes=(11_232, 22_500, 2.0),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
