@@ -161,6 +161,16 @@ most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
 versus 23.6 for the tree. The construction and the counting floor are in
 [fractran](proofs/fractran.md) and `tests/proofs/deep/fractran.py`.
 
+The canonical sharing piece is applied or exempt by measurement. The
+per-generator screens bound it: `sharing.py` the repeated-node upside,
+`constant.py` the constant-folding upside, `ignored_input.py` the
+ignored-input growth. A bound below the gate cost is the measured exemption:
+SStack's ternary bodies duplicate at most 0.63% of body characters,
+Boolfuck's repeated-node upside is at most 2.3% of emitted size (n=5), and an
+admission-gated recursive BF-PDA bank never beats the plain mixed bank. Home
+Row, ROTfuck and Dimensional are lookups that name no decision-tree node, and
+LaserFuck's path-dependent leaf code makes equal subtables unequal text.
+
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
 Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.

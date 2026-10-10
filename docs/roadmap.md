@@ -14,36 +14,21 @@ exemption supported by a structural proof or the measured criterion in
 
 - **Brainfuck:** share nested definitions inside definition bodies. Pricing
   every admissible suffix level already matches the scored level (0 of 13
-  bank-eligible tables improved), so only nested definitions remain.
-- **SStack and BF-PDA:** bodies inline rather than defer a second time; both
-  are measured exemptions. SStack's ternary bodies duplicate at most 0.63%
-  of body characters (12 controls); an admission-gated recursive BF-PDA bank
-  reproduces the plain mixed bank on every admitted control, improving only
-  programs already over the 10n+2 command bound. SStack's bounded numeric
-  labels remain open.
-- **Boolfuck:** extend flag banks and two-input AND/XOR normalization to
-  omitted general and nested sharing cases.
+  bank-eligible tables improved), and the sharing screen bounds the total
+  repeated-node upside at 7.0% (n=5), so only nested definitions remain.
 - **Factor and Painfuck:** revisit flag-pool and depth restrictions.
   Factor's dense n=13 weekly probe (past 500,000 digits) passes native in
   34 s, so that bound is measured rather than assumed.
-- **Line:** extend one selected residual with multiple returns to multiple
-  shared residuals.
+- **Line:** extend one selected residual to multiple shared residuals. The
+  sharing screen gives the largest upside here (40.3% of emitted area at
+  n=5), but the residual search finds at most one match on random tables, so
+  a second residual needs a new return target rather than a better pick.
 - **thisthat and Circuit Diagram:** resolve duplication in area/resource
   fallbacks, or establish why alternative sharing cannot profit within the
   contracts.
 - **Back and Dig:** extend bounded bend routes and pools, respectively, or
   substantiate their sharing limits.
-- **Exemptions:** the four listed exclusions hold structurally. Home Row,
-  ROTfuck and Dimensional are lookups (`Shape.REDUCING`/`LOOKUP`), so their
-  program has no decision-tree node for `subtree_ids` to name. LaserFuck's
-  leaf code depends on the depth and path bits, so equal subtables are not
-  equal text, and its single acyclic beam path cannot enter one emission from
-  two parents. Other blanket exclusions remain to audit.
-- **Audit:** the presence-based matrix at `dea798` is superseded by the
-  committed screens over one seeded corpus: `ignored_input.py`, `constant.py`
-  and `sharing.py` bound the three canonical requirements per generator, and
-  `canonical.py` runs the historical positive controls. Re-run a screen to
-  regenerate the matrix.
+- **Exemptions:** audit the remaining blanket sharing exclusions.
 
 ## Research follow-up
 
