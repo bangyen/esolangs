@@ -622,7 +622,15 @@ def _split_coverage(
         ):
             bare += ["-n", "8"]
         if not any(arg.startswith("--dist") for arg in [*cmd, *options]):
-            bare += ["--dist", "worksteal"]
+            bare += [
+                "--dist",
+                "loadfile",
+                "--no-loadscope-reorder",
+                "-p",
+                "scripts.pytest_durations",
+                "--duration-order",
+                "--duration-output=.cache/pytest/durations.json",
+            ]
         result.insert(
             0,
             (
