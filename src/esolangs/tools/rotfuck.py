@@ -18,8 +18,13 @@ import heapq
 from collections.abc import Callable
 from itertools import product
 
-from esolangs._dialects import ROTATIONS, ROTFUCK_CYCLES
-from esolangs._dialects import rotation as validate_rotation
+from esolangs.interpreters.tape_based.rotfuck._dialect import (
+    ROTATIONS,
+    ROTFUCK_CYCLES,
+)
+from esolangs.interpreters.tape_based.rotfuck._dialect import (
+    rotation as validate_rotation,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.tools.constant_projection import balanced_projection, projected_inputs
@@ -140,7 +145,9 @@ class _Builder:
                     heapq.heappush(
                         queue, (cost + len(run), (rot + len(run)) % 8, path + run)
                     )
-        raise _UnplaceableError("no neutral pad is hidden from every open seek")
+        raise _UnplaceableError(  # pragma: no cover - a pad always fits
+            "no neutral pad is hidden from every open seek"
+        )
 
     def _command(self, cmd: str) -> None:
         """Emit ``cmd``, padded past rotations at which it shows as a bracket."""

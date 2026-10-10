@@ -66,10 +66,14 @@ operations raise :class:`~esolangs.exceptions.HaltError`.
 from fractions import Fraction
 from typing import Literal, TypeGuard, cast
 
-from esolangs._dialects import expression_syntax as validate_expression_syntax
-from esolangs._dialects import list_update as validate_list_update
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
+from esolangs.interpreters.grid_based.alight._dialect import (
+    expression_syntax as validate_expression_syntax,
+)
+from esolangs.interpreters.grid_based.alight._dialect import (
+    list_update as validate_list_update,
+)
 from esolangs.interpreters.grid_based.alight._helpers import _grid
 from esolangs.interpreters.grid_based.alight._hints import Hint
 from esolangs.interpreters.grid_based.alight._state import _equal, _freeze

@@ -25,7 +25,10 @@ time, so the two alternate and no copy is ever needed.
 import re
 from itertools import pairwise, product
 
-from esolangs._dialects import LITERAL_POLICIES, PacklangLiterals
+from esolangs.interpreters.other.packlang._literals import (
+    LITERAL_POLICIES,
+    PacklangLiterals,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (

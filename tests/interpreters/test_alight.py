@@ -5,7 +5,7 @@ from typing import ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grid_based.alight import _Machine, run
+from esolangs.interpreters.grid_based.alight import _Machine, _replace_first, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.alight import alight
 from esolangs.tools.helpers import essential_inputs
@@ -638,3 +638,9 @@ def test_cycle_detector_tracks_cursorless_input(io_type):
     assert machine.halted
     assert io.getvalue() == "aaaa"
     assert io.reads == 4
+
+
+def test_a_list_without_a_placeholder_is_left_unchanged() -> None:
+    """The no-match return for a node that is not a call."""
+    expr = ("list", [("num", 1)])
+    assert _replace_first(expr, ("val", 2)) == (expr, False)

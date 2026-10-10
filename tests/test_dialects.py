@@ -36,10 +36,10 @@ CASES = [
 
 
 def _invalid() -> list[tuple[str, DialectSettings]]:
-    """A choice outside each dialect language's first setting."""
+    """A choice outside each dialect setting of every language."""
     cases = []
     for name in esolangs.list_languages():
-        for key, item in list(esolangs.describe(name)["dialect_settings"].items())[:1]:
+        for key, item in esolangs.describe(name)["dialect_settings"].items():
             choice = item["choices"][-1]
             bad = choice + 1 if isinstance(choice, int) else "bogus"
             cases.append((name, DialectSettings(**{key: bad})))

@@ -567,7 +567,7 @@ def test_dependency_readings_under_each_literal_policy():
 
 @pytest.mark.parametrize("policy", ["decimal", "binary_digits"])
 def test_literal_roundtrip(policy):
-    from esolangs._dialects import PacklangLiterals
+    from esolangs.interpreters.other.packlang._literals import PacklangLiterals
 
     literals = PacklangLiterals(policy)
     for value in (0, 1, 2, 10, 48, 128, 255):

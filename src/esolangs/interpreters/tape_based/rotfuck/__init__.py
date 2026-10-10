@@ -24,11 +24,14 @@ the start).  The rotation count is tracked and the effective character
 derived, not the text rewritten.
 """
 
-from esolangs._dialects import ROTFUCK_CYCLES as CYCLES
-from esolangs._dialects import rotation as validate_rotation
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.tape_based.rotfuck._dialect import (
+    ROTFUCK_CYCLES as CYCLES,
+)
+from esolangs.interpreters.tape_based.rotfuck._dialect import (
+    rotation as validate_rotation,
+)
 
 _COMMANDS = frozenset(CYCLES["forward"])
 
@@ -292,7 +295,3 @@ def run(code: str, io: IO, *, rotation: str = "backward") -> None:
         if char in _COMMANDS:
             rot += 1
         ind += 1
-
-
-if __name__ == "__main__":
-    script_main(run)
