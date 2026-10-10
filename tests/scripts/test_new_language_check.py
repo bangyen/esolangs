@@ -20,6 +20,12 @@ def test_an_unregistered_language_is_told_to_register() -> None:
     assert 'Language("Not A Language"' in gap.fix
 
 
+def test_check_runs_the_formula_case_bounds_measures() -> None:
+    nodes = new_language.quick_tests("SStack")
+    assert nodes[-1].endswith("formulas_hold[SStack-3]")
+    assert new_language.bounds("SStack", range(1, 2))[0][:4] == (1, 9, 23, 19)
+
+
 def test_a_generator_language_needs_no_hand_sample() -> None:
     import esolangs
     from tests import samples

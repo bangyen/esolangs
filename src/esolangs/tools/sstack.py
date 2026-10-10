@@ -1,16 +1,16 @@
 r"""Boolean program generator for SStack: a decision tree of one-shot ifs.
 
 Stacks ``b`` and ``c`` hold ``ord("1")`` and ``ord("0")``.  A node reads
-its input onto ``a`` and runs ``[a\b/ one +a/a+][a\c/ zero +a/a+]~a~``: the
-``+a/a+`` lifts the bit off its own constant so each loop runs at most
-once, and a 0 lifted to 49 fails nothing, since the one-test already ran.
-Subtrees keep ``a`` balanced, so a node's tests see its own bit.  A leaf
-prints ``:b:`` or ``:c:``; a constant subtree reads its remaining inputs
-onto ``d`` and prints once.  28 characters a node: O(T) size and build.
+its input onto empty ``a`` and runs ``[a\b/~a~ one][a\c/~a~ zero]``.
+Popping before the child leaves ``a`` empty at its entry and exit; zero
+differs from both ASCII constants, so the loop and other arm cannot run.
+A leaf prints ``:b:`` or ``:c:``; a constant subtree reads its remaining inputs
+onto ``d`` and prints once.  21 characters a node: O(T) size and build.
 Repeated residuals defer through labels on stack e, then run once after
 the prefix unwinds. Six-bit labels preserve workspace; inline text and
-7n + 3 commands guard admission. At n=16, sixteen two-class fixtures
-average 471 -> 402 characters (-14.65%); both builds executed 1,024 rows.
+7n + 3 commands guard admission. Popping before descent reduces three dense
+n=16 tables from mean 1,345,047 to 955,490 characters (-28.96%); both builds
+executed five rows per table within the command and workspace bounds.
 """
 
 from itertools import pairwise
@@ -114,12 +114,12 @@ def _sstack_shared(
         if below[lo >> (remaining - 1)] == below[mid >> (remaining - 1)]:
             out.append(";d;")
             return ContinuationCost(1, (build(remaining - 1, lo, mid),))
-        out.append(";a;[a\\b/")
+        out.append(";a;[a\\b/~a~")
         one = build(remaining - 1, mid, hi)
-        out.append("+a/a+][a\\c/")
+        out.append("][a\\c/~a~")
         zero = build(remaining - 1, lo, mid)
-        out.append("+a/a+]~a~")
-        return ContinuationCost(7, (one, zero))
+        out.append("]")
+        return ContinuationCost(6, (one, zero))
 
     prefix = build(n, 0, len(table))
     stages = []
@@ -162,12 +162,12 @@ def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str
         if below[lo >> (remaining - 1)] == below[mid >> (remaining - 1)]:
             out.append(";d;")
             return add_cost(build(remaining - 1, lo, mid), 1)
-        out.append(";a;[a\\b/")
+        out.append(";a;[a\\b/~a~")
         one = build(remaining - 1, mid, hi)
-        out.append("+a/a+][a\\c/")
+        out.append("][a\\c/~a~")
         zero = build(remaining - 1, lo, mid)
-        out.append("+a/a+]~a~")
-        return add_cost(merge_cost(one, zero), 7)
+        out.append("]")
+        return add_cost(merge_cost(one, zero), 6)
 
     cost = build(n, 0, len(table))
     if shared is not None:

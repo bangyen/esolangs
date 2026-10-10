@@ -36,11 +36,15 @@ def test_every_two_input_table_on_every_row() -> None:
             assert run_sstack(program, list(f"{row:02b}")) == table[row], table
 
 
-def test_a_full_tree_is_28_characters_a_node_and_3_a_leaf() -> None:
-    """O(T): 28(T - 1) + 3T + 12 for the prologue, parity folds nothing."""
+def test_a_full_tree_is_21_characters_a_node_and_3_a_leaf() -> None:
+    """O(T): 21(T - 1) + 3T + 12 for the prologue, parity folds nothing."""
+    from esolangs.tools.sstack import _sstack_tree
+
     for n in (1, 4, 6):
         parity = "".join(str(r.bit_count() % 2) for r in range(1 << n))
-        assert len(boolean.sstack(parity)) == 31 * (1 << n) - 16
+        plain, _ = _sstack_tree(parity)
+        assert len(plain) == 24 * (1 << n) - 9
+        assert len(boolean.sstack(parity)) <= len(plain)
 
 
 def test_a_constant_subtree_still_reads_its_inputs() -> None:
@@ -49,6 +53,32 @@ def test_a_constant_subtree_still_reads_its_inputs() -> None:
     assert program.count(";d;") == 5  # 3 folded, 2 at nodes whose halves agree
     stdin = esolangs.encode_inputs("SStack", [0, 1, 1, 0]) + "B"
     assert esolangs.run("SStack", program + ";e;:e:", stdin=stdin) == "0B"
+
+
+def test_popping_before_descent_admits_shared_parity_without_nested_test_bytes():
+    from esolangs.debugger import make_vm
+    from esolangs.tools.sstack import _sstack_tree
+
+    n = 6
+    table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+    program = boolean.sstack(table)
+    assert len(program) < len(_sstack_tree(table)[0])
+    for row, expected in enumerate(table):
+        machine = make_vm("SStack", program, stdin=f"{row:06b}" + "B")
+        commands = 0
+        while not machine.halted and commands <= 7 * n + 3:
+            machine.step()
+            commands += 1
+            test_stack = machine.snapshot()[1][0]
+            assert test_stack is None or test_stack[1] is None
+        assert machine.halted
+        assert machine.output == expected
+        assert commands <= 7 * n + 3
+        assert machine.snapshot()[1][0] is None
+        assert (
+            esolangs.run("SStack", program + ";e;:e:", stdin=f"{row:06b}" + "B")
+            == expected + "B"
+        )
 
 
 def test_the_program_is_only_sstack_glyphs() -> None:
