@@ -355,7 +355,14 @@ assert ready.exists(), 'producer stalled on captured output'
     assert {name for name, _ in timings} == {"pytest", "shadow"}
     output = capsys.readouterr().out
     if returncode:
-        assert "START" + "x" * 1000000 + "END" in output
+        assert "END" in output
+        assert len(output) < 40000
+        log = next(
+            line.removeprefix("[log] ")
+            for line in output.splitlines()
+            if line.startswith("[log] ")
+        )
+        assert "START" + "x" * 1000000 + "END" in Path(log).read_text()
     else:
         assert "START" not in output
 
@@ -639,3 +646,49 @@ def test_session_completion(tmp_path, workers, failed):
             refresh.load_run(output.parent, set(metadata["collected"]))
     else:
         assert refresh.load_run(output.parent, set(metadata["collected"]))
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_step_logs_persist_for_streamed_and_captured_output(tmp_path, capsys, stream):
+    verify = load_script()
+    verify.ROOT = tmp_path
+    steps = [("probe", [sys.executable, "-c", "print('log marker')"], dict(os.environ))]
+    assert verify._run_steps(steps, stream=stream)[0] == 0  # noqa: SLF001
+    logs = list((tmp_path / "notes/verification").glob("*.log"))
+    assert len(logs) == 1
+    assert logs[0].read_text() == "log marker\n"
+    assert ("log marker" in capsys.readouterr().out) is stream
+
+
+@pytest.mark.medium
+def test_streamed_logs_deliver_short_flushes_before_exit(tmp_path, monkeypatch):
+    verify = load_script()
+    verify.ROOT = tmp_path
+    marker = tmp_path / "received"
+    output = sys.stdout
+
+    class Stream:
+        def write(self, text):
+            if "live marker" in text:
+                marker.touch()
+            return output.write(text)
+
+        def flush(self):
+            output.flush()
+
+    monkeypatch.setattr(sys, "stdout", Stream())
+    script = f"""
+import time
+from pathlib import Path
+print('live marker', flush=True)
+deadline = time.monotonic() + 1
+while not Path({str(marker)!r}).exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+assert Path({str(marker)!r}).exists(), 'stream withheld a flushed short line'
+"""
+    assert (
+        verify._run_steps(  # noqa: SLF001
+            [("probe", [sys.executable, "-c", script], dict(os.environ))], stream=True
+        )[0]
+        == 0
+    )

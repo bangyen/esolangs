@@ -6,13 +6,11 @@ import argparse
 import hashlib
 import json
 import platform
-import signal
 import statistics
 import subprocess
 import sys
-import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import fields, is_dataclass
@@ -29,6 +27,9 @@ from esolangs._validate import check_timeout
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES
 from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _benchmark_client import Worker
 
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
@@ -73,6 +74,8 @@ def source_identity() -> dict[str, Any]:
     }
 
 
+_WORKER: ContextVar[Worker | None] = ContextVar("benchmark_worker", default=None)
+
 _EVIDENCE: ContextVar[dict[str, Any] | None] = ContextVar(
     "benchmark_evidence", default=None
 )
@@ -83,11 +86,15 @@ def evidence_session() -> Iterator[None]:
     """Check checkout state once around a sweep, before publishing its records."""
     identity = source_identity()
     token = _EVIDENCE.set(identity)
+    worker = Worker()
+    worker_token = _WORKER.set(worker)
     try:
         yield
         if source_identity() != identity:
             raise RuntimeError("checkout changed during benchmark")
     finally:
+        worker.close()
+        _WORKER.reset(worker_token)
         _EVIDENCE.reset(token)
 
 
@@ -400,7 +407,7 @@ def _commands(
     return cast("int | None", result["commands"])
 
 
-def measure(
+def _measure(
     language: str,
     table: str,
     *,
@@ -411,6 +418,7 @@ def measure(
     sample_rows: tuple[int, ...] | None = None,
     timeout: float | None = 30.0,
     track_store: bool = False,
+    _progress: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Benchmark the last timed artifact; optionally check every input row."""
     if repeat < 1 or step_cap < 1:
@@ -424,14 +432,9 @@ def measure(
     ):
         raise ValueError("sample rows must index the table and include row")
     check_timeout(timeout)
-    if timeout is not None and not (
-        threading.current_thread() is threading.main_thread()
-        and hasattr(signal, "SIGALRM")
-    ):
-        raise esolangs.ArgumentError(
-            "benchmark timeout needs a Unix main thread; pass timeout=None"
-        )
     identity = _EVIDENCE.get() or source_identity()
+    if _progress is not None:
+        _progress("generation")
     timings: list[int] = []
     program: esolangs.Program | None = None
     for _ in range(repeat):
@@ -443,20 +446,23 @@ def measure(
     facts = esolangs.describe(language)
     digest = artifact_hash(program)
     rows = range(len(table)) if all_rows else sample_rows or (row,)
-    executions = [
-        _execute(
-            language,
-            program,
-            table,
-            at,
-            step_cap,
-            timeout,
-            track_store=track_store,
-            facts=facts,
-            source_digest=None if facts["parameterized"] else digest,
+    executions = []
+    for at in rows:
+        if _progress is not None:
+            _progress("execution")
+        executions.append(
+            _execute(
+                language,
+                program,
+                table,
+                at,
+                step_cap,
+                timeout,
+                track_store=track_store,
+                facts=facts,
+                source_digest=None if facts["parameterized"] else digest,
+            )
         )
-        for at in rows
-    ]
     selected = next(item for item in executions if item["row"] == row)
     if _EVIDENCE.get() is None and source_identity() != identity:
         raise RuntimeError("checkout changed during benchmark")
@@ -492,6 +498,46 @@ def measure(
     }
 
 
+def measure(
+    language: str,
+    table: str,
+    *,
+    repeat: int,
+    row: int,
+    step_cap: int,
+    all_rows: bool = False,
+    sample_rows: tuple[int, ...] | None = None,
+    timeout: float | None = 30.0,
+    track_store: bool = False,
+    generation_timeout: float | None = 30.0,
+) -> dict[str, Any]:
+    """Bound generation and each execution row in a reusable supervised worker."""
+    check_timeout(timeout)
+    check_timeout(generation_timeout)
+    identity = _EVIDENCE.get() or source_identity()
+    worker = _WORKER.get() or Worker()
+    arguments = {
+        "language": language,
+        "table": table,
+        "repeat": repeat,
+        "row": row,
+        "step_cap": step_cap,
+        "all_rows": all_rows,
+        "sample_rows": sample_rows,
+        "timeout": timeout,
+        "track_store": track_store,
+    }
+    try:
+        result = worker.measure(arguments, identity, generation_timeout)
+        if _EVIDENCE.get() is None and source_identity() != identity:
+            raise RuntimeError("checkout changed during benchmark")
+        result["generation_timeout"] = generation_timeout
+        return result
+    finally:
+        if _WORKER.get() is None:
+            worker.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     """Print JSON evidence; fail if any requested row is wrong or undecided."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -505,6 +551,7 @@ def main(argv: list[str] | None = None) -> int:
     bounds.add_argument(
         "--no-timeout", action="store_const", dest="timeout", const=None
     )
+    parser.add_argument("--generation-timeout", type=float, default=30.0)
     parser.add_argument("--all-rows", action="store_true")
     parser.add_argument(
         "--track-store",
@@ -525,6 +572,7 @@ def main(argv: list[str] | None = None) -> int:
         step_cap=args.step_cap,
         all_rows=args.all_rows,
         timeout=args.timeout,
+        generation_timeout=args.generation_timeout,
         track_store=args.track_store,
     )
     print(json.dumps(result, indent=2, sort_keys=True))

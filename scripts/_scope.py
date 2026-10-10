@@ -15,6 +15,7 @@ the sweep back to the full set, since either can change how every interpreter
 reads, steps, or reports.
 """
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -61,39 +62,39 @@ def changed_files() -> list[str]:
     callers must read as "run everything".
     """
     names: list[str] = []
-    for args in (
-        ["diff", "--name-only", "main...HEAD"],
-        ["diff", "--name-only", "origin/main...HEAD"],
-        ["diff", "--name-only", "HEAD~1"],
-    ):
+    known = False
+    for ref in ("main...HEAD", "origin/main...HEAD", "HEAD~1"):
         got = subprocess.run(
-            ["git", *args], capture_output=True, text=True, cwd=ROOT, check=False
+            ["git", "diff", "--name-only", "--no-renames", "-z", ref],
+            capture_output=True,
+            cwd=ROOT,
+            check=False,
         )
         if got.returncode == 0:
-            names = got.stdout.split()
+            names = [os.fsdecode(name) for name in got.stdout.split(b"\0") if name]
+            known = True
             break
-
-    # Uncommitted edits are part of the tree being checked whether or not the
-    # committed diff resolved, so they are collected even when neither ref did.
     status = subprocess.run(
-        ["git", "status", "--porcelain"],
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
         capture_output=True,
-        text=True,
         cwd=ROOT,
         check=False,
     )
-    if status.returncode == 0:
-        for line in status.stdout.splitlines():
-            # A rename is reported as "R  old -> new"; the new path is the one
-            # that exists to be checked, so a rename never scopes itself out.
-            path = line[3:].strip().split(" -> ")[-1]
-            if path:
-                names.append(path)
-
-    # A file that is both committed on the branch and dirty in the tree appears
-    # in both queries.  Passing the same path to a checker twice is not merely
-    # wasteful -- mypy rejects the repeat as a duplicate module -- so the list
-    # is deduplicated while keeping its order stable for readable output.
+    if not known or status.returncode != 0:
+        return []
+    records = iter(status.stdout.split(b"\0"))
+    for record in records:
+        if not record:
+            continue
+        if len(record) < 4 or record[2:3] != b" ":
+            return []
+        names.append(os.fsdecode(record[3:]))
+        if b"R" in record[:2] or b"C" in record[:2]:
+            original = next(records, b"")
+            if not original:
+                return []
+            names.append(os.fsdecode(original))
+    # Committed-and-dirty paths repeat; mypy rejects duplicate modules.
     return list(dict.fromkeys(names))
 
 

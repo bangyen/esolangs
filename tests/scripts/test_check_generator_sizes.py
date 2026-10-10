@@ -189,3 +189,63 @@ def test_checkout_change_invalidates_benchmark(monkeypatch):
     monkeypatch.setattr(b, "source_identity", lambda: next(identities))
     with pytest.raises(RuntimeError, match="checkout changed"):
         b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=100)
+
+
+@pytest.mark.parametrize("phase", ["generation", "execution", "startup"])
+def test_benchmark_deadline_reaps_workers_with_positive_control(
+    tmp_path, monkeypatch, phase
+):
+    import sys
+    import time
+    from pathlib import Path
+
+    factory = b.Worker
+    marker = tmp_path / "worker"
+    child = f"""
+import time
+from pathlib import Path
+p = Path({str(marker)!r})
+while True:
+    p.write_text(str(time.monotonic()))
+    time.sleep(0.01)
+"""
+    setup = f"""
+import sys, subprocess, time
+sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / "scripts")!r})
+import _benchmark_worker as worker
+def hang(*args, **kwargs):
+    subprocess.Popen([sys.executable, '-c', {child!r}])
+    time.sleep(30)
+"""
+    setup += (
+        "worker.benchmark.esolangs.generate = hang\n"
+        if phase == "generation"
+        else "worker.benchmark._execute = hang\n"
+    )
+    setup += (
+        f"subprocess.Popen([sys.executable, '-c', {child!r}]); time.sleep(30)"
+        if phase == "startup"
+        else "worker.main()"
+    )
+    monkeypatch.setattr(b, "Worker", lambda: factory([sys.executable, "-c", setup]))
+    start = time.monotonic()
+    expected = "execution" if phase == "execution" else "generation"
+    with pytest.raises(esolangs.ExecutionTimeoutError, match=f"{expected} deadline"):
+        b.measure(
+            "Brainfuck",
+            "0" * 131072 if phase == "startup" else "01",
+            repeat=1,
+            row=1,
+            step_cap=10000,
+            timeout=1,
+            generation_timeout=1,
+        )
+    assert time.monotonic() - start < 4
+    before = marker.read_text()
+    time.sleep(0.1)
+    assert marker.read_text() == before
+    monkeypatch.setattr(b, "Worker", factory)
+    record = b.measure(
+        "Brainfuck", "01", repeat=1, row=1, step_cap=10000, all_rows=True
+    )
+    assert all(row["matches"] for row in record["executions"])

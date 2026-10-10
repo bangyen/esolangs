@@ -65,7 +65,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _scope import local_tooling_deselections  # noqa: E402
 from _verify_cache import CACHED_STEPS, VerifiedCache  # noqa: E402
-from _verify_process import wait_with_heartbeat  # noqa: E402
+from _verify_process import start_logged, wait_with_heartbeat  # noqa: E402
 
 # Git runs this hook with its stdout attached to a pipe, not the terminal, so
 # Python block-buffers our own prints while the steps -- which inherit the
@@ -852,14 +852,7 @@ def _run_steps(
                     record(name, time.monotonic() - start, 0, cached)
                     return
         captured, returncode = _wait_with_heartbeat(
-            subprocess.Popen(
-                cmd,
-                env=step_env,
-                stdout=None if stream else subprocess.PIPE,
-                stderr=None if stream else subprocess.STDOUT,
-                text=True,
-                start_new_session=os.name == "posix",
-            ),
+            start_logged(cmd, name, step_env, ROOT, stream=stream),
             name,
             start,
         )
@@ -916,14 +909,7 @@ def _run_steps(
     if long_step is not None:
         _, cmd, step_env = long_step
         long_start = time.monotonic()
-        proc = subprocess.Popen(
-            cmd,
-            env=step_env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            start_new_session=os.name == "posix",
-        )
+        proc = start_logged(cmd, LONG_STEP, step_env, ROOT, stream=False)
         print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
 
     if proc is not None:

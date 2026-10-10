@@ -76,9 +76,9 @@ class TestWidensToEverything:
 def test_empty_branch_diff_does_not_fall_back_to_previous_commit() -> None:
     scope = load_script()
     responses = [
-        subprocess.CompletedProcess([], 0, stdout="", stderr=""),
+        subprocess.CompletedProcess([], 0, stdout=b"", stderr=""),
         subprocess.CompletedProcess(
-            [], 0, stdout=" M src/esolangs/tools/vandevelo.py\n", stderr=""
+            [], 0, stdout=b" M src/esolangs/tools/vandevelo.py\0", stderr=""
         ),
     ]
     with mock.patch.object(scope.subprocess, "run", side_effect=responses) as run:
@@ -90,10 +90,10 @@ def test_empty_branch_diff_does_not_fall_back_to_previous_commit() -> None:
 def test_missing_branch_refs_still_fall_back_to_previous_commit() -> None:
     scope = load_script()
     responses = [
-        subprocess.CompletedProcess([], 128, stdout="", stderr="missing local ref"),
-        subprocess.CompletedProcess([], 128, stdout="", stderr="missing remote ref"),
-        subprocess.CompletedProcess([], 0, stdout="src/esolangs/vm.py\n", stderr=""),
-        subprocess.CompletedProcess([], 0, stdout="", stderr=""),
+        subprocess.CompletedProcess([], 128, stdout=b"", stderr="missing local ref"),
+        subprocess.CompletedProcess([], 128, stdout=b"", stderr="missing remote ref"),
+        subprocess.CompletedProcess([], 0, stdout=b"src/esolangs/vm.py\0", stderr=""),
+        subprocess.CompletedProcess([], 0, stdout=b"", stderr=""),
     ]
     with mock.patch.object(scope.subprocess, "run", side_effect=responses):
         assert scope.changed_files() == ["src/esolangs/vm.py"]
@@ -102,10 +102,35 @@ def test_missing_branch_refs_still_fall_back_to_previous_commit() -> None:
 def test_missing_local_main_uses_remote_main() -> None:
     scope = load_script()
     responses = [
-        subprocess.CompletedProcess([], 128, stdout="", stderr="missing local ref"),
-        subprocess.CompletedProcess([], 0, stdout="src/esolangs/vm.py\n", stderr=""),
-        subprocess.CompletedProcess([], 0, stdout="", stderr=""),
+        subprocess.CompletedProcess([], 128, stdout=b"", stderr="missing local ref"),
+        subprocess.CompletedProcess([], 0, stdout=b"src/esolangs/vm.py\0", stderr=""),
+        subprocess.CompletedProcess([], 0, stdout=b"", stderr=""),
     ]
     with mock.patch.object(scope.subprocess, "run", side_effect=responses) as run:
         assert scope.changed_files() == ["src/esolangs/vm.py"]
     assert run.call_args_list[1].args[0][-1] == "origin/main...HEAD"
+
+
+@pytest.mark.parametrize("bad", [False, True])
+def test_nul_paths_and_rename_sources_are_preserved(bad):
+    scope = load_script()
+    names = [
+        "space name.py",
+        'quote"name.py',
+        "newline\nname.py",
+        "carriage\r\nname.py",
+        "deleted.py",
+    ]
+    diff = subprocess.CompletedProcess([], 0, stdout=("\0".join(names) + "\0").encode())
+    status = subprocess.CompletedProcess(
+        [], 0, stdout=b"R  new name.py\0old name.py\0?? sub/fresh\nfile.py\0"
+    )
+    if bad:
+        status.stdout = b"R  new name.py\0"
+    with mock.patch.object(scope.subprocess, "run", side_effect=[diff, status]) as run:
+        expected = (
+            [] if bad else [*names, "new name.py", "old name.py", "sub/fresh\nfile.py"]
+        )
+        assert scope.changed_files() == expected
+    assert "-z" in run.call_args_list[0].args[0]
+    assert "--untracked-files=all" in run.call_args_list[1].args[0]
