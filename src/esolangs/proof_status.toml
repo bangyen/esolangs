@@ -273,8 +273,8 @@ evidence = "docs/proofs/index.md#generator-ledger"
 [[ledger]]
 generator = "Circuit Diagram"
 labels = ["tree"]
-qualification = "shared cofactor circuit, H-layout fallback"
-scaling = "linear: default build N log N, N = O(T/log T); H-bounded area O(T)"
+qualification = "finite planar routing"
+scaling = "linear: H-layout side C sqrt(T), area Theta(T)"
 execution = "poly n: worst 2n + 1 commands; 2n + 2 past n = 7"
 workspace = """\
     linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses"""

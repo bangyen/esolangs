@@ -1,13 +1,13 @@
 """The H-layout: an O(T)-area Circuit Diagram drawing for eight inputs and up.
 
 :func:`circuit_diagram` uses it from eight inputs when a nonconstant,
-unconstrained folded circuit exceeds its area budget.
+unconstrained folded circuit exceeds its linear work or area budget.
 The recursively quartered blocks have side C sqrt(T), hence O(T) area.
 Eight is where the registry's linearity contract starts measuring.
 
-The public path first tries the shared fold, admitting its drawing inside
-the H-layout's unavoidable minterm box. Folds exceeding that area use this
-lattice over essential inputs; ignored inputs keep
+The public path first tries the shared fold at up to twice sqrt(T) distinct
+nodes, admitting its drawing inside the H-layout's unavoidable minterm box.
+Larger folds use this lattice over essential inputs; ignored inputs keep
 their original ports and drive no gates. The remaining minterm lattice is
 unshared.
 """
