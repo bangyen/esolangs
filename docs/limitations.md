@@ -175,7 +175,11 @@ gated to at most three essential inputs (seven nodes) or two inputs, where a
 fold cannot pay. Circuit Diagram's area fallback is a minterm tree, not a
 decision tree, so it names no repeated residual; the folded circuit that
 does share cofactors is admitted on every sampled n=8..10 table (0 refusals
-in 234).
+in 234). Back admits one bend: every route runs through column 1, so a second
+path meets the first's cells, and admission is bounded to 6..12 essential
+inputs without a width (16 of 96 controls improved on the admitting run).
+Dig's shared pool is 2..10 unique 64-row classes indexed by a single decimal
+digit over 2..6 prefix bits, so a larger pool needs a multi-digit index.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.

@@ -23,8 +23,6 @@ exemption supported by a structural proof or the measured criterion in
   sharing screen gives the largest upside here (40.3% of emitted area at
   n=5), but the residual search finds at most one match on random tables, so
   a second residual needs a new return target rather than a better pick.
-- **Back and Dig:** extend bounded bend routes and pools, respectively, or
-  substantiate their sharing limits.
 - **Exemptions:** audit the remaining blanket sharing exclusions.
 
 ## Research follow-up
