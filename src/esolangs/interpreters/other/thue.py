@@ -11,7 +11,7 @@ interpreter *draws* it through the shared
 :mod:`~esolangs.interpreters.randomness` hook rather than pinning a tie-break:
 pinned, overlapping rules would compute whatever this file preferred.  ``rng``
 fixes the draw for reproducibility, and the branching protocol below lets the
-hang proof search *every* draw, as Befunge's ``?`` does.  A program whose
+hang proof search *every* draw, as a random-branch language does.  A program whose
 rewrites never collide has one in every state, so no draw can change it --
 how the generated programs stay reproducible, asserted by their suite.
 
@@ -371,7 +371,7 @@ class _Machine:
     ) -> tuple[_State, ...] | None:
         """Return the state after every rewrite the draw could choose.
 
-        ``None`` declines, as Modulous's ``INP`` does: a ``:::`` rule wants a
+        ``None`` declines, as a random-input language does: a ``:::`` rule wants a
         line of input, which a pure search has no business taking.
         """
         text = str(state)

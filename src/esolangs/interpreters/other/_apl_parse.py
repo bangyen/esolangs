@@ -16,8 +16,8 @@ from esolangs.interpreters.source_hints import syntax_error
 _Number = int | float
 
 
-# Tuples discriminated by their first element, the way Forbin spells the
-# same idea.  ``call`` covers functions and custom operators alike: an
+# Tuples discriminated by their first element, a tagged encoding.  ``call``
+# covers functions and custom operators alike: an
 # operator is a call whose name is its symbol pattern, so one node type
 # and one lookup serve both.
 _Lit = tuple[Literal["lit"], _Number]

@@ -5,7 +5,7 @@ from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_wei
 
 def _sbleq_constant(inputs: int, bit: str, *, direct: bool = False) -> str:
     """Read every input and print the literal in the output's unused third cell."""
-    # Subleq writes into executed cell 0. S*bleq discards the write to -2:
+    # The reader writes into executed cell 0; the variant discards the write to -2:
     # subtracting cell 0's -2 keeps each ASCII read positive, so it falls through.
     cells = [value for _ in range(inputs) for value in (-1 if direct else -2, 0, 0)]
     literal = 3 * inputs + 2
@@ -34,7 +34,7 @@ def _packed_build(
     keep_constant_layout: bool = False,
     share_chunks: bool = False,
 ) -> str:
-    """Emit a linear-size packed-table decoder for S*bleq.
+    """Emit a linear-size packed-table decoder for the variant.
 
     An ignored input is read into ``TMP``, which the next read overwrites,
     and never joins the index; the table is packed over the rest, so its
