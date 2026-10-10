@@ -108,10 +108,15 @@ class Worker:
         arguments: dict[str, Any],
         identity: dict[str, Any],
         generation_timeout: float | None,
+        *,
+        total_timeout: float | None = None,
     ) -> dict[str, Any]:
         process = self.start()
         phase, limit = "generation", generation_timeout
         deadline = None if limit is None else time.monotonic() + limit
+        total_deadline = (
+            None if total_timeout is None else time.monotonic() + total_timeout
+        )
         generated = False
         executed = 0
         expected = (
@@ -147,9 +152,27 @@ class Worker:
                 remaining = (
                     None if deadline is None else max(0.0, deadline - time.monotonic())
                 )
+                if total_deadline is not None:
+                    total_remaining = max(0.0, total_deadline - time.monotonic())
+                    if total_remaining == 0:
+                        raise esolangs.ExecutionTimeoutError(
+                            "benchmark total work deadline exceeded"
+                        )
+                    remaining = (
+                        total_remaining
+                        if remaining is None
+                        else min(remaining, total_remaining)
+                    )
                 try:
                     line = self.messages.get(timeout=remaining)
                 except queue.Empty:
+                    if (
+                        total_deadline is not None
+                        and time.monotonic() >= total_deadline
+                    ):
+                        raise esolangs.ExecutionTimeoutError(
+                            "benchmark total work deadline exceeded"
+                        ) from None
                     raise esolangs.ExecutionTimeoutError(
                         f"benchmark {phase} deadline exceeded ({limit:g}s)"
                     ) from None

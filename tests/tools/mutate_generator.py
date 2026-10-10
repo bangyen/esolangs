@@ -15,6 +15,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "scripts"))
+from _mutation_evidence import provenance, publish  # noqa: E402
 
 from esolangs.registry import LANGUAGES  # noqa: E402
 
@@ -676,6 +678,7 @@ def main() -> int:
         _check_shadowing(proj, family, module)
         print("[note] the copied package shadows the installed one")
 
+        evidence = provenance(proj) if args.report is not None else None
         started = time.monotonic()
         try:
             baseline = subprocess.run(
@@ -708,6 +711,13 @@ def main() -> int:
         if not args.slow:
             budget = min(_MAX_ALARM, budget)
         print(f"[note] baseline {elapsed:.2f}s; capping each test at {budget:.1f}s")
+
+        if evidence is not None:
+            evidence["limits"] = {
+                "workers": args.jobs,
+                "per_test_alarm_seconds": budget,
+                "baseline_seconds": elapsed,
+            }
 
         env = {
             "PYTHONPATH": str(work),
@@ -760,20 +770,19 @@ def main() -> int:
             f"({100 * killed / total:.1f}%)"
         )
         if args.report is not None:
-            args.report.write_text(
-                json.dumps(
-                    {
-                        "kind": args.kind,
-                        "target": f"{family}/{module}",
-                        "killed": killed,
-                        "total": total,
-                        "survivors": survivors,
-                        "work_dir": str(work),
-                        "test_selection": module if args.focused else None,
-                    },
-                    indent=2,
-                )
-                + "\n"
+            assert evidence is not None
+            publish(
+                args.report,
+                {
+                    "kind": args.kind,
+                    "target": f"{family}/{module}",
+                    "killed": killed,
+                    "total": total,
+                    "survivors": survivors,
+                    "work_dir": str(work),
+                    "test_selection": module if args.focused else None,
+                },
+                evidence,
             )
         if survivors:
             print(f"\n{len(survivors)} survived:")

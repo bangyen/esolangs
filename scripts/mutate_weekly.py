@@ -4,7 +4,6 @@ import argparse
 import datetime
 import json
 import os
-import signal
 import subprocess
 import sys
 import time
@@ -12,6 +11,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SECONDS_PER_TARGET = 240
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _atomic import write_text  # noqa: E402
+from _mutation_evidence import provenance  # noqa: E402
+from _verify_process import stop_process_tree  # noqa: E402
 
 
 def _rotation(kind: str) -> list[str]:
@@ -57,6 +60,7 @@ def run_target(kind: str, target: str, output: Path) -> bool:
     ]
     if kind == "generator":
         command.append("--focused")
+    evidence = provenance()
     started = time.monotonic()
     with (output / "run.log").open("w") as log:
         process = subprocess.Popen(
@@ -64,19 +68,36 @@ def run_target(kind: str, target: str, output: Path) -> bool:
             cwd=ROOT,
             stdout=log,
             stderr=subprocess.STDOUT,
+            text=True,
             env={**os.environ, "TMPDIR": str(work), "PYTHONUNBUFFERED": "1"},
-            start_new_session=True,
+            start_new_session=os.name == "posix",
         )
         timed_out = False
         try:
             code = process.wait(timeout=SECONDS_PER_TARGET)
         except subprocess.TimeoutExpired:
             timed_out = True
-            os.killpg(process.pid, signal.SIGKILL)
-            code = process.wait()
+            stop_process_tree(process)
+            code = process.returncode
+        except BaseException:
+            stop_process_tree(process)
+            write_text(
+                output / "status.json",
+                json.dumps(
+                    {
+                        "kind": kind,
+                        "target": target,
+                        "status": "interrupted",
+                        "provenance": evidence,
+                    }
+                )
+                + "\n",
+            )
+            raise
     complete = not timed_out and code == 0 and (output / "score.json").exists()
     status = "complete" if complete else "timeout" if timed_out else "failed"
-    (output / "status.json").write_text(
+    write_text(
+        output / "status.json",
         json.dumps(
             {
                 "kind": kind,
@@ -84,22 +105,21 @@ def run_target(kind: str, target: str, output: Path) -> bool:
                 "status": status,
                 "returncode": code,
                 "seconds": time.monotonic() - started,
+                "provenance": evidence,
             },
             indent=2,
         )
-        + "\n"
+        + "\n",
     )
     print(f"{kind} {target}: {status}", flush=True)
     return complete
 
 
 def main() -> int:
-    """Run this week's pair on POSIX and retain evidence even on failure."""
+    """Run this week's pair and retain evidence even on failure."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if os.name != "posix":
-        parser.error("process-tree budgets require POSIX")
     interpreter, generator = targets_for(datetime.datetime.now(datetime.UTC).date())
     output = args.output.resolve()
     results = [

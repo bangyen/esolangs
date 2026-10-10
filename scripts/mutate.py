@@ -46,6 +46,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _mutation_evidence import provenance, publish  # noqa: E402
+
 if len(sys.argv) > 1 and sys.argv[1] == "generator":
     sys.argv = [sys.argv[0], *sys.argv[2:]]
     runpy.run_path(str(ROOT / "tests/tools/mutate_generator.py"), run_name="__main__")
@@ -772,6 +774,7 @@ def main() -> int:
         # of saying so.  Every baseline measured across the languages is
         # under a second, so a cap two orders of magnitude above that costs
         # nothing and turns a hang into a message.
+        evidence = provenance(proj) if args.report is not None else None
         started = time.monotonic()
         try:
             baseline = subprocess.run(
@@ -804,6 +807,13 @@ def main() -> int:
         # whose suites are dominated by interpreter startup.
         budget = max(_MIN_ALARM, elapsed * _ALARM_FACTOR)
         print(f"[note] baseline {elapsed:.2f}s; capping each test at {budget:.1f}s")
+
+        if evidence is not None:
+            evidence["limits"] = {
+                "workers": args.jobs,
+                "per_test_alarm_seconds": budget,
+                "baseline_seconds": elapsed,
+            }
 
         env = {
             "PYTHONPATH": str(work),
@@ -845,19 +855,18 @@ def main() -> int:
             f"\n{args.language}: {killed}/{total} killed ({100 * killed / total:.1f}%)"
         )
         if args.report is not None:
-            args.report.write_text(
-                json.dumps(
-                    {
-                        "kind": "interpreter",
-                        "target": args.language,
-                        "killed": killed,
-                        "total": total,
-                        "survivors": survivors,
-                        "work_dir": str(work),
-                    },
-                    indent=2,
-                )
-                + "\n"
+            assert evidence is not None
+            publish(
+                args.report,
+                {
+                    "kind": "interpreter",
+                    "target": args.language,
+                    "killed": killed,
+                    "total": total,
+                    "survivors": survivors,
+                    "work_dir": str(work),
+                },
+                evidence,
             )
         if survivors:
             print(f"\n{len(survivors)} survived:")

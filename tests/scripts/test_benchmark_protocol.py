@@ -58,3 +58,23 @@ def test_valid_multiline_protocol_runs_all_rows():
         entry["actual_answer"] == entry["expected_answer"]
         for entry in record["executions"]
     )
+
+
+def test_total_deadline_cannot_be_extended_by_valid_row_phases():
+    import time
+
+    import esolangs
+
+    command = (
+        'import time; print(\'{"phase":"generation"}\',flush=True); '
+        'print(\'{"phase":"execution","index":0}\',flush=True); '
+        "time.sleep(.2); "
+        'print(\'{"phase":"execution","index":1}\',flush=True); '
+        "time.sleep(10)"
+    )
+    worker = Worker([sys.executable, "-c", command])
+    started = time.monotonic()
+    with pytest.raises(esolangs.ExecutionTimeoutError, match="total work deadline"):
+        worker.measure({"timeout": 5, "sample_rows": [0, 1]}, {}, 5, total_timeout=0.3)
+    assert time.monotonic() - started < 2
+    assert worker.process is None

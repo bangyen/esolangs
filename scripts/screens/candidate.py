@@ -16,22 +16,29 @@ table the candidate raises on, exits 1.
 """
 
 import argparse
+import hashlib
 import importlib
 import importlib.util
+import json
 import math
 import random
 import sys
+import tempfile
+import time
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from _build import ignore, random_table, source_size, tiled
-from benchmark import _execute
+from _atomic import write_text
+from _benchmark_client import Worker
+from _build import ignore, random_table, tiled
+from benchmark import _execute, source_identity
 
 import esolangs
 from esolangs.registry import LANGUAGES, resolve
@@ -93,6 +100,46 @@ def _tables(n: int, rng: random.Random, count: int) -> Iterator[tuple[str, str]]
             yield "ignored", ignore(random_table(n - 1, rng), at)
 
 
+def plan(lo: int, hi: int, count: int, rows: int, cap: int) -> dict[str, int]:
+    """Count generation cases and bounded row work without building tables."""
+    tables = executions = 0
+    for n in range(lo, hi + 1):
+        cases = count * (1 + int(n >= 3) + len({0, n // 2, n - 1}))
+        tables += cases
+        executions += 2 * cases * min(rows, 1 << n)
+    return {
+        "tables": tables,
+        "row_executions": executions,
+        "step_bound": cap * executions,
+        "largest_table_bits": 1 << hi,
+    }
+
+
+def _run_case(
+    arguments: dict[str, Any], generation_timeout: float, remaining: float
+) -> dict[str, Any]:
+    worker = Worker(
+        [sys.executable, str(Path(__file__).with_name("_candidate_worker.py"))]
+    )
+    try:
+        return worker.measure(
+            arguments, {}, generation_timeout, total_timeout=remaining
+        )
+    finally:
+        worker.close()
+
+
+def _candidate_identity(spec: str) -> dict[str, str]:
+    path, _, function = spec.rpartition(":")
+    source = Path(path).resolve()
+    if not function or not source.is_file():
+        raise ValueError("candidate must be an existing FILE.py:FUNC")
+    return {
+        "spec": f"{source}:{function}",
+        "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+    }
+
+
 def _worst(
     language: str,
     program: esolangs.Program,
@@ -120,44 +167,207 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rows", type=int, default=64, help="rows per table")
     parser.add_argument("--timeout", type=float, default=30.0, help="seconds per row")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--generation-timeout", type=float, default=30)
+    parser.add_argument("--budget-seconds", type=float, default=60)
+    parser.add_argument("--max-tables", type=int, default=100)
+    parser.add_argument("--max-work", type=int, default=10**11)
+    parser.add_argument("--max-table-bits", type=int, default=65536)
+    parser.add_argument("--step-cap", type=int, default=CAP)
+    parser.add_argument("--failures", type=Path)
+    parser.add_argument("--replay", type=Path)
+    parser.add_argument(
+        "--allow-changed-candidate",
+        action="store_true",
+        help="replay a saved case against an updated candidate",
+    )
     args = parser.parse_args(argv)
 
     if not math.isfinite(args.timeout) or args.timeout <= 0:
         parser.error("--timeout must be positive and finite")
+    if any(
+        not math.isfinite(value) or value <= 0
+        for value in (args.generation_timeout, args.budget_seconds)
+    ):
+        parser.error("generation and wall deadlines must be positive and finite")
+    if min(args.max_tables, args.max_work, args.max_table_bits, args.step_cap) < 1:
+        parser.error("work limits must be positive")
     if args.rows < 1 or args.count < 1:
         parser.error("--rows and --count must be positive")
     if not 1 <= args.n[0] <= args.n[1]:
         parser.error("--n requires 1 <= LO <= HI")
 
+    replay = json.loads(args.replay.read_text()) if args.replay else None
+    if replay is not None:
+        if not isinstance(replay, dict) or replay.get("schema") != 1:
+            parser.error("invalid replay record")
+        table, rows, bounds = (
+            replay.get("table"),
+            replay.get("rows"),
+            replay.get("bounds"),
+        )
+        if (
+            not isinstance(table, str)
+            or not table
+            or set(table) - {"0", "1"}
+            or len(table) & (len(table) - 1)
+            or len(table) > args.max_table_bits
+        ):
+            parser.error("invalid or oversized replay table")
+        if (
+            not isinstance(rows, list)
+            or not rows
+            or len(rows) != len(set(rows))
+            or any(type(row) is not int or not 0 <= row < len(table) for row in rows)
+        ):
+            parser.error("invalid replay rows")
+        if (
+            not isinstance(bounds, dict)
+            or type(bounds.get("step_cap")) is not int
+            or bounds["step_cap"] < 1
+            or any(
+                not isinstance(bounds.get(key), (int, float))
+                or not math.isfinite(bounds[key])
+                or bounds[key] <= 0
+                for key in ("timeout", "generation_timeout")
+            )
+        ):
+            parser.error("invalid replay bounds")
+        cost = {
+            "tables": 1,
+            "row_executions": 2 * len(rows),
+            "step_bound": 2 * len(rows) * bounds["step_cap"],
+            "largest_table_bits": len(table),
+        }
+    else:
+        if args.n[1] > args.max_table_bits.bit_length() - 1:
+            parser.error("arity exceeds --max-table-bits")
+        cost = plan(args.n[0], args.n[1], args.count, args.rows, args.step_cap)
+    print(
+        json.dumps(
+            {
+                **cost,
+                "wall_budget_seconds": args.budget_seconds,
+                "generation_deadline_seconds": args.generation_timeout,
+            },
+            sort_keys=True,
+        )
+    )
+    if cost["tables"] > args.max_tables or cost["step_bound"] > args.max_work:
+        parser.error("screen exceeds --max-tables or --max-work")
+    if args.dry_run:
+        return 0
     language = resolve(args.language)
-    fn = _load(args.candidate)
+    identity = _candidate_identity(args.candidate)
+    checkout = source_identity()
+    if replay is not None and (
+        replay.get("schema") != 1
+        or (replay.get("candidate") != identity and not args.allow_changed_candidate)
+        or replay.get("language") != language
+        or replay.get("target") != args.target
+    ):
+        parser.error("replay candidate, language, or target changed")
     rng = random.Random(args.seed)
     stats: dict[str, _Tally] = defaultdict(_Tally)
     failed = 0
-    for n in range(args.n[0], args.n[1] + 1):
-        for family, table in _tables(n, rng, args.count):
-            old = esolangs.generate(language, table)
-            try:
-                with _patched(language, args.target, fn):
-                    new = esolangs.generate(language, table)
-            except Exception as error:
-                print(f"{family} n={n} {table}: {type(error).__name__}: {error}")
-                failed += 1
-                continue
-            rows = list(range(1 << n))
-            if len(rows) > args.rows:
-                rows = sorted(rng.sample(rows, args.rows))
-            tally = stats[family]
-            tally.tables += 1
-            tally.changed += str(new) != str(old)
-            tally.ratios.append(source_size(language, new) / source_size(language, old))
-            tally.larger += tally.ratios[-1] > 1
-            wrong, steps = _worst(language, new, table, rows, args.timeout)
-            tally.wrong += wrong
-            tally.new_steps = max(tally.new_steps, steps)
-            tally.old_steps = max(
-                tally.old_steps, _worst(language, old, table, rows, args.timeout)[1]
+    deadline = time.monotonic() + args.budget_seconds
+    cases = [(replay["family"], replay["table"], replay["rows"])] if replay else None
+    directory = args.failures
+    index = 0
+    for n in range(args.n[0], args.n[1] + 1) if cases is None else [0]:
+        entries = cases or [
+            (family, table, None) for family, table in _tables(n, rng, args.count)
+        ]
+        for family, table, saved_rows in entries:
+            if saved_rows is None:
+                rows = (
+                    list(range(len(table)))
+                    if len(table) <= args.rows
+                    else sorted(rng.sample(range(len(table)), args.rows))
+                )
+            else:
+                rows = saved_rows
+            bounds = (
+                replay["bounds"]
+                if replay
+                else {
+                    "step_cap": args.step_cap,
+                    "timeout": args.timeout,
+                    "generation_timeout": args.generation_timeout,
+                }
             )
+            arguments = {
+                "language": language,
+                "table": table,
+                "rows": rows,
+                "sample_rows": rows * 2,
+                "candidate": identity["spec"],
+                "target": args.target,
+                "timeout": bounds["timeout"],
+                "step_cap": bounds["step_cap"],
+            }
+            record = {
+                "schema": 1,
+                "language": language,
+                "candidate": identity,
+                "target": args.target,
+                "checkout": checkout,
+                "seed": replay["seed"] if replay else args.seed,
+                "family": family,
+                "table": table,
+                "rows": rows,
+                "bounds": bounds,
+            }
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                print("screen wall budget exhausted")
+                return 1
+            if replay is not None:
+                record["replay_of"] = str(args.replay.resolve())
+            baseline_wrong = False
+            try:
+                result = _run_case(arguments, bounds["generation_timeout"], remaining)
+                record["result"] = result
+                new_rows = result["new_executions"]
+                old_rows = result["old_executions"]
+                wrong = sum(row["matches"] is not True for row in new_rows)
+                baseline_wrong = any(row["matches"] is not True for row in old_rows)
+                tally = stats[family]
+                tally.tables += 1
+                tally.changed += (
+                    result["new_artifact_sha256"] != result["old_artifact_sha256"]
+                )
+                tally.ratios.append(result["new_size"] / result["old_size"])
+                tally.larger += tally.ratios[-1] > 1
+                tally.wrong += wrong
+                tally.new_steps = max(
+                    tally.new_steps, *(row["commands"] or 0 for row in new_rows)
+                )
+                tally.old_steps = max(
+                    tally.old_steps, *(row["commands"] or 0 for row in old_rows)
+                )
+                bad = bool(wrong or baseline_wrong)
+                failed += baseline_wrong
+            except Exception as error:
+                record["error"] = {
+                    "type": type(error).__name__,
+                    "message": str(error),
+                    "notes": getattr(error, "__notes__", []),
+                }
+                print(f"{family}: {type(error).__name__}: {error}")
+                failed += 1
+                bad = True
+            if bad:
+                if directory is None:
+                    parent = Path(__file__).resolve().parents[2] / "notes" / "screens"
+                    parent.mkdir(parents=True, exist_ok=True)
+                    directory = Path(tempfile.mkdtemp(prefix="candidate-", dir=parent))
+                path = directory / f"failure-{index:04d}.json"
+                write_text(path, json.dumps(record, sort_keys=True, indent=1) + "\n")
+                print(f"replay: {path}")
+            index += 1
+            if baseline_wrong:
+                return 1
 
     print(f"{'family':<8} tables changed wrong larger  ratio min/mean  worst steps")
     for family, tally in stats.items():
