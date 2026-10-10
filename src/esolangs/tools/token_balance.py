@@ -48,23 +48,8 @@ def balanced_token_width(
     actual_longest = max(
         length - trim for length, trim in zip(lengths, trims, strict=True)
     )
-    if minimum <= actual_longest and actual_longest >= len(tokens) and not rstrip_rows:
+    if minimum <= actual_longest and actual_longest >= len(tokens):
         return minimum
-    if minimum <= actual_longest and not rstrip_rows:
-        row = 0
-        height = 1
-        for length in lengths:
-            candidate = row + gap + length if row else length
-            if row and candidate > minimum:
-                height += 1
-                row = length
-            else:
-                row = candidate
-        # Every width retains the longest token and can only reduce this
-        # greedy row count. Once width already exceeds height, widening
-        # cannot improve either difference or the tied emitted size.
-        if actual_longest >= height:
-            return minimum
     choices = {minimum, high, clipped(isqrt(total))}
     if len(set(lengths)) == 1 and len(set(trims)) == 1:
         stride = longest + gap
