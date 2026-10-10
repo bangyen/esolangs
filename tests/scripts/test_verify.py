@@ -103,9 +103,10 @@ CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 
 
 @pytest.mark.parametrize("options", ["", "-n 8", "--numprocesses=2"])
-def test_split_coverage_retains_the_full_suite_and_worker_override(options):
+@pytest.mark.parametrize("shared", [False, True])
+def test_split_coverage_retains_the_full_suite_and_worker_override(options, shared):
     verify = load_script()
-    changed = ["src/esolangs/interpreters/register_based/addsubjump.py"]
+    changed = [LEAF, "src/esolangs/tools/wrap.py"] if shared else [LEAF]
     cmd = verify._scoped_coverage(  # noqa: SLF001
         list(TestScopedCoverage.COV), changed
     )
@@ -115,7 +116,8 @@ def test_split_coverage_retains_the_full_suite_and_worker_override(options):
     assert coverage[0] == verify.COVERAGE_TEST_STEP
     assert "tests/interpreters/test_addsubjump.py" in coverage[1]
     assert "--cov" in coverage[1]
-    assert coverage[1][-3:-1] == ["-n", "0"]
+    assert coverage[1][coverage[1].index("-n") + 1] == ("4" if shared else "0")
+    assert ("tests/tools/test_wrap.py" in coverage[1]) is shared
     assert suite[0] == "pytest"
     assert "--no-cov" in suite[1]
     assert not any(arg.startswith("tests/") for arg in suite[1])

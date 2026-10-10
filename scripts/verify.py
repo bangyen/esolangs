@@ -570,13 +570,23 @@ def _scoped_coverage(cmd: list[str], changed: list[str]) -> list[str]:
 def _split_coverage(
     runnable: list[tuple[str, list[str], dict[str, str]]], changed: list[str]
 ) -> list[tuple[str, list[str], dict[str, str]]]:
-    """Measure leaf interpreter units separately from a whole-suite run."""
+    """Measure audited source suites separately from a whole-suite run."""
     touched = [
         path for path in changed if path.startswith("src/") and path.endswith(".py")
     ]
-    if any(not path.startswith("src/esolangs/interpreters/") for path in touched):
+    shared = {
+        "src/esolangs/tools/wrap.py": [
+            "tests/tools/test_wrap.py",
+            "tests/tools/test_wrap_preserves_meaning.py",
+            "tests/tools/test_balance.py",
+            "tests/tools/test_balance_remaining.py",
+            "tests/tools/test_small_width_floors.py",
+        ]
+    }
+    leaves = [path for path in touched if path.startswith("src/esolangs/interpreters/")]
+    if any(path not in shared and path not in leaves for path in touched):
         return runnable
-    paths = _pytest_scope(touched)
+    paths = _pytest_scope(leaves) if leaves else []
     if not touched or paths == WHOLE_SUITE:
         return runnable
     paths = [
@@ -585,6 +595,7 @@ def _split_coverage(
         if path.startswith("tests/interpreters/")
         and path not in INTERPRETER_CONTRACT_TESTS
     ]
+    paths.extend(test for source in touched for test in shared.get(source, []))
     if not paths:
         return runnable
     result = []
@@ -609,7 +620,12 @@ def _split_coverage(
             0,
             (
                 COVERAGE_TEST_STEP,
-                [*cmd, "-n", "0", *paths],
+                [
+                    *cmd,
+                    "-n",
+                    "4" if any(path in shared for path in touched) else "0",
+                    *paths,
+                ],
                 env,
             ),
         )
