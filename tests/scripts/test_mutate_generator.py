@@ -255,7 +255,9 @@ class TestPrepare:
         config = (proj / "pyproject.toml").read_text()
         mutated = config.split('paths_to_mutate = ["')[1].split('"]')[0]
         # The same expression ``_score`` uses to find mutmut's result file.
-        scored = proj / "mutants" / "esolangs" / "tools" / "brainfuck.py.meta"
+        scored = (
+            proj / "mutants" / "esolangs" / "tools" / "brainfuck" / "__init__.py.meta"
+        )
         assert scored == proj / "mutants" / f"{mutated}.meta"
 
 

@@ -6,6 +6,7 @@
 
 [local]
 "Circuit Diagram" = "_dag"  # hash-consed mux fold
+"Dig" = "_dig_indexed_shared"  # indexed six-input leaf classes
 "Line" = "shared_tree"  # guarded ancestor return
 "Polynomial" = "_polynomial_states"  # ordered BDD over equal residuals
 

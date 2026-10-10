@@ -507,8 +507,12 @@ def _split_inlined(bundle: Path, module: str) -> tuple[int, list[str]]:
     Returns the number of lines moved and the siblings kept.
     """
     text = bundle.read_text()
+    rel = module.replace(".", "/")
+    package = (ROOT / "src/esolangs/interpreters" / rel).is_dir()
     marker = (
-        f"# --- inlined from esolangs/interpreters/{module.replace('.', '/')}.py ---"
+        f"# --- inlined from esolangs/interpreters/{rel}/__init__.py ---"
+        if package
+        else f"# --- inlined from esolangs/interpreters/{rel}.py ---"
     )
     head, sep, tail = text.partition(marker)
     if not sep:
@@ -523,7 +527,11 @@ def _split_inlined(bundle: Path, module: str) -> tuple[int, list[str]]:
         len(lines),
     )
     preamble = "".join(lines[:first_inline])
-    home = f"interpreters/{module.rpartition('.')[0].replace('.', '/')}/_"
+    home = (
+        f"interpreters/{rel}/_"
+        if package
+        else f"interpreters/{module.rpartition('.')[0].replace('.', '/')}/_"
+    )
     moved_parts: list[str] = []
     kept_parts: list[str] = []
     siblings: list[str] = []
