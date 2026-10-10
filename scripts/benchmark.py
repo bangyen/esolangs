@@ -125,20 +125,22 @@ class WrittenState:
 
     def sample(self, state: object) -> None:
         """Record one snapshot."""
-        parts = self._parts(state)
-        if len(parts) != len(self._start):
+        parts = state if isinstance(state, tuple) else (state,)
+        memo, peaks, written = self._memo, self._peaks, self._written
+        start, previous, counts = self._start, self._last, self._now
+        if len(parts) != len(start):
             raise ValueError("snapshot changed shape mid-run")
         for at, part in enumerate(parts):
             # Equal to the last sample, so equal bits: a rebuilt but
             # unchanged tape is compared in C, not walked in Python.
-            last = self._last[at]
+            last = previous[at]
             if part is last or part == last:
                 continue
-            self._last[at] = part
-            if not self._written[at]:
-                self._written[at] = True
-                self._peaks[at] = state_bits(self._start[at], self._memo)
-            now = self._now[at]
+            previous[at] = part
+            if not written[at]:
+                written[at] = True
+                peaks[at] = state_bits(start[at], memo)
+            now = counts[at]
             if (
                 now is not None
                 and isinstance(part, frozenset)
@@ -146,8 +148,8 @@ class WrittenState:
             ):
                 # A frozenset counts as the sum of its items, so a painted
                 # cell recounts the change, not A Painter Ant's whole grid.
-                now += state_bits(part - last, self._memo)
-                now -= state_bits(last - part, self._memo)
+                now += state_bits(part - last, memo)
+                now -= state_bits(last - part, memo)
             elif (
                 now is not None
                 and isinstance(part, tuple)
@@ -164,15 +166,15 @@ class WrittenState:
                 changed = list(compress(range(len(part)), map(is_not, part, last)))
                 if 8 * len(changed) < len(part):
                     for i in changed:
-                        now += state_bits(part[i], self._memo)
-                        now -= state_bits(last[i], self._memo)
+                        now += state_bits(part[i], memo)
+                        now -= state_bits(last[i], memo)
                 else:
-                    now = state_bits(part, self._memo)
+                    now = state_bits(part, memo)
             else:
-                now = state_bits(part, self._memo)
-            self._now[at] = now
-            if now > self._peaks[at]:
-                self._peaks[at] = now
+                now = state_bits(part, memo)
+            counts[at] = now
+            if now > peaks[at]:
+                peaks[at] = now
 
     @property
     def bits(self) -> int:
