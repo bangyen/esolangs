@@ -33,9 +33,12 @@ exemption supported by a structural proof or the measured criterion in
   contracts.
 - **Back and Dig:** extend bounded bend routes and pools, respectively, or
   substantiate their sharing limits.
-- **Exemptions:** re-audit Home Row, ROTfuck, LaserFuck, Dimensional, and
-  other blanket exclusions. Suffolk's NOR construction disproved its old
-  no-jump rationale: computed values can be shared arithmetically.
+- **Exemptions:** the four listed exclusions hold structurally. Home Row,
+  ROTfuck and Dimensional are lookups (`Shape.REDUCING`/`LOOKUP`), so their
+  program has no decision-tree node for `subtree_ids` to name. LaserFuck's
+  leaf code depends on the depth and path bits, so equal subtables are not
+  equal text, and its single acyclic beam path cannot enter one emission from
+  two parents. Other blanket exclusions remain to audit.
 - **Audit:** replace the presence-based matrix at `dea798` with evidence
   for all three canonical requirements and the remaining restrictions.
 
