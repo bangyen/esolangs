@@ -30,14 +30,19 @@ definitions = [
 
 [[ledger]]
 generator = "Algebraic Programming Language"
-labels = ["minterms"]
-qualification = "base-26 names are unbounded"
+labels = ["tree"]
+qualification = "bounded shared frames; base-26 names are unbounded"
 scaling = "linear: bounded dependency scan and canonical residual IDs"
-execution = "poly n: worst ceil(65n / 2) - 21 commands, one guarded path"
+execution = "linear: at most max(21,ceil(65n/2)-21)+K+2min(K,3n+1) commands: definitions initialize once and execute at most once"
 workspace = """\
-    poly n: worst 179n + 400 + V + W bits for n ≥ 2: frame work stacks, globals"""
+    poly n: at most 179n+400+V+W if K=0, else A(198+8d+3b)+Q(b+114)+65n+d+bl(2n-1) bits: frame/global state"""
 evidence = "docs/proofs/index.md#generator-ledger"
 definitions = [
+    "K = shared uppercase definitions, excluding NOT",
+    "A = 4n+3, active split and NOT frames",
+    "Q = 6n+5, pending nodes across frames",
+    "b = bl(2L+2), serial widths for AST nodes and functions",
+    "d = bl(L), bounding function-name length and the line cursor",
     "V = Σ_{1≤j≤n-2} (bl(s) + bl(s+1) + bl(s+5)), s = 2n+8+7j, three serials per level",
     "W = bl(2n-1) + bl(2n+3) + bl(2n+13) + bl(F) + 2bl(F+1) + bl(F+2) + bl(F+4), F = 2n+7",
 ]

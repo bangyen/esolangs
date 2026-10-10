@@ -142,15 +142,6 @@ def _forbin(n: int, _: str) -> int:
     return 32 * n + 71 + 2 * bl(n) + max([bl(h + 1) + 4, *loop])
 
 
-def _apl(n: int, _: str) -> int:
-    """Frame work stacks at the leaf; V and W the serials' widths, n >= 2."""
-    f = 2 * n + 7
-    v = sum(bl(s) + bl(s + 1) + bl(s + 5) for s in range(2 * n + 15, 9 * n - 5, 7))
-    w = bl(2 * n - 1) + bl(2 * n + 3) + bl(2 * n + 13)
-    w += bl(f) + 2 * bl(f + 1) + bl(f + 2) + bl(f + 4)
-    return 179 * n + 400 + v + w
-
-
 def _add_sub_jump(n: int, _: str) -> int:
     """Every program address's bits, the T/n packed cells, Q the rest."""
     c = -(-(2**n) // n)
@@ -336,7 +327,6 @@ _HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Subleq": (_subleq, False, (3, 5)),
     "3x": (_three_x, False, (3, 5)),
     "Forbin": (_forbin, True, (3, 8)),
-    "Algebraic Programming Language": (_apl, True, (3, 5)),
     "Decleq": (_decleq, True, (3, 4)),
     # Code, stack and store each near E, the expanded program, at most 95T - 80.
     "Smu": (
@@ -415,6 +405,7 @@ FORMULAS = ledger_formulas(
     lambda row: row.workspace_clause if " bits" in row.workspace_clause else "",
     _HAND,
     _ARITIES,
+    column="workspace",
 )
 
 

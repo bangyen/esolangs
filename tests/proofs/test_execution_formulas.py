@@ -167,7 +167,9 @@ _ARITIES: dict[str, tuple[int, ...]] = {
 
 #: Generator -> (formula, exact?, arities): the ledger's own clause where
 #: it parses (``tests/proofs/_formula.py``), else ``_HAND``.
-FORMULAS = ledger_formulas(lambda row: row.execution_clause, _HAND, _ARITIES)
+FORMULAS = ledger_formulas(
+    lambda row: row.execution_clause, _HAND, _ARITIES, column="execution"
+)
 
 
 def _seeded(n: int, seed: int) -> str:
