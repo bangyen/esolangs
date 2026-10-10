@@ -20,7 +20,7 @@ def test_constant_ring_reads_and_prints_without_a_lookup(n: int, bit: str) -> No
         assert program.count(".") == 7 * n
         assert "!" not in program
         for row in range(1 << n):
-            assert run_clockwise(program, _bits(row, n)) == bit
+            assert run_clockwise(program, row_bits(row, n)) == bit
 
 
 @pytest.mark.parametrize("width", [None, 1, 20])
@@ -30,7 +30,7 @@ def test_trailing_inputs_are_read_after_the_two_entry_lookup(width: int | None) 
     assert program.count(".") == 56
     assert len(program) < 1000
     for row in range(256):
-        assert run_clockwise(program, _bits(row, 8)) == table[row]
+        assert run_clockwise(program, row_bits(row, 8)) == table[row]
 
 
 @pytest.mark.parametrize("width", [None, 1, 20])
@@ -42,7 +42,7 @@ def test_return_reads_complete_exactly_one_rotation(width: int | None) -> None:
     table = "".join(str(((row >> 7) ^ (row >> 6)) & 1) for row in range(256))
     program = boolean.clockwise(table, width)
     for row in range(256):
-        io = ScriptedIO("".join(_bits(row, n)))
+        io = ScriptedIO("".join(map(str, row_bits(row, n))))
         machine = _Machine(program.splitlines(), io)
         initial = machine.inp
         reads = 0

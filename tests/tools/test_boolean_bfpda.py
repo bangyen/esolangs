@@ -59,7 +59,9 @@ def _execute_bank(table, template, rows):
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.stack_based.bf_pda import _Machine
     from scripts.benchmark import WrittenState
-    from tests.tools.fills import _fill_bfpda
+    from tests.tools.fills import fill
+
+    _fill_bfpda = fill("BF-PDA")
 
     n = len(table).bit_length() - 1
     header, tail = template[: 4 * n - 1], template[4 * n - 1 :]

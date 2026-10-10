@@ -9,8 +9,10 @@ from esolangs.interpreters.stack_based.bf_pda import _Machine
 from esolangs.tools.bfpda import _prepare, _reflected, bfpda
 from esolangs.tools.bfpda_bank import _Metric
 from esolangs.tools.bfpda_mixed import _decoder, best_mixed_bank
-from tests.tools.fills import _fill_bfpda
+from tests.tools.fills import fill
 from tests.tools.test_boolean_bfpda import _execute_bank
+
+_fill_bfpda = fill("BF-PDA")
 
 
 @pytest.mark.parametrize("classes", range(2, 20))

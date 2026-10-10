@@ -1,10 +1,7 @@
 """Analytic balance rules match all supported layouts and execute every row."""
 
 import random
-
-
 from inspect import signature
-from itertools import product
 
 import pytest
 

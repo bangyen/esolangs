@@ -8,7 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.tape_based.smallfuck import run
 from esolangs.registry import LANGUAGES
-from esolangs.tools.helpers import TEMPLATE_CHAR
+from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.smallfuck import PAIR, smallfuck
 from tests.generator_support import run_filled
 

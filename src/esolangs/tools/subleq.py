@@ -9,15 +9,16 @@ from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Payload, Shape
+from esolangs.tools.branch_decoder import hoisted_tree
 from esolangs.tools.helpers import _validate_truth_table, in_input_order
-from esolangs.tools.sbleq import _packed_build, _sbleq_hoisted, _sbleq_packed
+from esolangs.tools.packed_decoder import _packed_build, packed_decoder
 from esolangs.tools.wrap import balance_program, balance_score, wrap_grid
 
 
 def subleq(truth_table: str) -> str:
     """Compare shared trees with packed decoders; constants read and print."""
     _validate_truth_table(truth_table)
-    packed = _sbleq_packed(truth_table, direct=True)
+    packed = packed_decoder(truth_table, direct=True)
     if len(set(truth_table)) == 1:
         return packed
     return min(packed, in_input_order(truth_table, _subleq_shared), key=len)
@@ -25,7 +26,7 @@ def subleq(truth_table: str) -> str:
 
 def _subleq_shared(table: str, perm: tuple[int, ...]) -> str:
     """Fold constants and equal halves; emit each residual once."""
-    return _sbleq_hoisted(table, perm, share=True, direct=True)
+    return hoisted_tree(table, perm, share=True, direct=True)
 
 
 def _payload(state: Any) -> Payload:

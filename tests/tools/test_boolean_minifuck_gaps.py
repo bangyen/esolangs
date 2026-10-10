@@ -55,10 +55,17 @@ def test_every_ignored_input_drops_from_the_lookup() -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize(("n", "gaps"), [(2, (1,)), (2, (3,)), (3, (3, 0))])
+@pytest.mark.parametrize(
+    ("n", "gaps", "start"),
+    [
+        (n, gaps, start)
+        for n, gaps in [(2, (1,)), (2, (3,)), (3, (3, 0))]
+        for start in (range(0, 256, 64) if n == 3 else (0,))
+    ],
+)
 @pytest.mark.parametrize("paired", [False, True])
 def test_extended_pads_compute_every_small_table(
-    n: int, gaps: tuple[int, ...], *, paired: bool
+    n: int, gaps: tuple[int, ...], start: int, *, paired: bool
 ) -> None:
     from esolangs.tools.minifuck.mux import _mux_lookup
     from tests.tools.minifuck_support import _MinifuckCase
@@ -68,7 +75,8 @@ def test_extended_pads_compute_every_small_table(
     positions = [0]
     for gap in gaps:
         positions.append(positions[-1] + gap + 1)
-    for value in range(1 << (1 << n)):
+    # The full n=3 sweep took 7.10s alone; retain every row in medium shards.
+    for value in range(start, min(start + 64, 1 << (1 << n))):
         table = f"{value:0{1 << n}b}"
         template = _mux_lookup(table, n, paired=paired, gaps=gaps)
         for row in range(1 << inputs):

@@ -7,7 +7,8 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.subleq import _Machine
-from esolangs.tools.subleq import _packed_build, _sbleq_packed, subleq
+from esolangs.tools.packed_decoder import _packed_build, packed_decoder
+from esolangs.tools.subleq import subleq
 
 
 def _execute_count(program: str, text: str) -> tuple[str, int, int]:
@@ -43,7 +44,7 @@ def test_repeated_chunks_share_payloads_at_sixteen_inputs() -> None:
     n = 16
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     literal = _packed_build(table, direct=True)
-    banked = _sbleq_packed(table, direct=True)
+    banked = packed_decoder(table, direct=True)
     assert (len(literal), len(banked)) == (30737, 26677)
     payloads = {
         str(-int(table[start : start + n][::-1], 2))
@@ -63,7 +64,7 @@ def test_repeated_chunks_share_payloads_at_sixteen_inputs() -> None:
 def test_banked_decoder_reaches_the_execution_bound() -> None:
     n = 16
     table = "0" + "1" * ((1 << n) - 1)
-    output, reads, steps = _execute_count(_sbleq_packed(table, direct=True), "1" * n)
+    output, reads, steps = _execute_count(packed_decoder(table, direct=True), "1" * n)
     assert (output, reads) == ("1", n)
     assert steps == 8 * (1 << n) + (7 * n + 5) * ((1 << n) // n - 1) + 23 * n - 6
 
@@ -129,7 +130,7 @@ def test_shared_tree_and_public_candidate_compute_every_small_table(n):
         table = f"{value:0{1 << n}b}"
         forced = _subleq_shared(table, tuple(range(n)))
         public = subleq(table)
-        assert len(public) <= len(_sbleq_packed(table, direct=True))
+        assert len(public) <= len(packed_decoder(table, direct=True))
         for row, bit in enumerate(table):
             text = f"{row:0{n}b}"
             for program in (forced, public):

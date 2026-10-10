@@ -5,7 +5,6 @@ from math import isqrt
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    deque_plan,
     read_at,
     subtree_ids,
 )
@@ -15,7 +14,7 @@ _MIN_NODE_BUDGET = 8
 
 def shared_tree(table: str) -> tuple[str, int] | None:
     """Return a shared grid and maximum cycles within the previous area envelope."""
-    from esolangs.tools.thisthat import _Builder, _essential, _path
+    from esolangs.tools.thisthat import _Builder, _deque_plan, _essential, _path
 
     n = _validate_truth_table(table)
     limit = max(_MIN_NODE_BUDGET, 2 * isqrt(len(table)))
@@ -76,7 +75,7 @@ def shared_tree(table: str) -> tuple[str, int] | None:
     }
     ys = {key: 8 * i for i, key in enumerate(nodes)}
     builder = _Builder()
-    plan = deque_plan(tuple(range(m)))
+    plan = _deque_plan(tuple(range(m)))
     if plan is None:
         raise ValueError("input order has no deque plan")
     push, pop = plan

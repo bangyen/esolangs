@@ -9,8 +9,8 @@ from esolangs import tools as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.sbleq import _Machine
 from esolangs.tools.helpers import best_input_order
-from esolangs.tools.packed_decoder import packed_decoder
-from esolangs.tools.sbleq import _packed_build, _sbleq_hoisted, _sbleq_packed
+from esolangs.tools.packed_decoder import _packed_build, packed_decoder
+from esolangs.tools.sbleq import _sbleq_hoisted
 from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import run_sbleq
 from tests.tools.sample_tables import five_input_sample
@@ -47,7 +47,7 @@ def test_repeated_chunk_bank_crosses_a_large_reference_boundary() -> None:
     n = 16
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     literal = _packed_build(table)
-    banked = _sbleq_packed(table)
+    banked = packed_decoder(table)
     assert (len(literal), len(banked)) == (32193, 28141)
     for row in (0, 16):
         text = f"{row:0{n}b}"
@@ -61,7 +61,7 @@ def test_repeated_chunk_bank_crosses_a_large_reference_boundary() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> None:
     table = bit * (1 << n)
-    for program in (boolean.sbleq(table), _sbleq_packed(table)):
+    for program in (boolean.sbleq(table), packed_decoder(table)):
         for row in range(1 << n):
             text = f"{row:0{n}b}"
             io = ScriptedIO(text + "extra")

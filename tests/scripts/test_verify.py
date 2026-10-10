@@ -400,8 +400,13 @@ class TestGeneratorScope:
             ("canonical", ["tests/scripts/test_canonical.py"]),
         ],
     )
-    def test_screen_scope(self, source, expected):
+    def test_screen_scope(self, source, expected, tmp_path):
         verify = load_script()
+        verify.ROOT = tmp_path
+        for path in ("scripts/screens/canonical.py", "tests/scripts/test_canonical.py"):
+            target = tmp_path / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("")
         scope = verify._pytest_scope([f"scripts/screens/{source}.py"])  # noqa: SLF001
         assert scope == (verify.WHOLE_SUITE if expected is None else expected)
 
