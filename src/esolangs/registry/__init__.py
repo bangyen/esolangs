@@ -40,9 +40,9 @@ __all__ = [
 
 
 # Generator function name -> Language, so tests can look one up by its
-# function name (``six_five`` for "6-5").  A twin keyed by the removed text
-# generators' names made a sweep skip sixteen boolean generators silently,
-# which is how Jaune's input count survived; one map leaves no wrong pick.
+# function name.  A twin keyed by the removed text generators' names made a
+# sweep skip sixteen boolean generators silently, which is how one
+# language's input count survived; one map leaves no wrong pick.
 BY_BOOLEAN: dict[str, Language] = {
     lang.boolean.__name__: lang
     for lang in LANGUAGES.values()
@@ -202,7 +202,7 @@ def parameterized_ids() -> frozenset[str]:
 # Canonical id -> display name, the index :func:`resolve` matches against.
 _BY_ID: dict[str, str] = {lang.id: name for name, lang in LANGUAGES.items()}
 # Casefolded display names and aliases, for names the slug rule cannot reach
-# (``piet++`` slugs to Piet's ``piet``; ``cv(n)(c)`` to ``cv_n_c``).
+# (a display name that slugs to another language's id).
 _BY_FOLDED: dict[str, str] = {
     spelling.casefold(): name
     for name, lang in LANGUAGES.items()
@@ -214,7 +214,7 @@ _BY_FOLDED: dict[str, str] = {
 #: so parentheses, ``*``, ``~`` and ``-`` stay readable.  ``%`` is the escape
 #: character itself and ``^`` is in neither set, so a name carrying either
 #: went out escaped and the wiki answered 400.  Non-ASCII is escaped too:
-#: ``Forþ`` as raw bytes is served by a browser and refused by a strict one.
+#: a non-ASCII name as raw bytes is served by a browser and refused by a strict one.
 _WIKI_SAFE = "_-.~()*!'+,;=:@&$"
 
 
@@ -236,7 +236,7 @@ def resolve(name: str) -> str:
     An exact hit wins; otherwise the name is matched by :func:`canonical_id`,
     which makes the lookup case- and punctuation-insensitive: ``Brainfuck``,
     ``brainfuck`` and ``BRAINFUCK`` all reach the registered ``brainfuck``.
-    The display names mix conventions (``brainfuck``, ``Suffolk``, ``bit~``),
+    The display names mix conventions,
     so a caller cannot guess the spelling, and "unknown language" for a name
     plainly in ``esolangs list`` is the wrong answer.  A miss raises
     :class:`UnknownLanguageError` naming the closest registered spellings.

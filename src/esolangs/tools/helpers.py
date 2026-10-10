@@ -179,7 +179,7 @@ def _validate_truth_table(truth_table: str) -> int:
 def _validate_shape(truth_table: str) -> int:
     """Validate a table's *shape* only, allowing a nullary one.
 
-    Minifuck's ``_solve`` reduces to essential inputs and can reach a
+    A generator's ``_solve`` can reduce to essential inputs and reach a
     one-entry table on the way down; its public entry still validates in full.
     """
     # Alphabet first: length-first answered ``01a`` with "got 3 entries"
@@ -269,8 +269,8 @@ def mark_runs(template: str, char: str, setters: Setters) -> str:
     Runs of ``char`` are each as long as their input's setters, so no
     separator is needed; each is re-spelled as its own :func:`mark`, the form
     a wrapper keeps whole.  ``char`` is the *language's* template character
-    and cannot default to :data:`TEMPLATE_CHAR`: INTERCAL embeds on ``@``
-    because ``$`` is its mingle operator, so scanning for the global one
+    and cannot default to :data:`TEMPLATE_CHAR`: a language may embed on a
+    character the global template uses, so scanning for the global one
     found an operator and read it as a one-character run.
     """
     out, position = [], 0
@@ -509,14 +509,12 @@ def best_input_order(
     since routing costs can outweigh folds; wider tables use the identity.
     Identity first, ties keep it, so reordering only ever shrinks.
     Only the *test* order moves; the reads stay in input order.  That rules
-    out Polynomial (one register, no storage: a bit is branched on before
-    the next read).  6-5, Jaune and Bitdeque were wrongly excluded once
-    (all have storage; Bitdeque's ``INJECT``/``EJECT`` make it a deque);
-    6-5 keeps its node-read build as a candidate since hoisting has a
-    price.  Modulous is a true negative: ``[PSH VAR1]`` stores, only
-    ``[PRT VAR1 INT]`` reads a variable, and every conditional and
-    ``ADD``/``SUB``/``JMP IF`` rejects a variable operand -- no return leg
-    (verified against the interpreter and the wiki).
+    out a one-register language with no storage (a bit is branched on
+    before the next read).  Several were wrongly excluded once and keep
+    their node-read build as a candidate since hoisting has a price; one is
+    a true negative (a store instruction exists, but every conditional and
+    arithmetic instruction rejects a variable operand -- no return leg,
+    verified against the interpreter and the wiki).
     """
     orders = input_orders(truth_table, max_arity=_GREEDY_ORDER_MAX_ARITY)
     identity = orders[0]
@@ -602,8 +600,8 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
 def move_text(start: int, target: int, right: str, left: str) -> str:
     """Return the moves taking a one-dimensional pointer to ``target``.
 
-    One run, not one token per cell, so a caller measuring maximal runs --
-    Factor, which pays a prime per run -- sees the same count either way.
+    One run, not one token per cell, so a caller measuring maximal runs
+    sees the same count either way.
     """
     delta = target - start
     return right * delta if delta >= 0 else left * -delta
@@ -622,9 +620,9 @@ def decision_tree_body(
     """Return the decision tree alone, and the cell it leaves the pointer on.
 
     The reads above it and the print below it are the caller's.  Split out
-    for Factor, which pays a prime per maximal run rather than a character
-    per command, and so wants to fold the ASCII offsets the reads and the
-    print would otherwise spend 48 characters on each.
+    for a caller that pays per maximal run rather than per character, and
+    so wants to fold the ASCII offsets the reads and the print would
+    otherwise spend 48 characters on each.
     :func:`_decision_tree_program` joins the three parts back.
     ``binary_leaves`` transfers the final bit directly into the answer.
     """

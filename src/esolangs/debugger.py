@@ -244,9 +244,8 @@ class Debugger:
     def watch_cell(self, index: int) -> list[int | None]:
         """Record ``memory[index]`` each step, returning the history.
 
-        A missing cell records ``None``, and memory *shrinks* on five languages
-        (Forbin 16 -> 0, Taglate 22 -> 4, Packlang, Circuit Diagram,
-        Bitdeque).  Recording starts here; the list is live.
+        A missing cell records ``None``, and memory *shrinks* on some languages
+        (a cell count drops mid-run).  Recording starts here; the list is live.
         """
         return _watch(self._cell_history, index, "index")
 
@@ -314,7 +313,7 @@ class Debugger:
                 # ends with the answer one un-taken step away (the CLI
                 # printed ``output: ''`` on a correct program).  Once per
                 # debugger, not per run: it lands in every watch history,
-                # and three idle ``run()`` calls on a halted Minsky Swap
+                # and three idle ``run()`` calls on a halted machine
                 # grew ``watch_cell`` by three.
                 self._dumped = True
                 complete_vm(self.vm, max_steps=0)
@@ -362,7 +361,7 @@ def make_debugger(
 
     ``stdin`` is consumed using the language's input unit. An unknown name raises
     :class:`UnknownLanguageError`.  A malformed program raises
-    :class:`~esolangs.exceptions.ProgramError`, and on Clockwise -- which
+    :class:`~esolangs.exceptions.ProgramError`, and on a language that
     reads its whole input while the machine is built -- an underfed stdin
     raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
     than at :meth:`Debugger.run`.

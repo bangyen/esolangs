@@ -92,7 +92,7 @@ from esolangs.tagged import _Tagged, _Template
 from esolangs.tools.helpers import mark_runs, same_up_to_wrapping, unmark
 
 # Imported private: it takes a *generator function*, not a language name, so
-# a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
+# a caller reaching for ``esolangs.takes_width(language)`` got False for
 # every language in the registry, contradicting both its own docstring and
 # ``describe(...)["width_aware"]`` -- which is the question they were asking.
 from esolangs.tools.wrap import (
@@ -249,7 +249,7 @@ def generate(
     lang = LANGUAGES[resolved]
     fn = lang.boolean
     if fn is None:
-        # Unary reads input but cannot meet the generator's size contract.
+        # The language reads input but cannot meet the generator's size contract.
         raise ArgumentError(
             f"{resolved} has no boolean generator under this repository's "
             f"generator contracts. `esolangs list --details` marks it 'int'"
@@ -277,8 +277,8 @@ def generate(
     if lang.source_kind is SourceKind.RASTER:
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
-        # Tagged the way a text program is ``_Tagged``: a Line raster fed to
-        # Piet otherwise passed ``_check_program`` and answered '', a
+        # Tagged the way a text program is ``_Tagged``: a raster fed to a
+        # text interpreter otherwise passed ``_check_program`` and answered '', a
         # confident garbage result rather than a refusal.
         return generated.tagged(resolved, settings=settings, scale=1)
     slots = str(generated)
@@ -374,7 +374,7 @@ def instantiate(
     ):
         # The provenance check a tag cannot make: a hand-written string is
         # untagged by design (a tag cannot survive a file), and
-        # `instantiate("Minifuck", "hello $$", [1])` filled it happily.
+        # `instantiate(language, "hello $$", [1])` filled it happily.
         # Given the table it should have come from, that is decidable.
         raise with_hint(
             TemplateError(
@@ -474,7 +474,7 @@ def _looks_like_a_path(program: Program) -> bool:
     (``run("brainfuck", "prog.bf")`` returns a null byte).  Shape-based: one
     line of path characters, rooted (``/``, ``./``, ``../``, ``~/``) or ending
     in a short extension.  ``.``, ``..`` and ``~`` are accepted as programs
-    (``~~`` is two ArrowQueue commands).
+    (``~~`` is two legal source characters).
     """
     if not isinstance(program, str):
         return False
@@ -488,7 +488,7 @@ def _check_runnable(language: str, program: Program) -> None:
     """Reject a program that is a path or an unfilled template.
 
     Both are valid input to an interpreter and each produced a confident
-    wrong answer (Minifuck runs a ``$`` run as nothing).  Public because the
+    wrong answer (an unfilled template can run as nothing).  Public because the
     debugger stepped a template to ``output: '0'``; the CLI's ``debug`` calls it.
     """
     name = resolve(language)
@@ -552,8 +552,8 @@ def _check_program(
     "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
     :func:`make_vm` calls this, so it cannot build a machine to check.
     A :class:`~pathlib.Path`
-    is read here with one trailing newline stripped (CV(N)(C), Grapheme and
-    NoComment reject one), so the whole call is::
+    is read here with one trailing newline stripped (some readers reject
+    one), so the whole call is::
 
         path = importlib.resources.files("esolangs") / describe(lang)["examples"][0]
         run(lang, path, stdin=encode_inputs(lang, [0, 1]))
