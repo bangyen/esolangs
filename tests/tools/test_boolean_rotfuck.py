@@ -5,6 +5,7 @@ import pytest
 from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_rotfuck,
+    run_rotfuck_forward,
 )
 from tests.witness_tables import row_bits
 
@@ -38,6 +39,7 @@ class TestRotfuck:
         from esolangs.tools.rotfuck import _ROTFUCK_CHAIN, _rotfuck_rot
 
         assert _ROTFUCK_CHAIN == "+][.,<>-" == CYCLES["backward"]
+        assert CYCLES["forward"] == "+-><,.[]"
         assert "+" + "+-><,.[]"[:0:-1] == _ROTFUCK_CHAIN
         for i, char in enumerate(_ROTFUCK_CHAIN):
             forward = _ROTFUCK_CHAIN[(i + 1) % 8]
@@ -45,20 +47,31 @@ class TestRotfuck:
             assert _rotfuck_rot(forward, -1) == char, char
             assert _rotfuck_rot(char, 8) == char, char
             assert _rotfuck_rot(char, 0) == char, char
+        for i, char in enumerate(CYCLES["forward"]):
+            assert (
+                _rotfuck_rot(char, 1, CYCLES["forward"])
+                == CYCLES["forward"][(i + 1) % 8]
+            )
 
-    def test_a_command_never_shows_as_a_bracket_inside_a_seek(self) -> None:
+    @pytest.mark.parametrize("rotation", ["backward", "forward"])
+    def test_a_command_never_shows_as_a_bracket_inside_a_seek(
+        self, rotation: str
+    ) -> None:
         """A command's rotation, seen from a seek's, must not be a bracket."""
+        from esolangs.interpreters.tape_based.rotfuck import CYCLES
         from esolangs.tools.rotfuck import _rotfuck_rot, _shows
 
+        cycle = CYCLES[rotation]
         for seek in range(8):
             for rot in range(8):
                 for cmd in "+-><":
-                    assert _shows(cmd, seek, rot) == (
-                        _rotfuck_rot(cmd, seek - rot) in "[]"
-                    ), (cmd, seek, rot)
-        assert [c for c in "+-><" if not _shows(c, 0, 4)] == ["+", "-"]
-        assert [c for c in "+-><" if not _shows(c, 0, 5)] == ["+", "<"]
-        assert [c for c in "+-><" if not _shows(c, 0, 6)] == [">", "<"]
+                    assert _shows(cmd, seek, rot, cycle) == (
+                        _rotfuck_rot(cmd, seek - rot, cycle) in "[]"
+                    ), (rotation, cmd, seek, rot)
+        if rotation == "backward":
+            assert [c for c in "+-><" if not _shows(c, 0, 4)] == ["+", "-"]
+            assert [c for c in "+-><" if not _shows(c, 0, 5)] == ["+", "<"]
+            assert [c for c in "+-><" if not _shows(c, 0, 6)] == [">", "<"]
 
     def test_every_pad_is_invisible_and_they_are_shortest_first(self) -> None:
         """Padding shifts the rotation without shifting anything else."""
@@ -101,10 +114,32 @@ class TestRotfuck:
         for table in ("01", "0110", "11110000", "01101001"):
             assert set(boolean.rotfuck(table)) <= set("+-><,.[]"), table
 
-    def test_only_the_default_rotation_is_targeted(self) -> None:
+    def test_backward_is_the_default_direction(self) -> None:
         assert boolean.rotfuck("01", rotation="backward") == boolean.rotfuck("01")
-        with pytest.raises(ValueError, match="backward"):
-            boolean.rotfuck("01", rotation="forward")
+
+    @pytest.mark.parametrize("rotation", ["backward", "forward"])
+    def test_both_rotations_compute_their_table(self, rotation: str) -> None:
+        """Either cycle is targeted; each program runs under its own."""
+        run = run_rotfuck if rotation == "backward" else run_rotfuck_forward
+        for table in ("01", "0110", "01101001", "11110000"):
+            program = boolean.rotfuck(table, rotation=rotation)
+            n = len(table).bit_length() - 1
+            for combo in range(len(table)):
+                bits = row_bits(combo, n)
+                assert run(program, [str(b) for b in bits]) == table[combo], (
+                    rotation,
+                    table,
+                    combo,
+                )
+
+    @pytest.mark.parametrize("n", [6, 7, 8])
+    def test_forward_reaches_a_second_index_digit(self, n: int) -> None:
+        """Forward emits its own walks through the arity where the index splits."""
+        table = "".join(str(bin(row).count("1") & 1) for row in range(2**n))
+        program = boolean.rotfuck(table, rotation="forward")
+        for combo in (0, 1, 2**n - 1, 2 ** (n - 1)):
+            bits = row_bits(combo, n)
+            assert run_rotfuck_forward(program, [str(b) for b in bits]) == table[combo]
 
     @pytest.mark.parametrize(
         ("table", "length"),
@@ -120,6 +155,21 @@ class TestRotfuck:
     def test_the_emitted_length_is_exact(self, table: str, length: int) -> None:
         """The layout is deterministic down to the character."""
         assert len(boolean.rotfuck(table)) == length
+
+    @pytest.mark.parametrize(
+        ("table", "length"),
+        [
+            ("01", 144),
+            ("10", 144),
+            ("0001", 235),
+            ("0110", 236),
+            ("11110000", 150),
+            ("01101001", 333),
+        ],
+    )
+    def test_the_forward_length_is_exact(self, table: str, length: int) -> None:
+        """The forward layout is deterministic down to the character."""
+        assert len(boolean.rotfuck(table, rotation="forward")) == length
 
     def test_a_long_run_of_zero_entries_is_skipped_by_a_walk_and_runs(self) -> None:
         """A zero upper half is one carried count, not 2 * 128 steps."""

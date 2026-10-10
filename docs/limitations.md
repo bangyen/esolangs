@@ -504,7 +504,7 @@ languages remain rejected from the same image-source screen.
   `-`), under which the cat fires an unmatched `]`. A jump seeks its partner
   before the rotation ("after the instruction is executed"). The wiki Hello
   World prints no greeting under any direction or seek timing. The generator
-  targets the default only.
+  targets either direction.
 - Smu reads an unset variable as empty, as the wiki cat needs at EOF.
   Bits ride bytes low bit first, so the cat copies bytes;
   output `=` prints nothing, `(` or `)` halts, and an unbalanced program
