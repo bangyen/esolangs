@@ -104,7 +104,10 @@ def test_early_constant_exit_does_not_dispatch_a_second_output(constant: str) ->
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [9, 16])
+# n=16 builds sixteen full programs and runs 64 executions (~4.5-6s CPU),
+# straddling the 5s medium ceiling; n=9 is 0.1s.  Only the heavy param sits
+# in the slow band, which CI's sharded slow job still runs.
+@pytest.mark.parametrize("n", [9, pytest.param(16, marks=pytest.mark.slow)])
 def test_extreme_prefix_attains_the_derived_command_bound(n: int) -> None:
     rng = random.Random(9173)
     base = "".join(str(rng.randrange(2)) for _ in range(1 << n))
