@@ -83,7 +83,8 @@ def _bounds(profile: dict[str, Any]) -> None:
 @pytest.mark.medium
 def test_resource_bounds() -> None:
     """The resource audit counts a UTF-8 byte per source unit."""
-    from scripts.screens.resources import audit, corpus
+    from tests.screen_support import audit
+    from tests.screen_support import resource_corpus as corpus
 
     result = audit("BFStack", 8, corpus(8)["dense"], _bounds)
     assert result["source_utf8_bits"] == 8 * result["source_units"]

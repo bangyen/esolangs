@@ -162,11 +162,11 @@ versus 23.6 for the tree. The construction and the counting floor are in
 [fractran](proofs/fractran.md) and `tests/proofs/deep/fractran.py`.
 
 The canonical sharing piece is applied or exempt by measurement. The
-per-generator screens bound the *potential*, before a generator's own share:
-`sharing.py` the repeated-node upside, `constant.py` the constant-folding
-upside, `ignored_input.py` the ignored-input growth. `sharing.py`'s n=5
-repeated-node upside is 24.6% for SStack, 34.1% for BF-PDA, 26.4% for
-thisthat, 18.3% for Back and 10.9% for Dig -- all above the gate -- so those
+per-generator potential, before a generator's own share, is bounded per
+piece: the repeated-node upside, the constant-folding upside and the
+ignored-input growth. The n=5 repeated-node upside is 24.6% for SStack,
+34.1% for BF-PDA, 26.4% for thisthat, 18.3% for Back and 10.9% for Dig --
+all above the gate -- so those
 exemptions rest on the construction that cannot take the repeat, not a
 sub-gate bound. SStack's 24.6% is 82% subtables of size 2, below the
 two-unread-input depth a deferral needs, so its constructs reach the size >= 4
@@ -214,8 +214,8 @@ Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
 Those choices prevent repeated scans, but command cost and source size remain
 separate axes.
 
-`scripts/screens/resources.py` checks Sophie, BFStack and Subleq on 96 tables
-and all 6,120 rows through eight inputs. The benchmark reports UTF-8 source
+Sophie, BFStack and Subleq are checked on 96 tables and all 6,120 rows
+through eight inputs. The benchmark reports UTF-8 source
 bits, hidden control stacks, signed integer widths and the simultaneous peak
 of data, control, cursor and machine flags. Separate peaks need not coincide.
 Python overhead, static parser indexes and I/O state are excluded. At eight

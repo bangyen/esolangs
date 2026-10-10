@@ -167,25 +167,3 @@ jobs:
         if-no-files-found: ignore
         retention-days: 14
 
-  mutations:
-    runs-on: ubuntu-latest
-    # Two targets, four minutes each; at most two mutant workers.
-    timeout-minutes: 15
-    steps:
-    - uses: actions/checkout@v7
-    - uses: astral-sh/setup-uv@v7
-    - uses: actions/setup-python@v7
-      with:
-        python-version: "3.14"
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.14
-    - name: Run the rotating mutation pair
-      run: uv run python scripts/mutate_weekly.py --output mutation-evidence
-    - name: Retain scores, survivors and inspection files
-      if: always()
-      uses: actions/upload-artifact@v7
-      with:
-        name: mutation-evidence
-        path: mutation-evidence/
-        if-no-files-found: error
-        retention-days: 30

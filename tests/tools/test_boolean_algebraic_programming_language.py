@@ -345,7 +345,7 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 @pytest.mark.medium
 def test_default_reuses_emitted_frames() -> None:
     from esolangs.tools.algebraic_programming_language import _apl_reduced_ordered
-    from scripts.screens.canonical import corpus, execute
+    from tests.screen_support import corpus, execute
 
     table = corpus(8)["tiled"]
     plain = _apl_reduced_ordered(table, tuple(range(8)))

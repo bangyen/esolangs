@@ -1,6 +1,6 @@
 """Line's ancestor returns miss the screen's repeated-subtree upside.
 
-The sharing screen (``scripts/screens/sharing.py``) weights repeated
+The sharing catalogue weights repeated
 non-constant subtables at 40.3% of Line's n=5 emitted area.  Line has one
 share: an ancestor return that re-descends a *test-free* arm -- a fork whose
 one arm is a chain of equal-halves nodes to a residual that recurs in the

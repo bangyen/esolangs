@@ -133,10 +133,6 @@ TOOLING_INTEGRATIONS = {
         ),
         ("src/", "scripts/bundle_one.py", "scripts/install_one.sh", "tests/pick.py"),
     ),
-    "tests/scripts/test_mutate_generator.py": (
-        ("TestPrepare::test_focused_generator_baseline_collects",),
-        ("src/", "tests/"),
-    ),
     "tests/scripts/test_ci_coverage.py": (
         ("test_combining_shards_retains_every_branch",),
         (

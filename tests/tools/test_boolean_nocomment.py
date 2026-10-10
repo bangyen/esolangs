@@ -57,7 +57,7 @@ class TestParameterizedNoComment:
     # exceeds the one-second budget every other case is held to, so both
     # are slow-marked: CI's `test` matrix job runs pytest unfiltered, so a
     # slow-marked case runs there like any other.  (The separate `-m slow`
-    # job is scoped to the differential fuzzer's file and never selects
+    # job is scoped to a narrower file and never selects
     # these.)  n=11 is sampled rather than swept: a bit's stages are a
     # uniform loop keyed on nothing but its weight, and n=10 already has a
     # bit pushing a full stage 16, 8, 4, 2 times and once, and a bit at

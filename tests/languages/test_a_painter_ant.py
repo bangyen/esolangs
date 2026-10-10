@@ -6,10 +6,10 @@ import pytest
 
 import esolangs
 from esolangs._execution import interpreter_errors
-from scripts.screens.candidate import _worst
 from tests.cli.test_cli import _program, call_main
 from tests.cli_support import call_both
 from tests.generator_support import evaluate_generated
+from tests.screen_support import _worst
 
 
 class TestAMultiWordNameSuggestsQuoting:

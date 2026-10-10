@@ -199,7 +199,7 @@ class TestCiRedoesEveryLocalStep:
         assert bogus not in workflow
 
 
-@pytest.mark.parametrize(("path", "size"), [("", 0), ("README.md", 7), ("src/x.py", 1)])
+@pytest.mark.parametrize(("path", "size"), [("", 0), ("README.md", 6), ("src/x.py", 1)])
 def test_local_test_selection(path, size) -> None:
     verify = load_script()
     assert verify.LOCAL_PYTEST_MARKS == "not slow and not weekly"
@@ -394,43 +394,12 @@ class TestGeneratorScope:
             == verify.WHOLE_SUITE
         )
 
-    @pytest.mark.parametrize(
-        ("source", "expected"),
-        [
-            ("paths", None),
-            ("canonical", ["tests/scripts/test_canonical.py"]),
-        ],
-    )
-    def test_screen_scope(self, source, expected, tmp_path):
-        verify = load_script()
-        verify.ROOT = tmp_path
-        for path in ("scripts/screens/canonical.py", "tests/scripts/test_canonical.py"):
-            target = tmp_path / path
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text("")
-        scope = verify._pytest_scope([f"scripts/screens/{source}.py"])  # noqa: SLF001
-        assert scope == (verify.WHOLE_SUITE if expected is None else expected)
-
     def test_explicitly_changed_language_tests_are_never_dropped(self) -> None:
         verify = load_script()
         scope = verify._pytest_scope(  # noqa: SLF001
             ["src/esolangs/tools/bfstack.py", "tests/tools/test_boolean_line.py"]
         )
         assert "tests/tools/test_boolean_line.py" in scope
-
-
-def test_screen_imported_from_its_package_keeps_the_whole_suite(tmp_path) -> None:
-    verify = load_script()
-    verify.ROOT = tmp_path
-    for path, text in {
-        "tests/scripts/test_probe.py": "",
-        "scripts/screens/probe.py": "",
-        "scripts/consumer.py": "from scripts.screens import probe\n",
-    }.items():
-        target = tmp_path / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text)
-    assert verify._pytest_scope(["scripts/screens/probe.py"]) == verify.WHOLE_SUITE  # noqa: SLF001
 
 
 def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch) -> None:

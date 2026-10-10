@@ -4,7 +4,7 @@
 # (constant subtrees); this file names the exceptions, enforced by
 # tests/tools/test_boolean_canonical_catalogue.py.  Folding also drops an
 # ignored input, so the ignored piece is satisfied by any of the three
-# helpers.  The screens (constant.py, ignored_input.py) bound the pieces.
+# helpers.
 
 [ignored]
 "Alight" = "Horner index over the essential inputs; no branch to drop"

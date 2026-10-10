@@ -177,7 +177,8 @@ def _bounds(profile: dict[str, Any]) -> None:
 @pytest.mark.medium
 def test_packed_store_and_integer_bounds() -> None:
     """The resource audit's data bits cover every memory cell it peaks at."""
-    from scripts.screens.resources import audit, corpus
+    from tests.screen_support import audit
+    from tests.screen_support import resource_corpus as corpus
 
     for table in corpus(3).values():
         result = audit("Subleq", 3, table, _bounds)

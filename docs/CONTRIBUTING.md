@@ -161,10 +161,8 @@ requirements:
   count as shorter programs.
 
 Execution-time optimizations require 5% fewer commands summed over every row
-of the three-input tables (`scripts/screens/steps.py`), with no table slower
-or larger. Choose candidates by size, breaking ties by steps.
-
-Use `scripts/screens/` to bound the upside first.
+of the three-input tables, with no table slower or larger. Choose candidates
+by size, breaking ties by steps. Bound the per-piece upside before choosing.
 
 ## Checklist
 
@@ -207,7 +205,7 @@ Use `scripts/screens/` to bound the upside first.
 To take a language out, `just remove-language "Name"` deletes what `check`
 asks for and every test file `tests/test_language_coupling.py` counts as
 the language's own (committed or not), prunes the helper modules only it
-imported and the per-language code the shared differential harnesses and
+imported and the per-language code the shared generators and
 `wrap.py` no longer reference, drops its wiki fixtures, timing rows and
 prose entries, regenerates, lowers `tests/fixtures/coupling.toml`, and
 lists the mentions left to edit by hand (display name and aliases, quoted

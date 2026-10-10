@@ -29,9 +29,6 @@ ALLOWED = ROOT / "tests/fixtures/coupling.toml"
 #: The language shared tests use as their example: naming it is not coupling.
 REFERENCE = "brainfuck"
 TREES = ("src/", "tests/", "scripts/")
-#: Per-language registries a new language may skip: a missing differential
-#: spec only means no reference comparison for it.
-OPTIONAL = ("scripts/differential",)
 #: Files ``new_language.py remove`` edits, or its own test, which names
 #: languages as examples.  The coupling guard does not count them.
 MANAGED = frozenset(
@@ -44,7 +41,6 @@ MANAGED = frozenset(
         "tests/proofs/test_execution_formulas.py",
         "tests/proofs/test_workspace_formulas.py",
         "tests/proofs/test_schemes.py",
-        "tests/tools/mutate_generator.py",
         "tests/test_language_coupling.py",
         "tests/test_interpreter_only_admissions.py",
         "tests/scripts/test_new_language.py",
@@ -149,7 +145,7 @@ def _citations() -> list[str]:
     ).stdout.split()
     found: list[str] = []
     for relative in files:
-        if relative in _HISTORY or relative.startswith(OPTIONAL):
+        if relative in _HISTORY:
             continue
         path = ROOT / relative
         text = path.read_text(encoding="utf-8")
@@ -213,7 +209,7 @@ def _counts() -> dict[str, int]:
     owned = [_own(lang) for name, lang in LANGUAGES.items() if name != REFERENCE]
     counts: dict[str, int] = {}
     for path in files:
-        if path in MANAGED or path.startswith(OPTIONAL) or not path.startswith(TREES):
+        if path in MANAGED or not path.startswith(TREES):
             continue
         found = _mentions(path)
         total = sum(

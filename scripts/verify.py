@@ -427,34 +427,6 @@ def _generator_test_scope(module: str) -> list[str] | None:
     return selected
 
 
-def _screen_test_scope(path: str) -> list[str] | None:
-    """Scope a standalone screen with a dedicated suite and no importers."""
-    stem = Path(path).stem
-    candidate = f"tests/scripts/test_{stem}.py"
-    if not (ROOT / candidate).is_file():
-        return None
-    module = path.removesuffix(".py").replace("/", ".")
-    for folder in ("src", "scripts", "tests"):
-        for source in (ROOT / folder).rglob("*.py"):
-            if source.relative_to(ROOT).as_posix() in {path, candidate}:
-                continue
-            text = source.read_text(encoding="utf-8")
-            if stem not in text:
-                continue
-            tree = ast.parse(text)
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom) and (
-                    node.module in {module, stem}
-                    or any(alias.name == stem for alias in node.names)
-                ):
-                    return None
-                if isinstance(node, ast.Import) and any(
-                    alias.name in {module, stem} for alias in node.names
-                ):
-                    return None
-    return [candidate]
-
-
 def _pytest_scope(changed: list[str]) -> list[str] | str:
     """Return the pytest paths covering *changed*.
 
@@ -509,12 +481,6 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             continue
         if f.startswith("src/"):
             return WHOLE_SUITE  # non-interpreter source: not localisable
-        if f.startswith("scripts/screens/") and f.endswith(".py"):
-            selected = _screen_test_scope(f)
-            if selected is None:
-                return WHOLE_SUITE
-            paths.update(selected)
-            continue
         if f.startswith("scripts/") and f.endswith(".py"):
             # The scripts have unit tests (the bundler's, for one) that do not
             # follow the interpreter naming convention, so there is no way to

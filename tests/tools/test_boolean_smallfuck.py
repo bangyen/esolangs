@@ -103,8 +103,8 @@ def test_smallfuck_matches_a_narrow_layout_without_its_newlines() -> None:
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
     from esolangs.tools.smallfuck import _smallfuck_tree
-    from scripts.screens.canonical import corpus
     from tests.generator_support import assert_shared_program
+    from tests.screen_support import corpus
 
     table = corpus(8)["tiled"]
     plain, _ = _smallfuck_tree(table, tuple(range(8)))

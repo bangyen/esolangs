@@ -127,19 +127,6 @@ finish-language name:
 remove-language name:
     {{PYTHON}} scripts/new_language.py remove "{{name}}"
 
-# Not part of `just test`: a few minutes per language.
-# `language` is quoted: display names like "A Painter Ant" contain spaces,
-# and unquoted they split into two arguments.
-# mutation-test one interpreter: what its tests would NOT have caught
-mutate language *args:
-    {{PYTHON}} scripts/mutate.py interpreter "{{language}}" {{args}}
-
-# `module` is family/module, e.g. tools/register or core/vm; pass --slow to
-# include slow tests.
-# the same for one generator
-mutate-gen module *args:
-    {{PYTHON}} scripts/mutate.py generator {{module}} {{args}}
-
 # `python -m tests.proofs.deep --list` shows which proofs CI and verify run.
 # run every executable proof: the ledger obligations and the deep proofs
 proofs:

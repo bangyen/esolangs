@@ -7,7 +7,7 @@ changed tree-shaped generator could drop its sharing silently.  This pins the
 presence proxy: a tree-shaped boolean generator references a canonical sharing
 helper, a declared language-local one, or is exempt with a stated reason.  The
 exceptions live in ``tests/fixtures/sharing_catalogue.toml`` so this file names
-no language; the measured bounds stay with ``scripts/screens/sharing.py``.
+no language; the measured bounds are pinned by the generators' own tests.
 """
 
 from __future__ import annotations
