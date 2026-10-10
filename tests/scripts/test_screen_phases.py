@@ -176,7 +176,7 @@ def test_saved_minimized_finding_replays_the_executed_discrepancy(tmp_path):
         if line.startswith('{"expected_cause"')
     )
     assert observation["observed"]["cause"] == saved["minimized"]["cause"]
-    assert observation["observed"]["ref"]["output"] == "Aw=="
+    assert observation["observed"]["ref"]["output"] == "Aw==", observation
 
 
 def test_sharing_rejects_unpublishable_corpus_before_sampling(monkeypatch):

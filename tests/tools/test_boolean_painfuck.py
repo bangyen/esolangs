@@ -94,7 +94,9 @@ def test_multiple_flags_execute_with_their_native_command_price(table):
     assert served > 0
 
 
-@pytest.mark.medium
+# 4.9s on 3.12 alone (n=16), at the 5s medium ceiling; the loaded CI faster
+# shard pushed it past the 15s scaled limit.
+@pytest.mark.slow
 def test_multiple_flags_reduce_dense_cap_program_within_ledger():
     from esolangs.tools.painfuck import _painfuck_tree
     from esolangs.tools.shared_block import repeated_block

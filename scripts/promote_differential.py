@@ -65,7 +65,7 @@ def main() -> None:
         f"{case['stdin']!r}, {spec.max_steps!r})\n"
         "    for outcome in outcomes:\n"
         f"        assert (outcome.status, outcome.output) == "
-        f"({outcome.status!r}, {outcome.output!r})\n"
+        f"({outcome.status!r}, {outcome.output!r}), outcomes\n"
     )
     write_text(args.destination, text)
 
