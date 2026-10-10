@@ -80,9 +80,8 @@ from collections.abc import Callable
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other._packlang_parse import (
+from esolangs.interpreters.other.packlang._parse import (
     _DECR,
     _INCR,
     _INIT,
@@ -97,8 +96,8 @@ from esolangs.interpreters.other._packlang_parse import (
     _Program,
     _Type,
 )
-from esolangs.interpreters.other._packlang_scope import _visible
-from esolangs.interpreters.other._packlang_values import (
+from esolangs.interpreters.other.packlang._scope import _visible
+from esolangs.interpreters.other.packlang._values import (
     _get,
     _int,
     _node,
@@ -680,7 +679,3 @@ def run(code: str, io: IO, *, literal_policy: str = "decimal") -> None:
     """Run a Packlang program to completion."""
     machine = _Machine(code, io, literal_policy=literal_policy)
     drive(machine)
-
-
-if __name__ == "__main__":
-    script_main(run)

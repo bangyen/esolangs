@@ -51,9 +51,8 @@ from typing import Any
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.other._intercal_parse import (
+from esolangs.interpreters.other.intercal._parse import (
     _SELF_ABSTAIN,
     _SELF_REINSTATE,
     _fail,
@@ -647,7 +646,3 @@ def run(code: str, io: IO, rng: Randomness | None = None) -> None:
     """Execute an INTERCAL program."""
     machine = _Machine(code, io, rng)
     drive(machine)
-
-
-if __name__ == "__main__":
-    script_main(run)

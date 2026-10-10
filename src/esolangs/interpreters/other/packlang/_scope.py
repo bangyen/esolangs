@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from esolangs.interpreters.other._packlang_parse import _Function, _Program
+    from esolangs.interpreters.other.packlang._parse import _Function, _Program
 
 
 def _visible(func: _Function, caller: str, program: _Program) -> bool:

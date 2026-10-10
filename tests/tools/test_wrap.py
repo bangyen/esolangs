@@ -187,7 +187,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
         plain = example.build(width)
         wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
         if name == "Packlang":
-            from esolangs.interpreters.other._packlang_lex import _tokenize
+            from esolangs.interpreters.other.packlang._lex import _tokenize
 
             assert _tokenize(wrapped) == _tokenize(plain)
         elif name in {"FRACTRAN", "RAM0"}:

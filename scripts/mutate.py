@@ -501,7 +501,7 @@ def _split_inlined(bundle: Path, module: str) -> tuple[int, list[str]]:
     The prefix moves to ``_inlined.py``, which the bundle imports with a
     star import, leaving executable code identical and the interpreter's
     own definitions the only thing left to mutate.  The interpreter's own
-    private siblings (``other/_packlang_parse.py`` beside ``other/packlang.py``)
+    private siblings (``other/packlang/_parse.py`` beside ``other/packlang.py``)
     stay behind: they are its code split across files, and moving them out
     would leave a parser unmutated just for living in its own module.
     Returns the number of lines moved and the siblings kept.

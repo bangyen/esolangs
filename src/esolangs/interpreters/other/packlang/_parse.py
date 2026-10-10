@@ -3,7 +3,7 @@
 import re
 
 from esolangs._dialects import PacklangLiterals
-from esolangs.interpreters.other._packlang_lex import _strip_comments, _tokenize
+from esolangs.interpreters.other.packlang._lex import _strip_comments, _tokenize
 from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 #: Statement opcodes.  A program is parsed into a flat tuple of these per

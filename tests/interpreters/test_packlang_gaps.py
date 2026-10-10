@@ -6,11 +6,11 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other._packlang_parse import _Parser
 from esolangs.interpreters.other.packlang import (
     _Machine,
     run,
 )
+from esolangs.interpreters.other.packlang._parse import _Parser
 from tests.interpreters.runner import run_program
 
 _run = partial(run_program, run)

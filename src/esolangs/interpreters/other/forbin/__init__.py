@@ -60,9 +60,8 @@ from typing import Literal
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other._forbin_parse import (
+from esolangs.interpreters.other.forbin._parse import (
     _ForSpec,
     _Function,
     _Parser,
@@ -775,7 +774,3 @@ def run(code: str, io: IO) -> None:
     """Run a Forbin program, calling ``main`` with a dummy argument."""
     machine = _Machine(code, io)
     drive(machine)
-
-
-if __name__ == "__main__":
-    script_main(run)
