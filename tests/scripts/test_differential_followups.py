@@ -3,6 +3,7 @@
 # ruff: noqa: SLF001, I001
 
 import json
+import random
 import sys
 from collections import Counter
 from types import SimpleNamespace
@@ -279,3 +280,18 @@ def test_regression_checks_both_execution_paths(monkeypatch):
     monkeypatch.setattr(promotion, "run_ours", lambda *_: stepped)
     monkeypatch.setattr(promotion, "run_ours_fast", lambda *_: fast)
     assert promotion.regression_outcomes("brainfuck", ".", "", 10) == [stepped, fast]
+
+
+@pytest.mark.parametrize("language", sorted(d.SPECS))
+def test_every_spec_generates_a_program(language: str) -> None:
+    """Each plug-in's generator emits a program and an input.
+
+    Catches a shard that rots into a generator raising or returning nothing,
+    which a manual campaign would only find when someone next ran one.
+    """
+    spec = d.SPECS[language]
+    rng = random.Random(0)
+    program = spec.program(rng)
+    assert isinstance(program, str), language
+    assert program, language
+    assert isinstance(spec.stdin(rng, program), str), language

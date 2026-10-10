@@ -1076,6 +1076,7 @@ SPECS["bit~"] = Spec(
     ref_outcome=blind_outcome,
     valid=lambda program: balanced(program.translate(str.maketrans("{}", "[]"))),
 )
+# Clean-room shards c1..c7 are arbitrary; each docstring lists its languages.
 SPECS.update(__import__("differential_blind_c1").SPECS)
 SPECS.update(__import__("differential_blind_c2").SPECS)
 SPECS.update(__import__("differential_blind_c3").SPECS)
@@ -1083,7 +1084,7 @@ SPECS.update(__import__("differential_blind_c4").SPECS)
 SPECS.update(__import__("differential_blind_c5").SPECS)
 SPECS.update(__import__("differential_blind_c6").SPECS)
 SPECS.update(__import__("differential_blind_c7").SPECS)
-SPECS.update(__import__("differential_blind_c8").SPECS)
+SPECS.update(__import__("differential_implementations").SPECS)
 
 
 def _env_name(language: str) -> str:
