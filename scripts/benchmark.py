@@ -50,10 +50,8 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
     """
     if value is None:
         return 0
-    if isinstance(value, bool):
-        return 1
     if isinstance(value, int):
-        return _integer_bits(value)
+        return (value.bit_length() or 1) + (value < 0)
     if isinstance(value, float):
         return 64
     if isinstance(value, _TEXT_TYPES):
@@ -67,7 +65,11 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
         total = sum(state_bits(k, memo) + state_bits(v, memo) for k, v in value.items())
     elif isinstance(value, _CONTAINER_TYPES):
         items = value
-        if value and set(map(type, value)) == {tuple}:
+        if (
+            value
+            and type(next(iter(value))) is tuple
+            and set(map(type, value)) == {tuple}
+        ):
             # Records of ints (a sparse tape's address-value pairs) count
             # as the flat run they hold; Streetcode re-sorts its every write.
             items = list(chain.from_iterable(value))
@@ -169,7 +171,8 @@ class WrittenState:
             else:
                 now = state_bits(part, self._memo)
             self._now[at] = now
-            self._peaks[at] = max(self._peaks[at], now)
+            if now > self._peaks[at]:
+                self._peaks[at] = now
 
     @property
     def bits(self) -> int:
