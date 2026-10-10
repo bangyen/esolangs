@@ -135,6 +135,12 @@ class _Parser:
         self.tokens = tokens
         self.defs = defs
         self.ind = 0
+        # Definitions are fixed during one parse. Rescanning them per operand
+        # timed out the 219,826-character generated n=16 dense control at 2s.
+        self.operator_patterns = sorted(
+            (d for d in defs.values() if "\0" in d.name),
+            key=lambda d: -len(d.name),
+        )
 
     def peek(self) -> str | None:
         """Return the next token, or None at the end of the expression."""
@@ -259,10 +265,7 @@ class _Parser:
 
     def _operators(self) -> list[_Definition]:
         """Return the custom operators, longest pattern first."""
-        return sorted(
-            (d for d in self.defs.values() if "\0" in d.name),
-            key=lambda d: -len(d.name),
-        )
+        return self.operator_patterns
 
     def _match_operator(self, left: _Node | None) -> _Node | None:
         """Try each custom operator pattern at the cursor; None if none fit.

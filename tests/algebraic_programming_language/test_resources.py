@@ -1,4 +1,6 @@
-"""Shared frames preserve ordered paths and the evaluator's resource bounds."""
+"""Shared expressions preserve ordered paths and evaluator resource bounds."""
+
+import random
 
 import pytest
 
@@ -8,6 +10,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.algebraic_programming_language import _Machine
 from esolangs.tools.algebraic_programming_language import (
     _apl_reduced_ordered,
+    _apl_repeated_expressions,
     _apl_split,
 )
 from scripts.benchmark import WrittenState
@@ -17,15 +20,22 @@ NAME = "Algebraic Programming Language"
 
 
 @pytest.mark.medium
+@pytest.mark.parametrize("sharing", ["frames", "expressions"])
 @pytest.mark.parametrize(
     ("n", "band"), [(1, 0), (2, 0), (3, 0), (3, 1), (3, 2), (3, 3)]
 )
-def test_forced_shared_frames_obey_bounds_for_every_small_table(n, band):
+def test_shared_expressions_obey_bounds_for_every_small_table(n, band, sharing):
     positive = 0
     span = 64 if n == 3 else 1 << (1 << n)
     for value in range(band * span, (band + 1) * span):
         table = f"{value:0{1 << n}b}"
-        source = _apl_split(table, tuple(range(n)), 1, _apl_reduced_ordered)[0]
+        perm = tuple(range(n))
+        if sharing == "frames":
+            source = _apl_split(table, perm, 1, _apl_reduced_ordered)[0]
+        else:
+            plain = _apl_reduced_ordered(table, perm)
+            source = _apl_repeated_expressions(plain)
+            assert len(source) <= len(plain)
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in range(n - 1, -1, -1)]
             machine = _Machine(source, ScriptedIO(esolangs.encode_inputs(NAME, bits)))
@@ -53,7 +63,7 @@ def test_forced_shared_frames_obey_bounds_for_every_small_table(n, band):
             assert steps <= execution(n, source)
             assert state.bits <= workspace(n, source)
             positive += bool(calls)
-    if n == 3:
+    if n == 3 and (sharing == "frames" or band in (1, 2)):
         assert positive > 0
 
 
@@ -68,3 +78,16 @@ def test_public_parity_includes_shared_frame_overhead(n):
     steps, bits = _measure(NAME, table, written=True, program=source)
     assert steps <= execution(n, source)
     assert bits <= workspace(n, source)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [8, 10])
+def test_named_groups_keep_large_input_bindings(n):
+    table = format(random.Random(91026 + n).getrandbits(1 << n), f"0{1 << n}b")
+    source = _apl_repeated_expressions(_apl_reduced_ordered(table, tuple(range(n))))
+    definitions = source.count("=") - 1
+    assert definitions > (26 if n == 10 else 0)
+    for row in (0, (1 << n) // 2, (1 << n) - 1):
+        bits = [int(bit) for bit in format(row, f"0{n}b")]
+        actual = esolangs.run(NAME, source, stdin=esolangs.encode_inputs(NAME, bits))
+        assert read_answer(NAME, actual) == table[row]
