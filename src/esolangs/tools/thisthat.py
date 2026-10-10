@@ -105,8 +105,8 @@ class _Builder:
 def thisthat(truth_table: str, width: int | None = None) -> str:
     """Return a linear-area tree or a bounded DAG with shared residuals.
 
-    The DAG uses directed crossings and at most max(8, 2 floor(sqrt(T)))
-    nodes, keeping its bus grid O(T). The old grid,
+    The DAG uses directed crossings within the preceding O(T) area envelope.
+    The old grid,
     cycle bound and coordinate widths guard admission; narrow small arities
     additionally compare folded strips and streaming trees.
     """

@@ -260,3 +260,37 @@ def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:
                 run(source.splitlines(), io)
                 assert (io.getvalue(), io.reads) == (expected, 3)
     assert exercised > 0
+
+
+@pytest.mark.medium
+def test_shared_area_envelope_admits_more_than_old_node_cap() -> None:
+    from esolangs.tools.helpers import subtree_ids
+    from esolangs.tools.thisthat_shared import shared_tree
+
+    rng = random.Random(15)
+    table = "".join(rng.choice("01") for _ in range(64))
+    ids = subtree_ids(table)
+    nodes = sum(len(set(level) - {0, 1}) for level in ids) + 2
+    assert nodes == 25  # The preceding six-input node cap was 16.
+    built = shared_tree(table)
+    assert built is not None
+    source, _ = built
+    assert len(source.splitlines()) * max(map(len, source.splitlines())) == 12139
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:06b}")
+        run(source.splitlines(), io)
+        assert (io.getvalue(), io.reads) == (expected, 6)
+
+
+@pytest.mark.medium
+def test_shared_unequal_bus_banks_execute_all_rows() -> None:
+    rng = random.Random(15)
+    parts = ["".join(rng.choice("01") for _ in range(16)) * 4 for _ in range(3)]
+    table = "".join(parts[i] for i in (0, 1, 2, 0, 2, 1, 0, 2))
+    source = thisthat(table)
+    area = len(source.splitlines()) * max(map(len, source.splitlines()))
+    assert area == 13455 < 14283  # Preceding equal-bank emitted area.
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:09b}")
+        run(source.splitlines(), io)
+        assert (io.getvalue(), io.reads) == (expected, 9)

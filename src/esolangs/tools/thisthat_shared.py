@@ -1,4 +1,4 @@
-"""A bounded residual DAG with downward buses and directed crossings."""
+"""An area-bounded residual DAG with downward buses and directed crossings."""
 
 from collections import defaultdict
 from math import isqrt
@@ -14,7 +14,7 @@ _MIN_NODE_BUDGET = 8
 
 
 def shared_tree(table: str) -> tuple[str, int] | None:
-    """Return a shared grid and maximum cycles within a two-square-root node budget."""
+    """Return a shared grid and maximum cycles within the previous area envelope."""
     from esolangs.tools.thisthat import _Builder, _essential, _path
 
     n = _validate_truth_table(table)
@@ -26,12 +26,13 @@ def shared_tree(table: str) -> tuple[str, int] | None:
     m = len(ess)
     ids = subtree_ids(table)
     representatives = {(0, ids[0][0]): 0}
+    pending = [[(0, ids[0][0])]] + [[] for _ in range(m - 1)]
     layers = []
     incoming: dict[tuple[int, int], int] = defaultdict(int)
     children = {}
     terminal = set()
     for level in range(m):
-        layer = [key for key in representatives if key[0] == level]
+        layer = pending[level]
         layers.append(layer)
         for key in layer:
             lo = representatives[key]
@@ -46,22 +47,31 @@ def shared_tree(table: str) -> tuple[str, int] | None:
                 if child[0] < 0:
                     terminal.add(child)
                 else:
-                    representatives.setdefault(child, row)
+                    if child not in representatives:
+                        representatives[child] = row
+                        pending[level + 1].append(child)
                 if side == 0 or zero_id != one_id:
                     incoming[child] += 1
                 kids.append(child)
-            if len(representatives) + len(terminal) > limit:
-                return None
             children[key] = kids
     if not any(key[0] >= 0 and count > 1 for key, count in incoming.items()):
         return None
     nodes = [key for layer in layers for key in layer] + sorted(terminal)
-    maximum = max(map(len, layers))
+    banks = [
+        max((len(layer) for layer in layers[parity::2]), default=0) for parity in (0, 1)
+    ]
+    # The former node cap bounded both dimensions independently. Price their
+    # product instead, admitting long narrow DAGs within the same O(T) envelope.
+    count = len(nodes)
+    width = 2 * sum(banks) + 2 * n + 2 * m + 9
+    height = 8 * count - 1
+    if width * height > (4 * limit + 4 * n + 9) * (8 * limit - 1):
+        return None
     slots = {key: slot for layer in layers for slot, key in enumerate(layer)}
     columns = {
         key: 4 + 2 * key[1]
         if key[0] < 0
-        else 8 + 2 * (slots[key] + maximum * (key[0] % 2))
+        else 8 + 2 * (slots[key] + banks[0] * (key[0] % 2))
         for key in nodes
     }
     ys = {key: 8 * i for i, key in enumerate(nodes)}
@@ -73,6 +83,7 @@ def shared_tree(table: str) -> tuple[str, int] | None:
     # Two column banks alternate with depth. A bank's old edges end before
     # its next parents begin; constants retain their own two downward buses.
     costs: dict[tuple[int, int], int] = {}
+    buses: dict[int, dict[int, int]] = {}
     for key in reversed(nodes):
         y = ys[key]
         entry = (0, y - 4)
@@ -101,12 +112,25 @@ def shared_tree(table: str) -> tuple[str, int] | None:
                 builder.node((col, row), "▼")
                 builder.connect(_path(router, (2, row), "vertical"), "single")
                 builder.connect(_path((2, row), (col, row), "horizontal"), "single")
-                builder.connect(
-                    _path((col, row), (col, target_y), "vertical"), "single"
-                )
+                events = buses.setdefault(col, {})
+                events[row] = events.get(row, 0) + 1
+                events[target_y] = events.get(target_y, 0) - 1
                 steps.append(6 + 2 * col + target_y - row + costs[child])
             costs[key] = max(steps)
         builder.connect(_path(point, router, "horizontal"), "double")
+    # Merge overlapping bus edges before drawing: independently tracing every
+    # route to a terminal costs N² on a narrow N-node DAG. Each bus is scanned
+    # once within the admitted rectangle, keeping construction O(T).
+    for col, events in buses.items():
+        active = 0
+        begin = None
+        for row in range(min(events), max(events) + 1):
+            active += events.get(row, 0)
+            if active and begin is None:
+                begin = row
+            elif not active and begin is not None:
+                builder.connect(_path((col, begin), (col, row), "vertical"), "single")
+                begin = None
     # Hollow downward arrows pass horizontal traffic straight through while
     # keeping vertical traffic downward; solid arrows merge at destinations.
     for point, (kind, ports) in list(builder.wires.items()):
