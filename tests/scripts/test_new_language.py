@@ -88,6 +88,14 @@ def test_remove_drops_the_whole_limitations_bullet(tmp_path: Path) -> None:
     assert path.read_text() == "- Gonero stays.\n  Kept.\n"
 
 
+def test_remove_drops_a_catalogue_entry(tmp_path: Path) -> None:
+    """A per-language ``"Name" = "reason"`` row goes, its neighbours stay."""
+    path = tmp_path / "catalogue.toml"
+    path.write_text('[local]\n"Gone" = "its mechanism"\n"Kept" = "another"\n')
+    remove_language._drop_toml(path, "Gone")  # noqa: SLF001
+    assert path.read_text() == '[local]\n"Kept" = "another"\n'
+
+
 def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
     new_language.scaffold("Tiny", "other", generator=False)
     fixtures = root / "tests/fixtures"

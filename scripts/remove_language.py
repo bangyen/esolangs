@@ -967,7 +967,12 @@ def remove(name: str) -> list[str]:
 
     if timings.is_file():
         _drop_json(timings, drop_timings)
-    for relative in ("tests/fixtures/curation.toml", "src/esolangs/proof_status.toml"):
+    for relative in (
+        "tests/fixtures/curation.toml",
+        "src/esolangs/proof_status.toml",
+        "tests/fixtures/sharing_catalogue.toml",
+        "tests/fixtures/canonical_folding_catalogue.toml",
+    ):
         _drop_toml(ROOT / relative, name)
     for relative in ("docs/limitations.md", "docs/proofs/index.md"):
         _drop_bullets(ROOT / relative, name)
@@ -1077,11 +1082,12 @@ def remove(name: str) -> list[str]:
         text=True,
         check=False,
     )
-    # The tool's own examples name languages (``Piet++``, ``[1-Line]``); that
-    # is not coupling to edit, so leave its file out of the report.
+    # The tool's own examples name languages (``Piet++``, ``[1-Line]``), and
+    # the changelog records that they existed; neither is coupling to edit,
+    # so leave both out of the report.
     mentions = [
         line
         for line in grep.stdout.splitlines()
-        if not line.startswith("scripts/remove_language.py:")
+        if not line.startswith(("scripts/remove_language.py:", "CHANGELOG.md:"))
     ]
     return kept + survived + broken + mentions
