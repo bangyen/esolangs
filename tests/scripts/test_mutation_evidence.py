@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import time
+import types
 
 import pytest
 
@@ -69,7 +70,20 @@ def test_weekly_supervisor_reaps_on_timeout_or_interruption(
             process.wait = interrupt
         return process
 
-    monkeypatch.setattr(weekly.subprocess, "Popen", spawn)
+    # Patch only mutate_weekly's view. ``weekly.subprocess`` is the shared
+    # module, so patching its ``Popen`` also redirects
+    # _verify_process.stop_process_tree's Windows taskkill (subprocess.run
+    # calls the module-level Popen), which then respawns the hung leader
+    # instead of reaping it -- leaking a worker and breaking later tests.
+    monkeypatch.setattr(
+        weekly,
+        "subprocess",
+        types.SimpleNamespace(
+            Popen=spawn,
+            STDOUT=subprocess.STDOUT,
+            TimeoutExpired=subprocess.TimeoutExpired,
+        ),
+    )
     monkeypatch.setattr(weekly, "provenance", lambda: {"mutmut": "fixture"})
     monkeypatch.setattr(weekly, "SECONDS_PER_TARGET", 0.3)
     output = tmp_path / "evidence"

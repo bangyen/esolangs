@@ -143,7 +143,9 @@ def test_saved_minimized_finding_replays_the_executed_discrepancy(tmp_path):
         "if supervise(p,a,Path(__file__),plan):\n"
         " spec=replace(d.SPECS['brainfuck'],program=lambda _: '++.',"
         "stdin=lambda *_: '')\n"
-        f" r=d.Runner(spec,{command!r},.2)\n"
+        # 2s not .2s: the reference is a fresh interpreter, whose startup
+        # exceeds .2s on Windows, which would time it out and empty its output.
+        f" r=d.Runner(spec,{command!r},2)\n"
         " r.minimize_calls=3\n r.minimize_seconds=1\n d.campaign(r,1,0)\n"
     )
     report = tmp_path / "report.json"
@@ -151,7 +153,7 @@ def test_saved_minimized_finding_replays_the_executed_discrepancy(tmp_path):
         [sys.executable, str(worker), "--budget-seconds", "5", "--report", str(report)],
         capture_output=True,
         text=True,
-        timeout=8,
+        timeout=20,
     )
     assert result.returncode == 0, result.stdout + result.stderr
     manifest = json.loads(report.read_text())
@@ -165,7 +167,7 @@ def test_saved_minimized_finding_replays_the_executed_discrepancy(tmp_path):
         json.loads(Path(saved["path"]).read_text())["minimized"] == saved["minimized"]
     )
     replayed = subprocess.run(
-        saved["replay"], capture_output=True, text=True, timeout=8
+        saved["replay"], capture_output=True, text=True, timeout=20
     )
     assert replayed.returncode == 1, replayed.stdout + replayed.stderr
     observation = next(

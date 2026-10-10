@@ -165,7 +165,7 @@ def test_promotion_confirms_through_bounded_replay(tmp_path, monkeypatch):
         shlex.join(
             [sys.executable, "-c", "import sys;sys.stdout.buffer.write(b'\\x03')"]
         ),
-        0.5,
+        2,  # not .5: fresh interpreter startup exceeds that on Windows
     )
     case = runner.check("++.", "")
     assert case is not None
