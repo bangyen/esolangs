@@ -6,8 +6,13 @@ import pytest
 
 from esolangs.debugger import make_vm
 from esolangs.tools.sstack import _sstack_tree, sstack
-from esolangs.tools.sstack_binary import _Metric
-from esolangs.tools.sstack_ternary import _PROLOGUE, _decoder, _width, best_ternary_bank
+from esolangs.tools.sstack._binary import _Metric
+from esolangs.tools.sstack._ternary import (
+    _PROLOGUE,
+    _decoder,
+    _width,
+    best_ternary_bank,
+)
 from scripts.benchmark import WrittenState
 
 

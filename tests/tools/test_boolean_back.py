@@ -369,7 +369,7 @@ def test_selective_bend_preserves_the_command_bound(n: int, seed: int) -> None:
 
 
 def test_bend_walk_rejects_cycles_and_counts_both_skip_outcomes() -> None:
-    from esolangs.tools.back_routes import _back_walk
+    from esolangs.tools.back._routes import _back_walk
 
     assert _back_walk({(0, 1): "*"}, 1, 3) == 1
     assert _back_walk({(0, 1): "+", (0, 3): "*"}, 1, 4) == 3
@@ -378,7 +378,7 @@ def test_bend_walk_rejects_cycles_and_counts_both_skip_outcomes() -> None:
 
 @pytest.mark.parametrize("obstruction", ["owner", "distance", "occupied"])
 def test_bend_refuses_a_missing_owner_or_blocked_corridor(obstruction: str) -> None:
-    from esolangs.tools.back_routes import _back_bend
+    from esolangs.tools.back._routes import _back_bend
 
     positions = {(1, 0): (1, 5), (1, 1): (4, 5), (1, 2): (10, 5)}
     grid = dict.fromkeys(positions.values(), "\\")

@@ -7,7 +7,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.brainfuck import _Machine
 from esolangs.tools.brainfuck import _bf_ordered, bf_tree
-from esolangs.tools.brainfuck_binary import binary_bank
+from esolangs.tools.brainfuck._binary import binary_bank
 from scripts.benchmark import WrittenState
 
 

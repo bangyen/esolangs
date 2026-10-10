@@ -212,7 +212,7 @@ def test_xor_has_one_column() -> None:
 
 @pytest.mark.medium
 def test_shared_residual_buses_execute_within_ledger() -> None:
-    from esolangs.tools.thisthat_shared import shared_tree
+    from esolangs.tools.thisthat._shared import shared_tree
     from tests.generator_support import assert_shared_program
 
     a, b = "0001011101101001" * 4, "0110100100010111" * 4
@@ -245,7 +245,7 @@ def test_shared_residual_buses_execute_within_ledger() -> None:
 @pytest.mark.medium
 def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:
     from esolangs.tools.thisthat import _rotate_tree
-    from esolangs.tools.thisthat_shared import shared_tree
+    from esolangs.tools.thisthat._shared import shared_tree
 
     exercised = 0
     for table in witnesses(3):
@@ -265,7 +265,7 @@ def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:
 @pytest.mark.medium
 def test_shared_area_envelope_admits_more_than_old_node_cap() -> None:
     from esolangs.tools.helpers import subtree_ids
-    from esolangs.tools.thisthat_shared import shared_tree
+    from esolangs.tools.thisthat._shared import shared_tree
 
     rng = random.Random(15)
     table = "".join(rng.choice("01") for _ in range(64))

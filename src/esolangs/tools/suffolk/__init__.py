@@ -39,7 +39,7 @@ def _one(cell: int) -> str:
 
 def suffolk(truth_table: str) -> str:
     """Return the smaller admitted NOR DAG or countdown program."""
-    from esolangs.tools.suffolk_shared import shared_dag
+    from esolangs.tools.suffolk._shared import shared_dag
 
     lookup = _suffolk_lookup(truth_table)
     shared = shared_dag(truth_table, _validate_truth_table(truth_table))

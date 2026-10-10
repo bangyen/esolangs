@@ -6,7 +6,7 @@ from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
-from esolangs.tools.back_routes import _back_bend, _back_walk
+from esolangs.tools.back._routes import _back_bend, _back_walk
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,

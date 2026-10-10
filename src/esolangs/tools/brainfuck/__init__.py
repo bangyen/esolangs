@@ -2,7 +2,7 @@
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.brainfuck_binary import binary_bank, larger_suffix_bank
+from esolangs.tools.brainfuck._binary import binary_bank, larger_suffix_bank
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,

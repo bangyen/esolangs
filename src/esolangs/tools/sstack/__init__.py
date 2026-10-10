@@ -36,8 +36,8 @@ from esolangs.tools.shared_block import (
     repeated_blocks,
     repeated_definitions,
 )
-from esolangs.tools.sstack_binary import best_binary_bank
-from esolangs.tools.sstack_ternary import best_ternary_bank
+from esolangs.tools.sstack._binary import best_binary_bank
+from esolangs.tools.sstack._ternary import best_ternary_bank
 from esolangs.tools.wrap import wrap_chars
 
 _PROLOGUE = '"49/b""48/c"'

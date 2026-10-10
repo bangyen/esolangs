@@ -84,12 +84,12 @@ def bfpda(truth_table: str) -> str:
             )
             if commands <= 10 * n + 2:
                 candidates.append(candidate)
-    from esolangs.tools.bfpda_bank import best_bank
+    from esolangs.tools.bfpda._bank import best_bank
 
     bank = best_bank(truth_table, context, 10 * n + 2, min(map(len, candidates)))
     if bank is not None:
         candidates.append(bank)
-    from esolangs.tools.bfpda_mixed import best_mixed_bank
+    from esolangs.tools.bfpda._mixed import best_mixed_bank
 
     mixed = best_mixed_bank(context, 10 * n + 2, min(map(len, candidates)))
     if mixed is not None:

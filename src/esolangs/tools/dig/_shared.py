@@ -1,7 +1,7 @@
 """Shared Dig lookup bodies selected by an arithmetic prefix index."""
 
-from esolangs.tools.dig_layout import _dig_alt_clear
-from esolangs.tools.dig_leaf import _dig_adder, _dig_flat_leaf, _dig_flat_walk, _render
+from esolangs.tools.dig._layout import _dig_alt_clear
+from esolangs.tools.dig._leaf import _dig_adder, _dig_flat_leaf, _dig_flat_walk, _render
 
 
 def _dig_indexed_shared(table: str, n: int) -> str | None:

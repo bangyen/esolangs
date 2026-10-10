@@ -1,6 +1,6 @@
 """Alternating tree layouts and bounded sharing routes for Dig."""
 
-from esolangs.tools.dig_leaf import (
+from esolangs.tools.dig._leaf import (
     _DIG_DIGITS,
     _DIG_OPAQUE,
     _DIG_SPAN,

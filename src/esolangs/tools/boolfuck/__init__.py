@@ -37,7 +37,7 @@ again -- the ASCII ``'0'``/``'1'`` byte in exactly 8 prints.
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.boolfuck_gates import affine_stream, normal_gates
+from esolangs.tools.boolfuck._gates import affine_stream, normal_gates
 from esolangs.tools.helpers import (
     _validate_truth_table,
     move_text,

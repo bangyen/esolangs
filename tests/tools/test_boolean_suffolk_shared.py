@@ -5,7 +5,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.suffolk import _Machine
 from esolangs.tools.suffolk import _suffolk_lookup, suffolk
-from esolangs.tools.suffolk_shared import _nor, shared_dag
+from esolangs.tools.suffolk._shared import _nor, shared_dag
 from scripts.benchmark import WrittenState
 
 

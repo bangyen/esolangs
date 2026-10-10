@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from esolangs.tools.bfpda_bank import _body_metrics, _Metric
+from esolangs.tools.bfpda._bank import _body_metrics, _Metric
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.tools.shared_block import repeated_definitions
 

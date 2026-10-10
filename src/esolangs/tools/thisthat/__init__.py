@@ -117,7 +117,7 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
         return "▣\n│\n◇\n║\n▦\n║\n◇\n│\n▣"
     program = _tree(truth_table)
     plain = program
-    from esolangs.tools.thisthat_shared import shared_tree
+    from esolangs.tools.thisthat._shared import shared_tree
 
     shared = shared_tree(truth_table)
     if shared is not None:

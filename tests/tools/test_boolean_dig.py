@@ -876,7 +876,7 @@ def test_indexed_sharing_admits_full_input_controls(
 
     from esolangs.interpreters.grid_based.dig import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.tools.dig_shared import _dig_indexed_shared
+    from esolangs.tools.dig._shared import _dig_indexed_shared
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
@@ -902,7 +902,7 @@ def test_indexed_sharing_admits_full_input_controls(
 
 
 def test_indexed_sharing_refuses_four_classes_at_nine_inputs() -> None:
-    from esolangs.tools.dig_shared import _dig_indexed_shared
+    from esolangs.tools.dig._shared import _dig_indexed_shared
 
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
     table = "".join(blocks[int(c)] for c in "01230123")
@@ -918,7 +918,7 @@ def test_indexed_prefix_decoders_execute_every_row(
 ) -> None:
     from esolangs.interpreters.grid_based.dig import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.tools.dig_shared import _dig_indexed_shared
+    from esolangs.tools.dig._shared import _dig_indexed_shared
 
     table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
     program = _dig_indexed_shared(table, n)
@@ -940,7 +940,7 @@ def test_indexed_prefix_decoders_execute_every_row(
 
 
 def test_indexed_sharing_refuses_four_classes_at_eleven_inputs() -> None:
-    from esolangs.tools.dig_shared import _dig_indexed_shared
+    from esolangs.tools.dig._shared import _dig_indexed_shared
 
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
     assert _dig_indexed_shared("".join(blocks) * 8, 11) is None
@@ -950,7 +950,7 @@ def test_indexed_sharing_refuses_four_classes_at_eleven_inputs() -> None:
 def test_indexed_six_bit_decoder_keeps_four_classes_within_the_ledger() -> None:
     from esolangs.interpreters.grid_based.dig import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.tools.dig_shared import _dig_indexed_shared
+    from esolangs.tools.dig._shared import _dig_indexed_shared
 
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
     table = "".join(blocks) * 16
@@ -975,7 +975,7 @@ def test_indexed_six_bit_decoder_keeps_four_classes_within_the_ledger() -> None:
 def test_indexed_sharing_uses_the_ledger_to_limit_class_count() -> None:
     from esolangs.interpreters.grid_based.dig import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.tools.dig_shared import _dig_indexed_shared
+    from esolangs.tools.dig._shared import _dig_indexed_shared
 
     blocks = ["".join(str((row >> bit) & 1) for row in range(64)) for bit in range(6)]
     blocks.append("".join(str(row.bit_count() % 2) for row in range(64)))
@@ -1011,7 +1011,7 @@ def test_indexed_sharing_uses_the_ledger_to_limit_class_count() -> None:
 def test_shared_stamps_refuse_unsupported_shapes(
     high: list[int], low: list[int], classes: int, length: int
 ) -> None:
-    from esolangs.tools.dig_leaf import _dig_flat_leaf
+    from esolangs.tools.dig._leaf import _dig_flat_leaf
 
     with pytest.raises(AssertionError, match="shared stamps require"):
         _dig_flat_leaf("0" * length, high, low, classes=classes)

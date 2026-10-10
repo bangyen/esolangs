@@ -268,7 +268,7 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger():
     from esolangs.interpreters.stack_based.sstack import _Machine, _parse
     from esolangs.tools.shared_block import _repeated_blocks
     from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack_binary import binary_bank
+    from esolangs.tools.sstack._binary import binary_bank
     from scripts.benchmark import WrittenState
 
     table = _binary_bank_table()
@@ -319,7 +319,7 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger():
 def test_binary_codes_preserve_completed_outputs_and_fixed_digits(words):
     from esolangs.debugger import make_vm
     from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack_binary import binary_bank
+    from esolangs.tools.sstack._binary import binary_bank
 
     table = "".join(words)
     n = len(table).bit_length() - 1
@@ -360,7 +360,7 @@ def test_binary_codes_preserve_completed_outputs_and_fixed_digits(words):
 )
 def test_invalid_binary_banks_abort(table, blocks, message):
     from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack_binary import binary_bank
+    from esolangs.tools.sstack._binary import binary_bank
 
     with pytest.raises(ValueError, match=message):
         binary_bank(table, blocks, _sstack_tree)
@@ -368,7 +368,7 @@ def test_invalid_binary_banks_abort(table, blocks, message):
 
 def test_binary_selector_rejects_inadmissible_or_unprofitable_banks():
     from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack_binary import best_binary_bank
+    from esolangs.tools.sstack._binary import best_binary_bank
 
     assert best_binary_bank("0" * 16, _sstack_tree, 100, 1000) is None
     table = _binary_bank_table()
@@ -380,7 +380,7 @@ def test_binary_selector_rejects_inadmissible_or_unprofitable_banks():
 def test_binary_selector_skips_a_bank_whose_word_exceeds_the_workspace_budget():
     from esolangs.tools.shared_block import _repeated_blocks
     from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack_binary import best_binary_bank
+    from esolangs.tools.sstack._binary import best_binary_bank
 
     sequence = [*range(256), *range(255, -1, -1)]
     table = "".join(f"{code:08b}" for code in sequence)
@@ -390,7 +390,7 @@ def test_binary_selector_skips_a_bank_whose_word_exceeds_the_workspace_budget():
 
 def test_binary_bank_refuses_a_drifted_inline_builder():
     from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack_binary import binary_bank
+    from esolangs.tools.sstack._binary import binary_bank
 
     def drifted(table):
         program, commands = _sstack_tree(table)

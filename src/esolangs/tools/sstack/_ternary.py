@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 from esolangs.tools.helpers import subtree_ids
 from esolangs.tools.shared_block import repeated_definitions
-from esolangs.tools.sstack_binary import _inline_metrics, _Metric
+from esolangs.tools.sstack._binary import _inline_metrics, _Metric
 
 _PROLOGUE = '"49/b""48/c""1/f""2/g""3/a"'
 type _Emit = Callable[[str | int], None]

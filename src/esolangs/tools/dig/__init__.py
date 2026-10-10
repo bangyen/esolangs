@@ -4,11 +4,11 @@ from itertools import pairwise
 from typing import cast
 
 from esolangs.registry._language import Language
-from esolangs.tools.dig_layout import _DIG_ALT_BRANCH, _DIG_DIRECTIONS
-from esolangs.tools.dig_layout import _dig_alt_clear as _dig_alt_clear
-from esolangs.tools.dig_layout import _dig_layout as _dig_layout
-from esolangs.tools.dig_layout import _dig_leaf_inputs as _dig_leaf_inputs
-from esolangs.tools.dig_leaf import (
+from esolangs.tools.dig._layout import _DIG_ALT_BRANCH, _DIG_DIRECTIONS
+from esolangs.tools.dig._layout import _dig_alt_clear as _dig_alt_clear
+from esolangs.tools.dig._layout import _dig_layout as _dig_layout
+from esolangs.tools.dig._layout import _dig_leaf_inputs as _dig_leaf_inputs
+from esolangs.tools.dig._leaf import (
     _DIG_DIGITS,
     _DIG_OPAQUE,
     _DIG_PRINT,
@@ -17,13 +17,13 @@ from esolangs.tools.dig_leaf import (
     _Reads,
     _render,
 )
-from esolangs.tools.dig_leaf import (
+from esolangs.tools.dig._leaf import (
     _dig_adder as _dig_adder,
 )
-from esolangs.tools.dig_leaf import (
+from esolangs.tools.dig._leaf import (
     _dig_flat_leaf as _dig_flat_leaf,
 )
-from esolangs.tools.dig_shared import _dig_indexed_shared
+from esolangs.tools.dig._shared import _dig_indexed_shared
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,

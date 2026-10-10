@@ -5,7 +5,7 @@ import random
 import pytest
 
 from esolangs.tools.bfpda import _bfpda_tree, _prepare, _reflected, bfpda
-from esolangs.tools.bfpda_bank import _body_metrics, _price, best_bank
+from esolangs.tools.bfpda._bank import _body_metrics, _price, best_bank
 from tests.tools.test_boolean_bfpda import _execute_bank
 
 

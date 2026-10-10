@@ -7,7 +7,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.boolfuck import _Machine
 from esolangs.tools.boolfuck import boolfuck
-from esolangs.tools.boolfuck_gates import affine_stream, normal_gates
+from esolangs.tools.boolfuck._gates import affine_stream, normal_gates
 from scripts.benchmark import WrittenState
 
 
