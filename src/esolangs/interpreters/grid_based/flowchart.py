@@ -42,14 +42,14 @@ rather than invented, and every one of the three examples on the page
   left/right is the only reading that puts 1 on the looping branch, so the
   example pins the orientation down even though the prose does not.
 
-* **I/O is Boolfuck's, as the spec says: bytes, low bit first.**  ``/ /``
+* **I/O is byte-oriented, low bit first, as the spec says.**  ``/ /``
   takes the next bit of the current input byte and ``\ \`` buffers one
   bit of an output byte; a partial byte is zero-padded and written at
   halt, as in :mod:`esolangs.interpreters.tape_based.boolfuck`.  Both wiki
   Hello Worlds then print ``Hello, world!`` itself, and the truth machine
   given ``0`` prints one zero bit, padded to a NUL byte.  EOF leaves the
   register empty rather than raising -- the spec's "empty if there are no
-  more bits to read" -- where Boolfuck supplies zeros; ``\ \`` then prints
+  more bits to read" -- supplying zeros; ``\ \`` then prints
   zero.  The wiki's cat pushes that empty and pops it last, so it echoes
   its input plus one zero bit, which pads to a trailing NUL.
 
@@ -371,7 +371,7 @@ class _Machine:
         """Parse ``code``'s nodes and start on the first ``( )``."""
         self.io = io
         self._input_reads = 0
-        # Boolfuck's byte buffers: the input byte's unread bits and how many
+        # Byte buffers: the input byte's unread bits and how many
         # remain, and the output bits gathered so far and how many.
         self._incoming = self._remaining = 0
         self._outgoing = self._used = 0
