@@ -52,13 +52,11 @@ import functools
 import os
 import shlex
 import shutil
-import signal
 import subprocess
 import sys
 import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import suppress
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -67,6 +65,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _scope import local_tooling_deselections  # noqa: E402
 from _verify_cache import CACHED_STEPS, VerifiedCache  # noqa: E402
+from _verify_process import wait_with_heartbeat  # noqa: E402
 
 # Git runs this hook with its stdout attached to a pipe, not the terminal, so
 # Python block-buffers our own prints while the steps -- which inherit the
@@ -786,50 +785,16 @@ def _should_stream(steps: int, *, quiet: bool, verbose: bool) -> bool:
     return steps == 1 and not quiet
 
 
-def _stop_process_tree(proc: subprocess.Popen[str]) -> None:
-    """Kill the step's process tree and reap its direct child."""
-    if os.name == "posix":
-        with suppress(ProcessLookupError):
-            os.killpg(proc.pid, signal.SIGKILL)
-    else:
-        subprocess.run(
-            ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-            capture_output=True,
-            check=False,
-        )
-        if proc.poll() is None:
-            proc.kill()
-    proc.wait()
-
-
 def _wait_with_heartbeat(
     proc: subprocess.Popen[str], name: str, start: float
 ) -> tuple[str, int]:
-    """Collect output until the step's deadline; kill descendants on timeout."""
-    limit = STEP_DEADLINES.get(name, DEFAULT_STEP_DEADLINE)
-    deadline = start + limit
-    try:
-        while True:
-            remaining = deadline - time.monotonic()
-            try:
-                output, _ = proc.communicate(
-                    timeout=max(0.0, min(HEARTBEAT_SECONDS, remaining))
-                )
-                return output or "", proc.returncode
-            except subprocess.TimeoutExpired:
-                if time.monotonic() >= deadline:
-                    _stop_process_tree(proc)
-                    output, _ = proc.communicate()
-                    return (
-                        output or ""
-                    ) + f"\n{name}: deadline exceeded ({limit:g}s)\n", 124
-                print(
-                    f"[....] {name} still running "
-                    f"({time.monotonic() - start:.0f}s elapsed)"
-                )
-    except BaseException:
-        _stop_process_tree(proc)
-        raise
+    return wait_with_heartbeat(
+        proc,
+        name,
+        start,
+        STEP_DEADLINES.get(name, DEFAULT_STEP_DEADLINE),
+        HEARTBEAT_SECONDS,
+    )
 
 
 def _report(name: str, elapsed: float, returncode: int, output: str | None) -> bool:

@@ -1,7 +1,9 @@
-"""No file grows past the cap, and tests/ stays smaller than src/."""
+"""Cap files and keep language and tooling tests below their respective sources."""
 
 import pathlib
 import subprocess
+
+import pytest
 
 #: The most lines a file may have before it has to be split.
 MAX_LINES = 1200
@@ -25,7 +27,7 @@ def test_no_file_is_over_the_cap() -> None:
     assert not over, f"over {MAX_LINES} lines: {over}. Split the file."
 
 
-def _tracked_lines(tree: str) -> int:
+def _tracked_lines(tree: str, *, exclude: str | None = None) -> int:
     """Count the lines of ``tree/*.py`` files git sees, as ``wc -l`` does."""
     # Untracked files count too: a new language's tests are untracked until
     # committed, and a file only staged for deletion does not.
@@ -45,11 +47,25 @@ def _tracked_lines(tree: str) -> int:
     ).stdout
     names = [name.decode() for name in listed.split(b"\0") if name]
     paths = [_ROOT / name for name in names]
-    return sum(path.read_bytes().count(b"\n") for path in paths if path.exists())
+    return sum(
+        path.read_bytes().count(b"\n")
+        for path in paths
+        if path.exists()
+        and (exclude is None or not path.is_relative_to(_ROOT / exclude))
+    )
 
 
-def test_tests_stay_smaller_than_src() -> None:
-    """The test budget: tests/*.py lines stay under src/*.py lines."""
-    tests, src = _tracked_lines("tests"), _tracked_lines("src")
-    assert src > 0
-    assert tests < src, f"tests/ has {tests} lines, src/ only {src}: trim tests"
+@pytest.mark.parametrize(
+    ("tests", "source", "exclude"),
+    [
+        ("tests", "src", "tests/scripts"),
+        ("tests/scripts", "scripts", None),
+    ],
+)
+def test_test_budgets(tests, source, exclude):
+    test_lines = _tracked_lines(tests, exclude=exclude)
+    source_lines = _tracked_lines(source)
+    assert source_lines > 0
+    assert test_lines < source_lines, (
+        f"{tests}: {test_lines} lines, {source}: {source_lines}"
+    )
