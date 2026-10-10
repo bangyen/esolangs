@@ -40,7 +40,9 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
         """The wording is the fix, so the wording is what is checked."""
         doc = debugger_api.VM.self_halts.__doc__ or ""
         assert "does not promise" in doc
-        assert "Suffolk" in doc
+        # The fact lives on Suffolk, not in the shared VM docstring.
+        assert "Suffolk" not in doc
+        assert "does not promise" in esolangs.describe("Suffolk")["spec"]
 
 
 def test_isolated_evaluation_requires_a_deadline():
