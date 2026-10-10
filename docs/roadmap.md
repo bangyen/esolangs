@@ -18,8 +18,9 @@ exemption supported by a structural proof or the measured criterion in
   bodies currently execute inline. Revisit SStack's bounded numeric labels.
 - **Boolfuck:** extend flag banks and two-input AND/XOR normalization to
   omitted general and nested sharing cases.
-- **Factor and Painfuck:** revisit flag-pool and depth restrictions; run
-  Factor's outstanding weekly budget probe before relying on that bound.
+- **Factor and Painfuck:** revisit flag-pool and depth restrictions.
+  Factor's dense n=13 weekly probe (past 500,000 digits) passes native in
+  34 s, so that bound is measured rather than assumed.
 - **Line:** extend one selected residual with multiple returns to multiple
   shared residuals.
 - **thisthat and Circuit Diagram:** resolve duplication in area/resource
