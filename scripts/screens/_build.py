@@ -6,8 +6,16 @@ each puts this directory on ``sys.path`` for the import, as
 """
 
 import random
+import sys
 from collections.abc import Callable, Iterator
+from pathlib import Path
 from typing import Any
+
+# ``_screen_evidence`` is one directory up, in ``scripts/``.  A screen run as
+# a script reaches ``_budget`` first, which puts that directory on the path;
+# importing ``scripts.screens.canonical`` reaches this module first, so it has
+# to do it here rather than rely on the importer.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from _screen_evidence import case_id, reused
 
