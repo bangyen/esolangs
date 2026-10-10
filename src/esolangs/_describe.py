@@ -83,13 +83,13 @@ def describe(language: str) -> LanguageInfo:
     ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
     tokens) or ``"none"`` (newlines are semantic); ``width_aware`` is the
     narrower ``== "layout"``.  Input: ``input_shape`` and ``input_encoding``,
-    the ``(zero, one)`` pair (``("%", "A")`` for Grapheme) -- the wrong
+    the ``(zero, one)`` pair -- the wrong
     alphabet is a wrong answer.  Answer: ``answer_mode`` is ``"output"``
     (last non-whitespace character), ``"dump"`` (a fixed place in the final
     state) or ``"termination"`` (a proven halt or divergence);
     ``answer_pattern`` is the regex whose first group holds it (None: no regex);
     ``answer_encoding`` the ``(zero, one)`` or ``("halts", "diverges")``;
-    ``answer_convention`` prose or None.  These describe raw output (A Painter Ant's
+    ``answer_convention`` prose or None.  These describe raw output (a mark's
     ``("o", "@")`` is a grid mark); :func:`read_answer` returns ``"0"``/``"1"``.
     Machine traits (``self_halts``, ``dumps_on_the_post_halt_step``,
     ``steppable_to_answer``, ``eof_is_a_value``) are documented on

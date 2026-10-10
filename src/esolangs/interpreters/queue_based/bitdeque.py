@@ -172,7 +172,7 @@ class _Machine:
     def step(self) -> None:
         """Execute one token, printing the deque once the cursor ends.
 
-        The print is the post-halt step, as Minsky Swap and RAM0 spell it.
+        The print is the post-halt step, as other dumps spell it.
         """
         ind, reg, deq, rendered = self.state
         if ind >= self.size:

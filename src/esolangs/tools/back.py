@@ -189,7 +189,7 @@ def _back_ordered(
 
     A node tests the current cell, *then* advances, so level ``k`` tests cell
     ``k`` and input ``perm[k]`` must load there -- one cell lower than
-    Streetcode's halls and LaserFuck's ``>#v)``, which test cell ``k + 1``.
+    another language's halls and a raster one's ``>#v)``, which test cell ``k + 1``.
     Getting it wrong computes a different function.
 
     The load runs the inputs in name order (run k *is* input k) and walks the
