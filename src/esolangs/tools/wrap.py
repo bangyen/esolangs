@@ -91,14 +91,20 @@ def _wrap_grid(
     lines: list[str] = []
     row: list[str] = []
     used = 0
-    for token in tokens:
+    padding = {}
+    for token in set(tokens):
         span = _span(len(token), cell)
+        slot = span * (cell + 1) - 1
+        padding[token] = (
+            span,
+            token.ljust(slot) if left_aligned else token.rjust(slot),
+        )
+    for token in tokens:
+        span, padded = padding[token]
         if row and used + span > per_row:
             lines.append(" ".join(row).rstrip())
             row, used = [], 0
-        # k cells plus the k-1 separators it absorbs.
-        slot = span * cell + span - 1
-        row.append(token.ljust(slot) if left_aligned else token.rjust(slot))
+        row.append(padded)
         used += span
     # ``row`` always holds the last row here (empty ``tokens`` returned above).
     if row:  # pragma: no branch - never empty; see above
