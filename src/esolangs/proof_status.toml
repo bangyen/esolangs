@@ -625,8 +625,8 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Line"
 labels = ["tree"]
 qualification = """\
-    finite decision trees can store only essential inputs; one guarded ancestor \
-    return shares a residual through a consumed input"""
+    finite decision trees can store only essential inputs; guarded ancestor \
+    returns share a residual through a consumed input"""
 scaling = "linear: alternating subtree extents bound rectangular area by O(T)"
 execution = "poly n: worst 5n commands; shared returns retain this bound"
 workspace = """\

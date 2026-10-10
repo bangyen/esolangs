@@ -1,4 +1,4 @@
-"""Share one residual through a consumed input and a native ancestor return."""
+"""Share a residual through a consumed input and native ancestor returns."""
 
 from __future__ import annotations
 
@@ -25,9 +25,9 @@ from .tree_layout import tree_extents
 
 
 def shared_tree(
-    table: str, *, command_budget: int | None = None
+    table: str, *, command_budget: int | None = None, multiple: bool = False
 ) -> tuple[Node, int] | None:
-    """Return a guarded single-return graph and its conservative command bound."""
+    """Return guarded ancestor returns and their conservative command bound."""
     n = _validate_truth_table(table)
     if n < 3:
         return None
@@ -40,16 +40,22 @@ def shared_tree(
         return None
     state, depth = zero, 1
     aligned = [one]
-    row = None
+    rows: set[int] = set()
     while depth < n and children[state][0] == children[state][1]:
         state = children[state][0]
         depth += 1
         aligned = [child for parent in aligned for child in children[parent]]
         if depth < n and state in aligned:
-            row = (1 << (depth - 1)) + aligned.index(state)
+            rows = {
+                (1 << (depth - 1)) + index
+                for index, residual in enumerate(aligned)
+                if residual == state
+            }
             break
-    if row is None:
+    if not rows:
         return None
+    if not multiple:
+        rows = {min(rows)}
     root = Node("?")
 
     def moved(pointer: int, cell: int, rest: Node) -> Node:
@@ -65,7 +71,7 @@ def shared_tree(
     ) -> tuple[Node, int]:
         nonlocal returns
         while True:
-            if level == depth and start == row:
+            if level == depth and start in rows:
                 returns += 1
                 # The nonzero root arm still holds 1 in its consumed input.
                 # Clear it, return, and take the already-drawn zero arm once.
@@ -95,9 +101,11 @@ def shared_tree(
     # The return clears an original cell; every tape value stays 0/1.
     # Removing a nonconstant subtree pays for the synthetic resume frame,
     # preserving the ledger's n+1 frame-index and 3n-2 opcode-index bits.
-    commands = 3 * n - 2 + max(shared_cost, other_cost)
+    # A later return joins the first return's command-free trunk. Extraction
+    # introduces one empty resume frame before the original ancestor resume.
+    commands = 3 * n - 2 + max(shared_cost, other_cost) + (returns > 1)
     budget = 5 * n if command_budget is None else command_budget
-    if returns != 1 or commands > budget:
+    if returns == 0 or (multiple and returns == 1) or commands > budget:
         return None
     head = chain(*("i" + ">i" * (n - 1)))
     tail = head
@@ -137,7 +145,7 @@ def shared_canvas(root: Node, old_area: int) -> CanvasPlan | None:
         return result
 
     classify(root)
-    plan = _Plan()
+    plan = _Plan(ancestor_returns=True)
 
     def seed(node: Node | None) -> None:
         if node is None:
@@ -156,8 +164,8 @@ def shared_canvas(root: Node, old_area: int) -> CanvasPlan | None:
     try:
         _layout(root, cursor, plan)
     except ValueError:
-        # The existing return rule requires its tip on the body's perimeter
-        # and rejects intersections. An interior repeat stays inline.
+        # Straight exits and perpendicular trunk merges retain the collision
+        # guard; an obstructed return keeps the preceding layout.
         return None
     ys = [y for stroke in cursor.strokes for y, _ in stroke]
     xs = [x for stroke in cursor.strokes for _, x in stroke]

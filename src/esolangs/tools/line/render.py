@@ -211,15 +211,23 @@ _TREE_GAP = _CLEARANCE + 1
 
 
 def _leg_cells(
-    start: tuple[int, int], legs: list[tuple[tuple[int, int], int]]
+    start: tuple[int, int],
+    legs: list[tuple[tuple[int, int], int]],
+    stop_at: set[tuple[int, int]] | None = None,
 ) -> list[tuple[int, int]]:
-    """Every grid cell a run of ``legs`` walks through, starting from ``start``."""
+    """Return walked cells, stopping at occupied interior ink when requested."""
     cells = [start]
+    end = (
+        start[0] + sum(direction[0] * length for direction, length in legs),
+        start[1] + sum(direction[1] * length for direction, length in legs),
+    )
     y, x = start
     for (dy, dx), length in legs:
         for _ in range(length):
             y, x = y + dy, x + dx
             cells.append((y, x))
+            if stop_at is not None and (y, x) != end and (y, x) in stop_at:
+                return cells
     return cells
 
 
@@ -269,6 +277,10 @@ class _Plan:
 
     extents: dict[int, tuple[int, int, int, int]] = field(default_factory=dict)
     tree: set[int] = field(default_factory=set)
+    ancestor_returns: bool = False
+    # Only real drawing records trunks; dry-run coordinates are local.
+    returns: dict[int, list[tuple[int, int]]] = field(default_factory=dict)
+    return_indices: dict[int, dict[tuple[int, int], int]] = field(default_factory=dict)
     stem: int = _TREE_GAP
     arm: int = _TREE_GAP
 
@@ -403,6 +415,7 @@ def _loop_return_legs(
     target: Node,
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]],
     plan: _Plan,
+    heading: tuple[int, int] | None = None,
 ) -> list[tuple[tuple[int, int], int]] | None:
     """Construct a loop-back's legs deterministically, without search.
 
@@ -416,12 +429,9 @@ def _loop_return_legs(
     with a :data:`_DIAGONAL_APPROACH` diagonal (a ``"merge"`` to the
     extractor, not a fork).
 
-    ``None`` when a premise fails, and compiled programs do reach it: the
-    body's end must sit on ``B0``'s perimeter, and a ``goto`` hanging off a
-    control tail that ran down a nested fork's ``zero`` arm can end up
-    inside the box instead (``[[[+]][+]+]`` is the smallest; 31 of 1315
-    random compiled programs at depth <= 4).  :func:`_layout` rejects it
-    loudly rather than drawing through ink.
+    An interior tip continues straight to the perimeter when its heading
+    is supplied. The real layout rejects any exit that crosses existing ink;
+    without a heading the original perimeter premise remains mandatory.
     """
     vertex, h = entries[id(target)]
     a_h = _turn_left(h)
@@ -437,8 +447,25 @@ def _loop_return_legs(
     ex = off[0] * ly + off[1] * lx
     on_y = ey in (y0, y1) and x0 <= ex <= x1
     on_x = ex in (x0, x1) and y0 <= ey <= y1
+    extension = None
     if not (on_y or on_x):
-        return None
+        if heading is None:
+            return None
+        direction = (
+            heading[0] * a_h[0] + heading[1] * a_h[1],
+            heading[0] * ly + heading[1] * lx,
+        )
+        dy, dx = direction
+        distance = (
+            (y1 - ey if dy > 0 else ey - y0) if dy else (x1 - ex if dx > 0 else ex - x0)
+        )
+        extension = (direction, distance)
+        ey += dy * distance
+        ex += dx * distance
+        on_y = ey in (y0, y1) and x0 <= ex <= x1
+        on_x = ex in (x0, x1) and y0 <= ey <= y1
+        if not (on_y or on_x):
+            return None
 
     axis_y = -arm_run
     bay_y = y0 - _RING_OFFSET
@@ -475,6 +502,8 @@ def _loop_return_legs(
     pts += [(bay_y, approach[1]), approach]
 
     legs: list[tuple[tuple[int, int], int]] = []
+    if extension is not None:
+        legs.append(extension)
     for a, b in itertools.pairwise(pts):
         dy, dx = b[0] - a[0], b[1] - a[1]
         if dy and dx:  # pragma: no cover - geometry guard
@@ -486,6 +515,43 @@ def _loop_return_legs(
     legs.append(((-1, -1), _DIAGONAL_APPROACH))
 
     return [(_rotate(d, a_h), n) for d, n in legs]
+
+
+def _merge_return_legs(
+    cells: list[tuple[int, int]],
+    trunk: list[tuple[int, int]],
+    index: dict[tuple[int, int], int],
+) -> list[tuple[tuple[int, int], int]] | None:
+    """Join the first perpendicular trunk crossing with a native diagonal merge."""
+    hit = len(cells) - 1
+    join = index.get(cells[hit])
+    distance = _DIAGONAL_APPROACH
+    if join is None or hit < distance:
+        return None
+    if join + distance >= len(trunk):
+        return None
+    forward = tuple(trunk[join + 1][a] - trunk[join][a] for a in (0, 1))
+    arrival = tuple(cells[hit][a] - cells[hit - 1][a] for a in (0, 1))
+    if sum(abs(c) for c in forward) != 1 or sum(abs(c) for c in arrival) != 1:
+        return None
+    if sum(a * b for a, b in zip(forward, arrival, strict=True)):
+        return None
+    if any(
+        trunk[join + i] != tuple(trunk[join][a] + i * forward[a] for a in (0, 1))
+        or cells[hit - i] != tuple(cells[hit][a] - i * arrival[a] for a in (0, 1))
+        for i in range(1, distance + 1)
+    ):
+        return None
+    points = cells[: hit - distance + 1]
+    result: list[tuple[tuple[int, int], int]] = []
+    for a, b in itertools.pairwise(points):
+        direction = (b[0] - a[0], b[1] - a[1])
+        if result and result[-1][0] == direction:
+            result[-1] = (direction, result[-1][1] + 1)
+        else:
+            result.append((direction, 1))
+    result.append(((arrival[0] + forward[0], arrival[1] + forward[1]), distance))
+    return result
 
 
 def _layout(
@@ -541,7 +607,13 @@ def _layout(
             # lacks its outermost fork, which the caller's frame draws.
             legs = None
             if id(node.goto) in entries:
-                legs = _loop_return_legs((cursor.y, cursor.x), node.goto, entries, plan)
+                legs = _loop_return_legs(
+                    (cursor.y, cursor.x),
+                    node.goto,
+                    entries,
+                    plan,
+                    cursor.heading if plan.ancestor_returns else None,
+                )
             if legs is not None and cursor.occupied is not None:
                 # Drift guard, real mode only: the construction never reads
                 # ink, so anything it did not reserve must be caught, not
@@ -549,9 +621,37 @@ def _layout(
                 # into a long run drawn before the fork, now reserved by
                 # `_stem_len`.  Endpoints (body tip, stem merge) are
                 # legitimate ink.
-                cells = _leg_cells((cursor.y, cursor.x), legs)
-                if any(c in cursor.occupied for c in cells[1:-1]):
-                    legs = None
+                stop_at = cursor.occupied if plan.ancestor_returns else None
+                cells = _leg_cells((cursor.y, cursor.x), legs, stop_at)
+                end = (
+                    cursor.y + sum(direction[0] * length for direction, length in legs),
+                    cursor.x + sum(direction[1] * length for direction, length in legs),
+                )
+                blocked = cells[-1] != end or any(
+                    c in cursor.occupied for c in cells[1:-1]
+                )
+                if blocked:
+                    trunk = plan.returns.get(id(node.goto))
+                    legs = (
+                        None
+                        if trunk is None
+                        else _merge_return_legs(
+                            cells, trunk, plan.return_indices[id(node.goto)]
+                        )
+                    )
+                    if legs is not None:
+                        cells = _leg_cells((cursor.y, cursor.x), legs)
+                        if any(c in cursor.occupied for c in cells[1:-1]):
+                            legs = None
+                if (
+                    legs is not None
+                    and plan.ancestor_returns
+                    and id(node.goto) not in plan.returns
+                ):
+                    plan.returns[id(node.goto)] = cells
+                    plan.return_indices[id(node.goto)] = {
+                        cell: i for i, cell in enumerate(cells)
+                    }
             if legs is not None:
                 for direction, length in legs:
                     cursor.advance(direction, length)

@@ -335,8 +335,8 @@ def test_shared_return_retains_unshared_balance_and_scale() -> None:
     assert shared_canvas(shared[0], 1) is None
 
 
-def test_shared_return_refuses_an_interior_tip() -> None:
-    """A matching residual inside the body's box retains the old tree."""
+def test_shared_return_extends_an_interior_tip() -> None:
+    """A clear straight exit joins the perimeter without exceeding the ledger."""
     from esolangs.tools.helpers import permute_truth_table
     from esolangs.tools.line.shared import shared_canvas, shared_tree
 
@@ -346,7 +346,12 @@ def test_shared_return_refuses_an_interior_tip() -> None:
     table = permute_truth_table(table, (1, 0, *range(2, 8)))
     shared = shared_tree(table)
     assert shared is not None
-    assert shared_canvas(shared[0], 10**12) is None
+    from esolangs.tools.line import _grey_rows
+    from tests.tools.test_boolean_line_projection import _execute
+
+    draw = shared_canvas(shared[0], 10**12)
+    assert draw is not None
+    assert _execute(table, Raster(_grey_rows(draw())), range(256)) <= shared[1]
 
 
 def test_shared_candidate_preserves_the_small_tree_fallback() -> None:

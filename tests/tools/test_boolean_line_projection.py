@@ -102,3 +102,53 @@ def test_compact_loader_admits_a_shared_return_within_the_original_input_budget(
     image = line(table)
     assert _has_goto(image._payload)  # noqa: SLF001 - physical sharing control
     _execute(table, image, [row | fill for row in range(256) for fill in (0, 255 << 8)])
+
+
+@pytest.mark.medium
+def test_multiple_returns_share_a_native_trunk_within_projected_ledger():
+    from esolangs.raster import Raster
+    from esolangs.tools.helpers import permute_truth_table
+    from esolangs.tools.line import _grey_rows, _project_loader
+    from esolangs.tools.line.shared import shared_canvas, shared_tree
+
+    rng = random.Random(15)
+    a, b, c = ["".join(rng.choice("01") for _ in range(16)) for _ in range(3)]
+    core = permute_truth_table(a * 4 + a + b + a + c, (1, 0, 2, 3, 4, 5, 6))
+    assert shared_tree(core, multiple=True) is None  # 41 commands exceed 5*7.
+    built = shared_tree(core, multiple=True, command_budget=71)
+    assert built is not None
+    graph, commands = built
+    assert commands == 41
+    kept = list(range(9, 16))
+    table = _lift(core, 16, kept)
+    draw = shared_canvas(_project_loader(16, kept, graph), 10**12)
+    assert draw is not None
+    image = Raster(_grey_rows(draw()))
+    rows = [row | fill for row in range(128) for fill in (0, 511 << 7)]
+    assert _execute(table, image, rows) <= commands + 9
+
+
+@pytest.mark.medium
+def test_public_multiple_returns_reduce_mixed_residual_area():
+    from esolangs.tools.helpers import permute_truth_table
+
+    rng = random.Random(15)
+    a = "".join(rng.choice("01") for _ in range(64))
+    b, c = ["".join(rng.choice("01") for _ in range(16)) * 4 for _ in range(2)]
+    core = permute_truth_table(a * 4 + a + b + a + c, (1, 0, *range(2, 9)))
+    table = _lift(core, 16, tuple(range(7, 16)))
+    image = line(table)
+
+    def returns(node):
+        if node is None:
+            return 0
+        if node.goto is not None:
+            return 1
+        if node.op == "?":
+            return returns(node.zero) + returns(node.nonzero)
+        return returns(node.next)
+
+    assert returns(image._payload) == 2  # noqa: SLF001 - generator-owned graph
+    assert len(image.rows) * len(image.rows[0]) == 28420000 < 39884000
+    rows = [row | fill for row in range(512) for fill in (0, 127 << 9)]
+    assert _execute(table, image, rows) == 58

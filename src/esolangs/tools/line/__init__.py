@@ -173,18 +173,23 @@ def _generate(truth_table: str) -> Raster:
         projected_area = area(projected, drawn)
         if projected_area < smallest:
             node, canvas, smallest = projected, drawn, projected_area
-    shared = shared_tree(truth_table)
-    shared_nodes = [shared[0]] if shared is not None else []
+    shared_nodes = []
+    for multiple in (False, True):
+        shared = shared_tree(truth_table, multiple=multiple)
+        if shared is not None:
+            shared_nodes.append(shared[0])
     kept = essential_inputs(truth_table, n)
     if 0 < len(kept) < n:
         # Replace 2k-1 loader operations by n+k-1, plus two operations for
         # trailing ignored inputs. Budget the complete original-n program.
         extra_reads = n - len(kept) + 2 * (kept[-1] < n - 1)
-        compact_shared = shared_tree(
-            read_at(truth_table, kept, n), command_budget=5 * n - extra_reads
-        )
-        if compact_shared is not None:
-            shared_nodes.append(_project_loader(n, kept, compact_shared[0]))
+        reduced = read_at(truth_table, kept, n)
+        for multiple in (False, True):
+            compact_shared = shared_tree(
+                reduced, command_budget=5 * n - extra_reads, multiple=multiple
+            )
+            if compact_shared is not None:
+                shared_nodes.append(_project_loader(n, kept, compact_shared[0]))
     selected_draw = None
     for graph in shared_nodes:
         draw = shared_canvas(graph, smallest)
