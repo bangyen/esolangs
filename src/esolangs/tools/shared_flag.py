@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from itertools import pairwise
 
 from esolangs.tools.helpers import (
@@ -12,6 +14,19 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.shared_block import ContinuationCost as _Cost
 from esolangs.tools.shared_block import repeated_bank, repeated_block, repeated_blocks
+
+
+@dataclass(frozen=True, slots=True)
+class FlagDialect:
+    """Native moves and glyphs for a zero-clearing flag tree."""
+
+    move: Callable[[int, int], str]
+    one: str
+    zero: str
+    opener: str
+    closer: str
+    decrement: str
+    retest: bool = False
 
 
 def shared_flag_tree(
@@ -83,18 +98,23 @@ def flag_tree_body(
     flag_levels: tuple[int, ...] = (),
     binary_leaves: bool = False,
     flip: bool = False,
+    dialect: FlagDialect | None = None,
 ) -> tuple[str, int]:
     """Return a flag tree ending at result, and its worst command count.
 
     Inputs at cells 2*perm[i] are bits and following flags are zero; binary
     leaves may reserve the final flag for result. Flip-only loop closers
-    retest the opener; byte loops do not.
+    retest the opener; a native dialect supplies its own recheck rule.
     A same-level bank uses distinct descendant flags; dispatch clears each
     before its body reuses it. Other pending flags stay zero on that path.
     """
     n = _validate_truth_table(truth_table)
-    clear = "+" if flip else "-"
-    retest = int(flip)
+    clear = dialect.zero if dialect else "+" if flip else "-"
+    set_one = dialect.one if dialect else "+"
+    opener = dialect.opener if dialect else "["
+    closer = dialect.closer if dialect else "]"
+    decrement = dialect.decrement if dialect else "-"
+    retest = int(dialect.retest if dialect else flip)
     blocks = (shared,) if shared is not None else shared_blocks
     depths = [depth for depth, _ in blocks]
     if flag_levels:
@@ -139,7 +159,7 @@ def flag_tree_body(
 
     def move(target: int) -> None:
         nonlocal pos
-        emit(move_text(pos, target, ">", "<"))
+        emit(dialect.move(pos, target) if dialect else move_text(pos, target, ">", "<"))
         pos = target
 
     def constant(i: int, combo: int) -> str | None:
@@ -155,7 +175,7 @@ def flag_tree_body(
             return node(i + 1, combo)
         if value == "1":
             move(result)
-            emit("+")
+            emit(set_one)
         # value == "0": the leaf emits nothing
         return _Cost(count - start)
 
@@ -165,7 +185,7 @@ def flag_tree_body(
         key = (i, ids[i][combo >> (n - i)])
         if key in selected:
             move(flag(pending_levels[selected[key]]))
-            emit("+")
+            emit(set_one)
             return _Cost(count - start, target=selected[key])
         bit_cell = bit(i)
         flg = flag(i)
@@ -176,34 +196,34 @@ def flag_tree_body(
         if binary_leaves and i == n - 1:
             if truth_table[combo] == "1":
                 move(result)
-                emit("+")
+                emit(set_one)
             move(bit_cell)
-            emit("[")
+            emit(opener)
             skipped = count - start
             emit(clear)
             move(result)
-            emit("+" if truth_table[combo + 1] == "1" else "-")
+            emit(set_one if truth_table[combo + 1] == "1" else decrement)
             move(bit_cell)
-            emit("]")
+            emit(closer)
             return _Cost(max(skipped, count - start + retest))
         if fold_zero and constant(i + 1, combo) == "0":
             move(bit_cell)
-            emit("[")
+            emit(opener)
             common = count - start
             emit(clear)
             body_start = count
             one_cost = branch(i, one)
             one_flat = count - body_start
             move(bit_cell)
-            emit("]")
+            emit(closer)
             return _Cost(
                 0,
                 (_Cost(count - start - one_flat + retest, (one_cost,)), _Cost(common)),
             )
         move(flg)
-        emit("+")  # flag_i = 1 (it is 0 by invariant)
+        emit(set_one)  # flag_i = 1 (it is 0 by invariant)
         move(bit_cell)
-        emit("[")
+        emit(opener)
         one_start = count
         emit(clear)  # clear the tested one-bit
         move(flg)
@@ -212,11 +232,11 @@ def flag_tree_body(
         one_cost = branch(i, one)
         one_flat = count - body_start
         move(bit_cell)
-        emit("]")  # bit is 0 now, so this exits
+        emit(closer)  # bit is 0 now, so this exits
         one_cost = _Cost(count - one_start - one_flat + retest, (one_cost,))
         between = count
         move(flg)
-        emit("[")
+        emit(opener)
         common = one_start - start + count - between
         zero_start = count
         emit(clear)  # clear the selected zero-side flag
@@ -224,7 +244,7 @@ def flag_tree_body(
         zero_cost = branch(i, combo)
         zero_flat = count - body_start
         move(flg)
-        emit("]")
+        emit(closer)
         zero_cost = _Cost(count - zero_start - zero_flat + retest, (zero_cost,))
         return _Cost(common, (one_cost, zero_cost))
 
@@ -235,13 +255,13 @@ def flag_tree_body(
         pending = flag(pending_levels[i])
         move(pending)
         dispatch_test = count - tail_start + 1
-        emit("[" + clear)
+        emit(opener + clear)
         body_start = count
         del selected[depth, ids[depth][row >> (n - depth)]]
         body_cost = node(depth, row)
         body_flat = count - body_start
         move(pending)
-        emit("]")
+        emit(closer)
         active = count - tail_start - body_flat + retest
         stages.append((i, body_cost, active, dispatch_test))
 
