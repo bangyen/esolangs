@@ -39,8 +39,11 @@ exemption supported by a structural proof or the measured criterion in
   leaf code depends on the depth and path bits, so equal subtables are not
   equal text, and its single acyclic beam path cannot enter one emission from
   two parents. Other blanket exclusions remain to audit.
-- **Audit:** replace the presence-based matrix at `dea798` with evidence
-  for all three canonical requirements and the remaining restrictions.
+- **Audit:** the presence-based matrix at `dea798` is superseded by the
+  committed screens over one seeded corpus: `ignored_input.py`, `constant.py`
+  and `sharing.py` bound the three canonical requirements per generator, and
+  `canonical.py` runs the historical positive controls. Re-run a screen to
+  regenerate the matrix.
 
 ## Research follow-up
 

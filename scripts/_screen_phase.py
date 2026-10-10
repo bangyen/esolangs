@@ -91,6 +91,28 @@ def execute(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
                 for identifier in size_cases(name, corpus, scope)
             ],
         }
+    if operation == "constant":
+        from _build import TABLES, size_cases
+        from constant import PARITY, sample
+
+        count, languages = payload["count"], payload["languages"]
+        planned = len(languages) * (count + 258)
+        if planned * 68 + count * 36 + 1024 > LIMIT:
+            raise ValueError("constant corpus exceeds 32 MiB")
+        tables = sample(count, payload["seed"])
+        return {
+            "tables": tables,
+            "case_ids": [
+                identifier
+                for name in languages
+                for corpus, scope in (
+                    (list(PARITY.values()), "parity"),
+                    (TABLES, "three"),
+                    (tables, "five"),
+                )
+                for identifier in size_cases(name, corpus, scope)
+            ],
+        }
     if operation == "resume":
         from _screen_evidence import resume
 

@@ -12,11 +12,11 @@ import pytest
 from scripts import _runtime_identity as runtime
 from scripts import _screen_evidence as evidence
 from scripts import _screen_phase as phase
-from scripts.screens import _budget, sharing
+from scripts.screens import _budget, _model, constant, sharing
 
 
 def test_sharing_prices_before_corpus_preparation(monkeypatch):
-    monkeypatch.setattr(sharing, "setup", lambda *_: pytest.fail("prepared corpus"))
+    monkeypatch.setattr(_model, "setup", lambda *_: pytest.fail("prepared corpus"))
     monkeypatch.setattr(
         sys, "argv", ["sharing", "brainfuck", "--sample", "100", "--max-work", "1"]
     )
@@ -177,6 +177,29 @@ def test_saved_minimized_finding_replays_the_executed_discrepancy(tmp_path):
     )
     assert observation["observed"]["cause"] == saved["minimized"]["cause"]
     assert observation["observed"]["ref"]["output"] == "Aw==", observation
+
+
+def test_constant_prices_before_corpus_preparation(monkeypatch):
+    monkeypatch.setattr(_model, "setup", lambda *_: pytest.fail("prepared corpus"))
+    monkeypatch.setattr(
+        sys, "argv", ["constant", "brainfuck", "--sample", "100", "--max-work", "1"]
+    )
+    with pytest.raises(SystemExit) as caught:
+        constant.main()
+    assert caught.value.code == 2
+    monkeypatch.setattr(sys, "argv", ["constant", "brainfuck", "--dry-run"])
+    constant.main()
+
+
+def test_constant_rejects_unpublishable_corpus_before_sampling(monkeypatch):
+    import importlib
+
+    screen = importlib.import_module("constant")
+    monkeypatch.setattr(screen, "sample", lambda *_: pytest.fail("sampled"))
+    with pytest.raises(ValueError, match="corpus exceeds"):
+        phase.execute(
+            "constant", {"count": 1000000, "seed": 0, "languages": ["brainfuck"]}
+        )
 
 
 def test_sharing_rejects_unpublishable_corpus_before_sampling(monkeypatch):
