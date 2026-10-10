@@ -10,19 +10,16 @@ import esolangs
 
 def languages(**facts: Any) -> list[str]:
     """Every language whose ``describe()`` has these facts, in list order."""
-    return [
-        name
-        for name in esolangs.list_languages()
-        if all(esolangs.describe(name)[key] == value for key, value in facts.items())
-    ]
+    found = []
+    for name in esolangs.list_languages():
+        described = esolangs.describe(name) if facts else {}
+        if all(described[key] == value for key, value in facts.items()):
+            found.append(name)
+    return found
 
 
 def first(**facts: Any) -> str:
-    """The first language with these facts; inside a test, a skip if none.
-
-    At import time an empty pick is an error, so a module-level pick of a
-    fact only one language has goes through :func:`one` instead.
-    """
+    """Return the first match or skip; use ``one`` for empty import-time picks."""
     found = languages(**facts)
     if not found:
         pytest.skip(f"no registered language has {facts}")
