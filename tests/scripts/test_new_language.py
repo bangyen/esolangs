@@ -140,9 +140,9 @@ def test_check_with_open_steps_is_not_a_failure(
 ) -> None:
     import types
 
-    fake = types.ModuleType("generate_exports")
-    fake.update = lambda *_: None  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "generate_exports", fake)
+    fake = types.ModuleType("generate")
+    fake.update_exports = lambda *_: None  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "generate", fake)
     gap = new_language.Gap("somewhere", "do it")
     monkeypatch.setattr(new_language, "check", lambda _: [gap])
     assert new_language.main(["check", "Tiny"]) == 0
@@ -178,7 +178,7 @@ def test_gap_report_prints_a_shell_safe_followup(
 
 
 def test_remove_refuses_the_reference_language() -> None:
-    """``brainfuck`` is spelled out by shared tests and generate_docs.py."""
+    """``brainfuck`` is spelled out by shared tests and generate.py."""
     with pytest.raises(ValueError, match="reference language"):
         remove_language.remove("brainfuck")
 

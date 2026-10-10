@@ -83,7 +83,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
 @pytest.mark.medium
 def test_regeneration_yields_public_balanced_programs() -> None:
     import esolangs
-    from scripts.generate_examples import boolean_programs
+    from scripts.generate import boolean_programs
 
     programs = dict(boolean_programs())
     assert programs.keys() == BOOLEAN_GENERATED.keys()
@@ -100,7 +100,7 @@ def test_regeneration_yields_public_balanced_programs() -> None:
 def test_the_manifest_matches_what_the_script_would_write() -> None:
     """The committed table is what ``generate.py examples`` produces today."""
     sys.path.insert(0, str(BASE_DIR / "scripts"))
-    from scripts.generate_examples import boolean_manifest_text
+    from scripts.generate import boolean_manifest_text
 
     path = BASE_DIR / "examples" / "MANIFEST.md"
     assert path.read_text(encoding="utf-8") == boolean_manifest_text(), (
@@ -235,14 +235,14 @@ def test_boolean_example(name: str) -> None:
 
 
 class TestTheWritersWriteWhatTheBuildersBuild:
-    """The side-effecting half of ``generate_examples``."""
+    """The side-effecting half of ``generate``."""
 
     @staticmethod
     def _redirect(monkeypatch: pytest.MonkeyPatch, target: Path) -> object:
-        from scripts import generate_examples
+        from scripts import generate
 
-        monkeypatch.setattr(generate_examples, "EXAMPLES", target)
-        return generate_examples
+        monkeypatch.setattr(generate, "EXAMPLES", target)
+        return generate
 
     def test_a_second_write_reports_unchanged(
         self,
@@ -289,7 +289,7 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         written: list[str] = []
         monkeypatch.setattr(module, "write_set", written.append)
         monkeypatch.setattr(sys, "argv", ["generate.py"])
-        assert module.main() == 0  # type: ignore[attr-defined]
+        assert module.examples_main() == 0  # type: ignore[attr-defined]
         assert written == list(module.SETS)  # type: ignore[attr-defined]
 
 

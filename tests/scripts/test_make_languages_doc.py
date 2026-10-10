@@ -12,7 +12,7 @@ from tests.scripts.script_support import load
 from tests.test_language_coupling import REFERENCE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "generate_docs.py"
+SCRIPT = REPO_ROOT / "scripts" / "generate.py"
 README = REPO_ROOT / "README.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
 LIMITATIONS = REPO_ROOT / "docs" / "limitations.md"
@@ -126,7 +126,7 @@ def test_main_updates_all_registry_derived_docs(
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((REPO_ROOT / relative).read_bytes())
-    assert module.main(output_root=tmp_path) == 0
+    assert module.docs_main(output_root=tmp_path) == 0
     assert called == ["readme", "usage", "limitations", "contributing", "request"]
     assert "language request template" in capsys.readouterr().out
 

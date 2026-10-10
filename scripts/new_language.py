@@ -629,7 +629,7 @@ def main(argv: list[str] | None = None) -> int:
         # Before anything imports the package: a new LANGUAGE is registered
         # by the export this writes.
         sys.path.insert(0, str(ROOT / "scripts"))
-        from generate_exports import update as update_exports
+        from generate import update_exports
 
         update_exports(ROOT, ROOT)
     if args.command == "check":

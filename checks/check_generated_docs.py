@@ -8,8 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-import generate_docs
-import generate_examples
+import generate
 
 ROOT = Path(__file__).parents[1]
 GENERATED = (
@@ -30,10 +29,8 @@ def _manifest_is_stale() -> bool:
     Only the manifest: regenerating every example program would make this
     check as slow as ``tests/scripts/test_examples.py``, which covers them.
     """
-    manifest = generate_examples.EXAMPLES / "MANIFEST.md"
-    return manifest.read_text(encoding="utf-8") != (
-        generate_examples.boolean_manifest_text()
-    )
+    manifest = generate.EXAMPLES / "MANIFEST.md"
+    return manifest.read_text(encoding="utf-8") != (generate.boolean_manifest_text())
 
 
 def main() -> int:
@@ -45,7 +42,7 @@ def main() -> int:
             target = output_root / path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(content)
-        result = generate_docs.main(output_root=output_root)
+        result = generate.docs_main(output_root=output_root)
         changed = [
             path
             for path, content in before.items()
