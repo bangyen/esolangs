@@ -1,5 +1,8 @@
 """Boolean template generator for bfpda."""
 
+from collections.abc import Callable
+from dataclasses import dataclass
+
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
@@ -24,33 +27,60 @@ __all__ = ["BFPDA_PAIR", "bfpda"]
 BFPDA_PAIR = ("x", "@")
 
 
+@dataclass(frozen=True)
+class _TreeContext:
+    reflected: str
+    constant: Callable[[int, int], bool]
+    ids: list[list[int]]
+
+
+def _prepare(table: str) -> _TreeContext:
+    reflected = _reflected(table, _validate_truth_table(table))
+    return _TreeContext(
+        reflected, constant_span_test(reflected), subtree_ids(reflected)
+    )
+
+
 def bfpda(truth_table: str) -> str:
     """Return a BF-PDA template for a binary, MSB-first ``2**n`` truth table.
 
     The last input is tested first; every arm empties the stack so its ``]``
     exits. A shared residual returns a flag protected by zero sentinels,
-    then runs once after the prefix. Two distinct quarter residuals can
-    both share a binary classifier; inline text and the existing command
-    bound guard admission. Characters outside @.<>[] are comments; the first
+    then runs once after the prefix. Two distinct residuals at any level
+    below the first can share a binary classifier; inline text and the existing
+    command bound guard admission. Characters outside @.<>[] are comments; the first
     marker is a bare @.
     """
-    plain, _ = _bfpda_tree(truth_table)
+    context = _prepare(truth_table)
+    plain, _ = _bfpda_tree(truth_table, context=context)
     n = _validate_truth_table(truth_table)
-    reflected = _reflected(truth_table, n)
+    reflected = context.reflected
     shared = repeated_block(reflected)
     candidates = [plain]
     if shared is not None:
-        candidate, commands = _bfpda_tree(truth_table, shared)
+        candidate, commands = _bfpda_tree(truth_table, shared, context=context)
         if commands <= 10 * n + 2:
             candidates.append(candidate)
-    if n >= 4:
-        span = 1 << (n - 2)
-        blocks = tuple(
-            dict.fromkeys(reflected[i : i + span] for i in range(0, 1 << n, span))
-        )
-        if len(blocks) == 2:
+    # Sum of prefix spans and the two suffix bodies over all levels is O(T).
+    # Reuse residual IDs and constant-span data instead of rescanning each table.
+    for depth in range(2, n):
+        representatives: dict[int, int] = {}
+        for index, state in enumerate(context.ids[depth]):
+            representatives.setdefault(state, index)
+            if len(representatives) > 2:
+                break
+        if len(representatives) == 2:
+            span = 1 << (n - depth)
+            blocks = tuple(
+                reflected[index * span : (index + 1) * span]
+                for index in representatives.values()
+            )
             candidate, commands = _bfpda_tree(
-                truth_table, classes=(blocks[0], blocks[1])
+                truth_table,
+                classes=(blocks[0], blocks[1]),
+                class_depth=depth,
+                class_rows=tuple(index * span for index in representatives.values()),
+                context=context,
             )
             if commands <= 10 * n + 2:
                 candidates.append(candidate)
@@ -67,6 +97,9 @@ def _bfpda_tree(
     shared: tuple[int, int] | None = None,
     *,
     classes: tuple[str, str] | None = None,
+    class_depth: int = 2,
+    class_rows: tuple[int, ...] | None = None,
+    context: _TreeContext | None = None,
 ) -> tuple[str, int]:
     """Emit an inline tree or a sentinel-protected shared residual."""
     n = _validate_truth_table(table)
@@ -84,15 +117,28 @@ def _bfpda_tree(
 
     # The stack hands back the *last* input first: level ``i`` tests input
     # ``n - 1 - i``, row bit ``i``; bit-reversed, each subtree is a span.
-    reflected = _reflected(table, n)
-    constant = constant_span_test(reflected)
-    ids = subtree_ids(reflected)
+    if context is None:
+        context = _prepare(table)
+    reflected, constant, ids = context.reflected, context.constant, context.ids
+    rows: tuple[int, ...] = ()
+    class_ids: tuple[int, ...] = ()
+    if classes is not None:
+        if not 2 <= class_depth < n:
+            raise ValueError(
+                "a protected classifier needs at least two consumed inputs"
+            )
+        span = 1 << (n - class_depth)
+        rows = class_rows or tuple(
+            next(i for i in range(0, 1 << n, span) if reflected[i : i + span] == block)
+            for block in classes
+        )
+        class_ids = tuple(ids[class_depth][row // span] for row in rows)
     pieces = [head]
     protected = shared is not None or classes is not None
 
     def node(i: int, lo: int, hi: int) -> BranchCost:
-        if classes is not None and i == 2:
-            code = "<@<" + ("@" if reflected[lo:hi] == classes[1] else "")
+        if classes is not None and i == class_depth:
+            code = "<@<" + ("@" if ids[i][lo >> (n - i)] == class_ids[1] else "")
             pieces.append(code)
             return len(code), None
         if (
@@ -126,17 +172,13 @@ def _bfpda_tree(
 
     cost = node(0, 0, 1 << n)
     if classes is not None:
-        span = 1 << (n - 2)
-        rows = tuple(
-            next(i for i in range(0, 1 << n, span) if reflected[i : i + span] == block)
-            for block in classes
-        )
+        span = 1 << (n - class_depth)
         classes = None
         protected = False
         pieces.append("[>>")
-        one = node(2, rows[1], rows[1] + (1 << (n - 2)))
+        one = node(class_depth, rows[1], rows[1] + span)
         pieces.append("]>[>")
-        zero = node(2, rows[0], rows[0] + (1 << (n - 2)))
+        zero = node(class_depth, rows[0], rows[0] + span)
         pieces.append("]")
         body = add_cost(merge_cost(add_cost(one, 3), add_cost(zero, 2)), 3)
         cost = normal_cost(cost) + normal_cost(body), None
