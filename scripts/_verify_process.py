@@ -13,10 +13,14 @@ import tempfile
 import threading
 import time
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from weakref import WeakKeyDictionary
+
+from _bounded_log import MAX_LOG_BYTES, spool
 
 EXCERPT_BYTES = 32 * 1024
 
@@ -25,9 +29,20 @@ EXCERPT_BYTES = 32 * 1024
 class Log:
     path: Path
     reader: threading.Thread | None = None
+    overflow: bool = False
 
 
 _LOGS: WeakKeyDictionary[subprocess.Popen[str], Log] = WeakKeyDictionary()
+
+
+@dataclass
+class Cleanup:
+    lock: threading.Lock = field(default_factory=threading.Lock)
+    complete: bool = False
+
+
+_CLEANUPS: WeakKeyDictionary[subprocess.Popen[str], Cleanup] = WeakKeyDictionary()
+_CLEANUP_LOCK = threading.Lock()
 
 
 def start_logged(
@@ -39,38 +54,40 @@ def start_logged(
     prefix = re.sub(r"[^a-zA-Z0-9_-]", "-", name)[:48] + "-"
     fd, filename = tempfile.mkstemp(prefix=prefix, suffix=".log", dir=directory)
     log = Log(Path(filename))
-    with os.fdopen(fd, "w", encoding="utf-8") as output:
-        proc = subprocess.Popen(
-            cmd,
-            env=env,
-            stdout=subprocess.PIPE if stream else output,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            start_new_session=os.name == "posix",
-        )
-    if stream:
+    os.close(fd)
+    proc = subprocess.Popen(
+        cmd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        start_new_session=os.name == "posix",
+    )
 
-        def tee() -> None:
-            assert proc.stdout is not None
-            with log.path.open("wb") as output:
-                reader = cast(
-                    "io.BufferedReader", cast("io.TextIOWrapper", proc.stdout).buffer
-                )
-                decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
-                while raw := reader.read1(8192):
-                    chunk = decoder.decode(raw)
-                    output.write(raw)
-                    output.flush()
-                    with suppress(BrokenPipeError):
-                        sys.stdout.write(chunk)
-                        sys.stdout.flush()
-                final = decoder.decode(b"", final=True)
-                sys.stdout.write(final)
+    def copy() -> None:
+        assert proc.stdout is not None
+        reader = cast("io.BufferedReader", cast("io.TextIOWrapper", proc.stdout).buffer)
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
 
-        log.reader = threading.Thread(target=tee, daemon=True)
-        log.reader.start()
+        def tee(raw: bytes) -> None:
+            with suppress(BrokenPipeError):
+                sys.stdout.write(decoder.decode(raw))
+                sys.stdout.flush()
+
+        def stop() -> None:
+            log.overflow = True
+            stop_process_tree(proc)
+
+        spool(reader, log.path, MAX_LOG_BYTES, stop, tee if stream else None)
+        if stream:
+            with suppress(BrokenPipeError):
+                sys.stdout.write(decoder.decode(b"", final=True))
+                sys.stdout.flush()
+
+    log.reader = threading.Thread(target=copy, daemon=True)
+    log.reader.start()
     _LOGS[proc] = log
     return proc
 
@@ -88,20 +105,27 @@ def excerpt(proc: subprocess.Popen[str]) -> str:
 
 def stop_process_tree(proc: subprocess.Popen[str]) -> None:
     """Kill the step's process tree and reap its direct child."""
-    if os.name == "posix":
-        # Reap exited leaders before signalling; Darwin rejects zombie groups.
-        proc.poll()
-        with suppress(ProcessLookupError):
-            os.killpg(proc.pid, signal.SIGKILL)
-    else:
-        subprocess.run(
-            ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-            capture_output=True,
-            check=False,
-        )
-        if proc.poll() is None:
-            proc.kill()
-    proc.wait()
+    with _CLEANUP_LOCK:
+        cleanup = _CLEANUPS.setdefault(proc, Cleanup())
+    with cleanup.lock:
+        if cleanup.complete:
+            return
+        if os.name == "posix":
+            # Reap exited leaders before signalling; Darwin rejects zombie groups.
+            proc.poll()
+            with suppress(ProcessLookupError):
+                os.killpg(proc.pid, signal.SIGKILL)
+        else:
+            subprocess.run(
+                ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                capture_output=True,
+                check=False,
+            )
+            if proc.poll() is None:
+                proc.kill()
+        proc.wait()
+        # Overflow logging and the caller can discover the same exit concurrently.
+        cleanup.complete = True
 
 
 def wait_with_heartbeat(
@@ -116,7 +140,8 @@ def wait_with_heartbeat(
                 wait = max(0.0, min(heartbeat, remaining))
                 if proc in _LOGS:
                     proc.wait(timeout=wait)
-                    return excerpt(proc), proc.returncode
+                    output = excerpt(proc)
+                    return output, 125 if _LOGS[proc].overflow else proc.returncode
                 output, _ = proc.communicate(timeout=wait)
                 return output or "", proc.returncode
             except subprocess.TimeoutExpired:

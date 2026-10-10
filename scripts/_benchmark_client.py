@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import io
 import json
 import os
 import queue
@@ -12,11 +13,12 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO, cast
 
 import esolangs
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _bounded_log import MAX_LOG_BYTES, spool
 from _verify_process import EXCERPT_BYTES, stop_process_tree
 
 MAX_RECORD_CHARS = 1024 * 1024
@@ -36,6 +38,8 @@ class Worker:
         self.reader: threading.Thread | None = None
         self.writer: threading.Thread | None = None
         self.log_path: Path | None = None
+        self.log_reader: threading.Thread | None = None
+        self.log_overflow = threading.Event()
 
     def start(self) -> subprocess.Popen[str]:
         if self.process is None:
@@ -47,21 +51,42 @@ class Worker:
                 prefix="worker-", suffix=".log", dir=directory
             )
             self.log_path = Path(filename)
+            os.close(fd)
+            self.log_overflow.clear()
             try:
                 self.process = subprocess.Popen(
                     self.command,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
-                    stderr=fd,
+                    stderr=subprocess.PIPE,
                     text=True,
                     encoding="utf-8",
                     start_new_session=os.name == "posix",
                     cwd=Path(__file__).resolve().parents[1],
                 )
-            finally:
-                os.close(fd)
+            except BaseException:
+                self.log_path.unlink(missing_ok=True)
+                raise
             process = self.process
             messages, stopped = self.messages, self.stopped
+
+            def copy_log() -> None:
+                assert process.stderr is not None
+                assert self.log_path is not None
+
+                def stop() -> None:
+                    self.log_overflow.set()
+                    stop_process_tree(process)
+
+                spool(
+                    cast(BinaryIO, cast("io.TextIOWrapper", process.stderr).buffer),
+                    self.log_path,
+                    MAX_LOG_BYTES,
+                    stop,
+                )
+
+            self.log_reader = threading.Thread(target=copy_log, daemon=True)
+            self.log_reader.start()
 
             def read() -> None:
                 assert process.stdout is not None
@@ -90,7 +115,7 @@ class Worker:
             self.reader.start()
         return self.process
 
-    def close(self) -> None:
+    def close(self, *, check_log: bool = True) -> None:
         if self.process is not None:
             self.stopped.set()
             stop_process_tree(self.process)
@@ -98,10 +123,18 @@ class Worker:
                 self.reader.join(5)
             if self.writer is not None:
                 self.writer.join(5)
-            for stream in (self.process.stdin, self.process.stdout):
+            if self.log_reader is not None:
+                self.log_reader.join(5)
+            for stream in (
+                self.process.stdin,
+                self.process.stdout,
+                self.process.stderr,
+            ):
                 if stream is not None:
                     stream.close()
             self.process = None
+            if check_log and self.log_overflow.is_set():
+                raise RuntimeError("benchmark diagnostic byte limit exceeded")
 
     def measure(
         self,
@@ -176,6 +209,8 @@ class Worker:
                     raise esolangs.ExecutionTimeoutError(
                         f"benchmark {phase} deadline exceeded ({limit:g}s)"
                     ) from None
+                if self.log_overflow.is_set():
+                    raise RuntimeError("benchmark diagnostic byte limit exceeded")
                 if line is None:
                     raise RuntimeError("benchmark worker exited without evidence")
                 message = json.loads(line)
@@ -234,10 +269,12 @@ class Worker:
                 else:
                     raise RuntimeError("invalid benchmark worker record")
         except BaseException as error:
-            self.close()
+            self.close(check_log=False)
+            if isinstance(error, Exception) and self.log_overflow.is_set():
+                error = RuntimeError("benchmark diagnostic byte limit exceeded")
             if isinstance(error, Exception) and self.log_path is not None:
                 with self.log_path.open("rb") as log:
                     log.seek(max(0, self.log_path.stat().st_size - EXCERPT_BYTES))
                     tail = log.read(EXCERPT_BYTES).decode("utf-8", errors="replace")
                 error.add_note(f"[log] {self.log_path}\n{tail}")
-            raise
+            raise error

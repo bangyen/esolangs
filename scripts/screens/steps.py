@@ -44,6 +44,7 @@ import esolangs.debugger as debugger_api
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from _budget import options, supervise
 from _build import TABLES, chosen
 from benchmark import _bits, _commands
 
@@ -178,11 +179,25 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("languages", nargs="*", help="registry names (default all)")
     parser.add_argument("--cap", type=int, default=200_000, help="steps per row")
+    options(parser)
     args = parser.parse_args()
+    if args.cap < 1:
+        parser.error("--cap must be positive")
+    languages = [
+        key
+        for key, _gen in chosen(args.languages)
+        if esolangs.describe(key)["steppable_to_answer"]
+    ]
+    plan = {
+        "languages": len(languages),
+        "tables": len(languages) * len(TABLES),
+        "row_executions": len(languages) * len(TABLES) * 8,
+        "step_bound": len(languages) * len(TABLES) * 8 * 4 * (args.cap + 1),
+    }
+    if not supervise(parser, args, Path(__file__), plan):
+        return
     rows = []
-    for key, _gen in chosen(args.languages):
-        if not esolangs.describe(key)["steppable_to_answer"]:
-            continue
+    for key in languages:
         rows.append((key, *screen(key, args.cap)))
     rows.sort(key=lambda row: (-row[5], row[0]))
     print(

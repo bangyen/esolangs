@@ -1,5 +1,6 @@
 """The local gate may skip work, but only work CI is known to redo."""
 
+import io
 import json
 import os
 import re
@@ -155,7 +156,7 @@ def test_coverage_gate_requires_both_runs(monkeypatch, suite_code, coverage_code
 
     def start(cmd, **_kwargs):
         called.append(cmd[0])
-        return mock.Mock()
+        return mock.Mock(stdout=io.TextIOWrapper(io.BytesIO()))
 
     codes = {"pytest": suite_code, verify.COVERAGE_TEST_STEP: coverage_code, "gate": 0}
     monkeypatch.setattr(verify.subprocess, "Popen", start)
@@ -536,7 +537,9 @@ def test_companion_checks_share_one_serial_lane(monkeypatch):
 
     monkeypatch.setattr(verify, "_wait_with_heartbeat", wait)
     monkeypatch.setattr(
-        verify.subprocess, "Popen", lambda *_args, **_kwargs: mock.Mock()
+        verify.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: mock.Mock(stdout=io.TextIOWrapper(io.BytesIO())),
     )
     runnable = [(name, [name], {}) for name in ("pytest", "first", "second")]
     failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001

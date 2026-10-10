@@ -296,3 +296,87 @@ def test_dependency_drift_checkout_drift_and_success_report(tmp_path, dynamic):
     assert case["result"]["size_unit"] == "characters"
     assert all(row["matches"] for row in case["result"]["new_executions"])
     assert 0 < result["elapsed_seconds"] < result["wall_budget_seconds"]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("change", ["candidate", "dependency", "checkout"])
+def test_source_drift_during_screen_invalidates_success(tmp_path, monkeypatch, change):
+    import json
+
+    path = tmp_path / "candidate.py"
+    helper = tmp_path / "helper.py"
+    path.write_text("from esolangs.tools.brainfuck import brainfuck as build\n")
+    helper.write_text("value = 1\n")
+    original = candidate._run_case  # noqa: SLF001
+    checkout = candidate.source_identity()
+
+    def run(*args):
+        result = original(*args)
+        if change == "candidate":
+            path.write_text(path.read_text() + "# changed\n")
+        elif change == "dependency":
+            import hashlib
+
+            result["runtime_dependencies"][str(helper)] = hashlib.sha256(
+                helper.read_bytes()
+            ).hexdigest()
+            helper.write_text("value = 2\n")
+        else:
+            monkeypatch.setattr(
+                candidate, "source_identity", lambda: {**checkout, "commit": "changed"}
+            )
+        return result
+
+    monkeypatch.setattr(candidate, "_run_case", run)
+    report = tmp_path / "report.json"
+    assert (
+        candidate.main([*options(path, tmp_path / "failures"), "--report", str(report)])
+        == 1
+    )
+    assert json.loads(report.read_text())["status"] == "source-changed"
+
+
+def test_raster_measurements_keep_pixel_area_dimensions_and_scale():
+    from esolangs.raster import Raster
+    from scripts.screens._build import source_measurement
+
+    image = Raster((((0, 0, 0), (255, 255, 255)),), scale=1)
+    original = source_measurement("fixture", image)
+    scaled = source_measurement("fixture", image.upscaled(3))
+    assert original == {
+        "size": 2,
+        "unit": "pixels",
+        "width": 2,
+        "height": 1,
+        "scale": 1,
+    }
+    assert scaled == {"size": 18, "unit": "pixels", "width": 6, "height": 3, "scale": 3}
+
+
+@pytest.mark.medium
+def test_dynamic_helper_edit_during_generation_invalidates_evidence(tmp_path):
+    import json
+
+    path = tmp_path / "candidate.py"
+    path.write_text(
+        "import importlib\nbuild = importlib.import_module('helper').build\n"
+    )
+    helper = tmp_path / "helper.py"
+    helper.write_text(
+        "from pathlib import Path\n"
+        "from esolangs.tools.brainfuck import brainfuck\n"
+        "def build(table):\n path = Path(__file__)\n"
+        ' path.write_text(path.read_text() + "# changed\\n")\n'
+        " return brainfuck(table)\n"
+    )
+    report = tmp_path / "report.json"
+    assert (
+        candidate.main([*options(path, tmp_path / "failures"), "--report", str(report)])
+        == 1
+    )
+    evidence = json.loads(report.read_text())
+    assert evidence["status"] == "source-changed"
+    assert any(
+        "dependencies changed" in case.get("error", {}).get("message", "")
+        for case in evidence["cases"]
+    )

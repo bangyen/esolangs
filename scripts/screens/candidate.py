@@ -264,6 +264,20 @@ def main(argv: list[str] | None = None) -> int:
     records: list[dict[str, Any]] = []
 
     def finish(code: int, status: str) -> int:
+        try:
+            changed = (
+                source_identity() != checkout
+                or _candidate_identity(args.candidate) != identity
+                or any(
+                    dependencies_changed(record.get("runtime_dependencies", {}))
+                    for record in records
+                )
+            )
+        except (OSError, ValueError, SyntaxError):
+            changed = True
+        if changed:
+            print("screen evidence invalid: source changed during execution")
+            code, status = 1, "source-changed"
         if args.report is not None:
             write_text(
                 args.report,

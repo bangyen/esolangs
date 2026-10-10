@@ -8,8 +8,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from _budget import options, supervise
 from benchmark import measure
 
 
@@ -44,7 +46,7 @@ def audit(
         # Generous for every audited shape: a table scan or a fixed leaf.
         step_cap=max(64 * len(table) + 64 * n + 512, 100 * n + 8192),
         all_rows=True,
-        timeout=None,
+        timeout=30,
         track_store=True,
     )
     if not all(item["matches"] is True for item in result["executions"]):
@@ -82,12 +84,34 @@ def main() -> None:
     """Print resource profiles through a bounded arity, every answer checked."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-inputs", type=int, default=8)
+    parser.add_argument("languages", nargs="*")
+    options(parser)
     args = parser.parse_args()
     if not 1 <= args.max_inputs <= 10:
         parser.error("--max-inputs must be between 1 and 10")
-    from esolangs.registry import LANGUAGES
+    from esolangs.registry import LANGUAGES, resolve
 
-    for language in [name for name, lang in LANGUAGES.items() if lang.payload]:
+    languages = (
+        [resolve(name) for name in args.languages]
+        if args.languages
+        else [name for name, lang in LANGUAGES.items() if lang.payload]
+    )
+    if any(not LANGUAGES[name].payload for name in languages):
+        parser.error("selected language does not expose payload measurements")
+    executions = 4 * sum(1 << n for n in range(1, args.max_inputs + 1))
+    work = 4 * sum(
+        (1 << n) * max(64 * (1 << n) + 64 * n + 512, 100 * n + 8192)
+        for n in range(1, args.max_inputs + 1)
+    )
+    plan = {
+        "languages": len(languages),
+        "tables": 4 * args.max_inputs * len(languages),
+        "row_executions": executions * len(languages),
+        "step_bound": work * len(languages),
+    }
+    if not supervise(parser, args, Path(__file__), plan):
+        return
+    for language in languages:
         for n in range(1, args.max_inputs + 1):
             for family, table in corpus(n).items():
                 print(json.dumps({"family": family, **audit(language, n, table)}))

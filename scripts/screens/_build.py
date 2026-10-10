@@ -7,6 +7,7 @@ each puts this directory on ``sys.path`` for the import, as
 
 import random
 from collections.abc import Callable, Iterator
+from typing import Any
 
 from esolangs import describe
 from esolangs.raster import Raster
@@ -26,6 +27,28 @@ def source_size(name: str, program: object) -> int:
         rows = source.splitlines()
         return len(rows) * max(map(len, rows), default=0)
     return len(source)
+
+
+def source_measurement(name: str, program: object) -> dict[str, Any]:
+    """Measure actual emitted area in pixels or grid cells; report scale separately."""
+    if isinstance(program, Raster):
+        return {
+            "size": source_size(name, program),
+            "unit": "pixels",
+            "width": len(program.rows[0]),
+            "height": len(program.rows),
+            "scale": program.scale,
+        }
+    if describe(name)["state_model"] == "grid":
+        rows = str(program).splitlines()
+        return {
+            "size": source_size(name, program),
+            "unit": "cells",
+            "width": max(map(len, rows), default=0),
+            "height": len(rows),
+            "scale": None,
+        }
+    return {"size": source_size(name, program), "unit": "characters"}
 
 
 def generators() -> Iterator[tuple[str, Callable[[str], object]]]:
