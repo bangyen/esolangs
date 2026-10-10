@@ -40,8 +40,15 @@ def saved(tmp_path):
         ("output differs", "timeout", "inconclusive", 3),
     ],
 )
-def test_replay_verdict(tmp_path, capsys, cause, status, verdict, code):
+def test_replay_verdict(tmp_path, capsys, monkeypatch, cause, status, verdict, code):
     path, original = saved(tmp_path)
+    identity = {"checkout": {}, "runtime": {}, "reference": {}}
+    value = evidence.read(path)
+    value["identity"] = identity
+    path.write_text(json.dumps(value))
+    context = tmp_path / "context.json"
+    context.write_text(json.dumps({"identity": identity}))
+    monkeypatch.setenv("ESOLANGS_SCREEN_RESUME", str(context))
     observed = (
         d.Case(original.program, original.stdin, cause, original.ours, original.ref)
         if cause
@@ -144,7 +151,16 @@ def test_promotion_generated_test_executes_and_detects_wrong_expectation(
         monkeypatch.setattr(
             sys,
             "argv",
-            ["promote", str(path), str(destination), "--expected-side", side],
+            [
+                "promote",
+                str(path),
+                str(destination),
+                "--reason",
+                "execution contract",
+                "--allow-drift",
+                "--expected-side",
+                side,
+            ],
         )
         promotion.main()
         namespace = {}
@@ -176,7 +192,18 @@ def test_promotion_confirms_through_bounded_replay(tmp_path, monkeypatch):
     path.write_text(json.dumps(value))
     destination = tmp_path / "test_promoted.py"
     monkeypatch.setattr(
-        sys, "argv", ["promote", str(path), str(destination), "--expected-side", "ours"]
+        sys,
+        "argv",
+        [
+            "promote",
+            str(path),
+            str(destination),
+            "--reason",
+            "execution contract",
+            "--allow-drift",
+            "--expected-side",
+            "ours",
+        ],
     )
     promotion.main()
     namespace = {}
@@ -210,7 +237,18 @@ def test_promotion_refuses_unconfirmed_findings(tmp_path, monkeypatch, verdict):
     monkeypatch.setattr(promotion, "run", lambda *_: (1, observation, b"", None))
     destination = tmp_path / "test_promoted.py"
     monkeypatch.setattr(
-        sys, "argv", ["promote", str(path), str(destination), "--expected-side", "ref"]
+        sys,
+        "argv",
+        [
+            "promote",
+            str(path),
+            str(destination),
+            "--reason",
+            "execution contract",
+            "--allow-drift",
+            "--expected-side",
+            "ref",
+        ],
     )
     with pytest.raises(SystemExit):
         promotion.main()

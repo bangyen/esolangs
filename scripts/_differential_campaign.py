@@ -41,6 +41,14 @@ def artifact(
         "original": original,
         "minimized": None,
         "minimization_status": "started",
+        "replay_parameters": {
+            "language": key,
+            "reference": runner.template,
+            "reference_timeout": runner.timeout,
+            "budget_seconds": max(1, runner.timeout * 6 + 1),
+            "setup_seconds": 5,
+            "finalize_seconds": 5,
+        },
         "replay": [
             sys.executable,
             str(Path(__file__).with_name("differential.py")),
@@ -132,7 +140,12 @@ def campaign(
 
 
 def replay(
-    runner: Any, path: Path, seed: int, serialize: Callable[[Any], dict[str, Any]]
+    runner: Any,
+    path: Path,
+    seed: int,
+    serialize: Callable[[Any], dict[str, Any]],
+    *,
+    allow_drift: bool = False,
 ) -> int:
     """Re-run the saved minimized input, or the original when minimization stopped."""
     from _budget import completed
@@ -141,6 +154,9 @@ def replay(
     finding(value)
     if value["language"] != runner.spec.language:
         raise ValueError("replay language does not match")
+    from _replay_evidence import provenance
+
+    context = provenance(value, runner.template, allow_drift=allow_drift)
     saved = value["minimized"] or value["original"]
     observed = runner.check(saved["program"], saved["stdin"])
     outcomes = getattr(runner, "last_outcomes", None)
@@ -156,6 +172,7 @@ def replay(
     completed(
         "compared",
         verdict=verdict,
+        provenance=context,
         case_id=case_id(runner.spec.language, seed, 0),
         language=runner.spec.language,
         seed=seed,
@@ -170,6 +187,7 @@ def replay(
                 "expected_cause": saved["cause"],
                 "observed": serialize(observed) if observed is not None else None,
                 "verdict": verdict,
+                "provenance": context,
             }
         )
     )

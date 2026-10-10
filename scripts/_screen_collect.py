@@ -25,20 +25,13 @@ def collect(payload: dict[str, Any]) -> dict[str, Any]:
                 {"path": str(progress), "error": "progress exceeds eight MiB"}
             )
         else:
-            for index, line in enumerate(raw.splitlines()):
+            for line in raw.splitlines():
                 try:
-                    record = json.loads(line)
-                    validate([record], payload["expected"], offset=index)
-                    parsed.append(record)
-                except (ValueError, TypeError) as error:
-                    rejected.append({"ordinal": index, "error": str(error)})
-    counts = Counter(record["case_id"] for record in parsed)
-    for record in parsed:
-        if counts[record["case_id"]] != 1:
-            rejected.append({"ordinal": record["ordinal"], "error": "duplicate case"})
-        else:
-            record["ordinal"] = len(records)
-            records.append(record)
+                    parsed.append(json.loads(line))
+                except ValueError:
+                    parsed.append(None)
+    records, duplicate_rejections = recover(parsed, payload["expected"])
+    rejected.extend(duplicate_rejections)
     for path in sorted(Path(payload["findings"]).glob("*.json")):
         try:
             item = read(path)
@@ -52,3 +45,25 @@ def collect(payload: dict[str, Any]) -> dict[str, Any]:
         except (OSError, ValueError, TypeError, KeyError) as error:
             rejected.append({"path": str(path), "error": str(error)})
     return {"cases": records, "findings": findings, "rejected": rejected}
+
+
+def recover(
+    records: list[Any], expected: list[str]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Revalidate each record, dropping every ambiguous duplicate identity."""
+    counts = Counter(
+        record.get("case_id")
+        for record in records
+        if isinstance(record, dict) and isinstance(record.get("case_id"), str)
+    )
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    for index, record in enumerate(records):
+        try:
+            validate([record], expected, offset=index)
+            if counts[record["case_id"]] != 1:
+                raise ValueError("duplicate case")
+            accepted.append({**record, "ordinal": len(accepted)})
+        except (ValueError, TypeError, KeyError) as error:
+            rejected.append({"ordinal": index, "error": str(error)})
+    return accepted, rejected

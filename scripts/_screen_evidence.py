@@ -81,10 +81,14 @@ def resume(
         or value.get("runtime") != identity["runtime"]
         or value.get("plan") != plan
         or value.get("screen") != screen
-        or value.get("status") in {"source-changed", "invalid-evidence"}
+        or value.get("status") == "source-changed"
         or not isinstance(value.get("cases"), list)
     ):
         raise ValueError("resume source, settings or corpus do not match")
+    if value.get("status") == "invalid-evidence":
+        from _screen_collect import recover
+
+        value["cases"], _rejected = recover(value["cases"], plan["case_ids"])
     validate(value["cases"], plan["case_ids"])
     return [record for record in value["cases"] if record["status"] in REUSABLE]
 

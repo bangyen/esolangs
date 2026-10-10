@@ -154,12 +154,12 @@ import shlex
 import signal
 import sys
 import tempfile
-import threading
 import time
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from threading import current_thread, main_thread
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -259,15 +259,11 @@ def run_ours(language: str, program: str, stdin: str, max_steps: int) -> Outcome
 
 def run_ours_fast(language: str, program: str, stdin: str) -> Outcome:
     """Run through ``esolangs.run``, the path users take."""
-    # A bounded in-process run needs SIGALRM on a Unix main thread; elsewhere
-    # (Windows, worker threads) ``esolangs.run`` refuses it, so take the same
-    # call through its subprocess deadline instead.
-    signal_bound = hasattr(signal, "SIGALRM") and (
-        threading.current_thread() is threading.main_thread()
-    )
+    # SIGALRM bounds the in-process run on a Unix main thread; elsewhere isolate.
+    bound = hasattr(signal, "SIGALRM") and current_thread() is main_thread()
     try:
         output = esolangs.run(
-            language, program, stdin=stdin, timeout=20, isolated=not signal_bound
+            language, program, stdin=stdin, timeout=20, isolated=not bound
         )
         return Outcome("halt", _bytes(output))
     except Exception as exc:
@@ -1115,6 +1111,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--replay-case", type=Path, help="replay a saved differential finding"
     )
+    parser.add_argument(
+        "--allow-drift", action="store_true", help="allow changed replay provenance"
+    )
     parser.add_argument("--minimize-checkpoint", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--minimize-case", type=Path, help=argparse.SUPPRESS)
     parser.add_argument(
@@ -1176,7 +1175,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     runner.minimize_seconds = args.minimize_seconds
     runner.minimize_calls = args.minimize_calls
     if args.replay_case is not None:
-        return replay(runner, args.replay_case, args.seed, _case_record)
+        return replay(
+            runner,
+            args.replay_case,
+            args.seed,
+            _case_record,
+            allow_drift=args.allow_drift,
+        )
     found = campaign(runner, args.programs, args.seed)
     print(f"{spec.language}: {args.programs} programs, seed {args.seed}")
     print(f"{len(found)} causes")

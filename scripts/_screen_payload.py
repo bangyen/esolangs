@@ -73,6 +73,27 @@ def finding(value: Any) -> None:
             raise ValueError("minimization changed the cause")
     if value["minimization_status"] == "complete" and minimized is None:
         raise ValueError("completed minimization lacks its case")
+    params = value.get("replay_parameters")
+    if "replay_parameters" in value:
+        if not isinstance(params, dict) or any(
+            not isinstance(params.get(key), str) or not params[key]
+            for key in ("language", "reference")
+        ):
+            raise ValueError("invalid structured replay parameters")
+        for key in (
+            "reference_timeout",
+            "budget_seconds",
+            "setup_seconds",
+            "finalize_seconds",
+        ):
+            bound = params.get(key)
+            if (
+                not isinstance(bound, (int, float))
+                or isinstance(bound, bool)
+                or not math.isfinite(bound)
+                or bound <= 0
+            ):
+                raise ValueError("invalid structured replay deadline")
     command = value.get("replay")
     if (
         not isinstance(command, list)

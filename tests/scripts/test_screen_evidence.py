@@ -77,7 +77,7 @@ def test_resume_filters_interrupted_cases_and_checks_provenance(tmp_path):
         ("schema", 1),
         ("runtime", {"python": "3.12"}),
         ("runtime", {"python": "3.14", "dependencies": [["pytest", "9.2"]]}),
-        ("status", "invalid-evidence"),
+        ("status", "source-changed"),
     ]:
         path.write_text(json.dumps({**manifest, key: value}))
         with pytest.raises(ValueError, match="do not match"):
