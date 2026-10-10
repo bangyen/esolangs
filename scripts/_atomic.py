@@ -10,8 +10,11 @@ def write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
+        # newline="" keeps the bytes exactly as written: on Windows the
+        # default text mode translates "\n" to "\r\n", which would make a
+        # content hash (durations_sha256) disagree with the file it names.
         with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", dir=path.parent, delete=False
+            mode="w", encoding="utf-8", newline="", dir=path.parent, delete=False
         ) as stream:
             temporary = Path(stream.name)
             stream.write(text)

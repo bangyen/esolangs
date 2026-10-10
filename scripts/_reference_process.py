@@ -32,16 +32,17 @@ def run(
     output, error = bytearray(), bytearray()
     lock = threading.Lock()
     exceeded = threading.Event()
-    count = 0
 
     def collect(stream: Any, target: bytearray) -> None:
-        nonlocal count
+        # Each stream is capped on its own and the combined budget is applied
+        # afterwards.  A single shared budget let a stderr flood consume all
+        # of it before the stdout reader was scheduled, discarding a prefix
+        # the child had already written and flushed.
         while chunk := stream.read1(8192):
             with lock:
-                available = max(0, limit - count)
-                target.extend(chunk[:available])
-                count += min(len(chunk), available)
-                overflow = len(chunk) > available
+                room = max(0, limit - len(target))
+                target.extend(chunk[:room])
+                overflow = len(chunk) > room
             if overflow:
                 exceeded.set()
                 stop_process_tree(process)
@@ -79,5 +80,9 @@ def run(
             stream.close()
     if exceeded.is_set():
         status = "limit"
+    # Hold the combined result to ``limit``, keeping the program's stdout over
+    # its diagnostics: a capped run must still return the prefix it printed.
+    del output[limit:]
+    del error[max(0, limit - len(output)) :]
     assert process.returncode is not None
     return process.returncode, bytes(output), bytes(error), status

@@ -70,7 +70,10 @@ def test_screen_wall_budget_stops_generation_and_descendants(tmp_path, monkeypat
     with pytest.raises(SystemExit) as caught:
         _budget.supervise(argparse.ArgumentParser(), args, script, {"step_bound": 1})
     assert caught.value.code == 124
-    assert time.monotonic() - started < 2
+    # 5s, not 2s: supervise spawns a subprocess and reaps its tree, which on a
+    # loaded Windows runner measured just over 2s.  The script under test
+    # sleeps 10s, so this still proves the budget stopped it promptly.
+    assert time.monotonic() - started < 5
     assert marker.exists()
     before = marker.read_text()
     time.sleep(0.1)

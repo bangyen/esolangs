@@ -166,7 +166,9 @@ def test_hung_generation_saves_failure_and_stops_descendants(tmp_path):
     )
     failures = tmp_path / "failures"
     started = time.monotonic()
-    assert candidate.main([*options(path, failures), "--generation-timeout", ".3"]) == 1
+    # 1s, not .3s: the spawned worker must write its tick before the
+    # generation deadline reaps the tree; 0.3s lost that race under CI load.
+    assert candidate.main([*options(path, failures), "--generation-timeout", "1"]) == 1
     assert time.monotonic() - started < 3
     record = json.loads(next(failures.glob("*.json")).read_text())
     assert record["error"]["type"] == "ExecutionTimeoutError"
