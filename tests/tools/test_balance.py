@@ -1,10 +1,9 @@
-"""Balanced layouts retain program semantics and template setters."""
-
 import pytest
 
 import esolangs
 from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, SourceKind
+from esolangs.tools.helpers import mark
 from esolangs.tools.wrap import (
     _mammalian,
     balance_program,
@@ -93,6 +92,10 @@ def test_balance_rejects_width() -> None:
 
 def test_character_balance() -> None:
     assert balance_program("+" * 100, "brainfuck") == "\n".join(["+" * 10] * 10)
+    marker = mark(0) * 100
+    assert balance_program(
+        marker + "+" * 100, "brainfuck"
+    ) == marker + "\n" + "\n".join("+" * 100)
 
 
 def test_cli_balance(capsys: pytest.CaptureFixture[str]) -> None:

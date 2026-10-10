@@ -583,7 +583,14 @@ def _split_coverage(
             "tests/tools/test_small_width_floors.py",
         ]
     }
-    leaves = [path for path in touched if path.startswith("src/esolangs/interpreters/")]
+    shared["src/esolangs/interpreters/tape_based/line/mask.py"] = [
+        "tests/line/test_mask.py"
+    ]
+    leaves = [
+        path
+        for path in touched
+        if path.startswith("src/esolangs/interpreters/") and path not in shared
+    ]
     if any(path not in shared and path not in leaves for path in touched):
         return runnable
     paths = _pytest_scope(leaves) if leaves else []
@@ -622,8 +629,13 @@ def _split_coverage(
                 COVERAGE_TEST_STEP,
                 [
                     *cmd,
+                    *(
+                        ["-m", "not medium and not slow and not weekly"]
+                        if any(path in shared for path in touched)
+                        else []
+                    ),
                     "-n",
-                    "4" if any(path in shared for path in touched) else "0",
+                    "0",
                     *paths,
                 ],
                 env,

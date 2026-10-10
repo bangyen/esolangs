@@ -116,7 +116,7 @@ def test_split_coverage_retains_the_full_suite_and_worker_override(options, shar
     assert coverage[0] == verify.COVERAGE_TEST_STEP
     assert "tests/interpreters/test_addsubjump.py" in coverage[1]
     assert "--cov" in coverage[1]
-    assert coverage[1][coverage[1].index("-n") + 1] == ("4" if shared else "0")
+    assert coverage[1][coverage[1].index("-n") + 1] == "0"
     assert ("tests/tools/test_wrap.py" in coverage[1]) is shared
     assert suite[0] == "pytest"
     assert "--no-cov" in suite[1]
