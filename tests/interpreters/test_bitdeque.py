@@ -149,7 +149,7 @@ def test_malformed_source_carries_a_repair_hint() -> None:
 
 
 class TestBitdequeRefusesNonsense:
-    """Unlike Taglate, which skips a non-command on purpose."""
+    """A non-command is refused, not skipped."""
 
     def test_bitdeque_refuses_a_word_it_does_not_know(self) -> None:
         """``findall`` kept what matched and dropped the rest in silence."""

@@ -119,7 +119,7 @@ At EOF a ``/ /`` read leaves the register **empty** rather than raising,
 which is the same state ``{ }`` clears it to. Output prints zero for that
 state, and a push puts it on the deque as an empty cell. A program reading
 past EOF keeps running without a :class:`HaltError`.  Unicode input is
-reduced modulo 256, as in Boolfuck.
+reduced modulo 256.
 """
 
 from bisect import bisect_left

@@ -310,7 +310,8 @@ Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis. Deadfish (315)
 is interpreter-only because it has no input vocabulary.
 
 [Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
-(94) clears the fame gate despite duplicating Bitwise Cyclic Tag's axis.
+(94) clears the fame gate despite duplicating an earlier queue language's
+consume-one-bit axis.
 The 2026-10-01 audit pins consume-one-bit semantics: append the current
 production iff the bit is one, then advance cyclically; empty data halts.
 With no specified I/O, the package adopts BCT's initial-queue embed and
@@ -388,7 +389,8 @@ and 4.000 (///). The constructions supply the bounds; these ratios are measureme
 The 2026-09-27 audit closed these candidates:
 
 - Self-replicating marbles leaves section order and collision timing undefined.
-- Wirefunge leaves initialization open and duplicates thisthat's gates.
+- Wirefunge leaves initialization open and duplicates an earlier grid
+  language's gates.
 - Bytemap leaves byte order, division faults, and optional 8bpp undefined.
 - Gifunk defines motion through APNG/GIF frames but no instructions.
 - Turing Paint and Befunk are obscure but already implemented.
@@ -486,7 +488,7 @@ languages remain rejected from the same image-source screen.
   World prints no greeting under any direction or seek timing. The generator
   targets the default only.
 - Smu reads an unset variable as empty, as the wiki cat needs at EOF.
-  Bits ride bytes low bit first, as in Boolfuck, so the cat copies bytes;
+  Bits ride bytes low bit first, so the cat copies bytes;
   output `=` prints nothing, `(` or `)` halts, and an unbalanced program
   popped to run halts. The page's expanded cat drops the `=` after `(+=)`
   and forces a leading 1; the compact source fixes the repair.

@@ -71,7 +71,7 @@ class TestRun:
         assert run_program(3**65 * 5) == "A"
 
     def test_wiki_cat_echoes(self) -> None:
-        """The cat program echoes input, then EOF raises like brainfuck."""
+        """The cat program echoes input, then EOF raises."""
         io = ScriptedIO("h\ni")
         with pytest.raises(EOFError):
             run(str(CAT), io)

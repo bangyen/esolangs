@@ -2,7 +2,8 @@
 
 A language should be removable by deleting its files.  Each mention of it
 elsewhere -- a string equal to its name or id, an import of its modules, an
-attribute named after them -- is coupling that ``remove`` has to chase, so
+attribute named after them, a docstring or comment that cites it as an
+example -- is coupling that ``remove`` has to chase, so
 ``tests/fixtures/coupling.toml`` records how many each file holds.  The
 counts only go down: a new per-language table belongs on the language's
 ``LANGUAGE`` or in its own test file, and a file that sheds mentions
@@ -10,7 +11,10 @@ lowers its count.
 """
 
 import ast
+import io
+import re
 import subprocess
+import tokenize
 import tomllib
 from collections import Counter
 from functools import cache
@@ -76,6 +80,95 @@ def _mentions(path: str) -> Counter[str]:
             # ``boolean.smu``: a generator reached through the package.
             found["." + node.attr] += 1
     return found
+
+
+#: Phrases that introduce a second language as an example or comparison.
+_CITATION_PHRASES = (
+    "as in",
+    "unlike",
+    "like",
+    "such as",
+    "à la",
+    "cf.",
+    "see",
+    "duplicating",
+    "duplicates",
+    "mirroring",
+    "mirrors",
+)
+#: Prose that records history, not a statement about a live language.
+_HISTORY = frozenset({"CHANGELOG.md"})
+#: The file kinds whose prose is scanned for citations.
+_PROSE = (".py", ".md", ".tex")
+
+
+def _prose(path: Path, text: str) -> list[str]:
+    """Return a file's docstrings and comments, or its lines if it is text."""
+    if path.suffix != ".py":
+        return text.splitlines()
+    lines: list[str] = []
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return lines
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+        ):
+            lines += node.value.value.splitlines()
+    try:
+        for token in tokenize.generate_tokens(io.StringIO(text).readline):
+            if token.type == tokenize.COMMENT:
+                lines.append(token.string)
+    except tokenize.TokenError:
+        pass
+    return lines
+
+
+@cache
+def _citations() -> list[str]:
+    """Return each docstring, comment or text line that cites a language."""
+    names = "|".join(
+        re.escape(lang.name)
+        for lang in sorted(LANGUAGES.values(), key=lambda lang: -len(lang.name))
+    )
+    name = re.compile(rf"(?<!\w)(?:{names})(?!\w)")
+    phrase = re.compile(
+        r"(?i)\b(" + "|".join(re.escape(p) for p in _CITATION_PHRASES) + r")\s*$"
+    )
+    files = subprocess.run(
+        ["git", "ls-files", "*.py", "*.md", "*.tex"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    found: list[str] = []
+    for relative in files:
+        if relative in _HISTORY or relative.startswith(OPTIONAL):
+            continue
+        path = ROOT / relative
+        text = path.read_text(encoding="utf-8")
+        if not name.search(text):
+            continue
+        for line in _prose(path, text):
+            for match in name.finditer(line):
+                if phrase.search(line[: match.start()]):
+                    found.append(f"{relative}: {line.strip()[:100]}")
+                    break
+    return sorted(set(found))
+
+
+@pytest.mark.medium
+def test_no_file_cites_another_language() -> None:
+    """A fact about one language does not name a second as its example."""
+    found = _citations()
+    assert not found, (
+        "a shared file cites another language; state the fact without naming a "
+        f"second language: {found}"
+    )
 
 
 def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:

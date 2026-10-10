@@ -224,7 +224,10 @@ down. Put such a fact on `Language`, or the test in the language's own
 test file: `tests/interpreters/test_<id>.py` for its interpreter,
 `tests/tools/test_boolean_<gen>.py` for its generator, and
 `tests/languages/test_<id>.py` for it through the shared API, CLI, VM and
-debugger.
+debugger. A shared file states a language's own facts, never a second
+language's: an example or comparison that names another language (`as in
+X`, `unlike X`, `X's axis`) is coupling in prose too, and
+`tests/test_language_coupling.py` rejects it.
 
 ### The Boolean I/O contract
 
