@@ -10,7 +10,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import candidate
+from _atomic import write_text
 from _build import source_size
+from _candidate_evidence import loaded_dependencies
 from benchmark import _execute, artifact_hash
 
 import esolangs
@@ -63,6 +65,11 @@ def main() -> None:
         message = {"result": result}
     except Exception as error:
         message = {"error": {"type": type(error).__name__, "message": str(error)}}
+    if request.get("dependency_report"):
+        write_text(
+            Path(request["dependency_report"]),
+            json.dumps(loaded_dependencies(request["candidate"])),
+        )
     print(json.dumps(message), file=protocol, flush=True)
 
 

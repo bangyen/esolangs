@@ -84,3 +84,72 @@ def test_weekly_supervisor_reaps_on_timeout_or_interruption(
     before = marker.read_text()
     time.sleep(0.1)
     assert marker.read_text() == before
+
+
+def score_fixture():
+    provenance = {
+        "checkout": {"commit": "fixture"},
+        "python": "fixture",
+        "platform": "fixture",
+        "mutmut": "3.8.0",
+        "source_sha256": {"source.py": "a" * 64},
+        "tests_sha256": {"tests/test_source.py": "b" * 64},
+        "configuration_sha256": "c" * 64,
+        "limits": {"workers": 2, "per_test_alarm_seconds": 1, "baseline_seconds": 0.1},
+    }
+    return {
+        "schema": 1,
+        "kind": "interpreter",
+        "target": "fixture",
+        "killed": 1,
+        "total": 2,
+        "survivors": ["source.x_mutant_1"],
+        "provenance": provenance,
+    }
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("schema", True),
+        ("kind", "generator"),
+        ("target", "other"),
+        ("killed", 3),
+        ("total", 0),
+        ("total", True),
+        ("survivors", [1]),
+        ("survivors", ["a", "b"]),
+        ("provenance", {}),
+    ],
+)
+def test_score_validation_rejects_inconsistent_evidence(tmp_path, field, value):
+    record = score_fixture()
+    expected = dict(record["provenance"])
+    record[field] = value
+    path = tmp_path / "score.json"
+    path.write_text(json.dumps(record))
+    with pytest.raises(ValueError, match="mutation"):
+        evidence.validate(path, "interpreter", "fixture", expected)
+
+
+@pytest.mark.parametrize("valid", [True, False])
+def test_weekly_requires_valid_score_even_after_successful_exit(
+    tmp_path, monkeypatch, valid
+):
+    record = score_fixture()
+    expected = dict(record["provenance"])
+    if not valid:
+        record["provenance"] = {**expected, "mutmut": "different"}
+    output = tmp_path / "output"
+
+    class Process:
+        def wait(self, timeout):  # noqa: ARG002
+            (output / "score.json").write_text(json.dumps(record))
+            return 0
+
+    monkeypatch.setattr(weekly, "provenance", lambda: expected)
+    monkeypatch.setattr(weekly.subprocess, "Popen", lambda *_args, **_kwargs: Process())
+    assert weekly.run_target("interpreter", "fixture", output) is valid
+    status = json.loads((output / "status.json").read_text())
+    assert status["status"] == ("complete" if valid else "failed")
+    assert bool(status["validation_error"]) is not valid

@@ -173,3 +173,126 @@ def test_hung_generation_saves_failure_and_stops_descendants(tmp_path):
     before = marker.read_text()
     time.sleep(0.1)
     assert marker.read_text() == before
+
+
+def test_imported_helper_and_package_dependencies_are_fingerprinted(tmp_path):
+    from scripts.screens._candidate_evidence import identity
+
+    path = tmp_path / "candidate.py"
+    path.write_text("from helper import build\n")
+    helper = tmp_path / "helper.py"
+    helper.write_text("from package import build\n")
+    package = tmp_path / "package"
+    package.mkdir()
+    (package / "__init__.py").write_text("from .leaf import build\n")
+    leaf = package / "leaf.py"
+    leaf.write_text("def build(table): return '.'\n")
+    first = identity(f"{path}:build")
+    leaf.write_text("def build(table): return '+'\n")
+    second = identity(f"{path}:build")
+    assert first["sha256"] == second["sha256"]
+    assert first["dependencies"] != second["dependencies"]
+    assert str(leaf) in first["dependencies"]
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("rows", [{}]),
+        ("rows", [True]),
+        ("family", None),
+        ("seed", False),
+        ("checkout", []),
+        ("candidate", {}),
+        ("bounds", {"step_cap": True}),
+        ("language", None),
+    ],
+)
+def test_malformed_replay_rejected_before_execution(tmp_path, field, value):
+    import json
+
+    path = tmp_path / "case.json"
+    record = {
+        "schema": 1,
+        "language": "brainfuck",
+        "family": "random",
+        "seed": 0,
+        "checkout": {
+            "commit": "fixture",
+            "checkout": str(tmp_path),
+            "dirty": False,
+            "tracked_diff_sha256": "a" * 64,
+            "untracked_sha256": "b" * 64,
+        },
+        "target": None,
+        "table": "01",
+        "rows": [0, 1],
+        "candidate": {
+            "spec": "fixture.py:build",
+            "sha256": "a" * 64,
+            "dependencies": {"fixture.py": "a" * 64},
+        },
+        "bounds": {"step_cap": 10, "timeout": 1, "generation_timeout": 1},
+    }
+    record[field] = value
+    path.write_text(json.dumps(record))
+    with (
+        patch.object(candidate, "_run_case", side_effect=AssertionError("executed")),
+        pytest.raises(SystemExit) as caught,
+    ):
+        candidate.main(["brainfuck", "fixture.py:build", "--replay", str(path)])
+    assert caught.value.code == 2
+
+
+def test_oversized_replay_read_is_bounded(tmp_path, monkeypatch):
+    from scripts.screens import _candidate_evidence as evidence
+
+    path = tmp_path / "case.json"
+    path.write_bytes(b" " * 101)
+    monkeypatch.setattr(evidence, "MAX_BYTES", 100)
+    with pytest.raises(ValueError, match="exceeds"):
+        evidence.read_json(path)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("dynamic", [False, True])
+def test_dependency_drift_checkout_drift_and_success_report(tmp_path, dynamic):
+    import json
+
+    path = tmp_path / "candidate.py"
+    helper = tmp_path / "helper.py"
+    path.write_text(
+        "import importlib\nbuild = importlib.import_module('helper').build\n"
+        if dynamic
+        else "from helper import build\n"
+    )
+    helper.write_text("def build(table): return '+' * 48 + '.'\n")
+    failures = tmp_path / "failures"
+    assert candidate.main(options(path, failures)) == 1
+    saved = next(failures.glob("*.json"))
+    helper.write_text("from esolangs.tools.brainfuck import brainfuck as build\n")
+    with pytest.raises(SystemExit):
+        candidate.main([*options(path, failures), "--replay", str(saved)])
+    report = tmp_path / "report.json"
+    record = json.loads(saved.read_text())
+    record["checkout"]["commit"] = "different"
+    saved.write_text(json.dumps(record))
+    replay_options = [
+        *options(path, failures),
+        "--replay",
+        str(saved),
+        "--allow-changed-candidate",
+        "--report",
+        str(report),
+    ]
+    with pytest.raises(SystemExit):
+        candidate.main(replay_options)
+    assert candidate.main([*replay_options, "--allow-changed-checkout"]) == 0
+    result = json.loads(report.read_text())
+    assert result["status"] == "complete"
+    assert result["completed_cases"] == 1
+    case = result["cases"][0]
+    assert case["candidate"]["dependencies"]
+    assert case["result"]["size_unit"] == "characters"
+    assert all(row["matches"] for row in case["result"]["new_executions"])
+    assert 0 < result["elapsed_seconds"] < result["wall_budget_seconds"]

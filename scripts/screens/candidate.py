@@ -16,7 +16,6 @@ table the candidate raises on, exits 1.
 """
 
 import argparse
-import hashlib
 import importlib
 import importlib.util
 import json
@@ -38,6 +37,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from _atomic import write_text
 from _benchmark_client import Worker
 from _build import ignore, random_table, tiled
+from _candidate_evidence import dependencies_changed, read_json
+from _candidate_evidence import identity as _candidate_identity
+from _candidate_evidence import replay as read_replay
 from benchmark import _execute, source_identity
 
 import esolangs
@@ -118,26 +120,26 @@ def plan(lo: int, hi: int, count: int, rows: int, cap: int) -> dict[str, int]:
 def _run_case(
     arguments: dict[str, Any], generation_timeout: float, remaining: float
 ) -> dict[str, Any]:
-    worker = Worker(
-        [sys.executable, str(Path(__file__).with_name("_candidate_worker.py"))]
-    )
-    try:
-        return worker.measure(
-            arguments, {}, generation_timeout, total_timeout=remaining
+    with tempfile.TemporaryDirectory(prefix="candidate-dependencies-") as directory:
+        path = Path(directory) / "dependencies.json"
+        worker = Worker(
+            [sys.executable, str(Path(__file__).with_name("_candidate_worker.py"))]
         )
-    finally:
-        worker.close()
-
-
-def _candidate_identity(spec: str) -> dict[str, str]:
-    path, _, function = spec.rpartition(":")
-    source = Path(path).resolve()
-    if not function or not source.is_file():
-        raise ValueError("candidate must be an existing FILE.py:FUNC")
-    return {
-        "spec": f"{source}:{function}",
-        "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-    }
+        try:
+            result: dict[str, Any] = worker.measure(
+                {**arguments, "dependency_report": str(path)},
+                {},
+                generation_timeout,
+                total_timeout=remaining,
+            )
+            result["runtime_dependencies"] = read_json(path)
+            return result
+        except Exception as error:
+            if path.exists():
+                error.__dict__["candidate_dependencies"] = read_json(path)
+            raise
+        finally:
+            worker.close()
 
 
 def _worst(
@@ -181,6 +183,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="replay a saved case against an updated candidate",
     )
+    parser.add_argument("--allow-changed-checkout", action="store_true")
+    parser.add_argument("--report", type=Path)
     args = parser.parse_args(argv)
 
     if not math.isfinite(args.timeout) or args.timeout <= 0:
@@ -197,42 +201,12 @@ def main(argv: list[str] | None = None) -> int:
     if not 1 <= args.n[0] <= args.n[1]:
         parser.error("--n requires 1 <= LO <= HI")
 
-    replay = json.loads(args.replay.read_text()) if args.replay else None
+    try:
+        replay = read_replay(args.replay, args.max_table_bits) if args.replay else None
+    except (OSError, ValueError, OverflowError, RecursionError) as error:
+        parser.error(str(error))
     if replay is not None:
-        if not isinstance(replay, dict) or replay.get("schema") != 1:
-            parser.error("invalid replay record")
-        table, rows, bounds = (
-            replay.get("table"),
-            replay.get("rows"),
-            replay.get("bounds"),
-        )
-        if (
-            not isinstance(table, str)
-            or not table
-            or set(table) - {"0", "1"}
-            or len(table) & (len(table) - 1)
-            or len(table) > args.max_table_bits
-        ):
-            parser.error("invalid or oversized replay table")
-        if (
-            not isinstance(rows, list)
-            or not rows
-            or len(rows) != len(set(rows))
-            or any(type(row) is not int or not 0 <= row < len(table) for row in rows)
-        ):
-            parser.error("invalid replay rows")
-        if (
-            not isinstance(bounds, dict)
-            or type(bounds.get("step_cap")) is not int
-            or bounds["step_cap"] < 1
-            or any(
-                not isinstance(bounds.get(key), (int, float))
-                or not math.isfinite(bounds[key])
-                or bounds[key] <= 0
-                for key in ("timeout", "generation_timeout")
-            )
-        ):
-            parser.error("invalid replay bounds")
+        table, rows, bounds = replay["table"], replay["rows"], replay["bounds"]
         cost = {
             "tables": 1,
             "row_executions": 2 * len(rows),
@@ -258,7 +232,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         return 0
     language = resolve(args.language)
-    identity = _candidate_identity(args.candidate)
+    try:
+        identity = _candidate_identity(args.candidate)
+    except (OSError, ValueError, SyntaxError) as error:
+        parser.error(str(error))
     checkout = source_identity()
     if replay is not None and (
         replay.get("schema") != 1
@@ -267,10 +244,50 @@ def main(argv: list[str] | None = None) -> int:
         or replay.get("target") != args.target
     ):
         parser.error("replay candidate, language, or target changed")
+    if (
+        replay is not None
+        and replay["checkout"] != checkout
+        and not args.allow_changed_checkout
+    ):
+        parser.error("replay checkout changed; use --allow-changed-checkout")
+    if (
+        replay is not None
+        and not args.allow_changed_candidate
+        and dependencies_changed(replay.get("runtime_dependencies", {}))
+    ):
+        parser.error("replay runtime dependencies changed")
     rng = random.Random(args.seed)
     stats: dict[str, _Tally] = defaultdict(_Tally)
     failed = 0
-    deadline = time.monotonic() + args.budget_seconds
+    started = time.monotonic()
+    deadline = started + args.budget_seconds
+    records: list[dict[str, Any]] = []
+
+    def finish(code: int, status: str) -> int:
+        if args.report is not None:
+            write_text(
+                args.report,
+                json.dumps(
+                    {
+                        "schema": 1,
+                        "status": status,
+                        "exit_code": code,
+                        "plan": cost,
+                        "wall_budget_seconds": args.budget_seconds,
+                        "elapsed_seconds": time.monotonic() - started,
+                        "completed_cases": sum(
+                            "result" in record for record in records
+                        ),
+                        "attempted_cases": len(records),
+                        "cases": records,
+                    },
+                    sort_keys=True,
+                    indent=1,
+                )
+                + "\n",
+            )
+        return code
+
     cases = [(replay["family"], replay["table"], replay["rows"])] if replay else None
     directory = args.failures
     index = 0
@@ -321,13 +338,14 @@ def main(argv: list[str] | None = None) -> int:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 print("screen wall budget exhausted")
-                return 1
+                return finish(1, "budget-exhausted")
             if replay is not None:
                 record["replay_of"] = str(args.replay.resolve())
             baseline_wrong = False
             try:
                 result = _run_case(arguments, bounds["generation_timeout"], remaining)
                 record["result"] = result
+                record["runtime_dependencies"] = result.get("runtime_dependencies", {})
                 new_rows = result["new_executions"]
                 old_rows = result["old_executions"]
                 wrong = sum(row["matches"] is not True for row in new_rows)
@@ -354,9 +372,13 @@ def main(argv: list[str] | None = None) -> int:
                     "message": str(error),
                     "notes": getattr(error, "__notes__", []),
                 }
+                record["runtime_dependencies"] = getattr(
+                    error, "candidate_dependencies", {}
+                )
                 print(f"{family}: {type(error).__name__}: {error}")
                 failed += 1
                 bad = True
+            records.append(record)
             if bad:
                 if directory is None:
                     parent = Path(__file__).resolve().parents[2] / "notes" / "screens"
@@ -367,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"replay: {path}")
             index += 1
             if baseline_wrong:
-                return 1
+                return finish(1, "baseline-failed")
 
     print(f"{'family':<8} tables changed wrong larger  ratio min/mean  worst steps")
     for family, tally in stats.items():
@@ -378,7 +400,9 @@ def main(argv: list[str] | None = None) -> int:
             f"     {tally.old_steps} -> {tally.new_steps}"
         )
     wrong = sum(tally.wrong for tally in stats.values())
-    return 1 if wrong or failed else 0
+    return finish(
+        1 if wrong or failed else 0, "failed" if wrong or failed else "complete"
+    )
 
 
 if __name__ == "__main__":

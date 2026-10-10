@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SECONDS_PER_TARGET = 240
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _atomic import write_text  # noqa: E402
-from _mutation_evidence import provenance  # noqa: E402
+from _mutation_evidence import provenance, validate  # noqa: E402
 from _verify_process import stop_process_tree  # noqa: E402
 
 
@@ -95,6 +95,13 @@ def run_target(kind: str, target: str, output: Path) -> bool:
             )
             raise
     complete = not timed_out and code == 0 and (output / "score.json").exists()
+    validation_error = None
+    if complete:
+        try:
+            validate(output / "score.json", kind, target, evidence)
+        except (OSError, ValueError) as error:
+            complete = False
+            validation_error = str(error)
     status = "complete" if complete else "timeout" if timed_out else "failed"
     write_text(
         output / "status.json",
@@ -104,6 +111,7 @@ def run_target(kind: str, target: str, output: Path) -> bool:
                 "target": target,
                 "status": status,
                 "returncode": code,
+                "validation_error": validation_error,
                 "seconds": time.monotonic() - started,
                 "provenance": evidence,
             },
