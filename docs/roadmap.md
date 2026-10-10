@@ -23,8 +23,11 @@ exemption supported by a structural proof or the measured criterion in
   the pick is forced and only a second return target remains.
 - **Circuit Diagram:** resolve duplication in its area/resource fallback, or
   establish why alternative sharing cannot profit within the contracts. The
-  area-scored shared fold was reverted upstream (it grew the emitted size past
-  linearity), so the fallback gap stands.
+  area-admitted shared fold cuts the dense n=8 area 12x (1,780,773 ->
+  147,264 cells) but grows x2.80 at n=7->8, x2.05 at n=8->9 and x2.58 at
+  n=9->10, so it was reverted. The retained node-count build is x1.41 in the
+  n=8->9 window the linearity test checks but x33.8 at n=7->8 and x3.18 at
+  n=9->10, so neither is linear and the gap stands.
 
 ## Research follow-up
 
