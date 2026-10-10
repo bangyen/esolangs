@@ -470,6 +470,7 @@ jobs:
         tests/scripts/test_reference_process.py
         tests/scripts/test_screen_evidence.py
         tests/scripts/test_screen_phases.py
+        tests/scripts/test_differential_followups.py
         tests/scripts/test_check_generator_sizes.py::test_benchmark_deadline_reaps_workers_with_positive_control
         tests/test_run_isolated.py::test_output_limit_stops_an_infinite_writer_and_reaps
         tests/test_run_isolated.py::test_capped_timeout_retains_output_and_reaps

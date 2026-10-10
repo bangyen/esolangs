@@ -217,7 +217,7 @@ def supervise(
         def finish(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
             return run_phase(operation, payload, finish_deadline - time.monotonic())
 
-        records, saved_findings = [], []
+        records, saved_findings, rejected = [], [], []
         try:
             collected = finish(
                 "collect",
@@ -229,6 +229,9 @@ def supervise(
                 },
             )
             records, saved_findings = collected["cases"], collected["findings"]
+            rejected = collected["rejected"]
+            if rejected:
+                status, code = "invalid-evidence", 1
             if status == "complete" and len(records) != plan.get(
                 "tables", len(records)
             ):
@@ -277,6 +280,7 @@ def supervise(
                     ),
                     "cases": records,
                     "findings": saved_findings,
+                    "rejected": rejected,
                     "status": status,
                     "exit_code": code,
                     "wall_budget_seconds": args.budget_seconds,

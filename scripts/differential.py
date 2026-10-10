@@ -359,6 +359,8 @@ class Runner:
         self.minimize_calls = 300
         self.minimize_deadline: float | None = None
         self.minimize_status = "started"
+        self.checkpoint: Path | None = None
+        self.last_outcomes: tuple[Outcome, Outcome] | None = None
 
     def check(self, program: str, stdin: str) -> Case | None:
         """Return the disagreement on this program, if any."""
@@ -392,18 +394,20 @@ class Runner:
                 if self.minimize_deadline is not None
                 else self.timeout * 5,
             )
+        self.last_outcomes = ours, ref
         self.tally[f"{ours.status}/{ref.status}"] += 1
         if ours.status != "timeout" and spec.ours is None:
             fast = run_ours_fast(spec.language, program, stdin)
             if fast.status != ours.status or (
                 fast.status == "halt" and fast.output != ours.output
             ):
+                self.last_outcomes = ours, fast
                 return Case(program, stdin, "ours: run() vs stepping", ours, fast)
         cause = compare(ours, ref)
         return None if cause is None else Case(program, stdin, cause, ours, ref)
 
     def minimize(self, case: Case, budget: int = 300) -> Case:
-        """Shrink under a process deadline; retain the original case on exhaustion."""
+        """Shrink under a process deadline, retaining the smallest checkpoint."""
         key = next((name for name, spec in SPECS.items() if spec is self.spec), None)
         if key is None:
             return self._minimize(case, budget)
@@ -423,12 +427,21 @@ class Runner:
                 "--minimize-calls",
                 str(budget),
             ]
+            if self.checkpoint is not None:
+                command.extend(["--minimize-checkpoint", str(self.checkpoint)])
             _code, output, _error, status = run_reference(
                 command, b"", self.minimize_seconds
             )
         if status is not None or _code != 0:
             self.minimize_status = status or "failed"
             self.tally["minimization/" + self.minimize_status] += 1
+            if self.checkpoint is not None:
+                from _screen_evidence import read
+                from _screen_payload import finding
+
+                saved = read(self.checkpoint)
+                finding(saved)
+                return _case_load(saved["minimized"] or saved["original"])
             return case
         result = json.loads(output)
         self.minimize_status = result["status"]
@@ -451,7 +464,12 @@ class Runner:
                 return None
             calls[0] -= 1
             got = self.check(program, stdin)
-            return got if got is not None and got.cause == case.cause else None
+            if got is None or got.cause != case.cause:
+                return None
+            from _differential_campaign import checkpoint
+
+            checkpoint(self.checkpoint, _case_record(got))
+            return got
 
         tokens = spec.split(case.program)
         blank = spec.blank
@@ -1088,6 +1106,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--replay-case", type=Path, help="replay a saved differential finding"
     )
+    parser.add_argument("--minimize-checkpoint", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--minimize-case", type=Path, help=argparse.SUPPRESS)
     parser.add_argument(
         "--minimize-calls", type=int, default=300, help=argparse.SUPPRESS
@@ -1130,6 +1149,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         runner = Runner(spec, template, args.ref_timeout)
         runner.minimize_seconds = args.minimize_seconds
+        runner.checkpoint = args.minimize_checkpoint
         case = _case_load(read_json(args.minimize_case))
         minimized = runner._minimize(case, args.minimize_calls)  # noqa: SLF001
         print(

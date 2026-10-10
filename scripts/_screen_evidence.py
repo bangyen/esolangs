@@ -42,7 +42,7 @@ def checksum(record: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
-def validate(records: list[Any], expected: list[str]) -> None:
+def validate(records: list[Any], expected: list[str], *, offset: int = 0) -> None:
     """Reject duplicate, unplanned or malformed case records."""
     seen = set()
     allowed = set(expected)
@@ -52,7 +52,7 @@ def validate(records: list[Any], expected: list[str]) -> None:
         if (
             not isinstance(record, dict)
             or type(record.get("ordinal")) is not int
-            or record["ordinal"] != index
+            or record["ordinal"] != index + offset
             or type(record.get("rows")) is not int
             or record["rows"] < 0
             or not isinstance(record.get("status"), str)

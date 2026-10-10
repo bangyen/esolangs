@@ -105,6 +105,13 @@ def validate(record: dict[str, Any]) -> None:
     if "reused" in record and type(record["reused"]) is not bool:
         raise ValueError("invalid replay bookkeeping")
     if status == "compared":
+        if "verdict" in record and record["verdict"] not in {
+            "reproduced",
+            "resolved",
+            "changed cause",
+            "inconclusive",
+        }:
+            raise ValueError("invalid replay verdict")
         if (
             not integer(record.get("index"))
             or type(record.get("seed")) is not int

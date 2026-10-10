@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "screens"))
 from _atomic import write_text
 from _reference_process import run as run_process
-from _screen_evidence import LIMIT, read, validate
+from _screen_evidence import LIMIT
 
 
 def run(
@@ -111,33 +111,10 @@ def execute(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
             Path(name).unlink(missing_ok=True)
         return {}
     if operation == "collect":
-        progress = Path(payload["progress"])
-        records = []
-        if progress.exists():
-            with progress.open("rb") as stream:
-                raw = stream.read(8 * 1024 * 1024 + 1)
-            if len(raw) > 8 * 1024 * 1024:
-                raise ValueError("screen progress exceeds eight MiB")
-            lines = raw.splitlines()
-            if raw and not raw.endswith(b"\n") and payload["status"] != "complete":
-                lines = lines[:-1]
-            records = [json.loads(line) for line in lines]
-            validate(records, payload["expected"])
-        findings = []
-        directory = Path(payload["findings"])
-        if directory.exists():
-            for path in sorted(directory.glob("*.json")):
-                item = read(path)
-                from _screen_payload import finding
+        from _screen_collect import collect
 
-                finding(item)
-                if item["minimization_status"] == "started":
-                    item["minimization_status"] = (
-                        "timeout" if payload["status"] == "timeout" else "failed"
-                    )
-                    write_text(path, json.dumps(item, sort_keys=True))
-                findings.append({"path": str(path), **item})
-        return {"cases": records, "findings": findings}
+        return collect(payload)
+
     raise ValueError(f"unknown screen phase: {operation}")
 
 
