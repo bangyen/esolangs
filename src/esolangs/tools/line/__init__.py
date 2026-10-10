@@ -12,6 +12,9 @@ length ``2**n``, MSB first.  Arms use measured subtree extents with a
 two-cell gap. A bounded ancestor return shares a repeated nonconstant
 residual when it saves area within 5n commands: clear a consumed input
 and re-enter its zero arm. Reads and the tape footprint stay unchanged.
+Projected loaders store only essential inputs: ignored reads overwrite the
+next kept slot, or one spare slot after the last kept input. Projected trees
+and ancestor returns compete by emitted area, including balanced layouts.
 """
 
 from __future__ import annotations
@@ -25,7 +28,9 @@ from esolangs.registry._language import Language, SourceKind
 from esolangs.tools.helpers import (
     _residual_ids,
     _validate_truth_table,
+    essential_inputs,
     permute_truth_table,
+    read_at,
 )
 from esolangs.tools.line.render import _UNIT, Canvas, Node, chain
 from esolangs.tools.line.small_tree import small_tree_canvas
@@ -81,6 +86,36 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
     return head
 
 
+def projected_boolean(truth_table: str, *, reverse: bool = False) -> Node | None:
+    """Store only essential inputs, overwriting the next kept slot for ignores."""
+    n = _validate_truth_table(truth_table)
+    kept = essential_inputs(truth_table, n)
+    if len(kept) == n:
+        return None
+    if not kept:
+        return chain(*("i" * n + ">" + "+" * int(truth_table[0]) + "o"))
+    reduced = read_at(truth_table, kept, n)
+    return _project_loader(n, kept, line_boolean(reduced, reverse=reverse))
+
+
+def _project_loader(n: int, kept: list[int], node: Node) -> Node:
+    for _ in range(2 * len(kept) - 1):
+        if node.next is None:
+            raise ValueError("projected Line tree has no decision body")
+        node = node.next
+    # Trailing ignored inputs use a spare cell; return to the compact loader's
+    # final kept cell before entering the unchanged reduced decision body.
+    reads = "".join("i" + (">" if i in kept and i < n - 1 else "") for i in range(n))
+    if kept[-1] < n - 1:
+        reads += "<"
+    head = chain(*reads)
+    tail = head
+    while tail.next is not None:
+        tail = tail.next
+    tail.next = node
+    return head
+
+
 _SMALL_MAX = 5  # tight tree layout through n=5 (see small_tree)
 _GREY_RUN = re.compile(rb"(.)\1*", re.DOTALL)
 
@@ -123,18 +158,42 @@ def _generate(truth_table: str) -> Raster:
 
     node = line_boolean(truth_table)
     n = _validate_truth_table(truth_table)
+    canvas = small_tree_canvas(node) if n <= _SMALL_MAX else None
+
+    def area(tree: Node, drawn: Canvas | None) -> int:
+        if drawn is not None:
+            return drawn.width * drawn.height
+        top, bottom, left, right = tree_extents(tree)[id(tree)]
+        return (bottom - top + 2) * (right - left + 2) * _UNIT**2
+
+    smallest = area(node, canvas)
+    projected = projected_boolean(truth_table)
+    if projected is not None:
+        drawn = small_tree_canvas(projected) if n <= _SMALL_MAX else None
+        projected_area = area(projected, drawn)
+        if projected_area < smallest:
+            node, canvas, smallest = projected, drawn, projected_area
     shared = shared_tree(truth_table)
-    canvas = None
-    if shared is not None:
-        if n <= _SMALL_MAX:
-            canvas = small_tree_canvas(node)
-            area = canvas.width * canvas.height
-        else:
-            top, bottom, left, right = tree_extents(node)[id(node)]
-            area = (bottom - top + 2) * (right - left + 2) * _UNIT**2
-        draw = shared_canvas(shared[0], area)
+    shared_nodes = [shared[0]] if shared is not None else []
+    kept = essential_inputs(truth_table, n)
+    if 0 < len(kept) < n:
+        # Replace 2k-1 loader operations by n+k-1, plus two operations for
+        # trailing ignored inputs. Budget the complete original-n program.
+        extra_reads = n - len(kept) + 2 * (kept[-1] < n - 1)
+        compact_shared = shared_tree(
+            read_at(truth_table, kept, n), command_budget=5 * n - extra_reads
+        )
+        if compact_shared is not None:
+            shared_nodes.append(_project_loader(n, kept, compact_shared[0]))
+    selected_draw = None
+    for graph in shared_nodes:
+        draw = shared_canvas(graph, smallest)
         if draw is not None:
-            return lazy_raster(lambda: _grey_rows(draw()), shared[0])
+            smallest = draw.area
+            selected_draw = draw
+            node = graph
+    if selected_draw is not None:
+        return lazy_raster(lambda: _grey_rows(selected_draw()), node)
     if canvas is not None:
         return lazy_raster(lambda: _grey_rows(canvas), node)
     if n <= _SMALL_MAX:
@@ -168,6 +227,12 @@ def balance(truth_table: str, default: Raster) -> Raster:
         ) <= score and width * height <= score[1]
 
     nodes = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
+    previous_nodes = nodes[:]
+    nodes += [
+        projected
+        for reverse in (False, True)
+        if (projected := projected_boolean(truth_table, reverse=reverse)) is not None
+    ]
     if _validate_truth_table(truth_table) <= _SMALL_MAX:
         drawn = [(small_tree_canvas(node), node) for node in nodes]
 
@@ -175,7 +240,9 @@ def balance(truth_table: str, default: Raster) -> Raster:
             canvas, _ = pair
             return abs(canvas.width - canvas.height), canvas.width * canvas.height
 
-        previous = [(small_tree_canvas(node, compact=False), node) for node in nodes]
+        previous = [
+            (small_tree_canvas(node, compact=False), node) for node in previous_nodes
+        ]
         old = min(previous, key=canvas_score)
         candidate = min(drawn, key=canvas_score)
         # Shorter stems can select a wider orientation: 00010101 grows
@@ -202,7 +269,8 @@ def balance(truth_table: str, default: Raster) -> Raster:
         ((score(node, compact=True), node) for node in nodes), key=lambda p: p[0]
     )
     old_score, old_selected = min(
-        ((score(node, compact=False), node) for node in nodes), key=lambda p: p[0]
+        ((score(node, compact=False), node) for node in previous_nodes),
+        key=lambda p: p[0],
     )
     # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
     compact = compact_score <= old_score

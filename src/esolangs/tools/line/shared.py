@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from esolangs.tools.helpers import (
     _residual_ids,
@@ -23,7 +24,9 @@ from .render import (
 from .tree_layout import tree_extents
 
 
-def shared_tree(table: str) -> tuple[Node, int] | None:
+def shared_tree(
+    table: str, *, command_budget: int | None = None
+) -> tuple[Node, int] | None:
     """Return a guarded single-return graph and its conservative command bound."""
     n = _validate_truth_table(table)
     if n < 3:
@@ -93,7 +96,8 @@ def shared_tree(table: str) -> tuple[Node, int] | None:
     # Removing a nonconstant subtree pays for the synthetic resume frame,
     # preserving the ledger's n+1 frame-index and 3n-2 opcode-index bits.
     commands = 3 * n - 2 + max(shared_cost, other_cost)
-    if returns != 1 or commands > 5 * n:
+    budget = 5 * n if command_budget is None else command_budget
+    if returns != 1 or commands > budget:
         return None
     head = chain(*("i" + ">i" * (n - 1)))
     tail = head
@@ -103,7 +107,19 @@ def shared_tree(table: str) -> tuple[Node, int] | None:
     return head, commands
 
 
-def shared_canvas(root: Node, old_area: int) -> Callable[[], Canvas] | None:
+@dataclass(frozen=True, slots=True)
+class CanvasPlan:
+    """A checked return layout with its area before pixel allocation."""
+
+    draw: Callable[[], Canvas]
+    area: int
+
+    def __call__(self) -> Canvas:
+        """Rasterize the checked strokes."""
+        return self.draw()
+
+
+def shared_canvas(root: Node, old_area: int) -> CanvasPlan | None:
     """Return a lazy rasterizer only for a smaller, separated ancestor return."""
     contains_return: dict[int, bool] = {}
 
@@ -159,4 +175,4 @@ def shared_canvas(root: Node, old_area: int) -> Callable[[], Canvas] | None:
         _arrowhead(canvas, (1 - top) * _UNIT, (1 - left) * _UNIT, (-1, 0))
         return canvas
 
-    return rasterize
+    return CanvasPlan(rasterize, width * height)
