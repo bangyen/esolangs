@@ -12,15 +12,16 @@ Close each gap with a named construction and native execution, or an
 exemption supported by a structural proof or the measured criterion in
 [Contributing](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
-- **Line:** extend one selected residual to multiple shared residuals. The
-  sharing screen gives the largest upside here (40.3% of emitted area at
-  n=5), but the residual search finds at most one match on random tables, so
-  a second residual needs a new return target rather than a better pick. The
-  zero-arm chain recurs at two depths on 2 of 480 sampled tables (n=3..8) and
-  never at n=3,5, the screen's arities, so the second target is latent.
-  Continuing the chain past the first recurrence changes no table: a deeper
-  frontier row is unreachable in the folded tree (one return either way), so
-  the pick is forced and only a second return target remains.
+- **Line:** exempt (measured). The canonical share is present (`shared_tree`),
+  but the screen's 40.3% is same-level duplication an ancestor return cannot
+  express: every share must re-descend a *test-free* arm. The structured
+  cases that dominate the screen carry no reachable fork at all -- parity
+  repeats 240 of 255 nodes at n=8, majority 105, and neither has a fork whose
+  test-free arm reaches a recurring residual. On random n=5..8 no generated
+  program emits a loop-back, though reachable fork candidates exist (854 over
+  200 n=7 tables), so the wall is return overhead and layout: a second return
+  target needs bus routing Line's crossing-free strokes forbid. Controls in
+  `tests/tools/test_boolean_line_share_scope.py`.
 - **Circuit Diagram:** resolve duplication in its area/resource fallback, or
   establish why alternative sharing cannot profit within the contracts. The
   area-admitted shared fold cuts the dense n=8 area 12x (1,780,773 ->
