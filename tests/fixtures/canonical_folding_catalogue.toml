@@ -1,0 +1,25 @@
+# Boolean generators that do not reference the canonical helper for a piece,
+# with the native mechanism that carries it instead.  Every other generator
+# references essential_inputs/read_at (ignored inputs) or constant_span_test
+# (constant subtrees); this file names the exceptions, enforced by
+# tests/tools/test_boolean_canonical_catalogue.py.  Folding also drops an
+# ignored input, so the ignored piece is satisfied by any of the three
+# helpers.  The screens (constant.py, ignored_input.py) bound the pieces.
+
+[ignored]
+"Alight" = "Horner index over the essential inputs; no branch to drop"
+"Malbolge" = "fixed-size source; an extra input port adds no cells"
+"Qoibl" = "index built from squaring statements, one per input"
+
+[constant]
+"123" = "constant tables skip the separation geometry"
+"Alight" = "a constant table is a one-entry literal"
+"Malbolge" = "fixed-size source; a constant table is no smaller"
+"Minifuck" = "a constant needs no byte accumulator"
+"Qoibl" = "a constant table is a one-bit literal"
+"Circuit Diagram" = "both constants are one self-fed gate"
+"Line" = "a constant tests nothing; it folds to a leaf"
+"Piet" = "literal products collapse a constant"
+"Polynomial" = "a constant table is the k=0 state machine"
+"thisthat" = "folding gated to the essential inputs"
+"Suffolk" = "the bistack holds the constant; countdown fallback"

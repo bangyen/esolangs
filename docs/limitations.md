@@ -192,6 +192,13 @@ inputs without a width (16 of 96 controls improved on the admitting run).
 Dig's shared pool is 2..10 unique 64-row classes indexed by a single decimal
 digit over 2..6 prefix bits, so a larger pool needs a multi-digit index.
 
+The ignored-input and constant-folding pieces are held to
+`test_generator_shape_is_what_the_catalogue_says` (a tree row folds on a
+one-dependency table, a reducing row drops its ignored inputs) and to the
+presence proxy in `tests/tools/test_boolean_canonical_catalogue.py`, whose
+declared exceptions carry the piece natively (three rows for ignored inputs,
+eleven for constants).
+
 The suffix bank defers each word's greatest repeat inside its own body, so a
 nested definition shares like a top-level one: the n=16 five-input fixture
 falls 4% (8485 -> 8131 characters) for one dispatch test.
