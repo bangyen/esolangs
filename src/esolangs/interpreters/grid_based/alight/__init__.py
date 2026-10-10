@@ -70,10 +70,9 @@ from esolangs._dialects import expression_syntax as validate_expression_syntax
 from esolangs._dialects import list_update as validate_list_update
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.grid_based._alight_helpers import _grid
-from esolangs.interpreters.grid_based._alight_hints import Hint
-from esolangs.interpreters.grid_based._alight_state import _equal, _freeze
+from esolangs.interpreters.grid_based.alight._helpers import _grid
+from esolangs.interpreters.grid_based.alight._hints import Hint
+from esolangs.interpreters.grid_based.alight._state import _equal, _freeze
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_integer
 from esolangs.interpreters.source_hints import keyword_hint, syntax_error
@@ -1186,7 +1185,3 @@ def run(
         code, io, expression_syntax=expression_syntax, list_update=list_update
     )
     drive(machine)
-
-
-if __name__ == "__main__":
-    script_main(run, shape="strip")
