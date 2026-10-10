@@ -1,5 +1,3 @@
-"""Clean certificates require identical inputs and successful executions."""
-
 import json
 import subprocess
 from pathlib import Path
@@ -16,7 +14,8 @@ def cache_repo(tmp_path, monkeypatch):
     module = load(SCRIPT)
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     (tmp_path / ".gitignore").write_text(".cache/\n")
-    (tmp_path / "input.py").write_text("value = 1\n")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src/input.py").write_text("value = 1\n")
     original = module.subprocess.run
     runtime = ["a" * 64]
 
@@ -32,31 +31,36 @@ def cache_repo(tmp_path, monkeypatch):
 
 class TestCertificates:
     @pytest.mark.parametrize(
-        "change", ["source", "config", "command", "environment", "runtime", None]
+        "change",
+        ["source", "config", "command", "environment", "runtime", "unrelated", None],
     )
-    def test_only_success_with_identical_inputs_is_reused(self, cache_repo, change):
+    @pytest.mark.parametrize("step", ["generator size baseline", "bandit"])
+    def test_certificate_inputs(self, cache_repo, change, step):
         module, root, cache, runtime = cache_repo
-        cmd, env = ["python", "check.py"], {}
-        key = cache.key("generator size baseline", cmd, env)
+        command = "uv run --no-sync --with bandit bandit -r src -q"
+        cmd = command.split() if step == "bandit" else ["python", "check.py"]
+        env = {}
+        key = cache.key(step, cmd, env)
         cache.remember(key, "failed", 1)
         assert cache.finish()
         assert cache.load(key) is None
         cache.remember(key, "passed", 0)
-        if change in ("source", "config"):
-            (root / ("input.py" if change == "source" else ".pylintrc")).write_text(
-                "changed\n"
-            )
+        if change in ("source", "config", "unrelated"):
+            paths = ["src/input.py", "src/.bandit", "script.py"]
+            index = ["source", "config", "unrelated"].index(change)
+            (root / paths[index]).write_text("changed\n")
         elif change == "command":
             cmd.append("--full")
         elif change == "environment":
             env["OPTION"] = "changed"
         elif change == "runtime":
             runtime[0] = "b" * 64
-        stable = change not in ("source", "config", "runtime")
+        stable = change not in ("source", "config", "runtime", "unrelated")
         assert cache.finish() is stable
         assert cache.load(key) == ("passed" if stable else None)
-        fresh = module.VerifiedCache(root).key("generator size baseline", cmd, env)
-        assert (fresh == key) is (change is None)
+        fresh = module.VerifiedCache(root).key(step, cmd, env)
+        reused = change is None or (step == "bandit" and change == "unrelated")
+        assert (fresh == key) is reused
 
     @pytest.mark.parametrize(
         "entry", ["invalid", {"returncode": 1}, {"returncode": False}]
@@ -76,7 +80,6 @@ class TestCertificates:
         module, root, _, _ = cache_repo
         target = root.parent if external else root / "src"
         if not external:
-            target.mkdir()
             (target / "sample.py").write_text("original\n")
         (root / "examples").symlink_to(target)
         if external:

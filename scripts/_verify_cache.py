@@ -90,7 +90,9 @@ def runtime_digest(step: str) -> str:
     return digest.hexdigest()
 
 
-def _tree(root: Path) -> tuple[str, dict[str, tuple[int, int, int]]]:
+def _tree(
+    root: Path, *, bandit: bool = False
+) -> tuple[str, dict[str, tuple[int, int, int]]]:
     result = subprocess.run(
         ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
         cwd=root,
@@ -106,6 +108,12 @@ def _tree(root: Path) -> tuple[str, dict[str, tuple[int, int, int]]]:
             if path.is_file() and "__pycache__" not in path.parts
         )
     paths.update(root / name for name in (".bandit", ".pylintrc", "setup.cfg"))
+    if bandit:
+        paths = {
+            path
+            for path in paths
+            if path.is_relative_to(root / "src") or path == root / ".bandit"
+        }
     for path in tuple(paths):
         if path.is_symlink() and path.is_dir():
             if not path.resolve().is_relative_to(root.resolve()):
@@ -134,6 +142,7 @@ class VerifiedCache:
     def __init__(self, root: Path) -> None:
         self.root = root
         self.initial = _tree(root)
+        self.bandit = _tree(root, bandit=True)[0]
         self.pending: list[tuple[Path, dict[str, str | int]]] = []
         self.runtimes: dict[str, tuple[list[str], dict[str, str], str]] = {}
 
@@ -178,9 +187,27 @@ class VerifiedCache:
         return self._key(step, cmd, env, runtime)
 
     def _key(self, step: str, cmd: list[str], env: dict[str, str], runtime: str) -> str:
+        # Only the known source scan has an audited dependency footprint.
+        inputs = (
+            self.bandit
+            if step == "bandit"
+            and cmd
+            == [
+                "uv",
+                "run",
+                "--no-sync",
+                "--with",
+                "bandit",
+                "bandit",
+                "-r",
+                "src",
+                "-q",
+            ]
+            else self.initial[0]
+        )
         return hashlib.sha256(
             json.dumps(
-                [step, cmd, sorted(env.items()), self.initial[0], runtime],
+                [step, cmd, sorted(env.items()), inputs, runtime],
                 separators=(",", ":"),
             ).encode()
         ).hexdigest()
