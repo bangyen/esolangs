@@ -122,8 +122,7 @@ def main() -> None:
     for path, name, size in found:
         where = path.relative_to(root)
         print(
-            f"{where}: {name} ({size} lines) has no reader in "
-            "src/, scripts/ or checks/"
+            f"{where}: {name} ({size} lines) has no reader in src/, scripts/ or checks/"
         )
     if found:
         print(f"\n{len(found)} dead: delete, or move a test-only oracle under tests/")
