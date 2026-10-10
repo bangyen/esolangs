@@ -3,7 +3,5 @@
 # for it to be lowered as mentions go; a language is removable when no file
 # names it.
 
-"src/esolangs/interpreters/grid_based/_circuit_functions.py" = 2
-"tests/duration_policy.py" = 1
 "tests/proofs/test_bands.py" = 2
 "tests/scripts/test_bundle_one.py" = 1

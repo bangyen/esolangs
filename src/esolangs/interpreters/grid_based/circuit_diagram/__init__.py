@@ -73,12 +73,11 @@ from functools import lru_cache
 from typing import cast
 
 from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.grid_based._circuit_functions import (
+from esolangs.interpreters.grid_based.circuit_diagram._functions import (
     _ClockStream,
     _evaluate_function,
 )
-from esolangs.interpreters.grid_based._circuit_parse import (
+from esolangs.interpreters.grid_based.circuit_diagram._parse import (
     _CLOCK,
     _COMBINE,
     _ONE,
@@ -444,7 +443,3 @@ def run(code: list[str], io: IO) -> None:
     """Execute a Circuit Diagram program."""
     machine = _Machine._for_run(code, io)  # noqa: SLF001 -- public fast path
     drive(machine)
-
-
-if __name__ == "__main__":
-    script_main(run, shape="keep")

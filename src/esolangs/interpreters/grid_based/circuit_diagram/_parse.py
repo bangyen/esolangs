@@ -3,9 +3,13 @@
 import re
 from typing import Final, Literal, cast
 
-from esolangs.interpreters.grid_based._circuit_definitions import split_definitions
-from esolangs.interpreters.grid_based._circuit_diagram_hints import Hint
-from esolangs.interpreters.grid_based._circuit_functions import _evaluate_function
+from esolangs.interpreters.grid_based.circuit_diagram._definitions import (
+    split_definitions,
+)
+from esolangs.interpreters.grid_based.circuit_diagram._functions import (
+    _evaluate_function,
+)
+from esolangs.interpreters.grid_based.circuit_diagram._hints import Hint
 
 type _Definitions = dict[str, tuple[str, ...]]
 

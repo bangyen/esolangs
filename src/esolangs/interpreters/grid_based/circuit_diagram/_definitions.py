@@ -3,7 +3,7 @@
 import re
 from collections.abc import Collection
 
-from esolangs.interpreters.grid_based._circuit_diagram_hints import Hint
+from esolangs.interpreters.grid_based.circuit_diagram._hints import Hint
 from esolangs.interpreters.source_hints import syntax_error
 
 _DEFINITION_HEADER = re.compile(r"\s*\{([A-Za-z]+|[<>%])\s*")

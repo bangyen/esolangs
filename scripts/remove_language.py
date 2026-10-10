@@ -471,14 +471,14 @@ def _within(path: str, doomed: set[Path]) -> bool:
 def _orphans(doomed: set[Path], users: dict[str, set[str]]) -> set[Path]:
     """Return the helper modules only ``doomed`` files import.
 
-    ``_circuit_parse`` serves Circuit Diagram alone; with it gone the helper
-    is dead code that nothing names.  Public-named helpers count too
+    A helper module the removal's own files alone import is dead code that
+    nothing names once they are gone.  Public-named helpers count too
     (``dig_layout``, ``suffolk_shared``), so a language whose helpers lack the
     underscore still leaves no dead module.  A helper no file imports at all
     is left alone: it was not the language's to begin with.
     """
     # The largest set whose every member only the doomed or each other
-    # import: ``_circuit_parse`` and ``_circuit_functions`` import each other.
+    # import: two helpers that import each other are dead together.
     found = {
         path
         for path in (ROOT / "src/esolangs").rglob("*.py")

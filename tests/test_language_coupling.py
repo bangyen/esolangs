@@ -221,7 +221,7 @@ def _counts() -> dict[str, int]:
             for spelling in spellings
             # ``line`` and ``eval`` name a language and a common word: only
             # an import or attribute of the module counts for those.
-            if spelling.startswith(".") or spelling not in {"line", "eval"}
+            if spelling.startswith(".") or spelling not in {"line", "eval", "false"}
         )
         if total:
             counts[path] = total
