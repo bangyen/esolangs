@@ -12,10 +12,15 @@ Close each gap with a named construction and native execution, or an
 exemption supported by a structural proof or the measured criterion in
 [Contributing](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
-- **Brainfuck:** price sharing across suffix levels and nested definitions;
-  selection currently scores one suffix arity.
-- **SStack and BF-PDA:** share repeated residuals inside bank definitions;
-  bodies currently execute inline. Revisit SStack's bounded numeric labels.
+- **Brainfuck:** share nested definitions inside definition bodies. Pricing
+  every admissible suffix level already matches the scored level (0 of 13
+  bank-eligible tables improved), so only nested definitions remain.
+- **SStack and BF-PDA:** share repeated residuals inside bank definitions.
+  SStack's ternary bodies duplicate at most 0.63% of body characters over 12
+  controls, below the ~25-character deferral stage, so inlining is the
+  measured exemption there; BF-PDA mixed banks duplicate 12-29% over 24
+  designed-repeat controls and stay open. Revisit SStack's bounded numeric
+  labels.
 - **Boolfuck:** extend flag banks and two-input AND/XOR normalization to
   omitted general and nested sharing cases.
 - **Factor and Painfuck:** revisit flag-pool and depth restrictions.
