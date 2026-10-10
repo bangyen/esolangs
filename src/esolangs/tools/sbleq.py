@@ -333,14 +333,19 @@ def _packed_build(
 
 
 def _sbleq_hoisted(
-    truth_table: str, perm: tuple[int, ...], *, share: bool = False
+    truth_table: str,
+    perm: tuple[int, ...],
+    *,
+    share: bool = False,
+    direct: bool = False,
 ) -> str:
     """Emit one input order's hoisted S*bleq program; see :func:`sbleq`.
 
     ``perm[k]`` is the input the tree tests at level ``k``; the read block
     stays in input order, so the program consumes its input stream exactly
     as the node-read build did.  ``share`` jumps to a subtree already
-    emitted instead of repeating it.
+    emitted instead of repeating it. ``direct`` renders Subleq byte I/O
+    and immediate jump targets from the same folded instructions.
     """
     n = _validate_truth_table(truth_table)
     neg49 = 0
@@ -387,6 +392,9 @@ def _sbleq_hoisted(
 
     emit(0, 0)
 
+    if direct:
+        return _direct_tree(instructions, n)
+
     onebase = nxtbase + n
     # One target cell per distinct target: two branches to one copy share it.
     targets = dict.fromkeys(
@@ -420,6 +428,34 @@ def _sbleq_hoisted(
     # targets remain values stored once in that data.
     prelude = [0, 0, 6, -1, 0, 0, code_base, 0, 0]
     cells = prelude + data + cells
+    return " ".join(map(str, cells))
+
+
+def _direct_tree(instructions: list[tuple[int, int, str, int]], n: int) -> str:
+    """Render hoisted reads and a shared tree with direct Subleq byte I/O."""
+    # D residual tests need at most D zero-edge jumps and four leaf commands.
+    # Three commands per read give <=3n+2D+4 instructions, plus 7+n prefix cells.
+    data_base = 3
+    code_base = 7 + n
+
+    def address(index: int) -> int:
+        return code_base + 3 * (index + 2 * min(index, n))
+
+    cells = [0, 0, code_base, -_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, 0] + [0] * n
+    for index, (a, b, kind, arg) in enumerate(instructions):
+        if kind == "nxt":
+            # Subleq reads +byte; negate it before the tree tests 49-byte.
+            value = data_base + a
+            pc = address(index)
+            cells += [-1, 6, pc + 3, value, value, pc + 6, 6, value, pc + 9]
+        elif kind == "out":
+            cells += [data_base + b, -1, address(index + 1)]
+        elif kind == "halt":
+            cells += [0, 0, -1]
+        elif kind == "jump":
+            cells += [0, 0, address(arg)]
+        else:
+            cells += [data_base + b, data_base + a, address(arg)]
     return " ".join(map(str, cells))
 
 

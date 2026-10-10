@@ -371,12 +371,20 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys):
     import io
     import sys
 
+    from esolangs import vm
+    from tests.pick import first
+
+    language = first(
+        answer_mode="termination", boolean_generator=True, parameterized=False
+    )
+
+    monkeypatch.setattr(vm, "ScriptedIO", vm.ScriptedIO)
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
     request = {
-        "language": "Suffolk",
-        "program": esolangs.generate("Suffolk", "00"),
+        "language": language,
+        "program": esolangs.generate(language, "00"),
         "raster": False,
-        "stdin": esolangs.encode_inputs("Suffolk", [0]),
+        "stdin": esolangs.encode_inputs(language, [0]),
         "seed": None,
         "termination": ["0", "1"],
         "max_output": "0x64",

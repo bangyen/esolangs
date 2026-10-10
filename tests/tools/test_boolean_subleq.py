@@ -7,8 +7,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.subleq import _Machine
-from esolangs.tools.subleq import _packed_build, subleq
-from tests.generator_support import assert_an_ignored_input_costs
+from esolangs.tools.subleq import _packed_build, _sbleq_packed, subleq
 
 
 def _execute_count(program: str, text: str) -> tuple[str, int, int]:
@@ -44,7 +43,7 @@ def test_repeated_chunks_share_payloads_at_sixteen_inputs() -> None:
     n = 16
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     literal = _packed_build(table, direct=True)
-    banked = subleq(table)
+    banked = _sbleq_packed(table, direct=True)
     assert (len(literal), len(banked)) == (30737, 26677)
     payloads = {
         str(-int(table[start : start + n][::-1], 2))
@@ -64,7 +63,7 @@ def test_repeated_chunks_share_payloads_at_sixteen_inputs() -> None:
 def test_banked_decoder_reaches_the_execution_bound() -> None:
     n = 16
     table = "0" + "1" * ((1 << n) - 1)
-    output, reads, steps = _execute_count(subleq(table), "1" * n)
+    output, reads, steps = _execute_count(_sbleq_packed(table, direct=True), "1" * n)
     assert (output, reads) == ("1", n)
     assert steps == 8 * (1 << n) + (7 * n + 5) * ((1 << n) // n - 1) + 23 * n - 6
 
@@ -104,8 +103,51 @@ def test_balanced_constants_read_every_input(n: int, bit: str) -> None:
 
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
-    """One read into ``TMP``."""
-    assert_an_ignored_input_costs("Subleq", 6, 11)
+    n = 6
+    inner = "".join(str(int(row.bit_count() == 1)) for row in range(1 << n))
+    baseline = subleq(inner)
+    for at, growth in ((0, 34), (3, 32), (6, 32)):
+        low = n - at
+        table = "".join(
+            inner[row >> (low + 1) << low | row & ((1 << low) - 1)]
+            for row in range(2 * len(inner))
+        )
+        program = subleq(table)
+        assert len(program) - len(baseline) == growth
+        for row, bit in enumerate(table):
+            output, reads, steps = _execute_count(program, f"{row:07b}")
+            assert (output, reads) == (bit, 7)
+            assert steps <= 5 * 7 + 3
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [1, 2, 3])
+def test_shared_tree_and_public_candidate_compute_every_small_table(n):
+    from esolangs.tools.subleq import _subleq_shared
+
+    for value in range(1 << (1 << n)):
+        table = f"{value:0{1 << n}b}"
+        forced = _subleq_shared(table, tuple(range(n)))
+        public = subleq(table)
+        assert len(public) <= len(_sbleq_packed(table, direct=True))
+        for row, bit in enumerate(table):
+            text = f"{row:0{n}b}"
+            for program in (forced, public):
+                output, reads, steps = _execute_count(program, text)
+                assert (output, reads) == (bit, n)
+                assert steps <= 5 * n + 3
+
+
+@pytest.mark.medium
+def test_shared_parity_uses_direct_jumps_at_sixteen_inputs():
+    n = 16
+    table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+    program = subleq(table)
+    assert len(program) == 890
+    for row in (0, 1, 16, 255, 65535):
+        output, reads, steps = _execute_count(program, f"{row:0{n}b}")
+        assert (output, reads) == (table[row], n)
+        assert steps <= 5 * n + 3
 
 
 def _bounds(profile: dict[str, Any]) -> None:
@@ -119,6 +161,8 @@ def _bounds(profile: dict[str, Any]) -> None:
     # 18 registers, then ceil(T/n) chunks. Selection costs <16T commands;
     # repeated unary division costs <32T, with <64n+512 setup commands.
     cell_bound = 24 * n + 200 + (rows + n - 1) // n
+    residuals = sum(min(1 << k, (1 << (1 << (n - k))) - 2) for k in range(n))
+    cell_bound = max(cell_bound, 19 + 10 * n + 6 * residuals)
     assert commands <= 64 * rows + 64 * n + 512
     assert memory <= cell_bound
     assert stack == profile["peak_control_stack_items"] == 0

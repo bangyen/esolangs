@@ -221,15 +221,17 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Subleq"
 labels = ["finite lookup"]
 qualification = """\
-    direct-jump packed decoder; repeated chunks share one payload through references"""
-scaling = "linear: T/n packed chunks of n bits, O(n) decoder"
+    shared direct-jump residual DAG or packed decoder with interned chunk payloads"""
+scaling = "linear: O(T/n) residuals or packed chunks, O(n)-digit addresses or payloads"
 execution = """\
     linear: at most 8T + (7n+5)(⌊T/n⌋-1) + 23n - 6 steps: bank selection adds two"""
 workspace = """\
-    linear: at most T + 2C + (C+2)bl(B+17+2C) + I·bl(B) + (2I-1)bl(B+17) + R \
-    bits: payloads and references"""
+    linear: at most max(T+2C+(C+2)bl(B+17+2C)+I·bl(B)+(2I-1)bl(B+17)+R, \
+    M·max(7,bl(M))+bl(M)+bl(n)) bits: decoder or tree, M=19+10n+6D"""
 evidence = "docs/proofs/index.md#generator-ledger"
 definitions = [
+    "D = Σ[k=0..n-1] min(2^k, 2^(2^(n-k))-2), the nonconstant residual cap",
+    "M = 19 + 10n + 6D, the shared-tree memory-cell cap",
     "I = 8n + 47, B = 3I, C = ⌈T/n⌉",
     "R = bl(3I-3) + 5bl(n) + 2n + 33 + max(n, bl(n)+1) + max(1, n-1), the registers",
 ]

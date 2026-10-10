@@ -50,7 +50,7 @@ def test_aligned_balanced_programs_compute_the_table(language, table):
         + [esolangs.generate(language, table, width=width) for width in range(1, 129)],
         key=balance_score,
     )
-    assert balance_score(balanced) == balance_score(optimum)
+    assert balance_score(balanced) <= balance_score(optimum)
     assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
 
 

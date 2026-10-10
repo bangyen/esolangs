@@ -103,7 +103,7 @@ def _subleq(n: int, _: str) -> int:
     registers = (
         bl(3 * i - 3) + 5 * bl(n) + 2 * n + 33 + max(n, bl(n) + 1) + max(1, n - 1)
     )
-    return (
+    packed = (
         2**n
         + 2 * chunks
         + (chunks + 2) * bl(b + 17 + 2 * chunks)
@@ -111,6 +111,10 @@ def _subleq(n: int, _: str) -> int:
         + (2 * i - 1) * bl(b + 17)
         + registers
     )
+
+    residuals = sum(min(1 << k, (1 << (1 << (n - k))) - 2) for k in range(n))
+    memory = 19 + 10 * n + 6 * residuals
+    return max(packed, memory * max(7, bl(memory)) + bl(memory) + bl(n))
 
 
 def _key(i: int) -> int:
