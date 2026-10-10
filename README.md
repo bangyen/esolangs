@@ -114,7 +114,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/arrowqueue.py))
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/b_tapemark.py))
 - [Befunge](https://esolangs.org/wiki/Befunge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/befunge.py))
-- [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/circuit_diagram.py))
+- [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/circuit_diagram/__init__.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/clockwise.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dig.py))
 - [EGL](https://esolangs.org/wiki/EGL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/egl.py))
