@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from _budget import completed, options, supervise
+from _screen_evidence import case_id, reused
 from benchmark import measure
 
 
@@ -104,6 +105,12 @@ def main() -> None:
         for n in range(1, args.max_inputs + 1)
     )
     plan = {
+        "case_ids": [
+            case_id(language, n, family, table)
+            for language in languages
+            for n in range(1, args.max_inputs + 1)
+            for family, table in corpus(n).items()
+        ],
         "languages": len(languages),
         "tables": 4 * args.max_inputs * len(languages),
         "row_executions": executions * len(languages),
@@ -114,8 +121,22 @@ def main() -> None:
     for language in languages:
         for n in range(1, args.max_inputs + 1):
             for family, table in corpus(n).items():
-                profile = audit(language, n, table)
-                completed("executed", rows=len(table), family=family, **profile)
+                identifier = case_id(language, n, family, table)
+                cached = reused(identifier)
+                profile = (
+                    cached["profile"]
+                    if cached is not None
+                    else audit(language, n, table)
+                )
+                completed(
+                    "executed",
+                    case_id=identifier,
+                    reused=cached is not None,
+                    rows=len(table),
+                    family=family,
+                    profile=profile,
+                    **profile,
+                )
                 print(json.dumps({"family": family, **profile}))
 
 

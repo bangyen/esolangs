@@ -12,6 +12,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from _atomic import write_text
+from _reference_identity import fingerprint
+from _screen_evidence import checksum, resume, validate
 from _verify_process import start_logged, wait_with_heartbeat
 from benchmark import source_identity
 
@@ -22,6 +24,7 @@ def options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--budget-seconds", type=float, default=60)
     parser.add_argument("--max-work", type=int, default=10**10)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--resume", type=Path)
     parser.add_argument("--max-cases", type=int, default=100000)
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
 
@@ -44,11 +47,20 @@ def supervise(
         parser.error("screen exceeds --max-work")
     if plan.get("tables", 0) > getattr(args, "max_cases", 100000):
         parser.error("screen exceeds --max-cases")
+    expected = plan.get("case_ids", [])
+    if "case_ids" in plan and len(expected) != plan.get("tables", len(expected)):
+        parser.error("planned case count does not match corpus")
+    if len(set(expected)) != len(expected):
+        parser.error("duplicate planned case")
     if args.worker:
         return True
     print(
         json.dumps(
-            {**plan, "wall_budget_seconds": args.budget_seconds}, sort_keys=True
+            {
+                **{key: value for key, value in plan.items() if key != "case_ids"},
+                "wall_budget_seconds": args.budget_seconds,
+            },
+            sort_keys=True,
         ),
         flush=True,
     )
@@ -68,6 +80,36 @@ def supervise(
         Path(name).unlink()
     progress = Path(name + ".progress")
     checkout = source_identity()
+    settings = {
+        key: value
+        for key, value in vars(args).items()
+        if key
+        not in {
+            "report",
+            "resume",
+            "worker",
+            "dry_run",
+            "budget_seconds",
+            "max_work",
+            "max_cases",
+        }
+    }
+    settings = json.loads(json.dumps(settings, default=str, sort_keys=True))
+    resume_file = Path(name + ".resume")
+    try:
+        records_to_reuse = (
+            resume(
+                args.resume,
+                {"checkout": checkout, "settings": settings},
+                plan,
+                path.stem,
+            )
+            if getattr(args, "resume", None)
+            else []
+        )
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+    write_text(resume_file, json.dumps({"cases": records_to_reuse}))
     started = time.monotonic()
     code = 1
     status = "failed"
@@ -81,7 +123,11 @@ def supervise(
                 "--worker",
             ],
             path.stem,
-            {**os.environ, "ESOLANGS_SCREEN_PROGRESS": str(progress)},
+            {
+                **os.environ,
+                "ESOLANGS_SCREEN_PROGRESS": str(progress),
+                "ESOLANGS_SCREEN_RESUME": str(resume_file),
+            },
             root,
             stream=True,
         )
@@ -100,33 +146,34 @@ def supervise(
                     raw = stream.read(8 * 1024 * 1024 + 1)
                 if len(raw) > 8 * 1024 * 1024:
                     raise ValueError("screen progress exceeds eight MiB")
-                records = [json.loads(line) for line in raw.splitlines()]
-                if any(
-                    not isinstance(record, dict)
-                    or type(record.get("ordinal")) is not int
-                    or record.get("ordinal") != index
-                    or type(record.get("rows")) is not int
-                    or record["rows"] < 0
-                    or not isinstance(record.get("status"), str)
-                    or type(record.get("case_count", 1)) is not int
-                    or record.get("case_count", 1) < 1
-                    for index, record in enumerate(records)
-                ):
-                    raise ValueError("invalid screen progress sequence")
-            if status == "complete" and sum(
-                record.get("case_count", 1) for record in records
-            ) != plan.get("tables", len(records)):
+                lines = raw.splitlines()
+                if raw and not raw.endswith(b"\n") and status != "complete":
+                    lines = lines[:-1]
+                records = [json.loads(line) for line in lines]
+                validate(records, expected)
+            if status == "complete" and len(records) != plan.get(
+                "tables", len(records)
+            ):
                 status, code = "incomplete", 1
+        except (OSError, ValueError):
+            records = []
+            status, code = "invalid-evidence", 1
+        try:
+            if (
+                "reference" in plan
+                and fingerprint(plan["reference"]["template"]) != plan["reference"]
+            ):
+                status, code = "source-changed", 1
             if source_identity() != checkout:
                 status, code = "source-changed", 1
         except (OSError, ValueError):
-            records = []
             status, code = "invalid-evidence", 1
         write_text(
             report,
             json.dumps(
                 {
-                    "schema": 1,
+                    "schema": 2,
+                    "settings": settings,
                     "screen": path.stem,
                     "checkout": checkout,
                     "plan": plan,
@@ -140,7 +187,11 @@ def supervise(
                         for record in records
                         if record.get("status") == "skipped"
                     ),
-                    "row_executions": sum(record.get("rows", 0) for record in records),
+                    "row_executions": sum(
+                        record.get("rows", 0)
+                        for record in records
+                        if not record.get("reused")
+                    ),
                     "cases": records,
                     "status": status,
                     "exit_code": code,
@@ -153,6 +204,7 @@ def supervise(
             + "\n",
         )
         progress.unlink(missing_ok=True)
+        resume_file.unlink(missing_ok=True)
         print(f"screen manifest: {report}", flush=True)
     if code:
         print(output, file=sys.stderr)
@@ -170,6 +222,7 @@ def completed(status: str, *, rows: int = 0, **fields: Any) -> None:
     if name is None:
         return
     record = {"ordinal": _ORDINAL, "status": status, "rows": rows, **fields}
+    record["evidence_sha256"] = checksum(record)
     line = json.dumps(record, sort_keys=True) + "\n"
     path = Path(name)
     if (path.stat().st_size if path.exists() else 0) + len(
@@ -179,4 +232,5 @@ def completed(status: str, *, rows: int = 0, **fields: Any) -> None:
     with path.open("a", encoding="utf-8") as stream:
         stream.write(line)
         stream.flush()
+        os.fsync(stream.fileno())
     _ORDINAL += 1

@@ -30,7 +30,7 @@ from time import perf_counter
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _budget import completed, options, supervise
-from _build import TABLES, chosen, sizes
+from _build import TABLES, chosen, size_cases, sizes
 
 #: Parity at the two arities the per-node slope is taken between.
 PARITY = {3: "01101001", 5: "01101001100101101001011001101001"}
@@ -71,7 +71,7 @@ def share(tables: list[str]) -> float:
 
 def per_node(name: str, gen: Callable[[str], object]) -> float | None:
     """Return the source units one tree node costs, from parity at n=3 and 5."""
-    built = sizes(name, gen, list(PARITY.values()))
+    built = sizes(name, gen, list(PARITY.values()), scope="parity")
     small, large = built[PARITY[3]], built[PARITY[5]]
     if small is None or large is None:
         return None
@@ -97,10 +97,12 @@ def screen(
     start = perf_counter()
     cost = per_node(name, gen)
     if cost is None:
-        completed("skipped", case_count=len(TABLES) + len(five), language=name)
+        for tables, scope in ((TABLES, "three"), (five, "five")):
+            for identifier in size_cases(name, tables, scope):
+                completed("skipped", case_id=identifier, language=name)
         return None
-    three = bound(sizes(name, gen, TABLES), cost)
-    at_five = bound(sizes(name, gen, five), cost)
+    three = bound(sizes(name, gen, TABLES, scope="three"), cost)
+    at_five = bound(sizes(name, gen, five, scope="five"), cost)
     return cost, three, at_five, perf_counter() - start
 
 
@@ -118,15 +120,27 @@ def main() -> None:
     args = parser.parse_args()
     if not 1 <= args.sample <= 2**32:
         parser.error("--sample must be between 1 and 2**32")
+    if args.sample + 258 > args.max_cases:
+        parser.error("screen exceeds --max-cases")
     languages = list(chosen(args.languages))
+    five = sample(args.sample, args.seed)
     plan = {
+        "case_ids": [
+            identifier
+            for name, _gen in languages
+            for tables, scope in (
+                (list(PARITY.values()), "parity"),
+                (TABLES, "three"),
+                (five, "five"),
+            )
+            for identifier in size_cases(name, tables, scope)
+        ],
         "tables": len(languages) * (2 + len(TABLES) + args.sample),
         "work_bound": len(languages) * (8 + 32 + len(TABLES) * 8 + args.sample * 32),
         "work_unit": "truth_table_bits",
     }
     if not supervise(parser, args, Path(__file__), plan):
         return
-    five = sample(args.sample, args.seed)
     print(f"repeated nodes: n=3 {share(TABLES):.1f}%, n=5 {share(five):.1f}%")
     rows = []
     for key, gen in languages:

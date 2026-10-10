@@ -46,6 +46,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from _budget import completed, options, supervise
 from _build import TABLES, chosen
+from _screen_evidence import case_id, reused
 from benchmark import _bits, _commands
 
 import esolangs
@@ -103,10 +104,24 @@ class GenerationRefusalError(ValueError):
 
 def total(name: str, table: str, cap: int, *, loops: bool) -> int | None:
     """Return the steps summed over every row, or None if one hit ``cap``."""
+    identifier = case_id(name, table)
+    cached = reused(identifier)
+    if cached is not None:
+        completed(
+            **{
+                key: value
+                for key, value in cached.items()
+                if key not in {"ordinal", "reused"}
+            },
+            reused=True,
+        )
+        if cached["status"] == "refused":
+            raise GenerationRefusalError("cached generation refusal")
+        return int(cached["commands"])
     try:
         program = esolangs.generate(name, table)
     except ValueError as exc:
-        completed("refused", language=name, table_bits=len(table))
+        completed("refused", case_id=identifier, language=name, table_bits=len(table))
         raise GenerationRefusalError(str(exc)) from exc
     assert isinstance(program, str)
     steps = 0
@@ -116,10 +131,23 @@ def total(name: str, table: str, cap: int, *, loops: bool) -> int | None:
         else:
             count = _commands(name, program, table, row, cap)
         if count is None:
-            completed("dropped", rows=row + 1, language=name, table_bits=len(table))
+            completed(
+                "dropped",
+                case_id=identifier,
+                rows=row + 1,
+                language=name,
+                table_bits=len(table),
+            )
             return None
         steps += count
-    completed("stepped", rows=8, language=name, table_bits=len(table), commands=steps)
+    completed(
+        "stepped",
+        case_id=identifier,
+        rows=8,
+        language=name,
+        table_bits=len(table),
+        commands=steps,
+    )
     return steps
 
 
@@ -192,6 +220,7 @@ def main() -> None:
         if esolangs.describe(key)["steppable_to_answer"]
     ]
     plan = {
+        "case_ids": [case_id(name, table) for name in languages for table in TABLES],
         "languages": len(languages),
         "tables": len(languages) * len(TABLES),
         "row_executions": len(languages) * len(TABLES) * 8,

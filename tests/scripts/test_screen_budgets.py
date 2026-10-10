@@ -111,6 +111,30 @@ def test_small_real_screen_runs_under_its_plan(screen, tmp_path):
     assert record["status"] == "complete"
     assert record["completed_cases"] == plan["tables"]
     assert 0 < record["row_executions"] <= plan["row_executions"]
+    resumed = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            *arguments,
+            "--budget-seconds",
+            "5",
+            "--report",
+            str(report),
+            "--resume",
+            str(report),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=8,
+    )
+    assert resumed.returncode == 0, resumed.stdout + resumed.stderr
+    replay = json.loads(report.read_text())
+    assert replay["status"] == "complete"
+    assert all(
+        bool(case.get("reused"))
+        == (case["status"] in {"executed", "stepped", "refused"})
+        for case in replay["cases"]
+    )
 
 
 def payload_language():
@@ -168,6 +192,34 @@ def test_remaining_small_screens_have_complete_manifests(tmp_path, name, extra):
         record["completed_cases"] + record["skipped_cases"] == record["plan"]["tables"]
     )
     assert record["checkout"]["commit"]
+    identifiers = [case["case_id"] for case in record["cases"]]
+    assert len(set(identifiers)) == len(identifiers)
+    assert set(identifiers) == set(record["plan"]["case_ids"])
+    resumed = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "brainfuck",
+            *extra,
+            "--budget-seconds",
+            "5",
+            "--report",
+            str(report),
+            "--resume",
+            str(report),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=8,
+    )
+    assert resumed.returncode == 0, resumed.stdout + resumed.stderr
+    replay = json.loads(report.read_text())
+    for old, new in zip(record["cases"], replay["cases"], strict=True):
+        assert new["case_id"] == old["case_id"]
+        assert bool(new.get("reused")) == (
+            old["status"] in {"measured", "executed", "refused"}
+        )
+    assert replay["row_executions"] == 0
 
 
 @pytest.mark.medium

@@ -35,7 +35,7 @@ from time import perf_counter
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _budget import options, supervise
-from _build import PAIRS, TABLES, chosen, sizes
+from _build import PAIRS, TABLES, chosen, size_cases, sizes
 
 from esolangs.tools.helpers import (
     essential_inputs,
@@ -116,6 +116,12 @@ def main() -> None:
     args = parser.parse_args()
     languages = list(chosen(args.languages))
     plan = {
+        "case_ids": [
+            identifier
+            for name, _gen in languages
+            for tables in (TABLES, PAIRS)
+            for identifier in size_cases(name, tables)
+        ],
         "tables": len(languages) * (len(PAIRS) + len(TABLES)),
         "work_bound": len(languages) * (len(PAIRS) * 4 + len(TABLES) * 8),
         "work_unit": "truth_table_bits",

@@ -191,7 +191,9 @@ from _differential_generators import (
 from _differential_generators import (
     subleq_program as subleq_program,
 )
+from _reference_identity import fingerprint
 from _reference_process import run as run_reference
+from _screen_evidence import case_id, reused
 
 import esolangs
 from esolangs.exceptions import (
@@ -1057,11 +1059,31 @@ def campaign(runner: Runner, programs: int, seed: int) -> list[tuple[Case, int]]
     """Run ``programs`` random cases; return one minimized case per cause."""
     rng = random.Random(seed)
     groups: dict[str, list[Case]] = {}
-    for _ in range(programs):
+    for index in range(programs):
         program = runner.spec.program(rng)
-        case = runner.check(program, runner.spec.stdin(rng, program))
+        stdin = runner.spec.stdin(rng, program)
+        identifier = case_id(runner.spec.language, seed, index)
+        cached = reused(identifier)
+        case = (
+            (
+                _case_load(cached["counterexample"])
+                if cached["counterexample"] is not None
+                else None
+            )
+            if cached is not None
+            else runner.check(program, stdin)
+        )
+        # Publish the complete original before minimization or the next case can hang.
         completed(
-            "compared", language=runner.spec.language, disagreement=case is not None
+            "compared",
+            case_id=identifier,
+            language=runner.spec.language,
+            seed=seed,
+            index=index,
+            reference=runner.template,
+            disagreement=case is not None,
+            counterexample=_case_record(case) if case is not None else None,
+            reused=cached is not None,
         )
         if case is not None:
             groups.setdefault(case.cause, []).append(case)
@@ -1103,6 +1125,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(f"give --ref or set {_env_name(spec.language)}")
     if (
         args.programs < 1
+        or args.programs > args.max_cases
         or not math.isfinite(args.ref_timeout)
         or args.ref_timeout <= 0
         or not math.isfinite(args.minimize_seconds)
@@ -1111,6 +1134,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         parser.error("campaign and minimization bounds must be positive and finite")
     plan = {
+        "case_ids": [
+            case_id(spec.language, args.seed, index) for index in range(args.programs)
+        ],
         "tables": args.programs,
         "work_bound": (args.programs + args.programs * args.minimize_calls)
         * spec.max_steps
@@ -1126,6 +1152,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         case = _case_load(read_json(args.minimize_case))
         print(json.dumps(_case_record(runner._minimize(case, args.minimize_calls))))  # noqa: SLF001
         return 0
+    if not args.worker and not args.dry_run:
+        try:
+            plan["reference"] = fingerprint(template)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
     if not supervise(
         parser, args, Path(__file__), plan, list(argv) if argv is not None else None
     ):

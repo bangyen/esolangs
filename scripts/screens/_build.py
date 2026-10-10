@@ -9,6 +9,8 @@ import random
 from collections.abc import Callable, Iterator
 from typing import Any
 
+from _screen_evidence import case_id, reused
+
 from esolangs import describe
 from esolangs.raster import Raster
 from esolangs.registry import GENERATORS, resolve
@@ -57,7 +59,7 @@ def generators() -> Iterator[tuple[str, Callable[[str], object]]]:
 
 
 def sizes(
-    name: str, gen: Callable[[str], object], tables: list[str]
+    name: str, gen: Callable[[str], object], tables: list[str], *, scope: str = "size"
 ) -> dict[str, int | None]:
     """Build every table once; ``None`` marks an arity the generator refuses.
 
@@ -67,7 +69,20 @@ def sizes(
     from _budget import completed
 
     out: dict[str, int | None] = {}
-    for table in tables:
+    for index, table in enumerate(tables):
+        identifier = case_id(name, scope, index, table)
+        cached = reused(identifier)
+        if cached is not None:
+            out[table] = cached["size"]
+            completed(
+                **{
+                    key: value
+                    for key, value in cached.items()
+                    if key not in {"ordinal", "reused"}
+                },
+                reused=True,
+            )
+            continue
         try:
             program = gen(table)
             out[table] = source_size(name, program)
@@ -75,6 +90,7 @@ def sizes(
             out[table] = None
         completed(
             "refused" if out[table] is None else "measured",
+            case_id=identifier,
             language=name,
             table_bits=len(table),
             size=out[table],
@@ -116,3 +132,8 @@ def ignore(table: str, at: int) -> str:
     return "".join(
         table[(row >> (low + 1) << low) | (row & mask)] for row in range(2 * len(table))
     )
+
+
+def size_cases(name: str, tables: list[str], scope: str = "size") -> list[str]:
+    """Identify every build, including repeated tables in different roles."""
+    return [case_id(name, scope, index, table) for index, table in enumerate(tables)]

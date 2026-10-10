@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _budget import options, supervise
-from _build import chosen, ignore, random_table, sizes
+from _build import chosen, ignore, random_table, size_cases, sizes
 
 #: Growth above which an ignored input is built as if it mattered.
 DOUBLES = 1.5
@@ -33,19 +33,11 @@ def main(argv: list[str] | None = None) -> int:
     options(parser)
     args = parser.parse_args(argv)
     languages = list(chosen(args.languages))
-    plan = {
-        "tables": len(languages) * 45,
-        "work_bound": len(languages) * 3 * sum((1 << n) * 9 for n in (4, 5, 6)),
-        "work_unit": "truth_table_bits",
-    }
-    if not supervise(parser, args, Path(__file__), plan, argv):
-        return 0
     rng = random.Random(2026)
-    print(f"{'generator':<28} first  mid   last  fresh")
+    corpus = []
     for name, gen in languages:
-        worst = {"first": 0.0, "mid": 0.0, "last": 0.0, "fresh": 0.0}
         for n in (4, 5, 6):
-            for _ in range(3):
+            for index in range(3):
                 table = random_table(n, rng)
                 variants = {
                     "first": ignore(table, 0),
@@ -53,14 +45,33 @@ def main(argv: list[str] | None = None) -> int:
                     "last": ignore(table, n),
                     "fresh": random_table(n + 1, rng),
                 }
-                built = sizes(name, gen, [table, *variants.values()])
-                base = built[table]
-                if base is None:
-                    continue
-                for key, variant in variants.items():
-                    size = built[variant]
-                    if size is not None:
-                        worst[key] = max(worst[key], size / base)
+                corpus.append((name, gen, f"{n}:{index}", table, variants))
+    plan = {
+        "case_ids": [
+            identifier
+            for name, _gen, scope, table, variants in corpus
+            for identifier in size_cases(name, [table, *variants.values()], scope)
+        ],
+        "tables": len(languages) * 45,
+        "work_bound": len(languages) * 3 * sum((1 << n) * 9 for n in (4, 5, 6)),
+        "work_unit": "truth_table_bits",
+    }
+    if not supervise(parser, args, Path(__file__), plan, argv):
+        return 0
+    print(f"{'generator':<28} first  mid   last  fresh")
+    for name, gen in languages:
+        worst = {"first": 0.0, "mid": 0.0, "last": 0.0, "fresh": 0.0}
+        for key, _gen, scope, table, variants in corpus:
+            if key != name:
+                continue
+            built = sizes(name, gen, [table, *variants.values()], scope=scope)
+            base = built[table]
+            if base is None:
+                continue
+            for key, variant in variants.items():
+                size = built[variant]
+                if size is not None:
+                    worst[key] = max(worst[key], size / base)
         flag = (
             "DOUBLES"
             if max(worst["first"], worst["mid"], worst["last"]) > DOUBLES

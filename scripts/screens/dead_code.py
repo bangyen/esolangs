@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _budget import completed, options, supervise
 from _build import generators
+from _screen_evidence import case_id, reused
 
 import esolangs
 from esolangs._answers import encode_inputs, read_answer
@@ -147,14 +148,36 @@ def screen(
     start = perf_counter()
     before = after = spaces = 0
     for table in TABLES:
+        identifier = case_id(name, table)
+        cached = reused(identifier)
+        if cached is not None:
+            completed(
+                **{
+                    key: value
+                    for key, value in cached.items()
+                    if key not in {"ordinal", "reused"}
+                },
+                reused=True,
+            )
+            if cached["status"] == "executed":
+                before += cached["before"]
+                after += cached["after"]
+                spaces += cached["spaces"]
+            continue
         try:
             program = _Program(name, table, timeout)
         except (EsolangError, ValueError):
-            completed("refused", language=name, table_bits=len(table))
+            completed(
+                "refused", case_id=identifier, language=name, table_bits=len(table)
+            )
             continue
         if len(program.text) > limit or not program.correct(program.text):
             completed(
-                "skipped", rows=program.executions, language=name, table_bits=len(table)
+                "skipped",
+                case_id=identifier,
+                rows=program.executions,
+                language=name,
+                table_bits=len(table),
             )
             continue
         shrunk = shrink(program)
@@ -163,6 +186,8 @@ def screen(
         spaces += _spaces(program.text) - _spaces(shrunk)
         completed(
             "executed",
+            case_id=identifier,
+            spaces=_spaces(program.text) - _spaces(shrunk),
             rows=program.executions,
             language=name,
             table_bits=len(table),
@@ -190,6 +215,7 @@ def main() -> None:
         key for key, _gen in generators()
     ]
     plan = {
+        "case_ids": [case_id(name, table) for name in names for table in TABLES],
         "tables": len(names) * len(TABLES),
         "row_executions": len(names) * sum(map(len, TABLES)) * (2 * args.limit + 1),
         "work_bound": len(names) * sum(map(len, TABLES)) * (2 * args.limit + 1),
