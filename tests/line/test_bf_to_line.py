@@ -9,8 +9,8 @@ import pytest
 from esolangs.interpreters.tape_based.line.extract import extract
 from esolangs.interpreters.tape_based.line.simulate import IO, run
 from esolangs.tools.line import render as render_module
-from esolangs.tools.line.bf_to_line import bf_to_line
 from esolangs.tools.line.render import render
+from tests.line.bf_to_line import bf_to_line
 
 
 def _run_bf(program: str, path: Path, inputs: list[int] | None = None) -> list[int]:
@@ -204,14 +204,14 @@ class TestALoopThatEndsItsParent:
     """A ``?`` whose ``zero`` arm is empty needs a node to carry the goto."""
 
     def test_a_nested_loop_at_the_end_of_a_body_compiles(self) -> None:
-        from esolangs.tools.line.bf_to_line import bf_to_line
+        from tests.line.bf_to_line import bf_to_line
 
         node = bf_to_line("+[[-]]")
         assert node.op == "+"
 
     def test_the_placeholder_leaves_tape_and_pointer_alone(self) -> None:
         """A ``>`` then ``<``: the goto attaches after the pointer is back."""
-        from esolangs.tools.line.bf_to_line import _nop
+        from tests.line.bf_to_line import _nop
 
         placeholder = _nop()
         assert placeholder.op == ">"

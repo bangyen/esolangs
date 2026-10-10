@@ -667,7 +667,7 @@ def _layout(
             raise ValueError(
                 "loop-back could not be constructed for this goto -- its "
                 "target must be an ancestor '?' fork whose body chain the "
-                "goto ends (the shape bf_to_line compiles); see "
+                "goto ends (the shape a compiled loop produces); see "
                 "_loop_return_legs for the geometric premises"
             )
         node = node.next
