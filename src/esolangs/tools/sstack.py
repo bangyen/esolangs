@@ -11,6 +11,8 @@ the prefix unwinds. Six-bit labels preserve workspace; inline text and
 7n + 3 commands guard admission. Popping before descent reduces three dense
 n=16 tables from mean 1,345,047 to 955,490 characters (-28.96%); both builds
 executed five rows per table within the command and workspace bounds.
+Binary banks price every level before emitting one; a 64-state n=16 control
+shrinks 23,897 -> 20,360 characters (-14.80%), with 8,192 old/new native rows.
 """
 
 from itertools import pairwise
@@ -34,6 +36,7 @@ from esolangs.tools.shared_block import (
     repeated_blocks,
     repeated_definitions,
 )
+from esolangs.tools.sstack_binary import best_binary_bank
 from esolangs.tools.wrap import wrap_chars
 
 _PROLOGUE = '"49/b""48/c"'
@@ -65,7 +68,9 @@ def sstack(truth_table: str) -> str:
             result = _sstack_shared(truth_table, blocks)
             if result is not None:
                 forms.append(result)
-    return min((program for program, cost in forms if cost <= 7 * n + 3), key=len)
+    admitted = min((program for program, cost in forms if cost <= 7 * n + 3), key=len)
+    bank = best_binary_bank(truth_table, _sstack_tree, 7 * n + 3, len(admitted))
+    return admitted if bank is None else bank[0]
 
 
 def _sstack_shared(

@@ -222,3 +222,146 @@ def test_multiple_definitions_reduce_cap_program_within_ledger():
         lambda p: 6 * n + 12 + len(_parse(p)).bit_length() + n.bit_length(),
         rows=rows,
     )
+
+
+def _binary_bank_table() -> str:
+    sequence = [*range(1, 66), *range(65, 0, -1), *range(1, 64), *range(63, 0, -1)]
+    return "".join(f"{code:08b}" for code in sequence) * 32
+
+
+@pytest.mark.medium
+def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger():
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.stack_based.sstack import _Machine, _parse
+    from esolangs.tools.shared_block import _repeated_blocks
+    from esolangs.tools.sstack import _sstack_tree
+    from esolangs.tools.sstack_binary import binary_bank
+    from scripts.benchmark import WrittenState
+
+    table = _binary_bank_table()
+    blocks = tuple(
+        (depth, row) for depth, row, _ in _repeated_blocks(table) if depth == 13
+    )
+    assert len(blocks) == 64
+    program, limit = binary_bank(table, blocks, _sstack_tree)
+    assert limit <= 115
+    assert len(boolean.sstack(table)) <= len(program)
+    ops = _parse(program)
+    workspace = 108 + len(ops).bit_length() + (16).bit_length()
+    # Parsing is immutable; every row starts with fresh native state and I/O.
+    for _, first in blocks:
+        for suffix in range(8):
+            for padding in (0, 31 << 11):
+                row = (first + suffix) | padding
+                machine = object.__new__(_Machine)
+                machine.ops = ops
+                machine.io = ScriptedIO(f"{row:016b}" + "B")
+                machine.state = (0, (None,) * 7)
+                written = WrittenState(machine.snapshot())
+                commands = 0
+                while not machine.halted and commands <= limit:
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    commands += 1
+                assert machine.halted
+                assert machine.io.getvalue() == table[row]
+                assert commands <= limit
+                assert written.bits <= workspace
+                assert machine.state[1][0] is None
+                assert machine.state[1][4] is None
+    assert (
+        esolangs.run("SStack", program + ";e;:e:", stdin="1" * 16 + "B")
+        == table[-1] + "B"
+    )
+
+
+@pytest.mark.parametrize(
+    "words",
+    [
+        ("0001", "0110", "0000", "1111"),
+        ("0001", "0010", "0110", "0000"),
+        ("0001", "0110", "0000", "0000", "1111", "1111", "0001", "0110"),
+    ],
+)
+def test_binary_codes_preserve_completed_outputs_and_fixed_digits(words):
+    from esolangs.debugger import make_vm
+    from esolangs.tools.sstack import _sstack_tree
+    from esolangs.tools.sstack_binary import binary_bank
+
+    table = "".join(words)
+    n = len(table).bit_length() - 1
+    first = {word: i for i, word in enumerate(words) if word not in ("0000", "1111")}
+    blocks = tuple((n - 2, 4 * i) for i in first.values())
+    program, limit = binary_bank(table, blocks, _sstack_tree)
+    for row, expected in enumerate(table):
+        machine = make_vm("SStack", program, stdin=f"{row:0{n}b}" + "B")
+        commands = 0
+        while not machine.halted and commands <= limit:
+            machine.step()
+            commands += 1
+        assert machine.halted
+        assert machine.output == expected
+        assert commands <= limit
+        assert machine.snapshot()[1][4] is None
+        assert (
+            esolangs.run("SStack", program + ";e;:e:", stdin=f"{row:0{n}b}" + "B")
+            == expected + "B"
+        )
+
+
+@pytest.mark.parametrize(
+    ("table", "blocks", "message"),
+    [
+        ("01101001", (), "multiple definitions"),
+        ("01101001", ((1, 0),), "multiple definitions"),
+        ("01101001", ((0, 0), (1, 0)), "one level"),
+        ("01101001", ((-1, 0), (-1, 4)), "bit budget"),
+        ("01101001", ((2, 0), (2, 4)), "bit budget"),
+        ("01101001", ((1, -1), (1, 4)), "aligned"),
+        ("01101001", ((1, 1), (1, 4)), "aligned"),
+        ("01101001", ((1, 0), (1, 8)), "aligned"),
+        ("01100110", ((1, 0), (1, 4)), "distinct nonconstant"),
+        ("00000110", ((1, 0), (1, 4)), "distinct nonconstant"),
+        ("0001" * 32, tuple((5, 4 * i) for i in range(17)), "bit budget"),
+    ],
+)
+def test_invalid_binary_banks_abort(table, blocks, message):
+    from esolangs.tools.sstack import _sstack_tree
+    from esolangs.tools.sstack_binary import binary_bank
+
+    with pytest.raises(ValueError, match=message):
+        binary_bank(table, blocks, _sstack_tree)
+
+
+def test_binary_selector_rejects_inadmissible_or_unprofitable_banks():
+    from esolangs.tools.sstack import _sstack_tree
+    from esolangs.tools.sstack_binary import best_binary_bank
+
+    assert best_binary_bank("0" * 16, _sstack_tree, 100, 1000) is None
+    table = _binary_bank_table()
+    assert best_binary_bank(table, _sstack_tree, 0, 10**9) is None
+    assert best_binary_bank(table, _sstack_tree, 115, 1) is None
+    assert best_binary_bank(table, _sstack_tree, 115, 10**9) is not None
+
+
+def test_binary_selector_skips_a_bank_whose_word_exceeds_the_workspace_budget():
+    from esolangs.tools.shared_block import _repeated_blocks
+    from esolangs.tools.sstack import _sstack_tree
+    from esolangs.tools.sstack_binary import best_binary_bank
+
+    sequence = [*range(256), *range(255, -1, -1)]
+    table = "".join(f"{code:08b}" for code in sequence)
+    assert sum(depth == 9 for depth, _, _ in _repeated_blocks(table)) == 254
+    assert best_binary_bank(table, _sstack_tree, 0, 10**9) is None
+
+
+def test_binary_bank_refuses_a_drifted_inline_builder():
+    from esolangs.tools.sstack import _sstack_tree
+    from esolangs.tools.sstack_binary import binary_bank
+
+    def drifted(table):
+        program, commands = _sstack_tree(table)
+        return program, commands + 1
+
+    with pytest.raises(ValueError, match="builder disagrees"):
+        binary_bank("00010110", ((1, 0), (1, 4)), drifted)
