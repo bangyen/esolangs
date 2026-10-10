@@ -35,7 +35,6 @@ def main() -> int:
     raise AssertionError(args.target)
 
 
-
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 _INTERPRETERS = ROOT / "src" / "esolangs" / "interpreters"
 CURATION = ROOT / "tests" / "fixtures" / "curation.toml"
@@ -708,5 +707,7 @@ def update_exports(
     block = START + "\n" + render(source_root) + "\n" + END
     head, rest = text.split(START, 1)
     path.write_text(head + block + rest.split(END, 1)[1], encoding="utf-8")
+
+
 if __name__ == "__main__":
     raise SystemExit(main())
