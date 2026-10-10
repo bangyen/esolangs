@@ -45,7 +45,7 @@ SHARED_TOOLING = (
     "scripts/verify.py",
     "scripts/_verify_cache.py",
     "scripts/_scope.py",
-    "scripts/check_diff_coverage.py",
+    "checks/check_diff_coverage.py",
     "pyproject.toml",
     ".pre-commit-config.yaml",
     "justfile",
@@ -138,7 +138,7 @@ TOOLING_INTEGRATIONS = {
         (
             ".github/workflows/",
             "scripts/pytest_shard.py",
-            "scripts/check_diff_coverage.py",
+            "checks/check_diff_coverage.py",
         ),
     ),
 }

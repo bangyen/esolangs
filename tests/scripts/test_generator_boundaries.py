@@ -2,8 +2,8 @@
 
 import pytest
 
+from checks.check_generator_sizes import BOUNDARIES, STEP_CAP, boundary_tables
 from scripts.benchmark import measure
-from scripts.check_generator_sizes import BOUNDARIES, STEP_CAP, boundary_tables
 
 
 @pytest.mark.slow

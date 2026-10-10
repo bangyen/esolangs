@@ -42,7 +42,7 @@ repos:
     hooks:
       - id: check-hook-pins
         name: Check hook revs match pyproject pins
-        entry: python3 scripts/check_hook_pins.py
+        entry: python3 checks/check_hook_pins.py
         language: system
         files: ^(\.pre-commit-config\.yaml|pyproject\.toml)$
         pass_filenames: false
@@ -54,7 +54,7 @@ repos:
         pass_filenames: true
       - id: check-comment-density
         name: Check prose density (>= 2 code lines per comment or docstring-body line)
-        entry: python3 scripts/check_comment_density.py
+        entry: python3 checks/check_comment_density.py
         language: system
         files: ^src/esolangs/.*\.py$
         pass_filenames: true

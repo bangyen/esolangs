@@ -105,7 +105,7 @@ benchmark language table *args:
 # so the diff carries it.  Also a `just test` step ("generator size baseline").
 # check emitted sizes and step counts against the committed baseline
 sizes *args:
-    {{PYTHON}} scripts/check_generator_sizes.py {{args}}
+    {{PYTHON}} checks/check_generator_sizes.py {{args}}
 
 # Merge downloaded artifacts, one complete CI run per directory.
 refresh-ci-timings *args:

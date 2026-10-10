@@ -215,8 +215,7 @@ def test_documentation_check_preserves_source_files(
     *,
     stale: bool,
 ) -> None:
-    monkeypatch.syspath_prepend(str(REPO_ROOT / "scripts"))
-    import check_generated_docs
+    from checks import check_generated_docs
 
     for relative in check_generated_docs.GENERATED:
         target = tmp_path / relative

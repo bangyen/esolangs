@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from scripts import verify_no_exception_leaks as leaks
+from checks import verify_no_exception_leaks as leaks
 
 
 @pytest.fixture

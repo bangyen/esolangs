@@ -135,14 +135,14 @@ COVERAGE_TEST_STEP = "coverage tests"
 # matter or it guards the whole tree.  Prefixes are repo-relative.
 STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "bandit": ("src/",),
-    "duplicate-code check (pylint)": ("src/esolangs/", "scripts/"),
-    "dead definitions": ("src/", "scripts/"),
+    "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "checks/"),
+    "dead definitions": ("src/", "scripts/", "checks/"),
     # Only a generator, an interpreter (the step counts are executed), or the
     # baseline itself can move these numbers.
     "generator size baseline": (
         "src/esolangs/tools/",
         "src/esolangs/interpreters/",
-        "scripts/check_generator_sizes.py",
+        "checks/check_generator_sizes.py",
         "scripts/benchmark.py",
         "tests/fixtures/generator_sizes.json",
     ),
@@ -160,14 +160,14 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # dependency graph narrows this to the languages that import them.
     "exception leaks": (
         "src/esolangs/",
-        "scripts/verify_no_exception_leaks.py",
+        "checks/verify_no_exception_leaks.py",
     ),
 }
 
 STEPS = [
     (
         "generated docs",
-        [*PY, "scripts/check_generated_docs.py"],
+        [*PY, "checks/check_generated_docs.py"],
     ),
     ("pre-commit", [*PY, "-m", "pre_commit", "run", "--all-files"]),
     # The only mypy run.  pre-commit has no mypy hook: the mirror's isolated
@@ -196,12 +196,12 @@ STEPS = [
     ),
     # A generator route that was replaced keeps its own tests green, so it
     # never fails; three sat that way.  <1s.
-    ("dead definitions", [*PY, "scripts/check_dead_definitions.py"]),
+    ("dead definitions", [*PY, "checks/check_dead_definitions.py"]),
     # What every generator emits, and how many steps the emitted program
     # runs, pinned exactly against a committed baseline: the two quantities
     # the collection's claims rest on, and until this step nothing measured
     # them outside a hand-run `just benchmark`.  192 measurements, ~3s.
-    ("generator size baseline", [*PY, "scripts/check_generator_sizes.py"]),
+    ("generator size baseline", [*PY, "checks/check_generator_sizes.py"]),
     (
         # pylint's R0801 reports similar blocks across files, catching
         # copy-pasted helpers like the bracket matcher or the OISC memory
@@ -214,13 +214,14 @@ STEPS = [
         "duplicate-code check (pylint)",
         [
             *PY,
-            "scripts/check_duplicate_code.py",
+            "checks/check_duplicate_code.py",
             "--disable=all",
             "--enable=duplicate-code",
             "--min-similarity-lines=10",
             "--ignore-imports=yes",
             "src/esolangs",
             "scripts",
+            "checks",
         ],
     ),
     # The deep proofs cheap enough to gate locally: ArrowQueue's twelve named
@@ -241,7 +242,7 @@ STEPS = [
     # --all over the whole registry.
     (
         "exception leaks",
-        [*PY, "scripts/verify_no_exception_leaks.py"],
+        [*PY, "checks/verify_no_exception_leaks.py"],
     ),
 ]
 
@@ -251,7 +252,7 @@ STEPS = [
 FIXES: dict[str, tuple[str, ...]] = {
     "generated docs": ("uv run python scripts/generate.py docs",),
     "generator size baseline": (
-        "uv run python scripts/check_generator_sizes.py --update  "
+        "uv run python checks/check_generator_sizes.py --update  "
         "(only if the size change is intended)",
     ),
 }
@@ -1094,7 +1095,7 @@ def main() -> int:
     # --partial exists to prevent.
     gate: tuple[str, list[str], dict[str, str]] | None = None
     if any(name == "pytest" for name, _, _ in runnable):
-        gate_cmd = [*PY, "scripts/check_diff_coverage.py"]
+        gate_cmd = [*PY, "checks/check_diff_coverage.py"]
         selected = any(
             word.startswith("-m") for word in env.get("PYTEST_ADDOPTS", "").split()
         )

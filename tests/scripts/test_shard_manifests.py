@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from scripts.check_shard_manifests import check
+from checks.check_shard_manifests import check
 from scripts.pytest_durations import Recorder
 
 

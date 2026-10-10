@@ -56,7 +56,7 @@ jobs:
     # sat unread for months.  Reports any tools/ name, or any private name
     # elsewhere in src/, that nothing in src/ or scripts/ reads.  <2s.
     - name: Check for definitions nothing reads
-      run: uv run python scripts/check_dead_definitions.py
+      run: uv run python checks/check_dead_definitions.py
 
     # Emitted size and step count for every language on 2-, 3- and 4-input
     # tables, compared exactly against the committed baseline.  They are the
@@ -64,7 +64,7 @@ jobs:
     # measured them outside a hand-run `just benchmark`.  Generation *time*
     # is not gated here -- see weekly.yml's `timings` job for why.  ~5s.
     - name: Check generator sizes against the baseline
-      run: uv run python scripts/check_generator_sizes.py
+      run: uv run python checks/check_generator_sizes.py
 
     # Same scope as the local gate in scripts/verify.py: tests/ is left
     # out because shared test scaffolding is not what this check is for,
@@ -72,7 +72,7 @@ jobs:
     # comparison walks (141s of this job's 218s in run 37334678602).
     - name: Check for duplicated code blocks
       run: >
-        uv run --with pylint python scripts/check_duplicate_code.py --disable=all
+        uv run --with pylint python checks/check_duplicate_code.py --disable=all
         --enable=duplicate-code --min-similarity-lines=10
         --ignore-imports=yes src/esolangs scripts
 
@@ -98,7 +98,7 @@ jobs:
         restore-keys: leaksweep-
 
     - name: Check that no interpreter leaks a raw exception
-      run: uv run python scripts/verify_no_exception_leaks.py --all
+      run: uv run python checks/verify_no_exception_leaks.py --all
 
     - name: Retain worker and verification logs
       if: always()
@@ -263,7 +263,7 @@ jobs:
         uv run coverage report --fail-under=97
         uv run coverage xml
     - name: Check changed-line and changed-branch coverage
-      run: uv run python scripts/check_diff_coverage.py --partial --strict
+      run: uv run python checks/check_diff_coverage.py --partial --strict
 
 
   slow:
@@ -363,7 +363,7 @@ jobs:
       run: uv sync --group dev --python 3.12
 
     - name: Check generated documentation
-      run: uv run python scripts/check_generated_docs.py
+      run: uv run python checks/check_generated_docs.py
 
   security:
     runs-on: ubuntu-latest
@@ -519,4 +519,4 @@ jobs:
         pattern: ${{ matrix.pattern }}
         path: shard-evidence
     - name: Require complete selection and execution
-      run: uv run python scripts/check_shard_manifests.py shard-evidence --marker "${{ matrix.marker }}" --shards ${{ matrix.shards }}
+      run: uv run python checks/check_shard_manifests.py shard-evidence --marker "${{ matrix.marker }}" --shards ${{ matrix.shards }}

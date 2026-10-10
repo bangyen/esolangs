@@ -538,7 +538,7 @@ def _gate() -> int:
     for cmd in (
         [*python, "scripts/generate.py", "examples"],
         [*python, "scripts/generate.py", "docs"],
-        [*python, "scripts/check_generator_sizes.py", "--update"],
+        [*python, "checks/check_generator_sizes.py", "--update"],
     ):
         print("+", " ".join(cmd[1:]), flush=True)
         if subprocess.run(cmd, cwd=ROOT, check=False).returncode:

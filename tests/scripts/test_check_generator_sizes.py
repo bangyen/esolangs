@@ -7,8 +7,7 @@ from typing import Any
 import pytest
 
 import esolangs
-from scripts import benchmark as b
-from scripts.check_generator_sizes import (
+from checks.check_generator_sizes import (
     BASELINE,
     BOUNDARIES,
     SCHEMA,
@@ -17,6 +16,7 @@ from scripts.check_generator_sizes import (
     boundary_tables,
     differences,
 )
+from scripts import benchmark as b
 
 RECORD = {
     "language": "brainfuck",
@@ -111,7 +111,7 @@ class TestCommittedBaseline:
 def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:
     import pytest
 
-    from scripts import check_generator_sizes as sizes
+    from checks import check_generator_sizes as sizes
 
     monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: ["brainfuck"])
     monkeypatch.setattr(sizes, "BOUNDARIES", {})
@@ -153,7 +153,7 @@ def test_boundary_rows_are_pinned_and_corpus_drift_fails():
 
 
 def test_sweep_checks_and_pins_every_small_table_row(monkeypatch):
-    from scripts import check_generator_sizes as sizes
+    from checks import check_generator_sizes as sizes
 
     monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: ["brainfuck"])
     monkeypatch.setattr(sizes, "BOUNDARIES", {})

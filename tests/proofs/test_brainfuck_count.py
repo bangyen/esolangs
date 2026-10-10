@@ -450,14 +450,14 @@ def test_regular_certificate() -> None:
 
     rows, vector = certificate()
     check_certificate(rows, vector)
-    from tests.proofs.grammar_certificate import check_grammar
     from tests.proofs._brainfuck_count import local_patterns, regular_patterns
+    from tests.proofs.grammar_certificate import check_grammar
 
     assert check_grammar(
         rows, ".,-+<>[]", sorted(local_patterns()), regular_patterns()
     ) >= len(rows)
-    from tests.proofs.perron_certificate import check_certificate as independent_check
     from tests.proofs._brainfuck_count import ALPHABET, BOUND
+    from tests.proofs.perron_certificate import check_certificate as independent_check
 
     independent_check(rows, vector, BOUND, ALPHABET)
     corrupted = list(vector)

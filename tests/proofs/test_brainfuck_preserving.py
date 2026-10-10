@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.proofs._brainfuck_balanced import Matrix, patterns
+from tests.proofs._brainfuck_count import ALPHABET, accepts, automaton, minimize
 from tests.proofs._brainfuck_preserving import (
     BOUND,
     EMPTY,
@@ -16,11 +18,9 @@ from tests.proofs._brainfuck_preserving import (
     states,
     typed_counts,
 )
+from tests.proofs._checker_cli import run_checker
 from tests.proofs.grammar_certificate import check_grammar
 from tests.proofs.preserving_certificate import check_certificate
-from tests.proofs._brainfuck_balanced import Matrix, patterns
-from tests.proofs._brainfuck_count import ALPHABET, accepts, automaton, minimize
-from tests.proofs._checker_cli import run_checker
 from tests.proofs.test_brainfuck_count import _observe
 from tests.proofs.test_brainfuck_divergence import _word as _nonzero_word
 

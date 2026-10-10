@@ -11,7 +11,7 @@ import pytest
 from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "check_diff_coverage.py"
+SCRIPT = REPO_ROOT / "checks" / "check_diff_coverage.py"
 
 
 def load_script() -> Any:

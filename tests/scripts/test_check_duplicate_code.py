@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[2] / "scripts/check_duplicate_code.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "checks/check_duplicate_code.py"
 
 
 AST_PROBE = """import sys

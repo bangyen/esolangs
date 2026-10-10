@@ -94,7 +94,7 @@ def dead_definitions(root: pathlib.Path) -> list[tuple[pathlib.Path, str, int]]:
     """Return ``(path, name, lines)`` for every judged name nothing reads."""
     trees = {
         p: ast.parse(p.read_text(), filename=str(p))
-        for d in ("src", "scripts")
+        for d in ("src", "scripts", "checks")
         for p in sorted((root / d).rglob("*.py"))
     }
     total: Counter[str] = Counter()
@@ -121,7 +121,10 @@ def main() -> None:
     found = dead_definitions(root)
     for path, name, size in found:
         where = path.relative_to(root)
-        print(f"{where}: {name} ({size} lines) has no reader in src/ or scripts/")
+        print(
+            f"{where}: {name} ({size} lines) has no reader in "
+            "src/, scripts/ or checks/"
+        )
     if found:
         print(f"\n{len(found)} dead: delete, or move a test-only oracle under tests/")
         raise SystemExit(1)

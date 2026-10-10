@@ -141,7 +141,7 @@ jobs:
     # fields drifted, which on `main` would mean the gate was bypassed.
     - name: Sweep every generator
       run: >
-        uv run python scripts/check_generator_sizes.py
+        uv run python checks/check_generator_sizes.py
         --repeat 5 --timings generator-timings.json
 
     - name: Report sustained generation slowdowns

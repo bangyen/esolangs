@@ -50,10 +50,10 @@ import sys
 import time
 import typing
 
-_ROOT = pathlib.Path(__file__).resolve().parent.parent
+_ROOT = pathlib.Path(__file__).resolve().parents[1]
 _HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
-sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_ROOT / "scripts"))
 
 from _atomic import write_text
 
