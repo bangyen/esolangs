@@ -45,16 +45,17 @@ def test_public_five_input_bank_executes_every_essential_row(start):
     built = larger_suffix_bank(table, 1148 - len(header) - 49)
     assert built is not None
     body, commands = built
-    assert commands == 436
+    # Nested sharing trades one dispatch test for 354 characters on this body.
+    assert commands == 437
     program = header + body + "+" * 48 + "."
-    assert len(program) == 8485
+    assert len(program) == 8131
     assert _bf_ordered(table, tuple(range(16))) == program
     rows = [
         fill << core_bits | row
         for fill in (0, (1 << (16 - core_bits)) - 1)
         for row in range(start, start + 128)
     ]
-    assert _execute(table, program, rows, 1148) <= 1011
+    assert _execute(table, program, rows, 1148) <= 1012
     assert larger_suffix_bank(table, commands - 1) is None
 
 

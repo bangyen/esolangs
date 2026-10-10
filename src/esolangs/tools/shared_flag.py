@@ -124,6 +124,7 @@ def flag_tree_body(
     binary_leaves: bool = False,
     flip: bool = False,
     dialect: FlagDialect | None = None,
+    fold_zero: bool | None = None,
 ) -> tuple[str, int]:
     """Return a flag tree ending at result, and its worst command count.
 
@@ -162,7 +163,7 @@ def flag_tree_body(
     if any(depth < 0 or depth >= n for depth in depths):
         raise ValueError("deferred levels must be distinct, increasing input levels")
     pending_levels = flag_levels or tuple(depths)
-    fold_zero = bool(blocks)
+    fold_zero = bool(blocks) if fold_zero is None else fold_zero
     ids = subtree_ids(truth_table)
     selected = {
         (depth, ids[depth][row >> (n - depth)]): i

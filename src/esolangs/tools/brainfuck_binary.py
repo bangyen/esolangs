@@ -2,6 +2,8 @@
 
 The default two-input bank keeps its original labels. Larger bodies reserve
 one label for completed one; decoding clears every marker before the body.
+Each word is its own definition: its greatest repeated residual defers inside
+the body, so a nested definition shares like a top-level one.
 """
 
 from esolangs.tools.helpers import (
@@ -11,7 +13,7 @@ from esolangs.tools.helpers import (
     subtree_ids,
 )
 from esolangs.tools.shared_block import ContinuationCost as _Cost
-from esolangs.tools.shared_block import _repeated_blocks
+from esolangs.tools.shared_block import _repeated_blocks, repeated_block
 from esolangs.tools.shared_flag import flag_tree_body
 
 
@@ -78,7 +80,17 @@ def binary_bank(
 
     def inline(word: str) -> int:
         nonlocal pos
-        code, commands = flag_tree_body(word, tuple(range(depth, n)), pos, result)
+        # Each word is its own definition: defer its greatest repeat, so a
+        # nested body shares like a top-level one.  Zero-constant elision
+        # stays off -- its price is not the bank's price model.
+        code, commands = flag_tree_body(
+            word,
+            tuple(range(depth, n)),
+            pos,
+            result,
+            shared=repeated_block(word),
+            fold_zero=False,
+        )
         emit(code)
         pos = result
         return commands

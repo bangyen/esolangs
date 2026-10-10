@@ -12,13 +12,6 @@ Close each gap with a named construction and native execution, or an
 exemption supported by a structural proof or the measured criterion in
 [Contributing](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
-- **Brainfuck:** share nested definitions inside definition bodies. Pricing
-  every admissible suffix level already matches the scored level (0 of 13
-  bank-eligible tables improved), and the sharing screen bounds the total
-  repeated-node upside at 7.0% (n=5). The bodies are the remaining work: all
-  16 suffix words carry a nonconstant repeat at six or more inputs, and
-  sharing one inside a word cuts that body 9% (356 -> 323 characters at
-  remaining 5), so the row is a construction, not an exemption.
 - **Line:** extend one selected residual to multiple shared residuals. The
   sharing screen gives the largest upside here (40.3% of emitted area at
   n=5), but the residual search finds at most one match on random tables, so

@@ -178,6 +178,10 @@ inputs without a width (16 of 96 controls improved on the admitting run).
 Dig's shared pool is 2..10 unique 64-row classes indexed by a single decimal
 digit over 2..6 prefix bits, so a larger pool needs a multi-digit index.
 
+The suffix bank defers each word's greatest repeat inside its own body, so a
+nested definition shares like a top-level one: the n=16 five-input fixture
+falls 4% (8485 -> 8131 characters) for one dispatch test.
+
 Factor, Painfuck, brainfuck and Boolfuck admit a bank at several depths: each
 block defers through a distinct unused flag at a level no shallower than its
 own (a shallower ancestor would rewrite the flag before dispatch), so one cell
