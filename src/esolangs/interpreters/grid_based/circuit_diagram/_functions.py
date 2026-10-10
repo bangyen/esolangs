@@ -97,7 +97,7 @@ class _ReplayClock(_ClockStream):
 
     def skip(self, count: int) -> None:
         self.cursor += count
-        if self.cursor > len(self.values):
+        if self.cursor > len(self.values):  # pragma: no cover - replay invariant
             raise RuntimeError("clock replay exceeds recorded prefix")
         self.position = self.parent.position
 
@@ -167,7 +167,7 @@ class _FunctionEvaluation:
             frame.next_call += 1
             if slot in frame.results:
                 old_key, old_inputs, output, reads = frame.results[slot]
-                if (key, inputs) != (old_key, old_inputs):
+                if (key, inputs) != (old_key, old_inputs):  # pragma: no cover
                     raise RuntimeError("function replay changed its request")
                 frame.clock.skip(reads)
                 return output
