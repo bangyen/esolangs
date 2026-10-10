@@ -156,7 +156,3 @@ clean:
     find . \( -path ./.venv -o -path ./.worktrees \) -prune -o -name "*.pyc" -type f -delete
     rm -rf build dist .coverage coverage.xml bandit-report.json .mypy_cache .ruff_cache .pytest_cache
     find src tests -mindepth 1 -type d -empty -delete
-
-# preview expired logs and unused timing snapshots; pass --apply to remove them
-prune-artifacts *args:
-    {{PYTHON}} scripts/prune_artifacts.py {{args}}
