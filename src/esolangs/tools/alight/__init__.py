@@ -12,6 +12,7 @@ no subtrees to fold or share.  The reads are unconditional and first.
 from math import prod
 from typing import Any
 
+from esolangs._dialects import EXPRESSION_SYNTAXES, LIST_UPDATES
 from esolangs._dialects import expression_syntax as validate_expression_syntax
 from esolangs._dialects import list_update as validate_list_update
 from esolangs.registry._contracts import BooleanContract
@@ -421,6 +422,10 @@ LANGUAGE = Language(
     "grid_based.alight",
     boolean=alight,
     dialect=_dialect,
+    dialect_values={
+        "expression_syntax": EXPRESSION_SYNTAXES,
+        "list_update": LIST_UPDATES,
+    },
     # Not a tree: a Horner row index into a string literal.
     shape=Shape.LOOKUP,
     split=True,

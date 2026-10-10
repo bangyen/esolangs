@@ -18,7 +18,7 @@ import heapq
 from collections.abc import Callable
 from itertools import product
 
-from esolangs._dialects import ROTFUCK_CYCLES
+from esolangs._dialects import ROTATIONS, ROTFUCK_CYCLES
 from esolangs._dialects import rotation as validate_rotation
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -354,6 +354,7 @@ LANGUAGE = Language(
     "tape_based.rotfuck",
     boolean=rotfuck,
     dialect=_dialect,
+    dialect_values={"rotation": ROTATIONS},
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,
     contract=BooleanContract(

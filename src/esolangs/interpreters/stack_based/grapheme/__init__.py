@@ -57,11 +57,13 @@ from collections.abc import Mapping, Sequence
 from typing import Final, Literal
 
 from esolangs._drive import drive
-from esolangs._grapheme import DEFAULT_GRAPHEME, GraphemeDialect
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.source_hints import syntax_error
+from esolangs.interpreters.stack_based.grapheme._dialect import (
+    DEFAULT_GRAPHEME,
+    GraphemeDialect,
+)
 
 _FUNC: Final = "func"
 
@@ -540,7 +542,3 @@ def run(
     """Run a Grapheme program to completion."""
     machine = _Machine(code, io, integer_conversion=integer_conversion)
     drive(machine)
-
-
-if __name__ == "__main__":
-    script_main(run)

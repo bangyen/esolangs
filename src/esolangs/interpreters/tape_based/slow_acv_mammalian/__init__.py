@@ -16,10 +16,12 @@ page says EXCRETE and PRONOUNCE are "modulo 255").
 import functools
 import operator
 
-from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
-from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.source_hints import keyword_hint, syntax_error
+from esolangs.interpreters.tape_based.slow_acv_mammalian._dialect import (
+    DEFAULT_MODULI,
+    MammalianModuli,
+)
 
 #: One instant of a run: ``(arrays, ptr, acc, ind, halted)`` -- the 23
 #: arrays, the pointer that picks the current one, the accumulator, the
@@ -307,7 +309,3 @@ def run(
         elif n == 9:
             io.print_char(chr(acc % moduli.io_modulus))
         ind += 1
-
-
-if __name__ == "__main__":
-    script_main(run)

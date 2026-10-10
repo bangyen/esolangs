@@ -5,26 +5,14 @@ from dataclasses import dataclass
 from difflib import get_close_matches
 from typing import Any, TypedDict, cast
 
-from esolangs._dialects import (
-    EXPRESSION_SYNTAXES,
-    LIST_UPDATES,
-    LITERAL_POLICIES,
-    ROTATIONS,
-)
-from esolangs._grapheme import INTEGER_CONVERSIONS
-from esolangs._mammalian import MODULI
 from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, resolve
 
 #: Every setting a language's ``dialect=`` may take, and its values.
 _CHOICES: dict[str, tuple[int | str, ...]] = {
-    "expression_syntax": EXPRESSION_SYNTAXES,
-    "list_update": LIST_UPDATES,
-    "literal_policy": LITERAL_POLICIES,
-    "rotation": ROTATIONS,
-    "integer_conversion": INTEGER_CONVERSIONS,
-    "cell_modulus": MODULI,
-    "io_modulus": MODULI,
+    key: values
+    for language in LANGUAGES.values()
+    for key, values in (language.dialect_values or {}).items()
 }
 
 

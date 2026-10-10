@@ -5,9 +5,9 @@ import importlib
 import pytest
 
 from esolangs import tools as boolean
-from esolangs._grapheme import GraphemeDialect
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import run
+from esolangs.interpreters.stack_based.grapheme._dialect import GraphemeDialect
 from esolangs.tools.grapheme import _grapheme_literal, _grapheme_push65, _grapheme_table
 from tests.generator_support import evaluate_generated
 from tests.tools.test_boolean_contract import _one_minterm

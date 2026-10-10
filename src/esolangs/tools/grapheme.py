@@ -3,7 +3,11 @@
 The table is one integer literal, so it has no subtrees to fold or share.
 """
 
-from esolangs._grapheme import DEFAULT_GRAPHEME, GraphemeDialect
+from esolangs.interpreters.stack_based.grapheme._dialect import (
+    DEFAULT_GRAPHEME,
+    INTEGER_CONVERSIONS,
+    GraphemeDialect,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.constant_projection import balanced_projection, projected_inputs
@@ -126,6 +130,7 @@ LANGUAGE = Language(
     "stack_based.grapheme",
     boolean=grapheme,
     dialect=GraphemeDialect,
+    dialect_values={"integer_conversion": INTEGER_CONVERSIONS},
     contract=BooleanContract(
         alphabet=("%", "A"),
         note="Grapheme's generator normalizes each input line with "

@@ -47,7 +47,11 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 
 from collections.abc import Sequence
 
-from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
+from esolangs.interpreters.tape_based.slow_acv_mammalian._dialect import (
+    DEFAULT_MODULI,
+    MODULI,
+    MammalianModuli,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.tools.constant_projection import balanced_projection
@@ -1122,6 +1126,7 @@ LANGUAGE = Language(
     boolean=slow_acv_mammalian,
     balance=balance_slow_acv_mammalian,
     dialect=MammalianModuli,
+    dialect_values={"cell_modulus": MODULI, "io_modulus": MODULI},
     # Not a tree: a branch-free chain into a flat leaf table.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

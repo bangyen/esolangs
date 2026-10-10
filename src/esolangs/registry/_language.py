@@ -7,7 +7,7 @@ module imports nothing from the package, so any generator can import it.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
@@ -91,6 +91,8 @@ class Language:
     documented_sizes: tuple[int, int, float] | None = None
     #: Validates ``DialectSettings``: one defaulted keyword per setting.
     dialect: Callable[..., Any] | None = None
+    #: Valid values per dialect setting, for the ``describe`` schema.
+    dialect_values: Mapping[str, tuple[int | str, ...]] | None = None
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
     wrap: Callable[[str, int], str] | None = None

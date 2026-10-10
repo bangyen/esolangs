@@ -452,7 +452,8 @@ def _raster_registry(source: Source, target: str) -> str:
         "import difflib\nfrom types import SimpleNamespace\n"
         "from esolangs.exceptions import UnknownLanguageError\n"
         "from esolangs.registry._slug import canonical_id, SUGGESTION_CUTOFF\n"
-        f"LANGUAGES = {{{name!r}: SimpleNamespace(dialect=None)}}\n"
+        f"LANGUAGES = {{{name!r}: SimpleNamespace("
+        "dialect=None, dialect_values=None)}\n"
         f"_BY_ID = {{({language_id!r} or canonical_id({name!r})): {name!r}}}\n"
         f"_BY_FOLDED = {{{name.strip().casefold()!r}: {name!r}}}\n"
         + ast.unparse(resolver)
