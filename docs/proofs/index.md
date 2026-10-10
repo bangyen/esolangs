@@ -164,6 +164,7 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container;
 BrainIf's tree counts only the inputs it branches on — and the lookup above it.  Streetcode builds both at five inputs and keeps
 the shorter, so its crossover is where the two meet rather than a constant.
 BrainIf also competes with its input-forgetting residual DAG, proved below.
+Suffolk competes with a NOR cofactor DAG within its workspace ledger.
 Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
@@ -171,7 +172,7 @@ the tree at any arity.  A Painter Ant, Alight, BIO, B-tapemark,
 bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
 Cyclic tag, ///, Subleq, Dimensional, EGL, Eval, Fish, Flowchart,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
-Suffolk, Thue and Unsquare keep no tree route at all: A Painter
+Thue and Unsquare keep no tree route at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, bit~ lands the pointer on one tape cell an entry and walks the
@@ -201,14 +202,13 @@ per row, Modulous pushes the whole table as one string literal and spends
 the row index popping it down to the answer, NoComment switches between two lookups at four inputs, Qoibl divides one
 literal by the power of two its reads build,
 SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
-row whatever the table says, Suffolk sweeps a countdown past every row,
+row whatever the table says,
 Unsquare pushes the whole table onto the stack a cell a row and pops the row
 index off the top of it, Thue makes the table its starting state and rewrites
 every adjacent pair down to one per input; none has a subtree to
-fold.  Collatz Multiverse, Eval, NoComment, Suffolk and Unsquare fold a degenerate
-table anyway, because their lookup route is what shrinks it -- Suffolk through
-`essential_inputs`, which halves the sweep per input dropped, Unsquare through
-the same call, which halves its table, and Collatz
+fold.  Collatz Multiverse, Eval, NoComment and Unsquare fold a degenerate
+table anyway, because their lookup route is what shrinks it -- Unsquare through
+`essential_inputs`, which halves its table, and Collatz
 Multiverse because a table with few distinct nibbles needs fewer cell
 constants and a shorter decoder; that is why the fold discriminator
 in `test_schemes.py` carries them as documented exceptions.
@@ -328,7 +328,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | Sophie | tree | — | linear: canonical child IDs, shared states, one token join | linear: at most 5n + T/4 + 1 commands: forward only, one per skipped labelled block | poly n: at most bl(L) + bl(n) + 7 bits: cursor, accumulator, input count |
 | SStack | tree | each input byte is compared with stacked '1' and '0', then popped before descent; the empty test stack ends both one-shot loops; a constant subtree reads its remaining inputs and prints; repeated residuals use guarded labels | linear: 21 characters an internal node, three a leaf | poly n: at most 7n + 3 commands, six a tree node plus guarded dispatch | poly n: worst 6n + 12 + bl(K) + bl(n) bits, K commands: n stacked input bytes |
 | Streetcode | linear lookup | the street writes one cell per entry, then each essential input's mouth forks on its bit (an ignored one is a lone read) and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry | linear: nine rows of street, ~1.8T columns | linear: worst 3T + 110n + 56 steps for n = 6, 7, then 4T + 14n + 600: all ones | T log T: worst nT + 2n + 25 + bl(2T+57+G) + 2bl(n) bits past n = 5, G = Σ_{0<k<n} max(51,2^(k-1)+3) |
-| Suffolk | linear lookup | a countdown built from the row index reads zero exactly on the rows below it, so counting the table's rising and falling steps against it telescopes to the indexed entry | linear: bounded dependency scan and canonical residual IDs | linear: worst L + 151 commands: one straight pass, then the wrap to the first read | poly n: worst bl(L-1) + max(6,n-1) + max(19,4n-1) + bl(n) + 4 bits: eight cells, four counters |
+| Suffolk | linear lookup | workspace-limited NOR cofactors share computed values; otherwise a countdown counts rising and falling steps to recover the indexed entry | linear: residual interning, bounded NOR circuit, countdown fallback | linear: worst L + R commands, R the prefix through the first read: one pass, then EOF | poly n: worst bl(L-1) + max(6,n-1) + max(19,4n-1) + bl(n) + 4 bits: bounded NOR cells or eight countdown cells |
 | Super SNUSP | tree | each folding pass removes at least one pending unit | linear: one `*` per entry | linear: worst 2T + 19n + 21 commands past n = 4: one straight line, all ones but one row | linear: worst T + 2n + 12 + bl(L) + bl(n) bits past n = 4: the packed-table cell |
 | Taglate | tree | — | linear: bounded dependency scan and canonical residual IDs | linear: worst 16T + (7n^2+26n-22)/2 for even n > 2, 28T + (7m^2+22m-36)/2 for odd, m = n + 1 | linear: worst 24·2^m + 12m + 12 + bl(m) + bl(L-4·2^m-7m+1) bits, m = n rounded up to even |
 | Thue | linear lookup | the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per essential input and the last character is the answer; an ignored input's round reads its line and deletes it; the rules never overlap, so the language's random rule choice has nothing to choose | linear: T state characters, at most 23 fixed rules plus expansions | linear: worst 2T + 3n - 2 rewrites: n rounds, each a marker sweep out and back | linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state string |

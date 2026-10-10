@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs import tools as boolean
+from esolangs.tools.suffolk import _suffolk_lookup
 from tests.tools.boolean_runners import (
     run_suffolk,
 )
@@ -16,7 +17,7 @@ class TestSuffolk:
         for n in (8, 9, 10):
             table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(2**n))
             sizes.append(len(boolean.suffolk(table)))
-        assert sizes == [2211, 3224, 5087]
+        assert sizes == [2211, 2447, 2920]
         assert sizes[2] < 2 * sizes[1]
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
@@ -42,7 +43,8 @@ class TestSuffolk:
                 sum(a != b for a, b in zip(part, f"{part[1:]}0", strict=True))
                 for part in (table[:half], table[half:])
             )
-            groups.setdefault(profile, set()).add(len(boolean.suffolk(table)))
+            groups.setdefault(profile, set()).add(len(_suffolk_lookup(table)))
+            assert len(boolean.suffolk(table)) <= len(_suffolk_lookup(table))
         assert sorted(groups) == [(1, 0), (1, 1), (1, 3), (3, 0)]
         assert all(len(sizes) == 1 for sizes in groups.values())  # profile fixes it
         assert min(groups[(1, 0)]) < min(groups[(3, 0)])  # more steps cost more

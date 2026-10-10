@@ -40,6 +40,8 @@ def _vandevelo(p: str) -> int:
 #: Formulas the ledger notation cannot state: a case split, a definition,
 #: a count taken from the program.
 _HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
+    # Every instruction runs once, then the EOF read stops the second pass.
+    "Suffolk": (lambda _, p: len(p) + p.index(",") + 1, True, (3, 6)),
     "Container": (lambda n, _: 2 * n + 2, True, (3, 7)),
     # Two passes of the whitespace-free program, the second proving the repeat.
     "A Painter Ant": (lambda _, p: 2 * len("".join(p.split())), True, (3, 6)),

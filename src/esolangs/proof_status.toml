@@ -940,16 +940,13 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Suffolk"
 labels = ["linear lookup"]
 qualification = """\
-    a countdown built from the row index reads zero exactly on the rows below it, so \
-    counting the table's rising and falling steps against it telescopes to the \
-    indexed entry"""
-scaling = "linear: bounded dependency scan and canonical residual IDs"
+    workspace-limited NOR cofactors share computed values; otherwise a countdown \
+    counts rising and falling steps to recover the indexed entry"""
+scaling = "linear: residual interning, bounded NOR circuit, countdown fallback"
 execution = """\
-    linear: worst L + 151 commands: one straight pass, then the wrap to the first \
-    read"""
+    linear: worst L + R commands, R the prefix through the first read: one pass, then EOF"""
 workspace = """\
-    poly n: worst bl(L-1) + max(6,n-1) + max(19,4n-1) + bl(n) + 4 bits: eight cells, \
-    four counters"""
+    poly n: worst bl(L-1) + max(6,n-1) + max(19,4n-1) + bl(n) + 4 bits: bounded NOR cells or eight countdown cells"""
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]

@@ -1,4 +1,4 @@
-"""Boolean generator for Suffolk: steps telescope; with no jump, nothing is shared."""
+"""Boolean generator for Suffolk: shared NOR cofactors or a countdown sweep."""
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -38,11 +38,20 @@ def _one(cell: int) -> str:
 
 
 def suffolk(truth_table: str) -> str:
+    """Return the smaller admitted NOR DAG or countdown program."""
+    from esolangs.tools.suffolk_shared import shared_dag
+
+    lookup = _suffolk_lookup(truth_table)
+    shared = shared_dag(truth_table, _validate_truth_table(truth_table))
+    return lookup if shared is None or len(shared) >= len(lookup) else shared
+
+
+def _suffolk_lookup(truth_table: str) -> str:
     """Build Suffolk by one countdown sweep over the table's steps.
 
     ``!`` is the only write and computes ``max(0, cell + 1 - acc)``: a
-    clamped subtraction, not a gate, so the table is evaluated by counting
-    rather than by a tree of NOR muxes.  Cell 0 counts down from ``H - x``,
+    clamped subtraction. This candidate counts table steps. Cell 0 counts
+    down from ``H - x``,
     and so reads zero on exactly the last ``x`` of the sweep's ``H`` rounds,
     which turns ``count <- max(0, count + 1 - cell0)`` into "add one if the
     row is below ``x``".  Counting the rows where the table steps up and
@@ -117,7 +126,7 @@ LANGUAGE = Language(
     "tape_based.suffolk",
     weekly_mutation=("generator",),
     boolean=suffolk,
-    # A sum, not a tree: a lookup over the essential inputs only.
+    # Both routes project to the essential inputs.
     shape=Shape.REDUCING,
     contract=BooleanContract(
         input_shape="char_stream",
