@@ -234,4 +234,4 @@ class TestTheTwoQueueLanguagesDifferOnPurpose:
         module = importlib.import_module("esolangs.interpreters.queue_based.taglate")
         doc = module.__doc__ or ""
         assert "is **skipped**" in doc
-        assert "Bitdeque instead requires" in doc
+        assert "word-command queue language" in doc
