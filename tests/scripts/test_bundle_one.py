@@ -43,7 +43,6 @@ def load_script() -> Any:
 
 
 def _load_bundle(tmp_path: Path) -> object:
-    """Import a bundled file from ``tmp_path``, returning its module."""
     spec = importlib.util.spec_from_file_location("bundle_mod", tmp_path)
     assert spec is not None
     module = importlib.util.module_from_spec(spec)
@@ -336,7 +335,8 @@ def test_raster_package_bundles_from_raw_http_sources(
         )
         assert "Requires: pip install Pillow" in out.read_text()
         bundled = _load_bundle(out)
-        program = esolangs.generate(language, "01")
+        png = esolangs.generate(language, "01").to_png()
+        program = bundled._interpreter.load_source(png)  # noqa: SLF001
         assert _run_and_read(bundled, program, "1\n") == "1"
     finally:
         server.shutdown()
