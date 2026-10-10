@@ -29,6 +29,7 @@ from time import perf_counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _budget import completed, options, supervise
 from _build import TABLES, chosen, sizes
 
 #: Parity at the two arities the per-node slope is taken between.
@@ -96,6 +97,7 @@ def screen(
     start = perf_counter()
     cost = per_node(name, gen)
     if cost is None:
+        completed("skipped", case_count=len(TABLES) + len(five), language=name)
         return None
     three = bound(sizes(name, gen, TABLES), cost)
     at_five = bound(sizes(name, gen, five), cost)
@@ -112,11 +114,22 @@ def main() -> None:
     parser.add_argument("languages", nargs="*", help="registry names (default all)")
     parser.add_argument("--sample", type=int, default=200, help="n=5 tables")
     parser.add_argument("--seed", type=int, default=0, help="n=5 sample seed")
+    options(parser)
     args = parser.parse_args()
+    if not 1 <= args.sample <= 2**32:
+        parser.error("--sample must be between 1 and 2**32")
+    languages = list(chosen(args.languages))
+    plan = {
+        "tables": len(languages) * (2 + len(TABLES) + args.sample),
+        "work_bound": len(languages) * (8 + 32 + len(TABLES) * 8 + args.sample * 32),
+        "work_unit": "truth_table_bits",
+    }
+    if not supervise(parser, args, Path(__file__), plan):
+        return
     five = sample(args.sample, args.seed)
     print(f"repeated nodes: n=3 {share(TABLES):.1f}%, n=5 {share(five):.1f}%")
     rows = []
-    for key, gen in chosen(args.languages):
+    for key, gen in languages:
         result = screen(key, gen, five)
         if result is not None:
             rows.append((key, *result))

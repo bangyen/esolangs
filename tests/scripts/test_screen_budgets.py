@@ -79,7 +79,7 @@ def test_screen_wall_budget_stops_generation_and_descendants(tmp_path, monkeypat
 
 @pytest.mark.medium
 @pytest.mark.parametrize("screen", ["steps", "resources"])
-def test_small_real_screen_runs_under_its_plan(screen):
+def test_small_real_screen_runs_under_its_plan(screen, tmp_path):
     import subprocess
 
     arguments = (
@@ -88,8 +88,17 @@ def test_small_real_screen_runs_under_its_plan(screen):
         else [payload_language(), "--max-inputs", "1"]
     )
     script = Path(__file__).resolve().parents[2] / "scripts/screens" / f"{screen}.py"
+    report = tmp_path / "report.json"
     result = subprocess.run(
-        [sys.executable, str(script), *arguments, "--budget-seconds", "5"],
+        [
+            sys.executable,
+            str(script),
+            *arguments,
+            "--budget-seconds",
+            "5",
+            "--report",
+            str(report),
+        ],
         capture_output=True,
         text=True,
         timeout=8,
@@ -98,7 +107,84 @@ def test_small_real_screen_runs_under_its_plan(screen):
     plan = json.loads(result.stdout.splitlines()[0])
     assert plan["step_bound"] < 100000
     assert plan["wall_budget_seconds"] == 5
+    record = json.loads(report.read_text())
+    assert record["status"] == "complete"
+    assert record["completed_cases"] == plan["tables"]
+    assert 0 < record["row_executions"] <= plan["row_executions"]
 
 
 def payload_language():
     return next(name for name, language in LANGUAGES.items() if language.payload)
+
+
+@pytest.mark.parametrize(
+    "name", ["transforms", "sharing", "ignored_input", "dead_code"]
+)
+def test_remaining_screen_previews_do_not_generate(name, monkeypatch, capsys):
+    import importlib
+
+    screen = importlib.import_module("scripts.screens." + name)
+    monkeypatch.setattr(sys, "argv", [name, "brainfuck", "--dry-run"])
+    screen.main()
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["tables"] > 0
+    assert plan["work_bound"] > 0
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("name", "extra"),
+    [
+        ("transforms", []),
+        ("sharing", ["--sample", "1"]),
+        ("ignored_input", []),
+        ("dead_code", ["--limit", "1"]),
+    ],
+)
+def test_remaining_small_screens_have_complete_manifests(tmp_path, name, extra):
+    import subprocess
+
+    script = Path(__file__).resolve().parents[2] / "scripts/screens" / (name + ".py")
+    report = tmp_path / "report.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "brainfuck",
+            *extra,
+            "--budget-seconds",
+            "5",
+            "--report",
+            str(report),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=8,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    record = json.loads(report.read_text())
+    assert record["status"] == "complete"
+    assert (
+        record["completed_cases"] + record["skipped_cases"] == record["plan"]["tables"]
+    )
+    assert record["checkout"]["commit"]
+
+
+@pytest.mark.medium
+def test_successful_exit_without_case_ledger_is_incomplete(tmp_path, monkeypatch):
+    script = tmp_path / "scripts/screens/partial.py"
+    script.parent.mkdir(parents=True)
+    script.write_text('print("partial output")\n')
+    report = tmp_path / "report.json"
+    monkeypatch.setattr(sys, "argv", [str(script)])
+    args = argparse.Namespace(
+        budget_seconds=1, max_work=10, worker=False, dry_run=False, report=report
+    )
+    with pytest.raises(SystemExit) as caught:
+        _budget.supervise(
+            argparse.ArgumentParser(), args, script, {"tables": 1, "step_bound": 1}
+        )
+    assert caught.value.code == 1
+    record = json.loads(report.read_text())
+    assert record["status"] == "incomplete"
+    assert record["completed_cases"] == 0

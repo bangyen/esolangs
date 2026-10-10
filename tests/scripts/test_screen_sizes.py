@@ -30,7 +30,10 @@ def test_transform_report_reuses_builds_and_retains_reorder_metrics(capsys):
             raise ValueError("fixture refusal")
         return "+" * lengths[table]
 
-    with patch.object(transforms, "generators", return_value=[("brainfuck", build)]):
+    with (
+        patch.object(transforms, "chosen", return_value=[("brainfuck", build)]),
+        patch("sys.argv", ["transforms", "--worker"]),
+    ):
         transforms.main()
     assert len(calls) == len(set(calls)) == 272
     lines = capsys.readouterr().out.splitlines()

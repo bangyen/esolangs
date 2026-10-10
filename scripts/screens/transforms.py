@@ -25,6 +25,7 @@ the inverter a negated build needs, or a polarity flip that a uniform
 ``ignored`` column includes the read itself, which the interface keeps.
 """
 
+import argparse
 import sys
 from collections.abc import Callable
 from itertools import permutations
@@ -33,7 +34,8 @@ from time import perf_counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _build import PAIRS, TABLES, generators, sizes
+from _budget import options, supervise
+from _build import PAIRS, TABLES, chosen, sizes
 
 from esolangs.tools.helpers import (
     essential_inputs,
@@ -108,8 +110,20 @@ def screen(name: str, gen: Callable[[str], object]) -> Row | None:
 
 def main() -> None:
     """Screen the registry and print one row per language, best NPN first."""
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("languages", nargs="*")
+    options(parser)
+    args = parser.parse_args()
+    languages = list(chosen(args.languages))
+    plan = {
+        "tables": len(languages) * (len(PAIRS) + len(TABLES)),
+        "work_bound": len(languages) * (len(PAIRS) * 4 + len(TABLES) * 8),
+        "work_unit": "truth_table_bits",
+    }
+    if not supervise(parser, args, Path(__file__), plan):
+        return
     rows = []
-    for key, gen in generators():
+    for key, gen in languages:
         result = screen(key, gen)
         if result is None:
             continue

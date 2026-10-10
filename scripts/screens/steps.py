@@ -44,7 +44,7 @@ import esolangs.debugger as debugger_api
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from _budget import options, supervise
+from _budget import completed, options, supervise
 from _build import TABLES, chosen
 from benchmark import _bits, _commands
 
@@ -106,6 +106,7 @@ def total(name: str, table: str, cap: int, *, loops: bool) -> int | None:
     try:
         program = esolangs.generate(name, table)
     except ValueError as exc:
+        completed("refused", language=name, table_bits=len(table))
         raise GenerationRefusalError(str(exc)) from exc
     assert isinstance(program, str)
     steps = 0
@@ -115,8 +116,10 @@ def total(name: str, table: str, cap: int, *, loops: bool) -> int | None:
         else:
             count = _commands(name, program, table, row, cap)
         if count is None:
+            completed("dropped", rows=row + 1, language=name, table_bits=len(table))
             return None
         steps += count
+    completed("stepped", rows=8, language=name, table_bits=len(table), commands=steps)
     return steps
 
 

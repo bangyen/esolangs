@@ -64,6 +64,8 @@ def sizes(
     ``ValueError`` is the refusal; anything else is a real failure and
     propagates.
     """
+    from _budget import completed
+
     out: dict[str, int | None] = {}
     for table in tables:
         try:
@@ -71,6 +73,12 @@ def sizes(
             out[table] = source_size(name, program)
         except ValueError:
             out[table] = None
+        completed(
+            "refused" if out[table] is None else "measured",
+            language=name,
+            table_bits=len(table),
+            size=out[table],
+        )
     return out
 
 

@@ -11,7 +11,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from _budget import options, supervise
+from _budget import completed, options, supervise
 from benchmark import measure
 
 
@@ -114,7 +114,9 @@ def main() -> None:
     for language in languages:
         for n in range(1, args.max_inputs + 1):
             for family, table in corpus(n).items():
-                print(json.dumps({"family": family, **audit(language, n, table)}))
+                profile = audit(language, n, table)
+                completed("executed", rows=len(table), family=family, **profile)
+                print(json.dumps({"family": family, **profile}))
 
 
 if __name__ == "__main__":

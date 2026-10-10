@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from weakref import WeakKeyDictionary
 
 from _bounded_log import MAX_LOG_BYTES, spool
+from _process_children import children as child_pids
 
 EXCERPT_BYTES = 32 * 1024
 
@@ -41,7 +42,9 @@ class Cleanup:
     complete: bool = False
 
 
-_CLEANUPS: WeakKeyDictionary[subprocess.Popen[str], Cleanup] = WeakKeyDictionary()
+_CLEANUPS: WeakKeyDictionary[
+    subprocess.Popen[str] | subprocess.Popen[bytes], Cleanup
+] = WeakKeyDictionary()
 _CLEANUP_LOCK = threading.Lock()
 
 
@@ -103,7 +106,7 @@ def excerpt(proc: subprocess.Popen[str]) -> str:
     return f"[log] {log.path}\n" + tail
 
 
-def stop_process_tree(proc: subprocess.Popen[str]) -> None:
+def stop_process_tree(proc: subprocess.Popen[str] | subprocess.Popen[bytes]) -> None:
     """Kill the step's process tree and reap its direct child."""
     with _CLEANUP_LOCK:
         cleanup = _CLEANUPS.setdefault(proc, Cleanup())
@@ -111,6 +114,18 @@ def stop_process_tree(proc: subprocess.Popen[str]) -> None:
         if cleanup.complete:
             return
         if os.name == "posix":
+            if proc.poll() is None:
+                descendants = []
+                pending = [proc.pid]
+                while pending:
+                    parent = pending.pop()
+                    children = child_pids(parent)
+                    descendants.extend(children)
+                    pending.extend(children)
+                # Nested benchmark/reference workers own sessions; kill leaves first.
+                for pid in reversed(descendants):
+                    with suppress(ProcessLookupError):
+                        os.kill(pid, signal.SIGKILL)
             # Reap exited leaders before signalling; Darwin rejects zombie groups.
             proc.poll()
             with suppress(ProcessLookupError):

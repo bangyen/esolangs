@@ -19,6 +19,7 @@ deletion that makes a program diverge or merely slow is never kept.
 """
 
 import argparse
+import math
 import sys
 import warnings
 from pathlib import Path
@@ -26,6 +27,7 @@ from time import perf_counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _budget import completed, options, supervise
 from _build import generators
 
 import esolangs
@@ -46,6 +48,7 @@ class _Program:
     def __init__(self, name: str, table: str, timeout: float) -> None:
         self.name, self.table, self.timeout = name, table, timeout
         self.inputs = len(table).bit_length() - 1
+        self.executions = 0
         facts = describe(name)
         self.terminating = facts["answer_mode"] == "termination"
         generated = esolangs.generate(name, table)
@@ -69,6 +72,7 @@ class _Program:
     def correct(self, text: str) -> bool:
         """Return whether ``text`` answers every row of the table."""
         for row in range(len(self.table)):
+            self.executions += 1
             bits = [(row >> (self.inputs - 1 - i)) & 1 for i in range(self.inputs)]
             try:
                 if self.char is not None:
@@ -146,13 +150,25 @@ def screen(
         try:
             program = _Program(name, table, timeout)
         except (EsolangError, ValueError):
+            completed("refused", language=name, table_bits=len(table))
             continue
         if len(program.text) > limit or not program.correct(program.text):
+            completed(
+                "skipped", rows=program.executions, language=name, table_bits=len(table)
+            )
             continue
         shrunk = shrink(program)
         before += len(program.text)
         after += len(shrunk)
         spaces += _spaces(program.text) - _spaces(shrunk)
+        completed(
+            "executed",
+            rows=program.executions,
+            language=name,
+            table_bits=len(table),
+            before=len(program.text),
+            after=len(shrunk),
+        )
     if not before:
         return None
     dead, blank = 100 * (1 - after / before), 100 * spaces / before
@@ -165,11 +181,22 @@ def main() -> None:
     parser.add_argument("languages", nargs="*", help="registry names (default all)")
     parser.add_argument("--limit", type=int, default=2000, help="skip longer programs")
     parser.add_argument("--timeout", type=float, default=0.5, help="seconds per row")
+    options(parser)
     args = parser.parse_args()
+    if args.limit < 1 or not math.isfinite(args.timeout) or args.timeout <= 0:
+        parser.error("source limit and row timeout must be positive and finite")
     # ``resolve`` takes keys and aliases too: ``bf-pda`` failed every row.
     names = [resolve(name) for name in args.languages] or [
         key for key, _gen in generators()
     ]
+    plan = {
+        "tables": len(names) * len(TABLES),
+        "row_executions": len(names) * sum(map(len, TABLES)) * (2 * args.limit + 1),
+        "work_bound": len(names) * sum(map(len, TABLES)) * (2 * args.limit + 1),
+        "work_unit": "row_executions",
+    }
+    if not supervise(parser, args, Path(__file__), plan):
+        return
     rows = []
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

@@ -12,12 +12,14 @@ Run from the repository root: ``python scripts/screens/ignored_input.py
 [LANG ...]``.
 """
 
+import argparse
 import random
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _budget import options, supervise
 from _build import chosen, ignore, random_table, sizes
 
 #: Growth above which an ignored input is built as if it mattered.
@@ -26,10 +28,21 @@ DOUBLES = 1.5
 
 def main(argv: list[str] | None = None) -> int:
     """Print each generator's worst growth per position."""
-    names = sys.argv[1:] if argv is None else argv
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("languages", nargs="*")
+    options(parser)
+    args = parser.parse_args(argv)
+    languages = list(chosen(args.languages))
+    plan = {
+        "tables": len(languages) * 45,
+        "work_bound": len(languages) * 3 * sum((1 << n) * 9 for n in (4, 5, 6)),
+        "work_unit": "truth_table_bits",
+    }
+    if not supervise(parser, args, Path(__file__), plan, argv):
+        return 0
     rng = random.Random(2026)
     print(f"{'generator':<28} first  mid   last  fresh")
-    for name, gen in chosen(names):
+    for name, gen in languages:
         worst = {"first": 0.0, "mid": 0.0, "last": 0.0, "fresh": 0.0}
         for n in (4, 5, 6):
             for _ in range(3):

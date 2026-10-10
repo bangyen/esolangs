@@ -5,11 +5,15 @@ import json
 import math
 import os
 import sys
+import tempfile
 import time
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _atomic import write_text
 from _verify_process import start_logged, wait_with_heartbeat
+from benchmark import source_identity
 
 
 def options(parser: argparse.ArgumentParser) -> None:
@@ -17,6 +21,8 @@ def options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--budget-seconds", type=float, default=60)
     parser.add_argument("--max-work", type=int, default=10**10)
+    parser.add_argument("--report", type=Path)
+    parser.add_argument("--max-cases", type=int, default=100000)
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
 
 
@@ -24,7 +30,8 @@ def supervise(
     parser: argparse.ArgumentParser,
     args: argparse.Namespace,
     path: Path,
-    plan: dict[str, int],
+    plan: dict[str, Any],
+    argv: list[str] | None = None,
 ) -> bool:
     """Return true only inside the worker; otherwise print a plan or run it."""
     if (
@@ -33,8 +40,10 @@ def supervise(
         or args.max_work < 1
     ):
         parser.error("wall budget and work limit must be positive and finite")
-    if plan["step_bound"] > args.max_work:
+    if plan.get("work_bound", plan.get("step_bound", 0)) > args.max_work:
         parser.error("screen exceeds --max-work")
+    if plan.get("tables", 0) > getattr(args, "max_cases", 100000):
+        parser.error("screen exceeds --max-cases")
     if args.worker:
         return True
     print(
@@ -45,17 +54,129 @@ def supervise(
     )
     if args.dry_run:
         return False
-    process = start_logged(
-        [sys.executable, str(path), *sys.argv[1:], "--worker"],
-        path.stem,
-        dict(os.environ),
-        path.resolve().parents[2],
-        stream=True,
+    root = (
+        path.resolve().parents[2]
+        if path.parent.name == "screens"
+        else path.resolve().parents[1]
     )
-    output, code = wait_with_heartbeat(
-        process, path.stem, time.monotonic(), args.budget_seconds, 10
-    )
+    directory = root / "notes/screens"
+    directory.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=path.stem + "-", suffix=".json", dir=directory)
+    os.close(fd)
+    report = getattr(args, "report", None) or Path(name)
+    if report != Path(name):
+        Path(name).unlink()
+    progress = Path(name + ".progress")
+    checkout = source_identity()
+    started = time.monotonic()
+    code = 1
+    status = "failed"
+    output = ""
+    try:
+        process = start_logged(
+            [
+                sys.executable,
+                str(path),
+                *(sys.argv[1:] if argv is None else argv),
+                "--worker",
+            ],
+            path.stem,
+            {**os.environ, "ESOLANGS_SCREEN_PROGRESS": str(progress)},
+            root,
+            stream=True,
+        )
+        output, code = wait_with_heartbeat(
+            process, path.stem, started, args.budget_seconds, 10
+        )
+        status = "complete" if code == 0 else "timeout" if code == 124 else "failed"
+    except BaseException:
+        status = "interrupted"
+        raise
+    finally:
+        records = []
+        try:
+            if progress.exists():
+                with progress.open("rb") as stream:
+                    raw = stream.read(8 * 1024 * 1024 + 1)
+                if len(raw) > 8 * 1024 * 1024:
+                    raise ValueError("screen progress exceeds eight MiB")
+                records = [json.loads(line) for line in raw.splitlines()]
+                if any(
+                    not isinstance(record, dict)
+                    or type(record.get("ordinal")) is not int
+                    or record.get("ordinal") != index
+                    or type(record.get("rows")) is not int
+                    or record["rows"] < 0
+                    or not isinstance(record.get("status"), str)
+                    or type(record.get("case_count", 1)) is not int
+                    or record.get("case_count", 1) < 1
+                    for index, record in enumerate(records)
+                ):
+                    raise ValueError("invalid screen progress sequence")
+            if status == "complete" and sum(
+                record.get("case_count", 1) for record in records
+            ) != plan.get("tables", len(records)):
+                status, code = "incomplete", 1
+            if source_identity() != checkout:
+                status, code = "source-changed", 1
+        except (OSError, ValueError):
+            records = []
+            status, code = "invalid-evidence", 1
+        write_text(
+            report,
+            json.dumps(
+                {
+                    "schema": 1,
+                    "screen": path.stem,
+                    "checkout": checkout,
+                    "plan": plan,
+                    "completed_cases": sum(
+                        record.get("case_count", 1)
+                        for record in records
+                        if record.get("status") != "skipped"
+                    ),
+                    "skipped_cases": sum(
+                        record.get("case_count", 1)
+                        for record in records
+                        if record.get("status") == "skipped"
+                    ),
+                    "row_executions": sum(record.get("rows", 0) for record in records),
+                    "cases": records,
+                    "status": status,
+                    "exit_code": code,
+                    "wall_budget_seconds": args.budget_seconds,
+                    "elapsed_seconds": time.monotonic() - started,
+                },
+                sort_keys=True,
+                indent=1,
+            )
+            + "\n",
+        )
+        progress.unlink(missing_ok=True)
+        print(f"screen manifest: {report}", flush=True)
     if code:
         print(output, file=sys.stderr)
         raise SystemExit(code)
     return False
+
+
+_ORDINAL = 0
+
+
+def completed(status: str, *, rows: int = 0, **fields: Any) -> None:
+    """Append one completed case to the supervising process's bounded ledger."""
+    global _ORDINAL
+    name = os.environ.get("ESOLANGS_SCREEN_PROGRESS")
+    if name is None:
+        return
+    record = {"ordinal": _ORDINAL, "status": status, "rows": rows, **fields}
+    line = json.dumps(record, sort_keys=True) + "\n"
+    path = Path(name)
+    if (path.stat().st_size if path.exists() else 0) + len(
+        line.encode("utf-8")
+    ) > 8 * 1024 * 1024:
+        raise RuntimeError("screen progress exceeds eight MiB")
+    with path.open("a", encoding="utf-8") as stream:
+        stream.write(line)
+        stream.flush()
+    _ORDINAL += 1

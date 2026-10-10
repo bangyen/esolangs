@@ -53,3 +53,56 @@ def test_text_grid_size_charges_blank_padding() -> None:
 def test_text_size_counts_characters() -> None:
     with patch("_build.describe", return_value={"state_model": "tape"}):
         assert canonical.size("fixture", "+\n.") == 3
+
+
+def test_resume_accepts_matching_execution_and_retries_timeouts(tmp_path):
+    import json
+
+    checkout = {"commit": "fixture"}
+    with (
+        patch.object(canonical, "paths", return_value={"default": {}}),
+        patch.object(canonical, "corpus", return_value={"zero": "00"}),
+    ):
+        record = canonical.audit("brainfuck", 1, all_rows=True, checkout=checkout)[0]
+        path = tmp_path / "resume.jsonl"
+        path.write_text(json.dumps(record) + "\n")
+        assert canonical.resume(path, checkout, all_rows=True) == {
+            ("brainfuck", 1, "default", "zero")
+        }
+        record["status"] = "timeout"
+        path.write_text(json.dumps(record) + "\n")
+        assert not canonical.resume(path, checkout, all_rows=True)
+
+
+@pytest.mark.parametrize("drift", ["source", "settings", "corpus", "legacy"])
+def test_resume_rejects_changed_provenance(tmp_path, drift):
+    import json
+
+    checkout = {"commit": "fixture"}
+    record = {
+        "schema": 1,
+        "language": "brainfuck",
+        "n": 1,
+        "path": "default",
+        "piece": "zero",
+        "status": "executed",
+        "rows": 2,
+        "identity": canonical.evidence_identity(checkout, "00", {}),
+    }
+    choices, tables = {"default": {}}, {"zero": "00"}
+    if drift == "source":
+        checkout = {"commit": "changed"}
+    elif drift == "settings":
+        choices["default"] = {"width": 8}
+    elif drift == "corpus":
+        tables["zero"] = "01"
+    else:
+        del record["identity"]
+    path = tmp_path / "resume.jsonl"
+    path.write_text(json.dumps(record) + "\n")
+    with (
+        patch.object(canonical, "paths", return_value=choices),
+        patch.object(canonical, "corpus", return_value=tables),
+        pytest.raises(ValueError, match="canonical resume"),
+    ):
+        canonical.resume(path, checkout, all_rows=False)

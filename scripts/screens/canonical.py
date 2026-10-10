@@ -6,6 +6,7 @@ Refused paths and timeouts remain explicit; neither is evidence of a wall.
 """
 
 import argparse
+import hashlib
 import json
 import random
 import sys
@@ -18,6 +19,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _build import ignore, random_table, source_size, tiled
 from paths import paths
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from dataclasses import asdict, is_dataclass
+
+from benchmark import source_identity
 
 import esolangs
 from esolangs._evaluate import _terminates
@@ -97,11 +103,14 @@ def audit(
     *,
     all_rows: bool,
     done: set[tuple[str, int, str, str]] | None = None,
+    checkout: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Measure and execute each path, retaining refusals and timed-out jobs."""
     records = []
+    checkout = source_identity() if checkout is None else checkout
     for label, options in paths(name).items():
         for piece, table in corpus(n).items():
+            identity = evidence_identity(checkout, table, options)
             if done and (name, n, label, piece) in done:
                 continue
             started = perf_counter()
@@ -110,6 +119,8 @@ def audit(
                 "n": n,
                 "path": label,
                 "piece": piece,
+                "schema": 1,
+                "identity": identity,
             }
             try:
                 built: list[esolangs.Program] = []
@@ -159,6 +170,77 @@ def controls() -> dict[str, int]:
     return found
 
 
+def evidence_identity(
+    checkout: dict[str, Any], table: str, options: dict[str, Any]
+) -> dict[str, Any]:
+    """Bind source, the exact seeded table and serializable generation settings."""
+    settings = {
+        key: asdict(value)
+        if is_dataclass(value) and not isinstance(value, type)
+        else value
+        for key, value in options.items()
+    }
+    return {
+        "checkout": checkout,
+        "table_sha256": hashlib.sha256(table.encode("ascii")).hexdigest(),
+        "settings_sha256": hashlib.sha256(
+            json.dumps(settings, sort_keys=True).encode()
+        ).hexdigest(),
+    }
+
+
+def resume(
+    path: Path, checkout: dict[str, Any], *, all_rows: bool
+) -> set[tuple[str, int, str, str]]:
+    """Resume only executed, matching records; retry refusals and timeouts."""
+    with path.open("rb") as stream:
+        data = stream.read(8 * 1024 * 1024 + 1)
+    if len(data) > 8 * 1024 * 1024:
+        raise ValueError("canonical resume exceeds eight MiB")
+    done = set()
+    for line in data.splitlines():
+        record = json.loads(line)
+        if not isinstance(record, dict):
+            raise ValueError("invalid canonical resume record")
+        if "language" not in record:
+            continue
+        if (
+            type(record.get("schema")) is not int
+            or record.get("schema") != 1
+            or not isinstance(record.get("identity"), dict)
+        ):
+            raise ValueError("canonical resume lacks source identity")
+        if not isinstance(record["language"], str):
+            raise ValueError("invalid canonical resume language")
+        name = resolve(record["language"])
+        n = record.get("n")
+        if type(n) is not int or not 1 <= n <= 8:
+            raise ValueError("invalid canonical resume arity")
+        label, piece = record.get("path"), record.get("piece")
+        choices, tables = paths(name), corpus(n)
+        if (
+            not isinstance(label, str)
+            or not isinstance(piece, str)
+            or label not in choices
+            or piece not in tables
+        ):
+            raise ValueError("canonical resume path or corpus changed")
+        expected = evidence_identity(checkout, tables[piece], choices[label])
+        if record["identity"] != expected:
+            raise ValueError("canonical resume source, settings or corpus changed")
+        if record.get("status") != "executed":
+            continue
+        expected_rows = len(tables[piece]) if all_rows else min(3, len(tables[piece]))
+        if type(record.get("rows")) is not int or record["rows"] not in {
+            min(3, len(tables[piece])),
+            len(tables[piece]),
+        }:
+            raise ValueError("invalid canonical resume row coverage")
+        if record["rows"] >= expected_rows:
+            done.add((name, n, label, piece))
+    return done
+
+
 def main() -> None:
     """Print JSONL evidence; the pilot prices the same paths at four inputs."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -173,21 +255,18 @@ def main() -> None:
         if esolangs.describe(name)["boolean_generator"]
     ]
     print(json.dumps({"positive_controls": controls()}), flush=True)
+    checkout = source_identity()
     done = set()
     if args.resume:
-        for line in args.resume.read_text().splitlines():
-            record = json.loads(line)
-            if "language" in record and (
-                not args.all_rows
-                or record["status"] != "executed"
-                or record["rows"] == 1 << record["n"]
-            ):
-                done.add(
-                    (record["language"], record["n"], record["path"], record["piece"])
-                )
+        try:
+            done = resume(args.resume, checkout, all_rows=args.all_rows)
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
     for name in names:
         for n in (4,) if args.price else range(1, 9):
-            for record in audit(name, n, all_rows=args.all_rows, done=done):
+            for record in audit(
+                name, n, all_rows=args.all_rows, done=done, checkout=checkout
+            ):
                 print(json.dumps(record), flush=True)
 
 

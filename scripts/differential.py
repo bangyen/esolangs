@@ -144,17 +144,54 @@ characters breaks the grammar, ``valid`` to reject such candidates, and
 from __future__ import annotations
 
 import argparse
+import base64
+import json
+import math
 import os
 import random
 import re
 import shlex
-import subprocess
 import sys
 import tempfile
+import time
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "screens"))
+from _budget import completed, supervise
+from _budget import options as budget_options
+from _differential_generators import (
+    ascii_input as ascii_input,
+)
+from _differential_generators import (
+    balanced as balanced,
+)
+from _differential_generators import (
+    befunge_input as befunge_input,
+)
+from _differential_generators import (
+    befunge_join as befunge_join,
+)
+from _differential_generators import (
+    befunge_program as befunge_program,
+)
+from _differential_generators import (
+    bf_block as bf_block,
+)
+from _differential_generators import (
+    bf_program as bf_program,
+)
+from _differential_generators import (
+    deadfish_program as deadfish_program,
+)
+from _differential_generators import (
+    subleq_program as subleq_program,
+)
+from _reference_process import run as run_reference
 
 import esolangs
 from esolangs.exceptions import (
@@ -246,12 +283,10 @@ def run_ref(
         path.write_bytes(program.encode("latin-1"))
         cmd = [arg.replace("{program}", str(path)) for arg in shlex.split(template)]
         data = spec.ref_stdin(program, stdin).encode("utf-8")
-        try:
-            got = subprocess.run(cmd, input=data, capture_output=True, timeout=timeout)
-        except subprocess.TimeoutExpired as exc:
-            out = exc.stdout if isinstance(exc.stdout, bytes) else b""
-            return Outcome("timeout", out)
-    return spec.ref_outcome(got.returncode, got.stdout, got.stderr)
+        code, output, error, status = run_reference(cmd, data, timeout)
+    if status is not None:
+        return Outcome(status, output, error.decode("latin-1")[-200:])
+    return spec.ref_outcome(code, output, error)
 
 
 def compare(ours: Outcome, ref: Outcome) -> str | None:
@@ -317,18 +352,42 @@ class Runner:
         self.spec, self.template, self.timeout = spec, template, timeout
         #: ``ours/ref`` status pairs seen, to show what a campaign exercised.
         self.tally: Counter[str] = Counter()
+        self.minimize_seconds = 10.0
+        self.minimize_calls = 300
+        self.minimize_deadline: float | None = None
 
     def check(self, program: str, stdin: str) -> Case | None:
         """Return the disagreement on this program, if any."""
         spec = self.spec
         mine = spec.ours or run_ours
         ours = mine(spec.language, program, stdin, spec.max_steps)
-        ref = run_ref(spec, self.template, program, stdin, self.timeout)
+
+        def remaining() -> float:
+            return (
+                self.timeout
+                if self.minimize_deadline is None
+                else max(
+                    0.001, min(self.timeout, self.minimize_deadline - time.monotonic())
+                )
+            )
+
+        ref = run_ref(spec, self.template, program, stdin, remaining())
         # A bound is not a verdict: give the side that stopped short more room.
         if ours.status == "timeout" and ref.status not in ("timeout", "limit"):
             ours = mine(spec.language, program, stdin, spec.max_steps * 5)
         if ref.status == "timeout" and ours.status != "timeout":
-            ref = run_ref(spec, self.template, program, stdin, self.timeout * 5)
+            ref = run_ref(
+                spec,
+                self.template,
+                program,
+                stdin,
+                min(
+                    self.timeout * 5,
+                    max(0.001, self.minimize_deadline - time.monotonic()),
+                )
+                if self.minimize_deadline is not None
+                else self.timeout * 5,
+            )
         self.tally[f"{ours.status}/{ref.status}"] += 1
         if ours.status != "timeout" and spec.ours is None:
             fast = run_ours_fast(spec.language, program, stdin)
@@ -340,12 +399,48 @@ class Runner:
         return None if cause is None else Case(program, stdin, cause, ours, ref)
 
     def minimize(self, case: Case, budget: int = 300) -> Case:
-        """Shrink the program, then the input, keeping the same cause."""
+        """Shrink under a process deadline; retain the original case on exhaustion."""
+        key = next((name for name, spec in SPECS.items() if spec is self.spec), None)
+        if key is None:
+            return self._minimize(case, budget)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "case.json"
+            path.write_text(json.dumps(_case_record(case)))
+            command = [
+                sys.executable,
+                str(Path(__file__).resolve()),
+                key,
+                "--ref",
+                self.template,
+                "--minimize-case",
+                str(path),
+                "--minimize-seconds",
+                str(self.minimize_seconds),
+                "--minimize-calls",
+                str(budget),
+            ]
+            _code, output, _error, status = run_reference(
+                command, b"", self.minimize_seconds
+            )
+        if status is not None or _code != 0:
+            self.tally["minimization/" + (status or "failed")] += 1
+            return case
+        return _case_load(json.loads(output))
+
+    def _minimize(self, case: Case, budget: int = 300) -> Case:
+        """Shrink within the worker, retaining only the same observed cause."""
         spec, best = self.spec, case
+        deadline = time.monotonic() + self.minimize_seconds
+        self.minimize_deadline = deadline
         calls = [budget]
 
         def still(program: str, stdin: str) -> Case | None:
-            if calls[0] <= 0 or not program or not spec.valid(program):
+            if (
+                calls[0] <= 0
+                or time.monotonic() >= deadline
+                or not program
+                or not spec.valid(program)
+            ):
                 return None
             calls[0] -= 1
             got = self.check(program, stdin)
@@ -376,7 +471,40 @@ class Runner:
             got = still(best.program, best.stdin[:size])
             if got is not None:
                 best = got
+        self.minimize_deadline = None
         return best
+
+
+def _case_record(case: Case) -> dict[str, object]:
+    return {
+        "program": case.program,
+        "stdin": case.stdin,
+        "cause": case.cause,
+        **{
+            name: {
+                "status": got.status,
+                "output": base64.b64encode(got.output).decode("ascii"),
+                "detail": got.detail,
+            }
+            for name, got in (("ours", case.ours), ("ref", case.ref))
+        },
+    }
+
+
+def _case_load(record: dict[str, Any]) -> Case:
+    return Case(
+        record["program"],
+        record["stdin"],
+        record["cause"],
+        *[
+            Outcome(
+                record[name]["status"],
+                base64.b64decode(record[name]["output"], validate=True),
+                record[name]["detail"],
+            )
+            for name in ("ours", "ref")
+        ],
+    )
 
 
 def ddmin(items: list[int], fails: Callable[[list[int]], bool]) -> list[int]:
@@ -403,219 +531,6 @@ def apply_patches(text: str, patches: Sequence[tuple[str, str]]) -> str:
             raise SystemExit(f"patch does not apply exactly once: {old[:60]!r}")
         text = text.replace(old, new)
     return text
-
-
-# --- brainfuck ------------------------------------------------------------
-
-_BF_IDIOMS = ("[-]", "[+]", "[>+<-]", "[>++<-]", "[>-<-]", "[<+>-]")
-
-
-def bf_block(rng: random.Random, depth: int = 0) -> str:
-    """Return a Brainfuck block; inside a loop it returns the pointer home.
-
-    A loop body that ends where it began and decrements its own cell halts
-    unless an inner loop resets that cell, so most programs halt.
-    """
-    parts: list[str] = []
-    offset = 0
-    for _ in range(rng.randint(1, 8 - 2 * depth)):
-        roll = rng.random()
-        if roll < 0.3:
-            parts.append(rng.choice("+-") * rng.randint(1, 4))
-        elif roll < 0.5:
-            step = rng.choice((-1, 1)) * rng.randint(1, 3)
-            parts.append((">" if step > 0 else "<") * abs(step))
-            offset += step
-        elif roll < 0.62:
-            parts.append(".")
-        elif roll < 0.72:
-            parts.append(",")
-        elif roll < 0.88 and depth < 3:
-            parts.append("[" + bf_block(rng, depth + 1) + "-]")
-        else:
-            parts.append(rng.choice(_BF_IDIOMS))
-    if depth:
-        parts.append(("<" if offset > 0 else ">") * abs(offset))
-    return "".join(parts)
-
-
-def bf_program(rng: random.Random) -> str:
-    """Return a balanced program: mostly structured, sometimes free-form."""
-    if rng.random() < 0.85:
-        return bf_block(rng)
-    out, depth = [], 0
-    for _ in range(rng.randint(1, 30)):
-        char = rng.choice("+-<>.,[]" if depth else "+-<>.,[")
-        depth += {"[": 1, "]": -1}.get(char, 0)
-        out.append(char)
-    return "".join(out) + "]" * depth
-
-
-def balanced(program: str) -> bool:
-    """Whether every bracket in ``program`` has a partner."""
-    depth = 0
-    for char in program:
-        depth += {"[": 1, "]": -1}.get(char, 0)
-        if depth < 0:
-            return False
-    return depth == 0
-
-
-def ascii_input(rng: random.Random, _program: str) -> str:
-    """Return a short ASCII input; often empty, to hit EOF."""
-    pool = "abcxyz019 \n\x00\x01\x7f"
-    return "".join(rng.choice(pool) for _ in range(rng.choice((0, 0, 1, 2, 3, 6))))
-
-
-# --- Befunge-93 -----------------------------------------------------------
-
-_BEF_CELLS = (
-    "0123456789" * 3
-    + "+-*/%!`"
-    + "><^v_|" * 2
-    + ":\\$" * 2
-    + ".,.,"
-    + "#gp&~"
-    + '"@@  '
-)
-#: Edge idioms for a one-line run: a byte above 127 stored and read back,
-#: ``g``/``p`` off the grid and at its far corner, zero divisors, signed
-#: division, a near-overflow product, and reads.
-_BEF_IDIOMS = (
-    "99*3*00p00g.",
-    "99*3*00p00g,",
-    "01-0g.",
-    "501-p",
-    "98*7+0g.",
-    "0/.",
-    "0%.",
-    "07-2/.",
-    "07-2%.",
-    "99*:*:*:*:*:*.",
-    "&.",
-    "~.",
-)
-
-
-def befunge_program(rng: random.Random) -> str:
-    """Return a grid within 80x25: a one-line run or a small random grid.
-
-    No ``?``: the two sides draw differently.  A cell at column 79 or row 24
-    now and then puts the far edge in play; small grids wrap the torus fast.
-    """
-    if rng.random() < 0.5:
-        line = _BEF_CELLS.translate({ord(c): None for c in "^v|"})
-        cells = [rng.choice(line) for _ in range(rng.randint(2, 24))]
-        for _ in range(rng.choice((0, 1, 1, 2))):
-            cells.insert(rng.randrange(len(cells) + 1), rng.choice(_BEF_IDIOMS))
-        if rng.random() < 0.3:
-            cells.insert(
-                rng.randrange(len(cells)),
-                '"' + "".join(rng.choice("ab 0~") for _ in range(3)) + '"',
-            )
-        rows = ["".join(cells) + "@"]
-    else:
-        width, height = rng.randint(2, 10), rng.randint(1, 5)
-        rows = [
-            "".join(rng.choice(_BEF_CELLS + "@@@") for _ in range(width))
-            for _ in range(height)
-        ]
-    if rng.random() < 0.1:
-        rows[0] = rows[0].ljust(79) + rng.choice(_BEF_CELLS.strip())
-    if rng.random() < 0.1:
-        rows += [""] * (24 - len(rows)) + [rng.choice("<>^v.@")]
-    return "\n".join(row.rstrip() for row in rows)
-
-
-def befunge_input(rng: random.Random, _program: str) -> str:
-    """Return integer tokens and characters, often empty to hit EOF."""
-    tokens = [
-        str(rng.randint(-20, 300)) if rng.random() < 0.7 else rng.choice("ab\n")
-        for _ in range(rng.choice((0, 0, 1, 2, 4)))
-    ]
-    return " ".join(tokens)
-
-
-def befunge_join(tokens: list[str]) -> str:
-    """Rebuild a grid, trimming the padding a shrink leaves behind."""
-    rows = [row.rstrip() for row in "".join(tokens).split("\n")]
-    while len(rows) > 1 and not rows[-1]:
-        rows.pop()
-    return "\n".join(rows)
-
-
-# --- Subleq ---------------------------------------------------------------
-
-
-def subleq_program(rng: random.Random) -> str:
-    """Return triples: arithmetic, ``a -1 c`` output and ``-1 b c`` input.
-
-    Jumps go next, anywhere, negative (halt) or past the end (halt);
-    operands sometimes point past loaded memory or at -2 (an error), and the
-    last triple is sometimes cut short.
-    """
-    count = rng.randint(1, 6)
-    size = 3 * count + rng.randint(0, 5)
-
-    def address() -> int:
-        roll = rng.random()
-        return (
-            rng.randrange(size)
-            if roll < 0.9
-            else (-2 if roll < 0.92 else size + rng.randint(0, 3))
-        )
-
-    cells: list[int] = []
-    for pc in range(0, 3 * count, 3):
-        roll = rng.random()
-        a, b = (
-            (-1, address())
-            if roll < 0.12
-            else (address(), -1)
-            if roll < 0.32
-            else (address(), address())
-        )
-        if rng.random() < 0.01:
-            a = b = -1
-        jump = rng.random()
-        c = (
-            pc + 3
-            if jump < 0.4
-            else 3 * rng.randrange(count)
-            if jump < 0.65
-            else rng.randrange(size)
-            if jump < 0.75
-            else -rng.randint(1, 3)
-            if jump < 0.9
-            else size + rng.randint(0, 3)
-        )
-        cells += [a, b, c]
-    cells += [rng.randint(-3, 120) for _ in range(size - len(cells))]
-    if rng.random() < 0.05:
-        cells = cells[: 3 * (count - 1) + rng.randint(1, 2)]
-    return " ".join(map(str, cells))
-
-
-# --- Deadfish -------------------------------------------------------------
-
-
-def deadfish_program(rng: random.Random) -> str:
-    """Return ``idso`` with rare ``h`` and junk, at most six squarings."""
-    out: list[str] = []
-    squares = 0
-    for _ in range(rng.randint(1, 40)):
-        char = rng.choice(
-            "iiiiiddds"
-            + "oooo"
-            + ("h" if rng.random() < 0.05 else "i")
-            + ("x " if rng.random() < 0.1 else "i")
-        )
-        if char == "s":
-            squares += 1
-            if squares > 6:
-                char = "o"
-        out.append(char)
-    return "".join(out)
 
 
 # --- clean-room references: Decleq, Crement, Dimensional, RAM0 ------------
@@ -1145,13 +1060,17 @@ def campaign(runner: Runner, programs: int, seed: int) -> list[tuple[Case, int]]
     for _ in range(programs):
         program = runner.spec.program(rng)
         case = runner.check(program, runner.spec.stdin(rng, program))
+        completed(
+            "compared", language=runner.spec.language, disagreement=case is not None
+        )
         if case is not None:
             groups.setdefault(case.cause, []).append(case)
     print(f"statuses (ours/ref): {dict(runner.tally.most_common())}")
     found = []
     for cases in groups.values():
         shortest = min(cases[:20], key=lambda c: len(c.program) + len(c.stdin))
-        found.append((runner.minimize(shortest), len(cases)))
+        found.append((runner.minimize(shortest, runner.minimize_calls), len(cases)))
+    print(f"minimization statuses: {dict(runner.tally.most_common())}")
     return found
 
 
@@ -1166,6 +1085,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--patch", type=Path, help="patch this reference source in place"
     )
+    budget_options(parser)
+    parser.add_argument("--minimize-seconds", type=float, default=10)
+    parser.add_argument("--minimize-case", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--minimize-calls", type=int, default=300, help=argparse.SUPPRESS
+    )
     args = parser.parse_args(argv)
     spec = SPECS[args.language]
     if args.patch is not None:
@@ -1176,7 +1101,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     template = args.ref or os.environ.get(_env_name(spec.language))
     if not template:
         parser.error(f"give --ref or set {_env_name(spec.language)}")
+    if (
+        args.programs < 1
+        or not math.isfinite(args.ref_timeout)
+        or args.ref_timeout <= 0
+        or not math.isfinite(args.minimize_seconds)
+        or args.minimize_seconds <= 0
+        or args.minimize_calls < 1
+    ):
+        parser.error("campaign and minimization bounds must be positive and finite")
+    plan = {
+        "tables": args.programs,
+        "work_bound": (args.programs + args.programs * args.minimize_calls)
+        * spec.max_steps
+        * 6,
+        "work_unit": "vm_steps",
+        "minimize_seconds": args.minimize_seconds,
+    }
+    if args.minimize_case is not None:
+        from _candidate_evidence import read_json
+
+        runner = Runner(spec, template, args.ref_timeout)
+        runner.minimize_seconds = args.minimize_seconds
+        case = _case_load(read_json(args.minimize_case))
+        print(json.dumps(_case_record(runner._minimize(case, args.minimize_calls))))  # noqa: SLF001
+        return 0
+    if not supervise(
+        parser, args, Path(__file__), plan, list(argv) if argv is not None else None
+    ):
+        return 0
     runner = Runner(spec, template, args.ref_timeout)
+    runner.minimize_seconds = args.minimize_seconds
+    runner.minimize_calls = args.minimize_calls
     found = campaign(runner, args.programs, args.seed)
     print(f"{spec.language}: {args.programs} programs, seed {args.seed}")
     print(f"{len(found)} causes")
