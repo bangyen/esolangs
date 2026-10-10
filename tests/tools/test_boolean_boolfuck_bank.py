@@ -92,6 +92,33 @@ def test_banked_residuals_execute_and_match_command_price(kind, case, table):
         pytest.skip("no eligible residual bank")
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("case", range(len(_bank_tables())))
+def test_mixed_depth_bank_executes_and_matches_command_price(case):
+    """A bank whose blocks sit at several depths shares all of them and computes."""
+    import esolangs
+    from esolangs.debugger import make_vm
+    from esolangs.tools.boolfuck import _boolfuck_tree
+    from esolangs.tools.shared_block import repeated_bank, repeated_mixed_bank
+
+    table = _bank_tables()[case]
+    n = len(table).bit_length() - 1
+    mixed, levels = repeated_mixed_bank(table)
+    bank, _ = repeated_bank(table)
+    if len({depth for depth, _ in mixed}) <= len({depth for depth, _ in bank}):
+        pytest.skip("no mixed-depth bank for this table")
+    program, limit = _boolfuck_tree(table, shared_blocks=mixed, flag_levels=levels)
+    for row, expected in enumerate(table):
+        machine = make_vm("Boolfuck", program, stdin=f"{row:0{n}b}")
+        commands = 0
+        while not machine.halted and commands <= limit:
+            machine.step()
+            commands += 1
+        assert machine.halted
+        assert esolangs.read_answer("Boolfuck", machine.output) == expected
+        assert commands <= limit
+
+
 @pytest.mark.parametrize(
     ("blocks", "levels", "result"),
     [
@@ -100,13 +127,15 @@ def test_banked_residuals_execute_and_match_command_price(kind, case, table):
         (((1, 0), (1, 4)), (0, 2), 6),
         (((1, 0), (1, 4)), (1, 3), 6),
         (((1, 0), (1, 4)), (1, 2), 5),
-        (((1, 0), (2, 0)), (1, 2), 6),
     ],
 )
-def test_bank_requires_distinct_unused_flags_at_one_level(blocks, levels, result):
+def test_bank_requires_distinct_unused_descendant_flags(blocks, levels, result):
     from esolangs.tools.shared_flag import flag_tree_body
 
-    with pytest.raises(ValueError, match="bank needs distinct unused flags"):
+    # A block at depth d may use any distinct unused flag at level >= d.  A
+    # shallower flag would be rewritten by the ancestor that owns it before
+    # the deferred dispatch runs, so that stays rejected; mixed depths do not.
+    with pytest.raises(ValueError, match="bank needs distinct unused descendant flags"):
         flag_tree_body(
             "00010110", (0, 1, 2), 4, result, shared_blocks=blocks, flag_levels=levels
         )

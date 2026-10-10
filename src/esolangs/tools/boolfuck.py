@@ -22,7 +22,9 @@ Constant subtrees fold to a leaf, exactly as in
 leaf ever executes, so R flips at most once. Repeated residuals defer
 to unused level flags and emit once in depth order after the prefix tree,
 only when text shrinks and the unchanged command bound admits it.
-Same-level banks use distinct unused descendant flags, cleared before reuse.
+Banks use distinct unused descendant flags, cleared before reuse: a
+same-level bank, or the mixed-depth union of the one-per-depth picks with
+the greatest same-level bank.
 At n>=9, two-input cofactors also normalize to shared AND/XOR gates;
 input flips and output bias distinguish their functions without extra flags.
 Affine tables stream through two data cells, toggling the accumulator once
@@ -40,7 +42,12 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     move_text,
 )
-from esolangs.tools.shared_block import repeated_bank, repeated_block, repeated_blocks
+from esolangs.tools.shared_block import (
+    repeated_bank,
+    repeated_block,
+    repeated_blocks,
+    repeated_mixed_bank,
+)
 from esolangs.tools.shared_flag import flag_tree_body
 from esolangs.tools.wrap import wrap_chars
 
@@ -73,6 +80,12 @@ def boolfuck(truth_table: str) -> str:
             forms.append(
                 _boolfuck_tree(truth_table, shared_blocks=bank, flag_levels=levels)
             )
+    mixed, mixed_levels = repeated_mixed_bank(truth_table)
+    if len(mixed) > 1 and mixed not in seen:
+        seen.add(mixed)
+        forms.append(
+            _boolfuck_tree(truth_table, shared_blocks=mixed, flag_levels=mixed_levels)
+        )
     return min(
         (program for program, cost in forms if cost <= 2 * n * n + 27 * n + 8),
         key=len,

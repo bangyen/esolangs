@@ -13,7 +13,12 @@ from esolangs.tools.helpers import (
     subtree_ids,
 )
 from esolangs.tools.shared_block import ContinuationCost as _Cost
-from esolangs.tools.shared_block import repeated_bank, repeated_block, repeated_blocks
+from esolangs.tools.shared_block import (
+    repeated_bank,
+    repeated_block,
+    repeated_blocks,
+    repeated_mixed_bank,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,7 +47,7 @@ def shared_flag_tree(
     bank_only: bool = False,
     bank_ranked: bool = True,
 ) -> tuple[str, int] | None:
-    """Return the shortest admitted single- or multiple-residual byte-tape body."""
+    """Return the shortest admitted single-, multiple- or banked-residual body."""
     shared = repeated_block(truth_table)
     if shared is None:
         return None
@@ -64,9 +69,10 @@ def shared_flag_tree(
         )
     if multiple and bank:
         seen = set()
+        reserved = 2 * perm[-1] + 1 == result
         for ranked in (bank_ranked,) if bank_only else (False, True):
             banked, levels = repeated_bank(
-                truth_table, reserve_last=2 * perm[-1] + 1 == result, ranked=ranked
+                truth_table, reserve_last=reserved, ranked=ranked
             )
             if banked and banked not in seen:
                 seen.add(banked)
@@ -81,6 +87,25 @@ def shared_flag_tree(
                         binary_leaves=binary_leaves,
                     )
                 )
+        # The mixed bank unions the one-per-depth picks with the copy-ranked
+        # bank; built once because the ranking only picks which of the bank's
+        # blocks enter, and the union already holds the per-depth picks.
+        mixed, mixed_levels = repeated_mixed_bank(
+            truth_table, reserve_last=reserved, ranked=True
+        )
+        if len(mixed) > 1 and mixed not in seen:
+            seen.add(mixed)
+            forms.append(
+                flag_tree_body(
+                    truth_table,
+                    perm,
+                    start,
+                    result,
+                    shared_blocks=mixed,
+                    flag_levels=mixed_levels,
+                    binary_leaves=binary_leaves,
+                )
+            )
     admitted = [
         form for form in forms if command_budget is None or form[1] <= command_budget
     ]
@@ -105,8 +130,11 @@ def flag_tree_body(
     Inputs at cells 2*perm[i] are bits and following flags are zero; binary
     leaves may reserve the final flag for result. Flip-only loop closers
     retest the opener; a native dialect supplies its own recheck rule.
-    A same-level bank uses distinct descendant flags; dispatch clears each
-    before its body reuses it. Other pending flags stay zero on that path.
+    A bank assigns each block a distinct unused flag no shallower than the
+    block: the shallower ancestor that owns a younger flag would rewrite it
+    before dispatch. Blocks sit at non-decreasing depths, so a body only
+    defers into a later stage, and dispatch clears each flag before its body
+    reuses it. Other pending flags stay zero on that path.
     """
     n = _validate_truth_table(truth_table)
     clear = dialect.zero if dialect else "+" if flip else "-"
@@ -120,12 +148,15 @@ def flag_tree_body(
     if flag_levels:
         if (
             len(flag_levels) != len(blocks)
-            or len(set(depths)) != 1
+            or any(left > right for left, right in pairwise(depths))
             or len(set(flag_levels)) != len(flag_levels)
-            or any(level < depths[0] or level >= n for level in flag_levels)
+            or any(
+                level < depth for level, depth in zip(flag_levels, depths, strict=True)
+            )
+            or any(level >= n for level in flag_levels)
             or any(2 * perm[level] + 1 == result for level in flag_levels)
         ):
-            raise ValueError("a residual bank needs distinct unused flags at one level")
+            raise ValueError("a residual bank needs distinct unused descendant flags")
     elif any(left >= right for left, right in pairwise(depths)):
         raise ValueError("deferred levels must be distinct, increasing input levels")
     if any(depth < 0 or depth >= n for depth in depths):

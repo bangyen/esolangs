@@ -33,7 +33,9 @@ def bf_tree(truth_table: str) -> str:
     folding and shared output cut n=10 XOR from 77,939 to 18,495.  Equal
     sibling halves merge; repeated residuals use one unused flag per level
     and emit once in depth order, within the existing command bound.
-    A same-level bank can use several unused descendant flags instead.
+    A bank can use several unused descendant flags instead: a same-level bank,
+    or the union of the one-per-depth picks with the greatest bank, so blocks
+    at several depths defer.
     Two-input banks also use four-bit labels, with a retired input holding
     the high bit; labels are consumed before their shared bodies execute.
     Affine tables also stream through three cells: n=16 parity falls from

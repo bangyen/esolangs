@@ -26,6 +26,7 @@ from esolangs.tools.shared_block import (
     repeated_bank,
     repeated_block,
     repeated_blocks,
+    repeated_mixed_bank,
 )
 from esolangs.tools.shared_flag import FlagDialect, flag_tree_body
 from esolangs.tools.wrap import wrap_chars
@@ -86,7 +87,9 @@ def painfuck(truth_table: str) -> str:
     the bit and clears the flag inside, then tests the flag for the zero
     side, so exactly one side fires and both cells are left zero.  The
     answer accumulates in cell ``2n`` and is printed once, as a number.
-    Repeated residuals use level flags or a same-level bank as deferred entries.
+    Repeated residuals use level flags or a bank -- same-level or the mixed
+    union of the one-per-depth picks with the greatest bank -- as deferred
+    entries.
     Inline text remains a candidate and the existing command bound gates
     admission. Three seeded dense n=16 tables average 831,265 -> 650,200
     characters (-21.78%); both builds executed five rows per table.
@@ -108,6 +111,7 @@ def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
         (repeated_blocks(table), ())
     ]
     plans.extend(repeated_bank(table, ranked=ranked) for ranked in (False, True))
+    plans.append(repeated_mixed_bank(table))
     for blocks, flags in dict.fromkeys(plans):
         if len(blocks) > 1:
             forms.append(_painfuck_shared(table, perm, blocks, flags))

@@ -16,12 +16,6 @@ exemption supported by a structural proof or the measured criterion in
   every admissible suffix level already matches the scored level (0 of 13
   bank-eligible tables improved), and the sharing screen bounds the total
   repeated-node upside at 7.0% (n=5), so only nested definitions remain.
-- **Factor and Painfuck:** share a mixed-depth residual bank. The flag pool is
-  one zero cell per input level, so `shared_flag`'s multiple form takes one
-  residual per depth and its bank form many at one depth; a bank across depths
-  is the missing form. Factor's shared body already runs 0.45-1.0 of the
-  unshared body on n=6-7 tiled controls, so the cap bites where sharing could
-  pay. The dense n=13 weekly digit-budget probe passes native in 34 s.
 - **Line:** extend one selected residual to multiple shared residuals. The
   sharing screen gives the largest upside here (40.3% of emitted area at
   n=5), but the residual search finds at most one match on random tables, so

@@ -181,6 +181,11 @@ inputs without a width (16 of 96 controls improved on the admitting run).
 Dig's shared pool is 2..10 unique 64-row classes indexed by a single decimal
 digit over 2..6 prefix bits, so a larger pool needs a multi-digit index.
 
+Factor, Painfuck, brainfuck and Boolfuck admit a bank at several depths: each
+block defers through a distinct unused flag at a level no shallower than its
+own (a shallower ancestor would rewrite the flag before dispatch), so one cell
+per input level is the whole pool.
+
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
 Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.

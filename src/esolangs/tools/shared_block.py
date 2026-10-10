@@ -98,6 +98,44 @@ def repeated_bank(
     return best, flags
 
 
+def repeated_mixed_bank(
+    table: str, *, reserve_last: bool = False, ranked: bool = True
+) -> tuple[tuple[tuple[int, int], ...], tuple[int, ...]]:
+    """Union the one-per-depth picks with the greatest same-level bank.
+
+    A block at depth ``d`` defers through one flag at some level ``>= d``: a
+    shallower ancestor would rewrite any younger flag before the dispatch
+    runs.  Each block takes the smallest level free at or below its depth, so
+    the union of the two scans shares residuals at several depths, which
+    neither a single-level bank nor the one-per-depth picks can.
+    """
+    n = len(table).bit_length() - 1
+    ids = subtree_ids(table)
+    banked, _ = repeated_bank(table, reserve_last=reserve_last, ranked=ranked)
+    candidates: dict[tuple[int, int], tuple[int, int]] = {}
+    for depth, row in (*repeated_blocks(table), *banked):
+        candidates.setdefault((depth, ids[depth][row >> (n - depth)]), (depth, row))
+    chosen: list[tuple[int, int]] = []
+    flags: list[int] = []
+    used: set[int] = set()
+    reserved = n - 1 if reserve_last else None
+    for depth, row in sorted(candidates.values()):
+        level = next(
+            (
+                candidate
+                for candidate in range(depth, n)
+                if candidate != reserved and candidate not in used
+            ),
+            None,
+        )
+        if level is None:
+            continue
+        used.add(level)
+        chosen.append((depth, row))
+        flags.append(level)
+    return tuple(chosen), tuple(flags)
+
+
 def _repeated_blocks(
     table: str, *, include_single: bool = False
 ) -> list[tuple[int, int, int]]:

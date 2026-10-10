@@ -7,8 +7,10 @@ build and subtract the ASCII offsets; only this tree is encoded.  Equal
 sibling halves merge; repeated residuals emit in depth order after the prefix,
 using one unused flag per level when the encoded integer is shorter and
 the unchanged command bound admits it.
-Same-level banks use unused descendant flags; each admitted bank is encoded
-separately so decimal size, rather than decoded text length, selects it.
+Same-level banks use unused descendant flags, and the mixed-depth bank unions
+those with the one-per-depth picks so a block at any depth can defer; each
+admitted bank is encoded separately so decimal size, rather than decoded text
+length, selects it.
 An ignored cell is read but not dedented.
 """
 
