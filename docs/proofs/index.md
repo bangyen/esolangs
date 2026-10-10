@@ -563,8 +563,11 @@ geometric. Over a 433-table corpus through n=13 that costs 2.5% of
 emitted size, and 4--6% at n=11..13. It also leaves `certify`, which
 refreshes every level on every call and rescores each pairless
 candidate at `q`; the untried fix keeps a level while its direction holds
-half the average, rebuilding only on a crossing. `_nearest`'s sparse
-fallback lists points. Listing
+half the average, rebuilding only on a crossing. Measured, `certify`
+inclusive is 0.003s of a 0.53s build at n=13 and 0.184s of 6.27s at n=16,
+under 3%, so the fix moves no gate: the axis is proof-shaped, and the
+refresh cost it would trim is mostly `extend` and `run` -- 17% at n=16.
+`_nearest`'s sparse fallback lists points. Listing
 representatives costs cosets but moves sizes from -9% to +14% a table,
 +0.9% in total. The fourth term, the core build, is below.
 

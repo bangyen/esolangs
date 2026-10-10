@@ -117,8 +117,9 @@ Stalled problems, one line each; detail lives in the linked proof page. A
 line changes only when its next step does.
 
 - **FRACTRAN bit-linear pipeline.** Forward cleanup now executes without
-  minimum-tree updates. Next: remove the materialized prime sieve's
-  `Theta(T log T)` generation cost; literal conversion remains too
+  minimum-tree updates. The sieve measures ~8% of a build that doubles per
+  input through n=19, so the `Theta(T log T)` is bit work, not wall clock.
+  Next: a bit-linear construction, sieve and literal conversion together
   ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
 - **Brainfuck behaviour count.** Cancelling tested-cell updates with balance
   confined to `{-1,0,1}` are certified. Next: cover larger excursions or
@@ -137,8 +138,8 @@ line changes only when its next step does.
   8,432 cells short before the full query and relocation selector. Next:
   share initialization and query control, then relocate records before capture
   ([malbolge-scaling](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09)).
-- **Vandevelo structural scaling.** Next: settle Cohen and Shinkar's
-  `O(log n)` DNF-of-parities gap, which bounds output and so generation
-  time; on the build side, a `certify` that rebuilds a level only when its
-  direction drops below half the average
+- **Vandevelo structural scaling.** The build-side `certify` fix measures
+  under 3% of generation time at n=16, so it moves no gate and the axis is
+  proof-shaped. Next: settle Cohen and Shinkar's `O(log n)` DNF-of-parities
+  gap, which bounds output and so generation time
   ([index](proofs/index.md#vandevelo-identifier-and-fallback-audit)).
