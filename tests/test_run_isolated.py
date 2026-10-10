@@ -297,11 +297,21 @@ def test_process_creation_consumes_the_worker_deadline(
         ),
     ],
 )
-def test_raster_transport_preserves_every_pixel(rows):
-    from esolangs._isolated import _raster_rows, _raster_runs
+def test_raster_transport_preserves_every_pixel(rows, monkeypatch):
+    from esolangs import _isolated
+    from esolangs._isolated import _raster_rows, _raster_transport
 
-    runs = json.loads(json.dumps(_raster_runs(rows)))
-    assert _raster_rows(runs) == rows
+    image = esolangs.Raster(rows)
+    runs = _raster_transport(image)
+    assert runs is _raster_transport(image)
+    monkeypatch.setattr(
+        _isolated,
+        "_launch",
+        lambda request, *_args, **_kwargs: json.dumps(json.loads(request)["program"]),
+    )
+    language = one(source_kind="raster", boolean_generator=True)[0]
+    wire = esolangs.run(language, image, isolated=True)
+    assert _raster_rows(json.loads(wire)) == rows
 
 
 @pytest.mark.medium

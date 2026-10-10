@@ -6,6 +6,7 @@ import json
 import os
 import subprocess  # nosec B404 -- fixed Python worker; source travels over stdin.
 import sys
+from functools import lru_cache
 from itertools import chain, groupby, repeat
 from queue import Empty, Full, Queue
 from threading import Event, Thread
@@ -20,19 +21,25 @@ from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
-type _RasterRuns = list[tuple[int, list[tuple[int, Pixel]]]]
+type _RasterRuns = tuple[tuple[int, tuple[tuple[int, Pixel], ...]], ...]
 
 
 # Scale-3 Line JSON: 13,759,407 -> 18,621 bytes; four rows 5.71s -> 0.62s.
 def _raster_runs(rows: Rows) -> _RasterRuns:
     """Encode repeated rows and pixels without transmitting renderer payloads."""
-    return [
+    return tuple(
         (
             len(list(repeated_rows)),
-            [(len(list(pixels)), pixel) for pixel, pixels in groupby(row)],
+            tuple((len(list(pixels)), pixel) for pixel, pixels in groupby(row)),
         )
         for row, repeated_rows in groupby(rows)
-    ]
+    )
+
+
+@lru_cache(maxsize=4)
+def _raster_transport(image: Raster) -> _RasterRuns:
+    """Reuse immutable pixel transport across rows of isolated evaluation."""
+    return _raster_runs(image.rows)
 
 
 def _raster_rows(runs: _RasterRuns) -> Rows:
@@ -168,7 +175,7 @@ def run_isolated(
                             key for key, value in choices.items() if type(value) is int
                         ],
                         "language": name,
-                        "program": _raster_runs(source.rows)
+                        "program": _raster_transport(source)
                         if isinstance(source, Raster)
                         else source,
                         "raster": isinstance(source, Raster),

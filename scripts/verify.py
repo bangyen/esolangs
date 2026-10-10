@@ -577,14 +577,14 @@ def _split_coverage(
     shared = {
         "src/esolangs/tools/wrap.py": [
             "tests/tools/test_wrap.py",
-            "tests/tools/test_wrap_preserves_meaning.py",
             "tests/tools/test_balance.py",
-            "tests/tools/test_balance_remaining.py",
-            "tests/tools/test_small_width_floors.py",
         ]
     }
     shared["src/esolangs/interpreters/tape_based/line/mask.py"] = [
         "tests/line/test_mask.py"
+    ]
+    shared["src/esolangs/_isolated.py"] = [
+        "tests/test_run_isolated.py::test_raster_transport_preserves_every_pixel"
     ]
     leaves = [
         path
