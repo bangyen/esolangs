@@ -37,6 +37,7 @@ from esolangs.tools.shared_block import (
     repeated_definitions,
 )
 from esolangs.tools.sstack_binary import best_binary_bank
+from esolangs.tools.sstack_ternary import best_ternary_bank
 from esolangs.tools.wrap import wrap_chars
 
 _PROLOGUE = '"49/b""48/c"'
@@ -70,7 +71,10 @@ def sstack(truth_table: str) -> str:
                 forms.append(result)
     admitted = min((program for program, cost in forms if cost <= 7 * n + 3), key=len)
     bank = best_binary_bank(truth_table, _sstack_tree, 7 * n + 3, len(admitted))
-    return admitted if bank is None else bank[0]
+    if bank is not None:
+        admitted = bank[0]
+    ternary = best_ternary_bank(truth_table, _sstack_tree, 7 * n + 3, len(admitted))
+    return admitted if ternary is None else ternary[0]
 
 
 def _sstack_shared(
