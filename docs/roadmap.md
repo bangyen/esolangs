@@ -18,6 +18,8 @@ exemption supported by a structural proof or the measured criterion in
   a second residual needs a new return target rather than a better pick. The
   zero-arm chain recurs at two depths on 2 of 480 sampled tables (n=3..8) and
   never at n=3,5, the screen's arities, so the second target is latent.
+  Continuing the chain past the first recurrence changes no table: the pick
+  is already forced, so only a second return target remains.
 - **Exemptions:** audit the remaining blanket sharing exclusions.
 - **Circuit Diagram:** resolve duplication in its area/resource fallback, or
   establish why alternative sharing cannot profit within the contracts. The
