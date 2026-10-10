@@ -77,6 +77,7 @@ from typing import Any, Literal
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.tools.circuit_diagram.free_columns import _FreeColumns
 from esolangs.tools.circuit_diagram.hlayout import _h_minterm_sites, _h_term_layout
 from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import (
@@ -123,7 +124,7 @@ class _Builder:
         # recyclable signal was cut from.  Only a *gate's* output is ever
         # entered here: selector rails are shared, while every mux result is
         # read once by the carry that consumes it and then dies.
-        self.free_strides: list[int] = []
+        self.free_strides = _FreeColumns()
         self.stride_of: dict[int, int] = {}
         # Set once a width is asked for: the column a new band starts at, and
         # the width the bands stay inside.  ``live`` is every intermediate
@@ -132,7 +133,7 @@ class _Builder:
         self.limit: int | None = None
         self.next_limit: int | None = None
         self.band_start = 0
-        self.live: list[int] = []
+        self.live: dict[int, None] = {}
         # Reads a shared gate output still awaits; it is released on the last.
         self.pending: dict[int, int] = {}
 
@@ -168,10 +169,10 @@ class _Builder:
         # whatever is drawn into it.  Columns: a gate must sit *right* of every
         # bus it reads (``after`` is the rightmost), or the tap would cross the
         # gate's own glyph (:class:`_Layout` refuses it).
-        usable = [group for group in self.free_strides if group + _COL_STEP > after]
-        if usable:
-            first = min(usable)
-            self.free_strides.remove(first)
+        reusable = self.free_strides.first_after(after - _COL_STEP)
+        if reusable is not None:
+            first = reusable
+            self.free_strides.discard(first)
         else:
             first = self.next_column
             self.next_column += self.gate_stride
@@ -212,7 +213,7 @@ class _Builder:
         """Whether a gate reading up to ``after`` fits without a new band."""
         if self.limit is None:
             return True
-        if any(group + _COL_STEP > after for group in self.free_strides):
+        if self.free_strides.first_after(after - _COL_STEP) is not None:
             return True
         boundary = self.next_column + self.gate_stride
         if boundary > self.limit:
@@ -232,9 +233,8 @@ class _Builder:
         """
         stride = self.stride_of.pop(signal, None)
         if stride is not None:
-            self.free_strides.append(stride)
-        if signal in self.live:
-            self.live.remove(signal)
+            self.free_strides.add(stride)
+        self.live.pop(signal, None)
 
     def _read(self, signal: int) -> None:
         """Count one read of ``signal``, releasing it after its last."""
@@ -320,7 +320,7 @@ class _Builder:
         signal = self._drive(column + 1, row)
         self.stride_of[signal] = first
         if self.limit is not None:
-            self.live.append(signal)
+            self.live[signal] = None
         self._read(left)
         self._read(right)
         return signal
@@ -564,12 +564,10 @@ def _circuit_diagram_model(
 
 def _linear_shared_layout(table: str, inputs: int) -> _Layout | None:
     """Admit the folded model only within the H-layout's linear work and area."""
-    used, projected = _essential_table(table, inputs)
-    ops = _dag(projected, len(used))[0]
-    # At most three gates per node, with O(nodes**2) interval insertion
-    # and column scans. At most twice sqrt(T) nodes keeps that work O(T).
-    if len(ops) ** 2 > 4 * len(table):
-        return None
+    # Column reuse and ordered interval checks cost O(log N) per gate.
+    # Distinct cofactors number O(T/log T): choose the largest r with
+    # 2**r <= log2(T)/2; the deep levels have at most sqrt(T) states each,
+    # and the shallower levels total O(T/log T). Thus N log N is O(T).
     sites = [
         point
         for prefix, point in _h_minterm_sites(inputs).items()

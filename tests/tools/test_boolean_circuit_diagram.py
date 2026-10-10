@@ -647,7 +647,7 @@ def test_wide_repeated_cofactors_use_the_bounded_shared_circuit(inputs):
 
 
 @pytest.mark.medium
-def test_wide_projection_retains_nonadjacent_ports_outside_the_shared_budget():
+def test_wide_shared_projection_retains_nonadjacent_ports():
     from esolangs._evaluate import _evaluate
     from esolangs.tools.circuit_diagram import _linear_shared_layout
     from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
@@ -656,8 +656,14 @@ def test_wide_projection_retains_nonadjacent_ports_outside_the_shared_budget():
     residual = "".join(rng.choice("01") for _ in range(128))
     # Input six is ignored; the last input keeps its original eighth port.
     table = "".join(residual[((row >> 2) << 1) | (row & 1)] for row in range(256))
-    assert _linear_shared_layout(table, 8) is None
-    model = _h_term_layout(residual, input_order=[0, 1, 2, 3, 4, 5, 7], port_inputs=8)
+    model = _linear_shared_layout(table, 8)
+    assert model is not None
+    preceding = _h_term_layout(
+        residual, input_order=[0, 1, 2, 3, 4, 5, 7], port_inputs=8
+    )
+    assert model.bounds()[0] * model.bounds()[1] <= (
+        preceding.bounds()[0] * preceding.bounds()[1]
+    )
     program = boolean.circuit_diagram(table)
     assert program == model.render()
     legacy = _h_term_layout(table)
@@ -693,4 +699,38 @@ def test_wide_layouts_preserve_execution_and_written_state_bounds(kind):
             commands += 1
         assert vm.halted
         assert vm.output == table[row]
+        assert state.bits <= 7 * 256 + 2 * 8 - 9
+
+
+@pytest.mark.medium
+def test_shared_fold_exceeding_the_former_node_cap_executes_within_ledger():
+    from esolangs.debugger import make_vm
+    from esolangs.tools.circuit_diagram import _dag, _linear_shared_layout
+    from scripts.benchmark import WrittenState
+
+    sequence = "0001011100"
+    assert len({sequence[i : i + 3] for i in range(8)}) == 8
+    table = "".join(
+        sequence[2 * (row >> 7) + (row & 127).bit_count()] for row in range(256)
+    )
+    nodes = len(_dag(table, 8)[0])
+    assert nodes == 33
+    assert nodes**2 > 4 * len(table)
+    model = _linear_shared_layout(table, 8)
+    assert model is not None
+    program = boolean.circuit_diagram(table)
+    assert program == model.render()
+    area = len(program.splitlines()) * max(map(len, program.splitlines()))
+    assert area == 71511 < 1946024
+    for row, expected in enumerate(table):
+        stdin = esolangs.encode_inputs("Circuit Diagram", list(map(int, f"{row:08b}")))
+        vm = make_vm("Circuit Diagram", program, stdin=stdin)
+        state = WrittenState(vm.snapshot())
+        commands = 0
+        while not vm.halted and commands < 18:
+            vm.step()
+            state.sample(vm.snapshot())
+            commands += 1
+        assert vm.halted
+        assert vm.output == expected
         assert state.bits <= 7 * 256 + 2 * 8 - 9
