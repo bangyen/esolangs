@@ -90,11 +90,18 @@ def _whole_statement(
     )
 
 
-def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
+def _drop_entries(
+    path: Path,
+    keys: set[str],
+    modules: set[str],
+    external: set[str] | frozenset[str] = frozenset(),
+) -> int:
     """Delete every dict entry, list item or ``X[key] = ...`` keyed by ``keys``.
 
     Located by AST and cut by line, so an entry must own its lines; one
-    sharing a line with another is left for the leftover report.
+    sharing a line with another is left for the leftover report.  A helper
+    ``external`` still names (``sbleq_variant``, shared by the S*bleq
+    variants) is kept even when it reads a name the removal deletes.
     """
     source = path.read_text(encoding="utf-8")
     lines = source.splitlines(keepends=True)
@@ -140,6 +147,12 @@ def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
         elif (
             isinstance(node, ast.stmt)
             and not (isinstance(node, ast.If) and id(node) in lonely)
+            # A function another file still names stays, even if it lazily
+            # imports the module going (``sbleq_variant``).
+            and not (
+                isinstance(node, ast.FunctionDef | ast.ClassDef)
+                and node.name in external
+            )
             and _whole_statement(node, named, modules)
         ):
             decorators = getattr(node, "decorator_list", [])
@@ -177,6 +190,7 @@ def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
             for node in tree.body
             if isinstance(node, ast.FunctionDef | ast.ClassDef)
             and node.name not in dead
+            and node.name not in external
             and any(
                 isinstance(inner, ast.Name)
                 and inner.id in dead
@@ -592,6 +606,155 @@ def _stale_timing(key: str, names: set[str], gone_paths: set[str]) -> bool:
     )
 
 
+def _top_level_name(node: ast.stmt) -> str | None:
+    """Return the name a top-level statement binds, if it binds one."""
+    if isinstance(node, ast.FunctionDef | ast.ClassDef):
+        return node.name
+    if (
+        isinstance(node, ast.Assign)
+        and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+    ):
+        return node.targets[0].id
+    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+        return node.target.id
+    return None
+
+
+def _names_used(tree: ast.AST) -> set[str]:
+    """Return the names a module reads, and the attributes it reaches.
+
+    Store targets count too: ``X |= ...`` reads ``X``, and keeping a name that
+    appears anywhere is safe where cutting a live definition is not.
+    """
+    used: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            used.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            used.add(node.attr)
+    return used
+
+
+def _drop_name_items(path: Path, names: set[str]) -> int:
+    """Cut each ``ast.Name`` element named in ``names`` from a container.
+
+    ``_MULTILINE_WRAPPERS = frozenset({_taglate, ...})`` and the
+    ``_token_patterns`` dict name wrappers directly, so the membership must go
+    before the definition reads as dead.
+    """
+    cuts = 0
+    while True:
+        source = path.read_bytes()
+        starts = [0]
+        for line in source.splitlines(keepends=True):
+            starts.append(starts[-1] + len(line))
+
+        def at(line: int, col: int, starts: list[int] = starts) -> int:
+            return starts[line - 1] + col
+
+        def span(node: ast.AST) -> tuple[int, int]:
+            return (
+                at(node.lineno, node.col_offset),  # type: ignore[attr-defined]
+                at(node.end_lineno, node.end_col_offset),  # type: ignore[attr-defined]
+            )
+
+        cut: tuple[int, int, bytes] | None = None
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Dict):
+                if None in node.keys:
+                    continue
+                items = [
+                    (
+                        span(key)[0],
+                        span(value)[1],
+                        key.id if isinstance(key, ast.Name) else None,
+                    )
+                    for key, value in zip(node.keys, node.values, strict=True)
+                    if key is not None
+                ]
+                empty = b"{}"
+            elif isinstance(node, ast.List | ast.Set):
+                items = [
+                    (
+                        *span(element),
+                        element.id if isinstance(element, ast.Name) else None,
+                    )
+                    for element in node.elts
+                ]
+                empty = {ast.List: b"[]", ast.Set: b"set()"}[type(node)]
+            else:
+                continue
+            for index, (lo, hi, value) in enumerate(items):
+                if value not in names:
+                    continue
+                if len(items) == 1:
+                    cut = (*span(node), empty)
+                elif index + 1 < len(items):
+                    cut = (lo, items[index + 1][0], b"")
+                else:
+                    cut = (items[index - 1][1], hi, b"")
+                break
+            if cut:
+                break
+        if cut is None:
+            return cuts
+        lo, hi, text = cut
+        path.write_bytes(source[:lo] + text + source[hi:])
+        cuts += 1
+
+
+def _drop_dead_code(path: Path, external: set[str]) -> int:
+    """Cut top-level definitions and constants no surviving code names.
+
+    After the language's ``SPECS[...]`` entry and ``LANGUAGE`` are gone, its
+    generator functions and wrapper are dead.  ``external`` is every name the
+    rest of the tree reads; a helper another entry or language still names
+    stays reachable, and so does anything an uncut top-level statement reads.
+    """
+    source = path.read_text(encoding="utf-8")
+    lines = source.splitlines(keepends=True)
+    tree = ast.parse(source)
+    nodes = {
+        name: node
+        for node in tree.body
+        if (name := _top_level_name(node)) is not None and not name.startswith("__")
+    }
+    roots = set(external)
+    for node in tree.body:
+        if _top_level_name(node) is None:
+            roots |= _names_used(node)
+    live: set[str] = set()
+    pending = [name for name in nodes if name in roots]
+    while pending:
+        name = pending.pop()
+        if name in live:
+            continue
+        live.add(name)
+        pending += [
+            ref for ref in _names_used(nodes[name]) if ref in nodes and ref not in live
+        ]
+    dead = [nodes[n] for n in nodes if n not in live]
+    if not dead:
+        return 0
+    spans: list[tuple[int, int]] = []
+    for node in dead:
+        lo, hi = node.lineno, node.end_lineno or node.lineno
+        # A ``# --- Name ---`` section head goes with its definition.
+        while lo > 1 and lines[lo - 2].strip().startswith("#"):
+            lo -= 1
+        spans.append((lo, hi))
+    spans = [
+        span
+        for span in set(spans)
+        if not any(o != span and o[0] <= span[0] and span[1] <= o[1] for o in spans)
+    ]
+    for lo, hi in sorted(spans, reverse=True):
+        del lines[lo - 1 : hi]
+    path.write_text("".join(lines), encoding="utf-8")
+    return len(spans)
+
+
 def _drop_from_series(path: Path, name: str, tail: str) -> None:
     """Drop ``name`` from the prose list ``A, B, C and D <tail>`` in ``path``.
 
@@ -754,8 +917,24 @@ def remove(name: str) -> list[str]:
     gone_modules = _gone_modules(doomed)
     modules = {m for m in own_modules if _module_path(m) is None} | gone_modules
     edited = [*_EDITED, *differential]
+    # Names each surviving file reads.  A helper another file still names is
+    # kept even when it reads a name this removal deletes: ``sbleq_variant``
+    # serves every S*bleq variant, not just the one going.
+    surviving = [f for f in files if not _within(f, doomed) and (ROOT / f).is_file()]
+    used_by_file = {
+        f: _names_used(ast.parse((ROOT / f).read_text(encoding="utf-8")))
+        for f in surviving
+    }
+
+    def external_for(relative: str) -> set[str]:
+        names: set[str] = set()
+        for other, used in used_by_file.items():
+            if other != relative:
+                names |= used
+        return names
+
     for relative in edited:
-        _drop_entries(ROOT / relative, keys | paths, modules)
+        _drop_entries(ROOT / relative, keys | paths, modules, external_for(relative))
         _drop_inline_items(ROOT / relative, {name})
 
     def prune(node: object) -> object:
@@ -801,15 +980,37 @@ def remove(name: str) -> list[str]:
         encoding="utf-8",
     )
     # A cut entry can leave its import unused; the linter knows which.
-    touched = [str(p.relative_to(ROOT)) for p in module_paths - doomed] + edited
+    shared = [*differential, "src/esolangs/tools/wrap.py"]
+    touched = [
+        *[str(p.relative_to(ROOT)) for p in module_paths - doomed],
+        *edited,
+        *shared,
+    ]
     ruff = Path(sys.executable).parent / "ruff"
-    for command in (["check", "--fix", "--select", "F401,I"], ["format"]):
-        subprocess.run(
-            [str(ruff), *command, "-q", *touched],
-            cwd=ROOT,
-            check=False,
-            capture_output=True,
-        )
+    subprocess.run(
+        [str(ruff), "check", "--fix", "--select", "F401,I", "-q", *touched],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+    )
+    # Dead code the language left in the shared modules: its wrapper in
+    # ``wrap.py`` and its generators in the differential harnesses.  The
+    # unused imports are gone, so a top-level name nothing reads is dead.
+    wrapper = getattr(lang.wrap, "__name__", None) if lang.wrap else None
+    exclusive = False
+    if wrapper is not None and not any(
+        other is not lang and other.wrap is lang.wrap for other in LANGUAGES.values()
+    ):
+        exclusive = True
+        _drop_name_items(ROOT / "src/esolangs/tools/wrap.py", {wrapper})
+    for relative in shared:
+        _drop_dead_code(ROOT / relative, external_for(relative))
+    subprocess.run(
+        [str(ruff), "format", "-q", *touched],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+    )
     for target in ("docs", "examples"):
         subprocess.run(
             [sys.executable, "scripts/generate.py", target],
@@ -849,6 +1050,10 @@ def remove(name: str) -> list[str]:
     tokens = {name, *lang.aliases}
     if name.isdigit() or shadowed:
         tokens.discard(name)
+    if exclusive and wrapper is not None:
+        # The wrapper's own name is not the language's; surface the tests that
+        # still name it (``WRAPPERS[...] is _bio``) so the hand edit is found.
+        tokens.add(wrapper)
     patterns = list(tokens)
     patterns += [
         f"{quote}{token}{quote}"

@@ -236,3 +236,37 @@ def test_orphans_drop_a_helper_only_the_language_imports(
         }
     }
     assert remove_language._orphans(doomed, shared) == set()  # noqa: SLF001
+
+
+def test_drop_dead_code_keeps_live_and_cuts_dead(tmp_path: Path) -> None:
+    path = tmp_path / "mod.py"
+    path.write_text(
+        "_OPS = {1: 2}\n"
+        "_OPS |= {3: 4}\n"
+        "def used() -> int:\n"
+        "    return _OPS[1]\n"
+        "def dead() -> int:\n"
+        "    return _GONE[1]\n"
+        "_GONE = {5: 6}\n"
+    )
+    assert remove_language._drop_dead_code(path, {"used"}) == 2  # noqa: SLF001
+    text = path.read_text()
+    # ``_OPS`` is read by a live function and by its own ``|=``: kept.
+    assert "_OPS" in text
+    assert "def used" in text
+    assert "def dead" not in text
+    assert "_GONE" not in text
+
+
+def test_drop_name_items_cuts_set_and_dict_keys(tmp_path: Path) -> None:
+    path = tmp_path / "mod.py"
+    path.write_text(
+        "def a() -> None: ...\n"
+        "def b() -> None: ...\n"
+        "S = frozenset({a, b})\n"
+        "D = {a: 1, b: 2}\n"
+    )
+    remove_language._drop_name_items(path, {"a"})  # noqa: SLF001
+    text = path.read_text()
+    assert "frozenset({b})" in text
+    assert "{b: 2}" in text
