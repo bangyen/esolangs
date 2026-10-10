@@ -651,7 +651,7 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Minifuck"
 labels = ["parameterized construction"]
 qualification = """\
-    `_mux` is the total fallback; its six failure sites close uniformly in `n`"""
+    affine byte accumulator or total positional `_mux` fallback"""
 scaling = "linear: mux lookup, constant strings times O(T) counts"
 execution = "linear: at most L commands: straight-line, the cursor never moves back"
 workspace = """\

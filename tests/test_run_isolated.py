@@ -335,3 +335,53 @@ def test_worker_executes_compact_raster_pixels(monkeypatch, capsys):
     _worker()
     messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert esolangs.read_answer(language, messages[-1]["result"]) == "1"
+
+
+@pytest.mark.parametrize(
+    ("budget", "isolated", "platform", "message"),
+    [
+        (1, False, "linux", "isolated"),
+        (1 << 63, True, "linux", "platform limit"),
+        (1, True, "darwin", "Linux"),
+    ],
+)
+def test_memory_budget_rejects_unsupported_execution(
+    monkeypatch, budget, isolated, platform, message
+):
+    import sys
+
+    from esolangs._isolated import check_memory
+
+    monkeypatch.setattr(sys, "platform", platform)
+    with pytest.raises(esolangs.ArgumentError, match=message):
+        check_memory(budget, isolated=isolated)
+
+
+def test_memory_budget_accepts_linux_worker(monkeypatch):
+    import sys
+
+    from esolangs._isolated import check_memory
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    check_memory(1, isolated=True)
+
+
+@pytest.mark.medium
+def test_worker_returns_a_termination_verdict(monkeypatch, capsys):
+    import io
+    import sys
+
+    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
+    request = {
+        "language": "Suffolk",
+        "program": esolangs.generate("Suffolk", "00"),
+        "raster": False,
+        "stdin": esolangs.encode_inputs("Suffolk", [0]),
+        "seed": None,
+        "termination": ["0", "1"],
+        "max_output": "0x64",
+        "integer_max_output": True,
+    }
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
+    _worker()
+    assert _decode(capsys.readouterr().out, expired=False) == "0"
