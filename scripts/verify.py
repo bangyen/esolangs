@@ -44,6 +44,12 @@ Usage:
     python scripts/verify.py --only pre-commit,pytest --skip bandit
 """
 
+# Annotate lazily: ``collect_long`` below is annotated ``subprocess.Popen[str]``,
+# which tests replace with a plain function.  On 3.12/3.13 (eager annotations)
+# that subscript is evaluated when the nested function is defined and raises
+# ``TypeError: 'function' object is not subscriptable``; 3.14 defers it (PEP 649).
+from __future__ import annotations
+
 import argparse
 import ast
 import atexit
