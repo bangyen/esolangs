@@ -7,12 +7,16 @@ import json
 import math
 import os
 import platform
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Protocol
 
 import pytest
 from _pytest.reports import TestReport
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _atomic import write_text
 
 
 class _Worker(Protocol):
@@ -53,7 +57,7 @@ class Recorder:
     def pytest_sessionfinish(self, exitstatus: int) -> None:
         """Write the measured corpus even when tests fail."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
+        payload = (
             json.dumps(
                 {
                     node: seconds
@@ -62,9 +66,12 @@ class Recorder:
                 },
                 indent=1,
             )
-            + "\n",
-            encoding="utf-8",
+            + "\n"
         )
+        digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        snapshot = self.path.with_name(f"{self.path.name}.{digest}.json")
+        write_text(snapshot, payload)
+        write_text(self.path, payload)
 
         metadata = {
             "schema": 1,
@@ -80,10 +87,13 @@ class Recorder:
             "exitstatus": int(exitstatus),
             "collected": sorted(self.collected),
             "finished": sorted(self.finished),
-            "durations_sha256": hashlib.sha256(self.path.read_bytes()).hexdigest(),
+            "durations_sha256": digest,
+            "durations_file": snapshot.name,
         }
-        self.path.with_suffix(self.path.suffix + ".meta.json").write_text(
-            json.dumps(metadata, sort_keys=True, indent=1) + "\n", encoding="utf-8"
+        # The sidecar is the commit point; readers use its immutable snapshot.
+        write_text(
+            self.path.with_suffix(self.path.suffix + ".meta.json"),
+            json.dumps(metadata, sort_keys=True, indent=1) + "\n",
         )
 
 

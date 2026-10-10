@@ -113,3 +113,57 @@ def test_sdist_normalization_preserves_payload(tmp_path):
     with tarfile.open(paths[0]) as archive:
         assert archive.extractfile("package/source.py").read() == b"print()"
         assert archive.getmember("package/source.py").mtime == 42
+
+
+def test_provenance_deadline_kills_git_probe(monkeypatch):
+    from scripts import benchmark
+
+    def hung_probe(_command, **kwargs):
+        return _verify_process.run_bounded(
+            [sys.executable, "-c", "import time; time.sleep(10)"], **kwargs
+        )
+
+    monkeypatch.setattr(benchmark, "run_bounded", hung_probe)
+    started = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        benchmark.source_identity(timeout=0.2)
+    assert time.monotonic() - started < 2
+
+
+def test_worker_failure_keeps_full_log_and_bounded_note():
+    from scripts._benchmark_client import Worker
+
+    command = (
+        "import sys; sys.stderr.write('START' + 'x'*100000 + 'END'); sys.stderr.flush()"
+    )
+    worker = Worker([sys.executable, "-c", command])
+    with pytest.raises(RuntimeError, match="without evidence") as caught:
+        worker.measure({"timeout": 1}, {}, 2)
+    assert worker.process is None
+    assert worker.log_path.read_text() == "START" + "x" * 100000 + "END"
+    note = caught.value.__notes__[0]
+    assert "[log]" in note
+    assert note.endswith("END")
+    assert len(note) < 34000
+
+
+def test_interrupted_timing_publication_preserves_completed_pair(tmp_path, monkeypatch):
+    from scripts import pytest_durations, refresh_ci_timings
+
+    recorder = Recorder(tmp_path / "timings.json")
+    recorder.collected.add("test")
+    recorder.finished.add("test")
+    recorder.durations["test"] = 1
+    recorder.pytest_sessionfinish(0)
+    original = pytest_durations.write_text
+
+    def interrupted(path, text):
+        if path.name.endswith("meta.json"):
+            raise OSError("interrupted")
+        original(path, text)
+
+    monkeypatch.setattr(pytest_durations, "write_text", interrupted)
+    recorder.durations["test"] = 2
+    with pytest.raises(OSError, match="interrupted"):
+        recorder.pytest_sessionfinish(0)
+    assert refresh_ci_timings.load_run(tmp_path, {"test"}) == {"test": 1}

@@ -8,6 +8,7 @@ import os
 import queue
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -16,7 +17,7 @@ from typing import Any
 import esolangs
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _verify_process import stop_process_tree
+from _verify_process import EXCERPT_BYTES, stop_process_tree
 
 
 class Worker:
@@ -32,21 +33,31 @@ class Worker:
         self.stopped = threading.Event()
         self.reader: threading.Thread | None = None
         self.writer: threading.Thread | None = None
+        self.log_path: Path | None = None
 
     def start(self) -> subprocess.Popen[str]:
         if self.process is None:
             self.messages = queue.Queue(maxsize=1)
             self.stopped = threading.Event()
-            self.process = subprocess.Popen(
-                self.command,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                text=True,
-                encoding="utf-8",
-                start_new_session=os.name == "posix",
-                cwd=Path(__file__).resolve().parents[1],
+            directory = Path(__file__).resolve().parents[1] / "notes" / "benchmarks"
+            directory.mkdir(parents=True, exist_ok=True)
+            fd, filename = tempfile.mkstemp(
+                prefix="worker-", suffix=".log", dir=directory
             )
+            self.log_path = Path(filename)
+            try:
+                self.process = subprocess.Popen(
+                    self.command,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=fd,
+                    text=True,
+                    encoding="utf-8",
+                    start_new_session=os.name == "posix",
+                    cwd=Path(__file__).resolve().parents[1],
+                )
+            finally:
+                os.close(fd)
             process = self.process
             messages, stopped = self.messages, self.stopped
 
@@ -145,6 +156,11 @@ class Worker:
                     raise cls(error["message"])
                 else:
                     raise RuntimeError("invalid benchmark worker record")
-        except BaseException:
+        except BaseException as error:
             self.close()
+            if isinstance(error, Exception) and self.log_path is not None:
+                with self.log_path.open("rb") as log:
+                    log.seek(max(0, self.log_path.stat().st_size - EXCERPT_BYTES))
+                    tail = log.read(EXCERPT_BYTES).decode("utf-8", errors="replace")
+                error.add_note(f"[log] {self.log_path}\n{tail}")
             raise

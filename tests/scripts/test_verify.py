@@ -615,7 +615,7 @@ def test_bad_run_does_not_write_fixture(tmp_path, fault):
     elif fault == "duplicate":
         record(run / "other-shard", {"a": 1})
     elif fault == "altered":
-        (run / "test-durations.json").write_text('{"a": 99, "b": 2}')
+        (run / metadata["durations_file"]).write_text('{"a": 99, "b": 2}')
     elif fault == "no_metadata":
         path.unlink()
     output = tmp_path / "weights.json"

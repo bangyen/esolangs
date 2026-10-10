@@ -89,6 +89,8 @@ def excerpt(proc: subprocess.Popen[str]) -> str:
 def stop_process_tree(proc: subprocess.Popen[str]) -> None:
     """Kill the step's process tree and reap its direct child."""
     if os.name == "posix":
+        # Reap exited leaders before signalling; Darwin rejects zombie groups.
+        proc.poll()
         with suppress(ProcessLookupError):
             os.killpg(proc.pid, signal.SIGKILL)
     else:

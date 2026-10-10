@@ -25,6 +25,11 @@ def load_run(directory: Path, expected: set[str]) -> dict[str, float]:
     for path in paths:
         metadata = json.loads(path.read_text(encoding="utf-8"))
         durations_path = path.with_suffix("").with_suffix("")
+        if isinstance(metadata, dict) and "durations_file" in metadata:
+            name = metadata["durations_file"]
+            if not isinstance(name, str) or Path(name).name != name:
+                raise ValueError(f"{path}: invalid timing snapshot path")
+            durations_path = path.parent / name
         if (
             not isinstance(metadata, dict)
             or metadata.get("schema") != 1

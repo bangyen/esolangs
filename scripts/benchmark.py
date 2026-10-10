@@ -5,9 +5,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import platform
 import statistics
-import subprocess
 import sys
 import time
 from collections.abc import Callable, Iterator
@@ -30,6 +30,7 @@ from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _benchmark_client import Worker
+from _verify_process import run_bounded
 
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
@@ -45,14 +46,25 @@ def artifact_hash(program: esolangs.Program) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def source_identity() -> dict[str, Any]:
+def source_identity(timeout: float = 60) -> dict[str, Any]:
     """Identify the checkout; refuse evidence without readable Git state."""
     root = Path(__file__).resolve().parents[1]
 
+    check_timeout(timeout)
+    deadline = time.monotonic() + timeout
+
     def git(*args: str) -> bytes:
-        return subprocess.run(
-            ["git", *args], cwd=root, capture_output=True, check=True
-        ).stdout
+        return cast(
+            bytes,
+            run_bounded(
+                ["git", *args],
+                cwd=root,
+                capture_output=True,
+                check=True,
+                text=False,
+                timeout=max(0, deadline - time.monotonic()),
+            ).stdout,
+        )
 
     untracked = hashlib.sha256()
     for name in sorted(
@@ -61,7 +73,7 @@ def source_identity() -> dict[str, Any]:
         if name:
             untracked.update(name + b"\0")
             untracked.update(
-                hashlib.sha256((root / name.decode()).read_bytes()).digest()
+                hashlib.sha256((root / os.fsdecode(name)).read_bytes()).digest()
             )
     return {
         "untracked_sha256": untracked.hexdigest(),
