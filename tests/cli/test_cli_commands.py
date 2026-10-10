@@ -71,6 +71,8 @@ class TestJsonOutput:
             assert row["boolean_generator"] == facts["boolean_generator"]
             assert row["parameterized"] == facts["parameterized"]
             assert row["has_example"] == bool(facts["examples"])
+            assert row["state_model"] == facts["state_model"]
+            assert row["shape"] == facts["shape"]
 
     def test_list_json_agrees_with_the_marker_column(
         self, capsys: pytest.CaptureFixture[str]

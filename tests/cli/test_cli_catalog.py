@@ -30,6 +30,24 @@ def test_raster_filter_has_a_positive_control(capsys):
     )
 
 
+def test_state_model_and_shape_filters_agree_with_describe(capsys):
+    """The two derived axes filter by exactly what ``describe`` reports."""
+    for model in ("grid", "tape", "stack", "queue", "register", "other"):
+        assert _names(["--state-model", model], capsys) == [
+            name
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["state_model"] == model
+        ]
+    for shape in ("tree", "reducing", "lookup"):
+        names = _names(["--shape", shape], capsys)
+        assert names  # every shape is populated, so the filter is not vacuous
+        assert names == [
+            name
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["shape"] == shape
+        ]
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize("mode", ["output", "dump", "termination"])
 def test_answer_filter_agrees_with_describe(capsys, mode):
@@ -101,6 +119,11 @@ def test_no_matches_is_an_empty_catalog(capsys):
         (["--inputs", "4", "--interpreter-only"], "requires a generator"),
         (["--source", "binary"], "--source must be one of text, raster"),
         (["--answer", "halts"], "--answer must be one of output, dump, termination"),
+        (
+            ["--state-model", "watch"],
+            "--state-model must be one of register, tape, stack, grid, queue, other",
+        ),
+        (["--shape", "bushy"], "--shape must be one of tree, reducing, lookup"),
         (["--inputs", "0"], "--inputs must be a positive integer"),
         (["--inputs", "-1"], "--inputs must be a positive integer"),
         (["--inputs", "1.5"], "--inputs must be a positive integer"),

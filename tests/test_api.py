@@ -105,6 +105,7 @@ def test_describe_structured_summary() -> None:
     info = esolangs.describe("brainfuck")
     assert info["name"] == "brainfuck"
     assert info["state_model"] == "tape"
+    assert info["shape"] == "tree"
     assert info["boolean_generator"] is True
     assert info["wiki_url"] == "https://esolangs.org/wiki/brainfuck"
 
@@ -112,6 +113,22 @@ def test_describe_structured_summary() -> None:
 def test_describe_covers_state_models() -> None:
     models = {esolangs.describe(n)["state_model"] for n in esolangs.list_languages()}
     assert {"stack", "register", "grid", "tape"} <= models
+
+
+def test_shape_is_the_generator_axis() -> None:
+    """A generator reports its construction shape; no generator means None."""
+    for name in esolangs.list_languages():
+        facts = esolangs.describe(name)
+        if facts["boolean_generator"]:
+            assert facts["shape"] in {"tree", "reducing", "lookup"}, name
+        else:
+            assert facts["shape"] is None, name
+    shapes = {
+        esolangs.describe(n)["shape"]
+        for n in esolangs.list_languages()
+        if esolangs.describe(n)["boolean_generator"]
+    }
+    assert shapes == {"tree", "reducing", "lookup"}
 
 
 @pytest.mark.parametrize("table", ["", "0120", "010", "1"])

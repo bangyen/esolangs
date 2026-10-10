@@ -13,6 +13,16 @@ Interpreters and Boolean generators for 83 esoteric languages: 80 text and 3 ras
 
 `generate` builds a truth-table program; `run` executes it on one input row.
 
+## Concepts
+
+The task is uniform across languages: compute a Boolean function from its
+*truth table*, then verify the answer by running the generated program.
+`generate` turns a table into a program; `encode_inputs` builds the stdin one
+input row needs; `run` executes it; `read_answer` returns the `0`/`1` bit.
+`describe` reports how a language takes its input and where its answer lands.
+Languages that embed their inputs in the source return a template to fill with
+`instantiate` instead.
+
 ## Quickstart
 
 A table lists outputs for inputs `00, 01, 10, 11` in order, so `0110` is XOR:

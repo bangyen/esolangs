@@ -14,6 +14,7 @@ from esolangs.registry import (
     wiki_url,
 )
 from esolangs.registry._contracts import AnswerMode, InputShape, WidthEffect
+from esolangs.registry._language import Shape
 from esolangs.settings import DialectOption, dialect_choices
 from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import machine_traits
@@ -31,6 +32,11 @@ _STATE_MODELS = {
     "other": "other",
 }
 
+#: The ``state_model`` labels (the language's category) and generator shapes;
+#: the CLI's ``--state-model`` and ``--shape`` filters accept exactly these.
+STATE_MODELS: tuple[str, ...] = tuple(_STATE_MODELS.values())
+SHAPES: tuple[str, ...] = tuple(shape.value for shape in Shape)
+
 
 class LanguageInfo(TypedDict):
     """What :func:`describe` returns, as a type a caller can annotate with.
@@ -46,6 +52,7 @@ class LanguageInfo(TypedDict):
     id: str
     source_kind: str
     state_model: str | None
+    shape: str | None
     generator_max_inputs: int | None
     generator_restrictions: str | None
     boolean_generator: bool
@@ -74,10 +81,13 @@ def describe(language: str) -> LanguageInfo:
 
     ``spec`` contains the interpreter docstring; missing docstrings raise.
     ``dialect_settings`` gives runtime defaults, choices, bounds and dependencies.
-    Identity: ``name``, ``id``, ``source_kind``, ``state_model``, ``wiki_url``.
+    Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the language's
+    category, derived from its interpreter family), ``wiki_url``.
     Generation: ``generator_max_inputs`` is an explicit arity cap (None means
     none declared, or no generator); ``generator_restrictions`` names additional
     table-dependent budgets, None when there are none.  ``boolean_generator``;
+    ``shape`` is the generator's construction growth class -- ``"tree"``,
+    ``"reducing"`` or ``"lookup"`` -- and None without a generator;
     ``parameterized`` (a template, filled by :func:`instantiate`,
     ``reads_input`` false).  Width: ``width_effect`` is
     ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
@@ -119,6 +129,7 @@ def describe(language: str) -> LanguageInfo:
         "id": lang.id,
         "source_kind": lang.source_kind.value,
         "state_model": _STATE_MODELS.get(family) if family else None,
+        "shape": lang.shape.value if lang.boolean is not None else None,
         "boolean_generator": lang.boolean is not None,
         "generator_max_inputs": lang.generator_max_inputs,
         "generator_restrictions": lang.generator_restrictions or None,

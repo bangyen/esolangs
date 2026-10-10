@@ -64,9 +64,14 @@ test *args:
 test-full *args:
     {{PYTHON}} scripts/verify.py --full {{args}}
 
-# inner loop: pre-commit + pytest, fast band only, quiet by default
+# inner loop: pre-commit + pytest, fast band only, quiet by default.
+# Four workers, the pytest config's default: this box also runs sessions in
+# parallel, and at eight workers the subprocess-heavy fast tests starve past
+# the band's starved wall ceiling (3.5-4.1s vs the 3s limit) and fail
+# spuriously.  Measured here: eight failed at load 35, four passed at 36, for
+# about 6s more wall.
 test-quick *args:
-    PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly' -n 8" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
 
 # pytest fast and medium bands only; use just test before a commit
 test-mid *args:

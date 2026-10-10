@@ -52,6 +52,7 @@ from esolangs import (
     list_languages,
     read_answer,
 )
+from esolangs._describe import SHAPES, STATE_MODELS
 from esolangs.cli_args import (
     _check_count,
     _expand_short_options,
@@ -112,6 +113,8 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
     for option, choices in (
         ("--source", ("text", "raster")),
         ("--answer", ("output", "dump", "termination")),
+        ("--state-model", STATE_MODELS),
+        ("--shape", SHAPES),
     ):
         if option in options and options[option] not in choices:
             _fail(f"{option} must be one of {', '.join(choices)}")
@@ -135,6 +138,15 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
             and language.contract.answer_mode != options["--answer"]
         ):
             continue
+        # ``describe`` is only reached for the two derived facts, so the
+        # default catalog stays as cheap as it was.
+        if (
+            "--state-model" in options
+            and describe(name)["state_model"] != options["--state-model"]
+        ):
+            continue
+        if "--shape" in options and describe(name)["shape"] != options["--shape"]:
+            continue
         limit = language.generator_max_inputs
         if inputs is not None and limit is not None and inputs > limit:
             continue
@@ -144,7 +156,7 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
 
 def _list(rest: list[str]) -> None:
     """Print languages matching the requested capabilities."""
-    value_options = {"--source", "--answer", "--inputs"}
+    value_options = {"--source", "--answer", "--inputs", "--state-model", "--shape"}
     flag_options = {"--details", "--json", "--generator", "--interpreter-only"}
     rest, options = _pop_options(rest, value_options)
     rest, flags = _pop_flags(rest, flag_options)
@@ -163,6 +175,8 @@ def _list(rest: list[str]) -> None:
                     {
                         "name": name,
                         "source_kind": facts["source_kind"],
+                        "state_model": facts["state_model"],
+                        "shape": facts["shape"],
                         "answer_mode": facts["answer_mode"],
                         # The three the marker column encodes, spelled out.
                         "boolean_generator": facts["boolean_generator"],

@@ -252,6 +252,7 @@ class TestPackageSurface:
             "random",
             "reads_input",
             "self_halts",
+            "shape",
             "source_kind",
             "spec",
             "state_model",
