@@ -33,6 +33,55 @@ def test_token_fit_lattice_respects_width_regimes(minimum, maximum):
         assert balance_score(_join_tokens(tokens, width, " ")) == balance_score(optimum)
 
 
+@pytest.mark.parametrize("separator", ["", " "])
+def test_long_token_dominates_packed_row_count(separator):
+    from esolangs.tools.wrap import _join_tokens
+
+    tokens = ["x" * 80, *(["x", "xx"] * 80)]
+    width = balanced_token_width(tokens, separator, minimum=80)
+    assert width == 80
+    optimum = min(
+        (_join_tokens(tokens, candidate, separator) for candidate in range(80, 241)),
+        key=balance_score,
+    )
+    assert balance_score(_join_tokens(tokens, width, separator)) == balance_score(
+        optimum
+    )
+
+
+def test_trimmed_row_ends_keep_the_width_lattice():
+    from esolangs.tools.wrap import _join_tokens
+
+    tokens = [
+        "xxxxx   ",
+        "xxxxxxxxxxxxx ",
+        "x   ",
+        "xxxxxxxxxxx   ",
+        "xx",
+        "x  ",
+        "xxxxx",
+        "xxxxxxxxxxx   ",
+        "xxx   ",
+        "x  ",
+        "xx   ",
+        "xxxxxxx",
+        "xxxxxxxxxxxxxxxx   ",
+        "xxx  ",
+        "xxxxx  ",
+        "xxxxxxxxxxxxx    ",
+    ]
+
+    def score(width):
+        return balance_score(
+            "\n".join(
+                row.rstrip() for row in _join_tokens(tokens, width, " ").splitlines()
+            )
+        )
+
+    width = balanced_token_width(tokens, " ", minimum=13, maximum=40, rstrip_rows=True)
+    assert score(width) == min(score(candidate) for candidate in range(13, 41))
+
+
 @pytest.mark.parametrize(
     "language",
     [

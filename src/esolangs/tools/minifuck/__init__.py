@@ -9,6 +9,7 @@ import re
 from collections.abc import Callable
 from functools import cache
 from itertools import pairwise
+from math import isqrt
 from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
@@ -39,6 +40,7 @@ from esolangs.tools.minifuck.sim import (
     _clamp,
 )
 from esolangs.tools.minifuck.states import state_setters, two_state
+from esolangs.tools.minifuck.stored import stored
 from esolangs.tools.token_balance import balanced_token_width
 from esolangs.tools.wrap import _MINIFUCK_COMMAND, _RUN, _minifuck, balance_score
 
@@ -158,24 +160,29 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
     consume inputs in order. Sixty-four seeded affine tables at n=16 average
     552.8 characters against 30,849.8 before (98.2% smaller, seed 32026).
     Non-affine diagrams with at most two residuals per input level share a byte
-    accumulator; wider diagrams retain the positional construction.
+    accumulator; wider diagrams store each residual once when its tape walks
+    fit the positional text budget.
     """
     n = _validate_truth_table(truth_table)
     natural = _solve(truth_table)
     mask = _affine_mask(truth_table)
     if mask is None:
         legacy = _lookup_layout(truth_table, n, natural, width)
-        shared = two_state(truth_table)
-        if shared is None:
-            return legacy
+        candidates = [legacy]
+        candidates.extend(
+            candidate
+            for candidate in (two_state(truth_table), stored(truth_table, len(legacy)))
+            if candidate is not None
+        )
         if width is None or width <= 0:
-            return min(legacy, shared, key=len)
-        shared = _wrap_template(shared, n, width)
-        if len(shared) > len(legacy):
-            return legacy
+            return min(candidates, key=len)
+        candidates = [legacy] + [
+            wrapped
+            for candidate in candidates[1:]
+            if len(wrapped := _wrap_template(candidate, n, width)) <= len(legacy)
+        ]
         return min(
-            legacy,
-            shared,
+            candidates,
             key=lambda program: (
                 max(0, max(map(len, program.splitlines())) - width),
                 len(program),
@@ -366,25 +373,38 @@ def _balance(table: str, default: str) -> str:
     legacy = _lookup_balance(table, _solve(table))
     mask = _affine_mask(table)
     if mask is None:
-        shared = two_state(table)
-        if shared is None:
-            return legacy
+        forms = [(two_state(table), False), (stored(table, len(legacy)), True)]
     else:
-        shared = _parity_columns(
-            len(table).bit_length() - 1, int(table[0]), mask=mask, paired=True
-        )
+        forms = [
+            (
+                _parity_columns(
+                    len(table).bit_length() - 1, int(table[0]), mask=mask, paired=True
+                ),
+                False,
+            )
+        ]
     n = len(table).bit_length() - 1
-    marked = mark_runs(shared, TEMPLATE_CHAR, (PAIR,) * n)
-    tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
-    width = balanced_token_width(tokens, minimum=max(map(len, tokens)))
-    shared = _wrap_template(shared, n, width)
-    square = _square_tail(shared)
     candidates = [legacy]
-    candidates.extend(
-        candidate
-        for candidate in (default, shared, square)
-        if len(candidate) <= len(legacy)
-    )
+    if len(default) <= len(legacy):
+        candidates.append(default)
+    for shared, tape in forms:
+        if shared is None:
+            continue
+        marked = mark_runs(shared, TEMPLATE_CHAR, (PAIR,) * n)
+        tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
+        # Unary tape walks can contain O(T) tokens. A square-root wrap and
+        # inert tail give a square without enumerating token-fit widths.
+        width = (
+            max(isqrt(len(shared)) + 1, max(map(len, tokens)))
+            if tape
+            else balanced_token_width(tokens, minimum=max(map(len, tokens)))
+        )
+        shared = _wrap_template(shared, n, width)
+        candidates.extend(
+            candidate
+            for candidate in (shared, _square_tail(shared))
+            if len(candidate) <= len(legacy)
+        )
     return min(candidates, key=balance_score)
 
 
