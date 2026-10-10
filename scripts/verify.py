@@ -69,8 +69,11 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _scope import local_tooling_deselections  # noqa: E402
-from _verify_cache import CACHED_STEPS, VerifiedCache  # noqa: E402
+from _scope import (  # noqa: E402
+    CACHED_STEPS,
+    VerifiedCache,
+    local_tooling_deselections,
+)
 from _verify_process import run_bounded, start_logged, wait_with_heartbeat  # noqa: E402
 
 # Git runs this hook with its stdout attached to a pipe, not the terminal, so

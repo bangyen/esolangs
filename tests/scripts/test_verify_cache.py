@@ -6,7 +6,7 @@ import pytest
 
 from tests.scripts.script_support import load
 
-SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "_verify_cache.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "_scope.py"
 
 
 @pytest.fixture
