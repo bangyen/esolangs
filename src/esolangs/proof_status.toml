@@ -659,8 +659,9 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Minifuck"
 labels = ["parameterized construction"]
 qualification = """\
-    affine byte accumulator or total positional `_mux` fallback"""
-scaling = "linear: mux lookup, constant strings times O(T) counts"
+    affine or two-residual byte accumulator; budgeted stored residuals; total \
+    positional `_mux` fallback"""
+scaling = "linear: shared tape text admitted within the positional mux budget"
 execution = "linear: at most L commands: straight-line, the cursor never moves back"
 workspace = """\
     linear: worst 6T + 30 + bl(6T+28) + bl(6T+30) + bl(L) bits past n = 4: a tape \

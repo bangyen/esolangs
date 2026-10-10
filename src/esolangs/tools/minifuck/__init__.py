@@ -1,6 +1,6 @@
 """Build Minifuck Boolean templates by input substitution.
 
-Affine candidates keep their two residual classes in output bit 7; ignored
+Affine and two-residual candidates keep their state in output bit 7; ignored
 setters write beyond the output byte. A positional strip supplies the size floor.
 The simulator laws are pinned differentially against the interpreter.
 """
@@ -9,6 +9,7 @@ import re
 from collections.abc import Callable
 from functools import cache
 from itertools import pairwise
+from math import isqrt
 from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
@@ -38,6 +39,8 @@ from esolangs.tools.minifuck.sim import (
     PAIR,
     _clamp,
 )
+from esolangs.tools.minifuck.states import state_setters, two_state
+from esolangs.tools.minifuck.stored import stored
 from esolangs.tools.token_balance import balanced_token_width
 from esolangs.tools.wrap import _MINIFUCK_COMMAND, _RUN, _minifuck, balance_score
 
@@ -156,13 +159,35 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
     retain ``(xx, [<)`` setters; narrow columns use ``(x, [)``. All candidates
     consume inputs in order. Sixty-four seeded affine tables at n=16 average
     552.8 characters against 30,849.8 before (98.2% smaller, seed 32026).
-    Non-affine layouts retain the positional construction.
+    Non-affine diagrams with at most two residuals per input level share a byte
+    accumulator; wider diagrams store each residual once when its tape walks
+    fit the positional text budget.
     """
     n = _validate_truth_table(truth_table)
     natural = _solve(truth_table)
     mask = _affine_mask(truth_table)
     if mask is None:
-        return _lookup_layout(truth_table, n, natural, width)
+        legacy = _lookup_layout(truth_table, n, natural, width)
+        candidates = [legacy]
+        candidates.extend(
+            candidate
+            for candidate in (two_state(truth_table), stored(truth_table, len(legacy)))
+            if candidate is not None
+        )
+        if width is None or width <= 0:
+            return min(candidates, key=len)
+        candidates = [legacy] + [
+            wrapped
+            for candidate in candidates[1:]
+            if len(wrapped := _wrap_template(candidate, n, width)) <= len(legacy)
+        ]
+        return min(
+            candidates,
+            key=lambda program: (
+                max(0, max(map(len, program.splitlines())) - width),
+                len(program),
+            ),
+        )
     shared = _parity_columns(n, int(truth_table[0]), mask=mask, paired=True)
     if width is None or width <= 0:
         return min(natural, shared, key=len)
@@ -280,7 +305,9 @@ def _parity_columns(
 
 
 def minifuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
-    """Recognize the parity layout's inert q prefix; retain legacy two-cell bits."""
+    """Read state-setter orientations or the parity layout's inert q prefix."""
+    if (setters := state_setters(template, n)) is not None:
+        return setters
     return (("x", "[") if template.startswith("q\n") else PAIR,) * n
 
 
@@ -342,24 +369,42 @@ def _square_tail(program: str) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the affine accumulator with the positional balance floor."""
+    """Compare byte accumulators with the positional balance floor."""
     legacy = _lookup_balance(table, _solve(table))
     mask = _affine_mask(table)
     if mask is None:
-        return legacy
+        forms = [(two_state(table), False), (stored(table, len(legacy)), True)]
+    else:
+        forms = [
+            (
+                _parity_columns(
+                    len(table).bit_length() - 1, int(table[0]), mask=mask, paired=True
+                ),
+                False,
+            )
+        ]
     n = len(table).bit_length() - 1
-    shared = _parity_columns(n, int(table[0]), mask=mask, paired=True)
-    marked = mark_runs(shared, TEMPLATE_CHAR, (PAIR,) * n)
-    tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
-    width = balanced_token_width(tokens, minimum=max(map(len, tokens)))
-    shared = _wrap_template(shared, n, width)
-    square = _square_tail(shared)
     candidates = [legacy]
-    candidates.extend(
-        candidate
-        for candidate in (default, shared, square)
-        if len(candidate) <= len(legacy)
-    )
+    if len(default) <= len(legacy):
+        candidates.append(default)
+    for shared, tape in forms:
+        if shared is None:
+            continue
+        marked = mark_runs(shared, TEMPLATE_CHAR, (PAIR,) * n)
+        tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
+        # Unary tape walks can contain O(T) tokens. A square-root wrap and
+        # inert tail give a square without enumerating token-fit widths.
+        width = (
+            max(isqrt(len(shared)) + 1, max(map(len, tokens)))
+            if tape
+            else balanced_token_width(tokens, minimum=max(map(len, tokens)))
+        )
+        shared = _wrap_template(shared, n, width)
+        candidates.extend(
+            candidate
+            for candidate in (shared, _square_tail(shared))
+            if len(candidate) <= len(legacy)
+        )
     return min(candidates, key=balance_score)
 
 
@@ -381,7 +426,7 @@ LANGUAGE = Language(
     size_bound=lambda n: 70 * 2**n,
     boolean=minifuck,
     same_layout=_same_layout,
-    # Indexed strip or affine accumulator.
+    # Indexed strip or byte-state accumulator.
     shape=Shape.LOOKUP,
     contract=BooleanContract(),
     # ``[`` skips the character after it.
