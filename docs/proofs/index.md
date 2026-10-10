@@ -489,8 +489,8 @@ dual-basis core work has only a super-linear aggregate bound. The
 audit marks size `Measured`, keeping its regression gate without claiming
 an asymptotic proof.
 
-`scripts/profile_vandevelo.py` counts identifier characters, sampled
-fallback calls, pair draws and the cosets each draw visits. A forced
+The audit counts identifier characters, sampled fallback calls, pair draws
+and the cosets each draw visits. A forced
 six-input span-invariant control fires the fallback once: four draws over
 its three cosets. Its selected direction has exactly eight pairs, checked
 directly. The default corpus executes 66 tables through six inputs and
