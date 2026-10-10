@@ -83,15 +83,29 @@ class TestFactor:
     @pytest.mark.slow
     @pytest.mark.weekly
     @pytest.mark.cost_evidence("Factor's dense n=13 render stops beyond 500000 digits")
-    def test_total_past_the_retired_digit_budget(self) -> None:
-        """No digit budget: the 500000-digit refusal is gone (dense n=13)."""
+    def test_total_past_the_retired_digit_budget(self, monkeypatch) -> None:
+        """Public generation renders large candidates before selecting shared text."""
+        from importlib import import_module
+
         from esolangs.interpreters.tape_based.factor import _parse, decode
         from esolangs.tools.factor import _encode
         from tests.witness_tables import dense as _dense
 
+        rendered = []
+
+        def observe(number):
+            text = str(number)
+            rendered.append(text)
+            return text
+
+        monkeypatch.setattr(
+            import_module("esolangs.tools.factor"), "str", observe, raising=False
+        )
         n = 13
         table = _dense(n)
-        program = boolean.factor(table)
+        selected = boolean.factor(table)
+        assert selected in rendered
+        program = next(text for text in rendered if len(text) > 500_000)
         assert len(program) > 500_000
         code = decode(_parse(program))
         # Re-encoding rather than comparing against brainfuck's program: the
@@ -148,6 +162,39 @@ def test_one_input_not_stays_within_the_command_ledger(bit, expected) -> None:
         machine.step()
     assert machine.halted
     assert machine.output == expected
+
+
+@pytest.mark.medium
+def test_multiple_residuals_reduce_encoded_size_within_ledger():
+    from esolangs._digits import digit_limit_for
+    from esolangs.tools.factor import _encode, _program
+    from tests.generator_support import assert_shared_program
+
+    n = 10
+    residual = "".join(str(row.bit_count() & 1) for row in range(1 << (n - 4)))
+    table = "0" * (15 * len(residual)) + residual
+    previous = []
+    for shared in (False, True):
+        number = _encode(_program(table, shared=shared, multiple=False))
+        with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
+            previous.append(str(number))
+    assert_shared_program(
+        "Factor",
+        table,
+        min(previous, key=len),
+        265 * n + 231,
+        lambda _: (
+            7 * n
+            + 12
+            + (2 * n + 1).bit_length()
+            + n.bit_length()
+            + (51 * 2 ** (n - 2) + 16 * n + 14).bit_length()
+        ),
+        rows=[
+            *range(15 * len(residual), len(table)),
+            *[prefix * len(residual) + len(residual) - 1 for prefix in range(15)],
+        ],
+    )
 
 
 @pytest.mark.medium

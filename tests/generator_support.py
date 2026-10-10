@@ -106,9 +106,9 @@ def assert_constant_balanced_shape(language, language_id, table, legacy):
 
 
 def assert_shared_program(
-    language, table, plain, command_bound, workspace_bound, *, size=len
+    language, table, plain, command_bound, workspace_bound, *, size=len, rows=None
 ):
-    """Execute every shared-program row and check commands and written state."""
+    """Execute shared-program rows and check commands and written state."""
     from esolangs.debugger import make_vm
     from scripts.benchmark import WrittenState
 
@@ -116,7 +116,8 @@ def assert_shared_program(
     program = esolangs.generate(language, table)
     assert size(program) < size(plain)
     parameterized = esolangs.describe(language)["parameterized"]
-    for row, expected in enumerate(table):
+    for row in range(len(table)) if rows is None else rows:
+        expected = table[row]
         bits = [int(bit) for bit in format(row, f"0{n}b")]
         source = (
             esolangs.instantiate(language, program, bits) if parameterized else program

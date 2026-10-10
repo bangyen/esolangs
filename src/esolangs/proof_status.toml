@@ -178,7 +178,7 @@ evidence = "docs/proofs/index.md#generator-ledger"
 [[ledger]]
 generator = "brainfuck"
 labels = ["tree"]
-qualification = "`decision_tree_program`"
+qualification = "folded decision tree; unused level flags defer repeated residuals in depth order"
 scaling = "linear: decision_tree_program, span walk, leaf moves geometric"
 execution = "poly n: worst 69n + 44 commands, the AND table's all-ones row"
 workspace = "poly n: worst 2n + 6 + bl(2n) + bl(n) + bl(L) bits"
@@ -190,7 +190,8 @@ labels = ["tree"]
 qualification = """\
     each input byte's low bit is read onto its own cell and tested in place by a \
     flip-only decision tree, one flag interleaved beside each bit, consuming and \
-    emitting complete bytes"""
+    emitting complete bytes; unused level flags defer repeated residuals in depth \
+    order"""
 scaling = "linear: constant cost per node, difference ratio ~3.9 at n=8..12"
 execution = "poly n: worst 2n^2 + 27n + 8 commands; reads shuttle to scratch"
 workspace = """\
@@ -442,7 +443,7 @@ labels = ["tree"]
 qualification = """\
     Brainfuck tree over the essential inputs followed by a total arbitrary-precision \
     segmented-sieve encoding; fixed-modulus short intervals bound its adaptive \
-    residue sequence"""
+    residue sequence; unused level flags defer repeated residuals in depth order"""
 scaling = """\
     lower bound: tight language and generated Theta(T log T) ([factor](factor.md))"""
 execution = "poly n: worst 265n + 231 commands; the prelude is at most 247n + 240 past n=1"

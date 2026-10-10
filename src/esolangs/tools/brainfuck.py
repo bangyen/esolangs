@@ -30,8 +30,8 @@ def bf_tree(truth_table: str) -> str:
     Bits use cells 2i, flags 2i+1; branches clear both, and one final print
     reads the result. Flags cut n=10 sparse from 2,646 to 754 chars;
     folding and shared output cut n=10 XOR from 77,939 to 18,495.  Equal
-    sibling halves merge; a repeated residual uses its first unused level flag
-    and is emitted once after the prefix, within the existing command bound.
+    sibling halves merge; repeated residuals use one unused flag per level
+    and emit once in depth order, within the existing command bound.
     An ignored input before the last kept one is read bare into the next
     kept cell, whose read overwrites it: 1.9% smaller at n=8 with one ignored,
     6.7% with two. A trailing one keeps its subtract; left at 48/49 it breaks
@@ -72,7 +72,13 @@ def _bf_ordered(truth_table: str, perm: tuple[int, ...], *, share: bool = True) 
     plain = "".join(cells)
     if not share:
         return plain
-    shared = shared_flag_tree(truth_table, perm, tree_start, 2 * n)
+    shared = shared_flag_tree(
+        truth_table,
+        perm,
+        tree_start,
+        2 * n,
+        command_budget=69 * n + 44 - len(header) - _ASCII_ZERO - 1,
+    )
     if shared is None:
         return plain
     body, commands = shared

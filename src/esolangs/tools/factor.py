@@ -4,8 +4,8 @@ Ascending primes encode Brainfuck instructions by residue modulo eleven
 and run length by exponent. A compact tree tests inputs in stream order
 and puts the answer in the final input's unused flag. Multiplication loops
 build and subtract the ASCII offsets; only this tree is encoded.  Equal
-sibling halves merge; one repeated residual is emitted after the prefix,
-using its first unused level flag when the encoded integer is shorter and
+sibling halves merge; repeated residuals emit in depth order after the prefix,
+using one unused flag per level when the encoded integer is shorter and
 the unchanged command bound admits it.
 An ignored cell is read but not dedented.
 """
@@ -89,7 +89,11 @@ def _encode(code: str) -> int:
 
 
 def _program(
-    truth_table: str, *, shared: bool = False, keep_constant_input: bool = False
+    truth_table: str,
+    *,
+    shared: bool = False,
+    keep_constant_input: bool = False,
+    multiple: bool = True,
 ) -> str:
     """Build the compact tree in input order, using the final input's flag.
 
@@ -152,13 +156,21 @@ def _program(
     plain = prefix + body + move_text(pos, result, ">", "<") + "."
     if not shared:
         return plain
-    candidate = shared_flag_tree(table, perm, after_reads, result, binary_leaves=True)
+    # Six offset-building trips and 48 dedent trips, with no opener retest.
+    prelude = 199 * n + 48 * len(perm) + 240
+    candidate = shared_flag_tree(
+        table,
+        perm,
+        after_reads,
+        result,
+        binary_leaves=True,
+        command_budget=265 * n + 230 - prelude,
+        multiple=multiple,
+    )
     if candidate is None:
         return plain
     body, commands = candidate
     program = prefix + body + "."
-    # Six offset-building trips and 48 dedent trips, with no opener retest.
-    prelude = 199 * n + 48 * len(perm) + 240
     return (
         program
         if prelude + commands + 1 <= 265 * n + 231 and len(program) <= len(plain)
@@ -183,14 +195,21 @@ def _factor(truth_table: str, *, keep_constant_input: bool = False) -> str:
     candidate = _program(
         truth_table, shared=True, keep_constant_input=keep_constant_input
     )
+    single = _program(
+        truth_table,
+        shared=True,
+        multiple=False,
+        keep_constant_input=keep_constant_input,
+    )
 
     def encoded(code: str) -> str:
         number = _encode(code)
         with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
             return str(number)
 
-    program = encoded(plain)
-    return min(program, encoded(candidate), key=len) if candidate != plain else program
+    return min(
+        (encoded(code) for code in dict.fromkeys((plain, single, candidate))), key=len
+    )
 
 
 def balance_factor(truth_table: str, default: str) -> str:

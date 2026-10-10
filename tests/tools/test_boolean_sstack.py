@@ -7,6 +7,25 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import run_sstack
 
 
+@pytest.mark.parametrize(
+    ("table", "shared"), [("01101001", (0, 0)), ("00000000", (1, 0))]
+)
+def test_dispatch_prices_single_reachable_path_classes(table, shared):
+    from esolangs.debugger import make_vm
+    from esolangs.tools.sstack import _sstack_tree
+
+    program, bound = _sstack_tree(table, shared)
+    for row, expected in enumerate(table):
+        machine = make_vm("SStack", program, stdin=f"{row:03b}")
+        commands = 0
+        while not machine.halted and commands <= bound:
+            machine.step()
+            commands += 1
+        assert machine.halted
+        assert machine.output == expected
+        assert commands <= bound
+
+
 def test_every_two_input_table_on_every_row() -> None:
     for code in range(16):
         table = f"{code:04b}"

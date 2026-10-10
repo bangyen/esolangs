@@ -1,16 +1,30 @@
-"""Select one repeated residual from the tree that survives sibling folding."""
+"""Select repeated residuals from the tree that survives sibling folding."""
 
 from esolangs.tools.helpers import subtree_ids
 
 
 def repeated_block(table: str) -> tuple[int, int] | None:
     """Return (depth, first row) with greatest repeated-span saving, or None."""
+    found = _repeated_blocks(table)
+    if not found:
+        return None
+    depth, row, _ = max(found, key=lambda block: block[2])
+    return depth, row
+
+
+def repeated_blocks(table: str) -> tuple[tuple[int, int], ...]:
+    """Return the greatest repeated-span residual at each folded tree level."""
+    return tuple((depth, row) for depth, row, _ in _repeated_blocks(table))
+
+
+def _repeated_blocks(table: str) -> list[tuple[int, int, int]]:
     ids = subtree_ids(table)
     n = len(ids) - 1
     live = {ids[0][0]: (1, 0)}
-    best: tuple[int, int] | None = None
-    saved = 0
+    found: list[tuple[int, int, int]] = []
     for depth in range(n):
+        best = None
+        saved = 0
         span = 1 << (n - depth)
         following: dict[int, tuple[int, int]] = {}
         for key, (copies, row) in live.items():
@@ -28,7 +42,9 @@ def repeated_block(table: str) -> tuple[int, int] | None:
                 previous, first = following.get(child, (0, first))
                 following[child] = (previous + copies, first)
         live = following
-    return best
+        if best is not None:
+            found.append((*best, saved))
+    return found
 
 
 type BranchCost = tuple[int | None, int | None]

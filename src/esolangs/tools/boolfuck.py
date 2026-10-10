@@ -19,8 +19,8 @@ the zero-side only when the flag survived (the bit was 0). Both sides
 clear what they test, so every flag is 0 again when the node returns.
 Constant subtrees fold to a leaf, exactly as in
 ``helpers.decision_tree_body``; a ``"1"`` leaf flips R, and only one
-leaf ever executes, so R flips at most once. A repeated residual is deferred
-to the unused first residual-level flag and emitted once after the prefix tree,
+leaf ever executes, so R flips at most once. Repeated residuals defer
+to unused level flags and emit once in depth order after the prefix tree,
 only when text shrinks and the unchanged command bound admits it.
 
 Print: R prints as bit 0 of the answer byte; bits 1..3 print from a
@@ -34,7 +34,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     move_text,
 )
-from esolangs.tools.shared_block import repeated_block
+from esolangs.tools.shared_block import repeated_block, repeated_blocks
 from esolangs.tools.shared_flag import flag_tree_body
 from esolangs.tools.wrap import wrap_chars
 
@@ -49,15 +49,21 @@ def boolfuck(truth_table: str) -> str:
         return plain
     candidate, commands = _boolfuck_tree(truth_table, shared)
     n = _validate_truth_table(truth_table)
-    return (
-        candidate
-        if commands <= 2 * n * n + 27 * n + 8 and len(candidate) < len(plain)
-        else plain
+    forms = [(plain, 0), (candidate, commands)]
+    blocks = repeated_blocks(truth_table)
+    if len(blocks) > 1:
+        forms.append(_boolfuck_tree(truth_table, shared_blocks=blocks))
+    return min(
+        (program for program, cost in forms if cost <= 2 * n * n + 27 * n + 8),
+        key=len,
     )
 
 
 def _boolfuck_tree(
-    truth_table: str, shared: tuple[int, int] | None = None
+    truth_table: str,
+    shared: tuple[int, int] | None = None,
+    *,
+    shared_blocks: tuple[tuple[int, int], ...] = (),
 ) -> tuple[str, int]:
     """Emit a tree, optionally deferring a block into its first unused flag."""
     n = _validate_truth_table(truth_table)
@@ -87,7 +93,13 @@ def _boolfuck_tree(
     # Decision tree over the stored bits.
     read_cost = count
     body, tree_cost = flag_tree_body(
-        truth_table, tuple(range(n)), pos, result, shared=shared, flip=True
+        truth_table,
+        tuple(range(n)),
+        pos,
+        result,
+        shared=shared,
+        shared_blocks=shared_blocks,
+        flip=True,
     )
     emit(body)
     pos = result

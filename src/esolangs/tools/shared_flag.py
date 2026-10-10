@@ -1,6 +1,9 @@
-"""Defer one repeated byte-tape residual to its first unused level flag."""
+"""Defer repeated byte-tape residuals through unused level flags."""
 
 from __future__ import annotations
+
+from dataclasses import dataclass
+from itertools import pairwise
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
@@ -8,14 +11,23 @@ from esolangs.tools.helpers import (
     move_text,
     subtree_ids,
 )
-from esolangs.tools.shared_block import (
-    BranchCost,
-    add_cost,
-    dispatch_cost,
-    merge_cost,
-    normal_cost,
-    repeated_block,
-)
+from esolangs.tools.shared_block import repeated_block, repeated_blocks
+
+
+@dataclass(frozen=True, slots=True)
+class _Cost:
+    """A local maximum plus its eventual normal or deferred continuation."""
+
+    value: int
+    children: tuple[_Cost, ...] = ()
+    target: int | None = None
+
+    def evaluate(self, tails: dict[int | None, int]) -> int:
+        return self.value + (
+            max(child.evaluate(tails) for child in self.children)
+            if self.children
+            else tails[self.target]
+        )
 
 
 def shared_flag_tree(
@@ -25,14 +37,33 @@ def shared_flag_tree(
     result: int,
     *,
     binary_leaves: bool = False,
+    command_budget: int | None = None,
+    multiple: bool = True,
 ) -> tuple[str, int] | None:
-    """Return a byte-tape body ending at result, sharing one actual residual."""
+    """Return the shortest admitted single- or multiple-residual byte-tape body."""
     shared = repeated_block(truth_table)
     if shared is None:
         return None
-    return flag_tree_body(
+    single = flag_tree_body(
         truth_table, perm, start, result, shared=shared, binary_leaves=binary_leaves
     )
+    blocks = repeated_blocks(truth_table)
+    forms = [single]
+    if multiple and len(blocks) > 1:
+        forms.append(
+            flag_tree_body(
+                truth_table,
+                perm,
+                start,
+                result,
+                shared_blocks=blocks,
+                binary_leaves=binary_leaves,
+            )
+        )
+    admitted = [
+        form for form in forms if command_budget is None or form[1] <= command_budget
+    ]
+    return min(admitted, key=lambda form: len(form[0])) if admitted else None
 
 
 def flag_tree_body(
@@ -42,6 +73,7 @@ def flag_tree_body(
     result: int,
     *,
     shared: tuple[int, int] | None = None,
+    shared_blocks: tuple[tuple[int, int], ...] = (),
     binary_leaves: bool = False,
     flip: bool = False,
 ) -> tuple[str, int]:
@@ -54,9 +86,18 @@ def flag_tree_body(
     n = _validate_truth_table(truth_table)
     clear = "+" if flip else "-"
     retest = int(flip)
-    fold_zero = shared is not None
-    pending = 2 * perm[shared[0] if shared is not None else n - 1] + 1
+    blocks = (shared,) if shared is not None else shared_blocks
+    depths = [depth for depth, _ in blocks]
+    if any(depth < 0 or depth >= n for depth in depths) or any(
+        left >= right for left, right in pairwise(depths)
+    ):
+        raise ValueError("deferred levels must be distinct, increasing input levels")
+    fold_zero = bool(blocks)
     ids = subtree_ids(truth_table)
+    selected = {
+        (depth, ids[depth][row >> (n - depth)]): i
+        for i, (depth, row) in enumerate(blocks)
+    }
     is_constant = constant_span_test(truth_table)
 
     def bit(i: int) -> int:
@@ -85,7 +126,7 @@ def flag_tree_body(
         span = 1 << (n - i)
         return truth_table[combo] if is_constant(combo, combo + span) else None
 
-    def branch(i: int, combo: int) -> BranchCost:
+    def branch(i: int, combo: int) -> _Cost:
         """Emit one side of node ``i``: a folded leaf or the child subtree."""
         start = count
         value = constant(i + 1, combo)
@@ -95,19 +136,16 @@ def flag_tree_body(
             move(result)
             emit("+")
         # value == "0": the leaf emits nothing
-        return count - start, None
+        return _Cost(count - start)
 
-    def node(i: int, combo: int) -> BranchCost:
+    def node(i: int, combo: int) -> _Cost:
         """Emit node ``i``: test bit ``i``, run one side, leave flag_i = 0."""
         start = count
-        if (
-            shared is not None
-            and i == shared[0]
-            and ids[i][combo >> (n - i)] == ids[i][shared[1] >> (n - i)]
-        ):
-            move(pending)
+        key = (i, ids[i][combo >> (n - i)])
+        if key in selected:
+            move(flag(i))
             emit("+")
-            return None, count - start
+            return _Cost(count - start, target=selected[key])
         bit_cell = bit(i)
         flg = flag(i)
         one = combo | (1 << (n - 1 - i))
@@ -126,7 +164,7 @@ def flag_tree_body(
             emit("+" if truth_table[combo + 1] == "1" else "-")
             move(bit_cell)
             emit("]")
-            return max(skipped, count - start + retest), None
+            return _Cost(max(skipped, count - start + retest))
         if fold_zero and constant(i + 1, combo) == "0":
             move(bit_cell)
             emit("[")
@@ -137,9 +175,9 @@ def flag_tree_body(
             one_flat = count - body_start
             move(bit_cell)
             emit("]")
-            return merge_cost(
-                add_cost(one_cost, count - start - one_flat + retest),
-                (common, None),
+            return _Cost(
+                0,
+                (_Cost(count - start - one_flat + retest, (one_cost,)), _Cost(common)),
             )
         move(flg)
         emit("+")  # flag_i = 1 (it is 0 by invariant)
@@ -154,7 +192,7 @@ def flag_tree_body(
         one_flat = count - body_start
         move(bit_cell)
         emit("]")  # bit is 0 now, so this exits
-        one_cost = add_cost(one_cost, count - one_start - one_flat + retest)
+        one_cost = _Cost(count - one_start - one_flat + retest, (one_cost,))
         between = count
         move(flg)
         emit("[")
@@ -166,25 +204,33 @@ def flag_tree_body(
         zero_flat = count - body_start
         move(flg)
         emit("]")
-        zero_cost = add_cost(zero_cost, count - zero_start - zero_flat + retest)
-        return add_cost(merge_cost(one_cost, zero_cost), common)
+        zero_cost = _Cost(count - zero_start - zero_flat + retest, (zero_cost,))
+        return _Cost(common, (one_cost, zero_cost))
 
     tree_cost = node(0, 0)
-    tail_start = count
-    if shared is not None:
-        depth, row = shared
+    stages = []
+    for i, (depth, row) in enumerate(blocks):
+        tail_start = count
+        pending = flag(depth)
         move(pending)
         dispatch_test = count - tail_start + 1
         emit("[" + clear)
         body_start = count
-        shared = None
+        del selected[depth, ids[depth][row >> (n - depth)]]
         body_cost = node(depth, row)
         body_flat = count - body_start
         move(pending)
         emit("]")
-        active = count - tail_start - body_flat + normal_cost(body_cost) + retest
-        tree_cost = dispatch_cost(tree_cost, active, dispatch_test)
-        tail_start = count
+        active = count - tail_start - body_flat + retest
+        stages.append((i, body_cost, active, dispatch_test))
 
+    tail_start = count
     move(result)
-    return "".join(parts), normal_cost(tree_cost) + count - tail_start
+    tails: dict[int | None, int] = {None: count - tail_start}
+    # Each emitted branch is evaluated once; deeper dispatch continuations
+    # have already been priced when its definition is reached in reverse.
+    for i, body_cost, active, skipped in reversed(stages):
+        cost = active + body_cost.evaluate(tails)
+        tails = {target: value + skipped for target, value in tails.items()}
+        tails[i] = cost
+    return "".join(parts), tree_cost.evaluate(tails)
