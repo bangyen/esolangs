@@ -96,6 +96,17 @@ def test_remove_drops_a_catalogue_entry(tmp_path: Path) -> None:
     assert path.read_text() == '[local]\n"Kept" = "another"\n'
 
 
+def test_remove_drops_a_link_bullet(tmp_path: Path) -> None:
+    """A ``- [Name](url): ...`` curation bullet goes, its neighbour stays."""
+    path = tmp_path / "limitations.md"
+    path.write_text(
+        "- [Gone](https://x/) (7): integrated.\n  continued.\n"
+        "- [Kept](https://y/): stays.\n"
+    )
+    remove_language._drop_bullets(path, "Gone")  # noqa: SLF001
+    assert path.read_text() == "- [Kept](https://y/): stays.\n"
+
+
 def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
     new_language.scaffold("Tiny", "other", generator=False)
     fixtures = root / "tests/fixtures"

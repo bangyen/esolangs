@@ -342,13 +342,13 @@ def _drop_toml(path: Path, name: str) -> None:
 
 
 def _drop_bullets(path: Path, name: str) -> None:
-    """Drop each ``- name ...`` bullet, with its indented lines, from ``path``.
+    """Drop each ``- name ...`` or ``- [name](...) ...`` bullet from ``path``.
 
-    ``- **name:**`` counts too, and a blank line that only separated the
-    bullet from the next goes with it.
+    Its indented lines go with it, ``- **name:**`` counts too, and a blank
+    line that only separated the bullet from the next goes as well.
     """
     text = path.read_text(encoding="utf-8")
-    bullet = rf"(?m)^- (?:\*\*)?{re.escape(name)}(?!\w).*\n(?:  .*\n)*"
+    bullet = rf"(?m)^- \[?(?:\*\*)?{re.escape(name)}(?:\*\*)?\]?(?!\w).*\n(?:  .*\n)*"
 
     def cut(match: re.Match[str]) -> str:
         before = text[: match.start()]
