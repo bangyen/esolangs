@@ -189,7 +189,7 @@ class _Machine:
         # The six live fields plus the input cursor, in the order this
         # returned before ``done`` joined the state.
         row, col, r, acc, out, inp, _done = self.state
-        return (row, col, r, acc, out, inp, self.io.position())
+        return (row, col, r, acc, out, inp, self.io.progress())
 
     def step(self) -> None:
         """Move the pointer one cell and execute the instruction it left."""

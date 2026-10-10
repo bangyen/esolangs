@@ -9,7 +9,9 @@ import pytest
 
 import esolangs
 from esolangs.cli import HELP, USAGE
+from esolangs.registry import wiki_url
 from tests.cli.test_cli import call_main
+from tests.pick import first
 
 
 class TestExamplesShipWithThePackage:
@@ -52,23 +54,18 @@ class TestWikiUrlsAreUsable:
 
     def test_non_ascii_is_escaped(self) -> None:
         """Raw bytes work in a browser and are refused by a strict client."""
-        assert esolangs.describe("Forþ")["wiki_url"] == (
-            "https://esolangs.org/wiki/For%C3%BE"
-        )
+        slug = wiki_url("Þorn").rsplit("/", 1)[1]
+        assert slug == "%C3%9Eorn"
+        for name in esolangs.list_languages():
+            assert esolangs.describe(name)["wiki_url"] == wiki_url(name)
 
     @pytest.mark.parametrize(
-        ("name", "expected"),
-        [
-            ("CV(N)(C)", "CV(N)(C)"),
-            ("S*bleq", "S*bleq"),
-            ("bit~", "bit~"),
-            ("SLOW ACV MAMMALIAN", "SLOW_ACV_MAMMALIAN"),
-        ],
+        "name", [n for n in esolangs.list_languages() if set(n) & set("()*~ ")]
     )
-    def test_the_readable_ones_stay_readable(self, name: str, expected: str) -> None:
+    def test_the_readable_ones_stay_readable(self, name: str) -> None:
         """Parentheses and ``*`` are legal in a path and all answer 200."""
         assert esolangs.describe(name)["wiki_url"] == (
-            f"https://esolangs.org/wiki/{expected}"
+            f"https://esolangs.org/wiki/{name.replace(' ', '_')}"
         )
 
     def test_every_url_is_a_valid_path(self) -> None:
@@ -83,8 +80,10 @@ class TestWikiUrlsAreUsable:
     def test_the_readme_uses_the_same_builder(self) -> None:
         """The second copy of the slug logic is what made this ship twice."""
         readme = (Path(__file__).parents[2] / "README.md").read_text()
-        assert "https://esolangs.org/wiki/For%C3%BE" in readme
-        assert "https://esolangs.org/wiki/Forþ" not in readme
+        for name in esolangs.list_languages():
+            assert f"({wiki_url(name)})" in readme, name
+            raw = f"https://esolangs.org/wiki/{name.replace(' ', '_')}"
+            assert raw == wiki_url(name) or f"({raw})" not in readme, name
 
 
 class TestTheTopLevelUsageKeepsUp:
@@ -119,7 +118,6 @@ class TestTheTopLevelUsageKeepsUp:
         assert generator < USAGE.index("generate ") < caller
         assert caller < USAGE.index("run ") < adapters
         assert caller < USAGE.index("debug ") < adapters
-        assert caller < USAGE.index("suggest ") < adapters
         assert adapters < USAGE.index("encode ") < catalog
         assert adapters < USAGE.index("read-answer ") < catalog
         assert catalog < USAGE.index("list ")
@@ -145,7 +143,7 @@ class TestDescribeHidesInputFieldsWithNoInput:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """And names the flag that supplies the bits instead."""
-        out = call_main(["describe", "Minifuck"], capsys)
+        out = call_main(["describe", first(parameterized=True)], capsys)
         assert "input_shape" not in out
         assert "generate --bits" in out
 
@@ -153,7 +151,7 @@ class TestDescribeHidesInputFieldsWithNoInput:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The fields are the point for the languages that have them."""
-        out = call_main(["describe", "Fargo"], capsys)
+        out = call_main(["describe", first(input_shape="row_index")], capsys)
         assert "input_shape" in out
         assert "row_index" in out
 

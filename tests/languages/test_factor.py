@@ -1,8 +1,11 @@
 """Factor through the shared API, CLI and machinery."""
 
+from pathlib import Path
+
 import pytest
 
 import esolangs
+from tests.scripts.script_support import load
 
 
 class TestFactorHasNoDigitBudget:
@@ -18,3 +21,14 @@ class TestFactorHasNoDigitBudget:
         program = esolangs.generate("Factor", table)
         assert program.isdigit()
         assert len(program) > 500_000
+
+
+@pytest.mark.medium
+def test_transitive_interpreter_inlined(tmp_path: Path) -> None:
+    """Factor's bundle inlines the brainfuck interpreter it depends on."""
+    bundle_one = load(Path(__file__).parents[2] / "scripts/bundle_one.py")
+    out = tmp_path / "factor.py"
+    bundle_one.bundle("Factor", bundle_one.Source(None), out)
+    assert "inlined from esolangs/interpreters/tape_based/brainfuck.py" in (
+        out.read_text()
+    )

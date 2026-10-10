@@ -9,36 +9,6 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
-from esolangs.interpreters.queue_based.bitdeque import (
-    suggest_corrections as _bitdeque_corrections,
-)
-from tests.cli_support import call_both, repaired
-
-
-@pytest.mark.parametrize(
-    ("source", "output"),
-    [
-        ("inverT pussh", "1"),
-        ("INVERT PUSH INVERT INJEC", "0 1"),
-    ],
-)
-def test_bitdeque_proposed_repairs_execute(source, output):
-    corrections = _bitdeque_corrections(source)
-    assert corrections
-    assert esolangs.run("Bitdeque", repaired(source, corrections), timeout=5) == output
-
-
-def test_bitdeque_multiline_cli_preview_preserves_target_and_file(tmp_path, capsys):
-    path = tmp_path / "program.bd"
-    source = "inverT\r\nGOT 2\r\n  pussh\r\n"
-    path.write_bytes(source.encode())
-    out, err = call_both(["suggest", "Bitdeque", str(path)], capsys)
-    assert err == ""
-    assert f"{path}:1:1: 'inverT' -> 'INVERT'" in out
-    assert f"{path}:2:1: 'GOT' -> 'GOTO'" in out
-    assert f"{path}:3:3: 'pussh' -> 'PUSH'" in out
-    assert "'2' ->" not in out
-    assert path.read_bytes() == source.encode()
 
 
 class TestEveryDumpSaysWhereTheAnswerIs:
@@ -185,8 +155,3 @@ class TestBitdeque:
         assert vm.output == "0"
         vm.step()  # and rendering happens once, not once per step past the halt
         assert vm.output == "0"
-
-
-@pytest.mark.parametrize("source", ["IJECT", "PUSH 12", ""])
-def test_bitdeque_ambiguous_words_and_jump_operands_receive_no_edit(source):
-    assert _bitdeque_corrections(source) == ()

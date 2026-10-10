@@ -10,6 +10,7 @@ import tempfile
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -18,6 +19,10 @@ from esolangs import Program
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES, RUNNERS, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
+from tests.pick import languages
+from tests.scripts.script_support import load
+
+_RASTERS = languages(source_kind="raster", boolean_generator=True)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "bundle_one.py"
@@ -33,18 +38,11 @@ def _display_name(stem: str) -> str | None:
     return _BY_ID.get(canonical_id(stem.replace("-", " ")))
 
 
-def load_script() -> object:
-    """Import the bundler as a module, mirroring the other script tests."""
-    spec = importlib.util.spec_from_file_location("bundle_one", SCRIPT)
-    assert spec is not None
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+def load_script() -> Any:
+    return load(SCRIPT)
 
 
 def _load_bundle(tmp_path: Path) -> object:
-    """Import a bundled file from ``tmp_path``, returning its module."""
     spec = importlib.util.spec_from_file_location("bundle_mod", tmp_path)
     assert spec is not None
     module = importlib.util.module_from_spec(spec)
@@ -133,22 +131,6 @@ class TestBundleMatchesPackage:
 # 2.9s over 18 tests: shells out to the bundler.
 @pytest.mark.medium
 class TestBundleDetails:
-    def test_sympy_required_note(self, tmp_path: Path) -> None:
-        """Polynomial's bundle tells the user sympy is required."""
-        bundle_one = load_script()
-        out = tmp_path / "polynomial.py"
-        bundle_one.bundle("Polynomial", bundle_one.Source(None), out)
-        assert "Requires: pip install sympy" in out.read_text()
-
-    def test_transitive_interpreter_inlined(self, tmp_path: Path) -> None:
-        """Factor's bundle inlines the brainfuck interpreter it depends on."""
-        bundle_one = load_script()
-        out = tmp_path / "factor.py"
-        bundle_one.bundle("Factor", bundle_one.Source(None), out)
-        assert "inlined from esolangs/interpreters/tape_based/brainfuck.py" in (
-            out.read_text()
-        )
-
     def test_bundle_runs_from_command_line(self, tmp_path: Path) -> None:
         """The bundle honors the ``python file.py program.txt`` convention."""
         import subprocess
@@ -211,6 +193,8 @@ def test_install_one_downloads_and_runs_a_bundle() -> None:
         "brainfuck": ("++++++++[>++++++++<-]>.", "@"),
         "Factor": ("21666143160021789415877957258569906604219402892572113", "A"),
     }
+    # A representative that was removed since is simply not fetched.
+    cases = {name: case for name, case in cases.items() if name in LANGUAGES}
     try:
         for language, (program, expected) in cases.items():
             with tempfile.TemporaryDirectory() as directory:
@@ -238,7 +222,7 @@ def test_install_one_downloads_and_runs_a_bundle() -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.parametrize("language", _RASTERS)
 @pytest.mark.parametrize("scale", [1, 2])
 def test_raster_bundle_matches_pixels_and_runs_standalone(
     language: str, scale: int, tmp_path: Path
@@ -268,7 +252,7 @@ def test_raster_bundle_matches_pixels_and_runs_standalone(
         )
 
 
-@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.parametrize("language", _RASTERS)
 @pytest.mark.medium
 def test_raster_module_entry_point_matches_the_library(
     language: str, tmp_path: Path
@@ -329,7 +313,7 @@ def test_package_bundle_also_supports_text_without_pillow(tmp_path: Path) -> Non
     assert result.stdout == "hello"
 
 
-@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.parametrize("language", _RASTERS)
 @pytest.mark.medium
 def test_raster_package_bundles_from_raw_http_sources(
     language: str, tmp_path: Path
@@ -351,7 +335,8 @@ def test_raster_package_bundles_from_raw_http_sources(
         )
         assert "Requires: pip install Pillow" in out.read_text()
         bundled = _load_bundle(out)
-        program = esolangs.generate(language, "01")
+        png = esolangs.generate(language, "01").to_png()
+        program = bundled._interpreter.load_source(png)  # noqa: SLF001
         assert _run_and_read(bundled, program, "1\n") == "1"
     finally:
         server.shutdown()

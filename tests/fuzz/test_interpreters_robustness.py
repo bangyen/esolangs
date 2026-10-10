@@ -48,6 +48,10 @@ def test_empty_program_terminates(language: str) -> None:
     _check_empty_program(language)
 
 
+#: A language whose spec rejects an empty program, with the message it uses.
+_REJECTS = next(name for name, lang in LANGUAGES.items() if lang.empty_program)
+
+
 @pytest.mark.parametrize("error", [TypeError, AttributeError, RuntimeError])
 def test_unexpected_failure_is_not_an_empty_source_rejection(monkeypatch, error):
     def broken_run(*_args, **_kwargs):
@@ -55,7 +59,7 @@ def test_unexpected_failure_is_not_an_empty_source_rejection(monkeypatch, error)
 
     monkeypatch.setattr(esolangs, "run", broken_run)
     with pytest.raises(error, match="injected constructor failure"):
-        _check_empty_program("Alight")
+        _check_empty_program(_REJECTS)
 
 
 def test_wrong_rejection_message_fails(monkeypatch):
@@ -64,13 +68,13 @@ def test_wrong_rejection_message_fails(monkeypatch):
 
     monkeypatch.setattr(esolangs, "run", broken_run)
     with pytest.raises(AssertionError, match="injected parser failure"):
-        _check_empty_program("Alight")
+        _check_empty_program(_REJECTS)
 
 
 def test_timeout_is_not_an_empty_source_rejection(monkeypatch):
     def timed_run(*_args, **_kwargs):
-        raise ExecutionTimeoutError(LANGUAGES["thisthat"].empty_program)
+        raise ExecutionTimeoutError(LANGUAGES[_REJECTS].empty_program)
 
     monkeypatch.setattr(esolangs, "run", timed_run)
     with pytest.raises(AssertionError, match="ExecutionTimeoutError"):
-        _check_empty_program("thisthat")
+        _check_empty_program(_REJECTS)

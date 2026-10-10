@@ -8,14 +8,21 @@ export UV_CACHE_DIR := env_var_or_default("UV_CACHE_DIR", justfile_directory() +
 # Auto-detect uv - falls back to plain python if not available
 PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python"`
 
-# Help
+# show the first-contribution workflow and all commands
 help:
-    @just --list
+    @echo "Start here:"
+    @echo "  just install-dev  Install dependencies and enable the pre-push gate"
+    @echo "  just test-quick   Fast feedback while editing"
+    @echo "  just test-mid     Fast + medium tests"
+    @echo "  just test         Required checks before committing (branch-scoped)"
+    @echo "  just test-full    Whole-tree checks, including slow tests, before release"
     @echo ""
-    @echo "  Tiers: fast (unmarked), medium (runs a program or a subprocess),"
-    @echo "  slow (left to CI), weekly (high-arity probes, weekly workflow only)."
-    @echo "  Use 'just test-quick' for inner loop, 'just test' before a commit,"
-    @echo "  'just test-full' before a release."
+    @echo 'New language: just new-language "Name" --category tape_based'
+    @echo 'Then: just check-language "Name"; when ready: just finish-language "Name"'
+    @echo "Guide: docs/CONTRIBUTING.md"
+    @echo "Slow tests also run in CI; weekly probes run in the weekly workflow."
+    @echo ""
+    @just --list
 
 # install tooling
 install-dev:

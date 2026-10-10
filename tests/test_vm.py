@@ -6,9 +6,44 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.exceptions import UnknownLanguageError
 from esolangs.vm import VM
 from tests.pick import languages
+
+
+def assert_random_steps_reproduce(language: str, program: str) -> None:
+    """A random instruction in ``program`` runs, and steps the same way twice.
+
+    Each random language calls this from its own test file with a program
+    that reaches its random instruction.
+    """
+    from esolangs.interpreters import randomness
+
+    def trace() -> list[object]:
+        vm = debugger_api.make_vm(language, program)
+        seen: list[object] = []
+        for _ in range(40):
+            if vm.halted:
+                break
+            with contextlib.suppress(Exception):
+                vm.step()
+            ip = vm.ip
+            seen.append((tuple(ip) if isinstance(ip, tuple) else ip, tuple(vm.memory)))
+        return seen
+
+    original = randomness.Seeded.randbelow
+    drawn: list[int] = []
+
+    def counted(self: randomness.Seeded, upper: int) -> int:
+        drawn.append(upper)
+        return original(self, upper)
+
+    randomness.Seeded.randbelow = counted  # type: ignore[method-assign]
+    try:
+        first = trace()
+    finally:
+        randomness.Seeded.randbelow = original  # type: ignore[method-assign]
+    assert drawn, f"{language}: the random instruction never ran"
+    assert trace() == first, f"{language} is not reproducible"
 
 
 def _run_all(vm: VM) -> str:
@@ -46,14 +81,6 @@ class TestBrainfuck:
         assert vm.halted
 
 
-class TestFactory:
-    def test_unknown_language_raises(self) -> None:
-        # Naming the language it refused is the whole use of the message to
-        # a caller who passed it by mistake, and it was unpinned.
-        with pytest.raises(UnknownLanguageError, match="NoSuchLanguage"):
-            debugger_api.make_vm("NoSuchLanguage", "+")
-
-
 class TestEveryLanguageIsSteppable:
     """The two whole-registry invariants, as tests rather than prose."""
 
@@ -83,47 +110,7 @@ class TestEveryLanguageIsSteppable:
                 missing[language] = absent
 
         assert missing == {}
-        assert random_languages, "the sweep found no random language"
-
-    def test_stepping_is_reproducible_for_the_random_languages(self) -> None:
-        """Each sampled random instruction steps the same way twice."""
-        from esolangs.interpreters import randomness
-
-        cases = {
-            "Painfuck": "y",
-            "Modulous": "[RND 9][PRT INT]",
-            "LaserFuck": "*\no",
-        }
-
-        def trace(language: str, program: str) -> list[object]:
-            vm = debugger_api.make_vm(language, program)
-            seen: list[object] = []
-            for _ in range(40):
-                if vm.halted:
-                    break
-                with contextlib.suppress(Exception):
-                    vm.step()
-                ip = vm.ip
-                seen.append(
-                    (tuple(ip) if isinstance(ip, tuple) else ip, tuple(vm.memory))
-                )
-            return seen
-
-        original = randomness.Seeded.randbelow
-        for language, program in cases.items():
-            drawn = []
-
-            def counted(self, upper, _o=original, _d=drawn):
-                _d.append(upper)
-                return _o(self, upper)
-
-            randomness.Seeded.randbelow = counted
-            try:
-                first = trace(language, program)
-            finally:
-                randomness.Seeded.randbelow = original
-            assert drawn, f"{language}: the random instruction never ran"
-            assert trace(language, program) == first, f"{language} is not reproducible"
+        assert random_languages == set(languages(random=True))
 
     def test_the_stub_sources_reject_an_empty_range(self) -> None:
         """``randbelow`` checks its bound instead of ignoring it."""

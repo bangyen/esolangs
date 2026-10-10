@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.polynomial_resources import estimate_generation
 from esolangs.tools.polynomial.algebra import (
     _PACKED_MIN_FACTORS,
     _normalise,
@@ -13,6 +12,7 @@ from esolangs.tools.polynomial.algebra import (
     multiply,
     render_product,
 )
+from esolangs.tools.polynomial.resources import estimate_generation
 
 
 def _incremental(factors: list[list[int]]) -> str:
@@ -56,7 +56,7 @@ class TestResourceEstimate:
         import importlib
 
         from esolangs.tools.polynomial import _polynomial_dag, _polynomial_factors
-        from tests.tools.test_boolean_contract import _dense
+        from tests.witness_tables import dense as _dense
 
         module = importlib.import_module("esolangs.tools.polynomial.algebra")
         original = _pack
@@ -118,7 +118,7 @@ class TestResourceEstimate:
 
 
 def test_cold_parse_estimate_covers_a_root_past_the_old_fixed_lift() -> None:
-    from esolangs.polynomial_resources import estimate_cold_parse
+    from esolangs.tools.polynomial.resources import estimate_cold_parse
 
     coeffs = [1, *([0] * 399)]
     estimate = estimate_cold_parse(coeffs)

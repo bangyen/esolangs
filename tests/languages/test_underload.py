@@ -7,7 +7,7 @@ import pytest
 import esolangs
 from esolangs import _isolated
 from esolangs._evaluate import _evaluate
-from tests.test_memory_budget import _BUDGET, _LINUX, _growing_template
+from tests.test_memory_budget import _BUDGET, _LINUX
 
 
 @pytest.mark.parametrize(
@@ -76,3 +76,7 @@ def test_memory_failure_during_evaluation_is_not_an_answer() -> None:
         )
     assert "row 0" in " ".join(caught.value.__notes__)
     assert caught.value.partial_output == "0"
+
+
+def _growing_template(doublings: int) -> str:
+    return esolangs.generate("Underload", "01") + "(x)" + ":*" * doublings

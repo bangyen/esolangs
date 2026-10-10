@@ -14,9 +14,9 @@ from tests.proofs._brainfuck_count import automaton, minimize
 
 # Earlier four atom fields, right/left confinement phase (0/1/broken),
 # preserving-prefix phase (root/right1/right2/left1/left2/broken/blocked).
-type State = tuple[bool, int, int, int, int, int, int]
+type State = tuple[bool, int, int, int, int, int, int, int]
 type Loop = tuple[bool, bool, int, bool]  # read, first print, confinement bits, empty
-EMPTY: State = (False, 0, 0, 0, 0, 0, 0)
+EMPTY: State = (False, 0, 0, 0, 0, 0, 0, 0)
 BOUND = (1377, 200)
 SCALE = 10**8
 
@@ -33,7 +33,7 @@ def loop_types() -> list[Loop]:
 
 @lru_cache(maxsize=8192)
 def _step(state: State, column: int) -> State | None:
-    read, tail, first, count, right, left, prefix = state
+    read, tail, first, count, right, left, prefix, balance = state
     loop = loop_types()[column - 6] if column >= 6 else None
     atom = ("M" if loop[1] else "L") if loop else (".", ",", "s", "s", "m", "m")[column]
     base = _append(
@@ -64,24 +64,28 @@ def _step(state: State, column: int) -> State | None:
     if prefix < 5:
         if loop:
             if prefix == 0:
-                prefix = 6 if loop[3] else 5
+                prefix = 6 if loop[3] and balance == 0 else 5
             elif not (
                 loop[2] & (1 if prefix < 3 else 2) if prefix in (1, 3) else loop[2] == 3
             ):
                 prefix = 5
-        elif column == 1 or (column in (2, 3) and prefix == 0):
+        elif column == 1:
             prefix = 5
+        elif column in (2, 3) and prefix == 0:
+            balance += 1 if column == 3 else -1
+            if abs(balance) > 1:
+                prefix = 5
         elif column in (4, 5):
             movement = (
                 {0: 3, 3: 4, 2: 1, 1: 0} if column == 4 else {0: 1, 1: 2, 4: 3, 3: 0}
             )
             prefix = movement.get(prefix, 5)
-    return (*base, right, left, prefix)
+    return (*base, right, left, prefix, balance if prefix < 5 else 0)
 
 
 def body_type(state: State) -> Loop | None:
     """Return the eligible body type; blocked prefixes cannot become loop bodies."""
-    read, tail, first, count, right, left, prefix = state
+    read, tail, first, count, right, left, prefix, _balance = state
     if (first == 2 and count == 1) or (not read and tail == 3) or prefix == 6:
         return None
     kind = (right == 0) + 2 * (left == 0)
@@ -155,10 +159,34 @@ def matrix_image(
                 target = rows[end][7]
                 if target >= 0:
                     output[target] = output.get(target, 0) + value
+    # Many loop types induce the same atom transition. Add their kernels
+    # before multiplying, rather than repeating the sparse product.
+    combined: dict[tuple[int, ...], dict[int, dict[int, int]]] = {}
+    transitions = []
+    for state in classes:
+        groups: defaultdict[int, list[int]] = defaultdict(list)
+        for column in range(len(loops)):
+            target_state = _step(state, column + 6)
+            if target_state is not None:
+                groups[index[target_state]].append(column)
+        edges = []
+        for target, columns in groups.items():
+            key = tuple(columns)
+            if key not in combined:
+                kernel: dict[int, dict[int, int]] = {start: {} for start in opening}
+                for column in columns:
+                    for start, row in loops[column].items():
+                        output = kernel[start]
+                        for end, value in row.items():
+                            output[end] = output.get(end, 0) + value
+                combined[key] = kernel
+            edges.append((target, combined[key]))
+        transitions.append(edges)
     image: list[Matrix] = [[{} for _ in rows] for _ in classes]
     literal_scale = numerator * denominator * scale
+    loop_scale = denominator**2
     for start in sorted({0, *opening}):
-        for state, matrix in zip(classes, matrices, strict=True):
+        for state, matrix, edges in zip(classes, matrices, transitions, strict=True):
             source = matrix[start]
             if not source:
                 continue
@@ -176,14 +204,12 @@ def matrix_image(
                 target = rows[end][6]
                 if target >= 0:
                     group[target] = group.get(target, 0) + value
-            for column, loop in enumerate(loops, 6):
-                target_state = _step(state, column)
-                if target_state is None:
-                    continue
-                output = image[index[target_state]][start]
+            for target, loop in edges:
+                output = image[target][start]
                 for middle, left in group.items():
+                    weighted_left = loop_scale * left
                     for end, right in loop[middle].items():
-                        output[end] = output.get(end, 0) + denominator**2 * left * right
+                        output[end] = output.get(end, 0) + weighted_left * right
     image[index[EMPTY]] = [
         {state: numerator**2 * scale**2} if state in {0, *opening} else {}
         for state in range(len(rows))
@@ -200,14 +226,36 @@ def matrix_image(
 @lru_cache(maxsize=1)
 def certificate() -> tuple[list[list[int]], list[State], list[Matrix]]:
     """Reconstruct the prefix certificate under the standing construction caps."""
+    from _preserving_kernel import construct
+    from preserving_certificate import check_certificate
+
     rows = minimize(automaton(patterns(), []))
     if len(rows) > 256:
         raise RuntimeError("preserving certificate DFA budget exceeded")
     classes = states()
+    index = {state: position for position, state in enumerate(classes)}
+    kinds = loop_types()
+    edges = [
+        [
+            index[target] if (target := _step(state, column)) is not None else -1
+            for column in range(6 + len(kinds))
+        ]
+        for state in classes
+    ]
+    types = [
+        kinds.index(kind) if (kind := body_type(state)) is not None else -1
+        for state in classes
+    ]
+    native = construct(rows, edges, types, len(kinds), SCALE, BOUND)
+    if native is not None:
+        check_certificate(rows, classes, native, SCALE, BOUND)
+        return rows, classes, native
     return (
         rows,
         classes,
-        _construct(rows, classes, SCALE, BOUND, matrix_image, "preserving"),
+        _construct(
+            rows, classes, SCALE, BOUND, matrix_image, "preserving", supersolution=True
+        ),
     )
 
 

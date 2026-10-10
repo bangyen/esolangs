@@ -10,7 +10,9 @@ import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
 from tests.cli_support import call_both
+from tests.test_debug import _step_to_halt
 from tests.test_dialects import Unreadable
+from tests.test_vm_protocol import assert_one_row_moves_along_it
 
 
 def test_set_pairs_match_settings_json(capsys):
@@ -150,3 +152,18 @@ class TestBreakAtChecksTheKindOfPosition:
         program = esolangs.generate("Alight", "0110")
         debugger = debugger_api.make_debugger("Alight", program, stdin="0\n1\n")
         debugger.break_at((1, 2))  # wrong arity for Alight, accepted
+
+
+def test_alight_refuses_instead_of_warning() -> None:
+    """The documented exception, pinned so it stays a *loud* one."""
+    program = esolangs.generate("Alight", "0110")
+    full = esolangs.encode_inputs("Alight", [1, 0])
+    short = "\n".join(full.split("\n")[:-2]) + "\n"
+    dbg = debugger_api.make_debugger("Alight", program, stdin=short)
+    with pytest.raises(esolangs.HaltError, match="eof"):
+        _step_to_halt(dbg)
+
+
+def test_its_one_row_program_moves_along_the_columns() -> None:
+    """The row component of ``VM.ip`` stays put on a one-row program."""
+    assert_one_row_moves_along_it("Alight")

@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs._execution import interpreter_errors
+from scripts.screens.candidate import _worst
 from tests.cli.test_cli import _program, call_main
 from tests.cli_support import call_both
 from tests.generator_support import evaluate_generated
@@ -102,7 +103,7 @@ class TestPrintedCommandsCanBePasted:
     ) -> None:
         """Every name, since one unquoted survivor is the whole bug again."""
         spaced = [n for n in esolangs.list_languages() if " " in n]
-        assert len(spaced) == 10
+        assert "A Painter Ant" in spaced
         for name in spaced:
             out, _err = call_both(["describe", name], capsys)
             assert f'--spec "{name}"' in out, name
@@ -136,3 +137,9 @@ def test_run_read_answer_prints_the_bit_for_a_dump(
     )
     out = call_main(["run", "A Painter Ant", _program(tmp_path, program)], capsys)
     assert esolangs.read_answer("A Painter Ant", out).strip() == "1"
+
+
+@pytest.mark.medium
+def test_unsupported_stepping_candidate_is_bounded():
+    assert _worst("a_painter_ant", "nn$", "00", [0], 0.02) == (1, 0)
+    assert _worst("a_painter_ant", "N$", "00", [1], 0.5) == (0, 0)

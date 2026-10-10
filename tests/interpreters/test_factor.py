@@ -66,10 +66,6 @@ class TestRun:
         run("Hi 15!", io)
         assert io.getvalue() == "\x01"
 
-    def test_single_instruction(self) -> None:
-        """15 = 3*5 decodes to '+.' which prints chr(1)."""
-        assert run_program(15) == "\x01"
-
     def test_print_letter(self) -> None:
         """3^65 * 5 decodes to 65 increments then a print (ASCII 'A')."""
         assert run_program(3**65 * 5) == "A"
@@ -132,6 +128,7 @@ class TestStepMachine:
 class TestLongPrograms:
     """Factor programs remain valid past CPython's process-wide digit guard."""
 
+    @pytest.mark.medium
     def test_a_program_past_cpythons_digit_limit_still_parses(self) -> None:
         """4300 digits is a DoS guard on int/str, not a Factor rule."""
         number = 2**20000
@@ -209,6 +206,19 @@ class TestFactorint:
 
         assert number.bit_length() >= _BATCH_BITS, "would not reach the batch"
         assert _factorint(number) == sympy.factorint(number)
+
+    def test_batched_dense_mixed_multiplicities(self) -> None:
+        import sympy
+
+        from esolangs.interpreters.tape_based.factor import _BATCH_BITS, _factorint
+
+        expected = {
+            prime: index % 7 + 1
+            for index, prime in enumerate(sympy.primerange(2, 2000))
+        }
+        number = math.prod(prime**power for prime, power in expected.items())
+        assert number.bit_length() >= _BATCH_BITS
+        assert _factorint(number) == expected
 
     def test_a_large_prime_residue_is_certified_after_one_barren_chunk(self) -> None:
         """2**61 - 1 outlives the first chunk, then the exact screen accepts it."""

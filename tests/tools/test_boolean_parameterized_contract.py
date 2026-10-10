@@ -7,6 +7,8 @@ import re
 import pytest
 
 import esolangs
+from esolangs.registry import LANGUAGES
+from tests.pick import languages
 
 
 def _parameterized_generators():
@@ -21,15 +23,6 @@ def _parameterized_generators():
     ]
 
 
-_RUN_FORM = {
-    "BIO": "bio",
-    "Bitdeque": "bitdeque",
-    "Minsky Swap": "minsky_swap",
-    "BF-PDA": "bfpda",
-    "Home Row": "home_row",
-}
-
-
 def _embedded_inputs(gen: object, template: str, n: int) -> list[int]:
     """The inputs ``template`` embeds, in the order it embeds them."""
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
@@ -40,17 +33,15 @@ def _embedded_inputs(gen: object, template: str, n: int) -> list[int]:
     return list(range(len(spans)))
 
 
-@pytest.mark.parametrize(("language", "attr"), sorted(_RUN_FORM.items()))
-def test_run_form_generators_spell_their_own_runs(language: str, attr: str) -> None:
+@pytest.mark.parametrize(("language", "gen"), _parameterized_generators())
+def test_generators_spell_their_own_runs(language: str, gen) -> None:
     """The generator emits the public runs itself: no ``{Xi}`` anywhere."""
-    from esolangs import tools as generators
-
     for table in ("01", "0110", "01101001"):
-        raw = getattr(generators, attr)(table)
+        raw = gen(table)
         assert "{X" not in raw, (language, table)
         template = esolangs.generate(language, table)
         assert str(template) == raw, (language, table)
-        assert template.count("$") == sum(len(zero) for zero, _ in template.setters)
+        assert template.count(template.char) == sum(len(z) for z, _ in template.setters)
         assert template.inputs == len(table).bit_length() - 1
 
 
@@ -146,13 +137,12 @@ def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
 
 
 class TestGeneratorEdgePaths:
-    def test_parameterized_validation(self) -> None:
-        """bio/back reject malformed truth tables."""
-        from esolangs import tools as generators
-
+    @pytest.mark.parametrize("name", languages(parameterized=True)[:2])
+    def test_parameterized_validation(self, name: str) -> None:
+        """A template generator rejects malformed truth tables."""
+        generate = LANGUAGES[name].boolean
+        assert generate is not None
         with pytest.raises(ValueError, match="power-of-two"):
-            generators.bio("011")
+            generate("011")
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            generators.bio("0123")
-        with pytest.raises(ValueError, match="power-of-two"):
-            generators.back("011")
+            generate("0123")

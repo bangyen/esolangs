@@ -233,3 +233,10 @@ def test_hints_for_bad_programs_and_input():
     assert_rejected_with_hint(
         "3x", "?", "fraction with nonzero denominator", stdin="oops"
     )
+
+
+class TestThreeXUnmatchedOpen:
+    def test_a_zero_test_with_no_matching_close_falls_through(self) -> None:
+        """``(`` over a zero jumps to its ``)``, or advances when there is none."""
+        with pytest.raises(HaltError, match="empty stack"):
+            run_program("1(", "")

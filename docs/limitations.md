@@ -31,10 +31,9 @@ stepping parses pixels; the other raster languages emit and execute pixels.
 
 ## Source positions
 
-`esolangs debug --tui` marks only a source position. `ip_shape` is `offset`,
-`grid`, `line`, or `opaque` -- `tests/test_vm_protocol.py` sweeps every language
-and refuses an undeclared or misspelled value. Opaque positions have no program
-mark.
+VM instruction positions declare `ip_shape`: `offset`, `grid`, `line`, or
+`opaque`. `tests/test_vm_protocol.py` checks every language and rejects
+undeclared or misspelled values. Opaque positions have no source coordinate.
 
 Line extraction accepts anti-aliased PNGs only when strokes retain a connected
 dark core. The 3px scan fixture executes addition; a one-third-pixel shift of
@@ -85,11 +84,13 @@ dense, parity, constant tables were executed exhaustively at each shipped
 arity. Construction details and measurements are in
 [malbolge-scaling](proofs/malbolge-scaling.md).
 
-Seventeen remains open. A prepared complete query and separate legal-source
-initialization and handoff components pass exhaustive input controls, but no
-source installs the query and relocates obstructed records around an arbitrary
-full truth table. The handoff's existing continuation corrupts a saved parity
-word. See [the controls](proofs/malbolge-scaling.md#native-input-and-prepared-query-controls-2026-10-08).
+Seventeen remains open. Native capture, semantic readout, footer dispatch and
+terminal-output components execute separately; no source computes an arbitrary
+full 17-input truth table. Raw record addresses can overlap executing code,
+so relocation must precede capture. The reduced LAST-only layout is short by
+8,432 cells before adding the remaining query, selector and metadata. This is
+a deficit for that construction, not an impossibility bound. See
+[the latest controls](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09).
 The shipped cap remains sixteen.
 
 Counting bounds each family independently of mixer quality:
@@ -158,7 +159,7 @@ language floor. The shipped generator gives equal subtables one state, so
 it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
 most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
 versus 23.6 for the tree. The construction and the counting floor are in
-[fractran](proofs/fractran.md) and `tests/proofs/deep/fractran_shared.py`.
+[fractran](proofs/fractran.md) and `tests/proofs/deep/fractran.py`.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
@@ -173,7 +174,8 @@ of data, control, cursor and machine flags. Separate peaks need not coincide.
 Python overhead, static parser indexes and I/O state are excluded. At eight
 inputs the sampled peak machine payloads are 18, 756 and 3,066 bits respectively;
 these are measurements, not language-wide space bounds. Construction bounds
-are asserted in the screen and controlled by `tests/proofs/test_resource_bounds.py`.
+are asserted in the screen and controlled by executed checks in each
+language's own tests.
 
 ### Malbolge sampling
 
@@ -391,7 +393,7 @@ languages remain rejected from the same image-source screen.
   would change overlapping-rule programs; `--seed` makes the draws repeatable.
   The generator writes rules that never overlap,
   so each state it reaches has exactly one rewrite and the draw cannot change
-  the answer; `tests/tools/test_boolean_classics.py` asserts that over every
+  the answer; `tests/tools/test_boolean_thue.py` asserts that over every
   table to three inputs, and checks the answer under three seeds and the
   unseeded draw.
 - Unlambda's `@` reads a Unicode character, including newlines. At EOF,

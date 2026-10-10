@@ -334,7 +334,7 @@ class _Machine:
             tuple(self._next),
             self._last_in,
             self._last_out,
-            self.io.position(),
+            self.io.progress(),
         )
 
     def branching_snapshot(self) -> tuple[Any, ...]:

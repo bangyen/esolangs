@@ -124,7 +124,7 @@ class _Machine:
 
     def input_position(self) -> int:
         """Return the input cursor, so a reading loop is not a repeat."""
-        return self.io.position()
+        return self.io.progress()
 
     # The VM's language-shaped view: Tape + accumulator; ip the cursor, memory the tape.
 
@@ -146,7 +146,7 @@ class _Machine:
         programs that read once more and hit EOF were called periodic.
         """
         ind, ptr, acc, tape = self.state
-        return (ind, ptr, acc, tape, self.io.position(), self._exhausted)
+        return (ind, ptr, acc, tape, self.io.progress(), self._exhausted)
 
     def step(self) -> None:
         """Execute one command, wrapping to the start at the end of the code.

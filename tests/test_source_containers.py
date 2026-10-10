@@ -11,13 +11,17 @@ import esolangs
 from esolangs import _check_program
 from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
+from tests.pick import languages
+from tests.test_language_coupling import REFERENCE
+
+_RASTERS = languages(source_kind="raster", boolean_generator=True)
 
 
-@pytest.mark.parametrize("language", ["brainfuck", "Piet", "Line"])
+@pytest.mark.parametrize("language", [REFERENCE, *_RASTERS])
 # Isolation forwards whatever the container held, so one container covers it;
 # each isolated case spawns a worker.
 @pytest.mark.parametrize(
-    ("container", "mode"),
+    ("holder", "mode"),
     [
         ("bytes", "normal"),
         ("text_stream", "normal"),
@@ -25,19 +29,19 @@ from esolangs.debugger import make_debugger
         pytest.param("bytes", "isolated", marks=pytest.mark.medium),
     ],
 )
-def test_execution_container_parity(language: str, container: str, mode: str) -> None:
+def test_execution_container_parity(language: str, holder: str, mode: str) -> None:
     program = esolangs.generate(language, "01")
     data = (
         program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
     )
     source: Any = data
-    if container == "text_stream":
+    if holder == "text_stream":
         source = (
             io.BytesIO(data)
             if isinstance(program, esolangs.Raster)
             else io.StringIO(program)
         )
-    elif container == "binary_stream":
+    elif holder == "binary_stream":
         source = io.BytesIO(data)
     stdin = io.BytesIO(b"1")
     bounds: dict[str, Any] = {}
@@ -52,7 +56,7 @@ def test_execution_container_parity(language: str, container: str, mode: str) ->
         assert not source.closed
 
 
-@pytest.mark.parametrize("language", ["brainfuck", "Piet", "Line"])
+@pytest.mark.parametrize("language", [REFERENCE, *_RASTERS])
 def test_streams_work_with_bound_api_debugging_and_evaluation(language: str) -> None:
     api = esolangs.Language(language)
     program = api.generate("01")

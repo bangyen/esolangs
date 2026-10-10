@@ -152,7 +152,7 @@ class _Machine:
         # value, and widening 4096 cells per step would cost more than the
         # commit the buffer exists to avoid.
         ind, ptr, _tape, stack, _acc, _dirty = self.state
-        return (_committed(self.state), stack, ptr, ind, self.io.position())
+        return (_committed(self.state), stack, ptr, ind, self.io.progress())
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.

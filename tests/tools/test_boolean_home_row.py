@@ -3,6 +3,7 @@
 import random
 
 from tests.tools.fills import _run_form
+from tests.witness_tables import row_bits
 
 
 class TestParameterizedHomeRow:
@@ -18,14 +19,18 @@ class TestParameterizedHomeRow:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from tests.tools.fills import _fill_home_row
+        from tests.tools.fills import fill
+
+        _fill_home_row = fill("Home Row")
 
         return _fill_home_row(tpl, bits)
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
         from esolangs.tools.home_row import HOME_ROW_PAIR
-        from tests.tools.fills import _fill_home_row
+        from tests.tools.fills import fill
+
+        _fill_home_row = fill("Home Row")
 
         for n in (1, 2, 3):
             template = _run_form(HOME_ROW_PAIR, n)
@@ -48,7 +53,7 @@ class TestParameterizedHomeRow:
             table = "".join(rng.choice("01") for _ in range(2**n))
             template = generators.home_row(table)
             for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 got = self.run_home_row(self.instantiate(template, bits))
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 

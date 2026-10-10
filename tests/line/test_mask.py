@@ -1,5 +1,3 @@
-"""Tests for mask.py."""
-
 from __future__ import annotations
 
 import pytest
@@ -131,10 +129,11 @@ def test_copy_is_independent() -> None:
     assert not mask[1, 1]
 
 
-def test_from_grey_thresholds_at_mid_grey() -> None:
+@pytest.mark.parametrize("levels", [[0, 127, 128, 255], []])
+def test_from_grey_thresholds_at_mid_grey(levels: list[int]) -> None:
     """Levels below the threshold are ink; the threshold itself is not."""
-    mask = from_grey([bytearray([0, 127, 128, 255])])
-    assert list(mask.nonzero()) == [(0, 0), (0, 1)]
+    mask = from_grey([bytearray(levels)])
+    assert list(mask.nonzero()) == ([(0, 0), (0, 1)] if levels else [])
 
 
 def test_from_grey_reuses_patterns_with_independent_masks() -> None:

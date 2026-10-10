@@ -104,6 +104,8 @@ examples:
 - The wheel is reproducible; CI smoke-tests it on Python 3.12 and 3.14 on
   Linux, macOS and Windows.
 - `Typing :: Typed` classifier.
+- `describe()` gains `random`: whether the interpreter draws at random, so
+  `run(seed=...)` applies. `run --help` points to it for `--seed`.
 - `run --help` lists every exit status (0, 1, 2, 70, 120, 124, 130).
 - Docs: untrusted programs need `isolated=True`, a `timeout` and, on Linux,
   `max_memory`.

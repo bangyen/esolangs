@@ -153,7 +153,7 @@ class _Machine:
         # Both stores are already tuples, in the order this returned before
         # the fields moved into a state value.
         ind, reg, stk = self.state
-        return (reg, stk, ind, self.io.position())
+        return (reg, stk, ind, self.io.progress())
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.

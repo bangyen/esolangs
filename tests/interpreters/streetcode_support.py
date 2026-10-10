@@ -7,7 +7,7 @@ from esolangs.interpreters.grid_based.streetcode import (
     run,
 )
 from esolangs.interpreters.io import IO
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import run_lines
 
 
 def machine_unvalidated(code: list[str]) -> _Machine:
@@ -22,9 +22,7 @@ def street(instructions: str) -> list[str]:
     return [wall, "|" + " " * len(instructions) + "|", f"|{instructions}|", wall]
 
 
-def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    """Run a Streetcode program and return its stdout."""
-    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+run_and_capture = run_lines(run)
 
 
 # A counting-ring program printing "Hi".  The ring latches a merge as the car

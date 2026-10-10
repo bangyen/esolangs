@@ -7,6 +7,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.debugger import STOP_REASONS
+from tests.pick import languages
 
 
 def _debugger() -> debugger_api.Debugger:
@@ -103,7 +104,7 @@ class TestTheChecksAreSymmetric:
 class TestTerminationPolarityIsData:
     """The one convention a zero-branch verifier still had to hardcode."""
 
-    @pytest.mark.parametrize("name", ["123", "ArrowQueue"])
+    @pytest.mark.parametrize("name", languages(answer_mode="termination"))
     def test_the_polarity_is_reported(self, name: str) -> None:
         facts = esolangs.describe(name)
         assert facts["answer_mode"] == "termination"
@@ -111,3 +112,19 @@ class TestTerminationPolarityIsData:
 
     def test_a_printing_language_still_reports_digits(self) -> None:
         assert esolangs.describe("brainfuck")["answer_encoding"] == ("0", "1")
+
+
+@pytest.mark.parametrize("method", ["break_at", "break_on_cell"])
+def test_debugger_rejects_huge_invalid_arguments(method):
+    from esolangs.debugger import make_debugger
+    from esolangs.exceptions import ArgumentError
+
+    debugger = make_debugger("brainfuck", "")
+    huge = 10**5000
+    call = (
+        (lambda: debugger.break_at((huge,)))
+        if method == "break_at"
+        else lambda: debugger.break_on_cell(0, [huge])
+    )
+    with pytest.raises(ArgumentError):
+        call()

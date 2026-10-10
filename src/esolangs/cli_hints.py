@@ -17,9 +17,8 @@ _HISTORY_SHOWN = 40
 
 
 #: A run stopped by its ``--timeout``, following timeout(1).  Distinct from
-#: a program error's 1, which it shared: for the languages that answer by
-#: not terminating, the timeout is the *answer*, and a script had no way
-#: to tell that from the program having broken.
+#: a program error's 1, which it shared. A timeout leaves termination
+#: undecided; it does not establish a Boolean answer.
 _TIMEOUT_EXIT = 124
 
 

@@ -7,6 +7,7 @@ import pytest
 from esolangs import tools
 from esolangs.interpreters.grid_based.b_tapemark import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.tools.b_tapemark import _Builder
 from esolangs.tools.helpers import essential_inputs
 from tests.generator_support import assert_an_ignored_input_costs
 from tests.witness_tables import witnesses
@@ -145,3 +146,12 @@ def test_narrow_weighted_arms_and_fitting_layouts() -> None:
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """Its stage, crossing no ``|``."""
     assert_an_ignored_input_costs("B-tapemark", 5, 177)
+
+
+def test_sparse_tapemark_columns_do_not_scan_the_coordinate_span() -> None:
+    builder = _Builder()
+    assert builder.render() == ""
+    builder.put(0, 0, "x")
+    builder.put(10**9, 1, "y")
+    assert builder.render() == "x\n y"
+    assert builder.render(reflect=True) == " y\nx"

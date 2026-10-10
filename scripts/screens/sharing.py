@@ -68,9 +68,9 @@ def share(tables: list[str]) -> float:
     return 100 * (1 - sum(d for _t, d in counts) / tree)
 
 
-def per_node(gen: Callable[[str], object]) -> float | None:
-    """Return the characters one tree node costs, from parity at n=3 and 5."""
-    built = sizes(gen, list(PARITY.values()))
+def per_node(name: str, gen: Callable[[str], object]) -> float | None:
+    """Return the source units one tree node costs, from parity at n=3 and 5."""
+    built = sizes(name, gen, list(PARITY.values()))
     small, large = built[PARITY[3]], built[PARITY[5]]
     if small is None or large is None:
         return None
@@ -90,15 +90,15 @@ def bound(built: dict[str, int | None], cost: float) -> float | None:
 
 
 def screen(
-    gen: Callable[[str], object], five: list[str]
+    name: str, gen: Callable[[str], object], five: list[str]
 ) -> tuple[float, float | None, float | None, float] | None:
     """Return (cost per node, n=3 %, n=5 %, seconds), or None if unmeasurable."""
     start = perf_counter()
-    cost = per_node(gen)
+    cost = per_node(name, gen)
     if cost is None:
         return None
-    three = bound(sizes(gen, TABLES), cost)
-    at_five = bound(sizes(gen, five), cost)
+    three = bound(sizes(name, gen, TABLES), cost)
+    at_five = bound(sizes(name, gen, five), cost)
     return cost, three, at_five, perf_counter() - start
 
 
@@ -117,7 +117,7 @@ def main() -> None:
     print(f"repeated nodes: n=3 {share(TABLES):.1f}%, n=5 {share(five):.1f}%")
     rows = []
     for key, gen in chosen(args.languages):
-        result = screen(gen, five)
+        result = screen(key, gen, five)
         if result is not None:
             rows.append((key, *result))
     rows.sort(key=lambda row: (-(row[3] or 0), row[0]))

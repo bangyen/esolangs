@@ -15,6 +15,7 @@ from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
 )
+from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
 from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
 
@@ -627,3 +628,13 @@ def test_postfix_operator_requires_operands(expr):
             ScriptedIO(""),
             expression_syntax="postfix",
         )
+
+
+@pytest.mark.parametrize("io_type", [ScriptedIO, PositionlessIO])
+def test_cycle_detector_tracks_cursorless_input(io_type):
+    io = io_type("aaaa")
+    machine = _Machine(CAT_TURN, io)
+    assert run_until_halt_or_cycle(machine, limit=2000)
+    assert machine.halted
+    assert io.getvalue() == "aaaa"
+    assert io.reads == 4

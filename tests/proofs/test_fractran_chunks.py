@@ -11,11 +11,12 @@ from esolangs.interpreters.other.fractran import _choose, _Machine, _parse
 from esolangs.tools.fractran import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs._fractran_chunks import chunk_template, chunk_width
+from tests.witness_tables import row_bits
 
 
 def _run(template: str, table: str, row: int, k: int) -> int:
     n = len(table).bit_length() - 1
-    bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+    bits = row_bits(row, n)
     source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
     io = ScriptedIO("")
     machine = _Machine(source, io)
@@ -93,7 +94,7 @@ def test_direct_chunks_literal_arithmetic(n: int) -> None:
         table = format(value, f"0{size}b")
         template = chunk_template(table)
         for row in range(size):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(row, n)
             source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
             state, fractions, _ = _parse(source)
             for _ in range(200 * size + 100):

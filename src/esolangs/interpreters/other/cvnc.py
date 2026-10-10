@@ -479,7 +479,7 @@ class _Machine:
             self.accumulator,
             self.deque,
             self.function,
-            self.io.position(),
+            self.io.progress(),
         )
 
     def step(self) -> None:

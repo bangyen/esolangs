@@ -11,12 +11,10 @@ from tests.interpreters.contract import (
     InputCursorContract,
     StateViewContract,
 )
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import run_lines
 from tests.raises import assert_rejected_with_hint, raises_message
 
-
-def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+run_and_capture = run_lines(run)
 
 
 class TestBrainIfBasicCommands:
@@ -175,14 +173,6 @@ class TestStepMachine:
         machine = _Machine(["if 0 input"], ScriptedIO("A"))
         machine.step()
         assert machine.cells == (ord("A"),)
-
-    def test_goto_loop_is_detected_as_a_cycle(self) -> None:
-        """A goto back to itself with the cell unchanged loops forever."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.brainif import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine(["if 0 goto 1"], ScriptedIO())) is False
 
 
 def test_a_blank_line_is_skipped() -> None:

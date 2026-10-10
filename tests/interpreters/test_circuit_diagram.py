@@ -89,10 +89,6 @@ class TestPrimeTester:
         """An exhausted stdin fills the remaining wires with zero bits."""
         assert output_for(PRIME_TESTER, "") == "0"
 
-    def test_an_exhausted_one_bit_input_is_zero(self) -> None:
-        """A direct wire distinguishes the zero fallback from a one bit."""
-        assert output_for(["-:"], "") == "0"
-
     def test_as_drawn_the_page_prints_nothing(self) -> None:
         """The unrepaired diagram is silent, for every input."""
         for value in range(16):
@@ -192,40 +188,9 @@ class TestMultiWire:
         machine = _Machine(["-3-:"], ScriptedIO("1\n0\n1\n"))
         assert machine.wirings[0].width == 3
 
-    def test_output_prints_every_wire(self) -> None:
-        assert output_for(["-3-:"], "1\n0\n1\n") == "101"
-
     def test_a_summed_label_totals_its_parts(self) -> None:
         machine = _Machine(["-1+2-:"], ScriptedIO("1\n1\n0\n"))
         assert machine.wirings[0].width == 3
-
-    def test_and_over_many_wires_needs_them_all(self) -> None:
-        """Multi-input AND is 1 iff every wire is 1."""
-        circuit = [
-            "-2-.",
-            "    a.-:",
-            "-2-.",
-        ]
-        assert output_for(circuit, "1\n1\n1\n1\n") == "1"
-        assert output_for(circuit, "1\n1\n1\n0\n") == "0"
-
-    def test_or_over_many_wires_needs_only_one(self) -> None:
-        circuit = [
-            "-2-.",
-            "    o.-:",
-            "-2-.",
-        ]
-        assert output_for(circuit, "0\n0\n0\n0\n") == "0"
-        assert output_for(circuit, "0\n0\n0\n1\n") == "1"
-
-    def test_xor_over_many_wires_needs_exactly_one(self) -> None:
-        circuit = [
-            "-2-.",
-            "    x.-:",
-            "-2-.",
-        ]
-        assert output_for(circuit, "0\n1\n0\n0\n") == "1"
-        assert output_for(circuit, "1\n1\n0\n0\n") == "0"
 
     @pytest.mark.parametrize(
         ("kind", "ones"),
@@ -241,36 +206,16 @@ class TestMultiWire:
             want = "1" if bits.count("1") in ones else "0"
             assert output_for(circuit, "\n".join(bits) + "\n") == want, bits
 
-    def test_not_preserves_width(self) -> None:
-        assert output_for(["-3-~.-:"], "1\n0\n1\n") == "010"
-
     def test_a_splitter_halves_rounding_down(self) -> None:
         """``<`` sends floor(n/2) wires up and the rest down."""
-        circuit = [
-            "    .-:",
-            "-3-<",
-            "    .-:",
-        ]
+        circuit = _SPLIT3
         machine = _Machine(circuit, ScriptedIO("1\n0\n1\n"))
         split = next(g for g in machine.gates if g.kind == "<")
         assert [w.width for w in split.outputs] == [1, 2]
 
-    def test_a_splitter_sends_the_first_wires_up(self) -> None:
-        """The upper output takes the low-numbered wires, in order."""
-        circuit = [
-            "    .-:",
-            "-3-<",
-            "    .-:",
-        ]
-        assert output_for(circuit, "1\n0\n1\n") == "101"
-
     def test_a_splitter_keeps_unequal_outputs_separate(self) -> None:
         """The two output wires are independently 1 and 2 bits wide."""
-        circuit = [
-            "    .-:",
-            "-3-<",
-            "    .-:",
-        ]
+        circuit = _SPLIT3
         machine = _Machine(circuit, ScriptedIO("1\n0\n1\n"))
         machine.step()
         split = next(g for g in machine.gates if g.kind == "<")
@@ -279,26 +224,11 @@ class TestMultiWire:
 
     def test_a_combine_totals_its_two_input_widths(self) -> None:
         """``>`` is the splitter's inverse: its output is the sum."""
-        circuit = [
-            "-1-.",
-            "    >-:",
-            "-2-.",
-        ]
+        circuit = _COMBINE
         machine = _Machine(circuit, ScriptedIO("1\n0\n0\n"))
         combine = next(g for g in machine.gates if g.kind == ">")
         assert [w.width for w in combine.inputs] == [1, 2]
         assert combine.outputs[0].width == 3
-
-    def test_a_combine_concatenates_upper_then_lower(self) -> None:
-        """The upper input's wires lead, in order, as ``<`` splits them."""
-        circuit = [
-            "-1-.",
-            "    >-:",
-            "-2-.",
-        ]
-        assert output_for(circuit, "1\n0\n0\n") == "100"
-        assert output_for(circuit, "0\n1\n1\n") == "011"
-        assert output_for(circuit, "0\n1\n0\n") == "010"
 
 
 @pytest.mark.parametrize(
@@ -309,24 +239,8 @@ def test_output_requires_a_horizontal_dash_directly_left(source: list[str]) -> N
         output_for(source, "1\n")
 
 
-def test_output_with_a_direct_left_dash_executes() -> None:
-    assert output_for(["-:"], "1\n") == "1"
-    assert output_for(["-:"], "0\n") == "0"
-
-
-def test_output_rejects_an_additional_diagonal_input() -> None:
-    with pytest.raises(ValueError, match=r"takes 1 input\(s\), found 2"):
-        output_for(["-.", "  \\", "---:"], "1\n")
-
-
 class TestSpecifiedSourcesAndRemoval:
     """The built-in functions outside the page's worked circuits."""
-
-    def test_one_source_fills_its_output_width(self) -> None:
-        assert output_for([")-3-:"], "") == "111"
-
-    def test_zero_source_fills_its_output_width(self) -> None:
-        assert output_for(["(-3-:"], "") == "000"
 
     def test_clock_is_a_32_bit_source(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -338,117 +252,6 @@ class TestSpecifiedSourcesAndRemoval:
     def test_the_real_clock_counts_seconds_since_2000(self) -> None:
         # 946684800 is the Unix time of 2000-01-01T00:00:00Z.
         assert abs(_seconds_since_2000() - (int(time.time()) - 946684800)) <= 2
-
-    def test_remove_drops_the_first_input_width_from_the_second(self) -> None:
-        circuit = [
-            "-2-.",
-            "    %-:",
-            "-4-.",
-        ]
-        assert output_for(circuit, "1\n0\n0\n1\n1\n0\n") == "10"
-
-    def test_repeated_symbolic_labels_share_a_width(self) -> None:
-        circuit = [
-            "-2-n-.",
-            "      >-n+n-:",
-            "-2-n-.",
-        ]
-        assert output_for(circuit, "1\n0\n0\n1\n") == "1001"
-
-
-class TestFunctions:
-    """Named custom gates are declared outside and called inside the grid."""
-
-    def test_one_input_function(self) -> None:
-        circuit = [
-            "{invert",
-            "-.~.-:",
-            "}",
-            "-invert-:",
-        ]
-        assert output_for(circuit, "1\n") == "0"
-
-    def test_two_input_function(self) -> None:
-        circuit = [
-            "{both",
-            "-.",
-            "  a.-:",
-            "-.",
-            "}",
-            "-.",
-            "  both.-:",
-            "-.",
-        ]
-        assert output_for(circuit, "1\n1\n") == "1"
-        assert output_for(circuit, "1\n0\n") == "0"
-
-    def test_function_labels_bind_to_the_call_width(self) -> None:
-        circuit = [
-            "{invert",
-            "-n-~-n-:",
-            "}",
-            "-3-invert-:",
-        ]
-        assert output_for(circuit, "1\n0\n1\n") == "010"
-
-    def test_function_may_fix_its_input_width_numerically(self) -> None:
-        circuit = ["{invert", "-2-~-2-:", "}", "-2-invert-:"]
-        assert output_for(circuit, "1\n0\n") == "01"
-
-    def test_fixed_function_input_width_is_checked(self) -> None:
-        circuit = ["{invert", "-2-~-2-:", "}", "-3-invert-:"]
-        with pytest.raises(ValueError, match="expects 2 input wires"):
-            run(circuit, ScriptedIO("1\n0\n1\n"))
-
-    def test_function_input_cannot_be_a_symbolic_sum(self) -> None:
-        circuit = ["{invert", "-n+m-~-n+m-:", "}", "-2-invert-:"]
-        with pytest.raises(ValueError, match="number or one name"):
-            run(circuit, ScriptedIO("1\n0\n"))
-
-    def test_duplicate_function_is_rejected(self) -> None:
-        with pytest.raises(ValueError, match="duplicate function"):
-            run(["{foo", "-.~.-:", "}", "{foo", "-.~.-:", "}"], ScriptedIO(""))
-
-    def test_unterminated_function_is_rejected(self) -> None:
-        with pytest.raises(ValueError, match="unterminated function"):
-            run(["{foo", "-.~.-:"], ScriptedIO(""))
-
-    def test_reserved_function_name_is_rejected(self) -> None:
-        with pytest.raises(ValueError, match="reserved"):
-            run(["{a", "-.~.-:", "}"], ScriptedIO(""))
-
-    def test_builtin_definition_may_be_spelled_out(self) -> None:
-        code = ["{%", "-n-.", "    ?.-:", "-m-.", "}", "(-2-:"]
-        assert output_for(code, "") == "00"
-
-    def test_unlabelled_function_input_requires_one_wire(self) -> None:
-        code = ["{invert", "-.~.-:", "}", "-2-invert-:"]
-        with pytest.raises(ValueError, match="one-wire input"):
-            run(code, ScriptedIO("1\n0\n"))
-
-    def test_one_symbol_cannot_bind_to_two_input_widths(self) -> None:
-        code = [
-            "{same",
-            "-n-.",
-            "    a.-:",
-            "-n-.",
-            "}",
-            "-2-.",
-            "    same.-:",
-            "-3-.",
-        ]
-        with pytest.raises(ValueError, match="binds 'n'"):
-            run(code, ScriptedIO("1\n0\n1\n0\n1\n"))
-
-    def test_function_that_does_not_settle_is_rejected(self) -> None:
-        code = ["{loop", *FLIP_FLOP, "}", "-loop-:"]
-        with pytest.raises(ValueError, match="does not settle"):
-            run(code, ScriptedIO("1\n"))
-
-    def test_function_without_a_return_is_rejected(self) -> None:
-        code = ["{silent", "-.~.-", "}", "-silent-:"]
-        with pytest.raises(ValueError, match="did not return bits"):
-            run(code, ScriptedIO("1\n"))
 
 
 class TestWiring:
@@ -464,41 +267,6 @@ class TestWiring:
         # A step that stays on the grid still returns the cell it reaches.
         assert conn.through(0, 0, (1, 0)) == (1, 0)
 
-    def test_a_crossover_joins_opposite_sides(self) -> None:
-        assert output_for(["-=-~.-:"], "1\n") == "0"
-
-    def test_a_crossover_chain_is_walked_through(self) -> None:
-        """The prime tester's ``.===.`` spans three crossovers at once."""
-        assert output_for(["-===-~.-:"], "1\n") == "0"
-
-    def test_crossing_wires_do_not_mix(self) -> None:
-        """A ``=`` carries each direction through independently."""
-        circuit = [
-            "  |",
-            "-=-~.-:",
-            "  |",
-        ]
-        assert output_for(circuit, "1\n") == "0"
-        assert output_for(circuit, "0\n") == "1"
-
-    def test_a_connection_must_be_mutual(self) -> None:
-        """``-`` and ``|`` never join: neither reaches toward the other."""
-        circuit = [
-            "-|",
-            "-.~.-:",
-        ]
-        assert output_for(circuit, "1\n0\n") == "1"
-
-    def test_multiple_drivers_are_xored(self) -> None:
-        """One wiring driven twice takes the XOR of its drivers."""
-        circuit = [
-            "-.~.",
-            "    .-:",
-            "-.~.",
-        ]
-        assert output_for(circuit, "1\n1\n") == "0"
-        assert output_for(circuit, "1\n0\n") == "1"
-
     def test_overlapping_driver_vectors_are_xored_bit_by_bit(self) -> None:
         """Each position merges independently, not by last driver wins."""
         assert _merge([(1, 0), (1, 1)]) == (0, 1)
@@ -507,18 +275,6 @@ class TestWiring:
 class TestParseErrors:
     """Malformed and out-of-scope programs are rejected, not guessed at."""
 
-    def test_unknown_character_is_rejected(self) -> None:
-        with pytest.raises(ValueError, match="unknown character"):
-            run(["-.#.-:"], ScriptedIO(""))
-
-    def test_a_bad_character_after_a_gate_is_still_rejected(self) -> None:
-        """Character validation cannot stop after seeing a gate."""
-        with pytest.raises(ValueError, match="out of scope"):
-            run(["~?"], ScriptedIO(""))
-
-    def test_letter_labelled_wires_are_supported(self) -> None:
-        assert output_for(["-width-:"], "1\n") == "1"
-
     def test_a_gate_missing_an_input_is_rejected(self) -> None:
         """The position is asserted too: it is the only reader of a gate's
         ``row`` and ``col``, which nothing else on a valid program looks at.
@@ -526,9 +282,6 @@ class TestParseErrors:
         with pytest.raises(ValueError, match="input") as caught:
             run(["-.a.-:"], ScriptedIO("1\n"))
         assert str(caught.value) == "'a' at (2, 0) takes 2 input(s), found 1"
-
-    def test_an_empty_program_has_nothing_to_run(self) -> None:
-        assert output_for([], "") == ""
 
     def test_an_output_is_exempt_from_the_out_port_count(self) -> None:
         """An output sinks its wire and drives nothing, so arity skips its ports."""
@@ -542,64 +295,21 @@ class TestParseErrors:
 class TestWireLabelErrors:
     """A wire label has to name a width, and the widths have to agree."""
 
-    def test_a_symbolic_sum_label_is_supported(self) -> None:
-        assert output_for(["-3+x-:"], "1\n0\n1\n0\n") == "1010"
-
     def test_a_zero_width_label_is_rejected(self) -> None:
         """A wire carrying no bits cannot be read or driven."""
         with pytest.raises(ValueError, match="must be positive") as caught:
             run(["-0-:"], ScriptedIO(""))
         assert str(caught.value) == "wire label '0' at (1, 0) must be positive"
 
-    def test_a_label_touching_no_wire_is_rejected(self) -> None:
-        """A width written beside nothing annotates nothing."""
-        with pytest.raises(ValueError, match="annotates no wire"):
-            run([" 3 "], ScriptedIO(""))
-
-    def test_a_label_missing_its_right_wire_is_rejected(self) -> None:
-        with pytest.raises(ValueError, match="annotates no wire"):
-            run(["-3 "], ScriptedIO(""))
-
-    def test_two_labels_disagreeing_on_a_wire_are_rejected(self) -> None:
-        """One wire cannot be two widths at once."""
-        with pytest.raises(ValueError, match="inconsistent wire labels"):
-            run(["-2-3-:"], ScriptedIO(""))
-
-    def test_repeated_symbol_cannot_have_two_fixed_widths(self) -> None:
-        with pytest.raises(ValueError, match="inconsistent widths"):
-            run(["-2-n-:", "-3-n-:"], ScriptedIO(""))
-
     def test_a_fixed_width_may_propagate_to_another_symbol_use(self) -> None:
         machine = _Machine(["-2-n-:", "-n-:"], ScriptedIO("1\n0\n1\n0\n"))
         assert sorted(wiring.width for wiring in machine.wirings) == [2, 2]
-
-    def test_symbolic_sum_must_agree_with_a_fixed_width(self) -> None:
-        with pytest.raises(ValueError, match="symbolic wire label implies"):
-            run(["-3-n+n-:"], ScriptedIO(""))
 
     def test_a_splitter_needs_both_its_outputs(self) -> None:
         """``<`` drives two wires; with one the circuit is malformed."""
         with pytest.raises(ValueError, match="output") as caught:
             run(["-2-<-:"], ScriptedIO(""))
         assert str(caught.value) == "'<' at (3, 0) drives 2 output(s), found 0"
-
-    def test_remove_must_leave_an_output_wire(self) -> None:
-        circuit = ["-2-.", "    %-:", "-2-."]
-        with pytest.raises(ValueError, match="removes every output wire"):
-            run(circuit, ScriptedIO(""))
-
-
-def test_a_crossover_running_off_the_grid_connects_nothing() -> None:
-    """A ``=`` chain walked to the edge has no cell on the far side."""
-    io = ScriptedIO("1\n")
-    run(["-1-="], io)
-    assert io.getvalue() == ""
-
-
-def test_a_gate_contradicting_an_explicit_label_is_rejected() -> None:
-    """``~`` preserves width, so the labels either side must agree."""
-    with pytest.raises(ValueError, match="implies 2 wire"):
-        run(["-2-~-3-:"], ScriptedIO(""))
 
 
 class TestCircuitDiagramMutationSurvivors:
@@ -628,37 +338,8 @@ class TestCircuitDiagramMutationSurvivors:
         assert scripted.getvalue() == "1"
 
 
-def test_a_not_fed_only_diagonally_is_still_rejected() -> None:
-    r"""The level-input rescue needs a level input to find."""
-    with pytest.raises(ValueError, match=r"takes 1 input\(s\), found 2"):
-        run(["-\\  ", "  ~-:", "-/  "], ScriptedIO("1\n0\n"))
-
-
 class TestSpecRepairs:
     """One pin per spec repair the independent model found."""
-
-    def test_two_input_rows_on_one_wiring_are_xored(self) -> None:
-        # Each leading '-' reads its own bit; drivers of one wiring XOR (wiki).
-        assert output_for(["-.", " |", "-.-:"], "1\n1\n") == "0"
-
-    def test_a_wiring_on_both_sides_of_a_gate_is_rejected(self) -> None:
-        # Wiki: "A wiring cannot connect to both the input(s) and output".
-        with pytest.raises(ValueError, match="feeds both input and output"):
-            run(["-.", "  a.-:", " .-."], ScriptedIO("1\n"))
-
-    def test_splitting_one_wire_is_rejected(self) -> None:
-        # '<' sends half rounded down up: one wire leaves an empty bundle.
-        with pytest.raises(ValueError, match="empty output bundle"):
-            run(["    .-:", "-1-<", "    .-:"], ScriptedIO("1\n"))
-
-    def test_a_function_body_may_call_another_function(self) -> None:
-        # '-inv-' in a body is a call, not a symbolic width label.
-        code = ["{inv", "-.~.-:", "}", "{wrap", "-inv-:", "}", "-wrap-:"]
-        assert output_for(code, "1\n") == "0"
-
-    def test_a_self_calling_function_is_rejected(self) -> None:
-        with pytest.raises(ValueError, match="recursively depends on itself"):
-            run(["{loop", "-loop-:", "}", "-loop-:"], ScriptedIO("1\n"))
 
     def test_a_clock_read_inside_a_call_is_in_the_snapshot(
         self, monkeypatch: pytest.MonkeyPatch
@@ -697,10 +378,6 @@ class TestSpecRepairs:
         assert ((), "0", None, ()) not in widths
         assert widths[((), "new", None, ())] == 2
 
-    def test_a_width_label_past_the_int_digit_limit_parses(self) -> None:
-        # 5001 digits, value 2: beyond int()'s default 4300-digit cap.
-        assert output_for(["-" + "0" * 5000 + "2-:"], "1\n0\n") == "10"
-
     def test_a_function_runtime_error_keeps_its_hint(self) -> None:
         code = ["{loop", *FLIP_FLOP, "}", "-loop-:"]
         with pytest.raises(ValueError, match="does not settle") as error:
@@ -709,3 +386,305 @@ class TestSpecRepairs:
             "hint: remove oscillating feedback from the function so it "
             "reaches a settled output"
         ]
+
+
+_SPLIT3 = ["    .-:", "-3-<", "    .-:"]
+_COMBINE = ["-1-.", "    >-:", "-2-."]
+_BOTH = ["{both", "-.", "  a.-:", "-.", "}", "-.", "  both.-:", "-."]
+
+
+def _MANY(kind: str) -> list[str]:
+    """Two two-wire inputs into one multi-input ``kind`` gate."""
+    return ["-2-.", f"    {kind}.-:", "-2-."]
+
+
+@pytest.mark.parametrize(
+    ("circuit", "stdin", "expected"),
+    [
+        # A direct wire distinguishes the zero fallback from a one bit.
+        pytest.param(["-:"], "", "0", id="an_exhausted_one_bit_input_is_zero"),
+        pytest.param(["-3-:"], "1\n0\n1\n", "101", id="output_prints_every_wire"),
+        pytest.param(["-3-~.-:"], "1\n0\n1\n", "010", id="not_preserves_width"),
+        # The upper output of ``<`` takes the low-numbered wires, in order.
+        pytest.param(
+            _SPLIT3, "1\n0\n1\n", "101", id="a_splitter_sends_the_first_wires_up"
+        ),
+        pytest.param([")-3-:"], "", "111", id="one_source_fills_its_output_width"),
+        pytest.param(["(-3-:"], "", "000", id="zero_source_fills_its_output_width"),
+        pytest.param(
+            ["-2-.", "    %-:", "-4-."],
+            "1\n0\n0\n1\n1\n0\n",
+            "10",
+            id="remove_drops_the_first_input_width_from_the_second",
+        ),
+        pytest.param(
+            ["-2-n-.", "      >-n+n-:", "-2-n-."],
+            "1\n0\n0\n1\n",
+            "1001",
+            id="repeated_symbolic_labels_share_a_width",
+        ),
+        pytest.param(
+            ["{invert", "-.~.-:", "}", "-invert-:"], "1\n", "0", id="one_input_function"
+        ),
+        pytest.param(
+            ["{invert", "-n-~-n-:", "}", "-3-invert-:"],
+            "1\n0\n1\n",
+            "010",
+            id="function_labels_bind_to_the_call_width",
+        ),
+        pytest.param(
+            ["{invert", "-2-~-2-:", "}", "-2-invert-:"],
+            "1\n0\n",
+            "01",
+            id="function_may_fix_its_input_width_numerically",
+        ),
+        pytest.param(
+            ["{%", "-n-.", "    ?.-:", "-m-.", "}", "(-2-:"],
+            "",
+            "00",
+            id="builtin_definition_may_be_spelled_out",
+        ),
+        pytest.param(["-=-~.-:"], "1\n", "0", id="a_crossover_joins_opposite_sides"),
+        # The prime tester's ``.===.`` spans three crossovers at once.
+        pytest.param(
+            ["-===-~.-:"], "1\n", "0", id="a_crossover_chain_is_walked_through"
+        ),
+        # ``-`` and ``|`` never join: neither reaches toward the other.
+        pytest.param(["-|", "-.~.-:"], "1\n0\n", "1", id="a_connection_must_be_mutual"),
+        pytest.param(
+            ["-width-:"], "1\n", "1", id="letter_labelled_wires_are_supported"
+        ),
+        pytest.param([], "", "", id="an_empty_program_has_nothing_to_run"),
+        pytest.param(
+            ["-3+x-:"], "1\n0\n1\n0\n", "1010", id="a_symbolic_sum_label_is_supported"
+        ),
+        # A ``=`` chain walked to the edge has no cell on the far side.
+        pytest.param(
+            ["-1-="], "1\n", "", id="a_crossover_running_off_the_grid_connects_nothing"
+        ),
+        # Each leading '-' reads its own bit; drivers of one wiring XOR (wiki).
+        pytest.param(
+            ["-.", " |", "-.-:"],
+            "1\n1\n",
+            "0",
+            id="two_input_rows_on_one_wiring_are_xored",
+        ),
+        # '-inv-' in a body is a call, not a symbolic width label.
+        pytest.param(
+            ["{inv", "-.~.-:", "}", "{wrap", "-inv-:", "}", "-wrap-:"],
+            "1\n",
+            "0",
+            id="a_function_body_may_call_another_function",
+        ),
+        # 5001 digits, value 2: beyond int()'s default 4300-digit cap.
+        pytest.param(
+            ["-" + "0" * 5000 + "2-:"],
+            "1\n0\n",
+            "10",
+            id="a_width_label_past_the_int_digit_limit_parses",
+        ),
+        pytest.param(
+            _MANY("a"), "1\n1\n1\n1\n", "1", id="and_over_many_wires_needs_them_all_0"
+        ),
+        pytest.param(
+            _MANY("a"), "1\n1\n1\n0\n", "0", id="and_over_many_wires_needs_them_all_1"
+        ),
+        pytest.param(
+            _MANY("o"), "0\n0\n0\n0\n", "0", id="or_over_many_wires_needs_only_one_0"
+        ),
+        pytest.param(
+            _MANY("o"), "0\n0\n0\n1\n", "1", id="or_over_many_wires_needs_only_one_1"
+        ),
+        pytest.param(
+            _MANY("x"),
+            "0\n1\n0\n0\n",
+            "1",
+            id="xor_over_many_wires_needs_exactly_one_0",
+        ),
+        pytest.param(
+            _MANY("x"),
+            "1\n1\n0\n0\n",
+            "0",
+            id="xor_over_many_wires_needs_exactly_one_1",
+        ),
+        pytest.param(
+            _COMBINE, "1\n0\n0\n", "100", id="a_combine_concatenates_upper_then_lower_0"
+        ),
+        pytest.param(
+            _COMBINE, "0\n1\n1\n", "011", id="a_combine_concatenates_upper_then_lower_1"
+        ),
+        pytest.param(
+            _COMBINE, "0\n1\n0\n", "010", id="a_combine_concatenates_upper_then_lower_2"
+        ),
+        pytest.param(
+            ["-:"], "1\n", "1", id="output_with_a_direct_left_dash_executes_0"
+        ),
+        pytest.param(
+            ["-:"], "0\n", "0", id="output_with_a_direct_left_dash_executes_1"
+        ),
+        pytest.param(_BOTH, "1\n1\n", "1", id="two_input_function_0"),
+        pytest.param(_BOTH, "1\n0\n", "0", id="two_input_function_1"),
+        pytest.param(
+            ["  |", "-=-~.-:", "  |"], "1\n", "0", id="crossing_wires_do_not_mix_0"
+        ),
+        pytest.param(
+            ["  |", "-=-~.-:", "  |"], "0\n", "1", id="crossing_wires_do_not_mix_1"
+        ),
+        pytest.param(
+            ["-.~.", "    .-:", "-.~."],
+            "1\n1\n",
+            "0",
+            id="multiple_drivers_are_xored_0",
+        ),
+        pytest.param(
+            ["-.~.", "    .-:", "-.~."],
+            "1\n0\n",
+            "1",
+            id="multiple_drivers_are_xored_1",
+        ),
+    ],
+)
+def test_output(circuit: list[str], stdin: str, expected: str) -> None:
+    assert output_for(circuit, stdin) == expected
+
+
+@pytest.mark.parametrize(
+    ("circuit", "stdin", "match"),
+    [
+        pytest.param(
+            ["{invert", "-2-~-2-:", "}", "-3-invert-:"],
+            "1\n0\n1\n",
+            "expects 2 input wires",
+            id="fixed_function_input_width_is_checked",
+        ),
+        pytest.param(
+            ["{invert", "-n+m-~-n+m-:", "}", "-2-invert-:"],
+            "1\n0\n",
+            "number or one name",
+            id="function_input_cannot_be_a_symbolic_sum",
+        ),
+        pytest.param(
+            ["{foo", "-.~.-:", "}", "{foo", "-.~.-:", "}"],
+            "",
+            "duplicate function",
+            id="duplicate_function_is_rejected",
+        ),
+        pytest.param(
+            ["{foo", "-.~.-:"],
+            "",
+            "unterminated function",
+            id="unterminated_function_is_rejected",
+        ),
+        pytest.param(
+            ["{a", "-.~.-:", "}"],
+            "",
+            "reserved",
+            id="reserved_function_name_is_rejected",
+        ),
+        pytest.param(
+            ["{invert", "-.~.-:", "}", "-2-invert-:"],
+            "1\n0\n",
+            "one-wire input",
+            id="unlabelled_function_input_requires_one_wire",
+        ),
+        pytest.param(
+            ["{same", "-n-.", "    a.-:", "-n-.", "}", "-2-.", "    same.-:", "-3-."],
+            "1\n0\n1\n0\n1\n",
+            "binds 'n'",
+            id="one_symbol_cannot_bind_to_two_input_widths",
+        ),
+        pytest.param(
+            ["{loop", *FLIP_FLOP, "}", "-loop-:"],
+            "1\n",
+            "does not settle",
+            id="function_that_does_not_settle_is_rejected",
+        ),
+        pytest.param(
+            ["{silent", "-.~.-", "}", "-silent-:"],
+            "1\n",
+            "did not return bits",
+            id="function_without_a_return_is_rejected",
+        ),
+        pytest.param(
+            ["-.#.-:"], "", "unknown character", id="unknown_character_is_rejected"
+        ),
+        pytest.param(
+            ["~?"],
+            "",
+            "out of scope",
+            id="a_bad_character_after_a_gate_is_still_rejected",
+        ),
+        pytest.param(
+            [" 3 "], "", "annotates no wire", id="a_label_touching_no_wire_is_rejected"
+        ),
+        pytest.param(
+            ["-3 "],
+            "",
+            "annotates no wire",
+            id="a_label_missing_its_right_wire_is_rejected",
+        ),
+        pytest.param(
+            ["-2-3-:"],
+            "",
+            "inconsistent wire labels",
+            id="two_labels_disagreeing_on_a_wire_are_rejected",
+        ),
+        pytest.param(
+            ["-2-n-:", "-3-n-:"],
+            "",
+            "inconsistent widths",
+            id="repeated_symbol_cannot_have_two_fixed_widths",
+        ),
+        pytest.param(
+            ["-3-n+n-:"],
+            "",
+            "symbolic wire label implies",
+            id="symbolic_sum_must_agree_with_a_fixed_width",
+        ),
+        pytest.param(
+            ["-2-.", "    %-:", "-2-."],
+            "",
+            "removes every output wire",
+            id="remove_must_leave_an_output_wire",
+        ),
+        pytest.param(
+            ["-2-~-3-:"],
+            "",
+            "implies 2 wire",
+            id="a_gate_contradicting_an_explicit_label_is_rejected",
+        ),
+        pytest.param(
+            ["-.", "  \\", "---:"],
+            "1\n",
+            r"takes 1 input\(s\), found 2",
+            id="output_rejects_an_additional_diagonal_input",
+        ),
+        pytest.param(
+            ["-\\  ", "  ~-:", "-/  "],
+            "1\n0\n",
+            r"takes 1 input\(s\), found 2",
+            id="a_not_fed_only_diagonally_is_still_rejected",
+        ),
+        pytest.param(
+            ["-.", "  a.-:", " .-."],
+            "1\n",
+            "feeds both input and output",
+            id="a_wiring_on_both_sides_of_a_gate_is_rejected",
+        ),
+        pytest.param(
+            ["    .-:", "-1-<", "    .-:"],
+            "1\n",
+            "empty output bundle",
+            id="splitting_one_wire_is_rejected",
+        ),
+        pytest.param(
+            ["{loop", "-loop-:", "}", "-loop-:"],
+            "1\n",
+            "recursively depends on itself",
+            id="a_self_calling_function_is_rejected",
+        ),
+    ],
+)
+def test_rejected(circuit: list[str], stdin: str, match: str) -> None:
+    with pytest.raises(ValueError, match=match):
+        run(circuit, ScriptedIO(stdin))

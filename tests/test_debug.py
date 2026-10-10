@@ -4,7 +4,8 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.exceptions import UnknownLanguageError
+from esolangs.registry import LANGUAGES
+from tests.pick import one
 
 
 class TestRun:
@@ -26,16 +27,14 @@ class TestRun:
         assert dbg.halted
 
 
-class TestFactory:
-    def test_unknown_language_raises(self) -> None:
-        with pytest.raises(UnknownLanguageError):
-            debugger_api.make_debugger("NoSuchLanguage", "+")
-
-
 #: Two of the nine dump-on-post-halt languages, one reader and one template:
 #: the dump step is the debugger's shared code, and test_vm_protocol already
 #: checks every language's flag against its behaviour.
-_DUMPERS = ("LaserFuck", "RAM0")
+_DUMPERS = [
+    name
+    for template in (False, True)
+    for name in one(dumps_on_the_post_halt_step=True, parameterized=template)
+]
 
 
 def _runnable(name: str, table: str = "0110") -> tuple[str, str]:
@@ -101,22 +100,11 @@ class TestSteppingWarnsAboutStdinToo:
         return [
             pytest.param(
                 name,
-                # Malbolge's program is the full 59049-cell store, so stepping
-                # it to its halt one instruction at a time is a medium run.
-                marks=pytest.mark.medium if name == "Malbolge" else (),
+                marks=pytest.mark.medium if LANGUAGES[name].slow_stepping else (),
             )
             for name in esolangs.list_languages()
             if esolangs.describe(name)["boolean_generator"]
             and esolangs.describe(name)["eof_is_a_value"]
             and not esolangs.describe(name)["parameterized"]
-            and name != "Alight"
+            and not LANGUAGES[name].underfed_raises
         ]
-
-    def test_alight_refuses_instead_of_warning(self) -> None:
-        """The documented exception, pinned so it stays a *loud* one."""
-        program = esolangs.generate("Alight", "0110")
-        full = esolangs.encode_inputs("Alight", [1, 0])
-        short = "\n".join(full.split("\n")[:-2]) + "\n"
-        dbg = debugger_api.make_debugger("Alight", program, stdin=short)
-        with pytest.raises(esolangs.HaltError, match="eof"):
-            _step_to_halt(dbg)

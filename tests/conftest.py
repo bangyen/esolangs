@@ -39,6 +39,8 @@ _reject_stale_install()
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """Give every test its hard stop and require evidence for weekly cost."""
+    # The nested collection probe took 2.64s alone, 22.8s under late pool load.
+    items.sort(key=lambda item: not item.nodeid.startswith("tests/scripts/"))
     for item in items:
         markers = {marker.name for marker in item.iter_markers()}
         evidence = item.get_closest_marker("cost_evidence")

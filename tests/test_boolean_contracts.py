@@ -5,8 +5,10 @@ import sys
 
 import pytest
 
+import esolangs
 from esolangs.registry import LANGUAGES, parameterized_ids, resolve
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
+from tests.pick import spread
 
 
 def test_examples_derive_the_registered_io_contract() -> None:
@@ -33,23 +35,27 @@ def test_examples_derive_the_registered_io_contract() -> None:
 
 @pytest.mark.medium
 def test_stripped_docstrings_preserve_all_answer_mechanisms() -> None:
-    code = """
+    # One language per way of reading input and of answering.
+    names = spread(
+        "input_shape",
+        "input_encoding",
+        "answer_mode",
+        "answer_encoding",
+        boolean_generator=True,
+    )
+    # ``describe`` refuses under -OO, so what it says is read out here.
+    readers = [name for name in names if esolangs.describe(name)["reads_input"]]
+    code = f"""
 import esolangs
 from esolangs._evaluate import _evaluate
 from tests.stdin_check import _check_stdin
-for name in (
-    'brainfuck', 'Fargo', 'Grapheme', 'Taglate',
-    'RAM0', 'INTERCAL', '123', 'Vandevelo',
-):
+for name in {names!r}:
     program = esolangs.generate(name, '0110')
     result = _evaluate(name, program, inputs=2)
     if result != '0110':
         raise AssertionError((name, result))
-for name, stdin in (
-    ('brainfuck', '01'), ('Fargo', '1\\n'),
-    ('Grapheme', '%\\nA\\n'), ('Taglate', '01'),
-):
-    _check_stdin(name, stdin, '0110')
+    if name in {readers!r}:
+        _check_stdin(name, esolangs.encode_inputs(name, [0, 1]), '0110')
 try:
     esolangs.describe('brainfuck')
 except esolangs.ProgramError as exc:

@@ -71,6 +71,7 @@ def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 LANGUAGE = Language(
     "brainfuck",
     "tape_based.brainfuck",
+    weekly_mutation=("interpreter",),
     boolean=brainfuck,
     contract=BooleanContract(
         input_shape="char_stream",

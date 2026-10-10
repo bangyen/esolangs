@@ -4,19 +4,8 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.tui import History, Mark, render
-from esolangs.tui_loop import drive
 from tests.generator_support import evaluate_generated
 from tests.samples import CIRCUIT_PRIME_TESTER, bits_of
-from tests.test_tui import (
-    _drive,
-    _frame,
-    _highlighted,
-    _Keys,
-    _marked_both,
-    _marked_break,
-    _selected,
-)
 from tests.test_vm import _run_all
 
 
@@ -31,50 +20,6 @@ class TestBreakAtWhereThereIsNoShape:
         assert debugger.ip is None
         debugger.break_at(3)
         debugger.break_at((1, 2))
-
-
-class TestSelector:
-    """A selector that can reach where the run has not."""
-
-    def test_it_starts_on_the_running_position(self) -> None:
-        assert _selected(_drive("+++", "q").screens[0]) == ["+"]
-
-    @pytest.mark.parametrize(
-        ("keys", "expected"), [("l", ">"), ("j", "<"), ("ljhk", "+")]
-    )
-    def test_the_movement_keys_move_it(self, keys: str, expected: str) -> None:
-        keyboard = _drive("+>\n<-", keys + "q")
-        assert _selected(keyboard.screens[-1]) == [expected]
-
-    def test_moving_does_not_move_the_run(self) -> None:
-        assert "step 0" in _drive("+++", "lllq").headers()[-1]
-
-    def test_it_stops_at_the_edges(self) -> None:
-        keyboard = _drive("+++", "hhhhkkkkq")
-        assert _selected(keyboard.screens[-1]) == ["+"]
-
-    def test_stepping_snaps_it_back_to_the_run(self) -> None:
-        keyboard = _drive("+>-<", "ll q")
-        assert _selected(keyboard.screens[-1]) == [">"]
-
-    def test_a_breakpoint_can_be_set_where_the_run_has_not_reached(self) -> None:
-        keyboard = _drive("+>-<", "lltcq")
-        assert "step 2" in keyboard.headers()[-1]
-
-    def test_marking_ahead_paints_there_not_here(self) -> None:
-        keyboard = _drive("+>-<", "lltq")
-        assert _marked_break(keyboard.screens[-1]) == ["-"]
-        assert _highlighted(keyboard.screens[-1]) == "+"
-
-    def test_the_pane_follows_the_selector(self) -> None:
-        program = "." * 400 + "@" + "." * 400
-        screen = render(_frame(program, 0), width=60, picked=Mark(0, 400))
-        assert _selected(screen) == ["@"]
-
-    def test_a_language_with_no_position_has_no_selector(self) -> None:
-        keyboard = _Keys("llq")
-        drive(History("Circuit Diagram", "-.\n", ""), keyboard.read, keyboard.write)
-        assert _selected(keyboard.screens[-1]) == []
 
 
 class TestCircuitDiagram:
@@ -139,29 +84,3 @@ class TestAFailedRowSaysWhichRow:
             evaluate_generated("Circuit Diagram", table, timeout=0.005)
         note = "\n".join(getattr(caught.value, "__notes__", []))
         assert "row 0 of 128" in note
-
-
-class TestToggleKey:
-    def test_t_marks_the_position_the_run_is_on(self) -> None:
-        keyboard = _drive("+++", " tq")
-        assert _marked_both(keyboard.screens[-1]) == ["+"]
-        assert "1 break" in keyboard.headers()[-1]
-        assert "step 1" in keyboard.headers()[-1]
-
-    def test_t_again_clears_it(self) -> None:
-        keyboard = _drive("+++", "ttq")
-        assert "break" not in keyboard.headers()[-1]
-
-    def test_continue_does_not_stop_where_it_already_is(self) -> None:
-        keyboard = _drive("+++", "tcq")
-        assert "step 0" not in keyboard.headers()[-1]
-
-    def test_a_language_with_no_position_cannot_be_marked(self) -> None:
-        keyboard = _Keys("tq")
-        drive(History("Circuit Diagram", "-.\n", ""), keyboard.read, keyboard.write)
-        assert "break" not in keyboard.headers()[-1]
-
-    def test_a_position_given_on_the_command_line_starts_marked(self) -> None:
-        keyboard = _Keys("q")
-        drive(History("brainfuck", "+>-<", ""), keyboard.read, keyboard.write, at=(2,))
-        assert _marked_break(keyboard.screens[0]) == ["-"]

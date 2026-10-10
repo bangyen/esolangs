@@ -1008,5 +1008,5 @@ LANGUAGE = Language(
         note="Vandevelo answers by terminating: nil halts and not nil loops",
     ),
     balance=_balance,
-    example=Example(expected=""),
+    example=Example(expected="", slow_build=True),
 )

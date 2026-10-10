@@ -395,7 +395,7 @@ class _Machine:
         return (
             self.ind,
             self.reg,
-            self.io.position(),
+            self.io.progress(),
             self._input_reads,
             self._program_key,
         )

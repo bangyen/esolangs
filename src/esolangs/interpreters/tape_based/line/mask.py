@@ -171,14 +171,9 @@ class Mask:
         rows = []
         for y in range(off_y, self.height, step):
             row = self.rows[y] >> off_x
-            out = 0
-            bit = 0
-            while row:
-                if row & 1:
-                    out |= 1 << bit
-                row >>= step
-                bit += 1
-            rows.append(out)
+            # Binary digits reverse x order; select from the low bit first.
+            bits = bin(row)[2:][::-step]
+            rows.append(int(bits[::-1], 2))
         width = max(0, (self.width - off_x + step - 1) // step)
         return Mask(len(rows), width, rows)
 
@@ -223,14 +218,19 @@ def from_grey(grey: list[bytearray], threshold: int = 128) -> Mask:
     width = len(grey[0]) if height else 0
     rows = []
     patterns: dict[bytes, int] = {}
+    levels = None
     for row in grey:
         key = bytes(row)
         value = patterns.get(key)
         if value is None:
-            value = 0
-            for x, level in enumerate(key):
-                if level < threshold:
-                    value |= 1 << x
+            if key:
+                if levels is None:
+                    levels = bytes(
+                        49 if level < threshold else 48 for level in range(256)
+                    )
+                value = int(key[::-1].translate(levels), 2)
+            else:
+                value = 0
             if len(patterns) < 1024:
                 patterns[key] = value
         rows.append(value)

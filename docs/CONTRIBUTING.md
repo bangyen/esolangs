@@ -170,11 +170,14 @@ Use `scripts/screens/` to bound the upside first.
 
 1. `just new-language "Name" --category tape_based` (the matching category;
    `--interpreter-only` for a fame admission) writes the interpreter,
-   generator and test stubs. Replace the placeholder semantics and tests.
+   generator and test stubs, and records the language as
+   `{ route = "unassessed" }` in `tests/fixtures/curation.toml`. Replace
+   the placeholder semantics and tests.
 2. `just check-language "Name"` lists every integration step still missing,
    each with the file and entry to add: registry, exports, contract,
-   example, width policy, samples, curation, proof ledger and its formula
-   tables. Repeat until it reports none; a test runs it over the registry,
+   example, width policy, samples (interpreter-only languages; a
+   generator's VM sample is derived from its program), curation, proof
+   ledger and its formula tables. Repeat until it reports none; a test runs it over the registry,
    so the list matches what the suite enforces. It then runs the
    seconds-long checks `finish` would otherwise fail late: the language's
    own tests, its committed example, the generator's shape, the ledger's
@@ -202,7 +205,9 @@ Use `scripts/screens/` to bound the upside first.
    fails.
 
 To take a language out, `just remove-language "Name"` deletes what `check`
-asks for, regenerates, and lists the prose mentions left to edit.
+asks for and every test file `tests/test_language_coupling.py` counts as
+the language's own (committed or not), regenerates, lowers
+`tests/fixtures/coupling.toml`, and lists the prose mentions left to edit.
 
 A language should live in its own files: its generator module's
 `LANGUAGE`, its interpreter, and its own test files. A fact another file

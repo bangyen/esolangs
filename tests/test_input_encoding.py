@@ -12,6 +12,7 @@ from esolangs.cli_hints import _template_hint
 from esolangs.exceptions import ProgramError, TemplateError
 from tests.pick import languages
 from tests.test_language_coupling import REFERENCE
+from tests.witness_tables import row_bits
 
 XOR = "0110"
 PARITY3 = "10010110"
@@ -24,7 +25,7 @@ def _rows(language: str, table: str) -> str:
     inputs = len(table).bit_length() - 1
     got = ""
     for row in range(len(table)):
-        bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
+        bits = row_bits(row, inputs)
         stdin = esolangs.encode_inputs(language, bits)
         got += esolangs.run(language, program, stdin=stdin, timeout=30)[-1:] or "?"
     return got

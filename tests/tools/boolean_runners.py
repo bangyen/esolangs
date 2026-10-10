@@ -128,11 +128,11 @@ def run_taglate(program: str, inputs: list[str]) -> str:
     return esolangs.run("Taglate", program, stdin="".join(inputs))
 
 
-def run_clockwise(program: str, inputs: list[str]) -> str:
+def run_clockwise(program: str, inputs: list[str] | list[int]) -> str:
     import esolangs
 
     # Clockwise loads the complete character stream (7 bits per char).
-    return esolangs.run("Clockwise", program, stdin="".join(inputs))
+    return esolangs.run("Clockwise", program, stdin="".join(map(str, inputs)))
 
 
 def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:

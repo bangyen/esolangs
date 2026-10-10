@@ -242,7 +242,7 @@ class _Machine:
             self.ptr,
             self.stk,
             tuple(self.frames),
-            self.io.position(),
+            self.io.progress(),
         )
 
     @property
@@ -274,7 +274,7 @@ class _Machine:
             ind,
             self.ptr,
             self.stk,
-            self.io.position(),
+            self.io.progress(),
         )
 
     def step(self) -> None:

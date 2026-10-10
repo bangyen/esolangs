@@ -3,24 +3,23 @@
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from itertools import count, pairwise
+from string import ascii_letters
 from typing import NamedTuple
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.forbin import (
-    _forbin_name,
-)
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     input_weights,
+    short_name,
     subtree_ids,
 )
 
 #: The names Container gives its own meaning, which a generated container
-#: may not take.  ``_forbin_name`` draws from a mixed-case alphabet and so
-#: reaches ``T`` at index 45 and ``IN`` at 754 -- both inside the name count
-#: of a wide table, so the collision is live rather than defensive.
+#: may not take.  The names draw from a mixed-case alphabet and so reach
+#: ``T`` at index 45 and ``IN`` at 754 -- both inside the name count of a
+#: wide table, so the collision is live rather than defensive.
 _RESERVED = frozenset({"EXIT", "IN", "OUT", "PRINT", "T"})
 
 #: Largest ``n`` built as a tree; wider tables use the threshold sum.
@@ -31,9 +30,9 @@ _Names = dict[tuple[str, int, int], str]
 
 
 def _free_names(taken: Iterable[str]) -> Iterator[str]:
-    """Yield ``_forbin_name`` identifiers not in ``taken``, which may grow."""
+    """Yield the shortest letter names not in ``taken``, which may grow."""
     for index in count():
-        name = _forbin_name(index)
+        name = short_name(index, ascii_letters)
         if name not in taken:
             yield name
 

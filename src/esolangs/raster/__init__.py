@@ -89,14 +89,20 @@ def _assign(
     payload: object | None,
     language: str | None,
     settings: DialectSettings | None,
+    scale: int | None = None,
 ) -> Raster:
     """Initialize ``raster``'s fields; the one path both constructors share."""
+    if scale is not None:
+        from esolangs._validate import check_scale
+
+        check_scale(scale)
     object.__setattr__(raster, "_rows", rows)
     object.__setattr__(raster, "_normalizations", {})
     object.__setattr__(raster, "_materialize", materialize)
     object.__setattr__(raster, "_payload", payload)
     object.__setattr__(raster, "_language", language)
     object.__setattr__(raster, "_settings", settings)
+    object.__setattr__(raster, "_scale", scale)
     object.__setattr__(raster, "_hash", None)
     raster.__post_init__()
     return raster
@@ -108,6 +114,7 @@ def lazy_raster(
     *,
     language: str | None = None,
     settings: DialectSettings | None = None,
+    scale: int | None = None,
 ) -> Raster:
     """Return a raster whose pixels a language-owned renderer supplies.
 
@@ -115,7 +122,7 @@ def lazy_raster(
     no renderer internals.
     """
     return _assign(
-        Raster.__new__(Raster), None, materialize, payload, language, settings
+        Raster.__new__(Raster), None, materialize, payload, language, settings, scale
     )
 
 
@@ -133,6 +140,7 @@ class Raster:
     _payload: object | None = field(default=None, repr=False, compare=False)
     _language: str | None = field(default=None, repr=False, compare=False)
     _settings: DialectSettings | None = field(default=None, repr=False, compare=False)
+    _scale: int | None = field(default=None, repr=False, compare=False)
     # Tuples cache no hash before 3.14; an lru_cache key rehashes every pixel.
     _hash: int | None = field(default=None, repr=False, compare=False)
 
@@ -142,9 +150,10 @@ class Raster:
         *,
         language: str | None = None,
         settings: DialectSettings | None = None,
+        scale: int | None = None,
     ) -> None:
         """Create a raster from RGB pixel rows."""
-        _assign(self, rows, None, None, language, settings)
+        _assign(self, rows, None, None, language, settings, scale)
 
     def __post_init__(self) -> None:
         """Validate the rectangular raster shape."""
@@ -171,21 +180,25 @@ class Raster:
 
     @property
     def language(self) -> str | None:
-        """The language :func:`esolangs.generate` tagged this for, if any.
-
-        A PNG read back from disk carries no tag, exactly as a text program
-        written to a file stops being a ``_Tagged``.  ``_check_program`` reads
-        this to refuse a cross-language run, which text programs already do.
-        """
+        """The language retained by generated source or PNG metadata."""
         return self._language
 
     @property
     def settings(self) -> DialectSettings | None:
-        """The retained dialect choices, absent on decoded PNGs."""
+        """The retained dialect choices."""
         return self._settings
 
+    @property
+    def scale(self) -> int | None:
+        """The retained pixel enlargement factor, absent on untagged images."""
+        return self._scale
+
     def tagged(
-        self, language: str, *, settings: DialectSettings | None = None
+        self,
+        language: str,
+        *,
+        settings: DialectSettings | None = None,
+        scale: int | None = None,
     ) -> Raster:
         """Return this raster tagged as generated for ``language``."""
         return _assign(
@@ -197,6 +210,7 @@ class Raster:
             self.settings
             if settings is None and language == self.language
             else settings,
+            self.scale if scale is None else scale,
         )
 
     @property
@@ -213,6 +227,8 @@ class Raster:
 
         from .scale import normalize
 
+        if scale is None:
+            scale = self.scale
         if scale is not None:
             check_scale(scale)
         if scale not in self._normalizations:
@@ -238,6 +254,7 @@ class Raster:
             self._payload,
             language=self.language,
             settings=self.settings,
+            scale=(self.scale or 1) * scale,
         )
 
     @classmethod
@@ -254,7 +271,39 @@ class Raster:
             # Inside the guard too: a 0x0 image decodes cleanly and then
             # ``__post_init__`` rejects the empty rows, which is still a bad
             # PNG rather than a caller error.
-            return cls(decoded)
+            metadata = png.read_metadata(data)
+            if metadata is None:
+                return cls(decoded)
+            from esolangs._validate import check_scale
+            from esolangs.registry import resolve
+            from esolangs.settings import DialectSettings
+
+            language = metadata.get("language")
+            if language is not None:
+                if not isinstance(language, str):
+                    raise ValueError("PNG language must be a string")
+                language = resolve(language)
+            scale = metadata.get("scale")
+            if scale is not None:
+                check_scale(scale)
+            options = metadata.get("settings")
+            settings = None
+            if options is not None:
+                if not isinstance(options, dict):
+                    raise ValueError("PNG settings must be an object")
+                settings = DialectSettings(
+                    **{
+                        key: int(value["integer"], 16)
+                        if isinstance(value, dict)
+                        else value
+                        for key, value in options.items()
+                    }
+                )
+                if language is not None:
+                    settings.options(language)
+            return _assign(
+                cls.__new__(cls), decoded, None, None, language, settings, scale
+            )
         except MissingDependencyError:
             raise
         except Exception as exc:
@@ -267,4 +316,20 @@ class Raster:
 
     def to_png(self) -> bytes:
         """Encode this raster as PNG bytes."""
-        return png.write_rgb(self.rows)
+        data = png.write_rgb(self.rows)
+        if self.language is None and self.settings is None and self.scale is None:
+            return data
+        return png.write_metadata(
+            data,
+            {
+                "version": 1,
+                "language": self.language,
+                "settings": None
+                if self.settings is None
+                else {
+                    key: {"integer": hex(value)} if type(value) is int else value
+                    for key, value in self.settings._items  # noqa: SLF001
+                },
+                "scale": self.scale,
+            },
+        )

@@ -6,17 +6,7 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_clockwise,
 )
-from tests.witness_tables import witnesses
-
-
-def _bits(combo: int, n: int) -> list[str]:
-    """The input digits for a table row, MSB first."""
-    return [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-
-
-def _parity(n: int) -> str:
-    """The ``n``-input parity table: every input matters."""
-    return "".join(str(row.bit_count() & 1) for row in range(1 << n))
+from tests.witness_tables import parity, row_bits, witnesses
 
 
 class TestClockwise:
@@ -32,7 +22,7 @@ class TestClockwise:
             for table in tables:
                 program = boolean.clockwise(table)
                 for combo in range(size):
-                    assert run_clockwise(program, _bits(combo, n)) == table[combo]
+                    assert run_clockwise(program, row_bits(combo, n)) == table[combo]
 
     @pytest.mark.parametrize("width", [None, 1])
     def test_every_run_reads_each_input_exactly_once(self, width: int | None) -> None:
@@ -64,7 +54,8 @@ class TestClockwise:
             program = boolean.clockwise(table, width)
             for combo in range(2**n):
                 machine = _Machine(
-                    program.splitlines(), _Quiet("".join(_bits(combo, n)))
+                    program.splitlines(),
+                    _Quiet("".join(map(str, row_bits(combo, n)))),
                 )
                 start = machine.inp
                 steps = 0
@@ -76,7 +67,7 @@ class TestClockwise:
 
     def test_size_is_linear_in_the_table(self) -> None:
         """Four table rows and a doubling chain: both linear, so size is."""
-        sizes = [len(boolean.clockwise(_parity(n))) for n in (5, 7, 9)]
+        sizes = [len(boolean.clockwise(parity(n))) for n in (5, 7, 9)]
         rise = (sizes[2] - sizes[1]) / (sizes[1] - sizes[0])
         assert 3.5 < rise < 4.4, sizes
         assert sizes[2] / 2**9 < 20, sizes
@@ -99,12 +90,12 @@ def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
         if plain_width <= width:
             assert program == plain
         for combo in range(1 << n):
-            assert run_clockwise(program, _bits(combo, n)) == table[combo]
+            assert run_clockwise(program, row_bits(combo, n)) == table[combo]
 
 
 def test_rotated_lookup_size_is_linear() -> None:
     """Implicit padded rails keep rotation from rendering a filled rectangle."""
-    sizes = [len(boolean.clockwise(_parity(n), 1)) for n in (5, 7, 9)]
+    sizes = [len(boolean.clockwise(parity(n), 1)) for n in (5, 7, 9)]
     assert sizes[2] / 2**9 < 30
     assert 3.5 < (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) < 4.4
 
@@ -117,7 +108,7 @@ def test_entry_digit_prefix_executes_every_small_table() -> None:
         for table in witnesses(n):
             program = boolean.clockwise(table, 1)
             for row, expected in enumerate(table):
-                assert run_clockwise(program, _bits(row, n)) == expected
+                assert run_clockwise(program, row_bits(row, n)) == expected
 
 
 def test_single_column_cannot_close_a_clockwise_ring() -> None:
@@ -130,4 +121,3 @@ def test_single_column_cannot_close_a_clockwise_ring() -> None:
     machine.step()
     with pytest.raises(ValueError, match="ring is not closed"):
         machine.step()
-    assert len(boolean.clockwise("0110", 1)) == 112

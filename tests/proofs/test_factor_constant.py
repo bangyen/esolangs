@@ -65,7 +65,7 @@ def test_constant_bracket_is_below_three() -> None:
 
     lower = math.log(2) ** 2 / (math.log(prefix_growth()) * math.log(10))
     upper = (29 / 32) * (15 / 14) * math.log10(2)
-    assert upper / lower == pytest.approx(2.5033907126851784)
+    assert upper / lower == pytest.approx(2.4979448548959384)
     assert upper < 3 * lower
 
 

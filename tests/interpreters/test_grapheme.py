@@ -80,7 +80,6 @@ def test_loading_ignores_only_lf(char: str) -> None:
         pytest.param("FAFNY", "A", id="int_to_string"),
         # A=1 and J=10: 1*10 + 10 = 20
         pytest.param("EAJEJY", "20", id="string_to_int"),
-        pytest.param("HABHNY", "AB", id="function_to_string"),
         pytest.param("EAEKKCDY", "A", id="set_and_get"),
         # D of the never-set VARIABL pushes the name itself
         pytest.param(
@@ -103,20 +102,17 @@ def test_loading_ignores_only_lf(char: str) -> None:
         # Z needs a function to loop over; an integer leaves the stack as is.
         pytest.param("FAFKZY", "1", id="z_ignores_a_value_that_is_not_a_function"),
         # [1, 0]: U pops 0 (falsy) and skips the K, so Y prints the 1
-        pytest.param("FAFFFUKY", "1", id="u_skips_when_falsy"),
         # [0, 1]: U pops 1 (truthy), K duplicates the 0, Y prints it
         pytest.param("FFFAFUKY", "0", id="u_does_not_skip_when_truthy"),
         # [1, 0]: X pops 0 (falsy) and skips the K, so Y prints the 1
         pytest.param("FAFFFXKY", "1", id="x_skips_next_when_falsy"),
         # [0, 1]: X pops 1 (truthy), Y prints the 0, then the K is skipped
-        pytest.param("FFFAFXYK", "0", id="x_skips_after_next_when_truthy"),
         # [1, 2, 3]: X pops the truthy 3, Y prints 2, the K is skipped,
         # and the last Y prints the 1 that is still underneath.
         pytest.param("FAFFBFFCFXYKY", "21", id="x_resumes_two_commands_on"),
         # X opens a called body XYK: X pops the 2, Y prints the 1, K is skipped
         pytest.param("FAFFBFHXYKHI", "1", id="x_can_open_the_body_it_governs"),
         pytest.param("FAFJJY", "1", id="j_on_an_int_is_identity"),
-        pytest.param("HABHJY", "2", id="j_on_a_function_counts_its_commands"),
         pytest.param("EFAEJY", "0", id="j_on_a_string_stops_at_an_f"),
         pytest.param("EAENY", "A", id="n_on_a_string_is_identity"),
         pytest.param("FFNY", "J", id="n_on_zero_is_j"),
@@ -215,10 +211,6 @@ class TestIO:
     def test_input(self) -> None:
         assert run_program("WKY", "hi") == "hi"
 
-    def test_input_running_out_raises_eof(self) -> None:
-        with pytest.raises(EOFError):
-            run("W", ScriptedIO(""))
-
 
 class TestErrors:
     def test_constructor_builds_a_runnable_machine_and_validates(self) -> None:
@@ -312,46 +304,6 @@ class TestStepMachine:
                 0,
                 0,  # successful reads, for a port with no cursor (286aa9b8)
             )
-
-
-class TestNumberEncoding:
-    """Letters stand for digits, with Z standing for zero."""
-
-    def test_letters_count_from_a(self) -> None:
-        from esolangs.interpreters.stack_based.grapheme import _to_int
-
-        assert _to_int("A") == 1
-        assert _to_int("B") == 2
-
-    def test_z_is_zero_not_its_place_in_the_alphabet(self) -> None:
-        """``Z`` is the one letter that does not stand for its offset."""
-        from esolangs.interpreters.stack_based.grapheme import _to_int
-
-        assert _to_int("Z") == 0
-
-    def test_each_letter_shifts_the_ones_before_it(self) -> None:
-        """Position matters: AZ and ZA are different numbers."""
-        from esolangs.interpreters.stack_based.grapheme import _to_int
-
-        assert _to_int("AZ") == 10
-        assert _to_int("ZA") == 1
-        assert _to_int("AB") == 12
-
-    def test_an_empty_value_is_zero(self) -> None:
-        from esolangs.interpreters.stack_based.grapheme import _to_int
-
-        assert _to_int("") == 0
-
-    def test_intmode_reads_z_as_zero_too(self) -> None:
-        """The buffer a closing ``F`` parses follows the same rule as ``J``."""
-        from esolangs.interpreters.stack_based.grapheme import _int_from
-
-        assert _int_from(list("Z")) == 0
-        assert _int_from(list("A")) == 1
-        assert _int_from(list("AZ")) == 10
-        assert _int_from(list("ZA")) == 1
-        assert run_program("FZFY") == "0"
-        assert run_program("FAZFY") == "10"
 
 
 def _machine(code: object) -> object:

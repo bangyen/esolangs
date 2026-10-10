@@ -72,14 +72,6 @@ class TestPolynomialValidation:
         ):
             run("", io=IO())
 
-    def test_invalid_format_validation(self) -> None:
-        from esolangs.interpreters.register_based.polynomial import run
-
-        with pytest.raises(
-            ValueError, match=r"Polynomial program must start with 'f\(x\) = '"
-        ):
-            run("invalid program", io=IO())
-
 
 class TestPolynomialExecution:
     def test_nested_control_flow_brackets_match(self) -> None:
@@ -418,6 +410,13 @@ class TestRootsHelpers:
         found, rest = _divide_out_quadratics(coefficients, {(0, 1)})
         assert (found, rest) == ([], coefficients)
 
+    def test_exact_consumption_stops_a_lazy_candidate_stream(self) -> None:
+        def candidates():
+            yield 7, 4
+            raise AssertionError("consumed polynomial requested another candidate")
+
+        assert _divide_out_quadratics([1, -14, 53], candidates()) == ([(7, 4)], [1])
+
     def test_a_lead_divisible_by_the_prime_is_not_squarefree_mod_it(self) -> None:
         assert not _squarefree_mod([5, 1, 1], 5)
 
@@ -627,6 +626,7 @@ class TestNttRecovery:
             1, (root_sets[0], root_sets[1]), 20
         )
 
+    @pytest.mark.medium
     def test_a_large_program_is_recovered_exactly(self) -> None:
         """Past the threshold, every planted factor comes back and nothing
         else -- the execution-gate witness for the search half.

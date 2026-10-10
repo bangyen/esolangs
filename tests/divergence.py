@@ -24,12 +24,9 @@ def diverges(name: str, source: str, stdin: str) -> bool | None:
 
 
 def terminates(name: str, source: str, stdin: str, timeout: float) -> bool:
-    """Whether a run halts, proving a cycle before using time as the oracle."""
+    """Whether a run halts; an undecided timeout propagates."""
     proven = diverges(name, source, stdin)
     if proven is not None:
         return not proven
-    try:
-        esolangs.run(name, source, stdin=stdin, timeout=timeout)
-    except esolangs.ExecutionTimeoutError:
-        return False
+    esolangs.run(name, source, stdin=stdin, timeout=timeout)
     return True

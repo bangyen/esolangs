@@ -10,15 +10,17 @@ from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.vm import (
+    _BranchingStepMachine,
     _FramedMachine,
     _TapeMachine,
     make_vm,
+    run_until_halt,
     run_until_halt_or_ancestor,
     run_until_halt_or_cycle,
     run_until_halt_or_growth,
 )
 from tests.generator_support import CHECK
-from tests.tools.boolean_runners import one_two_three_result
+from tests.pick import first
 
 BASE_DIR = Path(__file__).parents[2]
 
@@ -44,7 +46,12 @@ VM_LANGUAGE = {
 # -- ``bits`` is just data, and a wrong one regenerates a looping file --
 # so :func:`test_halt_convention_examples_halt` checks the committed
 # program terminates *before* anything runs it unbounded.
-HALT_CONVENTION = {"123", "arrowqueue"}
+HALT_CONVENTION = {
+    stem
+    for stem in BOOLEAN_GENERATED
+    if esolangs.describe(canonical_id(stem.replace("-", " ")))["answer_mode"]
+    == "termination"
+}
 
 # The command every staleness message names.
 REGENERATE = "`uv run python scripts/generate.py examples`"
@@ -54,9 +61,9 @@ REGENERATE = "`uv run python scripts/generate.py examples`"
     "name",
     [
         pytest.param(name, marks=pytest.mark.medium)
-        if name in {"circuit-diagram", "vandevelo"}
+        if LANGUAGES[VM_LANGUAGE[example.interpreter]].example.slow_build
         else name
-        for name in sorted(BOOLEAN_GENERATED)
+        for name, example in sorted(BOOLEAN_GENERATED.items())
     ],
 )
 def test_boolean_example_matches_generator(name: str) -> None:
@@ -132,15 +139,9 @@ def test_halt_convention_examples_halt(name: str) -> None:
 
 def _halts(name: str, program: str, _inputs: list[str]) -> bool:
     """Whether ``name``'s committed program terminates, by cycle detection."""
-    from esolangs.vm import run_until_halt_or_cycle
-
-    if name == "arrowqueue":
-        from esolangs.interpreters.grid_based.arrowqueue import _Machine as AQ
-
-        return run_until_halt_or_cycle(AQ(program.splitlines()))
-    if name == "123":
-        return one_two_three_result(program) == "0"
-    raise AssertionError(f"unsupported termination example: {name}")
+    language = canonical_id(name.replace("-", " "))
+    stdin = BOOLEAN_GENERATED[name].stdin
+    return run_until_halt_or_cycle(make_vm(language, program, stdin=stdin))
 
 
 def test_every_boolean_generator_has_an_example() -> None:
@@ -172,6 +173,9 @@ BOOLEAN_EXAMPLES = {
 def _prove_halt(vm: object) -> bool:
     """Drive ``vm`` to its halt with the prover its machine supports."""
     machine = getattr(vm, "_machine", vm)
+    if isinstance(machine, _BranchingStepMachine):
+        # A seeded path must actually halt; repeated states omit RNG state.
+        return run_until_halt(vm, limit=100_000)
     if isinstance(machine, _FramedMachine):
         return run_until_halt_or_ancestor(vm)
     if isinstance(machine, _TapeMachine):
@@ -263,7 +267,13 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         from PIL import Image
 
         module = self._redirect(monkeypatch, tmp_path / "examples")
-        raster = Raster.from_png(BOOLEAN_GENERATED["line"].build(balance=True).to_png())
+        painted = esolangs.describe(first(source_kind="raster", boolean_generator=True))
+        stem = next(
+            stem
+            for stem in BOOLEAN_GENERATED
+            if canonical_id(stem.replace("-", " ")) == painted["id"]
+        )
+        raster = Raster.from_png(BOOLEAN_GENERATED[stem].build(balance=True).to_png())
         monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", raster)]))  # type: ignore[attr-defined]
         module.write_set("boolean")  # type: ignore[attr-defined]
         path = tmp_path / "examples" / "img.png"

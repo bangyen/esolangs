@@ -1,6 +1,5 @@
 """Touched files and partial-run additions meet the same 90% coverage floor."""
 
-import importlib.util
 import json
 import subprocess
 import sys
@@ -9,18 +8,14 @@ from typing import Any
 
 import pytest
 
+from tests.scripts.script_support import load
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "check_diff_coverage.py"
 
 
 def load_script() -> Any:
-    """Import the gate as a module, mirroring the other script tests."""
-    spec = importlib.util.spec_from_file_location("check_diff_coverage", SCRIPT)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return load(SCRIPT)
 
 
 def run_gate(

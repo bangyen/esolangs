@@ -26,6 +26,7 @@ from esolangs._execution import interpreter_errors, interpreter_module, prepare_
 from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource, check_scale_for
 from esolangs._traits import trait, traits
+from esolangs._validate import check_whole
 from esolangs._vm_views import (
     machine_views,
 )
@@ -108,7 +109,8 @@ def run_until_halt_or_cycle(
 ) -> bool:
     """Step ``machine`` until it halts or revisits an exact state.
 
-    A repeated snapshot *proves* a hang.  ``True`` on a halt, ``False``
+    Random machines require the all-branches detector.
+    A repeated deterministic snapshot *proves* a hang.  ``True`` on a halt, ``False``
     once a cycle is proven; unbounded growth never repeats and is
     :func:`run_until_halt_or_growth`'s.  Brent's algorithm: O(1)
     snapshots, up to ~2x past the cycle's start, so rely on the verdict,
@@ -119,6 +121,8 @@ def run_until_halt_or_cycle(
     unbounded search; bound it when the machine may *grow* instead, which
     never repeats a state and so would not return.
     """
+    if limit is not None:
+        check_whole(limit, "limit")
     machine = cast(
         _StepMachine,
         _unwrap(
@@ -128,6 +132,15 @@ def run_until_halt_or_cycle(
             hint=("pass make_vm(...) or a machine with step, halted and snapshot"),
         ),
     )
+    underlying = getattr(machine, "vm", machine)
+    underlying = getattr(underlying, "_machine", underlying)
+    # Befunge's seeded `v \n?@` repeats its visible state, then halts.
+    # Random choices are absent from snapshots; only branching proves a cycle.
+    if not machine.halted and isinstance(underlying, _BranchingStepMachine):
+        raise with_hint(
+            TypeError("random machines cannot prove cycles from repeated snapshots"),
+            "use run_until_halt_or_all_branches_cycle for random machines",
+        )
     tortoise = machine.snapshot()
     power = 1
     length = 0
@@ -170,6 +183,7 @@ def run_until_halt_or_all_branches_cycle(
     :class:`TimeoutError`.  Every state is kept, since branches merge.
     A language with no random instruction raises :class:`TypeError`.
     """
+    check_whole(limit, "limit")
     machine = cast(
         _BranchingStepMachine,
         _unwrap(
@@ -257,6 +271,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     across the Forbin suite) -- and exhausting it raises
     :class:`TimeoutError`.  No call stack raises :class:`TypeError`.
     """
+    check_whole(limit, "limit")
     machine = cast(
         _FramedMachine,
         _unwrap(
@@ -362,6 +377,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     never saw).  ``limit`` is in steps and raises :class:`TimeoutError`;
     no tape raises :class:`TypeError`.
     """
+    check_whole(limit, "limit")
     machine = cast(
         _TapeMachine,
         _unwrap(
@@ -518,6 +534,7 @@ def run_until_halt_or_value_growth(
     worst case, under a millisecond on the two programs this is for).
     Bounded values raise :class:`TypeError`: a climbing byte wraps.
     """
+    check_whole(limit, "limit")
     machine = cast(
         _AffineMachine,
         _unwrap(
@@ -628,6 +645,8 @@ def run_until_halt(
     steps, ``None`` unbounded.  ``stop`` is checked *before* each step
     (what a breakpoint means).  The machine is left where it stopped.
     """
+    if limit is not None:
+        check_whole(limit, "limit")
     steps = 0
     while not machine.halted:
         if stop is not None and stop():

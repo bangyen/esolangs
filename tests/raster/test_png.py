@@ -11,8 +11,11 @@ from pathlib import Path
 import pytest
 
 from esolangs.raster import png
+from tests.pick import one
 
-FIXTURES = Path(__file__).parents[1] / "fixtures" / "line"
+#: Two wiki images, kept apart from any one language's fixtures so the codec
+#: tests outlive the language that drew them.
+FIXTURES = Path(__file__).parents[1] / "fixtures" / "png"
 
 # Shape and ink count (pixels below the 128 threshold extract.py uses) for
 # each checked-in fixture, as decoded by Pillow's Image.open().convert("L")
@@ -247,18 +250,6 @@ def test_sixteen_bit_colour_reduces_through_luma() -> None:
     blob = _encode([bytes(row)], 1, 1, depth=16, colour=png._RGB)  # noqa: SLF001
     assert png.read_grey(blob) == [bytearray([76])]
     assert png.read_rgb(blob) == [[(255, 0, 0)]]
-
-
-def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
-    """A JPEG names itself and the fix, rather than failing on the signature."""
-    from esolangs.interpreters.tape_based.line import extract
-
-    path = tmp_path / "drawing.jpg"
-    # A JPEG start-of-image plus APP0, which is all the sniff looks at.
-    path.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 64)
-    with pytest.raises(ValueError, match="is a JPEG") as caught:
-        extract.load_binary(str(path))
-    assert "PNG" in str(caught.value)
 
 
 def test_rejects_an_unknown_interlace_method() -> None:
@@ -529,3 +520,67 @@ assert esolangs.Raster.from_png(data).rows == raster.rows
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"language": True},
+        {"language": "NotAnInstalledLanguage"},
+        {"scale": 0},
+        {"scale": True},
+        {"settings": []},
+        {"settings": {"unknown": "value"}},
+        {"settings": {"cell_modulus": {"integer": "bad-value"}}},
+        {
+            "language": one(source_kind="raster", dialect_settings={})[0],
+            "settings": {"cell_modulus": 2},
+        },
+    ],
+)
+def test_bad_source_metadata_is_a_program_error(fields):
+    from esolangs.exceptions import ProgramError
+    from esolangs.raster import Raster
+
+    data = png.write_rgb((((1, 2, 3),),))
+    data = png.write_metadata(data, {"version": 1, **fields})
+    with pytest.raises(ProgramError, match="not a readable PNG"):
+        Raster.from_png(data)
+
+
+def test_future_metadata_versions_leave_pixels_readable():
+    from esolangs.raster import Raster
+
+    data = png.write_rgb((((1, 2, 3),),))
+    tagged = png.write_metadata(data, {"version": 2, "language": True})
+    restored = Raster.from_png(tagged)
+    assert restored.rows == (((1, 2, 3),),)
+    assert restored.language is None
+
+
+def test_duplicate_source_metadata_is_refused():
+    from esolangs.exceptions import ProgramError
+    from esolangs.raster import Raster
+
+    data = png.write_rgb((((1, 2, 3),),))
+    data = png.write_metadata(data, {"version": 1})
+    data = png.write_metadata(data, {"version": 1})
+    with pytest.raises(ProgramError, match="duplicate"):
+        Raster.from_png(data)
+
+
+@pytest.mark.parametrize("body", [b"[]", b"broken-json", b"x" * 16_385])
+def test_malformed_source_metadata_is_refused(body):
+    from esolangs.exceptions import ProgramError
+    from esolangs.raster import Raster
+
+    data = png.write_rgb((((1, 2, 3),),))
+    data = data[:-12] + _chunk(b"esOL", body) + data[-12:]
+    with pytest.raises(ProgramError, match="not a readable PNG"):
+        Raster.from_png(data)
+
+
+def test_metadata_writer_bounds_chunk_size():
+    data = png.write_rgb((((1, 2, 3),),))
+    with pytest.raises(ValueError, match="oversized"):
+        png.write_metadata(data, {"version": 1, "extra": "x" * 16_384})

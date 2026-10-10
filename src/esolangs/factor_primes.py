@@ -1,4 +1,4 @@
-"""Exact arbitrary-precision prime segments for Factor."""
+"""Exact primes for the number-theoretic languages: segments and a test."""
 
 import math
 from collections.abc import Iterator
@@ -47,3 +47,33 @@ def prime_segments(min_width: int) -> Iterator[tuple[int, int, list[int]]]:
             ],
         )
         start = stop
+
+
+def isprime64(number: int) -> bool:
+    """Return whether ``number < 2**64`` is prime, deterministically."""
+    if number < 2:
+        return False
+    for prime in (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37):
+        if number % prime == 0:
+            return number == prime
+    odd = number - 1
+    shifts = 0
+    while not odd & 1:
+        shifts += 1
+        odd >>= 1
+    # Sinclair's seven bases, proven for every number below 2**64.  A base
+    # the number divides says nothing, so it is skipped rather than read as
+    # a witness of compositeness (73 divides 450775, for one).
+    for base in (2, 325, 9375, 28178, 450775, 9780504, 1795265022):
+        if base % number == 0:
+            continue
+        value = pow(base, odd, number)
+        if value in (1, number - 1):
+            continue
+        for _ in range(shifts - 1):
+            value = value * value % number
+            if value == number - 1:
+                break
+        else:
+            return False
+    return True

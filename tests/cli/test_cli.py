@@ -10,6 +10,13 @@ import pytest
 import esolangs
 from esolangs.cli import main
 from tests.cli_support import _FakeStdin, _program, _refused
+from tests.pick import first
+from tests.test_language_coupling import REFERENCE
+
+_RASTER = first(source_kind="raster", boolean_generator=True)
+
+RASTER = first(source_kind="raster", boolean_generator=True)
+TEMPLATED = first(parameterized=True)
 
 # A 3-input parity table.  Parity depends on every input, so the program is
 # long enough to have something to wrap -- an echo-one-input table folds
@@ -43,28 +50,31 @@ class TestInProcess:
     ) -> None:
         """Raster ``generate`` writes the image to the byte stream."""
         with (
-            patch.object(sys, "argv", ["esolangs", "generate", "Piet", "0110"]),
+            patch.object(sys, "argv", ["esolangs", "generate", _RASTER, "0110"]),
             patch.object(sys, "stdin", _FakeStdin("")),
         ):
             main()
         out = capsysbinary.readouterr().out
         assert out.startswith(b"\x89PNG\r\n\x1a\n")
         image = esolangs.Raster.from_png(out)
-        assert esolangs.run("Piet", image, stdin="1\n0\n") == "1"
+        stdin = esolangs.encode_inputs(_RASTER, [1, 0])
+        assert (
+            esolangs.read_answer(_RASTER, esolangs.run(_RASTER, image, stdin=stdin))
+            == "1"
+        )
 
     def test_run_feeds_stdin(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        from esolangs import tools as boolean
-
         program = tmp_path / "prog.txt"
-        program.write_text(boolean.circlefuck("1101"))
-        out = call_main(["run", "Circlefuck", str(program)], capsys, stdin="10")
-        assert out == "0"
+        program.write_text(esolangs.generate(REFERENCE, "1101"))
+        stdin = esolangs.encode_inputs(REFERENCE, [1, 0])
+        out = call_main(["run", REFERENCE, str(program)], capsys, stdin=stdin)
+        assert esolangs.read_answer(REFERENCE, out) == "0"
 
     def test_run_missing_args(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
-            call_main(["run", "Sophie"], capsys)
+            call_main(["run", REFERENCE], capsys)
         assert exc.value.code == 2
 
     def test_run_unknown_language(
@@ -83,52 +93,39 @@ class TestInProcess:
         assert exc.value.code == 2
 
 
-class TestWidthOption:
+@pytest.mark.parametrize(
+    ("args", "limit", "runs"),
+    [
+        # ``--width N`` bounds the generated program's columns.
+        pytest.param(["brainfuck", TABLE3, "--width", "20"], 20, True, id="value"),
+        # The guard rejects zero and below, not one.
+        pytest.param(["brainfuck", "0110", "--width", "1"], None, False, id="one"),
+        # ``--width N`` consumes two arguments, not three.
+        pytest.param(["--width", "20", "brainfuck", TABLE3], 20, True, id="first"),
+        pytest.param(["brainfuck", TABLE3, "--width=20"], 20, False, id="equals"),
+        # A bare ``--width`` wraps to the conventional default.
+        pytest.param(["brainfuck", TABLE3, "--width"], "default", False, id="bare"),
+        # A following word is an argument, not a width.
+        pytest.param(["--width", "brainfuck", TABLE3], None, True, id="bare_first"),
+    ],
+)
+def test_width_option(
+    args: list[str],
+    limit: int | str | None,
+    capsys: pytest.CaptureFixture[str],
+    *,
+    runs: bool,
+) -> None:
     """``--width`` in all the spellings the parser accepts."""
+    from esolangs.tools.wrap import DEFAULT_WIDTH
 
-    def test_width_with_a_value(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """``--width N`` bounds the generated program's columns."""
-        out = call_main(["generate", "brainfuck", TABLE3, "--width", "20"], capsys)
-        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-        assert esolangs.run("brainfuck", out, stdin="011") == "0"
-
-    def test_a_width_of_one_is_positive(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The guard rejects zero and below, not one."""
-        out = call_main(["generate", "brainfuck", "0110", "--width", "1"], capsys)
-        assert out.strip()
-
-    def test_the_option_may_come_before_the_positionals(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--width N`` consumes two arguments, not three."""
-        out = call_main(["generate", "--width", "20", "brainfuck", TABLE3], capsys)
-        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-        assert esolangs.run("brainfuck", out, stdin="011") == "0"
-
-    def test_width_with_an_equals_sign(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--width=N`` is the same option written the other way."""
-        out = call_main(["generate", "brainfuck", TABLE3, "--width=20"], capsys)
-        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-
-    def test_bare_width_takes_the_default(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A bare ``--width`` wraps to the conventional default."""
-        from esolangs.tools.wrap import DEFAULT_WIDTH
-
-        out = call_main(["generate", "brainfuck", TABLE3, "--width"], capsys)
-        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= DEFAULT_WIDTH
+    out = call_main(["generate", *args], capsys)
+    assert out.strip()
+    if limit is not None:
+        limit = DEFAULT_WIDTH if limit == "default" else limit
+        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= limit
         assert "\n" in out.rstrip("\n")
-
-    def test_bare_width_before_a_non_integer(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A following word is an argument, not a width."""
-        out = call_main(["generate", "--width", "brainfuck", TABLE3], capsys)
+    if runs:
         assert esolangs.run("brainfuck", out, stdin="011") == "0"
 
 
@@ -137,64 +134,56 @@ class TestWidthOption:
 _ABC = "++++++++[>++++++++<-]>+.+.+."
 
 
-class TestDebugCommand:
+@pytest.mark.parametrize(
+    ("flags", "program", "expected"),
+    [
+        pytest.param([], _ABC, ["halted: yes", "output: 'ABC'"], id="runs_to_halt"),
+        # A step budget stops the run short, which is the point of it.
+        pytest.param(["--steps", "5"], _ABC, ["halted: no", "output: ''"], id="steps"),
+        pytest.param(["--steps=5"], _ABC, ["halted: no"], id="steps_inline"),
+        # The watch history is what the debugger adds over plain stepping.
+        pytest.param(
+            ["--steps", "3", "--watch-cell", "0"],
+            _ABC,
+            ["cell 0: [1, 2, 3]"],
+            id="watch_cell",
+        ),
+        # A breakpoint is checked *before* a step, so ``B`` is the last byte.
+        pytest.param(
+            ["--break-on-output", "B"],
+            _ABC,
+            ["halted: no", "output: 'AB'"],
+            id="break_on_output",
+        ),
+        pytest.param(
+            ["--break-at", "3"], "+++++", ["ip: 3", "halted: no"], id="break_at"
+        ),
+        pytest.param(
+            ["--break-on-cell", "0=3", "--watch-cell", "0"],
+            "+++++",
+            ["cell 0: [1, 2, 3]"],
+            id="break_on_cell",
+        ),
+        # A short watch history is printed whole.
+        pytest.param(
+            ["--watch-cell", "0"], "+++", ["cell 0: [1, 2, 3]"], id="short_watch"
+        ),
+    ],
+)
+def test_debug_report(
+    flags: list[str],
+    program: str,
+    expected: list[str],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """``esolangs debug`` exposes the breakpoint/watch VM on the CLI."""
+    out = call_main(["debug", *flags, "brainfuck", _program(tmp_path, program)], capsys)
+    for line in expected:
+        assert line in out
 
-    def test_it_runs_to_halt_and_reports_the_output(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        out = call_main(["debug", "brainfuck", _program(tmp_path, _ABC)], capsys)
-        assert "halted: yes" in out
-        assert "output: 'ABC'" in out
 
-    def test_steps_bounds_the_run(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A step budget stops the run short, which is the point of it."""
-        out = call_main(
-            ["debug", "--steps", "5", "brainfuck", _program(tmp_path, _ABC)], capsys
-        )
-        assert "halted: no" in out
-        assert "output: ''" in out
-
-    def test_the_option_takes_an_inline_value_too(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--steps=5`` is the same option written the other way."""
-        out = call_main(
-            ["debug", "--steps=5", "brainfuck", _program(tmp_path, _ABC)], capsys
-        )
-        assert "halted: no" in out
-
-    def test_watch_cell_reports_one_value_per_step(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The watch history is what the debugger adds over plain stepping."""
-        out = call_main(
-            [
-                "debug",
-                "--steps",
-                "3",
-                "--watch-cell",
-                "0",
-                "brainfuck",
-                _program(tmp_path, _ABC),
-            ],
-            capsys,
-        )
-        assert "cell 0: [1, 2, 3]" in out
-
-    def test_break_on_output_stops_with_the_condition_still_true(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A breakpoint is checked *before* a step, so ``B`` is the last byte."""
-        out = call_main(
-            ["debug", "--break-on-output", "B", "brainfuck", _program(tmp_path, _ABC)],
-            capsys,
-        )
-        assert "halted: no" in out
-        assert "output: 'AB'" in out
-
+class TestDebugCommand:
     def test_a_raise_is_reported_rather_than_propagated(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -210,143 +199,6 @@ class TestDebugCommand:
         assert "raised: InputExhaustedError" in out
         assert "0 characters supplied" in out
         assert "halted: no" in out
-
-
-class TestBreakpointOptions:
-    """``--break-at`` and ``--break-on-cell`` on the batch debugger."""
-
-    def test_break_at_stops_on_the_position(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        out = call_main(
-            ["debug", "--break-at", "3", "brainfuck", _program(tmp_path, "+++++")],
-            capsys,
-        )
-        assert "ip: 3" in out
-        assert "halted: no" in out
-
-    def test_break_on_cell_stops_with_the_value_still_there(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        out = call_main(
-            [
-                "debug",
-                "--break-on-cell",
-                "0=3",
-                "--watch-cell",
-                "0",
-                "brainfuck",
-                _program(tmp_path, "+++++"),
-            ],
-            capsys,
-        )
-        assert "cell 0: [1, 2, 3]" in out
-
-
-class TestTuiFlag:
-    """``--tui`` hands the run to the step-through screen."""
-
-    @pytest.fixture(autouse=True)
-    def _pretend_a_terminal(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Say that a terminal is present, because pytest's stdin is not one."""
-        monkeypatch.setattr(_FakeStdin, "isatty", lambda _self: True)
-
-    def test_it_calls_the_screen_with_the_program_and_input(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        # The key loop owns the terminal, so what is pinned here is the
-        # handoff: the flag is recognised, stripped from the positionals,
-        # and the right three arguments reach the screen.
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "01",
-                    "brainfuck",
-                    _program(tmp_path, ",."),
-                ],
-                capsys,
-            )
-        screen.assert_called_once()
-        language, program, stdin = screen.call_args.args
-        assert (language, program, stdin) == ("brainfuck", ",.", "01")
-
-    def test_breakpoints_reach_the_screen(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The same flags the batch debugger takes drive the continue key."""
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "--break-on-cell",
-                    "0=2",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        stop = screen.call_args.kwargs["stop"]
-        assert stop is not None
-        # The predicate reads a frame, so it can be checked without a run.
-        frame = esolangs.tui.Frame(
-            language="brainfuck",
-            program="+++",
-            ip=2,
-            step=2,
-            halted=False,
-            memory=(2,),
-            stack=(),
-            output="",
-        )
-        assert stop(frame)
-
-    def test_a_position_reaches_the_screen_as_a_drawn_mark(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--break-at`` is the one breakpoint that has somewhere to be drawn."""
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "--break-at",
-                    "2",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        assert screen.call_args.kwargs["at"] == (2,)
-        # A position needs no predicate: the screen stops on what it marks.
-        assert screen.call_args.kwargs["stop"] is None
-
-    def test_a_watched_cell_reaches_the_screen(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--watch-cell`` means the same on both sides, shown as a row."""
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "--watch-cell",
-                    "2",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        assert screen.call_args.kwargs["watch"] == 2
 
 
 class TestHelp:
@@ -398,32 +250,16 @@ class TestProgramFailuresAreReported:
         assert "read past the end of input" in result.stderr
 
     def test_an_unfilled_template_is_refused_by_name(self, tmp_path: Path) -> None:
-        """Minifuck ran it and printed a confident wrong answer."""
-        generated = run_cli("generate", "Minifuck", "0110")
-        path = tmp_path / "mf.txt"
+        """An unfilled run once ran, and printed a confident wrong answer."""
+        name = first(parameterized=True, boolean_generator=True)
+        generated = run_cli("generate", name, "0110")
+        path = tmp_path / "template.txt"
         path.write_text(generated.stdout.rstrip("\n"))
-        result = run_cli("run", "Minifuck", str(path))
+        result = run_cli("run", name, str(path))
         assert result.returncode == 2
-        assert "unfilled runs of '$'" in result.stderr
+        char = esolangs.generate(name, "0110").char
+        assert f"unfilled runs of {char!r}" in result.stderr
         assert "Traceback" not in result.stderr
-
-    @pytest.mark.slow
-    def test_the_readme_suffolk_flow_completes(self, tmp_path: Path) -> None:
-        """Generate then run, the README's first pair, for all four rows."""
-        generated = run_cli("generate", "Suffolk", "0110")
-        path = tmp_path / "su.txt"
-        path.write_text(generated.stdout.rstrip("\n"))
-        got = "".join(
-            run_cli(
-                "run",
-                "Suffolk",
-                str(path),
-                stdin=esolangs.encode_inputs("Suffolk", [a, b]),
-            ).stdout
-            for a in (0, 1)
-            for b in (0, 1)
-        )
-        assert got == "0110"
 
 
 class TestOutputAndAbridging:
@@ -449,15 +285,6 @@ class TestOutputAndAbridging:
         assert "more ..." in out
         assert len(out.splitlines()[-1]) < 400
 
-    def test_a_short_watch_history_is_printed_whole(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        out = call_main(
-            ["debug", "--watch-cell", "0", "brainfuck", _program(tmp_path, "+++")],
-            capsys,
-        )
-        assert "cell 0: [1, 2, 3]" in out
-
 
 class TestGenerateArgumentTypes:
     """``generate``'s own arguments are checked before a generator runs."""
@@ -472,11 +299,11 @@ class TestGenerateArgumentTypes:
 #: ``prog:SRC`` is a file holding SRC; a third item is stdin.
 _REFUSALS = {
     "generate_bits_refuses_a_raster": (
-        "generate Piet 0110 --bits 01",
+        f"generate {RASTER} 0110 --bits 01",
         "raster programs read bits",
     ),
     "generate_unknown_language": ("generate NoSuchLanguage 01", "unknown language"),
-    "run_missing_file": ("run Sophie /no/such/file", "cannot read"),
+    "run_missing_file": ("run brainfuck /no/such/file", "cannot read"),
     "unknown_command": ("no.such.command", "unknown command"),
     "width_rejects_a_non_integer_after_equals": (
         f"generate brainfuck {TABLE3} --width=x",
@@ -517,10 +344,9 @@ _REFUSALS = {
         "debug --break-on-cell=-1=3 brainfuck prog:+",
         "index must not be negative",
     ),
-    "a_piped_stream_is_refused": ("debug --tui brainfuck prog:,.", "terminal", "Z"),
-    "stdin_does_not_buy_a_terminal": (
-        "debug --tui --stdin 1 brainfuck prog:,.",
-        "terminal",
+    "removed_tui_is_refused": (
+        "debug --tui brainfuck prog:+",
+        "unknown option: --tui",
     ),
     "an_unknown_option_is_named": (
         "debug --frobnicate brainfuck prog:+",
@@ -530,6 +356,64 @@ _REFUSALS = {
         f"generate brainfuck {TABLE3} extra",
         "unexpected argument: 'extra'",
     ),
+    "a_repeated_width_quotes_its_value": (
+        "generate --width 77 --width 33 brainfuck 0110",
+        "first was '77'",
+    ),
+    "a_missing_argument_is_named": ("generate brainfuck", "missing <truth-table>"),
+    "swapped_arguments_are_recognized_as_swapped": (
+        "generate 0110 brainfuck",
+        "looks like a truth table",
+    ),
+    "a_misspelled_option_is_suggested": (
+        "generate --wdith 40 brainfuck 0110",
+        "did you mean --width",
+    ),
+    "read_answer_reports_an_unknown_language": (
+        "read-answer Nonexistent",
+        "unknown language",
+        "1",
+    ),
+    "read_answer_reports_an_unreadable_output": (
+        "read-answer brainfuck",
+        "no answer this could read",
+        "no digits here!",
+    ),
+    "a_genuine_extra_argument_still_says_so": (
+        "describe brainfuck zzz",
+        "unexpected argument",
+    ),
+    "an_unknown_subcommand_is_suggested": ("lst", "did you mean list"),
+    "a_negative_watch_cell_is_refused": (
+        "debug --watch-cell -1 brainfuck prog:+++",
+        "must not be negative",
+    ),
+    "encode_refuses_a_language_that_reads_nothing": (
+        f"encode {TEMPLATED!r} 01",
+        "reads no stdin",
+    ),
+    "a_repeated_option_is_refused": (
+        f"generate --bits 10 --bits 01 {TEMPLATED!r} 0110",
+        "more than once",
+    ),
+    "encode_refuses_a_non_binary_bit_string": ("encode brainfuck 2x", "0s and 1s"),
+    "an_empty_break_on_output_is_refused": (
+        "debug --break-on-output '' brainfuck prog:+++",
+        "needs some text",
+    ),
+    "read_answer_says_so_when_given_nothing": (
+        "read-answer brainfuck",
+        "nothing on stdin",
+    ),
+    "a_negative_step_bound_is_refused": (
+        "debug --steps -1 brainfuck prog:+",
+        "must not be negative",
+    ),
+    "a_negative_break_at_is_refused": (
+        "debug --break-at -1 brainfuck prog:+",
+        "--break-at must not be negative",
+    ),
+    "a_swallowed_table_is_named": ("generate brainfuck --width 0110", "--width"),
 }
 
 

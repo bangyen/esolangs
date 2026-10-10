@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import new_language
+from scripts import new_language, remove_language
 
 
 @pytest.fixture
@@ -37,6 +37,14 @@ def test_an_interpreter_only_language_gets_no_generator() -> None:
     assert [path.name for path in paths] == ["tiny.py", "test_tiny.py"]
 
 
+def test_scaffold_records_the_language_as_unassessed(root: Path) -> None:
+    curation = root / "tests/fixtures/curation.toml"
+    curation.parent.mkdir(parents=True)
+    curation.write_text('[languages]\nKept = { route = "fame" }\n')
+    new_language.scaffold("Tiny Lang", "other", generator=False)
+    assert curation.read_text().endswith('"Tiny Lang" = { route = "unassessed" }\n')
+
+
 def test_scaffold_refuses_overwrite(root: Path) -> None:
     target = root / "src/esolangs/interpreters/other/tiny.py"
     target.parent.mkdir(parents=True)
@@ -45,12 +53,12 @@ def test_scaffold_refuses_overwrite(root: Path) -> None:
         new_language.scaffold("Tiny", "other")
 
 
-@pytest.mark.parametrize(
-    ("name", "slug"), [("123", "one_two_three"), ("Piet++", "piet_plus_plus")]
-)
-def test_the_slug_is_the_registry_id(name: str, slug: str) -> None:
+def test_the_slug_is_the_registry_id() -> None:
     """A second slug rule refused ``123`` and gave Piet++ Piet's file."""
-    assert new_language._slug(name) == slug  # noqa: SLF001
+    from esolangs.registry import LANGUAGES
+
+    for name, lang in LANGUAGES.items():
+        assert new_language._slug(name) == lang.id, name  # noqa: SLF001
     with pytest.raises(ValueError, match="keyword"):
         new_language._slug("class")  # noqa: SLF001
 
@@ -65,7 +73,7 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
         'run_gone = _runner("gone")\n'
     )
     modules = {"esolangs.tools.gone"}
-    assert new_language._drop_entries(path, {"gone"}, modules) == 3  # noqa: SLF001
+    assert remove_language._drop_entries(path, {"gone"}, modules) == 3  # noqa: SLF001
     # The import another entry still uses stays.
     assert path.read_text() == (
         "from esolangs.tools.gone import PAIR\n"
@@ -76,7 +84,7 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
 def test_remove_drops_the_whole_limitations_bullet(tmp_path: Path) -> None:
     path = tmp_path / "limitations.md"
     path.write_text("- Gone reads\n  past EOF.\n- Gonero stays.\n  Kept.\n")
-    new_language._drop_bullets(path, "Gone")  # noqa: SLF001
+    remove_language._drop_bullets(path, "Gone")  # noqa: SLF001
     assert path.read_text() == "- Gonero stays.\n  Kept.\n"
 
 
@@ -120,3 +128,31 @@ def test_check_with_open_steps_is_not_a_failure(
     monkeypatch.setattr(new_language, "check", lambda _: [gap])
     assert new_language.main(["check", "Tiny"]) == 0
     assert "1 step(s) left" in capsys.readouterr().out
+
+
+@pytest.mark.usefixtures("root")
+@pytest.mark.parametrize("interpreter_only", [False, True])
+def test_start_prints_the_matching_contributor_workflow(
+    *, interpreter_only: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
+    args = ["start", "Tiny Lang", "--category", new_language.CATEGORIES[0]]
+    if interpreter_only:
+        args.append("--interpreter-only")
+    assert new_language.main(args) == 0
+    output = capsys.readouterr().out
+    next_step = next(line for line in output.splitlines() if line.startswith("next:"))
+    assert ("generator" in next_step) is not interpreter_only
+    assert "then: just check-language 'Tiny Lang'" in output
+
+
+def test_gap_report_prints_a_shell_safe_followup(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import shlex
+
+    name = "Tiny's $Lang"
+    new_language._report(  # noqa: SLF001
+        name, [new_language.Gap("source", "implement the interpreter")]
+    )
+    command = capsys.readouterr().out.split("after fixing these: ")[1].strip()
+    assert shlex.split(command) == ["just", "check-language", name]

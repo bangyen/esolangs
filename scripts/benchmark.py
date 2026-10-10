@@ -19,7 +19,12 @@ import esolangs.debugger as debugger_api
 from esolangs._describe import LanguageInfo
 from esolangs._validate import check_timeout
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.registry import LANGUAGES
 from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
+
+_TEXT_TYPES = (str, bytes, bytearray)
+_CONTAINER_TYPES = (tuple, list, frozenset, set)
+_MEMO_TYPES = (tuple, frozenset, Fraction)
 
 
 def _bits(row: int, inputs: int) -> list[int]:
@@ -34,7 +39,7 @@ def _source_size(program: esolangs.Program) -> int:
 
 def _integer_bits(value: int) -> int:
     """Count magnitude bits (one for zero) and a sign bit for negatives."""
-    return max(1, value.bit_length()) + int(value < 0)
+    return (value.bit_length() or 1) + (value < 0)
 
 
 def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
@@ -45,13 +50,11 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
     """
     if value is None:
         return 0
-    if isinstance(value, bool):
-        return 1
     if isinstance(value, int):
-        return _integer_bits(value)
+        return (value.bit_length() or 1) + (value < 0)
     if isinstance(value, float):
         return 64
-    if isinstance(value, str | bytes | bytearray):
+    if isinstance(value, _TEXT_TYPES):
         return 8 * len(value)
     hit = memo.get(id(value))
     if hit is not None and hit[0] is value:
@@ -60,9 +63,13 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
         total = state_bits(value.numerator, memo) + state_bits(value.denominator, memo)
     elif isinstance(value, dict):
         total = sum(state_bits(k, memo) + state_bits(v, memo) for k, v in value.items())
-    elif isinstance(value, tuple | list | frozenset | set):
+    elif isinstance(value, _CONTAINER_TYPES):
         items = value
-        if value and set(map(type, value)) == {tuple}:
+        if (
+            value
+            and type(next(iter(value))) is tuple
+            and set(map(type, value)) == {tuple}
+        ):
             # Records of ints (a sparse tape's address-value pairs) count
             # as the flat run they hold; Streetcode re-sorts its every write.
             items = list(chain.from_iterable(value))
@@ -88,7 +95,7 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
         total = sum(state_bits(getattr(value, name, None), memo) for name in slots)
     else:
         raise TypeError(f"cannot count bits of {type(value).__name__}")
-    if isinstance(value, tuple | frozenset | Fraction):
+    if isinstance(value, _MEMO_TYPES):
         memo[id(value)] = (value, total)
     return total
 
@@ -118,20 +125,22 @@ class WrittenState:
 
     def sample(self, state: object) -> None:
         """Record one snapshot."""
-        parts = self._parts(state)
-        if len(parts) != len(self._start):
+        parts = state if isinstance(state, tuple) else (state,)
+        memo, peaks, written = self._memo, self._peaks, self._written
+        start, previous, counts = self._start, self._last, self._now
+        if len(parts) != len(start):
             raise ValueError("snapshot changed shape mid-run")
         for at, part in enumerate(parts):
             # Equal to the last sample, so equal bits: a rebuilt but
             # unchanged tape is compared in C, not walked in Python.
-            last = self._last[at]
+            last = previous[at]
             if part is last or part == last:
                 continue
-            self._last[at] = part
-            if not self._written[at]:
-                self._written[at] = True
-                self._peaks[at] = state_bits(self._start[at], self._memo)
-            now = self._now[at]
+            previous[at] = part
+            if not written[at]:
+                written[at] = True
+                peaks[at] = state_bits(start[at], memo)
+            now = counts[at]
             if (
                 now is not None
                 and isinstance(part, frozenset)
@@ -139,8 +148,8 @@ class WrittenState:
             ):
                 # A frozenset counts as the sum of its items, so a painted
                 # cell recounts the change, not A Painter Ant's whole grid.
-                now += state_bits(part - last, self._memo)
-                now -= state_bits(last - part, self._memo)
+                now += state_bits(part - last, memo)
+                now -= state_bits(last - part, memo)
             elif (
                 now is not None
                 and isinstance(part, tuple)
@@ -157,14 +166,15 @@ class WrittenState:
                 changed = list(compress(range(len(part)), map(is_not, part, last)))
                 if 8 * len(changed) < len(part):
                     for i in changed:
-                        now += state_bits(part[i], self._memo)
-                        now -= state_bits(last[i], self._memo)
+                        now += state_bits(part[i], memo)
+                        now -= state_bits(last[i], memo)
                 else:
-                    now = state_bits(part, self._memo)
+                    now = state_bits(part, memo)
             else:
-                now = state_bits(part, self._memo)
-            self._now[at] = now
-            self._peaks[at] = max(self._peaks[at], now)
+                now = state_bits(part, memo)
+            counts[at] = now
+            if now > peaks[at]:
+                peaks[at] = now
 
     @property
     def bits(self) -> int:
@@ -173,28 +183,15 @@ class WrittenState:
 
 
 def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
-    """Count logical data and control integers for three audited machine shapes.
+    """Count logical data and control integers where the language splits them.
 
-    Excludes Python overhead, static parser indexes and I/O state. Subleq's
-    mutable code is included in its memory; other source is measured separately.
+    Excludes Python overhead, static parser indexes and I/O state; what a
+    machine's state holds is its ``LANGUAGE.payload``'s to say.
     """
-    state = vm.snapshot()
-    flags = 0
-    if language == "BFStack":
-        data, control, pc, _cursor = cast(
-            "tuple[tuple[int, ...], tuple[int, ...], int, int]", state
-        )
-    elif language == "Sophie":
-        pc, accumulator, _skip, control, _halted, _cursor = cast(
-            "tuple[int, int, bool, tuple[int, ...], bool, int]", state
-        )
-        data = (accumulator,)
-        flags = 2
-    elif language == "Subleq":
-        data, pc, _cursor = cast("tuple[tuple[int, ...], int, int]", state)
-        control = ()
-    else:
+    split = LANGUAGES[language].payload
+    if split is None:
         return None
+    data, control, pc, flags = split(vm.snapshot())
     data_widths = [_integer_bits(value) for value in data]
     control_widths = [_integer_bits(value) for value in control]
     data_bits = sum(data_widths)
@@ -433,7 +430,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--track-store",
         action="store_true",
-        help="sample stores; Sophie/BFStack/Subleq also report integer payloads",
+        help="sample stores; languages with a payload split report integers too",
     )
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:

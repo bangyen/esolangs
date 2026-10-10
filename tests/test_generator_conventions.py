@@ -66,10 +66,8 @@ def test_declared_arity_cap_is_enforced(name, cap):
         esolangs.generate(name, "0" * (1 << (cap + 1)))
 
 
-#: Generators whose ``GeneratorCapError`` never reaches a caller, and why.
-_INTERNAL_CAPS = {
-    "6-5": "the stream-ordered tree is tried only when its labels fit",
-}
+#: Generators whose ``GeneratorCapError`` never reaches a caller.
+_INTERNAL_CAPS = {name for name, lang in LANGUAGES.items() if lang.internal_cap}
 
 
 def test_a_generator_that_can_refuse_declares_its_limit():
@@ -88,32 +86,32 @@ def test_a_generator_that_can_refuse_declares_its_limit():
         f"{undeclared} raise GeneratorCapError; set generator_max_inputs= or "
         "generator_restrictions= in its LANGUAGE"
     )
-    assert _INTERNAL_CAPS.keys() <= LANGUAGES.keys()
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("name", ["Befunge", "Malbolge", "6-5", "Polynomial"])
+@pytest.mark.parametrize(
+    "name",
+    sorted(
+        {
+            name
+            for name, lang in LANGUAGES.items()
+            if lang.generator_max_inputs or lang.generator_restrictions
+        }
+        | _INTERNAL_CAPS
+    ),
+)
 def test_restricted_generators_have_executed_positive_controls(name):
     assert _evaluate(name, esolangs.generate(name, "0110"), inputs=2) == "0110"
-
-
-def test_internal_route_budget_is_not_a_generator_restriction():
-    assert esolangs.describe("6-5")["generator_restrictions"] is None
-    assert esolangs.describe("6-5")["generator_max_inputs"] is None
-    assert (
-        "1934 instructions" in esolangs.describe("Polynomial")["generator_restrictions"]
-    )
-    assert (
-        "1000000000 estimated characters"
-        in esolangs.describe("Polynomial")["generator_restrictions"]
-    )
 
 
 @pytest.mark.medium
 def test_list_exposes_limits_in_both_formats(capsys):
     text = call_main(["list", "--details"], capsys)
-    assert "max-inputs=13" in text
-    assert "1934 instructions" in text
+    for lang in LANGUAGES.values():
+        if lang.generator_max_inputs is not None:
+            assert f"max-inputs={lang.generator_max_inputs}" in text, lang.name
+        if lang.generator_restrictions:
+            assert lang.generator_restrictions in " ".join(text.split()), lang.name
     out = call_main(["list", "--details", "--json"], capsys)
     for row in json.loads(out):
         facts = esolangs.describe(row["name"])

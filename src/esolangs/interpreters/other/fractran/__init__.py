@@ -227,7 +227,7 @@ class _Machine:
         return (
             self._integer if self._index is None else self._factors,
             self.printed,
-            self.io.position(),
+            self.io.progress(),
         )
 
     def step(self) -> None:

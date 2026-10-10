@@ -1,25 +1,21 @@
 """``tests/tools/mutate_generator.py`` selects the suites and shapes the run."""
 
-import importlib.util
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
+
+from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "tests" / "tools" / "mutate_generator.py"
 TOOLS_TESTS = REPO_ROOT / "tests" / "tools"
 
 
-def load_script() -> object:
-    """Import the harness as a module, mirroring the other script tests."""
-    spec = importlib.util.spec_from_file_location("mutate_generator", SCRIPT)
-    assert spec is not None
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+def load_script() -> Any:
+    return load(SCRIPT)
 
 
 class TestTestFiles:
@@ -33,7 +29,13 @@ class TestTestFiles:
         """Include suites that reach generators through package re-exports."""
         script = load_script()
         selected = script._test_files(script._KINDS["tools"])  # noqa: SLF001
-        assert "test_boolean_three_x.py" in selected
+        package_only = [
+            path.name
+            for path in TOOLS_TESTS.glob("test_*.py")
+            if "esolangs.tools" not in path.read_text(encoding="utf-8")
+        ]
+        assert package_only
+        assert set(package_only) <= set(selected)
         assert "test_boolean_contract.py" in selected
 
 
@@ -133,13 +135,13 @@ class TestParseTarget:
     def test_a_qualified_target_resolves_in_each_family(self) -> None:
         """Both kinds are reachable, named ``family/module``."""
         script = load_script()
-        assert script._parse_target("tools/decleq") == ("tools", "decleq")  # noqa: SLF001
+        assert script._parse_target("tools/brainfuck") == ("tools", "brainfuck")  # noqa: SLF001
         assert script._parse_target("tools/wrap") == ("tools", "wrap")  # noqa: SLF001
 
     def test_an_unambiguous_bare_name_still_resolves(self) -> None:
         """The bare spelling keeps working where it is unambiguous."""
         script = load_script()
-        assert script._parse_target("minifuck") == ("tools", "minifuck")  # noqa: SLF001
+        assert script._parse_target("brainfuck") == ("tools", "brainfuck")  # noqa: SLF001
 
     def test_a_name_in_both_families_is_refused(self) -> None:
         """The failure this prevents is silent, which is why it is an error."""
@@ -153,10 +155,10 @@ class TestParseTarget:
         script._FAMILIES = (*script._FAMILIES, "mirror")  # noqa: SLF001
         try:
             with pytest.raises(SystemExit) as excinfo:
-                script._parse_target("decleq")  # noqa: SLF001
+                script._parse_target("brainfuck")  # noqa: SLF001
             message = str(excinfo.value)
-            assert "tools/decleq" in message
-            assert "mirror/decleq" in message
+            assert "tools/brainfuck" in message
+            assert "mirror/brainfuck" in message
         finally:
             del kinds["mirror"]
 
@@ -169,7 +171,7 @@ class TestParseTarget:
             script._parse_target("nosuchmodule")  # noqa: SLF001
         message = str(excinfo.value)
         assert "nosuchmodule" in message
-        assert "decleq" in message
+        assert "brainfuck" in message
 
     def test_an_unknown_family_is_refused(self) -> None:
         """A qualified target with a bad family names the families instead."""
@@ -204,11 +206,20 @@ class TestParseTarget:
         modules = script._modules("tools")  # noqa: SLF001
         assert "wrap" in modules
         assert "boolean" not in modules
-        assert {"malbolge", "malbolge.core", "malbolge.digits"} <= set(modules)
-        assert script._parse_target("tools/malbolge.core") == ("tools", "malbolge.core")  # noqa: SLF001
-        assert script._KINDS["streetcode"].rel_target("geometry") == (  # noqa: SLF001
-            "esolangs/interpreters/grid_based/streetcode/geometry.py"
-        )
+        # A generator package lists itself and each of its modules.
+        nested = sorted(m for m in modules if "." in m)
+        assert nested, "no generator is a package; retire this check"
+        assert nested[0].split(".", 1)[0] in modules
+        assert script._parse_target(f"tools/{nested[0]}") == ("tools", nested[0])  # noqa: SLF001
+        # An interpreter package is a kind of its own, rooted at its directory.
+        packaged = [
+            kind
+            for kind in script._KINDS.values()  # noqa: SLF001
+            if kind.rel_target("x").startswith("esolangs/interpreters/")
+        ]
+        assert packaged, "no interpreter is a package; retire this check"
+        for kind in packaged:
+            assert (REPO_ROOT / "src" / kind.rel_target("__init__")).is_file()
         kind = script._KINDS["tools"]  # noqa: SLF001
         assert kind.rel_target("wrap") == "esolangs/tools/wrap.py"
 
@@ -218,7 +229,7 @@ class TestPrepare:
     def test_focused_generator_baseline_collects(self, tmp_path: Path) -> None:
         script = load_script()
         proj, _ = script._prepare(  # noqa: SLF001
-            "tools", "underload", tmp_path, slow=False, selection="underload"
+            "tools", "brainfuck", tmp_path, slow=False, selection="brainfuck"
         )
         result = subprocess.run(
             [sys.executable, "-m", "pytest", "--collect-only", "-q", "tests/tools"],
@@ -248,7 +259,7 @@ class TestPrepare:
         assert scored == proj / "mutants" / f"{mutated}.meta"
 
 
-@pytest.mark.parametrize("selection", [None, "suffolk"])
+@pytest.mark.parametrize("selection", [None, "brainfuck"])
 def test_config_isolates_xdist_and_applies_selection_to_every_pass(
     tmp_path: Path,
     selection: str | None,
@@ -257,12 +268,12 @@ def test_config_isolates_xdist_and_applies_selection_to_every_pass(
 
     script = load_script()
     proj, _ = script._prepare(  # noqa: SLF001
-        "tools", "suffolk", tmp_path, slow=False, selection=selection
+        "tools", "brainfuck", tmp_path, slow=False, selection=selection
     )
     config = tomllib.loads((proj / "pyproject.toml").read_text())
     options = config["tool"]["pytest"]["ini_options"]["addopts"]
     assert options[:4] == ["-n", "0", "-m", "not slow"]
-    assert options[4:] == ([] if selection is None else ["-k", "suffolk"])
+    assert options[4:] == ([] if selection is None else ["-k", "brainfuck"])
 
 
 def test_interpreter_mutation_discovery_includes_nested_packages(

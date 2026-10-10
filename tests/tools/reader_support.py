@@ -7,6 +7,7 @@ from typing import Any
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES
+from tests.witness_tables import row_bits
 
 
 def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]]:
@@ -18,8 +19,31 @@ def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]
     return lang.boolean, module.run
 
 
-#: The tree readers these shared checks were written for.
-_READERS = {name: _reader(name) for name in ("false", "thue", "unlambda")}
+#: The tree readers whose ``LANGUAGE`` asks for these shared checks.
+_READERS = {
+    lang.id: _reader(lang.id) for lang in LANGUAGES.values() if lang.reader_checked
+}
+
+
+def assert_emissions_grow_by_a_line(
+    generate: Callable[[str], Any], *, parity: bool = False
+) -> None:
+    """Successive size differences quadruple, exactly, as ``n`` steps by two.
+
+    Measured on ``01...``, which ignores all but the last input, or on
+    parity, which reads every one, for a generator that drops ignored ones.
+    """
+    sizes = [
+        len(
+            generate(
+                "".join(str(row.bit_count() & 1) for row in range(2**n))
+                if parity
+                else "01" * (2 ** (n - 1))
+            )
+        )
+        for n in (4, 6, 8)
+    ]
+    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) == 4.0
 
 
 _TABLES = [
@@ -32,14 +56,10 @@ _TABLES = [
 ]
 
 
-def _bits(row: int, n: int) -> list[int]:
-    return [(row >> (n - 1 - i)) & 1 for i in range(n)]
-
-
 def _read_answer(name: str, table: str, row: int) -> tuple[str, int]:
     """Return what the generated program printed, and how many inputs it read."""
     generate, run = _reader(name)
     n = len(table).bit_length() - 1
-    io = ScriptedIO(esolangs.encode_inputs(name, _bits(row, n)))
+    io = ScriptedIO(esolangs.encode_inputs(name, row_bits(row, n)))
     run(generate(table), io)
     return io.getvalue(), io.reads

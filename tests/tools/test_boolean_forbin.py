@@ -115,3 +115,30 @@ class TestForbinBoolean:
         for row in (0, 127, 128, 300, 400, 511):
             bits = list(format(row, "09b"))
             assert run_forbin_boolean(program, bits) == table[row]
+
+
+def test_forbin_skips_keywords_at_length_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import importlib
+
+    from esolangs.tools.forbin import _forbin_name
+
+    module = importlib.import_module("esolangs.tools.forbin")
+    monkeypatch.setattr(module, "_FORBIN_ALPHABET", "ab")
+    monkeypatch.setattr(module, "_FORBIN_RESERVED", {"a", "ab", "bbb"})
+    names = [_forbin_name(index) for index in range(12)]
+    assert names == [
+        "b",
+        "aa",
+        "ba",
+        "bb",
+        "aaa",
+        "aab",
+        "aba",
+        "abb",
+        "baa",
+        "bab",
+        "bba",
+        "aaaa",
+    ]

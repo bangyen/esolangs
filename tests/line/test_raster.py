@@ -84,42 +84,25 @@ def test_a_corrupt_png_is_a_value_error(tmp_path: Path) -> None:
         extract.load_binary(str(path))
 
 
-def test_verify_finds_its_fixtures() -> None:
-    """The old path did not exist, so the script verified nothing and passed."""
-    from scripts import verify_line_fixtures as verify
-
-    assert verify.FIXTURES.is_dir()
-    assert list(verify.FIXTURES.glob("*.png"))
+def _fixture_images(directory: Path) -> list[Path]:
+    images = sorted(directory.glob("*.png"))
+    assert images, f"no Line fixtures under {directory}"
+    return images
 
 
-def test_verify_fails_when_there_is_nothing_to_check(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """An empty sweep is not a pass."""
-    from scripts import verify_line_fixtures as verify
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "image", _fixture_images(Path(__file__).parents[1] / "fixtures" / "line")
+)
+def test_every_wiki_fixture_extracts(image: Path) -> None:
+    from esolangs.interpreters.tape_based.line.extract import extract
 
-    assert verify.main(tmp_path) == 1
-    assert "no fixtures" in capsys.readouterr().err
-
-
-def test_verify_reports_a_fixture_that_does_not_extract(tmp_path: Path) -> None:
-    """The pass/fail loop itself, on an image that is not a Line program."""
-    from scripts import verify_line_fixtures as verify
-
-    (tmp_path / "blank.png").write_bytes(Raster((((0, 0, 0),),)).to_png())
-    assert verify.main(tmp_path) == 1
+    extract(str(image))
 
 
-def test_verify_passes_on_the_committed_fixtures(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """The green path of the fixture sweep, which only its failures had."""
-    from scripts import verify_line_fixtures as verify
-
-    assert verify.main() == 0
-    out = capsys.readouterr().out
-    assert out
-    assert all(line.endswith(": ok") for line in out.splitlines())
+def test_empty_fixture_sweep_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(AssertionError, match="no Line fixtures"):
+        _fixture_images(tmp_path)
 
 
 def test_a_generated_raster_runs_from_its_retained_graph() -> None:
@@ -186,3 +169,15 @@ def test_line_infers_the_entry_heading_from_the_arrow() -> None:
         io = ScriptedIO(f"{bit}\n")
         run_line(raster, io)
         assert io.getvalue() == bit
+
+
+def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
+    """A JPEG names itself and the fix, rather than failing on the signature."""
+    from esolangs.interpreters.tape_based.line import extract
+
+    path = tmp_path / "drawing.jpg"
+    # A JPEG start-of-image plus APP0, which is all the sniff looks at.
+    path.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 64)
+    with pytest.raises(ValueError, match="is a JPEG") as caught:
+        extract.load_binary(str(path))
+    assert "PNG" in str(caught.value)

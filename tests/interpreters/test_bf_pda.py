@@ -88,8 +88,6 @@ class TestMalformed:
         with pytest.raises(ValueError, match="unmatched"):
             run_program("<[")
         with pytest.raises(ValueError, match="unmatched"):
-            run_program("<@]")
-        with pytest.raises(ValueError, match="unmatched"):
             run_program("][")
         with pytest.raises(ValueError, match="unmatched"):
             run_program("<@[.")

@@ -1046,4 +1046,5 @@ LANGUAGE = Language(
     ),
     # Four-character cells align the ``SEED`` runs; longer words span cells.
     wrap=_mammalian,
+    slow_width_sweep=True,
 )

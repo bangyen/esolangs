@@ -315,12 +315,12 @@ def test_a_branch_from_another_program_is_rejected() -> None:
 
 def test_a_cursorless_read_loop_halts_at_eof() -> None:
     """Reads count in the snapshot: the 1-loop runs to EOF, not a false cycle."""
-    from esolangs.vm import run_until_halt_or_cycle
+    from esolangs.vm import run_until_halt
     from tests.interpreters.cursorless_io import CursorlessIO
 
     io = CursorlessIO("11111111")
     loop = ["▣─▶─◇═◒", "  │   │", "  └───┘"]
-    assert run_until_halt_or_cycle(_Machine(loop, io)) is True
+    assert run_until_halt(_Machine(loop, io), limit=1000) is True
     assert io.exhausted
 
 

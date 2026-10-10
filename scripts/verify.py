@@ -45,7 +45,9 @@ Usage:
 """
 
 import argparse
+import ast
 import atexit
+import contextlib
 import functools
 import os
 import shlex
@@ -59,6 +61,10 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from _scope import local_tooling_deselections  # noqa: E402
+from _verify_cache import CACHED_STEPS, VerifiedCache  # noqa: E402
 
 # Git runs this hook with its stdout attached to a pipe, not the terminal, so
 # Python block-buffers our own prints while the steps -- which inherit the
@@ -109,6 +115,7 @@ HEARTBEAT_SECONDS = 20.0
 # short steps go by.  A sibling step would race it and read a half-written
 # file, so the gate is run by _run_steps once the long step has exited.
 DIFF_COVERAGE_STEP = "touched-file coverage"
+COVERAGE_TEST_STEP = "coverage tests"
 
 
 # Which paths each step actually guards.  A step whose prefixes the branch did
@@ -138,11 +145,10 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "src/esolangs/tools/examples.py",
         "tests/proofs/deep/",
     ),
-    # Only an interpreter (or the sweep itself) can introduce a leak.
+    # Helpers outside interpreters can introduce leaks too. The sweep's
+    # dependency graph narrows this to the languages that import them.
     "exception leaks": (
-        "src/esolangs/interpreters/",
-        "src/esolangs/tools/line/",
-        "src/esolangs/raster/",
+        "src/esolangs/",
         "scripts/verify_no_exception_leaks.py",
     ),
 }
@@ -246,7 +252,9 @@ def _rerun_hint(name: str) -> list[str]:
     The coverage gate is not a ``STEPS`` entry, so ``--only`` cannot name it;
     it runs after pytest, which is what reproduces it.
     """
-    step = "pytest" if name == DIFF_COVERAGE_STEP else name
+    if name == "verification inputs":
+        return ["  rerun: uv run python scripts/verify.py"]
+    step = "pytest" if name in (DIFF_COVERAGE_STEP, COVERAGE_TEST_STEP) else name
     rerun = f"  rerun: uv run python scripts/verify.py --only {shlex.quote(step)}"
     return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
 
@@ -313,6 +321,129 @@ INTERPRETER_CONTRACT_TESTS = (
 )
 
 
+def _generator_test_scope(module: str) -> list[str] | None:
+    """Keep shared tests and dependent language suites for a leaf generator."""
+    from esolangs.registry import LANGUAGES
+
+    owners: dict[str, str] = {}
+    for language in LANGUAGES.values():
+        if language.boolean is not None:
+            owner = language.boolean.__module__.removeprefix("esolangs.tools.")
+            for name in (
+                language.id,
+                language.name,
+                *language.aliases,
+                language.boolean.__name__,
+                owner,
+            ):
+                owners[name] = owner
+    if module not in owners.values():
+        return None
+    needles = {name for name, owner in owners.items() if owner == module}
+    # A generator importing this one makes its language suite relevant too.
+    dependents = {module}
+    tools_root = ROOT / "src/esolangs/tools"
+    sources = {
+        source: source.read_text(encoding="utf-8")
+        for source in tools_root.rglob("*.py")
+    }
+    imports: dict[Path, set[str]] = {}
+    while True:
+        found = set()
+        for source, text in sources.items():
+            if not any(dep.rsplit(".", 1)[-1] in text for dep in dependents):
+                continue
+            if source not in imports:
+                references = set()
+                package = list(source.parent.relative_to(tools_root).parts)
+                for node in ast.walk(ast.parse(text)):
+                    if isinstance(node, ast.ImportFrom):
+                        prefix = node.module or ""
+                        if node.level:
+                            prefix = ".".join(
+                                [
+                                    *package[: len(package) - node.level + 1],
+                                    *(prefix.split(".") if prefix else []),
+                                ]
+                            )
+                        prefix = prefix.removeprefix("esolangs.tools.")
+                        references.add(prefix)
+                        for alias in node.names:
+                            references.add(prefix + "." + alias.name)
+                            references.add(owners.get(alias.name, alias.name))
+                    elif isinstance(node, ast.Import):
+                        references.update(
+                            alias.name.removeprefix("esolangs.tools.")
+                            for alias in node.names
+                        )
+                imports[source] = references
+            if imports[source] & dependents:
+                owner = (
+                    source.relative_to(tools_root)
+                    .with_suffix("")
+                    .as_posix()
+                    .replace("/", ".")
+                    .removesuffix(".__init__")
+                )
+                found.add(owner)
+        if found <= dependents:
+            break
+        dependents.update(found)
+    selected = []
+    for test in (ROOT / "tests").rglob("*.py"):
+        path = test.relative_to(ROOT).as_posix()
+        if not _is_collected(path):
+            continue
+        test_owner: str | None = None
+        for prefix in ("test_boolean_", "test_"):
+            if test.stem.startswith(prefix):
+                suffix = test.stem.removeprefix(prefix)
+                matches = [
+                    name
+                    for name in owners
+                    if suffix == name or suffix.startswith(name + "_")
+                ]
+                if matches:
+                    test_owner = owners[max(matches, key=len)]
+                    break
+        # Only language-local directories follow this naming convention.
+        local = test.parent.name in {"tools", "interpreters", "languages"}
+        if local and test_owner is not None and test_owner not in dependents:
+            text = test.read_text(encoding="utf-8").lower()
+            if not any(needle.lower() in text for needle in needles):
+                continue
+        selected.append(path)
+    return selected
+
+
+def _screen_test_scope(path: str) -> list[str] | None:
+    """Scope a standalone screen with a dedicated suite and no importers."""
+    stem = Path(path).stem
+    candidate = f"tests/scripts/test_{stem}.py"
+    if not (ROOT / candidate).is_file():
+        return None
+    module = path.removesuffix(".py").replace("/", ".")
+    for folder in ("src", "scripts", "tests"):
+        for source in (ROOT / folder).rglob("*.py"):
+            if source.relative_to(ROOT).as_posix() in {path, candidate}:
+                continue
+            text = source.read_text(encoding="utf-8")
+            if stem not in text:
+                continue
+            tree = ast.parse(text)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and (
+                    node.module in {module, stem}
+                    or any(alias.name == stem for alias in node.names)
+                ):
+                    return None
+                if isinstance(node, ast.Import) and any(
+                    alias.name in {module, stem} for alias in node.names
+                ):
+                    return None
+    return [candidate]
+
+
 def _pytest_scope(changed: list[str]) -> list[str] | str:
     """Return the pytest paths covering *changed*.
 
@@ -356,8 +487,23 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             if (ROOT / generator_tests).exists():
                 paths.add(generator_tests)
             continue
+        if f.startswith("src/esolangs/tools/") and f.endswith(".py"):
+            relative = Path(f).relative_to("src/esolangs/tools")
+            if len(relative.parts) != 1 or relative.stem.startswith("_"):
+                return WHOLE_SUITE
+            selected = _generator_test_scope(relative.stem)
+            if selected is None:
+                return WHOLE_SUITE
+            paths.update(selected)
+            continue
         if f.startswith("src/"):
             return WHOLE_SUITE  # non-interpreter source: not localisable
+        if f.startswith("scripts/screens/") and f.endswith(".py"):
+            selected = _screen_test_scope(f)
+            if selected is None:
+                return WHOLE_SUITE
+            paths.update(selected)
+            continue
         if f.startswith("scripts/") and f.endswith(".py"):
             # The scripts have unit tests (the bundler's, for one) that do not
             # follow the interpreter naming convention, so there is no way to
@@ -419,6 +565,92 @@ def _scoped_coverage(cmd: list[str], changed: list[str]) -> list[str]:
         f.writelines(f"    {path}\n" for path in touched)
     atexit.register(os.unlink, rc)
     return [*without, "--cov", f"--cov-config={rc}", "--cov-report="]
+
+
+def _split_coverage(
+    runnable: list[tuple[str, list[str], dict[str, str]]], changed: list[str]
+) -> list[tuple[str, list[str], dict[str, str]]]:
+    """Measure audited source suites separately from a whole-suite run."""
+    touched = [
+        path for path in changed if path.startswith("src/") and path.endswith(".py")
+    ]
+    shared = {
+        "src/esolangs/tools/wrap.py": [
+            "tests/tools/test_wrap.py",
+            "tests/tools/test_balance.py",
+        ]
+    }
+    shared["src/esolangs/interpreters/tape_based/line/mask.py"] = [
+        "tests/line/test_mask.py"
+    ]
+    shared["src/esolangs/_isolated.py"] = [
+        "tests/test_run_isolated.py::test_raster_transport_preserves_every_pixel"
+    ]
+    leaves = [
+        path
+        for path in touched
+        if path.startswith("src/esolangs/interpreters/") and path not in shared
+    ]
+    if any(path not in shared and path not in leaves for path in touched):
+        return runnable
+    paths = _pytest_scope(leaves) if leaves else []
+    if not touched or paths == WHOLE_SUITE:
+        return runnable
+    paths = [
+        path
+        for path in paths
+        if path.startswith("tests/interpreters/")
+        and path not in INTERPRETER_CONTRACT_TESTS
+    ]
+    paths.extend(test for source in touched for test in shared.get(source, []))
+    if not paths:
+        return runnable
+    result = []
+    for name, cmd, env in runnable:
+        options = shlex.split(env.get("PYTEST_ADDOPTS", ""))
+        if (
+            name != LONG_STEP
+            or "--cov" not in cmd
+            or any(arg.startswith("tests/") for arg in cmd)
+            or any(arg.startswith(("--cov", "--no-cov")) for arg in options)
+        ):
+            result.append((name, cmd, env))
+            continue
+        bare = [arg for arg in cmd if not arg.startswith("--cov")]
+        if not any(
+            arg.startswith(("-n", "--numprocesses")) for arg in [*cmd, *options]
+        ):
+            bare += ["-n", "8"]
+        if not any(arg.startswith("--dist") for arg in [*cmd, *options]):
+            bare += [
+                "--dist",
+                "loadfile",
+                "--no-loadscope-reorder",
+                "-p",
+                "scripts.pytest_durations",
+                "--duration-order",
+                "--duration-output=.cache/pytest/durations.json",
+            ]
+        result.insert(
+            0,
+            (
+                COVERAGE_TEST_STEP,
+                [
+                    *cmd,
+                    *(
+                        ["-m", "not medium and not slow and not weekly"]
+                        if any(path in shared for path in touched)
+                        else []
+                    ),
+                    "-n",
+                    "0",
+                    *paths,
+                ],
+                env,
+            ),
+        )
+        result.append((name, [*bare, "--no-cov"], env))
+    return result
 
 
 def _parse_only_skip() -> tuple[
@@ -496,27 +728,13 @@ MUTATES_TREE = "pre-commit"
 # cheap steps.
 LONG_STEP = "pytest"
 
-# Steps that are *themselves* parallel, so running them beside pytest does not
-# overlap work -- it oversubscribes the machine and makes both slower.  The
-# shadow is only free for steps that use one core.
-#
-# Measured on a 10-core laptop (8 performance), each alone against the same
-# step inside the old all-at-once shadow: pytest 39.8s alone vs 137.3s,
-# bandit 2.7s vs 11.2s, the line suites 2.6s vs 28.5s, the leak sweep
-# (`--all`) 35.6s vs 85.4s scoped.  Nothing was slow; everything was
-# contending.  So the heavy steps wait for pytest to finish and then get the
-# machine to themselves.
+# Unbounded overlap took the leak sweep from 35.6s to 85.4s.
+# Three leak workers plus four pytest workers leave a core
+# for the serial shadow checks; a standalone sweep keeps six.
 LEAK_STEP = "exception leaks"
 HEAVY_STEPS = frozenset({LEAK_STEP})
-
-#: Workers for the leak sweep when *this* runner drives it.  The script's own
-#: default is a deliberate 2, sized for a laptop doing other things; here the
-#: heavy steps run alone with pytest already joined, which is the "cores to
-#: spare" case its comment names.  6 is measured: 70.9s at 2, 35.6s at 6 over
-#: `--all`, and past the 8 performance cores the curve turns back up (the
-#: same shape pyproject records for xdist).  A caller who sets the variable
-#: keeps their value.
 LEAKSWEEP_JOBS = "6"
+OVERLAPPED_LEAKSWEEP_JOBS = "3"
 
 
 def _ensure_dev_deps() -> None:
@@ -598,14 +816,10 @@ def _run_steps(
 ) -> tuple[int, list[tuple[str, float]], float]:
     """Run the planned steps, overlapping the long one with the cheap ones.
 
-    Four phases.  ``pre-commit`` rewrites files, so it runs to completion
-    before anything reads the tree it edits.  Then ``pytest`` is launched and
-    the one-core steps go by in its shadow, which is free.  Then the
-    ``HEAVY_STEPS`` -- parallel in their own right, so the shadow was never
-    free for them -- run with the machine to themselves.  *gate* is the
-    touched-file coverage check, which reads the data file ``pytest`` writes,
-    so it goes between the two: as soon as the data is complete, before the
-    heavy steps make it wait.
+    ``pre-commit`` finishes before readers start. Captured runs overlap
+    pytest with the leak sweep and one serial shadow lane. Streaming runs
+    leave the sweep until afterwards to keep terminal output coherent.
+    Coverage runs after pytest has written its complete data file.
 
     Output is captured and replayed only on failure unless *stream*.  A step
     that is holding the terminal alone can stream it live instead; two can
@@ -617,6 +831,8 @@ def _run_steps(
     failed: list[str] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.time()
+    clean_cache: VerifiedCache | None = None
+    cache_keys: dict[str, str | None] = {}
 
     def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
         timings.append((name, elapsed))
@@ -628,6 +844,15 @@ def _run_steps(
         # Only the captured branch has output to replay; the streaming one
         # already wrote it straight to the terminal.
         captured: str | None = None
+        key = None
+        if clean_cache is not None and name in CACHED_STEPS:
+            key = cache_keys.get(name)
+            if key is not None:
+                cached = clean_cache.load(key)
+                if cached is not None:
+                    print(f"[cache] {name}: identical verified inputs")
+                    record(name, time.time() - start, 0, cached)
+                    return
         if stream:
             returncode = subprocess.run(cmd, env=step_env).returncode
         else:
@@ -646,11 +871,42 @@ def _run_steps(
                 start,
             )
         record(name, time.time() - start, returncode, captured)
+        if key is not None and returncode == 0 and captured is not None:
+            assert clean_cache is not None
+            clean_cache.remember(key, captured, returncode)
 
-    # Phase 1: the tree-mutating step, alone, before anything reads the tree.
-    for name, cmd, step_env in runnable:
-        if name == MUTATES_TREE:
-            run_serial(name, cmd, step_env)
+    # Companion checks wait for formatting; runtime probes may overlap it.
+    # The cache's initial snapshot rejects entries if formatting changed inputs.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = []
+        if not stream and any(
+            name in CACHED_STEPS and env.get("VERIFY_CLEAN_CACHE", "1") != "0"
+            for name, _, env in runnable
+        ):
+            with contextlib.suppress(OSError, subprocess.CalledProcessError):
+                clean_cache = VerifiedCache(ROOT)
+
+                def prepare(steps: list[tuple[str, list[str], dict[str, str]]]) -> None:
+                    assert clean_cache is not None
+                    for name, cmd, step_env in steps:
+                        cache_keys[name] = clean_cache.key(name, cmd, step_env)
+
+                eligible = [step for step in runnable if step[0] in CACHED_STEPS]
+                futures = [
+                    pool.submit(
+                        prepare,
+                        [step for step in eligible if (step[0] == "bandit") == bandit],
+                    )
+                    for bandit in (False, True)
+                ]
+        for name, cmd, step_env in runnable:
+            if name == MUTATES_TREE:
+                run_serial(name, cmd, step_env)
+        for future in futures:
+            future.result()
+    if MUTATES_TREE in failed:
+        clean_cache = None
+        cache_keys.clear()
 
     # Phase 2: launch the long step, then run the cheap ones in its shadow.
     rest = [s for s in runnable if s[0] != MUTATES_TREE]
@@ -661,7 +917,7 @@ def _run_steps(
     long_start = 0.0
     # Nothing to fill the shadow with: run it as an ordinary step, which lets
     # a single-step run (`just test-py`) stream its output live.
-    if long_step is not None and not shadow:
+    if long_step is not None and not shadow and (stream or not heavy):
         run_serial(*long_step)
         long_step = None
     if long_step is not None:
@@ -692,10 +948,17 @@ def _run_steps(
                 for name, cmd, step_env in shadow:
                     run_serial(name, cmd, step_env)
             else:
+
+                def run_shadow() -> None:
+                    for step in shadow:
+                        run_serial(*step)
+
                 with ThreadPoolExecutor(max_workers=2) as checks:
-                    results = [checks.submit(run_serial, *step) for step in shadow]
+                    results = [checks.submit(run_serial, *step) for step in heavy]
+                    results.append(checks.submit(run_shadow))
                     for result in results:
                         result.result()
+                heavy = []
             output, returncode, elapsed = pending.result()
         record(LONG_STEP, elapsed, returncode, output)
     else:
@@ -709,12 +972,20 @@ def _run_steps(
     # nothing about the data file.  It is 0.2s and it unblocks nothing, so it
     # goes before the heavy steps rather than after them.
     ran_pytest = any(name == LONG_STEP for name, _ in timings)
-    if gate is not None and ran_pytest and LONG_STEP not in failed:
+    if (
+        gate is not None
+        and ran_pytest
+        and LONG_STEP not in failed
+        and COVERAGE_TEST_STEP not in failed
+    ):
         run_serial(*gate)
 
     # Phase 4: the parallel steps, now that they can have the machine.
     for name, cmd, step_env in heavy:
         run_serial(name, cmd, step_env)
+
+    if clean_cache is not None and not clean_cache.finish():
+        record("verification inputs", 0.0, 1, "Inputs changed during verification")
 
     for name in failed:
         print(f"[FAIL] {name}", *_rerun_hint(name), sep="\n")
@@ -742,6 +1013,8 @@ def main() -> int:
         print(f"scope: {len(STEPS) - len(unaffected)}/{len(STEPS)} steps ({why})")
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
+    if only is not None or full or os.environ.get("VERIFY_FULL", "0") not in ("", "0"):
+        env["VERIFY_CLEAN_CACHE"] = "0"
     # Probe PY rather than the running interpreter: verify.py may be launched
     # by a different python than the one it runs the steps with (e.g.
     # `uv run --with pylint python scripts/verify.py`, which leaves PY pointing
@@ -802,8 +1075,6 @@ def main() -> int:
         # unfiltered on every push, so deselecting them here trades no
         # coverage either.
         step_env = env
-        if name == LEAK_STEP and "LEAKSWEEP_JOBS" not in env:
-            step_env = dict(step_env, LEAKSWEEP_JOBS=LEAKSWEEP_JOBS)
         if name == "pre-commit":
             # Skip the config's mypy hook: the very next step runs mypy over
             # src/ *and* scripts/ from the project env, against the same
@@ -821,6 +1092,11 @@ def main() -> int:
             # caller's own `-m` and lose to it. `just test-quick` supplies its
             # own expression excluding all three deferred bands.
             cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else LOCAL_PYTEST_MARKS]
+            if not full and os.environ.get("VERIFY_FULL", "0") in ("", "0"):
+                deferred = local_tooling_deselections(changed)
+                cmd.extend(deferred)
+                if deferred:
+                    print("[defer] unrelated tooling integrations: covered by CI")
         if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
             unavailable.append(f"{name}: uv not installed")
             continue
@@ -837,6 +1113,21 @@ def main() -> int:
                 "verification failed: install required tools or use --allow-incomplete"
             )
             return 1
+
+    if only is None and not full and changed:
+        runnable = _split_coverage(runnable, changed)
+
+    if "LEAKSWEEP_JOBS" not in env:
+        overlap = not _should_stream(
+            len(runnable), quiet=quiet, verbose=verbose
+        ) and any(name == LONG_STEP for name, _, _ in runnable)
+        jobs = OVERLAPPED_LEAKSWEEP_JOBS if overlap else LEAKSWEEP_JOBS
+        runnable = [
+            (name, cmd, dict(step_env, LEAKSWEEP_JOBS=jobs))
+            if name == LEAK_STEP
+            else (name, cmd, step_env)
+            for name, cmd, step_env in runnable
+        ]
 
     # The gate speaks only for the suite that actually ran.  A default local
     # run deselects the `slow` tests, so a line covered only by one of those

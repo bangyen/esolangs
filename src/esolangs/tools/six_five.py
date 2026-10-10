@@ -729,6 +729,7 @@ LANGUAGE = Language(
     "6-5",
     "tape_based.six_five",
     boolean=six_five,
+    internal_cap="the stream-ordered tree is tried only when its labels fit",
     contract=BooleanContract(
         input_shape="char_stream",
     ),

@@ -91,14 +91,20 @@ def _wrap_grid(
     lines: list[str] = []
     row: list[str] = []
     used = 0
-    for token in tokens:
+    padding = {}
+    for token in set(tokens):
         span = _span(len(token), cell)
+        slot = span * (cell + 1) - 1
+        padding[token] = (
+            span,
+            token.ljust(slot) if left_aligned else token.rjust(slot),
+        )
+    for token in tokens:
+        span, padded = padding[token]
         if row and used + span > per_row:
             lines.append(" ".join(row).rstrip())
             row, used = [], 0
-        # k cells plus the k-1 separators it absorbs.
-        slot = span * cell + span - 1
-        row.append(token.ljust(slot) if left_aligned else token.rjust(slot))
+        row.append(padded)
         used += span
     # ``row`` always holds the last row here (empty ``tokens`` returned above).
     if row:  # pragma: no branch - never empty; see above
@@ -143,6 +149,7 @@ def _span(length: int, cell: int) -> int:
 #: One input's mark run (:func:`~esolangs.tools.helpers.mark`), one token:
 #: a break inside would land inside the setter.  Adjacent runs are two tokens.
 _RUN = "|".join(f"{re.escape(mark(i))}+" for i in range(MOST_INPUTS))
+_MARK_PATTERN = re.compile(f"[{chr(MARK)}-{chr(MARK + MOST_INPUTS - 1)}]")
 
 
 def wrap_tokens(program: str, width: int, pattern: str) -> str:
@@ -162,7 +169,7 @@ def wrap_chars(program: str, width: int) -> str:
 
     Any position is a legal break, except inside a template's :data:`_RUN`.
     """
-    if not any(MARK <= ord(c) < MARK + MOST_INPUTS for c in program):
+    if not _MARK_PATTERN.search(program):
         return "\n".join(program[i : i + width] for i in range(0, len(program), width))
     return _join_tokens(re.findall(f"{_RUN}|[\\s\\S]", program), width, separator="")
 
@@ -447,22 +454,6 @@ def _unlambda(program: str, width: int) -> str:
     return wrap_tokens(program, width, _UNLAMBDA_COMMAND)
 
 
-def _bitdeque(program: str, width: int) -> str:
-    """Wrap Bitdeque, keeping each ``GOTO`` with its target operand."""
-    return _join_tokens(_bitdeque_tokens(program), width, separator=" ")
-
-
-def _bitdeque_tokens(program: str) -> list[str]:
-    """Return Bitdeque commands with their attached branch operands."""
-    tokens: list[str] = []
-    for token in program.split():
-        if tokens and tokens[-1] == "GOTO":
-            tokens[-1] = f"GOTO {token}"
-        else:
-            tokens.append(token)
-    return tokens
-
-
 def _jaune(program: str, width: int) -> str:
     """Wrap Jaune, keeping each operand attached to the operator it feeds.
 
@@ -571,15 +562,6 @@ def _taglate(program: str, width: int) -> str:
     return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
 
 
-def _qoibl(program: str, width: int) -> str:
-    """Wrap Qoibl, folding each of its lines but keeping them apart.
-
-    A newline between tokens is whitespace (measured), so each statement
-    line folds on its own; joining first would fold across statements.
-    """
-    return "\n".join(wrap_space_delimited(line, width) for line in program.split("\n"))
-
-
 # Language id -> wrapper; semantic newlines require generator-owned layouts.
 # These wrappers preserve structural rows or existing newline comments.
 _MULTILINE_WRAPPERS = frozenset({_taglate, _packlang, _minifuck})
@@ -681,11 +663,7 @@ def balance_program(program: str, language_id: str) -> str:
         tokens = re.findall(f"{_RUN}|{pattern}", program)
         width = balanced_token_width(tokens)
         return min(program, _join_tokens(tokens, width, ""), key=balance_score)
-    if (
-        wrapper is wrap_chars
-        and any(MARK <= ord(c) < MARK + MOST_INPUTS for c in program)
-        and "\n" not in program
-    ):
+    if wrapper is wrap_chars and _MARK_PATTERN.search(program) and "\n" not in program:
         tokens = re.findall(f"{_RUN}|[\\s\\S]", program)
         width = balanced_token_width(tokens)
         return min(program, _join_tokens(tokens, width, ""), key=balance_score)

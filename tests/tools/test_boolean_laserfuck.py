@@ -10,7 +10,7 @@ from esolangs.tools.laserfuck import MARGIN
 from tests.tools.boolean_runners import (
     run_laserfuck,
 )
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 class TestLaserFuck:
@@ -141,7 +141,7 @@ class TestLaserFuck:
         program = boolean.laserfuck(table, width)
         assert max(len(line) for line in program.split("\n")) <= width
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             for heading in range(4):
                 got = run_laserfuck(program, [str(b) for b in bits], heading)
                 assert got == str(int(table[combo])), f"{bits} heading {heading}"

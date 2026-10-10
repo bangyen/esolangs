@@ -92,17 +92,6 @@ def _compiled(program: Raster, scale: int | None = None) -> _Compiled:
     )
 
 
-def _source_view(program: Raster) -> str:
-    """Return the cropped, normalized pixel grid used by the walker."""
-    from .extract import crop_to_content, normalize_scale
-
-    mask = normalize_scale(crop_to_content(from_grey(_grey_rows(program.rows))))
-    return "\n".join(
-        "".join("#" if mask[y, x] else " " for x in range(mask.width))
-        for y in range(mask.height)
-    )
-
-
 class _Machine:
     """A Line run: immutable code and state with I/O handled by the shell."""
 
@@ -118,7 +107,9 @@ class _Machine:
     def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
         from .simulate import _freeze_program
 
-        self.program = _freeze_program(_compiled(program, scale))
+        self.program = _freeze_program(
+            _compiled(program, scale if scale is not None else program.scale)
+        )
         self.state: _State = (0, 0, 0, ())
         self.io = io
 
@@ -145,7 +136,7 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         node, at, pointer, tape = self.state
         cells = tuple((cell, value) for cell, value in tape if value)
-        return node, at, pointer, cells, self.io.position()
+        return node, at, pointer, cells, self.io.progress()
 
     def step(self) -> None:
         from .simulate import _advance
@@ -170,6 +161,6 @@ def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
         _Machine.run_node(cast("Node", program._payload), io)  # noqa: SLF001
         return
     _run_compiled(
-        _compiled(program, scale),
+        _compiled(program, scale if scale is not None else program.scale),
         _LINE_IO(read=io.input_num, write=io.print_num),
     )

@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.other._packlang_parse import _Parser
 from esolangs.interpreters.other.packlang import (
     _Machine,
     run,
@@ -227,3 +228,9 @@ class TestMachineMemory:
         machine = _Machine(_wrap("    0;"), ScriptedIO(""))
         machine.frames.clear()
         assert machine.ip == 0
+
+
+class TestPacklangDeclarationScan:
+    def test_a_type_followed_by_a_non_name_is_not_a_declaration(self) -> None:
+        """The name check fails, so the semicolon is never looked for."""
+        assert _Parser(["Integer", "5", ";"]).is_declaration() is False

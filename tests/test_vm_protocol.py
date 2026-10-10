@@ -15,6 +15,7 @@ from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.registry import INTERPRETERS
 from esolangs.vm import VM, _climbs_forever, make_vm, run_until_halt
 from tests.generator_support import CHECK
+from tests.pick import languages
 
 from .samples import (
     DUMPS_ON_THE_POST_HALT_STEP,
@@ -191,26 +192,30 @@ class TestEveryLanguageImplementsTheSameInterface:
             assert shape != "offset", f"{language} reports a tuple ip as an offset"
 
 
-class TestTheCoordinateOrderIsRowThenColumn:
-    """``VM.ip``'s arity is unstable and the *order* is not, and only one
-    of those was written down.
+# ``VM.ip``'s arity is unstable and its *order* -- row, then column -- is
+# not.  The languages that show it check it from their own test files,
+# through the two helpers below.
+
+
+def assert_one_row_moves_along_it(name: str) -> None:
+    """``name`` lays its generated program on one row and moves along it.
+
+    Each such language calls this from its own test file.
     """
+    program, stdin = _row_for(name)
+    assert program.count("\n") == 0, name  # one row
+    assert _first_move(name, program, stdin)[0] == 0, name
 
-    def test_a_single_row_grid_moves_in_the_second_component(self) -> None:
-        """Alight and Super SNUSP lay their programs on one row."""
-        for name in ("Alight", "Super SNUSP"):
-            program, stdin = _row_for(name)
-            assert program.count("\n") == 0, name  # one row
-            assert _first_move(name, program, stdin)[0] == 0, name
 
-    def test_a_downward_start_moves_in_the_first_component(self) -> None:
-        """Dig, Flowchart, LaserFuck and Streetcode begin vertically."""
-        widths = {"Flowchart": 1}
-        for name in ("Dig", "Flowchart", "LaserFuck", "Streetcode"):
-            program, stdin = _row_for(name, widths.get(name))
-            before, after = _first_move_pair(name, program, stdin)
-            assert before[0] != after[0], name
-            assert before[1] == after[1], name
+def assert_starts_downward(name: str, width: int | None = None) -> None:
+    """``name``'s generated program first moves in the row component.
+
+    Each language that begins vertically calls this from its own test file.
+    """
+    program, stdin = _row_for(name, width)
+    before, after = _first_move_pair(name, program, stdin)
+    assert before[0] != after[0], name
+    assert before[1] == after[1], name
 
 
 def _row_for(name: str, width: int | None = None) -> tuple[str, str]:
@@ -249,10 +254,22 @@ def _first_move(name: str, program: str, stdin: str) -> tuple[int, int]:
     return (before[0] != after[0], before[1] != after[1])
 
 
+def _sampled(**facts: object) -> str:
+    """The first language with these facts that has a sample program."""
+    return next(name for name in languages(**facts) if name in SAMPLES)
+
+
 @pytest.mark.medium
 # A tape language, a grid language, and one that never halts by itself:
 # ``complete_vm`` is the same driver for all of them.
-@pytest.mark.parametrize("name", ["Smallfuck", "Befunge", "Suffolk"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        _sampled(state_model="tape"),
+        _sampled(state_model="grid", self_halts=True),
+        _sampled(self_halts=False),
+    ],
+)
 def test_completion_agrees_with_running(name):
     source, stdin = SAMPLES[name]
     vm = make_vm(name, source, stdin=stdin)
@@ -480,14 +497,13 @@ class TestRunUntilHalt:
         )
         assert machine.steps == 0  # type: ignore[attr-defined]
 
-    def test_a_negative_budget_stops_rather_than_running_free(self) -> None:
-        """A cap below zero is still a cap."""
+    def test_a_negative_budget_is_refused(self) -> None:
+        """A negative count is refused before execution."""
         from esolangs.vm import run_until_halt
 
         for limit in (-1, -1000):
-            assert (
-                run_until_halt(debugger_api.make_vm("brainfuck", "+[]"), limit) is False
-            )
+            with pytest.raises(esolangs.ArgumentError, match="limit"):
+                run_until_halt(debugger_api.make_vm("brainfuck", "+[]"), limit)
 
 
 class TestViews:

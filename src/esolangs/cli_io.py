@@ -94,9 +94,11 @@ def _read_program(
     language: str,
     portable: bool = False,
     settings: DialectSettings | None = None,
+    content: bytes | None = None,
 ) -> Program:
     """Read bounded source or portable JSON; validate overrides before stdin."""
-    content = _bounded_read(path, timeout)
+    if content is None:
+        content = _bounded_read(path, timeout)
     try:
         if portable:
             try:
@@ -112,8 +114,8 @@ def _read_program(
         raise  # pragma: no cover - _fail exits
 
 
-def _portable_language(path: str, timeout: float | None = None) -> str:
-    """Return the language a portable document names, before it is loaded."""
+def _portable_language(path: str, timeout: float | None = None) -> tuple[str, bytes]:
+    """Return the language and acquired bytes of a portable document."""
     content = _bounded_read(path, timeout)
     try:
         document = content.decode("utf-8")
@@ -125,7 +127,7 @@ def _portable_language(path: str, timeout: float | None = None) -> str:
         raise ProgramError(f"invalid portable program: {exc}") from exc
     if not isinstance(value, dict) or not isinstance(value.get("language"), str):
         raise ProgramError("invalid portable program: language must be a string")
-    return resolve(value["language"])
+    return resolve(value["language"]), content
 
 
 def _note(message: str) -> None:

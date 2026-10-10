@@ -182,3 +182,17 @@ def test_unknown_portable_language_fails_before_file_read(command, capsys):
         call_both([command, "--portable", "NotALang", "never-read.json"], capsys)
     assert caught.value.code == 2
     assert "unknown language" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("command", ["run", "debug"])
+@pytest.mark.parametrize("explicit", [False, True])
+def test_portable_source_acquired_once(command, explicit, capsys):
+    payload = esolangs.dump_program("brainfuck", "+.").encode()
+    with patch("esolangs.cli_io._bounded_read", side_effect=[payload]) as read:
+        args = [command, "--portable", "--timeout", "0.5"]
+        if explicit:
+            args.append("brainfuck")
+        output, error = call_both([*args, "one-shot.json"], capsys)
+    read.assert_called_once_with("one-shot.json", 0.5)
+    assert error == ""
+    assert output

@@ -11,8 +11,8 @@ KeyError -- is a bug in the interpreter, not in the program it was given.
 The corpus is deliberately hostile but *derived from real programs*: the
 generic fragments below, plus every shipped example for the language, plus
 mutations of those examples (truncated, a character dropped, one doubled,
-one inserted).  Factor's integer is shortened before mutation because its
-operand size changes cost, not interpreter paths.  Truncation finds the
+one inserted).  A language's ``fuzz_max_digits`` shortens its numbers before
+mutation where operand size changes cost, not interpreter paths.  Truncation finds the
 interesting cases -- a half-written program reaches states no hand-written
 test thinks to build.
 
@@ -35,8 +35,10 @@ script, and skipped while that hash stands; a leak is never remembered.
 ``LEAKSWEEP_CACHE=0`` sweeps regardless.
 """
 
+import ast
 import concurrent.futures as cf
 import hashlib
+import importlib.util
 import json
 import os
 import pathlib
@@ -167,16 +169,10 @@ _CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 # and the sweep runs every program against every one of these.
 STDINS = ["", "\n", "0\n1\n", "abc"]
 
-# Factor does unbounded work before its first VM step when a one-character
-# mutation turns its deliberately factorable example into a huge semiprime.
-# Twelve digits still exercise the same parser and factorization paths and
-# are the measured safe bound.
-_MAX_OPERAND_DIGITS = 12
 
-
-def _cap_numeric_runs(program: str) -> str:
-    """Keep only the first bounded number of digits in a Factor program."""
-    left = _MAX_OPERAND_DIGITS
+def _cap_numeric_runs(program: str, digits: int) -> str:
+    """Keep only the first ``digits`` digits of a program's numbers."""
+    left = digits
 
     def shorten(match: re.Match[str]) -> str:
         nonlocal left
@@ -214,7 +210,9 @@ from _scope import changed_files as _changed_files
 
 
 def _select(
-    langs: list[str], runners: dict[str, tuple[str, bool]]
+    langs: list[str],
+    runners: dict[str, tuple[str, bool]],
+    imports: dict[pathlib.Path, set[str]] | None = None,
 ) -> tuple[list[str], str]:
     """Return the languages worth sweeping, and why that set was chosen."""
     changed = _changed_files()
@@ -222,8 +220,26 @@ def _select(
         return langs, "no diff available, sweeping everything"
     if any(f.endswith(_SHARED) for f in changed):
         return langs, "shared interpreter machinery changed"
+    if any(
+        name.startswith("src/esolangs/")
+        and not name.startswith("src/esolangs/examples/")
+        and not (_ROOT / name).is_file()
+        for name in changed
+    ):
+        return langs, "source removed; dependency resolution is incomplete"
+    changed_examples = {
+        pathlib.Path(name).stem
+        for name in changed
+        if pathlib.Path(name).parent == pathlib.Path("src/esolangs/examples")
+        and pathlib.Path(name).suffix in {".txt", ".png"}
+    }
+    stems = example_stems()
+    changed_paths = {(_ROOT / name).resolve() for name in changed}
     picked = [
-        n for n in langs if any(runners[n][0].replace(".", "/") in f for f in changed)
+        name
+        for name in langs
+        if (changed_examples and stems.get(LANGUAGES[name].id) in changed_examples)
+        or changed_paths.intersection(_sources(runners[name][0], imports))
     ]
     if not picked:
         return [], "no interpreter changed"
@@ -267,16 +283,9 @@ _LANG_TIMEOUT = 90.0
 _JOBS = max(1, int(os.environ.get("LEAKSWEEP_JOBS", 0)) or 2)
 
 
-def _corpus(
-    lang: str, examples: dict[str, list[Program]], rng: random.Random
-) -> list[Program]:
-    """Return the programs swept for ``lang``, advancing ``rng`` as it goes.
-
-    One generator feeds every language in order, so the parent and a worker
-    only agree on a corpus if both consume it in the same sequence -- which
-    is why a worker replays the languages before its own rather than seeding
-    afresh.
-    """
+def _corpus(lang: str, examples: dict[str, list[Program]]) -> list[Program]:
+    """Return a reproducible corpus independent of other languages' examples."""
+    rng = random.Random(f"1234:{lang}")
     seed = examples[lang][0] if examples[lang] else None
     progs: list[Program]
     if isinstance(seed, Raster):
@@ -293,8 +302,8 @@ def _corpus(
     progs = list(GENERIC)
     for src in examples[lang]:
         assert isinstance(src, str)
-        if lang == "Factor":
-            src = _cap_numeric_runs(src)
+        if digits := LANGUAGES[lang].fuzz_max_digits:
+            src = _cap_numeric_runs(src, digits)
         progs.append(src)
         progs.extend(mutate(src, rng))
     return progs
@@ -380,35 +389,97 @@ def _examples_by_slug() -> dict[str, list[Program]]:
     return by_slug
 
 
-def _sources(module: str) -> list[pathlib.Path]:
-    """Return every file a sweep of interpreter ``module`` executes.
+def _module_path(module: str) -> pathlib.Path | None:
+    """Resolve a local import without importing its code."""
+    if not module.startswith("esolangs."):
+        return None
+    path = _ROOT / "src" / module.replace(".", "/")
+    if path.with_suffix(".py").is_file():
+        return path.with_suffix(".py")
+    init = path / "__init__.py"
+    return init if init.is_file() else None
 
-    ``module`` is relative to ``esolangs.interpreters`` (``RUNNERS`` form).
-    Every path must exist: a missing one hashed as empty would remember a
-    sweep that never read the interpreter.
-    """
+
+def _imports(path: pathlib.Path) -> set[str]:
+    """Return absolute local import names, including package submodules."""
+    parts = path.relative_to(_ROOT / "src").with_suffix("").parts
+    package = ".".join(parts[:-1])
+    found: set[str] = set()
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            found.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if node.level:
+                module = importlib.util.resolve_name("." * node.level + module, package)
+            found.add(module)
+            found.update(
+                name
+                for alias in node.names
+                if _module_path(name := f"{module}.{alias.name}") is not None
+            )
+    return found
+
+
+def _sources(
+    module: str, imports: dict[pathlib.Path, set[str]] | None = None
+) -> list[pathlib.Path]:
+    """Return interpreter sources, imported helpers and shared cache inputs."""
     pkg = _ROOT / "src" / "esolangs"
-    relative = (
-        module.removeprefix("esolangs.")
-        if module.startswith("esolangs.")
-        else "interpreters." + module
+    if imports is None:
+        imports = {}
+    if not module.startswith("esolangs."):
+        module = "esolangs." + (
+            module if module.startswith("interpreters.") else "interpreters." + module
+        )
+    entry = _module_path(module)
+    if entry is None:
+        raise FileNotFoundError(f"interpreter source not found: {module}")
+    shared = {pkg / name for name in _SHARED}
+    pending = (
+        list(entry.parent.rglob("*.py")) if entry.name == "__init__.py" else [entry]
     )
-    path = pkg / relative.replace(".", "/")
-    sources = sorted(path.rglob("*.py")) if path.is_dir() else [path.with_suffix(".py")]
-    if path.is_dir():
-        sources.extend(sorted((pkg / "raster").rglob("*.py")))
-    return [
-        _HERE,
-        _ROOT / "scripts" / "_scope.py",
-        *sources,
-        *(pkg / f for f in _SHARED),
-    ]
+    pending.extend(shared)
+    sources: set[pathlib.Path] = set()
+    while pending:
+        path = pending.pop()
+        if path in sources:
+            continue
+        sources.add(path)
+        for parent in path.parents:
+            init = parent / "__init__.py"
+            if parent == pkg:
+                if init.is_file():
+                    sources.add(init)
+                break
+            if init.is_file() and init not in sources:
+                pending.append(init)
+        # Shared inputs already invalidate every language; expanding registry
+        # imports here would also pull in every unrelated generator.
+        if (path in shared and path.is_relative_to(pkg / "registry")) or path == (
+            pkg / "tools" / "__init__.py"
+        ):
+            continue
+        if path not in imports:
+            imports[path] = _imports(path)
+        for name in imports[path]:
+            dependency = _module_path(name)
+            if dependency is None:
+                if name.startswith("esolangs."):
+                    raise FileNotFoundError(f"imported source not found: {name}")
+            elif dependency not in sources:
+                pending.append(dependency)
+    return sorted({_HERE, _ROOT / "scripts" / "_scope.py", *sources, *shared})
 
 
-def _fingerprint(module: str, examples: list[Program]) -> str:
+def _fingerprint(
+    module: str,
+    examples: list[Program],
+    imports: dict[pathlib.Path, set[str]] | None = None,
+) -> str:
     """Hash everything a sweep of ``module`` reads; a change to any part re-sweeps."""
     h = hashlib.sha256()
-    for path in _sources(module):
+    for path in _sources(module, imports):
         h.update(path.read_bytes())
         h.update(b"\0")
     for text in examples:
@@ -478,13 +549,7 @@ def _worker(target: str) -> None:
     by_slug = _examples_by_slug()
     examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
 
-    rng = random.Random(1234)
-    progs: list[Program] = []
-    for lang in langs:  # replay in order so the corpus matches the parent's
-        got = _corpus(lang, examples, rng)
-        if lang == target:
-            progs = got
-            break
+    progs = _corpus(target, examples)
 
     n, found = _sweep_one(target, progs)
     print(json.dumps({"runs": n, "findings": found}), flush=True)
@@ -498,6 +563,7 @@ def main() -> None:
 
     args = [a for a in sys.argv[1:] if a != "--all"]
     langs = sorted(INTERPRETERS)
+    imports: dict[pathlib.Path, set[str]] = {}
     if "--all" in sys.argv[1:]:
         why = "--all"
     else:
@@ -507,6 +573,7 @@ def main() -> None:
                 name: (module.removeprefix("esolangs."), False)
                 for name, module in INTERPRETERS.items()
             },
+            imports,
         )
     print(f"sweeping {len(langs)} language(s): {why}", flush=True)
     if not langs:
@@ -521,7 +588,7 @@ def main() -> None:
     print(f"languages without example programs: {len(missing)}", flush=True)
 
     cache = _load_cache()
-    keys = {n: _fingerprint(INTERPRETERS[n], examples[n]) for n in langs}
+    keys = {n: _fingerprint(INTERPRETERS[n], examples[n], imports) for n in langs}
     cached = [n for n in langs if cache.get(n) == keys[n]]
     if cached:
         print(f"unchanged since last clean sweep: {len(cached)}", flush=True)
@@ -529,15 +596,6 @@ def main() -> None:
 
     findings: dict[str, list[dict[str, str]]] = {}
     counts: dict[str, int] = {}
-
-    # Drawn here, in order, purely to keep this generator in step with each
-    # worker's own replay: one generator feeds every language in sequence,
-    # so the corpus is only reproducible if the draws happen in that order.
-    # Doing it before the pool keeps the parallel section free of shared
-    # mutable state.
-    rng = random.Random(1234)
-    for lang in langs:
-        _corpus(lang, examples, rng)
 
     timeouts: list[str] = []
     # Workers are independent processes, so they overlap freely; the pool is

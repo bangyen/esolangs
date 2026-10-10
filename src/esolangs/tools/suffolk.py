@@ -115,6 +115,7 @@ def suffolk(truth_table: str) -> str:
 LANGUAGE = Language(
     "Suffolk",
     "tape_based.suffolk",
+    weekly_mutation=("generator",),
     boolean=suffolk,
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,

@@ -130,7 +130,7 @@ class _Machine:
 
     def input_position(self) -> int:
         """Report the input cursor for the growth detector."""
-        return self.io.position()
+        return self.io.progress()
 
     @property
     def halted(self) -> bool:
@@ -153,7 +153,7 @@ class _Machine:
         # Committed tape plus input cursor (a repeat that ignores consumed
         # input is not a cycle).  ``acc``/``dirty`` would give one state two hashes.
         ind, ptr = self.state[0], self.state[1]
-        return (ind, ptr, _committed(self.state), self.io.position())
+        return (ind, ptr, _committed(self.state), self.io.progress())
 
     def step(self) -> None:
         """Execute one command, advancing the code position.

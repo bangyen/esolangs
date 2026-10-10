@@ -131,7 +131,7 @@ class _Machine:
             self.halted,
             self.width,
             self.height,
-            self.io.position(),
+            self.io.progress(),
         )
 
     def branching_snapshot(self) -> _State:

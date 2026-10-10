@@ -8,6 +8,7 @@ each puts this directory on ``sys.path`` for the import, as
 import random
 from collections.abc import Callable, Iterator
 
+from esolangs import describe
 from esolangs.raster import Raster
 from esolangs.registry import GENERATORS, resolve
 
@@ -16,12 +17,25 @@ PAIRS = [format(i, "04b") for i in range(16)]
 TABLES = [format(i, "08b") for i in range(256)]
 
 
+def source_size(name: str, program: object) -> int:
+    """Return characters for text, rectangular cells for grids and raster."""
+    if isinstance(program, Raster):
+        return len(program.rows) * max(map(len, program.rows))
+    source = str(program)
+    if describe(name)["state_model"] == "grid":
+        rows = source.splitlines()
+        return len(rows) * max(map(len, rows), default=0)
+    return len(source)
+
+
 def generators() -> Iterator[tuple[str, Callable[[str], object]]]:
     """Yield ``(registry name, generator)`` for every Boolean generator."""
     yield from sorted(GENERATORS.items())
 
 
-def sizes(gen: Callable[[str], object], tables: list[str]) -> dict[str, int | None]:
+def sizes(
+    name: str, gen: Callable[[str], object], tables: list[str]
+) -> dict[str, int | None]:
     """Build every table once; ``None`` marks an arity the generator refuses.
 
     ``ValueError`` is the refusal; anything else is a real failure and
@@ -31,11 +45,7 @@ def sizes(gen: Callable[[str], object], tables: list[str]) -> dict[str, int | No
     for table in tables:
         try:
             program = gen(table)
-            out[table] = (
-                sum(map(len, program.rows))
-                if isinstance(program, Raster)
-                else len(str(program))
-            )
+            out[table] = source_size(name, program)
         except ValueError:
             out[table] = None
     return out

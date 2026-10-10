@@ -292,7 +292,7 @@ class _Machine:
             tuple(self._cells),
             self._ind,
             self._ptr,
-            self.io.position(),
+            self.io.progress(),
             self._done,
         )
 

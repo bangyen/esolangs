@@ -180,7 +180,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.mem, self.ip, self.io.position(), self._halted)
+        return (self.mem, self.ip, self.io.progress(), self._halted)
 
     @property
     def _state(self) -> _State:

@@ -103,10 +103,11 @@ def _run(rest: list[str]) -> None:
         _fail("--isolated given more than once")
     if not (portable and len(rest) == 1):
         _check_count("run", rest, 2)
+    content = None
     if portable and len(rest) == 1:
         path = rest[0]
         with _errors():
-            language = _portable_language(path, timeout)
+            language, content = _portable_language(path, timeout)
     else:
         language, path = rest[0], rest[1]
     settings = _settings_of(options, set_pairs, language=language)
@@ -131,7 +132,12 @@ def _run(rest: list[str]) -> None:
             f"--timeout SECONDS to bound it\n"
         )
     program = _read_program(
-        path, timeout, language=language, portable=portable, settings=settings
+        path,
+        timeout,
+        language=language,
+        portable=portable,
+        settings=settings,
+        content=content,
     )
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     try:
@@ -169,10 +175,10 @@ def _run(rest: list[str]) -> None:
         _fail(_template_hint(exc, language))
     except ExecutionTimeoutError as exc:
         if mode == "termination":
-            # The timeout *is* the answer here, so it is not a failure.
+            # A slow halting run can also time out; this is not a verdict.
             sys.stderr.write(
-                f"{exc}\nnote: {name} answers 1 by not terminating, so for a "
-                f"generated truth-table program this timeout is the answer 1\n"
+                f"{exc}\nnote: {name} answers by termination, but a timeout "
+                f"does not establish divergence; the Boolean answer is undecided\n"
             )
             sys.exit(_TIMEOUT_EXIT)
         # Distinct from a program error's 1, following timeout(1), so a

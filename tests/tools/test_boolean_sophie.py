@@ -6,18 +6,21 @@ import re
 import pytest
 
 from esolangs import tools as boolean
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.register_based.sophie import _Machine as Sophie
 from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO
-from esolangs.tools.polynomial import _polynomial_states
 from esolangs.tools.sophie import _SOPHIE_CHARACTERS, _SOPHIE_RESERVED
-from tests.tools.boolean_oracles import (
-    _sophie_dag,
-    _sophie_tree,
-)
 from tests.tools.boolean_runners import (
     run_sophie,
     run_sophie_from,
 )
+from tests.tools.sophie_support import (
+    _residual_levels,
+    _sophie_dag,
+    _sophie_tree,
+)
 from tests.tools.test_wrap_preserves_meaning import _WIDTHS, _evaluate
+from tests.witness_tables import row_bits
 
 
 def _printed_once(program: str) -> str:
@@ -104,7 +107,7 @@ class TestSophie:
     def test_state_machine_merges_what_the_tree_cannot(self) -> None:
         """A subtable that is not constant can still collapse to one state."""
         table = "10101010"
-        assert [len(level) for level in _polynomial_states(table, 3)] == [1, 1, 1, 2]
+        assert [len(level) for level in _residual_levels(table, 3)] == [1, 1, 1, 2]
         assert len(_sophie_dag(table)) < len(_sophie_tree(table))
         program = boolean.sophie(table)
         for combo in range(8):
@@ -127,7 +130,7 @@ class TestSophie:
         previous = None
         for n in (4, 5, 6):
             parity = "".join(str(bin(row).count("1") % 2) for row in range(2**n))
-            assert [len(level) for level in _polynomial_states(parity, n)] == [1] + [
+            assert [len(level) for level in _residual_levels(parity, n)] == [1] + [
                 2
             ] * n
             ratio = len(_sophie_dag(parity)) / len(_sophie_tree(parity))
@@ -141,7 +144,7 @@ class TestSophie:
         for table, n in (("10101010", 3), ("11111111", 3), ("01101001", 3)):
             program = boolean.sophie(table)
             for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 feed = iter([str(b) for b in bits])
                 got = run_sophie_from(program, feed)
                 assert got == table[combo], f"{table} inputs {bits}"
@@ -239,3 +242,23 @@ def test_shared_residual_ids_execute_at_scale(n: int) -> None:
 def test_sophie_survives_the_widths_that_used_to_break_it(width: int) -> None:
     """The regression itself, kept separate so it names the language."""
     assert _evaluate("Sophie", "0110", width) == "0110"
+
+
+@pytest.mark.parametrize("oracle", ["sophie_tree", "sophie_dag"])
+# A constant, XOR, and majority (an if-block beside an else-block).
+@pytest.mark.parametrize("table", ["11", "0110", "00010111"])
+def test_retired_oracle_executes_every_row(oracle: str, table: str) -> None:
+    """Retired constructions must compute the table they are used to measure."""
+    n = len(table).bit_length() - 1
+    code = {"sophie_tree": _sophie_tree, "sophie_dag": _sophie_dag}[oracle](table)
+    for row, expected in enumerate(table):
+        bits = format(row, f"0{n}b")
+        io = ScriptedIO("".join(bits) + "Z\n")
+        machine = Sophie(code, io)
+        for _ in range(1000):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted, (oracle, table, bits)
+        assert io.getvalue() == expected, (oracle, table, bits)
+        assert io.input_str() == "Z", (oracle, table, bits, "input count")

@@ -6,7 +6,6 @@ import re
 
 import pytest
 
-import esolangs
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import (
     EXECUTION_CLASSES,
@@ -162,10 +161,3 @@ def test_unproved_scaling_requires_a_totality_exception(ledger: Ledger) -> None:
     """An exception may still bound its construction on the supported domain."""
     measured = {row.generator for row in ledger.rows if row.scaling_class == "measured"}
     assert measured <= {row.generator for row in ledger.labelled("exception")}
-
-
-def test_befunge_refusal_is_an_explicit_totality_exception(ledger: Ledger) -> None:
-    """The fixed-torus refusal must not disappear from the totality audit."""
-    with pytest.raises(esolangs.GeneratorCapError, match="at most thirteen inputs"):
-        esolangs.generate("Befunge", "01" * 8192)
-    assert "exception" in ledger.by_name()["Befunge"].labels

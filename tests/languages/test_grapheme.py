@@ -4,7 +4,6 @@ import json
 import warnings
 from io import StringIO
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -12,18 +11,13 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
-from esolangs.cli_debug import _run_tui_session
 from esolangs.debugger import make_debugger
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import _Machine
-from esolangs.interpreters.stack_based.grapheme import (
-    suggest_corrections as _grapheme_corrections,
-)
 from esolangs.tagged import _Tagged
-from esolangs.tui import History, replay
 from esolangs.vm import complete_vm, make_vm
 from tests.cli.test_cli import call_main
-from tests.cli_support import assert_repair_runs, call_both, repaired
+from tests.cli_support import call_both
 from tests.stdin_check import _check_stdin
 from tests.test_api_contracts import XOR
 from tests.test_dialects import Unreadable
@@ -70,26 +64,6 @@ def test_portable_choices_and_memory_budget_reach_worker(tmp_path, capsys, monke
     )
     assert (output, error) == ("1", "")
     assert calls == [budget]
-
-
-@pytest.mark.parametrize(
-    ("source", "output"),
-    [
-        ("EaE", ""),
-        ("eabey", "AB"),
-    ],
-)
-def test_grapheme_case_corrections_include_literals(source, output, tmp_path, capsys):
-    edits = _grapheme_corrections(source)
-    assert repaired(source, edits) == source.upper()
-    assert all(edit.after == edit.before.upper() for edit in edits)
-    assert esolangs.run("Grapheme", repaired(source, edits), timeout=1) == output
-    path = tmp_path / "program"
-    path.write_text(source)
-    out, err = call_both(["suggest", "Grapheme", str(path)], capsys)
-    assert "->" in out
-    assert not err
-    assert path.read_text() == source
 
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
@@ -295,22 +269,6 @@ def test_cli_debug_uses_settings(tmp_path: Path, capsys):
     assert "output: '10'" in output
 
 
-def test_tui_settings_reach_wrapper():
-    settings = DialectSettings(integer_conversion="after_each_letter")
-    with patch("esolangs.cli_debug.run_tui") as run:
-        _run_tui_session("Grapheme", "FAFY", "", {}, None, settings)
-    assert run.call_args.kwargs["settings"] is settings
-
-
-def test_tui_replay_retains_settings():
-    settings = DialectSettings(integer_conversion="after_each_letter")
-    history = History("Grapheme", "FAFYPPPP", settings=settings)
-    history.budget = 1
-    assert history.at(8).output == "10"
-    assert history.at(4).output == "10"
-    assert history.at(2) == replay("Grapheme", "FAFYPPPP", "", 2, settings=settings)
-
-
 @pytest.mark.medium
 def test_raw_text_preserves_newlines_and_explicit_settings():
     source = "FAFY\n"
@@ -428,16 +386,6 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
         right = call_main(["run", "Grapheme", str(path)], capsys, stdin=stdin)
         assert warned == "0"
         assert right == "1"
-
-
-def test_grapheme_repair_executes(tmp_path, capsys):
-    assert_repair_runs("Grapheme", "FAFy", "1", tmp_path, capsys)
-
-
-def test_grapheme_case_preview_preserves_other_characters():
-    source = "Eé1?E\naY"
-    assert repaired(source, _grapheme_corrections(source)) == "Eé1?E\nAY"
-    assert not _grapheme_corrections("EABEYFAFY")
 
 
 def test_the_input_alphabet() -> None:

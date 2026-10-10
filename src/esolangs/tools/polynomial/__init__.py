@@ -14,7 +14,6 @@ from typing import Any
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
-from esolangs.polynomial_resources import estimate_generation
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
@@ -24,6 +23,7 @@ from esolangs.tools.helpers import (
     read_at,
 )
 from esolangs.tools.polynomial.algebra import primes, render_product
+from esolangs.tools.polynomial.resources import estimate_generation
 from esolangs.tools.wrap import _polynomial
 
 # Instruction cap.  Analytic n=10 worst case is 1659
@@ -369,15 +369,18 @@ def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
 LANGUAGE = Language(
     "Polynomial",
     "register_based.polynomial",
+    extra="math",
     generator_restrictions=f"at most {_POLYNOMIAL_MAX_INSTRS} instructions and "
     f"{_POLYNOMIAL_MAX_ESTIMATED_CHARS} estimated characters; "
     "table dependent",
     boolean=polynomial,
+    documented_sizes=(1_745_528, 5_458_693, 3.1),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     # Space wrap stranded every sign alone; keep sign with term, one per line.
     wrap=_polynomial,
+    slow_width_sweep=True,
     eof="an exhausted input instruction stores -1",
     empty_program="Polynomial program must start with 'f(x) = '",
 )

@@ -1,11 +1,15 @@
 """Generated README and usage sections stay in sync with the registry."""
 
-import importlib.util
 import re
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import pytest
+
+from tests.pick import one
+from tests.scripts.script_support import load
+from tests.test_language_coupling import REFERENCE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "generate_docs.py"
@@ -26,16 +30,10 @@ _EXAMPLES_START, _EXAMPLES_END = _markers("EXAMPLES")
 _BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END = _markers("BOOLEAN-COUNT")
 _SHAPES_START, _SHAPES_END = _markers("INPUT-SHAPES")
 _API_START, _API_END = _markers("PUBLIC-API")
-_TUI_START, _TUI_END = _markers("TUI-FRAME")
 
 
-def load_script() -> object:
-    spec = importlib.util.spec_from_file_location("make_languages_doc", SCRIPT)
-    assert spec is not None
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+def load_script() -> Any:
+    return load(SCRIPT)
 
 
 def test_readme_counts_match_the_registry() -> None:
@@ -164,32 +162,6 @@ def test_an_unheaded_category_names_where_to_add_it() -> None:
         module.render_languages_section()
 
 
-def test_the_tui_frame_has_no_trailing_whitespace() -> None:
-    """`trailing-whitespace` runs on README.md and would strip the padding."""
-    module = load_script()
-    rendered = module.render_tui_section()
-    assert not [line for line in rendered.splitlines() if line != line.rstrip()]
-
-
-def test_the_tui_frame_draws_the_generators_own_program() -> None:
-    """Not a mock-up: each drawn row is a row of the generated program."""
-    module = load_script()
-    import esolangs
-
-    program = esolangs.generate("Flowchart", "0110")
-    rows = program.splitlines()
-    drawn = [
-        line.split("|", 1)
-        for line in module.render_tui_section().splitlines()
-        if re.fullmatch(r"\s*\d+ \|.*", line)
-    ]
-    assert drawn, "no numbered program rows on the screen"
-    for number, body in drawn:
-        # The pane is windowed by column, so the drawn text is a slice of
-        # the row it is numbered with -- one-based, as the screen shows it.
-        assert body.strip() in rows[int(number) - 1], (number, body)
-
-
 def _marked(text: str, start: str, end: str) -> str:
     return text[text.index(start) : text.index(end) + len(end)]
 
@@ -198,8 +170,11 @@ def test_the_shape_table_carries_the_encoders_output() -> None:
     """A wrong-but-in-sync table cannot pass the sync test above."""
     module = load_script()
     rendered = module.render_input_shapes_section()
-    assert "| Fargo | `row_index` | `0`/`1` | `'5\\n'` |" in rendered
-    assert "| Taglate | `char_stream_padded` | `0`/`1` | `'0101'` |" in (rendered)
+    # Row 5 is 101; a padded stream leads an odd count with a zero.
+    for name in one(input_shape="row_index"):
+        assert f"| {name} | `row_index` | `0`/`1` | `'5\\n'` |" in rendered
+    for name in one(input_shape="char_stream_padded"):
+        assert f"| {name} | `char_stream_padded` | `0`/`1` | `'0101'` |" in rendered
 
 
 def test_boolean_set_names_are_registered() -> None:
@@ -223,10 +198,12 @@ def test_language_listing_only_lists_available_interpreters(
 ) -> None:
     module = load_script()
     monkeypatch.setitem(
-        module.LANGUAGES, "Line", replace(module.LANGUAGES["Line"], interpreter=None)
+        module.LANGUAGES,
+        REFERENCE,
+        replace(module.LANGUAGES[REFERENCE], interpreter=None),
     )
     rendered = module.render_languages_section()
-    assert "- [Line]" not in rendered
+    assert f"- [{REFERENCE}]" not in rendered
     assert f"Show all {len(module.LANGUAGES) - 1} languages" in rendered
 
 

@@ -59,7 +59,7 @@ class _Machine:
         return [int(i in self.ones) for i in range(lo, hi + 1)]
 
     def snapshot(self) -> tuple[object, ...]:
-        return (self.state, frozenset(self.ones), self.io.position())
+        return (self.state, frozenset(self.ones), self.io.progress())
 
     def step(self) -> None:
         pc, ptr, incoming, remaining, outgoing, used = self.state

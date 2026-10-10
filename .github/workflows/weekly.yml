@@ -1,6 +1,6 @@
 name: Weekly full suite
 
-# The whole suite on all three interpreters, on a schedule.  The `slow`
+# The whole suite on all supported interpreters, on a schedule.  The `slow`
 # band also runs per-PR now, sharded across four jobs in ci.yml; what
 # keeps this workflow is the `weekly` marker -- the two high-arity probes
 # nothing else runs -- plus a weekly full-suite pass at interpreters the
@@ -38,18 +38,25 @@ jobs:
       # others -- on a weekly run there is no queue to protect.
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
 
     steps:
     - uses: actions/checkout@v7
 
     - name: Install uv
       uses: astral-sh/setup-uv@v7
+      with:
+        version: "0.13.0"
 
     - name: Set up Python ${{ matrix.python-version }}
+      if: matrix.python-version != '3.15'
       uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
+    # GitHub's runtime catalog lacks 3.15.0; uv 0.13.0 provides the final release.
+    - name: Set up Python 3.15 with uv
+      if: matrix.python-version == '3.15'
+      run: uv python install 3.15.0
 
     - name: Install dependencies
       run: uv sync --group dev --python ${{ matrix.python-version }}
@@ -68,15 +75,21 @@ jobs:
     # has no merge base, so the gate would skip and print nothing useful.
     # Per-PR CI reports it with `--partial`; the blocking form is the local
     # command that report prints.
+    # Preserve the native construction cap without competing xdist workers.
+    - name: Check the preserving certificate without competing workers
+      run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.pytest_durations --duration-output certificate-durations.json
+
     - name: Test with pytest (full suite, including the slow band)
-      run: uv run python -m pytest -n auto -p scripts.pytest_durations --duration-output test-durations.json
+      run: uv run python -m pytest -n auto -k "not test_preserving_certificate" -p scripts.pytest_durations --duration-output test-durations.json
 
     - name: Retain measured test durations
       if: always()
       uses: actions/upload-artifact@v7
       with:
         name: test-durations-${{ matrix.python-version }}
-        path: test-durations.json
+        path: |
+          test-durations.json
+          certificate-durations.json
 
   # Generation *time* is the one axis the per-PR gate cannot judge: it is
   # machine- and load-dependent, and a threshold loose enough not to flake on

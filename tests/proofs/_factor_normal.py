@@ -6,6 +6,9 @@ FORBIDDEN = frozenset({"+-", "-+", "><", "<>", "[]", "..", "+,", "-,"})
 
 def normalize(code: str) -> str:
     """Preserve balanced code on inputs where it halts with exactly one output."""
+    # Both singleton update loops clear a wrapping byte; brackets keep the
+    # replaced command's run rank and exponent unchanged.
+    code = code.replace("[+]", "[-]")
     stack: list[str] = []
     for char in code:
         while stack and stack[-1] + char in FORBIDDEN:
@@ -15,7 +18,7 @@ def normalize(code: str) -> str:
             break
         else:
             stack.append(char)
-    return "".join(stack)
+    return "".join(stack).replace("[+]", "[-]")
 
 
 def growth() -> float:
@@ -69,11 +72,11 @@ def prefix_normalize(code: str) -> str:
 
 
 def prefix_growth() -> float:
-    """Return the largest root of x^3 - 6x^2 + 1 in (5.97,5.98)."""
-    lower, upper = 5.97, 5.98
+    """Return the clearing-loop normal form's Perron root in (5.94,5.95)."""
+    lower, upper = 5.94, 5.95
     for _ in range(60):
         middle = (lower + upper) / 2
-        if middle**3 - 6 * middle**2 + 1 < 0:
+        if middle**4 - 5 * middle**3 - 5 * middle**2 - 4 * middle + 1 < 0:
             lower = middle
         else:
             upper = middle

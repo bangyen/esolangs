@@ -1,20 +1,16 @@
 """The dead-definition gate reports what nothing reads and nothing else."""
 
-import importlib.util
 from pathlib import Path
+from typing import Any
+
+from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "check_dead_definitions.py"
 
 
-def load_script() -> object:
-    """Import the checker as a module, mirroring the other script tests."""
-    spec = importlib.util.spec_from_file_location("check_dead_definitions", SCRIPT)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def load_script() -> Any:
+    return load(SCRIPT)
 
 
 def _tree(tmp_path: Path, files: dict[str, str]) -> Path:

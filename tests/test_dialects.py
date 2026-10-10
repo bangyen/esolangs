@@ -118,7 +118,7 @@ def test_raster_scaling_retains_settings(balance):
     assert source.tagged(source.language).settings is settings
     assert source.upscaled(1).settings is settings
     assert source.upscaled(2).settings is settings
-    assert Raster.from_png(source.to_png()).settings is None
+    assert Raster.from_png(source.to_png()).settings == settings
     assert source.tagged(other).settings is None
 
 

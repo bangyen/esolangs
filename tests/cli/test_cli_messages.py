@@ -12,6 +12,13 @@ from esolangs.cli import main
 from esolangs.cli_io import _write_output
 from tests.cli.test_cli import _FakeStdin, _program, call_main
 from tests.cli_support import _failure, _refused, call_both
+from tests.pick import one, one_where
+
+#: A language whose input bits are not spelled 0 and 1, if one is registered.
+_SPELLED = one_where(
+    lambda d: d["input_encoding"] != ("0", "1"), boolean_generator=True
+)
+_PADDED = one(input_shape="char_stream_padded")
 
 
 class TestTheHintsStayQuietWhenTheyDoNotApply:
@@ -59,9 +66,12 @@ class TestSmallerReportsFromRoundFifteen:
     @pytest.mark.parametrize(
         ("name", "phrase"),
         [
-            ("Clockwise", "adjacent bit characters"),
-            ("Fargo", "one decimal row index"),
-            ("Taglate", "padded with a leading"),
+            *(
+                (n, "adjacent bit characters")
+                for n in one(input_shape="char_stream_cyclic")
+            ),
+            *((n, "one decimal row index") for n in one(input_shape="row_index")),
+            *((n, "padded with a leading") for n in _PADDED),
             ("brainfuck", "adjacent bit characters"),
         ],
     )
@@ -82,19 +92,23 @@ class TestRoundSixQol:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`run --help` used to answer this with a `python -c` incantation."""
-        assert call_main(["encode", "Grapheme", "10"], capsys) == "A\n%\n"
-        assert call_main(["encode", "Taglate", "101"], capsys) == "0101"
+        for name in _SPELLED:
+            zero, one = esolangs.describe(name)["input_encoding"]  # type: ignore[misc]
+            assert call_main(["encode", name, "10"], capsys) == f"{one}\n{zero}\n"
+        for name in _PADDED:
+            assert call_main(["encode", name, "101"], capsys) == "0101"
 
+    @pytest.mark.parametrize("padded", _PADDED)
     def test_encode_then_run_computes_the_table(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, padded: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The pipeline the help now recommends, on the awkward language."""
         path = tmp_path / "tg.txt"
-        path.write_text(esolangs.generate("Taglate", "10010110"))
+        path.write_text(esolangs.generate(padded, "10010110"))
         got = ""
         for row in range(8):
-            stdin = call_main(["encode", "Taglate", f"{row:03b}"], capsys)
-            got += call_main(["run", "Taglate", str(path)], capsys, stdin=stdin)[-1:]
+            stdin = call_main(["encode", padded, f"{row:03b}"], capsys)
+            got += call_main(["run", padded, str(path)], capsys, stdin=stdin)[-1:]
         assert got == "10010110"
 
     def test_version_is_accepted_after_a_subcommand(
@@ -278,6 +292,7 @@ _REFUSALS = {
         "describe brainfuck zzz",
         "unexpected argument",
     ),
+    "removed_suggest_is_refused": ("suggest", "unknown command: suggest"),
     "an_unknown_subcommand_is_suggested": ("lst", "did you mean list"),
     "a_negative_watch_cell_is_refused": (
         "debug --watch-cell -1 brainfuck prog:+++",

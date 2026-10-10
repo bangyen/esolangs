@@ -14,10 +14,6 @@ _LINUX = sys.platform == "linux"
 _BUDGET = 96 * 1024 * 1024
 
 
-def _growing_template(doublings: int) -> str:
-    return esolangs.generate("Underload", "01") + "(x)" + ":*" * doublings
-
-
 @pytest.mark.medium
 @pytest.mark.skipif(not _LINUX, reason="Linux RLIMIT_AS only")
 def test_cli_budget_runs(tmp_path, capsys) -> None:

@@ -121,13 +121,3 @@ def test_the_execution_exempt_set_is_the_unmeasured_column() -> None:
     }
     assert set(exempt) == set(_EXECUTION_EXEMPT) | qualified == unmeasured
     assert all(why for why in exempt.values())
-
-
-def test_vandevelo_remains_held_to_both_regressions(audit: Audit) -> None:
-    row = audit.by_name()["Vandevelo"]
-    assert row.output_size == "Measured"
-    assert load_ledger().by_name()["Vandevelo"].execution_class == "linear"
-    assert not row.size_is_settled
-    assert row.is_open
-    assert "Vandevelo" not in exempt_generators()
-    assert "Vandevelo" not in execution_exempt()

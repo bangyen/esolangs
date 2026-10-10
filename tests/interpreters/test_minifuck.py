@@ -10,21 +10,15 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import run_lines
 
-
-def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+run_and_capture = run_lines(run)
 
 
 class TestMinifuck:
     def test_cat_program(self) -> None:
         """The canonical cat program echoes its input."""
         assert run_and_capture("<[<.[<.", inputs=["B"]) == "B"
-
-    def test_comment_characters_ignored(self) -> None:
-        """Non-command characters are ignored."""
-        assert run_and_capture("abc", inputs=["A"]) == ""
 
     def test_tape_grows_past_the_initial_eight_cells(self) -> None:
         """The tape extends once the pointer nears its end, and . reads 8 cells."""

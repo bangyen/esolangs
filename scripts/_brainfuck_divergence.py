@@ -172,6 +172,8 @@ def _construct[StateT](
         list[Matrix],
     ],
     name: str,
+    *,
+    supersolution: bool = False,
 ) -> list[Matrix]:
     """Iterate a positive system under the shared value, time and update caps."""
     matrices: list[Matrix] = [[{} for _ in rows] for _ in classes]
@@ -180,10 +182,36 @@ def _construct[StateT](
         {state: scale} if state in starts else {} for state in range(len(rows))
     ]
     started = monotonic()
-    for _ in range(1500):
+    for iteration in range(1500):
         image = update(rows, classes, matrices, scale, bound)
         if image == matrices:
             return matrices
+        if supersolution and iteration % 20 == 19:
+            # A small upward rounding may certify domination before exact
+            # fixed-point iteration settles. The checker still evaluates F.
+            candidate = [
+                [
+                    {end: (value * 10001 + 9999) // 10000 for end, value in row.items()}
+                    for row in matrix
+                ]
+                for matrix in image
+            ]
+            if any(
+                value > 100 * scale
+                for matrix in candidate
+                for row in matrix
+                for value in row.values()
+            ):
+                matrices = image
+                continue
+            tested = update(rows, classes, candidate, scale, bound)
+            if all(
+                value <= upper.get(end, 0)
+                for matrix, bounds in zip(tested, candidate, strict=True)
+                for row, upper in zip(matrix, bounds, strict=True)
+                for end, value in row.items()
+            ):
+                return candidate
         if any(
             value > 100 * scale
             for matrix in image
