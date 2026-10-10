@@ -16,7 +16,7 @@ def cache_repo(tmp_path, monkeypatch):
     (tmp_path / ".gitignore").write_text(".cache/\n")
     (tmp_path / "src").mkdir()
     (tmp_path / "src/input.py").write_text("value = 1\n")
-    original = module.subprocess.run
+    original = module.run_bounded
     runtime = ["a" * 64]
 
     def run(cmd, **kwargs):
@@ -24,7 +24,7 @@ def cache_repo(tmp_path, monkeypatch):
             return subprocess.CompletedProcess(cmd, 0, runtime[0], "")
         return original(cmd, **kwargs)
 
-    monkeypatch.setattr(module.subprocess, "run", run)
+    monkeypatch.setattr(module, "run_bounded", run)
     cache = module.VerifiedCache(tmp_path)
     return module, tmp_path, cache, runtime
 
@@ -89,3 +89,14 @@ class TestCertificates:
             cache = module.VerifiedCache(root)
             (target / "sample.py").write_text("changed\n")
             assert not cache.finish()
+
+
+def test_runtime_timeout_declines_certificate(cache_repo, monkeypatch):
+    module, _, cache, _ = cache_repo
+
+    def timeout(cmd, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd, 60)
+
+    monkeypatch.setattr(module, "run_bounded", timeout)
+    assert cache.key("generator size baseline", ["python", "check.py"], {}) is None
+    assert not cache.finish()

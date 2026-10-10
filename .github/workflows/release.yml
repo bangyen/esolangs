@@ -93,19 +93,24 @@ jobs:
       uses: actions/setup-python@v7
       with:
         python-version: |
+          3.15
           3.14
+          3.13
           3.12
 
-    # Wheel timestamps come from the tagged commit, not the clock, so
-    # rebuilding the tag with the same setuptools gives the same wheel bytes.
-    # The sdist stays unreproducible: setuptools ignores the variable for
-    # tar mtimes and the gzip header.  Exported to the job so the sdist
-    # rebuild below is stamped the same way.
+    # Normalize archive metadata, then compare two independent builds.
     - name: Build the sdist and wheel
       run: |
         SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
         echo "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" >> "$GITHUB_ENV"
-        SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" uv build --python 3.12
+        export SOURCE_DATE_EPOCH
+        uv build --python 3.12
+        python scripts/normalize_sdist.py dist/*.tar.gz
+        uv build --python 3.12 --out-dir /tmp/release-rebuild
+        python scripts/normalize_sdist.py /tmp/release-rebuild/*.tar.gz
+        for artifact in dist/*; do
+          cmp "$artifact" "/tmp/release-rebuild/$(basename "$artifact")"
+        done
 
     # Catches a README that PyPI would reject at upload, after the tag exists.
     - name: Check the distribution metadata
@@ -114,7 +119,7 @@ jobs:
     - name: The built wheel installs and runs with and without optional extras
       run: |
         wheels=(dist/*.whl)
-        for version in 3.12 3.14; do
+        for version in 3.12 3.13 3.14 3.15; do
           venv="/tmp/relcheck-$version"
           uv venv --python "$version" "$venv"
           uv pip install --python "$venv/bin/python" "${wheels[0]}"

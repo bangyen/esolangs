@@ -74,6 +74,8 @@ class Recorder:
                 "commit": os.environ.get("GITHUB_SHA"),
                 "python": platform.python_version(),
                 "platform": platform.system(),
+                "machine": platform.machine(),
+                "harness": 1,
             },
             "exitstatus": int(exitstatus),
             "collected": sorted(self.collected),

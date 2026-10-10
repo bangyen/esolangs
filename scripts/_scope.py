@@ -69,6 +69,7 @@ def changed_files() -> list[str]:
             capture_output=True,
             cwd=ROOT,
             check=False,
+            timeout=60,
         )
         if got.returncode == 0:
             names = [os.fsdecode(name) for name in got.stdout.split(b"\0") if name]
@@ -79,6 +80,7 @@ def changed_files() -> list[str]:
         capture_output=True,
         cwd=ROOT,
         check=False,
+        timeout=60,
     )
     if not known or status.returncode != 0:
         return []

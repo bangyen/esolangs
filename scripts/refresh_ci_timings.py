@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _atomic import write_text
 from pytest_shard import collect_ids, load_durations, shard_ids
 
 
@@ -58,6 +59,15 @@ def refresh(runs: list[Path], ids: list[str], output: Path, shards: int) -> list
     if not runs or not ids or shards < 1:
         raise ValueError("runs, selected tests, and a positive shard count required")
     samples = [load_run(run, set(ids)) for run in runs]
+    cohorts = {
+        tuple(
+            json.loads(next(run.rglob("*.json.meta.json")).read_text())["run"].get(key)
+            for key in ("python", "platform", "machine", "harness")
+        )
+        for run in runs
+    }
+    if len(cohorts) != 1:
+        raise ValueError("mixed timing environments or harness versions")
     durations = {
         node: statistics.median(sample[node] for sample in samples)
         for node in sorted(set(ids))
@@ -66,7 +76,7 @@ def refresh(runs: list[Path], ids: list[str], output: Path, shards: int) -> list
         sum(durations[node] for node in shard_ids(ids, index, shards, durations))
         for index in range(shards)
     ]
-    output.write_text(json.dumps(durations, indent=1) + "\n", encoding="utf-8")
+    write_text(output, json.dumps(durations, indent=1) + "\n")
     return loads
 
 

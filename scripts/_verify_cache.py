@@ -13,6 +13,10 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Protocol
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _verify_process import run_bounded
+
 CACHED_STEPS = frozenset(
     {
         "bandit",
@@ -93,7 +97,7 @@ def runtime_digest(step: str) -> str:
 def _tree(
     root: Path, *, bandit: bool = False
 ) -> tuple[str, dict[str, tuple[int, int, int]]]:
-    result = subprocess.run(
+    result = run_bounded(
         ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
         cwd=root,
         capture_output=True,
@@ -168,7 +172,7 @@ class VerifiedCache:
             runtime = self.runtimes[query_key][2]
             return self._key(step, cmd, env, runtime)
         try:
-            result = subprocess.run(
+            result = run_bounded(
                 query,
                 env=env,
                 cwd=self.root,
@@ -176,7 +180,7 @@ class VerifiedCache:
                 text=True,
                 check=True,
             )
-        except (OSError, subprocess.CalledProcessError):
+        except (OSError, subprocess.SubprocessError):
             return None
         runtime = result.stdout.strip()
         if len(runtime) != 64 or any(
@@ -240,13 +244,17 @@ class VerifiedCache:
 
     def finish(self) -> bool:
         """Publish clean results only if repository and runtime inputs stayed fixed."""
-        if _tree(self.root) != self.initial:
+        try:
+            stable = _tree(self.root) == self.initial
+        except (OSError, subprocess.SubprocessError):
+            return False
+        if not stable:
             return False
 
         def matches(runtime: tuple[list[str], dict[str, str], str]) -> bool:
             query, env, original = runtime
             try:
-                result = subprocess.run(
+                result = run_bounded(
                     query,
                     env=env,
                     cwd=self.root,
@@ -254,14 +262,18 @@ class VerifiedCache:
                     text=True,
                     check=False,
                 )
-            except OSError:
+            except (OSError, subprocess.SubprocessError):
                 return False
             return result.returncode == 0 and result.stdout.strip() == original
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             if not all(pool.map(matches, self.runtimes.values())):
                 return False
-        if _tree(self.root) != self.initial:
+        try:
+            stable = _tree(self.root) == self.initial
+        except (OSError, subprocess.SubprocessError):
+            return False
+        if not stable:
             return False
         for path, entry in self.pending:
             path.parent.mkdir(parents=True, exist_ok=True)

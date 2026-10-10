@@ -134,3 +134,36 @@ def wait_with_heartbeat(
     except BaseException:
         stop_process_tree(proc)
         raise
+
+
+def run_bounded(
+    cmd: list[str],
+    *,
+    timeout: float = 60,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+    capture_output: bool = False,
+    text: bool = True,
+    check: bool = False,
+    stdout: int | None = None,
+    stderr: int | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run preflight probes with the same descendant cleanup as check steps."""
+    with subprocess.Popen(
+        cmd,
+        start_new_session=os.name == "posix",
+        cwd=cwd,
+        env=env,
+        text=text,
+        stdout=subprocess.PIPE if capture_output else stdout,
+        stderr=subprocess.PIPE if capture_output else stderr,
+    ) as proc:
+        try:
+            output, error = proc.communicate(timeout=timeout)
+        except BaseException:
+            stop_process_tree(proc)
+            raise
+        result = subprocess.CompletedProcess(cmd, proc.returncode, output, error)
+        if check:
+            result.check_returncode()
+        return result

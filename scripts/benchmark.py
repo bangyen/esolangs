@@ -472,6 +472,8 @@ def _measure(
             **identity,
             "python": sys.version,
             "platform": platform.platform(),
+            "machine": platform.machine(),
+            "harness": 1,
             "generated_artifact_sha256": digest,
         },
         "track_store": track_store,

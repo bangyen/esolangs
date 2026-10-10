@@ -65,7 +65,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _scope import local_tooling_deselections  # noqa: E402
 from _verify_cache import CACHED_STEPS, VerifiedCache  # noqa: E402
-from _verify_process import start_logged, wait_with_heartbeat  # noqa: E402
+from _verify_process import run_bounded, start_logged, wait_with_heartbeat  # noqa: E402
 
 # Git runs this hook with its stdout attached to a pipe, not the terminal, so
 # Python block-buffers our own prints while the steps -- which inherit the
@@ -753,7 +753,7 @@ def _ensure_dev_deps() -> None:
     """
     if os.environ.get("VERIFY_NO_SYNC", "0") not in ("", "0"):
         return
-    probe = subprocess.run(
+    probe = run_bounded(
         [*PY, "-c", "import pytest"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -763,7 +763,7 @@ def _ensure_dev_deps() -> None:
     if shutil.which("uv") is None:
         return
     print("dev dependencies missing; running `uv sync --group dev` ...")
-    subprocess.run(["uv", "sync", "--group", "dev"], cwd=ROOT, check=False)
+    run_bounded(["uv", "sync", "--group", "dev"], cwd=ROOT, check=False)
 
 
 def _should_stream(steps: int, *, quiet: bool, verbose: bool) -> bool:
@@ -869,7 +869,7 @@ def _run_steps(
             name in CACHED_STEPS and env.get("VERIFY_CLEAN_CACHE", "1") != "0"
             for name, _, env in runnable
         ):
-            with contextlib.suppress(OSError, subprocess.CalledProcessError):
+            with contextlib.suppress(OSError, subprocess.SubprocessError):
                 clean_cache = VerifiedCache(ROOT)
 
                 def prepare(steps: list[tuple[str, list[str], dict[str, str]]]) -> None:
@@ -1000,7 +1000,7 @@ def main() -> int:
     # `uv run --with pylint python scripts/verify.py`, which leaves PY pointing
     # at .venv), and it is PY that has to import pylint.
     have_pylint = (
-        subprocess.run(
+        run_bounded(
             [*PY, "-c", "import pylint"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

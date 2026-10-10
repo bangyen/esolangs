@@ -265,8 +265,8 @@ def test_missing_tools_never_report_complete_verification(
         verify.shutil, "which", lambda _: None if tool == "uv" else "/uv"
     )
     monkeypatch.setattr(
-        verify.subprocess,
-        "run",
+        verify,
+        "run_bounded",
         lambda *_args, **_kwargs: subprocess.CompletedProcess(
             [], int(tool == "pylint")
         ),
@@ -303,8 +303,8 @@ def test_shared_changes_keep_all_tests_but_measure_only_touched_source(
         lambda: ("scripts/verify.py", "src/esolangs/tools/vandevelo.py"),
     )
     monkeypatch.setattr(
-        verify.subprocess,
-        "run",
+        verify,
+        "run_bounded",
         lambda *_a, **_kw: subprocess.CompletedProcess([], 0),
     )
     with mock.patch.object(verify, "_run_steps", return_value=(0, [], 0.0)) as run:

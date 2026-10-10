@@ -5,8 +5,13 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _atomic import write_text
 
 Key = tuple[str, str]
 
@@ -38,6 +43,36 @@ def report(
     now = samples(current)
     if len(history) < 2:
         return "Generator timings: collecting history (three sweeps required).\n"
+
+    def cohort(run: list[dict[str, Any]]) -> set[str]:
+        return {
+            json.dumps(
+                [
+                    record.get("schema"),
+                    *(
+                        record.get("provenance", {}).get(key)
+                        for key in ("python", "platform", "machine", "harness")
+                    ),
+                ]
+            )
+            for record in run
+        }
+
+    if any(
+        not all(
+            record.get("provenance", {}).get(key)
+            for key in ("python", "platform", "machine", "harness")
+        )
+        for run in [current, *history[-2:]]
+        for record in run
+    ):
+        return "Generator timings: missing environment evidence; collecting history.\n"
+    environment = cohort(current)
+    if len(environment) != 1 or any(cohort(run) != environment for run in history[-2:]):
+        return (
+            "Generator timings: incompatible environments; "
+            "collecting comparable history.\n"
+        )
     before, previous = (samples(run) for run in history[-2:])
     common = before.keys() & previous.keys() & now.keys()
     regressions = []
@@ -83,9 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         with args.summary.open("a", encoding="utf-8") as stream:
             stream.write(summary)
     args.history.parent.mkdir(parents=True, exist_ok=True)
-    args.history.write_text(
-        json.dumps([*history[-1:], current]) + "\n", encoding="utf-8"
-    )
+    write_text(args.history, json.dumps([*history[-1:], current]) + "\n")
     return 0
 
 
