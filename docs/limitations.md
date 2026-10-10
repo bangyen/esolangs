@@ -170,10 +170,14 @@ Boolfuck's repeated-node upside is at most 2.3% of emitted size (n=5), and an
 admission-gated recursive BF-PDA bank never beats the plain mixed bank. Home
 Row, ROTfuck and Dimensional are lookups that name no decision-tree node, and
 LaserFuck's path-dependent leaf code makes equal subtables unequal text.
-No generator that builds a decision diagram leaves it unshared: the 34 that
-emit one all reference a sharing helper, and Underload and Unlambda carry
-repeats through `SubtreeDiagram`; the other 45 name no decision-tree node.
-thisthat's residual-duplicating fallbacks (`_strip_tree`, `_stream_tree`) are
+No decision-diagram generator leaves its repeats unshared, and the presence
+proxy is now enforced for the 48 tree-shaped generators by
+`tests/tools/test_boolean_sharing_catalogue.py`: 44 reference a canonical
+helper (`subtree_ids`, `SubtreeDiagram` -- Underload and Unlambda included),
+Circuit Diagram (`_dag`), Line (`shared_tree`) and Polynomial
+(`_polynomial_states`) a declared language-local one, and Piet is exempt (a
+strip has no jump, so a repeated subtable cannot be shared). thisthat's
+residual-duplicating fallbacks (`_strip_tree`, `_stream_tree`) are
 gated to at most three essential inputs (seven nodes) or two inputs, where a
 fold cannot pay. Back admits one bend: every route runs through column 1, so a second
 path meets the first's cells, and admission is bounded to 6..12 essential

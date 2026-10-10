@@ -1,0 +1,13 @@
+# Tree-shaped generators whose sharing is not the canonical subtree_ids /
+# SubtreeDiagram helper, or which share nothing.  Every other tree-shaped
+# generator must reference a canonical helper; this file names the exceptions
+# and their mechanism, enforced by tests/tools/test_boolean_sharing_catalogue.py.
+# The measured bounds stay with scripts/screens/sharing.py.
+
+[local]
+"Circuit Diagram" = "_dag"  # hash-consed mux fold
+"Line" = "shared_tree"  # guarded ancestor return
+"Polynomial" = "_polynomial_states"  # ordered BDD over equal residuals
+
+[exempt]
+"Piet" = "a strip has no jump, so a repeated subtable cannot be shared"
