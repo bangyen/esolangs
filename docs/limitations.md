@@ -172,10 +172,7 @@ Row, ROTfuck and Dimensional are lookups that name no decision-tree node, and
 LaserFuck's path-dependent leaf code makes equal subtables unequal text.
 thisthat's residual-duplicating fallbacks (`_strip_tree`, `_stream_tree`) are
 gated to at most three essential inputs (seven nodes) or two inputs, where a
-fold cannot pay. Circuit Diagram's area fallback is a minterm tree, not a
-decision tree, so it names no repeated residual; the folded circuit that
-does share cofactors is admitted on every sampled n=8..10 table (0 refusals
-in 234). Back admits one bend: every route runs through column 1, so a second
+fold cannot pay. Back admits one bend: every route runs through column 1, so a second
 path meets the first's cells, and admission is bounded to 6..12 essential
 inputs without a width (16 of 96 controls improved on the admitting run).
 Dig's shared pool is 2..10 unique 64-row classes indexed by a single decimal
