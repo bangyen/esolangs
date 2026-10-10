@@ -98,7 +98,9 @@ def repeated_bank(
     return best, flags
 
 
-def _repeated_blocks(table: str) -> list[tuple[int, int, int]]:
+def _repeated_blocks(
+    table: str, *, include_single: bool = False
+) -> list[tuple[int, int, int]]:
     ids = subtree_ids(table)
     n = len(ids) - 1
     live = {ids[0][0]: (1, 0)}
@@ -110,7 +112,8 @@ def _repeated_blocks(table: str) -> list[tuple[int, int, int]]:
             if key < 2:
                 continue
             saving = (copies - 1) * span
-            if span >= 4 and saving > 0:
+            # Single raw states can repeat after identifying complements.
+            if span >= 4 and (saving > 0 or include_single):
                 found.append((depth, row, saving))
             block = row // span
             zero, one = ids[depth + 1][2 * block : 2 * block + 2]
