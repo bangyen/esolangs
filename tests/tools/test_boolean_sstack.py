@@ -9,6 +9,39 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import run_sstack
 
 
+def test_screen_sharing_potential_is_mostly_below_the_label_reach() -> None:
+    """The screen's n=5 sharing potential is 82% size-2 repeats.
+
+    A deferral needs two unread inputs, so subtables of size 2 (the deepest
+    level) cannot be labeled; the screen counts them anyway. The constructs
+    reach the size >= 4 repeats and save 4.8% of the plain tree.
+    """
+    from esolangs.tools.sstack import _sstack_tree, sstack
+    from tests.tools.sample_tables import five_input_sample
+
+    def by_size(table: str) -> dict[int, int]:
+        out: dict[int, int] = {}
+        width = len(table)
+        while width > 1:
+            level = [table[i : i + width] for i in range(0, len(table), width)]
+            live = [sub for sub in level if len(set(sub)) > 1]
+            out[width] = out.get(width, 0) + len(live) - len(set(live))
+            width //= 2
+        return out
+
+    sample = five_input_sample()
+    totals: dict[int, int] = {}
+    for table in sample:
+        for size, count in by_size(table).items():
+            totals[size] = totals.get(size, 0) + count
+    assert (totals[2], totals[4], totals[8]) == (1229, 262, 3)
+    assert totals[2] > 4 * (sum(totals.values()) - totals[2])  # over 80%
+    plain = sum(len(_sstack_tree(table)[0]) for table in sample)
+    shipped = sum(len(sstack(table)) for table in sample)
+    assert (plain, shipped) == (102_108, 97_194)
+    assert round(100 * (plain - shipped) / plain, 2) == 4.81
+
+
 @pytest.mark.parametrize(
     ("table", "shared"), [("01101001", (0, 0)), ("00000000", (1, 0))]
 )

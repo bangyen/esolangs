@@ -168,11 +168,13 @@ upside, `ignored_input.py` the ignored-input growth. `sharing.py`'s n=5
 repeated-node upside is 24.6% for SStack, 34.1% for BF-PDA, 26.4% for
 thisthat, 18.3% for Back and 10.9% for Dig -- all above the gate -- so those
 exemptions rest on the construction that cannot take the repeat, not a
-sub-gate bound. A sub-gate potential is one measured exemption (Boolfuck, 2.3%
-of emitted size at n=5); the residual left after a generator's own share is a
-separate measure the screens do not produce (SStack's ternary bodies duplicate
-at most 0.63% of body characters, and an admission-gated recursive BF-PDA bank
-never beats the plain mixed bank). Home
+sub-gate bound. SStack's 24.6% is 82% subtables of size 2, below the
+two-unread-input depth a deferral needs, so its constructs reach the size >= 4
+repeats and save 4.8% of the plain tree
+(`tests/tools/test_boolean_sstack.py`); thisthat, Back, Dig and BF-PDA rest on
+their own admission tests. Boolfuck's is a sub-gate potential -- 2.3% of
+emitted size at n=5, below the gate, pinned in
+`tests/tools/test_boolean_boolfuck.py`. Home
 Row, ROTfuck and Dimensional are lookups that name no decision-tree node, and
 LaserFuck's path-dependent leaf code makes equal subtables unequal text.
 No decision-diagram generator leaves its repeats unshared, and the presence
