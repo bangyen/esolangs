@@ -7,8 +7,8 @@ import time
 
 import pytest
 
-from scripts import _benchmark_client as client
 from scripts import _verify_process as processes
+from scripts import benchmark as client
 from scripts._verify_process import MARKER, spool
 
 

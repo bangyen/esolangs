@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from scripts._benchmark_client import MAX_RECORD_CHARS, Worker
+from scripts.benchmark import MAX_RECORD_CHARS, Worker
 
 
 @pytest.mark.parametrize(

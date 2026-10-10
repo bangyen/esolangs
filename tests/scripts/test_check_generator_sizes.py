@@ -212,20 +212,20 @@ while True:
     setup = f"""
 import sys, subprocess, time
 sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / "scripts")!r})
-import _benchmark_worker as worker
+import benchmark as worker
 def hang(*args, **kwargs):
     subprocess.Popen([sys.executable, '-c', {child!r}])
     time.sleep(30)
 """
     setup += (
-        "worker.benchmark.esolangs.generate = hang\n"
+        "worker.esolangs.generate = hang\n"
         if phase == "generation"
-        else "worker.benchmark._execute = hang\n"
+        else "worker._execute = hang\n"
     )
     setup += (
         f"subprocess.Popen([sys.executable, '-c', {child!r}]); time.sleep(30)"
         if phase == "startup"
-        else "worker.main()"
+        else "worker._worker_main()"
     )
     monkeypatch.setattr(b, "Worker", lambda: factory([sys.executable, "-c", setup]))
     start = time.monotonic()

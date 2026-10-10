@@ -62,7 +62,7 @@ def test_provenance_deadline_kills_git_probe(monkeypatch):
 
 
 def test_worker_failure_keeps_full_log_and_bounded_note():
-    from scripts._benchmark_client import Worker
+    from scripts.benchmark import Worker
 
     command = (
         "import sys; sys.stderr.write('START' + 'x'*100000 + 'END'); sys.stderr.flush()"
