@@ -15,12 +15,12 @@ exemption supported by a structural proof or the measured criterion in
 - **Brainfuck:** share nested definitions inside definition bodies. Pricing
   every admissible suffix level already matches the scored level (0 of 13
   bank-eligible tables improved), so only nested definitions remain.
-- **SStack and BF-PDA:** share repeated residuals inside bank definitions.
-  SStack's ternary bodies duplicate at most 0.63% of body characters over 12
-  controls, below the ~25-character deferral stage, so inlining is the
-  measured exemption there; BF-PDA mixed banks duplicate 12-29% over 24
-  designed-repeat controls and stay open. Revisit SStack's bounded numeric
-  labels.
+- **SStack and BF-PDA:** bodies inline rather than defer a second time; both
+  are measured exemptions. SStack's ternary bodies duplicate at most 0.63%
+  of body characters (12 controls); an admission-gated recursive BF-PDA bank
+  reproduces the plain mixed bank on every admitted control, improving only
+  programs already over the 10n+2 command bound. SStack's bounded numeric
+  labels remain open.
 - **Boolfuck:** extend flag banks and two-input AND/XOR normalization to
   omitted general and nested sharing cases.
 - **Factor and Painfuck:** revisit flag-pool and depth restrictions.
