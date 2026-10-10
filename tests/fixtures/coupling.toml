@@ -3,5 +3,3 @@
 # for it to be lowered as mentions go; a language is removable when no file
 # names it.
 
-"tests/proofs/test_bands.py" = 2
-"tests/scripts/test_bundle_one.py" = 1

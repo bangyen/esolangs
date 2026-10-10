@@ -807,6 +807,8 @@ _EDITED = (
     "tests/proofs/test_schemes.py",
     "tests/tools/mutate_generator.py",
     "tests/test_interpreter_only_admissions.py",
+    "tests/proofs/test_bands.py",
+    "tests/scripts/test_bundle_one.py",
 )
 
 
@@ -935,7 +937,7 @@ def remove(name: str) -> list[str]:
 
     for relative in edited:
         _drop_entries(ROOT / relative, keys | paths, modules, external_for(relative))
-        _drop_inline_items(ROOT / relative, {name})
+        _drop_inline_items(ROOT / relative, keys)
 
     def prune(node: object) -> object:
         if isinstance(node, dict):
