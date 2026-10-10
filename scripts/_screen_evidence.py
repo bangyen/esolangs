@@ -3,8 +3,12 @@
 import hashlib
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _screen_payload import validate as validate_payload
 
 LIMIT = 32 * 1024 * 1024
 REUSABLE = {"measured", "stepped", "executed", "compared", "refused"}
@@ -61,6 +65,7 @@ def validate(records: list[Any], expected: list[str]) -> None:
             or record.get("evidence_sha256") != checksum(record)
         ):
             raise ValueError("duplicate, unplanned or invalid screen case")
+        validate_payload(record)
         seen.add(record["case_id"])
 
 
@@ -70,9 +75,10 @@ def resume(
     """Reuse only matching source, settings and corpus; interrupted cases retry."""
     value = read(path)
     if (
-        value.get("schema") != 2
+        value.get("schema") != 3
         or value.get("checkout") != identity["checkout"]
         or value.get("settings") != identity["settings"]
+        or value.get("runtime") != identity["runtime"]
         or value.get("plan") != plan
         or value.get("screen") != screen
         or value.get("status") in {"source-changed", "invalid-evidence"}

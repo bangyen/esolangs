@@ -12,7 +12,15 @@ from scripts import _screen_evidence as evidence
 
 
 def record(identifier, status="measured", **fields):
-    value = {"ordinal": 0, "rows": 0, "case_id": identifier, "status": status, **fields}
+    value = {
+        "language": "brainfuck",
+        "table_bits": 8,
+        "ordinal": 0,
+        "rows": 0,
+        "case_id": identifier,
+        "status": status,
+        **fields,
+    }
     value["evidence_sha256"] = evidence.checksum(value)
     return value
 
@@ -37,10 +45,14 @@ def test_exact_coverage_rejects_invalid_evidence(change):
 
 def test_resume_filters_interrupted_cases_and_checks_provenance(tmp_path):
     identifiers = [evidence.case_id(i) for i in range(3)]
-    identity = {"checkout": {"commit": "abc"}, "settings": {"cap": 1}}
+    identity = {
+        "checkout": {"commit": "abc"},
+        "settings": {"cap": 1},
+        "runtime": {"python": "3.14", "dependencies": [["pytest", "9.1"]]},
+    }
     plan = {"case_ids": identifiers, "tables": 3}
     records = [
-        record(identifier, status, size=4)
+        record(identifier, status, size=4, rows=1 if status == "dropped" else 0)
         for identifier, status in zip(
             identifiers, ["measured", "dropped", "skipped"], strict=True
         )
@@ -48,7 +60,7 @@ def test_resume_filters_interrupted_cases_and_checks_provenance(tmp_path):
     for index, value in enumerate(records):
         value["ordinal"] = index
     manifest = {
-        "schema": 2,
+        "schema": 3,
         "screen": "fixture",
         **identity,
         "plan": plan,
@@ -63,6 +75,8 @@ def test_resume_filters_interrupted_cases_and_checks_provenance(tmp_path):
         ("settings", {"cap": 2}),
         ("plan", {"case_ids": identifiers[::-1], "tables": 3}),
         ("schema", 1),
+        ("runtime", {"python": "3.12"}),
+        ("runtime", {"python": "3.14", "dependencies": [["pytest", "9.2"]]}),
         ("status", "invalid-evidence"),
     ]:
         path.write_text(json.dumps({**manifest, key: value}))

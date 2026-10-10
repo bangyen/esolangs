@@ -29,7 +29,7 @@ from time import perf_counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _budget import completed, options, supervise
+from _budget import completed, options, price, setup, supervise
 from _build import TABLES, chosen, size_cases, sizes
 
 #: Parity at the two arities the per-node slope is taken between.
@@ -123,22 +123,26 @@ def main() -> None:
     if args.sample + 258 > args.max_cases:
         parser.error("screen exceeds --max-cases")
     languages = list(chosen(args.languages))
-    five = sample(args.sample, args.seed)
     plan = {
-        "case_ids": [
-            identifier
-            for name, _gen in languages
-            for tables, scope in (
-                (list(PARITY.values()), "parity"),
-                (TABLES, "three"),
-                (five, "five"),
-            )
-            for identifier in size_cases(name, tables, scope)
-        ],
         "tables": len(languages) * (2 + len(TABLES) + args.sample),
         "work_bound": len(languages) * (8 + 32 + len(TABLES) * 8 + args.sample * 32),
         "work_unit": "truth_table_bits",
     }
+    price(parser, args, plan)
+    if args.dry_run:
+        supervise(parser, args, Path(__file__), plan)
+        return
+    prepared = setup(
+        args,
+        "sharing",
+        {
+            "count": args.sample,
+            "seed": args.seed,
+            "languages": [name for name, _gen in languages],
+        },
+    )
+    five = prepared["tables"]
+    plan["case_ids"] = prepared["case_ids"]
     if not supervise(parser, args, Path(__file__), plan):
         return
     print(f"repeated nodes: n=3 {share(TABLES):.1f}%, n=5 {share(five):.1f}%")

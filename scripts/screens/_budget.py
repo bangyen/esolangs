@@ -5,28 +5,64 @@ import json
 import math
 import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from _atomic import write_text
-from _reference_identity import fingerprint
-from _screen_evidence import checksum, resume, validate
+from _screen_evidence import checksum
+from _screen_phase import run as run_phase
 from _verify_process import start_logged, wait_with_heartbeat
-from benchmark import source_identity
 
 
 def options(parser: argparse.ArgumentParser) -> None:
     """Add explicit whole-screen limits and a generation-free cost preview."""
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--budget-seconds", type=float, default=60)
+    parser.add_argument("--setup-seconds", type=float, default=5)
+    parser.add_argument("--finalize-seconds", type=float, default=5)
     parser.add_argument("--max-work", type=int, default=10**10)
     parser.add_argument("--report", type=Path)
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--max-cases", type=int, default=100000)
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
+
+
+def setup(
+    args: argparse.Namespace, operation: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """Share one hard setup deadline across corpus, provenance and resume work."""
+    limit = getattr(args, "setup_seconds", 5)
+    if not math.isfinite(limit) or limit <= 0:
+        raise ValueError("setup deadline must be positive and finite")
+    if not hasattr(args, "_setup_deadline"):
+        vars(args)["_setup_deadline"] = time.monotonic() + limit
+    return run_phase(
+        operation, payload, vars(args)["_setup_deadline"] - time.monotonic()
+    )
+
+
+def price(
+    parser: argparse.ArgumentParser, args: argparse.Namespace, plan: dict[str, Any]
+) -> None:
+    """Reject an oversized workload before preparing its corpus."""
+    if (
+        any(
+            not math.isfinite(value) or value <= 0
+            for value in (
+                args.budget_seconds,
+                getattr(args, "setup_seconds", 5),
+                getattr(args, "finalize_seconds", 5),
+            )
+        )
+        or args.max_work < 1
+        or getattr(args, "max_cases", 100000) < 1
+    ):
+        parser.error("wall budgets and work limits must be positive and finite")
+    if plan.get("work_bound", plan.get("step_bound", 0)) > args.max_work:
+        parser.error("screen exceeds --max-work")
+    if plan.get("tables", 0) > getattr(args, "max_cases", 100000):
+        parser.error("screen exceeds --max-cases")
 
 
 def supervise(
@@ -37,16 +73,7 @@ def supervise(
     argv: list[str] | None = None,
 ) -> bool:
     """Return true only inside the worker; otherwise print a plan or run it."""
-    if (
-        not math.isfinite(args.budget_seconds)
-        or args.budget_seconds <= 0
-        or args.max_work < 1
-    ):
-        parser.error("wall budget and work limit must be positive and finite")
-    if plan.get("work_bound", plan.get("step_bound", 0)) > args.max_work:
-        parser.error("screen exceeds --max-work")
-    if plan.get("tables", 0) > getattr(args, "max_cases", 100000):
-        parser.error("screen exceeds --max-cases")
+    price(parser, args, plan)
     expected = plan.get("case_ids", [])
     if "case_ids" in plan and len(expected) != plan.get("tables", len(expected)):
         parser.error("planned case count does not match corpus")
@@ -59,6 +86,8 @@ def supervise(
             {
                 **{key: value for key, value in plan.items() if key != "case_ids"},
                 "wall_budget_seconds": args.budget_seconds,
+                "setup_budget_seconds": getattr(args, "setup_seconds", 5),
+                "finalize_budget_seconds": getattr(args, "finalize_seconds", 5),
             },
             sort_keys=True,
         ),
@@ -71,25 +100,45 @@ def supervise(
         if path.parent.name == "screens"
         else path.resolve().parents[1]
     )
-    directory = root / "notes/screens"
-    directory.mkdir(parents=True, exist_ok=True)
-    fd, name = tempfile.mkstemp(prefix=path.stem + "-", suffix=".json", dir=directory)
-    os.close(fd)
-    report = getattr(args, "report", None) or Path(name)
-    if report != Path(name):
-        Path(name).unlink()
+    try:
+        allocated = setup(
+            args,
+            "allocate",
+            {
+                "root": str(root),
+                "screen": path.stem,
+                "report": str(args.report) if getattr(args, "report", None) else None,
+            },
+        )
+    except (OSError, ValueError, TimeoutError) as exc:
+        parser.error(str(exc))
+    name, report = allocated["name"], Path(allocated["report"])
     progress = Path(name + ".progress")
-    checkout = source_identity()
+    try:
+        identity = setup(args, "metadata", {})
+        if "reference_template" in plan:
+            plan = {
+                **plan,
+                "reference": setup(
+                    args, "reference", {"template": plan["reference_template"]}
+                ),
+            }
+    except (OSError, ValueError, TimeoutError) as exc:
+        parser.error(str(exc))
+    checkout, runtime = identity["checkout"], identity["runtime"]
     settings = {
         key: value
         for key, value in vars(args).items()
-        if key
+        if not key.startswith("_")
+        and key
         not in {
             "report",
             "resume",
             "worker",
             "dry_run",
             "budget_seconds",
+            "setup_seconds",
+            "finalize_seconds",
             "max_work",
             "max_cases",
         }
@@ -98,18 +147,41 @@ def supervise(
     resume_file = Path(name + ".resume")
     try:
         records_to_reuse = (
-            resume(
-                args.resume,
-                {"checkout": checkout, "settings": settings},
-                plan,
-                path.stem,
-            )
+            setup(
+                args,
+                "resume",
+                {
+                    "path": str(args.resume),
+                    "identity": {
+                        "checkout": checkout,
+                        "settings": settings,
+                        "runtime": runtime,
+                    },
+                    "plan": plan,
+                    "screen": path.stem,
+                },
+            )["cases"]
             if getattr(args, "resume", None)
             else []
         )
-    except (OSError, ValueError) as exc:
+        setup(
+            args,
+            "write",
+            {
+                "path": str(resume_file),
+                "value": {
+                    "cases": records_to_reuse,
+                    "identity": {
+                        **identity,
+                        "reference": plan.get("reference"),
+                        "settings": settings,
+                    },
+                },
+            },
+        )
+    except (OSError, ValueError, TimeoutError) as exc:
         parser.error(str(exc))
-    write_text(resume_file, json.dumps({"cases": records_to_reuse}))
+    findings = Path(name + ".findings")
     started = time.monotonic()
     code = 1
     status = "failed"
@@ -127,6 +199,7 @@ def supervise(
                 **os.environ,
                 "ESOLANGS_SCREEN_PROGRESS": str(progress),
                 "ESOLANGS_SCREEN_RESUME": str(resume_file),
+                "ESOLANGS_SCREEN_FINDINGS": str(findings),
             },
             root,
             stream=True,
@@ -139,41 +212,51 @@ def supervise(
         status = "interrupted"
         raise
     finally:
-        records = []
+        finish_deadline = time.monotonic() + getattr(args, "finalize_seconds", 5)
+
+        def finish(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
+            return run_phase(operation, payload, finish_deadline - time.monotonic())
+
+        records, saved_findings = [], []
         try:
-            if progress.exists():
-                with progress.open("rb") as stream:
-                    raw = stream.read(8 * 1024 * 1024 + 1)
-                if len(raw) > 8 * 1024 * 1024:
-                    raise ValueError("screen progress exceeds eight MiB")
-                lines = raw.splitlines()
-                if raw and not raw.endswith(b"\n") and status != "complete":
-                    lines = lines[:-1]
-                records = [json.loads(line) for line in lines]
-                validate(records, expected)
+            collected = finish(
+                "collect",
+                {
+                    "progress": str(progress),
+                    "expected": expected,
+                    "status": status,
+                    "findings": str(findings),
+                },
+            )
+            records, saved_findings = collected["cases"], collected["findings"]
             if status == "complete" and len(records) != plan.get(
                 "tables", len(records)
             ):
                 status, code = "incomplete", 1
         except (OSError, ValueError):
-            records = []
             status, code = "invalid-evidence", 1
         try:
             if (
                 "reference" in plan
-                and fingerprint(plan["reference"]["template"]) != plan["reference"]
+                and finish("reference", {"template": plan["reference"]["template"]})
+                != plan["reference"]
             ):
                 status, code = "source-changed", 1
-            if source_identity() != checkout:
+            if finish("metadata", {}) != identity:
                 status, code = "source-changed", 1
         except (OSError, ValueError):
             status, code = "invalid-evidence", 1
-        write_text(
-            report,
-            json.dumps(
-                {
-                    "schema": 2,
+        finish(
+            "write",
+            {
+                "path": str(report),
+                "cleanup": [str(progress), str(resume_file)]
+                if status != "invalid-evidence"
+                else [],
+                "value": {
+                    "schema": 3,
                     "settings": settings,
+                    "runtime": runtime,
                     "screen": path.stem,
                     "checkout": checkout,
                     "plan": plan,
@@ -193,18 +276,16 @@ def supervise(
                         if not record.get("reused")
                     ),
                     "cases": records,
+                    "findings": saved_findings,
                     "status": status,
                     "exit_code": code,
                     "wall_budget_seconds": args.budget_seconds,
+                    "setup_budget_seconds": getattr(args, "setup_seconds", 5),
+                    "finalize_budget_seconds": getattr(args, "finalize_seconds", 5),
                     "elapsed_seconds": time.monotonic() - started,
                 },
-                sort_keys=True,
-                indent=1,
-            )
-            + "\n",
+            },
         )
-        progress.unlink(missing_ok=True)
-        resume_file.unlink(missing_ok=True)
         print(f"screen manifest: {report}", flush=True)
     if code:
         print(output, file=sys.stderr)

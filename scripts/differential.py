@@ -162,8 +162,10 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "screens"))
-from _budget import completed, supervise
 from _budget import options as budget_options
+from _budget import supervise
+from _differential_campaign import campaign as run_campaign
+from _differential_campaign import replay
 from _differential_generators import (
     ascii_input as ascii_input,
 )
@@ -191,9 +193,8 @@ from _differential_generators import (
 from _differential_generators import (
     subleq_program as subleq_program,
 )
-from _reference_identity import fingerprint
 from _reference_process import run as run_reference
-from _screen_evidence import case_id, reused
+from _screen_evidence import case_id
 
 import esolangs
 from esolangs.exceptions import (
@@ -357,6 +358,7 @@ class Runner:
         self.minimize_seconds = 10.0
         self.minimize_calls = 300
         self.minimize_deadline: float | None = None
+        self.minimize_status = "started"
 
     def check(self, program: str, stdin: str) -> Case | None:
         """Return the disagreement on this program, if any."""
@@ -425,9 +427,12 @@ class Runner:
                 command, b"", self.minimize_seconds
             )
         if status is not None or _code != 0:
-            self.tally["minimization/" + (status or "failed")] += 1
+            self.minimize_status = status or "failed"
+            self.tally["minimization/" + self.minimize_status] += 1
             return case
-        return _case_load(json.loads(output))
+        result = json.loads(output)
+        self.minimize_status = result["status"]
+        return _case_load(result["case"])
 
     def _minimize(self, case: Case, budget: int = 300) -> Case:
         """Shrink within the worker, retaining only the same observed cause."""
@@ -473,6 +478,13 @@ class Runner:
             got = still(best.program, best.stdin[:size])
             if got is not None:
                 best = got
+        self.minimize_status = (
+            "timeout"
+            if time.monotonic() >= deadline
+            else "call-limit"
+            if calls[0] <= 0
+            else "complete"
+        )
         self.minimize_deadline = None
         return best
 
@@ -1057,43 +1069,7 @@ def _env_name(language: str) -> str:
 
 def campaign(runner: Runner, programs: int, seed: int) -> list[tuple[Case, int]]:
     """Run ``programs`` random cases; return one minimized case per cause."""
-    rng = random.Random(seed)
-    groups: dict[str, list[Case]] = {}
-    for index in range(programs):
-        program = runner.spec.program(rng)
-        stdin = runner.spec.stdin(rng, program)
-        identifier = case_id(runner.spec.language, seed, index)
-        cached = reused(identifier)
-        case = (
-            (
-                _case_load(cached["counterexample"])
-                if cached["counterexample"] is not None
-                else None
-            )
-            if cached is not None
-            else runner.check(program, stdin)
-        )
-        # Publish the complete original before minimization or the next case can hang.
-        completed(
-            "compared",
-            case_id=identifier,
-            language=runner.spec.language,
-            seed=seed,
-            index=index,
-            reference=runner.template,
-            disagreement=case is not None,
-            counterexample=_case_record(case) if case is not None else None,
-            reused=cached is not None,
-        )
-        if case is not None:
-            groups.setdefault(case.cause, []).append(case)
-    print(f"statuses (ours/ref): {dict(runner.tally.most_common())}")
-    found = []
-    for cases in groups.values():
-        shortest = min(cases[:20], key=lambda c: len(c.program) + len(c.stdin))
-        found.append((runner.minimize(shortest, runner.minimize_calls), len(cases)))
-    print(f"minimization statuses: {dict(runner.tally.most_common())}")
-    return found
+    return run_campaign(runner, programs, seed, _case_record, _case_load)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -1109,6 +1085,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     budget_options(parser)
     parser.add_argument("--minimize-seconds", type=float, default=10)
+    parser.add_argument(
+        "--replay-case", type=Path, help="replay a saved differential finding"
+    )
     parser.add_argument("--minimize-case", type=Path, help=argparse.SUPPRESS)
     parser.add_argument(
         "--minimize-calls", type=int, default=300, help=argparse.SUPPRESS
@@ -1133,6 +1112,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         or args.minimize_calls < 1
     ):
         parser.error("campaign and minimization bounds must be positive and finite")
+    if args.replay_case is not None:
+        args.programs = 1
     plan = {
         "case_ids": [
             case_id(spec.language, args.seed, index) for index in range(args.programs)
@@ -1150,13 +1131,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         runner = Runner(spec, template, args.ref_timeout)
         runner.minimize_seconds = args.minimize_seconds
         case = _case_load(read_json(args.minimize_case))
-        print(json.dumps(_case_record(runner._minimize(case, args.minimize_calls))))  # noqa: SLF001
+        minimized = runner._minimize(case, args.minimize_calls)  # noqa: SLF001
+        print(
+            json.dumps(
+                {"case": _case_record(minimized), "status": runner.minimize_status}
+            )
+        )
         return 0
-    if not args.worker and not args.dry_run:
-        try:
-            plan["reference"] = fingerprint(template)
-        except (OSError, ValueError) as exc:
-            parser.error(str(exc))
+    plan["reference_template"] = template
     if not supervise(
         parser, args, Path(__file__), plan, list(argv) if argv is not None else None
     ):
@@ -1164,6 +1146,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     runner = Runner(spec, template, args.ref_timeout)
     runner.minimize_seconds = args.minimize_seconds
     runner.minimize_calls = args.minimize_calls
+    if args.replay_case is not None:
+        return replay(runner, args.replay_case, args.seed, _case_record)
     found = campaign(runner, args.programs, args.seed)
     print(f"{spec.language}: {args.programs} programs, seed {args.seed}")
     print(f"{len(found)} causes")
