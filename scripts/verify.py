@@ -63,6 +63,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from _scope import local_tooling_deselections  # noqa: E402
 from _verify_cache import CACHED_STEPS, VerifiedCache  # noqa: E402
 
 # Git runs this hook with its stdout attached to a pipe, not the terminal, so
@@ -1055,6 +1056,11 @@ def main() -> int:
             # caller's own `-m` and lose to it. `just test-quick` supplies its
             # own expression excluding all three deferred bands.
             cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else LOCAL_PYTEST_MARKS]
+            if not full and os.environ.get("VERIFY_FULL", "0") in ("", "0"):
+                deferred = local_tooling_deselections(changed)
+                cmd.extend(deferred)
+                if deferred:
+                    print("[defer] unrelated tooling integrations: covered by CI")
         if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
             unavailable.append(f"{name}: uv not installed")
             continue

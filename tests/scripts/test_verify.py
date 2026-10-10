@@ -164,7 +164,6 @@ def test_coverage_gate_requires_both_runs(monkeypatch, suite_code, coverage_code
 
 
 def _signature(cmd: list[str]) -> str:
-    """The token that identifies one ``STEPS`` command inside ``ci.yml``."""
     joined = " ".join(cmd)
     found = re.search(r"scripts/[a-z_0-9]+\.py", joined)
     if found:
@@ -192,11 +191,12 @@ class TestCiRedoesEveryLocalStep:
         assert bogus not in workflow
 
 
-def test_local_runs_exclude_the_weekly_band() -> None:
-    """Default and full local runs leave weekly probes to the scheduler."""
+@pytest.mark.parametrize(("path", "size"), [("", 0), ("README.md", 7), ("src/x.py", 1)])
+def test_local_test_selection(path, size) -> None:
     verify = load_script()
     assert verify.LOCAL_PYTEST_MARKS == "not slow and not weekly"
     assert verify.FULL_PYTEST_MARKS == "not weekly"
+    assert len(verify.local_tooling_deselections([path] if path else [])) == size
 
 
 class TestZeroStepsIsNotAPass:

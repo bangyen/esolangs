@@ -106,3 +106,61 @@ def widens_to_everything(changed: list[str]) -> str | None:
     if any(f.endswith(SHARED_TOOLING) for f in changed):
         return "verification tooling changed"
     return None
+
+
+TOOLING_INTEGRATIONS = {
+    "tests/scripts/test_bundle_one.py": (
+        (
+            "TestBundleCompiles::test_every_bundle_exposes_run",
+            "TestBundleDetails",
+            "test_raster_module_entry_point_matches_the_library",
+            "test_package_bundle_also_supports_text_without_pillow",
+            "test_raster_package_bundles_from_raw_http_sources",
+        ),
+        ("src/", "scripts/bundle_one.py", "scripts/install_one.sh", "tests/pick.py"),
+    ),
+    "tests/scripts/test_mutate_generator.py": (
+        ("TestPrepare::test_focused_generator_baseline_collects",),
+        ("src/", "tests/"),
+    ),
+    "tests/scripts/test_ci_coverage.py": (
+        ("test_combining_shards_retains_every_branch",),
+        (
+            ".github/workflows/",
+            "scripts/pytest_shard.py",
+            "scripts/check_diff_coverage.py",
+        ),
+    ),
+}
+
+
+def local_tooling_deselections(changed: list[str]) -> list[str]:
+    """Defer unrelated tooling integrations to the unchanged CI test bands."""
+    if not changed or any(
+        path in SHARED_TOOLING
+        or path
+        in {
+            "uv.lock",
+            ".coveragerc",
+            "tests/conftest.py",
+            "tests/__init__.py",
+            "tests/scripts/script_support.py",
+            "setup.cfg",
+            "pytest.ini",
+            "tox.ini",
+        }
+        or path.startswith("tests/fixtures/")
+        or (path.startswith("tests/scripts/") and Path(path).name == "conftest.py")
+        for path in changed
+    ):
+        return []
+    return [
+        f"--deselect={suite}::{test}"
+        for suite, (tests, dependencies) in TOOLING_INTEGRATIONS.items()
+        if not any(
+            path == suite
+            or path.startswith((*dependencies, "tests/scripts/__init__.py"))
+            for path in changed
+        )
+        for test in tests
+    ]
