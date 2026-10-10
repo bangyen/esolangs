@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from itertools import pairwise
 
 from esolangs.tools.helpers import (
@@ -11,23 +10,8 @@ from esolangs.tools.helpers import (
     move_text,
     subtree_ids,
 )
+from esolangs.tools.shared_block import ContinuationCost as _Cost
 from esolangs.tools.shared_block import repeated_bank, repeated_block, repeated_blocks
-
-
-@dataclass(frozen=True, slots=True)
-class _Cost:
-    """A local maximum plus its eventual normal or deferred continuation."""
-
-    value: int
-    children: tuple[_Cost, ...] = ()
-    target: int | None = None
-
-    def evaluate(self, tails: dict[int | None, int]) -> int:
-        return self.value + (
-            max(child.evaluate(tails) for child in self.children)
-            if self.children
-            else tails[self.target]
-        )
 
 
 def shared_flag_tree(

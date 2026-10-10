@@ -1,6 +1,44 @@
 """Select repeated residuals from the tree that survives sibling folding."""
 
+from __future__ import annotations
+
+from dataclasses import dataclass
+
 from esolangs.tools.helpers import subtree_ids
+
+
+@dataclass(frozen=True, slots=True)
+class ContinuationCost:
+    """A local maximum plus its eventual normal or deferred continuation."""
+
+    value: int
+    children: tuple[ContinuationCost, ...] = ()
+    target: int | None = None
+
+    def evaluate(self, tails: dict[int | None, int]) -> int:
+        """Return the worst reachable cost with the supplied continuations."""
+        return self.value + (
+            max(child.evaluate(tails) for child in self.children)
+            if self.children
+            else tails[self.target]
+        )
+
+
+def repeated_definitions(
+    table: str, *, branching_only: bool = False
+) -> tuple[tuple[int, int], ...]:
+    """Return every repeated nonconstant residual in increasing depth order."""
+    found = _repeated_blocks(table)
+    if not branching_only:
+        return tuple((depth, row) for depth, row, _ in found)
+    ids = subtree_ids(table)
+    n = len(ids) - 1
+    return tuple(
+        (depth, row)
+        for depth, row, _ in found
+        if ids[depth + 1][row >> (n - depth - 1)]
+        != ids[depth + 1][(row >> (n - depth - 1)) + 1]
+    )
 
 
 def repeated_block(table: str) -> tuple[int, int] | None:
