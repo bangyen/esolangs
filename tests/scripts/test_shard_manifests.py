@@ -14,22 +14,33 @@ def evidence(tmp_path):
         directory = tmp_path / str(index)
         directory.mkdir()
         path = directory / "tests.shard.json"
-        record = {
-            "schema": 1,
-            "shard": index,
-            "shards": 2,
-            "marker": "slow",
-            "collected": ["a", "b", "serial"],
-            "selected": selected,
-            "excluded": ["serial"],
-            "run": {"id": None, "attempt": None, "commit": None},
-        }
-        path.write_text(json.dumps(record))
         recorder = Recorder(directory / "test-durations.json")
         recorder.collected.update(selected + (["serial"] if index == 0 else []))
         recorder.finished.update(recorder.collected)
         recorder.durations.update(dict.fromkeys(recorder.collected, 1))
         recorder.pytest_sessionfinish(0)
+        # Mirror pytest_shard: the manifest carries the same run identity the
+        # Recorder stamps from GITHUB_* (and platform) into its sidecar.  A
+        # null identity here would disagree with the sidecar in CI, where
+        # those variables are set, and check() would fail closed on the
+        # identity before ever reaching the injected fault.
+        run = json.loads((directory / "test-durations.json.meta.json").read_text())[
+            "run"
+        ]
+        path.write_text(
+            json.dumps(
+                {
+                    "schema": 1,
+                    "shard": index,
+                    "shards": 2,
+                    "marker": "slow",
+                    "collected": ["a", "b", "serial"],
+                    "selected": selected,
+                    "excluded": ["serial"],
+                    "run": run,
+                }
+            )
+        )
         paths.append(path)
     return paths
 
