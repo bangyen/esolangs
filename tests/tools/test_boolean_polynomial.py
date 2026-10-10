@@ -294,7 +294,7 @@ def test_polynomial_starts_a_term_only_on_a_line_of_its_own() -> None:
     """The layout: a term starts a line, and only ever at the start of one."""
     program = generate("Polynomial", "0110", width=DEFAULT_WIDTH)
     lines = program.split("\n")
-    # Line 1 is ``f(x) = <term>``: ``f(x)``, ``=`` and the unsigned term.
+    # The first line is ``f(x) = <term>``: ``f(x)``, ``=`` and the unsigned term.
     assert lines[0].startswith("f(x) = ")
     assert len(lines[0].split()) == 3
     for line in lines[1:]:

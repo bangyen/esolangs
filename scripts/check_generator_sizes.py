@@ -13,7 +13,7 @@ regression *or* a win -- fails until ``--update`` rewrites the baseline, which
 puts the delta in the diff where review sees it.
 
 Generation *time* is deliberately not pinned.  It is load- and machine-
-dependent (CI runs ~2.3x slower than a laptop here), and a gate that flakes is
+dependent (CI runs ~2.3 times slower than a laptop here), and a gate that flakes is
 worse than no gate; ``weekly.yml`` records timings as an artifact instead, so
 the trend stays readable without blocking a PR on noise.
 

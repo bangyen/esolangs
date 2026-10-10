@@ -155,7 +155,7 @@ def test_duplicate_residual_definitions_abort():
         )
 
 
-# 4.6-5.1s on 3.12 alone (n=16, both encodings), at the 5s medium ceiling;
+# 4.6 to 5.1s on 3.12 alone (n=16, both encodings), at the 5s medium ceiling;
 # the loaded CI faster shard pushed it past the 15s scaled limit twice.
 @pytest.mark.slow
 @pytest.mark.parametrize("language", ["brainfuck", "Boolfuck"])

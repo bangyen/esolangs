@@ -334,7 +334,7 @@ class TestParameterizedOneTwoThree:
             b.test(kills=frozenset({(0,)}))
 
     def test_test_reports_a_kill_that_never_fires(self) -> None:
-        """``test(kills=...)`` refuses a close where a victim tested FALSE."""
+        """``test(kills=...)`` refuses a close where a victim tested false."""
         from esolangs.tools.one_two_three.construction import (
             ConstructError,
             _Builder,
@@ -344,7 +344,7 @@ class TestParameterizedOneTwoThree:
 
         row = _Row((0,))
         row.pos = 0
-        row.tape = 0  # nothing marked: the victim tests FALSE everywhere
+        row.tape = 0  # nothing marked: the victim tests false everywhere
         b = _Builder.__new__(_Builder)
         b.n = 1
         b.chunks = []

@@ -61,7 +61,7 @@ REGIME_BAND = (0.5, 4.0)
 MIN_RUNGS = 3
 
 #: Arity ceilings.  Deliberately fixed rather than a time budget -- a
-#: wall-clock cutoff would climb further on a fast machine than in CI (~2.3x
+#: wall-clock cutoff would climb further on a fast machine than in CI (~2.3 times
 #: slower here) and quietly change the verdict.  The default reaches n=12; the
 #: overrides are the generators whose builds are measured in seconds, each set
 #: to the lowest arity that still clears MIN_RUNGS past its last route change.

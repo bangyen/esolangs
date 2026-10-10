@@ -1,5 +1,6 @@
 """Dialect settings: public surface, provenance, evaluation and per-language rules."""
 
+import inspect
 import pickle
 from dataclasses import FrozenInstanceError
 from io import StringIO
@@ -8,6 +9,7 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings, Raster
+from esolangs.registry import LANGUAGES
 from esolangs.tagged import _Tagged
 from esolangs.vm import make_vm
 from tests.cli_support import call_both
@@ -44,6 +46,17 @@ def _invalid() -> list[tuple[str, DialectSettings]]:
             bad = choice + 1 if isinstance(choice, int) else "bogus"
             cases.append((name, DialectSettings(**{key: bad})))
     return cases
+
+
+def test_every_dialect_declares_its_values() -> None:
+    """A language's ``dialect`` and ``dialect_values`` name the same settings."""
+    for name, language in LANGUAGES.items():
+        settings = (
+            set(inspect.signature(language.dialect).parameters)
+            if language.dialect is not None
+            else set()
+        )
+        assert set(language.dialect_values or {}) == settings, name
 
 
 class Unreadable(StringIO):

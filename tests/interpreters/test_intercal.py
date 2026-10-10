@@ -16,7 +16,8 @@ _run = partial(run_program, run, suppress_eof=False)
 
 
 def test_calculate_mingle_select_unary_and_output() -> None:
-    # Unary rotates right (manual s3.4.3, #&77 = 4): &3 keeps bit0, not bit1.
+    # The unary operator rotates right (manual s3.4.3, #&77 = 4): &3 keeps
+    # bit0, not bit1.
     source = 'PLEASE .1 <- \'"&#1$#1"~"#0$#65535"\'\nDO READ OUT .1\nDO GIVE UP'
     assert _run(source) == "I\n"
 

@@ -183,7 +183,7 @@ STEPS = [
     # not pay it -- `_scoped_coverage` narrows the measurement to the
     # touched files, which is all the gate reads.
     #
-    # `--cov-branch` costs 3.3x before 3.14, where sys.monitoring cannot
+    # `--cov-branch` costs 3.3 times before 3.14, where sys.monitoring cannot
     # measure branches and coverage falls back to the old tracer.  An older
     # interpreter pays that silently rather than breaking, so if this ever
     # feels slow again check the interpreter before the tests: coverage says
