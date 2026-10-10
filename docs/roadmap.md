@@ -22,13 +22,18 @@ exemption supported by a structural proof or the measured criterion in
   200 n=7 tables), so the wall is return overhead and layout: a second return
   target needs bus routing Line's crossing-free strokes forbid. Controls in
   `tests/tools/test_boolean_line_share_scope.py`.
-- **Circuit Diagram:** resolve duplication in its area/resource fallback, or
-  establish why alternative sharing cannot profit within the contracts. The
-  area-admitted shared fold cuts the dense n=8 area 12x (1,780,773 ->
-  147,264 cells) but grows x2.80 at n=7->8, x2.05 at n=8->9 and x2.58 at
-  n=9->10, so it was reverted. The retained node-count build is x1.41 in the
-  n=8->9 window the linearity test checks but x33.8 at n=7->8 and x3.18 at
-  n=9->10, so neither is linear and the gap stands.
+- **Circuit Diagram:** wall (measured). The cofactor-sharing bus fold is
+  area-smaller than the H-layout but not linear-area. Its node-count cutoff
+  (`nodes**2 <= 4*T`) rejects the dense n=8 fold (75 nodes) although the
+  shared model is 194,775 cells against the H-layout's 1,946,024, so the
+  public build emits the unshared lattice and jumps x26.4 in area from n=7
+  (73,809) to n=8. Removing the cutoff admits folds whose same-parity growth
+  n=8->10 is x4.93, over the x4.4 contract; banding lowers the constant but
+  not the exponent (x4.79), and the H-layout's own is x4.37. Sharing would
+  have to be grafted onto the H-recursion -- one lattice site per distinct
+  residual, parents' buses routed to it -- a new construction, not a parameter
+  change. Controls in
+  `tests/tools/test_boolean_circuit_diagram_share.py`.
 
 ## Research follow-up
 
