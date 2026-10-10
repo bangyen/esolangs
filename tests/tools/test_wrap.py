@@ -1,5 +1,3 @@
-"""Wrapping a generated program must not change what it does."""
-
 import re
 from dataclasses import replace
 from functools import cache
@@ -31,14 +29,12 @@ from tests.divergence import diverges, terminates
 from tests.generator_support import CHECK
 from tests.witness_tables import parity
 
-# A 2-input table (XOR), which every boolean generator can build.  Used
-# where a test needs *a* program rather than the language's own example.
+# Every boolean generator can build two-input XOR.
 TABLE = "0110"
 
 
 def _public(lang: object, table: str) -> str:
-    """What ``generate`` returns with no width: the generator's own output,
-    rendered to the public run form for a parameterized language."""
+    """Return the generator output rendered as a public template when needed."""
     from esolangs.registry import parameterized_ids, render_template
 
     assert lang.boolean is not None  # type: ignore[attr-defined]

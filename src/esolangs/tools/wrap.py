@@ -143,6 +143,7 @@ def _span(length: int, cell: int) -> int:
 #: One input's mark run (:func:`~esolangs.tools.helpers.mark`), one token:
 #: a break inside would land inside the setter.  Adjacent runs are two tokens.
 _RUN = "|".join(f"{re.escape(mark(i))}+" for i in range(MOST_INPUTS))
+_MARK_PATTERN = re.compile(f"[{chr(MARK)}-{chr(MARK + MOST_INPUTS - 1)}]")
 
 
 def wrap_tokens(program: str, width: int, pattern: str) -> str:
@@ -162,7 +163,7 @@ def wrap_chars(program: str, width: int) -> str:
 
     Any position is a legal break, except inside a template's :data:`_RUN`.
     """
-    if not any(MARK <= ord(c) < MARK + MOST_INPUTS for c in program):
+    if not _MARK_PATTERN.search(program):
         return "\n".join(program[i : i + width] for i in range(0, len(program), width))
     return _join_tokens(re.findall(f"{_RUN}|[\\s\\S]", program), width, separator="")
 
@@ -656,11 +657,7 @@ def balance_program(program: str, language_id: str) -> str:
         tokens = re.findall(f"{_RUN}|{pattern}", program)
         width = balanced_token_width(tokens)
         return min(program, _join_tokens(tokens, width, ""), key=balance_score)
-    if (
-        wrapper is wrap_chars
-        and any(MARK <= ord(c) < MARK + MOST_INPUTS for c in program)
-        and "\n" not in program
-    ):
+    if wrapper is wrap_chars and _MARK_PATTERN.search(program) and "\n" not in program:
         tokens = re.findall(f"{_RUN}|[\\s\\S]", program)
         width = balanced_token_width(tokens)
         return min(program, _join_tokens(tokens, width, ""), key=balance_score)
