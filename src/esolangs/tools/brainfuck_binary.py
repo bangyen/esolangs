@@ -1,7 +1,7 @@
-"""Share up to fourteen two-input functions through at most four pending bits.
+"""Share residual words through unused suffix flags and retired prefix inputs.
 
-Zero/four mean completed zero/one. Other labels use two suffix flags, R,
-and a retired prefix input. The decoder consumes the label before its body.
+The default two-input bank keeps its original labels. Larger bodies reserve
+one label for completed one; decoding clears every marker before the body.
 """
 
 from esolangs.tools.helpers import (
@@ -15,11 +15,13 @@ from esolangs.tools.shared_block import _repeated_blocks
 from esolangs.tools.shared_flag import flag_tree_body
 
 
-def binary_bank(table: str, command_budget: int) -> tuple[str, int] | None:
-    """Return a priced binary bank after the standard identity-order reads."""
+def binary_bank(
+    table: str, command_budget: int, *, remaining: int = 2
+) -> tuple[str, int] | None:
+    """Return a priced suffix bank after the standard identity-order reads."""
     n = _validate_truth_table(table)
-    depth = n - 2
-    if n < 4:
+    depth = n - remaining
+    if remaining < 1 or depth < 2:
         return None
     start, result = 2 * (n - 1), 2 * n
     ids = subtree_ids(table)
@@ -27,17 +29,33 @@ def binary_bank(table: str, command_budget: int) -> tuple[str, int] | None:
     blocks = [(d, row) for d, row, _ in _repeated_blocks(table) if d == depth]
     if len(blocks) < 2:
         return None
-    if len(blocks) > 14:
-        raise ValueError("too many nonconstant two-input functions")
+    if remaining == 2:
+        if len(blocks) > 14:
+            raise ValueError("too many nonconstant two-input functions")
+        planned_width = 4
+        result_bit = 2
+    else:
+        planned_width = (len(blocks) + 1).bit_length()
+        if planned_width > min(remaining + 2, depth):
+            return None
+        result_bit = min(remaining, planned_width - 1)
+    completed_one = 1 << result_bit
+    high_bit = 1 << (remaining + 1)
+    flags = tuple(2 * (depth + i) + 1 for i in range(result_bit))
     kept = essential_inputs(table, n)
     # Standard reads overwrite the next kept cell for ignored inputs. Their
     # own cells before the last kept input remain zero, so [-] costs one step.
     unwritten = {2 * i for i in range(kept[-1]) if i not in kept}
-    codes = [value for value in range(1, 16) if value != 4]
-    # R supplies bit 2, so 0/4 distinguish completed zero/one paths without
-    # another cell. Four retired inputs suffice to decode the complete word.
-    selected = {ids[depth][row >> 2]: codes[i] for i, (_, row) in enumerate(blocks)}
-    words = {codes[i]: table[row : row + 4] for i, (_, row) in enumerate(blocks)}
+    codes = [value for value in range(1, 1 << planned_width) if value != completed_one]
+    # Reserve R's digit for completed one. All other digits use unread flags;
+    # only a word exceeding that capacity needs the retired-input high bit.
+    selected = {
+        ids[depth][row >> remaining]: codes[i] for i, (_, row) in enumerate(blocks)
+    }
+    words = {
+        codes[i]: table[row : row + (1 << remaining)]
+        for i, (_, row) in enumerate(blocks)
+    }
     out: list[str] = []
     pos = start
     count = 0
@@ -60,7 +78,7 @@ def binary_bank(table: str, command_budget: int) -> tuple[str, int] | None:
 
     def inline(word: str) -> int:
         nonlocal pos
-        code, commands = flag_tree_body(word, (n - 2, n - 1), pos, result)
+        code, commands = flag_tree_body(word, tuple(range(depth, n)), pos, result)
         emit(code)
         pos = result
         return commands
@@ -75,8 +93,8 @@ def binary_bank(table: str, command_budget: int) -> tuple[str, int] | None:
         key = ids[i][lo >> (n - i)]
         if i == depth:
             code = selected.get(key)
-            if code is not None and (not (code & 8) or free is not None):
-                cells = (2 * depth + 1, 2 * (depth + 1) + 1, result, free)
+            if code is not None and (not (code & high_bit) or free is not None):
+                cells = (*flags, result, free)
                 for bit, cell in enumerate(cells):
                     if code & (1 << bit):
                         if cell is None:
@@ -85,19 +103,19 @@ def binary_bank(table: str, command_budget: int) -> tuple[str, int] | None:
                         emit("+")
                 return _Cost(
                     count - beginning,
-                    target=pending_target(code, free if code & 8 else None),
+                    target=pending_target(code, free if code & high_bit else None),
                 )
             commands = inline(table[lo:hi])
             if constant(lo, hi):
                 return _Cost(
                     commands,
-                    target=pending_target(4 if table[lo] == "1" else 0),
+                    target=pending_target(completed_one if table[lo] == "1" else 0),
                 )
             return _Cost(
                 commands,
                 (
                     _Cost(0, target=pending_target(0)),
-                    _Cost(0, target=pending_target(4)),
+                    _Cost(0, target=pending_target(completed_one)),
                 ),
             )
         if constant(lo, hi):
@@ -108,7 +126,7 @@ def binary_bank(table: str, command_budget: int) -> tuple[str, int] | None:
             adjustment = sum(clear(2 * level) - 3 for level in range(i, depth))
             return _Cost(
                 count - beginning + adjustment,
-                target=pending_target(4 if table[lo] == "1" else 0),
+                target=pending_target(completed_one if table[lo] == "1" else 0),
             )
         mid = (lo + hi) // 2
         zero_id, one_id = ids[i + 1][lo >> (n - i - 1)], ids[i + 1][mid >> (n - i - 1)]
@@ -160,7 +178,7 @@ def binary_bank(table: str, command_budget: int) -> tuple[str, int] | None:
     # At most one retired input holds a high marker; every other prefix
     # input is zero. Collect it before reusing those cells as decoder bits.
     collector_base = 0
-    for i in range(depth if width == 4 else 0):
+    for i in range(depth if width == remaining + 2 else 0):
         collector_base += abs(pos - 2 * i) + 1
         move(2 * i)
         emit("[-")
@@ -169,7 +187,7 @@ def binary_bank(table: str, command_budget: int) -> tuple[str, int] | None:
         move(2 * i)
         emit("]")
     scratch = tuple(2 * (depth - width + i) for i in range(width))
-    metadata = (2 * depth + 1, 2 * (depth + 1) + 1, result, collector)[:width]
+    metadata = (*flags, result, collector)[:width]
     transfer_base = 0
     transfer_active = []
     for source, target in zip(metadata, scratch, strict=True):
@@ -186,7 +204,7 @@ def binary_bank(table: str, command_budget: int) -> tuple[str, int] | None:
         beginning = count
         if bit < 0:
             code = labels[0]
-            if code == 4:
+            if code == completed_one:
                 move(result)
                 emit("+")
             elif code != 0:
@@ -253,3 +271,26 @@ def binary_bank(table: str, command_budget: int) -> tuple[str, int] | None:
     if commands > command_budget:
         return None
     return "".join(out), commands
+
+
+def larger_suffix_bank(table: str, command_budget: int) -> tuple[str, int] | None:
+    """Emit the eligible non-default level with greatest repeated-span saving."""
+    n = _validate_truth_table(table)
+    groups: dict[int, tuple[int, int]] = {}
+    for depth, _, saving in _repeated_blocks(table):
+        count, score = groups.get(depth, (0, 0))
+        groups[depth] = count + 1, score + saving
+    best: tuple[int, int] | None = None
+    for depth, (count, score) in groups.items():
+        remaining = n - depth
+        width = (count + 1).bit_length()
+        if remaining != 2 and count >= 2 and width <= min(remaining + 2, depth):
+            candidate = score, remaining
+            if best is None or candidate > best:
+                best = candidate
+    # One scan chooses a level; no bodies are generated for losing levels.
+    # Its prefix and disjoint representative spans total O(T). Actual text
+    # and commands still decide admission alongside the existing candidates.
+    return (
+        None if best is None else binary_bank(table, command_budget, remaining=best[1])
+    )

@@ -2,7 +2,7 @@
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.brainfuck_binary import binary_bank
+from esolangs.tools.brainfuck_binary import binary_bank, larger_suffix_bank
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -132,6 +132,14 @@ def _bf_ordered(
         binary = binary_bank(truth_table, 69 * n + 44 - len(header) - _ASCII_ZERO - 1)
         if binary is not None:
             body, _ = binary
+            candidate = header + body + "+" * _ASCII_ZERO + "."
+            if len(candidate) < len(plain):
+                plain = candidate
+        larger = larger_suffix_bank(
+            truth_table, 69 * n + 44 - len(header) - _ASCII_ZERO - 1
+        )
+        if larger is not None:
+            body, _ = larger
             candidate = header + body + "+" * _ASCII_ZERO + "."
             if len(candidate) < len(plain):
                 plain = candidate
