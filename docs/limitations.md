@@ -162,12 +162,17 @@ versus 23.6 for the tree. The construction and the counting floor are in
 [fractran](proofs/fractran.md) and `tests/proofs/deep/fractran.py`.
 
 The canonical sharing piece is applied or exempt by measurement. The
-per-generator screens bound it: `sharing.py` the repeated-node upside,
-`constant.py` the constant-folding upside, `ignored_input.py` the
-ignored-input growth. A bound below the gate cost is the measured exemption:
-SStack's ternary bodies duplicate at most 0.63% of body characters,
-Boolfuck's repeated-node upside is at most 2.3% of emitted size (n=5), and an
-admission-gated recursive BF-PDA bank never beats the plain mixed bank. Home
+per-generator screens bound the *potential*, before a generator's own share:
+`sharing.py` the repeated-node upside, `constant.py` the constant-folding
+upside, `ignored_input.py` the ignored-input growth. `sharing.py`'s n=5
+repeated-node upside is 24.6% for SStack, 34.1% for BF-PDA, 26.4% for
+thisthat, 18.3% for Back and 10.9% for Dig -- all above the gate -- so those
+exemptions rest on the construction that cannot take the repeat, not a
+sub-gate bound. A sub-gate potential is one measured exemption (Boolfuck, 2.3%
+of emitted size at n=5); the residual left after a generator's own share is a
+separate measure the screens do not produce (SStack's ternary bodies duplicate
+at most 0.63% of body characters, and an admission-gated recursive BF-PDA bank
+never beats the plain mixed bank). Home
 Row, ROTfuck and Dimensional are lookups that name no decision-tree node, and
 LaserFuck's path-dependent leaf code makes equal subtables unequal text.
 No decision-diagram generator leaves its repeats unshared, and the presence
