@@ -7,6 +7,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.stack_based.eval import _Machine, run
+from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_printing
 
 run_and_capture = partial(run_printing, run)
@@ -112,9 +113,7 @@ class TestStepMachine:
         # which is what the VM's run loop does.
         assert _Machine("", IO()).halted
 
-    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        state = _Machine("0+.", IO())
-        before = state.snapshot()
-        hash(before)  # must not raise
-        state.step()
-        assert state.snapshot() != before
+
+class TestContract(SnapshotContract):
+    machine = staticmethod(lambda code: _Machine(code, IO()))
+    stepping_program = "0+."

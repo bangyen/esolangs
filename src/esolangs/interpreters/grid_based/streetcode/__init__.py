@@ -181,7 +181,7 @@ class _Machine:
             self._state,
             self.cp,
             tuple(sorted(self.cells.items())),
-            self.io.position(),
+            self.io.progress(),
             self._done,
             self._input_reads,
             tuple(self.grid),

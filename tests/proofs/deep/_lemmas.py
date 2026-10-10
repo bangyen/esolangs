@@ -8,7 +8,8 @@ from dataclasses import dataclass, field
 
 # The suite's own shapes, not a local stand-in: ``_dense`` is the worst case to
 # fold and ``_parity`` the table with no constant subtree above a single row.
-from tests.tools.test_boolean_contract import _dense, _parity
+from tests.witness_tables import dense as _dense
+from tests.witness_tables import parity as _parity
 
 
 class UnprovenError(Exception):

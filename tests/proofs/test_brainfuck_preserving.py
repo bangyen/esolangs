@@ -1,9 +1,6 @@
 """Independent grammar and execution controls for preserved-cell prefixes."""
 
 import itertools
-import json
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -23,6 +20,7 @@ from scripts.grammar_certificate import check_grammar
 from scripts.preserving_certificate import check_certificate
 from tests.proofs._brainfuck_balanced import Matrix, patterns
 from tests.proofs._brainfuck_count import ALPHABET, accepts, automaton, minimize
+from tests.proofs._checker_cli import run_checker
 from tests.proofs.test_brainfuck_count import _observe
 from tests.proofs.test_brainfuck_divergence import _word as _nonzero_word
 
@@ -65,9 +63,16 @@ def _confined(word: str, direction: int) -> bool:
 def _prefix(word: str) -> bool:
     atoms = _atoms(word)
     position = 0
+    balance = 0
     while position < len(atoms):
         char, _, _, begin = atoms[position]
         if char == ".":
+            position += 1
+            continue
+        if char in "+-":
+            balance += 1 if char == "+" else -1
+            if abs(balance) > 1:
+                return False
             position += 1
             continue
         if char not in "<>":
@@ -86,7 +91,7 @@ def _prefix(word: str) -> bool:
                 break
         else:
             return False
-    return True
+    return balance == 0
 
 
 def _word(word: str, *, body: bool = False) -> bool:
@@ -135,6 +140,24 @@ def test_preserving_side_conditions() -> None:
     assert _word("[->+<[],]")
     assert _observe("+[-[]].", "")[0] == "halt"
     assert _observe("+[]", "")[0] == "diverge"
+    assert _prefix("+>+<-")
+    assert not _prefix("+>+<")
+    assert not _prefix("++>+<--")
+    assert not _word("[+>+<-[],]")
+    assert _word("[+>+<[],]")
+
+
+def test_cancelling_tested_updates_execute() -> None:
+    for prefix in ("+>+<-", "->+<+", "+>[-[->[-]<]]<-", "+.>+<-."):
+        assert _prefix(prefix)
+        for value in range(256):
+            initial = "+" * value
+            assert _observe(initial + "[" + prefix + "[],].", "") == _observe(
+                initial + "[].", ""
+            )
+    # At byte 255 a non-cancelling increment clears the tested cell.
+    assert _observe("-" + "[+>+<[]].", "")[0] == "halt"
+    assert _observe("-" + "[].", "")[0] == "diverge"
 
 
 @pytest.mark.parametrize("direction", [1, -1])
@@ -165,7 +188,13 @@ def test_touching_excursion_is_not_preserving() -> None:
 def test_preserving_certificate() -> None:
     rows, classes, matrices = certificate()
     check_certificate(rows, classes, matrices, SCALE, BOUND)
-    assert matrix_image(rows, classes, matrices, SCALE, BOUND) == matrices
+    image = matrix_image(rows, classes, matrices, SCALE, BOUND)
+    assert all(
+        value <= upper.get(end, 0)
+        for matrix, bounds in zip(image, matrices, strict=True)
+        for row, upper in zip(matrix, bounds, strict=True)
+        for end, value in row.items()
+    )
     assert sum(sum(matrix[0].values()) for matrix in matrices) <= 793307057
     assert check_grammar(rows, ALPHABET, sorted(patterns()), []) == 705
     with pytest.raises(ValueError, match="supersolution"):
@@ -204,29 +233,16 @@ def test_preserving_checker_rejects_bad_candidates(damage: str) -> None:
 def test_preserving_checker_cli(tmp_path: Path) -> None:
     rows, classes = [[0] + [-1] * 7], states()
     matrices: list[Matrix] = [[{}] for _ in classes]
-    for state in (EMPTY, (False, 0, 1, 1, 0, 0, 0), (False, 0, 1, 2, 0, 0, 0)):
+    for state in (EMPTY, (False, 0, 1, 1, 0, 0, 0, 0), (False, 0, 1, 2, 0, 0, 0, 0)):
         matrices[classes.index(state)][0][0] = 1
-    path = tmp_path / "preserving.json"
-    path.write_text(
-        json.dumps(
-            {
-                "rows": rows,
-                "classes": classes,
-                "matrices": matrices,
-                "scale": 1,
-                "bound": [7, 1],
-                "factors": list(",-+<>[]"),
-            }
-        )
+    data = {
+        "rows": rows,
+        "classes": classes,
+        "matrices": matrices,
+        "scale": 1,
+        "bound": [7, 1],
+        "factors": list(",-+<>[]"),
+    }
+    assert "exact preserving-prefix supersolution" in run_checker(
+        tmp_path, "preserving_certificate.py", data
     )
-    script = (
-        Path(__file__).resolve().parents[2] / "scripts" / "preserving_certificate.py"
-    )
-    result = subprocess.run(
-        [sys.executable, str(script), str(path)],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    assert "exact preserving-prefix supersolution" in result.stdout

@@ -11,20 +11,31 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGETS = (
-    ("Qoibl", "tools/nocomment"),
-    ("brainfuck", "tools/smallfuck"),
-    ("Bitdeque", "tools/suffolk"),
-    ("Smallfuck", "tools/underload"),
-    ("Line", "tools/piet"),
-    ("Piet", "tools/line"),
-)
 SECONDS_PER_TARGET = 240
 
 
+def _rotation(kind: str) -> list[str]:
+    """Each language's target of ``kind`` its ``weekly_mutation`` names."""
+    sys.path.insert(0, str(ROOT / "src"))
+    from esolangs.registry import LANGUAGES
+
+    return [
+        name
+        if kind == "interpreter"
+        else lang.boolean.__module__.removeprefix("esolangs.").replace(".", "/")
+        for name, lang in LANGUAGES.items()
+        if kind in lang.weekly_mutation and (kind != "generator" or lang.boolean)
+    ]
+
+
 def targets_for(date: datetime.date) -> tuple[str, str]:
-    """Return the pair for an absolute week, including across year boundaries."""
-    return TARGETS[(date.toordinal() // 7) % len(TARGETS)]
+    """Return the pair for an absolute week, including across year boundaries.
+
+    Each rotation is read from the registry, so a removed language drops out.
+    """
+    week = date.toordinal() // 7
+    interpreters, generators = _rotation("interpreter"), _rotation("generator")
+    return interpreters[week % len(interpreters)], generators[week % len(generators)]
 
 
 def run_target(kind: str, target: str, output: Path) -> bool:

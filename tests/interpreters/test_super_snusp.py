@@ -215,7 +215,8 @@ def test_super_snusp_mirror_ring_loops_under_every_draw() -> None:
     code = ['/"\\', "\\ /"]
     machine = SuperSnusp(code, ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(machine, limit=3000) is False
-    assert run_until_halt_or_cycle(SuperSnusp(code, ScriptedIO())) is False
+    with pytest.raises(TypeError, match="random machines"):
+        run_until_halt_or_cycle(SuperSnusp(code, ScriptedIO()))
 
 
 def test_super_snusp_forks_every_value_equals_could_store() -> None:

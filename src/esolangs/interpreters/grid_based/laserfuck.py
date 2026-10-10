@@ -259,7 +259,7 @@ class _Machine:
             self.jmp,
             self.ind,
             tuple(self.lsrs),
-            self.io.position(),
+            self.io.progress(),
             self._input_reads,
             self._draws,
             self.text,

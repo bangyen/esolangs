@@ -11,6 +11,7 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.tools.nocomment import PAIR
+from tests.witness_tables import row_bits
 
 
 class TestParameterizedNoComment:
@@ -26,7 +27,9 @@ class TestParameterizedNoComment:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill through the shipped filler, not a copy of it."""
-        from tests.tools.fills import _fill_nocomment
+        from tests.tools.fills import fill
+
+        _fill_nocomment = fill("NoComment")
 
         return _fill_nocomment(tpl, bits)
 
@@ -91,7 +94,7 @@ class TestParameterizedNoComment:
         template = generators.nocomment(table)
         assert set(template) <= set("idclrnfsbo") | {TEMPLATE_CHAR}
         for combo in (0, 1, 2**n - 1, 2**n - 2, 1234, 2731, 4096, 6000):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = self.run_nocomment(self.instantiate(template, bits), 6)
             assert got == table[combo], f"n={n} inputs {bits}"
 
@@ -127,7 +130,7 @@ class TestParameterizedNoComment:
         assert len(template) < len(generators.nocomment(parity))
         assert template.count("fsf") == 4 + 2 + 1  # four rows, two stages, a pad
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = self.run_nocomment(self.instantiate(template, bits), 6)
             assert got == table[combo], f"inputs {bits}"
 
@@ -156,6 +159,6 @@ class TestParameterizedNoComment:
         for name, table in tables.items():
             template = generators.nocomment(table)
             for combo in rows:
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 got = self.run_nocomment(self.instantiate(template, bits))
                 assert got == table[combo], f"{name} n={n} inputs {bits}"

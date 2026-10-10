@@ -1,9 +1,10 @@
 """Boolean generator for sophie."""
 
 from itertools import chain, count
+from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Payload
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -132,9 +133,16 @@ def sophie_labels(retained: list[list[int]]) -> list[dict[int, int]]:
     return [{state: next(values) for state in states} for states in retained]
 
 
+def _payload(state: Any) -> Payload:
+    """Split out the accumulator, control stack, pc and two flags."""
+    pc, accumulator, _skip, control, _halted, _cursor = state
+    return (accumulator,), control, pc, 2
+
+
 LANGUAGE = Language(
     "Sophie",
     "register_based.sophie",
+    payload=_payload,
     boolean=sophie,
     contract=BooleanContract(
         input_shape="char_stream",

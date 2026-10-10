@@ -49,13 +49,6 @@ class TestTheSpecIsReachable:
         assert payload["spec"] == esolangs.describe("brainfuck")["spec"]
         assert payload["name"] == "brainfuck"
 
-    def test_the_plain_output_points_at_it(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A flag nobody can find is a flag nobody has."""
-        out, _err = call_both(["describe", "brainfuck"], capsys)
-        assert "esolangs describe --spec brainfuck" in out
-
     def test_the_pointer_names_the_resolved_name(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:

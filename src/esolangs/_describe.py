@@ -63,6 +63,7 @@ class LanguageInfo(TypedDict):
     dumps_on_the_post_halt_step: bool
     steppable_to_answer: bool
     eof_is_a_value: bool
+    random: bool
     examples: list[str]
     wiki_url: str
     dialect_settings: dict[str, DialectOption]
@@ -92,8 +93,10 @@ def describe(language: str) -> LanguageInfo:
     ``("o", "@")`` is a grid mark); :func:`read_answer` returns ``"0"``/``"1"``.
     Machine traits (``self_halts``, ``dumps_on_the_post_halt_step``,
     ``steppable_to_answer``, ``eof_is_a_value``) are documented on
-    :func:`~esolangs.vm.machine_traits`.  ``examples`` lists the committed
-    programs as POSIX paths relative to the package
+    :func:`~esolangs.vm.machine_traits`.  ``random``: the interpreter has
+    instructions that draw at random (``run(seed=...)`` fixes them).
+    ``examples`` lists the committed programs as POSIX paths relative to
+    the package
     (``importlib.resources.files("esolangs") / path``);
     ``examples/MANIFEST.md`` says what each computes.
     """
@@ -141,6 +144,7 @@ def describe(language: str) -> LanguageInfo:
         "dumps_on_the_post_halt_step": traits["dumps_on_the_post_halt_step"],
         "steppable_to_answer": traits["steppable_to_answer"],
         "eof_is_a_value": traits["eof_is_a_value"],
+        "random": lang.random,
         "examples": examples,
         "wiki_url": wiki_url(name),
     }

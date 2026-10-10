@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.interpreters.io import IO, ScriptedIO
+from tests.interpreters.cursorless_io import PositionlessIO
 
 
 def test_input_num_reads_past_the_int_str_digit_cap() -> None:
@@ -167,3 +168,30 @@ def test_line_exhaustion_counts_only_actual_line_delimiters(separator: str) -> N
     with pytest.raises(InputExhaustedError) as error:
         source.input_str()
     assert (error.value.reads, error.value.supplied, error.value.unit) == (2, 2, "line")
+
+
+@pytest.mark.parametrize("io_type", [ScriptedIO, PositionlessIO])
+@pytest.mark.parametrize(
+    "method", ["input_char", "input_str", "input_token", "input_num", "input_all"]
+)
+def test_progress_tracks_consumption_and_stays_stable_at_eof(io_type, method):
+    source = io_type("1")
+    assert source.progress() == 0
+    getattr(source, method)()
+    assert source.progress() == 1
+    if method == "input_all":
+        assert source.input_all() == ""
+    else:
+        with pytest.raises(EOFError):
+            getattr(source, method)()
+    assert source.progress() == 1
+
+
+def test_interactive_empty_line_advances_progress():
+    source = IO()
+    with patch("builtins.input", side_effect=["", EOFError]):
+        assert source.input_str() == ""
+        assert source.progress() == 1
+        with pytest.raises(EOFError):
+            source.input_str()
+    assert source.progress() == 1

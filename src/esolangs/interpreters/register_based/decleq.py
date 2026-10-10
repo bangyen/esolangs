@@ -139,7 +139,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # Plus the input cursor: a repeat ignoring consumed input is not a cycle.
         pc, memory = self.state
-        return (memory, pc, self.io.position())
+        return (memory, pc, self.io.progress())
 
     def step(self) -> None:
         """Execute one instruction, advancing the pointer.

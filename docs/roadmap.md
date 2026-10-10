@@ -79,51 +79,32 @@ Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading
 bounds, and the weighted-description theorem.
 
-## Engineering
-
-Generator gaps against the canonical pieces in
-[CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
-
-- **Canonical-gap screen.** Run every generator on every path (default,
-  width, balance, dialect) to n=8 against the three canonical pieces, with
-  execution and a positive control; price it before launch. It should find
-  the two gaps below and any others.
-- **BFStack constant fold.** A constant n=4 table emits 67 characters where
-  a constant leaf takes 59.
-- **Dig width paths.** A repeated flat leaf is shared on the default and
-  balance paths (tiled n=8 -22.7%), never under `width`. Either route its
-  wires in the narrow layout or record why none fit.
-- **Dig wire rule.** Routes to a shared leaf come from a per-build
-  fewest-turns search. Replace the search with a fixed route if one keeps
-  the saving.
-- **Back bend routes stay out.** They add under one point on tiled n=8,
-  and raise worst commands at n=6/7 from 122/221 to 154/306, past the
-  execution ledger's bound.
-
 ## Parked
 
 Stalled problems, one line each; detail lives in the linked proof page. A
 line changes only when its next step does.
 
-- **FRACTRAN bit-linear pipeline.** Next: execute a forward cleanup scan
-  for direct chunks in place of minimum-tree updates; factor removal cannot
-  enable an earlier failed guard. Prime generation and literal conversion
-  remain, with the materialized sieve forcing `Theta(T log T)` generation
+- **FRACTRAN bit-linear pipeline.** Forward cleanup now executes without
+  minimum-tree updates. Next: remove the materialized prime sieve's
+  `Theta(T log T)` generation cost; literal conversion remains too
   ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
-- **Brainfuck behaviour count.** Next: permit cancelling updates to the tested
-  cell in the confined preserving-prefix certificate
+- **Brainfuck behaviour count.** Cancelling tested-cell updates with balance
+  confined to `{-1,0,1}` are certified. Next: cover larger excursions or
+  lower the exponential bound
   ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
 - **Brainfuck on bounded inputs.** Next: establish Theorem 6's limit or
   sharpen either side ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
 - **Polynomial's constant.** Next: replace the instruction profile or raise
   the coefficient-mass bound ([polynomial](proofs/polynomial.md#explicit-constants)).
-- **Factor leading constant.** Next: a sound local rewrite lowering the
-  lower side's Perron root, or a cheaper weighted command stream
+- **Factor leading constant.** Clearing-loop normalization lowers the Perron
+  root to `5.948789300`. Next: broaden the normal form or construct a cheaper
+  weighted command stream
   ([factor](proofs/factor.md#open-problems)).
-- **Malbolge's first unreachable arity.** Next: construct native query
-  initialization and the obstructed-record selector; the verified handoff's
-  existing continuation corrupts saved parity
-  ([malbolge-scaling](proofs/malbolge-scaling.md#open-problems)).
+- **Malbolge's first unreachable arity.** Seventeen remains open. Native
+  components pass separate controls, but the reduced LAST-only layout is
+  8,432 cells short before the full query and relocation selector. Next:
+  share initialization and query control, then relocate records before capture
+  ([malbolge-scaling](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09)).
 - **Vandevelo structural scaling.** Next: settle Cohen and Shinkar's
   `O(log n)` DNF-of-parities gap, which bounds output and so generation
   time; on the build side, a `certify` that rebuilds a level only when its

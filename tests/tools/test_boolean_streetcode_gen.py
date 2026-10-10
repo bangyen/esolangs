@@ -9,6 +9,7 @@ from esolangs.tools.wrap import shortest
 from tests.tools.boolean_runners import (
     run_streetcode,
 )
+from tests.witness_tables import row_bits
 
 
 def _columns(program: str) -> int:
@@ -29,7 +30,7 @@ class TestStreetcode:
         n = 6
         table = "".join(str(index.bit_count() & 1) for index in range(2**n))
         program = boolean.streetcode(table)
-        bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+        bits = row_bits(combo, n)
         assert run_streetcode(program, [str(bit) for bit in bits]) == table[combo]
 
     def test_the_flat_lookup_is_nine_rows_at_every_arity(self) -> None:

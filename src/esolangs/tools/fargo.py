@@ -27,8 +27,8 @@ from string import ascii_lowercase
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
+    _validate_shape,
     _validate_truth_table,
-    anf_coefficients,
     short_name,
 )
 from esolangs.tools.wrap import balance_score
@@ -269,6 +269,33 @@ def _balance(table: str, default: str) -> str:
     # Width requests add orders; their shortest expression cannot grow.
     wide = fargo(table, len(default))
     return min(default, wide, fargo(table, 1), key=balance_score)
+
+
+def anf_coefficients(truth_table: str) -> list[int]:
+    """Return row-indexed ANF coefficients, allowing a nullary reduced table.
+
+    Pack Theta(log T) coefficients per word for O(T) word-RAM work.
+    """
+    n = _validate_shape(truth_table)
+    if n == 0:
+        return [int(truth_table)]
+    width = max(2, 1 << (n.bit_length() - 1))
+    words = [
+        int(truth_table[start : start + width][::-1], 2)
+        for start in range(0, len(truth_table), width)
+    ]
+    stride = 1
+    while stride < width:
+        high = int(("1" * stride + "0" * stride) * (width // (2 * stride)), 2)
+        words = [value ^ ((value << stride) & high) for value in words]
+        stride *= 2
+    stride = 1
+    while stride < len(words):
+        for start in range(0, len(words), 2 * stride):
+            for offset in range(start, start + stride):
+                words[offset + stride] ^= words[offset]
+        stride *= 2
+    return [(value >> bit) & 1 for value in words for bit in range(width)]
 
 
 LANGUAGE = Language(

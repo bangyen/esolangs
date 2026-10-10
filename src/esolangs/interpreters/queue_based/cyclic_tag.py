@@ -90,7 +90,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         # Deleted prefixes cannot affect a later transition.
-        return (self.head, self.live, self.state[2:], self.io.position())
+        return (self.head, self.live, self.state[2:], self.io.progress())
 
     def step(self) -> None:
         if self.halted:

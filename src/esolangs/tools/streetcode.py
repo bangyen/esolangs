@@ -708,6 +708,8 @@ def _balance(table: str, default: str) -> str:
 LANGUAGE = Language(
     "Streetcode",
     "grid_based.streetcode",
+    layout_switch=(5, 6),
+    slow_scaling=True,
     boolean=streetcode,
     split=True,
     contract=BooleanContract(

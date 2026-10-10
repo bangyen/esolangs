@@ -153,7 +153,7 @@ set; with transfer matrix `M`, `N_n = e_root^T M^n 1 <= (v_root / min v) * rho^n
 | bi/err, balanced bodies without sole-loop bodies, local factors of length at most six and their mirrors | 1186 | 195 | **6.91** |
 | bi/err, the same local factors and unrestricted print rotation | 1186 | 195 | **6.90** |
 | bi/err, the same factors, rotation and unrestricted read-free nonzero tails | 1186 | 195; 32 atom classes | **6.89** |
-| bi/err, also recursively confined preserving prefixes | 1186 | 195; 236 atom classes | **6.885** |
+| bi/err, also recursively confined preserving prefixes | 1186 | 195; 354 atom classes | **6.885** |
 | bi/keep, all rules | 12759 | 17946 | 7.1948872 |
 | clip/err, empty input only, + `,c -> ,` for `c != ]` | 3940 | 6273 | 6.3217970 |
 
@@ -426,14 +426,17 @@ The preserving-prefix extension uses the named recursive languages
     Q = (. | + | - | [Q])*
     R = (. | + | - | [R] | >Q<)*
     L = the left/right mirror of R
-    P = (. | >R< | <L>)*.
+    P = (. | + | - | >R< | <L>)*, with tested-cell balance in {-1,0,1}
+        throughout and zero at the end.
 
 `Q` stays on one cell. Induction over `R` shows that it never moves left of
 its starting cell, visits at most one cell to its right, and returns to its
 start whenever it returns. A loop `[R]` inherits those properties because
 each returning iteration restores its pointer. Thus every returning `P`
 preserves its starting cell and pointer: its excursions visit only the
-two cells to either side, and its base prints do not change the cell.
+two cells to either side, and its base updates cancel. Base prints do not
+change the cell. The balance restriction defines a finite subclass; it does
+not permit every cancelling word.
 These words contain no read and have unbounded bracket nesting.
 
 For `[P[]G] -> []`, zero entry skips both bodies. At nonzero entry, `P`
@@ -445,23 +448,31 @@ its excursion changes the tested cell; neither prefix belongs to `P`.
 
 Extend the atom state by two confinement phases (base, adjacent cell,
 broken) for `R` and `L`, plus a preserving-prefix phase (base, offsets
-`+1,+2,-1,-2`, broken, blocked). A loop at a confined base requires a
+`+1,+2,-1,-2`, broken, blocked), and signed tested-cell balance. A loop at a confined base requires a
 body of that confinement type; at the adjacent cell it requires `Q`.
 The overlap of the right and left types is exactly `Q`. For the prefix
 phase, a loop at offset one requires the corresponding confined body,
-and at offset two requires `Q`. At base, an empty loop makes the phase
-blocked; every other loop, read or sign breaks the prefix. Blocked stays
+and at offset two requires `Q`. At base, signs update the balance; exceeding
+absolute balance one breaks the prefix. An empty loop at zero balance makes
+the phase blocked; at nonzero balance it breaks the prefix, as does any
+other base loop or any read. Excursions retain the balance. Blocked stays
 blocked through every suffix, including reads. Only loop-body formation
 rejects blocked sequences; top-level `P[]G` remains counted.
 
-Reachability reconstructs 236 classes and eleven loop types: one empty
+Reachability reconstructs 354 classes and eleven loop types: one empty
 type and ten nonempty read/first-print/confinement types. The same positive
 forward equations apply, now excluding blocked body classes. Five initial
 DFA rows still suffice. At `x = 200/1377` and scale `10^8`, capped integer
-iteration freezes with 22,344 nonzero entries. The independent checker
+iteration gives a supersolution with 36,003 nonzero entries. Every entry
+is checked against its exact upward-rounded polynomial image. The independent checker
 uses pointer-height arithmetic rather than the builder's phase transitions,
 ordinary sparse products, and the same 705-pair factor-language check.
-The initial-row sum proves **`B(C) <= 7.93307057 * 6.885^C`**.
+The initial-row sum proves **`B(C) <= 7.92886936 * 6.885^C`**.
+
+When a C11 compiler is available, a bounded 128-bit kernel performs the
+iteration; Python remains the fallback. The independent checker evaluates
+every resulting inequality with unbounded integers. The native rebuild and
+checker take 25.35 seconds on the measured host.
 
 The independent recursive word oracle checks all 299,593 words through
 size six and all eleven body classes. Executions cover bracket depths
@@ -473,8 +484,9 @@ a positive control for the added family. No certificate table is committed.
     uv run python -m scripts._brainfuck_preserving --export notes/brainfuck-preserving.json
     uv run python scripts/preserving_certificate.py notes/brainfuck-preserving.json
 
-The next extension is preserving prefixes that permit cancelling updates
-to the tested cell; `P` currently permits only prints at that cell.
+Executions also cover cancelling tested-cell updates from all 256 byte
+values, with wrapping non-cancellation as a negative control. Larger
+tested-cell excursions and a smaller exponential bound remain open.
 
 ## 4. Loop-free programs (Theorem 3)
 
@@ -912,8 +924,9 @@ equivalence is confined to the chosen input set.
   has unbounded Moore class count. The 11,673-state certificate covers balanced bodies only
   to bracket depth one. The balanced-body, rotation and read-free nonzero-tail
   certificates, extended by recursively confined preserving prefixes, give
-  `6.885` on the bi-infinite tape (section 3). Next permit cancelling updates
-  to the tested cell in the preserving-prefix class
+  `6.885` on the bi-infinite tape (section 3). Cancelling updates with
+  tested-cell balance confined to `{-1,0,1}` are now certified; larger
+  excursions remain open. Preservation is still essential
   (`+[-[]].` halts and prints NUL, while `+[].` diverges). A potentially diverging excursion
   cannot commute across a read at EOF; excursions with output cannot commute across prints.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between

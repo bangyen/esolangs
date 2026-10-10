@@ -104,7 +104,7 @@ class _Machine:
         return list(self.state[2])
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.position())
+        return (*self.state, self.io.progress())
 
     def step(self) -> None:
         if self.halted:

@@ -17,8 +17,8 @@ under "The slack certificate" supplies the size bound.
 The older routing lemma under "Variable read counts" and the bounded
 searches remain as proof history and counterexamples. Claims below are
 proved, executed, or identified as bounded searches.
-`tests/proofs/test_negatives.py` reruns the executed claims it covers;
-`tests/proofs/deep/multiplicity.py` pins the block-incidence links. Some
+`tests/proofs/test_polynomial_negatives.py` reruns the executed claims it covers;
+`tests/proofs/deep/polynomial.py` pins the block-incidence links. Some
 (executed) markers refer to scratch probes without a regression test.
 
 Program-text complexity is tight in this model: the uncapped residual-DAG
@@ -559,7 +559,7 @@ satisfy the sharper `D_k <= 1 + 2B` over all cursors, since each read cursor
 then runs at one read index.  Both bounds are executed: on 16,799 random
 terminating programs and 19,080 mutants of the counterexample at n=4..6 over
 every input, `D*_k <= 2 + 4B` never fails, while 3,995 mutants break
-`D_k <= 1 + 2B` (`tests/proofs/deep/multiplicity.py` reruns a seeded slice).
+`D_k <= 1 + 2B` (`tests/proofs/deep/polynomial.py` reruns a seeded slice).
 The consuming bound is executed on machine- and tree-shaped
 builds at n=3..5 over every input; its floor `(N'-2)/4` evaluates to
 7.25, 25.25, 63.5 at n=8, 10, 12, 0.23..0.25 of `T/log2 T` (the older 16, 52,
@@ -683,7 +683,7 @@ primorial and stops falling once `D` passes about `2L`; the greedy multiple
 profile "one primorial-sized coefficient, every other one polynomial" has
 no member at any searched size, and a second coefficient at a constant
 fraction of the primorial is the measured floor -- still `Theta(T)` digits,
-so matching, not separating.  `tests/proofs/test_negatives.py` re-derives
+so matching, not separating.  `tests/proofs/test_polynomial_negatives.py` re-derives
 the `L = 3, 4` floors at `D = 8`.
 
 **Few large coefficients exist only with a dense tiny part** (executed).
@@ -744,7 +744,7 @@ product itself or a cofactor of degree `<= 6` (`L = 3..5` with `K = L -
 digits are `sum log|g_k| + t (log B + log D)`; the lemma gives `t log L`,
 the chain's count would give `0.3 (D - K) L log2 L` -- quadratic, the
 product's order -- if it were a theorem, and it is not.  Bound on this
-profile only; not a language lower bound.  `tests/proofs/test_negatives.py`
+profile only; not a language lower bound.  `tests/proofs/test_polynomial_negatives.py`
 pins the lemma's threshold and the `L = 6, K = 3, B = 13` negative.
 
 **The iterated elimination: `prod (p_i - 1)` over the largest primes.**  The
@@ -802,7 +802,7 @@ exact-degree certificate (the row-space member with `c - 1` zeros just
 under the top, low-position constraints included) is never below the
 limit: every `K <= L - 2` at `L = 5, 6, 7`, every `D` from `L` to 40, in
 exact rationals (`L = 7, K = 4`: 1349, 626, 424, ... 192.0 against 192;
-pinned to `D = 40` in `tests/proofs/test_negatives.py`).  The
+pinned to `D = 40` in `tests/proofs/test_polynomial_negatives.py`).  The
 sequences involved are Polya-frequency: `1 / prod (1 - r_i x)` with `r_i >
 0` is the generating function of a PF sequence (Aissen--Schoenberg--
 Whitney), so `h_s(r)` is log-concave in `s`, the kernel `(a, s) ->
@@ -1175,7 +1175,7 @@ hat F_{m+1} G - G_{m+1} hat F` is a `c`-root sum vanishing on `Z' u {m+1}`,
 all `c - 1` of its zeros, hence one-signed above `m + 1`; positive there,
 because only `G` carries `y_c` and so `W_d ~ hat F_{m+1} gamma_c y_c**d`
 with `gamma_c > 0` (`G > 0` past `m`).  Chaining, `E_d / hat F_d <= sigma <=
-G_z / hat F_z` for `d >= z > m`, which is (D).  `tests/proofs/test_negatives.py`
+G_z / hat F_z` for `d >= z > m`, which is (D).  `tests/proofs/test_polynomial_negatives.py`
 pins every link -- the identity of step 3, the sufficient bound in step 4, (C),
 (D), `W > 0`, and `Delta`'s zero structure -- in exact rationals.
 
@@ -1247,7 +1247,7 @@ The smaller "one closer per (value, condition)" charge is false, executed:
 one contiguous `[2]` block has two routing closers with code-5 partners in
 different opener blocks.  Those are two incidence edges, so the example is a
 positive control for the distinction rather than a refutation of the lemma.
-`tests/proofs/deep/multiplicity.py` checks both charges and the outerplanar
+`tests/proofs/deep/polynomial.py` checks both charges and the outerplanar
 count on that machine.
 
 **The confluent certificate (multiplicity is free of the extra hypothesis).**
@@ -1263,7 +1263,7 @@ distinctness hypothesis from the coefficient argument, and so removes one
 reason the earlier searches looked necessary.  The distinct-root forcing comes
 from the routing lemma together with the block-incidence bound above, which
 counts distinct values.
-`tests/proofs/deep/multiplicity.py` pins the algebraic content of the
+`tests/proofs/deep/polynomial.py` pins the algebraic content of the
 confluent bound on small certificates; it does not re-prove the limit step,
 and no repeated-root mass order is needed for the theorem.
 

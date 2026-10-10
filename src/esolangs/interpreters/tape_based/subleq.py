@@ -62,7 +62,7 @@ class _Machine:
         return list(self.cells)
 
     def snapshot(self) -> tuple[object, ...]:
-        return (tuple(self.cells), self.pc, self.io.position())
+        return (tuple(self.cells), self.pc, self.io.progress())
 
     def _read(self, address: int) -> int:
         if address < 0:

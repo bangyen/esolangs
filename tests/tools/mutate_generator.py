@@ -43,6 +43,9 @@ _TOOLS_SUPPORT = (
     Path("tests/source_support.py"),
     Path("tests/witness_tables.py"),
     Path("tests/generator_support.py"),
+    Path("tests/pick.py"),
+    # Shared tests name ``REFERENCE`` from here rather than a language.
+    Path("tests/test_language_coupling.py"),
     # ``generator_support`` validates tables through this oracle.
     Path("tests/stdin_check.py"),
     Path("tests/__init__.py"),
@@ -50,6 +53,8 @@ _TOOLS_SUPPORT = (
     Path("tests/raises.py"),
     Path("tests/interpreters/__init__.py"),
     Path("tests/interpreters/runner.py"),
+    # Sophie's retired oracles, which its generator tests measure against.
+    Path("tests/tools/sophie_support.py"),
 )
 
 # The root suites' own reach outside ``tests/``.  ``tests/*.py`` is copied
@@ -138,7 +143,7 @@ _KINDS = {
         include_init=True,
     ),
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT, needs_scripts=True),
-    # The package root: ``vm``, ``debug``, ``tui``, ``cli``, ``registry``.
+    # The package root: ``vm``, ``debug``, ``cli``, ``registry``.
     #
     # These are the modules ``mutate_one`` cannot reach.  It mutates a
     # *bundle* -- an interpreter inlined with its shared modules into one

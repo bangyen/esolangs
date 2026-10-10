@@ -33,73 +33,74 @@ def machine(program: str, stdin: str = "") -> _Machine:
     return _Machine(program, ScriptedIO(stdin))
 
 
-class TestWikiExamples:
-    """Every program the wiki gives, producing what the wiki says it does."""
-
-    def test_floor_of_a_fraction(self) -> None:
-        assert run_and_capture(f"{FLOOR}\nFLOOR(7 / 2)") == "3\n"
-
-    def test_ceiling_of_a_fraction(self) -> None:
-        assert run_and_capture(f"{CEIL}\nCEIL(7 / 2)") == "4\n"
-
-    def test_not_of_zero(self) -> None:
-        """``x & $0`` never outputs x, so only the returned 1 is printed."""
-        assert run_and_capture(f"{NOT}\n!0") == "1\n"
-
-    def test_if_runs_its_code_function_when_the_condition_holds(self) -> None:
-        assert run_and_capture(f"{IF}\nY() = 9\nIF(1, Y)") == "9\n"
-
-    def test_if_short_circuits_to_zero_when_it_does_not(self) -> None:
-        assert run_and_capture(f"{IF}\nY() = 9\nIF(0, Y)") == "0\n"
-
-    def test_while_stops_when_its_condition_is_false(self) -> None:
-        assert run_and_capture(f"{WHILE}\nF() = 0\nG() = 7\nWHILE(F, G)") == "0\n"
-
-    def test_multiline_prints_every_statement_but_the_last(self) -> None:
-        """``{ 123 456 }`` prints 123 and returns 456."""
-        assert run_and_capture("M() = {\n123\n456\n}\nM()") == "123\n456\n"
-
-    def test_a_dollar_returns_early_and_prints_nothing_before_it(self) -> None:
-        assert run_and_capture("M() = {\n$123\n456\n}\nM()") == "123\n"
-
-    def test_mean_operator(self) -> None:
-        """The wiki's ``a ~ b`` infix operator."""
-        assert run_and_capture("a ~ b = (a + b) / 2\n4 ~ 6") == "5\n"
-
-    def test_doubling_operator(self) -> None:
-        """The wiki's ``a@`` postfix operator."""
-        assert run_and_capture("a@ = a * 2\n21@") == "42\n"
-
-    def test_a_three_argument_operator_pattern(self) -> None:
-        """``^a^b^c^`` is valid per the wiki's operator section."""
-        assert run_and_capture("^a^b^c^ = a + b + c\n^1^2^3^") == "6\n"
-
-    def test_a_backtick_operator_pattern(self) -> None:
-        """``~a`b``c~`` is the wiki's other multi-symbol example."""
-        assert run_and_capture("~a`b``c~ = (a / b) % c\n~12`3``2~") == "0\n"
-
-
-class TestExecutionModel:
-    """Reading by naming, printing by evaluating, and binding across lines."""
-
-    def test_an_assignment_binds_before_a_later_line_would_read_it(self) -> None:
-        assert run_and_capture("n = 7\nn + 1") == "8\n"
-
-    def test_a_fractional_result_keeps_its_decimal_part(self) -> None:
-        assert run_and_capture("7 / 2") == "3.5\n"
-
-    def test_exponentiation_is_right_associative(self) -> None:
-        assert run_and_capture("2 ** 3 ** 2") == "512\n"
-
-    def test_or_returns_its_left_operand_when_truthy(self) -> None:
-        assert run_and_capture("5 | 9") == "5\n"
-
-    def test_and_returns_zero_when_its_left_is_false(self) -> None:
-        assert run_and_capture("0 & 9") == "0\n"
-
-    def test_a_bare_uppercase_name_passes_the_function_itself(self) -> None:
-        """``WHILE(x, c)`` receives functions by name and calls them."""
-        assert run_and_capture(f"{IF}\nY() = 4\nIF(1, Y)") == "4\n"
+# The wiki's own examples, which are the specification's ground truth,
+# then reading by naming, printing by evaluating, and binding across lines.
+@pytest.mark.parametrize(
+    ("program", "expected"),
+    [
+        pytest.param(f"{FLOOR}\nFLOOR(7 / 2)", "3\n", id="floor_of_a_fraction"),
+        pytest.param(f"{CEIL}\nCEIL(7 / 2)", "4\n", id="ceiling_of_a_fraction"),
+        # ``x & $0`` never outputs x, so only the returned 1 is printed.
+        pytest.param(f"{NOT}\n!0", "1\n", id="not_of_zero"),
+        pytest.param(
+            f"{IF}\nY() = 9\nIF(1, Y)",
+            "9\n",
+            id="if_runs_its_code_function_when_the_condition_holds",
+        ),
+        pytest.param(
+            f"{IF}\nY() = 9\nIF(0, Y)",
+            "0\n",
+            id="if_short_circuits_to_zero_when_it_does_not",
+        ),
+        pytest.param(
+            f"{WHILE}\nF() = 0\nG() = 7\nWHILE(F, G)",
+            "0\n",
+            id="while_stops_when_its_condition_is_false",
+        ),
+        # ``{ 123 456 }`` prints 123 and returns 456.
+        pytest.param(
+            "M() = {\n123\n456\n}\nM()",
+            "123\n456\n",
+            id="multiline_prints_every_statement_but_the_last",
+        ),
+        pytest.param(
+            "M() = {\n$123\n456\n}\nM()",
+            "123\n",
+            id="a_dollar_returns_early_and_prints_nothing_before_it",
+        ),
+        # The wiki's ``a ~ b`` infix operator.
+        pytest.param("a ~ b = (a + b) / 2\n4 ~ 6", "5\n", id="mean_operator"),
+        # The wiki's ``a@`` postfix operator.
+        pytest.param("a@ = a * 2\n21@", "42\n", id="doubling_operator"),
+        # ``^a^b^c^`` is valid per the wiki's operator section.
+        pytest.param(
+            "^a^b^c^ = a + b + c\n^1^2^3^",
+            "6\n",
+            id="a_three_argument_operator_pattern",
+        ),
+        # ``~a`b``c~`` is the wiki's other multi-symbol example.
+        pytest.param(
+            "~a`b``c~ = (a / b) % c\n~12`3``2~", "0\n", id="a_backtick_operator_pattern"
+        ),
+        pytest.param(
+            "n = 7\nn + 1",
+            "8\n",
+            id="an_assignment_binds_before_a_later_line_would_read_it",
+        ),
+        pytest.param("7 / 2", "3.5\n", id="a_fractional_result_keeps_its_decimal_part"),
+        pytest.param("2 ** 3 ** 2", "512\n", id="exponentiation_is_right_associative"),
+        pytest.param("5 | 9", "5\n", id="or_returns_its_left_operand_when_truthy"),
+        pytest.param("0 & 9", "0\n", id="and_returns_zero_when_its_left_is_false"),
+        # ``WHILE(x, c)`` receives functions by name and calls them.
+        pytest.param(
+            f"{IF}\nY() = 4\nIF(1, Y)",
+            "4\n",
+            id="a_bare_uppercase_name_passes_the_function_itself",
+        ),
+    ],
+)
+def test_output(program: str, expected: str) -> None:
+    assert run_and_capture(program) == expected
 
 
 _VALUE_ERRORS = {
@@ -177,17 +178,17 @@ class TestErrors:
         with raises_message(ValueError, message):
             run_and_capture(program)
 
-    def test_division_by_zero_is_a_halt(self) -> None:
-        with raises_message(HaltError, "division by zero"):
-            run_and_capture("1 / 0")
-
-    def test_zero_to_a_negative_power_is_a_halt(self) -> None:
-        with raises_message(HaltError, "zero to a negative power"):
-            run_and_capture("0 ** -1")
-
-    def test_non_numeric_input_is_a_halt(self) -> None:
-        with raises_message(HaltError, "input 'oops' is not a number"):
-            run_and_capture("n", "oops\n")
+    @pytest.mark.parametrize(
+        ("message", "program", "stdin"),
+        [
+            ("division by zero", "1 / 0", ""),
+            ("zero to a negative power", "0 ** -1", ""),
+            ("input 'oops' is not a number", "n", "oops\n"),
+        ],
+    )
+    def test_halts(self, message: str, program: str, stdin: str) -> None:
+        with raises_message(HaltError, message):
+            run_and_capture(program, stdin)
 
     def test_arithmetic_on_a_function_is_a_halt(self) -> None:
         with pytest.raises(HaltError):
@@ -199,23 +200,12 @@ class TestErrors:
             run_program(run, "a + b", "1\n", suppress_eof=False)
 
 
-class TestContract(EmptyProgramContract):
-    """An empty program has no lines to execute, so it prints nothing."""
+class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
 
     run = staticmethod(run_and_capture)
-    empty_program = ""
-    empty_output = ""
-
-
-class TestSnapshot(SnapshotContract):
     machine: ClassVar = staticmethod(machine)
     stepping_program: ClassVar = "1 + 1"
-
-
-class TestCycles(CycleContract):
-    """The hang detectors' verdicts on this language's two shapes."""
-
-    machine: ClassVar = staticmethod(machine)
     halting_program: ClassVar = "1 + 1"
     # APL's loop is recursion, which grows the frame stack rather than
     # revisiting a state, so the cycle detector has no looping program to
@@ -547,3 +537,21 @@ def test_snapshot_distinguishes_a_float_input_by_its_bits() -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Algebraic Programming Language", "1(2)", "1*(2)")
+
+
+@pytest.mark.parametrize(("stdin", "halts"), [("0\n", True), ("1\n", False)])
+def test_the_ancestor_check_decides_the_truth_machine(
+    stdin: str, *, halts: bool
+) -> None:
+    """On 1, each lap re-enters ``?`` with the same binding and input cursor."""
+    from esolangs.vm import run_until_halt_or_ancestor
+
+    assert run_until_halt_or_ancestor(machine(TRUTH_MACHINE, stdin)) is halts
+
+
+def test_a_recursion_whose_bindings_differ_each_lap_is_undecided() -> None:
+    """The ancestor check proves *repeats*, not every infinite recursion."""
+    from esolangs.vm import run_until_halt_or_ancestor
+
+    with pytest.raises(TimeoutError):
+        run_until_halt_or_ancestor(machine("F(x) = F(x + 1)\nF(0)"))

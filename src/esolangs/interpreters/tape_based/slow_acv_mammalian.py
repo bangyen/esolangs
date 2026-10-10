@@ -234,7 +234,7 @@ class _Machine:
             self.lst,
             self.ptr,
             self.acc,
-            self.io.position(),
+            self.io.progress(),
             self._halted_by_command,
         )
 

@@ -8,10 +8,16 @@ import pytest
 import esolangs
 from esolangs._isolated import _decode, _worker
 from tests.generator_support import evaluate_generated, verify_generated
+from tests.pick import one
+
+#: A run that never halts by itself, and one that answers by terminating.
+_UNUSUAL = [*one(self_halts=False), *one(answer_mode="termination")]
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("language", ["Suffolk", "123", "Piet"])
+@pytest.mark.parametrize(
+    "language", [*_UNUSUAL, *one(source_kind="raster", boolean_generator=True)]
+)
 def test_generated_xor_runs_every_row_in_a_worker(language):
     with ThreadPoolExecutor(max_workers=1) as pool:
         assert pool.submit(verify_generated, language, "0110", isolated=True).result()
@@ -217,7 +223,7 @@ def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(protocol_chi
     assert child.reaped
 
 
-@pytest.mark.parametrize("language", ["Suffolk", "123"])
+@pytest.mark.parametrize("language", _UNUSUAL)
 def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
     from esolangs import _isolated
 
@@ -232,3 +238,100 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
         evaluate_generated(language, "0110", isolated=True)
     assert caught.value.partial_output == "prefix"
     assert any("row 0" in note for note in caught.value.__notes__)
+
+
+@pytest.mark.parametrize("max_output", [None, 1])
+@pytest.mark.parametrize("startup", [0.4, 1.2])
+def test_process_creation_consumes_the_worker_deadline(
+    monkeypatch, max_output, startup
+):
+    from esolangs import _isolated
+    from esolangs._isolated import _launch
+
+    clock = [0.0]
+    calls = []
+
+    class Child:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def kill(self):
+            calls.append("kill")
+
+        def communicate(self, *_args, **kwargs):
+            calls.append(kwargs.get("timeout"))
+            return '{"result":""}', ""
+
+    def spawn(*_args, **_kwargs):
+        clock[0] += startup
+        return Child()
+
+    def bounded(_child, _request, timeout):
+        calls.append(timeout)
+        return ""
+
+    monkeypatch.setattr(_isolated, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(_isolated.subprocess, "Popen", spawn)
+    monkeypatch.setattr(_isolated, "_bounded_output", bounded)
+    if startup > 1:
+        with pytest.raises(esolangs.ExecutionTimeoutError):
+            _launch("{}", 1, max_output=max_output)
+        assert calls == ["kill", None]
+    else:
+        assert _launch("{}", 1, max_output=max_output) == ""
+        assert calls == [pytest.approx(0.6)]
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        (((0, 0, 0),),),
+        (((255, 255, 255),) * 7,) * 5,
+        (
+            ((0, 0, 0), (1, 2, 3), (1, 2, 3)),
+            ((0, 0, 0), (1, 2, 3), (1, 2, 3)),
+            ((255, 0, 17), (0, 0, 0), (4, 5, 6)),
+        ),
+    ],
+)
+def test_raster_transport_preserves_every_pixel(rows, monkeypatch):
+    from esolangs import _isolated
+    from esolangs._isolated import _raster_rows, _raster_transport
+
+    image = esolangs.Raster(rows)
+    runs = _raster_transport(image)
+    assert runs is _raster_transport(image)
+    monkeypatch.setattr(
+        _isolated,
+        "_launch",
+        lambda request, *_args, **_kwargs: json.dumps(json.loads(request)["program"]),
+    )
+    language = one(source_kind="raster", boolean_generator=True)[0]
+    wire = esolangs.run(language, image, isolated=True)
+    assert _raster_rows(json.loads(wire)) == rows
+
+
+@pytest.mark.medium
+def test_worker_executes_compact_raster_pixels(monkeypatch, capsys):
+    import io
+    import sys
+
+    from esolangs._isolated import _raster_runs
+
+    language = one(source_kind="raster", boolean_generator=True)[0]
+    image = esolangs.generate(language, "0110")
+    payload = {
+        "language": language,
+        "program": _raster_runs(image.rows),
+        "raster": True,
+        "stdin": esolangs.encode_inputs(language, [0, 1]),
+        "seed": None,
+    }
+    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+    _worker()
+    messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert esolangs.read_answer(language, messages[-1]["result"]) == "1"

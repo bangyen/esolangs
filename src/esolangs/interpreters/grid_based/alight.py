@@ -597,6 +597,7 @@ class _Machine:
         lines = code.splitlines() if isinstance(code, str) else list(code)
         self.grid = _grid(lines)
         self.io = io
+        self._input_reads = 0
         self.halted = False
         if not self.grid or not self.grid[0]:
             raise Hint.PROGRAM.error("empty program")
@@ -651,7 +652,7 @@ class _Machine:
         return (
             _freeze(tuple(walker.key() for walker in self.walkers)),
             self.halted,
-            self.io.position(),
+            self._input_reads,
         )
 
     #: ``ip`` is a cell of the program's own rectangle: the first two
@@ -905,6 +906,7 @@ class _Machine:
             value = self.io.input_char()
         except EOFError:
             return "eof"
+        self._input_reads += 1
         return Fraction(value)
 
     def _write(self, value: _Value) -> None:

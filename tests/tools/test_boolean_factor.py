@@ -9,6 +9,7 @@ from tests.tools.boolean_runners import (
     run_bf,
     run_factor,
 )
+from tests.witness_tables import row_bits
 
 
 class TestFactor:
@@ -39,7 +40,7 @@ class TestFactor:
         code = "".join(command[prime % 11] * power for prime, power in factors)
 
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             io = ScriptedIO("".join(f"{bit}" for bit in bits))
             run_bf(code, io)
             assert io.getvalue() == table[combo], f"inputs {bits}"
@@ -86,7 +87,7 @@ class TestFactor:
         """No digit budget: the 500000-digit refusal is gone (dense n=13)."""
         from esolangs.interpreters.tape_based.factor import _parse, decode
         from esolangs.tools.factor import _encode
-        from tests.tools.test_boolean_contract import _dense
+        from tests.witness_tables import dense as _dense
 
         n = 13
         table = _dense(n)

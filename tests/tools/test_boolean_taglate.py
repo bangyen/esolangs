@@ -3,10 +3,13 @@
 import pytest
 
 from esolangs import tools as boolean
+from esolangs.tools.wrap import (
+    _taglate,
+)
 from tests.tools.boolean_runners import (
     run_taglate,
 )
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 class TestTaglate:
@@ -97,7 +100,7 @@ class TestTaglate:
         """The reduction stays correct deeper than the exhaustive sweep."""
         program = boolean.taglate(table)
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             ghost = ["0"] if n % 2 == 1 and n > 1 else []
             got = run_taglate(program, ghost + [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
@@ -144,3 +147,7 @@ def test_public_narrow_generator_route() -> None:
     program = esolangs.generate("taglate", "0110", width=1)
     assert max(map(len, program.splitlines())) == 1
     assert run_taglate(program, ["0", "1"]) == "1"
+
+
+def test_taglate_needs_a_seed_and_commands_below_it() -> None:
+    assert _taglate("seed-only", 40) == "seed-only"

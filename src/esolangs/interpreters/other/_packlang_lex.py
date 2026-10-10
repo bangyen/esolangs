@@ -1,38 +1,29 @@
-"""Packlang tokenization and position-preserving comment masking."""
+"""Packlang tokenization and comment removal."""
 
 import re
 
 from esolangs.interpreters.source_hints import syntax_error
 
 
-def _strip_comments(code: str, *, preserve_positions: bool = False) -> str:
+def _strip_comments(code: str) -> str:
     """Remove ``%$ ... %`` blocks and ``% ...`` line comments.
 
     Block comments are taken first: ``%$`` opens one and the next bare
     ``%`` closes it, so a line comment inside a block is part of the block.
     Both are replaced by a space rather than deleted, so ``a%c%b`` cannot
-    fuse into one token. ``preserve_positions`` keeps comment widths and newlines.
+    fuse into one token.
     """
     out = []
     i = 0
     while i < len(code):
-        start = i
         if code.startswith("%$", i):
             end = code.find("%", i + 2)
             i = len(code) if end < 0 else end + 1
-            out.append(
-                "".join("\n" if c == "\n" else " " for c in code[start:i])
-                if preserve_positions
-                else " "
-            )
+            out.append(" ")
         elif code[i] == "%":
             end = code.find("\n", i)
             i = len(code) if end < 0 else end
-            out.append(
-                "".join("\n" if c == "\n" else " " for c in code[start:i])
-                if preserve_positions
-                else " "
-            )
+            out.append(" ")
         else:
             out.append(code[i])
             i += 1

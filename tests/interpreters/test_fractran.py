@@ -18,6 +18,28 @@ PRIMEGAME = (
 )
 
 
+@pytest.mark.parametrize(
+    "source", ["2^5*3^2 5/7 1/2^2 1/3 1/2", "2^3 3/2 1/3", "2 3/2 2/3 1/2", "2 1/2 1/1"]
+)
+def test_removal_suffix_matches_literal_priority(source: str) -> None:
+    index = fractran_index.compile_index(source)
+    assert index is not None
+    cursor = fractran_index.Cursor(index)
+    value, fractions, _ = _parse(source)
+    for _ in range(40):
+        rule, _ = cursor.choose()
+        assert rule == _choose(value, fractions)
+        assert fractran_index.integer(tuple(cursor.value.items())) == value
+        if rule is None:
+            break
+        numerator, denominator = fractions[rule]
+        value = value * numerator // denominator
+        cursor.advance(rule)
+    if source.startswith("2^5"):
+        assert cursor.cleanup_position == len(index.rules)
+        assert cursor.guard_updates == 0
+
+
 def test_the_two_fraction_adder() -> None:
     """``3/2`` moves every 2 in the value over to a 3: 2**3 * 3**4 -> 3**7."""
     assert run_program(run, "2^3*3^4 3/2") == str(3**7)

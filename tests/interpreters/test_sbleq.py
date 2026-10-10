@@ -9,6 +9,7 @@ from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.sbleq import _Machine, run
 from esolangs.interpreters.tape_based.sbleq import _Machine as Sbleq
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.contract import SnapshotContract
 
 
 def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
@@ -197,18 +198,6 @@ class TestVariants:
         run("9 10 3  -3 10 6  0 0 11  5 3 99", _IO())
         assert buffer.getvalue() == "\x03"
 
-    @pytest.mark.parametrize(
-        "store",
-        [
-            # 5 - 3 = 2 is stored in both a and b, falls through, then halts.
-            pytest.param("ab", id="sblq_stores_in_both"),
-            # The same program writes only mem[7], leaving mem[6]=9.
-            pytest.param("b", id="subleq_store_in_b"),
-        ],
-    )
-    def test_store_variant_runs_silently(self, store: str) -> None:
-        assert run_bounded("6 7 3 0 0 5 9 5 3", store=store) == ""
-
     def test_the_default_variant_stores_in_a(self) -> None:
         """``run`` defaults to the base language, which writes to a alone."""
         program = "6 7 3 0 0 5 9 5 3"
@@ -220,15 +209,6 @@ class TestVariants:
         """A store outside the three variants raises rather than running."""
         with pytest.raises(ValueError, match="unknown store target"):
             _Machine("0 0 0", ScriptedIO(""), store=store)
-
-
-class TestSnapshot:
-    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        machine = _Machine("3 4 6 1 1 0 0 0 0", ScriptedIO(""))
-        before = machine.snapshot()
-        hash(before)  # must not raise
-        machine.step()
-        assert machine.snapshot() != before
 
 
 class TestProgramText:
@@ -291,3 +271,8 @@ def test_a_huge_address_is_refused_before_allocating() -> None:
     with pytest.raises(esolangs.InterpreterLimitError, match="grow its store"):
         esolangs.run("S*bleq", "1000000000000000000 0 0", stdin="", timeout=2)
     assert esolangs.run("S*bleq", "20 0 0", stdin="", timeout=5) == ""
+
+
+class TestContract(SnapshotContract):
+    machine = staticmethod(lambda code: _Machine(code, ScriptedIO("")))
+    stepping_program = "3 4 6 1 1 0 0 0 0"

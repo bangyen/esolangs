@@ -640,7 +640,7 @@ class _Machine:
         return (
             tuple(p.state() for p in self.pointers),
             tuple(sorted((k, tuple(v)) for k, v in self.deques.items() if v)),
-            self.io.position(),
+            self.io.progress(),
             self._input_reads,
             self._incoming,
             self._remaining,

@@ -385,7 +385,7 @@ class _Machine:
             self.tape.axis,
             self.tape.top.level,
             self.tape.top.freeze(),
-            self.io.position(),
+            self.io.progress(),
         )
 
     @property

@@ -139,17 +139,38 @@ def test_prefix_semantics_is_not_ordinary_halting() -> None:
 
 
 def test_prefix_word_matrix() -> None:
+    from tests.proofs._brainfuck_count import automaton, minimize
     from tests.proofs._factor_normal import prefix_growth
 
-    forbidden = FORBIDDEN | {"][", "]."}
-    matrix = sympy.Matrix(
-        [
-            [int(a + b not in forbidden and (a != "." or b == "]")) for b in ALPHABET]
-            for a in ALPHABET
-        ]
+    forbidden = (
+        FORBIDDEN
+        | {"][", "].", "[+]"}
+        | {"." + char for char in ALPHABET if char != "]"}
     )
+    rows = minimize(automaton(forbidden, []))
+    matrix = sympy.zeros(len(rows))
+    for position, row in enumerate(rows):
+        for target in row:
+            if target >= 0:
+                matrix[position, target] += 1
     x = sympy.Symbol("x")
     assert matrix.charpoly(x).as_expr() == sympy.expand(
-        x**2 * (x - 1) ** 2 * (x + 1) * (x**3 - 6 * x**2 + 1)
+        x * (x - 1) ** 3 * (x + 1) * (x**4 - 5 * x**3 - 5 * x**2 - 4 * x + 1)
     )
-    assert 5.97 < prefix_growth() < 5.98
+    assert len(rows) == 9
+    assert 5.94 < prefix_growth() < 5.95
+
+
+def test_single_update_loops_clear_every_byte() -> None:
+    for value in range(256):
+        for loop in ("[+]", "[-]"):
+            io = ScriptedIO("")
+            run_bf("+" * value + loop + ".", io)
+            assert io.getvalue() == "\x00"
+    assert normalize("[+]") == "[-]"
+    assert normalize("[><+]") == "[-]"
+    for value in (0, 1, 128, 255):
+        for loop in ("[+]", "[-]"):
+            io = ScriptedIO("")
+            run(_render("+" * value + loop + "."), io)
+            assert io.getvalue() == "\x00"

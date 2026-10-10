@@ -142,7 +142,7 @@ class _Machine:
         instants differing only there are one.  ``printed`` stays out.
         """
         head, read, answer, _printed = self.state
-        return (self.program, head, self.live, answer, read, self.io.position())
+        return (self.program, head, self.live, answer, read, self.io.progress())
 
     def step(self) -> None:
         """Execute one command, printing the answer once the data runs out."""

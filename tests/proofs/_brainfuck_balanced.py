@@ -22,7 +22,10 @@ def _image(
 ) -> tuple[Matrix, Matrix]:
     numerator, denominator = BOUND
     divisor = numerator**2 * SCALE
+    atom_scale = numerator * denominator * SCALE
+    loop_scale = denominator**2
     next_nonempty, next_bodies = [], []
+    loop_images: dict[int, tuple[dict[int, int], dict[int, int]]] = {}
     for state, row in enumerate(rows):
         atoms: dict[int, int] = {}
         for target in row[:6]:
@@ -31,21 +34,28 @@ def _image(
             atoms[target] = atoms.get(target, 0) + SCALE
             for end, value in nonempty[target].items():
                 atoms[end] = atoms.get(end, 0) + value
-        loops: dict[int, int] = {}
-        if row[6] >= 0:
-            for middle, value in bodies[row[6]].items():
-                end = rows[middle][7]
-                if end >= 0:
-                    loops[end] = loops.get(end, 0) + value
-        common = {
-            end: numerator * denominator * SCALE * value for end, value in atoms.items()
-        }
-        for middle, left in loops.items():
-            for end, right in nonempty[middle].items():
-                common[end] = common.get(end, 0) + denominator**2 * left * right
+        # Share loop terms by opening target: 195 states have four live targets.
+        if row[6] not in loop_images:
+            loops: dict[int, int] = {}
+            if row[6] >= 0:
+                for middle, value in bodies[row[6]].items():
+                    end = rows[middle][7]
+                    if end >= 0:
+                        loops[end] = loops.get(end, 0) + value
+            common: dict[int, int] = {}
+            for middle, left in loops.items():
+                scaled_left = loop_scale * left
+                for end, right in nonempty[middle].items():
+                    common[end] = common.get(end, 0) + scaled_left * right
+            tails = {end: loop_scale * SCALE * value for end, value in loops.items()}
+            loop_images[row[6]] = common, tails
+        loop_common, tails = loop_images[row[6]]
+        common = dict(loop_common)
+        for end, value in atoms.items():
+            common[end] = common.get(end, 0) + atom_scale * value
         sequence = dict(common)
-        for end, value in loops.items():
-            sequence[end] = sequence.get(end, 0) + denominator**2 * SCALE * value
+        for end, value in tails.items():
+            sequence[end] = sequence.get(end, 0) + value
         common[state] = common.get(state, 0) + numerator**2 * SCALE**2
         next_nonempty.append(
             {end: (value + divisor - 1) // divisor for end, value in sequence.items()}
@@ -87,6 +97,7 @@ def _rotation_image(
     next_nonempty: Matrix = []
     next_nonprint: Matrix = []
     next_bodies: Matrix = []
+    loop_images: dict[int, tuple[dict[int, int], dict[int, int]]] = {}
     for state, row in enumerate(rows):
         atoms: dict[int, int] = {}
         other: dict[int, int] = {}
@@ -100,35 +111,39 @@ def _rotation_image(
                 atoms[end] = atoms.get(end, 0) + value
                 if column:
                     other[end] = other.get(end, 0) + value
-        loops: dict[int, int] = {}
-        print_loops: dict[int, int] = {}
-        if row[6] >= 0:
-            for middle, value in bodies[row[6]].items():
-                end = rows[middle][7]
-                if end >= 0:
-                    loops[end] = loops.get(end, 0) + value
-            printing = rows[row[6]][0]
-            if printing >= 0:
-                sequences = dict(nonempty[printing])
-                sequences[printing] = sequences.get(printing, 0) + SCALE
-                for middle, value in sequences.items():
+        if row[6] not in loop_images:
+            loops: dict[int, int] = {}
+            print_loops: dict[int, int] = {}
+            if row[6] >= 0:
+                for middle, value in bodies[row[6]].items():
                     end = rows[middle][7]
                     if end >= 0:
-                        print_loops[end] = print_loops.get(end, 0) + value
-        common: dict[int, int] = {}
-        for matrix, suffix, multiplier in (
-            (loops, nonempty, denominator**2 * numerator),
-            (print_loops, nonprint, denominator**3),
-        ):
-            for middle, left in matrix.items():
-                for end, right in suffix[middle].items():
-                    common[end] = common.get(end, 0) + multiplier * left * right
-        tails = {
-            end: denominator**2 * numerator * SCALE * value
-            for end, value in loops.items()
-        }
-        for end, value in print_loops.items():
-            tails[end] = tails.get(end, 0) + denominator**3 * SCALE * value
+                        loops[end] = loops.get(end, 0) + value
+                printing = rows[row[6]][0]
+                if printing >= 0:
+                    sequences = dict(nonempty[printing])
+                    sequences[printing] = sequences.get(printing, 0) + SCALE
+                    for middle, value in sequences.items():
+                        end = rows[middle][7]
+                        if end >= 0:
+                            print_loops[end] = print_loops.get(end, 0) + value
+            common: dict[int, int] = {}
+            for matrix, suffix, multiplier in (
+                (loops, nonempty, denominator**2 * numerator),
+                (print_loops, nonprint, denominator**3),
+            ):
+                for middle, left in matrix.items():
+                    scaled_left = multiplier * left
+                    for end, right in suffix[middle].items():
+                        common[end] = common.get(end, 0) + scaled_left * right
+            tails = {
+                end: denominator**2 * numerator * SCALE * value
+                for end, value in loops.items()
+            }
+            for end, value in print_loops.items():
+                tails[end] = tails.get(end, 0) + denominator**3 * SCALE * value
+            loop_images[row[6]] = common, tails
+        common, tails = loop_images[row[6]]
         sequence, tail, body = dict(common), dict(common), dict(common)
         atom_scale = numerator**2 * denominator * SCALE
         for end, value in atoms.items():

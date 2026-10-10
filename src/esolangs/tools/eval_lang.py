@@ -17,7 +17,7 @@ from esolangs.tools.helpers import (
 from esolangs.tools.wrap import _quote_literal
 
 # ``~`` swaps the active stack, ``*`` reverses it, ``=`` pops it onto the
-# other.  Moving values across reverses them (tests/tools/eval_reorders.py).
+# other.  Moving values across reverses them (tests/tools/eval_support.py).
 _EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
 
 #: Stage the bit on the tree stack (``0`` or backtick), ``=`` moves it to the

@@ -523,7 +523,7 @@ dense clauses; the sparse tail, below density `1/max(48, n)`, adds at most
 `2**n/n`. On a corpus through n=13 `_assure` checked 1,712 levels and
 never computed, so output is byte-identical. With candidates and the
 sampled fallback disabled, it alone keeps n=8 and n=10 random tables under
-`T/n` clauses (`tests/proofs/test_vandevelo_fallback.py`).
+`T/n` clauses (`tests/tools/test_boolean_vandevelo.py`).
 
 Commands per row are therefore linear. A halting row fails one part of
 each guard, and every value is a strict boolean. So a register toggle

@@ -3,6 +3,7 @@
 from esolangs import tools as boolean
 from esolangs.tools.eval_lang import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR
+from tests.witness_tables import row_bits
 
 #: One input's run, as the template spells it.
 _X = TEMPLATE_CHAR * len(PAIR[0])
@@ -21,13 +22,17 @@ class TestEvalBoolean:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from tests.tools.fills import _fill_eval
+        from tests.tools.fills import fill
+
+        _fill_eval = fill("Eval")
 
         return _fill_eval(tpl, bits)
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
-        from tests.tools.fills import _fill_eval
+        from tests.tools.fills import fill
+
+        _fill_eval = fill("Eval")
 
         for n in (1, 2, 3):
             template = _X * n
@@ -56,12 +61,7 @@ class TestEvalBoolean:
             n = len(table).bit_length() - 1
             template = generators.eval(table)
             widths = {
-                len(
-                    self.instantiate(
-                        template, [(c >> (n - 1 - i)) & 1 for i in range(n)]
-                    )
-                )
-                for c in range(2**n)
+                len(self.instantiate(template, row_bits(c, n))) for c in range(2**n)
             }
             assert len(widths) == 1, f"{table} leaks its inputs: {widths}"
 
@@ -106,7 +106,7 @@ class TestEvalBoolean:
         """The pricing model matches every candidate and picks the shortest."""
         from esolangs.tools.eval_lang import _eval_ordered
         from esolangs.tools.helpers import permute_truth_table
-        from tests.tools.eval_reorders import _eval_cost, _eval_stack_programs
+        from tests.tools.eval_support import _eval_cost, _eval_stack_programs
 
         for n in (1, 2, 3):
             for value in range(2 ** (2**n)):
@@ -123,7 +123,9 @@ class TestEvalBoolean:
     def test_reorder_ops_run_outside_the_placeholders(self) -> None:
         """The rearrangement is emitted code, not a change to the fills."""
         from esolangs import tools as generators
-        from tests.tools.fills import _fill_eval
+        from tests.tools.fills import fill
+
+        _fill_eval = fill("Eval")
 
         # A table whose cheapest order is not the free one.
         table = "00001101"
@@ -139,7 +141,7 @@ class TestEvalBoolean:
         """Two stacks with a reverse and a cross-move permute the bits."""
         from math import factorial
 
-        from tests.tools.eval_reorders import _eval_stack_programs
+        from tests.tools.eval_support import _eval_stack_programs
 
         for n in (2, 3, 4):
             assert len(_eval_stack_programs(n)) == factorial(n)
@@ -148,12 +150,12 @@ class TestEvalBoolean:
 
     def test_reorder_catalog_invariants(self) -> None:
         """The built words are capped, deduplicated and (length, ~<*<=)-sorted."""
-        from tests.tools.eval_reorders import (
+        from tests.tools.eval_support import (
             _EVAL_MAX_OPS,
-            _eval_reorders,
+            _eval_reorder_catalog,
         )
 
-        built = _eval_reorders()
+        built = _eval_reorder_catalog()
         assert len(set(built)) == len(built)
         assert built[0] == ""
         assert all(len(ops) <= _EVAL_MAX_OPS for ops in built)
@@ -163,7 +165,7 @@ class TestEvalBoolean:
 
     def test_reorder_words_are_the_capped_reachable_set(self) -> None:
         """Every built word replays, and the built set is exactly the cap's."""
-        from tests.tools.eval_reorders import _eval_stack_programs
+        from tests.tools.eval_support import _eval_stack_programs
 
         assert len(_eval_stack_programs(12)) == 735
         assert len(_eval_stack_programs(13)) == 735
@@ -174,7 +176,7 @@ class TestEvalBoolean:
         """The catalog fold reproduces the search it replaced, byte for byte."""
         from collections import deque
 
-        from tests.tools.eval_reorders import _EVAL_MAX_OPS, _eval_stack_programs
+        from tests.tools.eval_support import _EVAL_MAX_OPS, _eval_stack_programs
 
         def searched(n: int) -> dict[tuple[int, ...], str]:
             start: tuple[tuple[int, ...], tuple[int, ...], int] = (
@@ -235,6 +237,6 @@ class TestEvalBoolean:
         # The template is the exact shape of every program it fills to.
         assert len(template) == len(self.instantiate(template, [0] * n)) == 206
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = self.run_eval(self.instantiate(template, bits))
             assert got == str(int(table[combo])), f"inputs {bits}"

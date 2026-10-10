@@ -41,9 +41,10 @@ class TestNameResolution:
 
     def test_a_near_miss_is_named(self) -> None:
         """A misspelling is a spelling problem; answer it with the spelling."""
+        name = max(esolangs.list_languages(), key=len)
         with pytest.raises(UnknownLanguageError) as exc:
-            esolangs.generate("Sophi", XOR)
-        assert "did you mean Sophie" in str(exc.value)
+            esolangs.generate(name[:-1], XOR)
+        assert f"did you mean {name}" in str(exc.value)
 
 
 class TestParameterizedTemplates:
@@ -182,9 +183,9 @@ SIGNATURES = {
     "Language.load_program": "(self, document: str) -> Program",
     "Language.read_answer": "(self, output: str) -> str",
     "Language.run": "(self, program: ProgramSource, *, stdin: InputSource = '', timeout: float | None = None, seed: int | None = None, isolated: bool = False, max_steps: int | None = None, max_output: int | None = None, max_memory: int | None = None, settings: esolangs.settings.DialectSettings | None = None, scale: int | None = None) -> str",  # noqa: E501
-    "Raster.__init__": "(self, rows: 'Rows', *, language: 'str | None' = None, settings: 'DialectSettings | None' = None) -> 'None'",  # noqa: E501
+    "Raster.__init__": "(self, rows: 'Rows', *, language: 'str | None' = None, settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> 'None'",  # noqa: E501
     "Raster.from_png": "(cls, data: 'bytes') -> 'Raster'",
-    "Raster.tagged": "(self, language: 'str', *, settings: 'DialectSettings | None' = None) -> 'Raster'",  # noqa: E501
+    "Raster.tagged": "(self, language: 'str', *, settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> 'Raster'",  # noqa: E501
     "Raster.to_png": "(self) -> 'bytes'",
     "Raster.upscaled": "(self, scale: 'int') -> 'Raster'",
     "DialectSettings.__init__": "(self, **choices: int | str | None) -> None",
@@ -220,6 +221,7 @@ PUBLIC_MEMBERS = {
         "from_png",
         "language",
         "rows",
+        "scale",
         "settings",
         "tagged",
         "to_png",

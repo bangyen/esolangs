@@ -86,6 +86,7 @@ def balance_fish(truth_table: str, default: str) -> str:
 LANGUAGE = Language(
     "Fish",
     "grid_based.fish",
+    random=True,
     boolean=fish,
     # Not a tree: an indexed table read.
     shape=Shape.LOOKUP,

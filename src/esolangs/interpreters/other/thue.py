@@ -353,7 +353,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.state, self.io.position())
+        return (self.state, self.io.progress())
 
     # The all-draws search, over the string alone: a ``:::`` rule declines to
     # fork, and a ``~`` rule's output cannot change what matches later.

@@ -176,7 +176,7 @@ class _Machine:
         # cycle probe dominated generated programs.  ``done`` stays out: the
         # detector compares states of a running machine.
         ip, pos, bits, _done = self.state
-        return (ip, pos, bits, self.io.position())
+        return (ip, pos, bits, self.io.progress())
 
     def byte(self) -> int:
         """Read locations 0-7 as an LSB-first byte (location 0 is bit 0)."""

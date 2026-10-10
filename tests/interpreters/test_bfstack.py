@@ -3,18 +3,19 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.stack_based.bfstack import run
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.stack_based.bfstack import _Machine, run
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
     InputCursorContract,
     StateViewContract,
 )
-from tests.interpreters.runner import run_program
+from tests.interpreters.cursorless_io import PositionlessIO
+from tests.interpreters.runner import run_lines
 from tests.raises import assert_rejected_with_hint, raises_message
 
-
-def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+run_and_capture = run_lines(run)
 
 
 class TestBFStack:
@@ -173,3 +174,13 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("BFStack", ">[", "close the loop")
+
+
+@pytest.mark.parametrize("io_type", [ScriptedIO, PositionlessIO])
+def test_cycle_detector_tracks_cursorless_input(io_type):
+    io = io_type("aaaa\0")
+    machine = _Machine(",[.<,]", io)
+    assert run_until_halt_or_cycle(machine, limit=100)
+    assert machine.halted
+    assert io.getvalue() == "aaaa"
+    assert io.reads == 5

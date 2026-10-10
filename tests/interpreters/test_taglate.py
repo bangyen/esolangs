@@ -9,12 +9,98 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.queue_based.taglate import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import run_lines
 from tests.raises import raises_message
 
+run_and_capture = run_lines(run)
 
-def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+
+@pytest.mark.parametrize("count", [0, 1, 2, 3, 4, 17, 257])
+def test_consecutive_rotations_compose(count):
+    seed = "ABC"
+    offset = count % len(seed)
+    assert run_and_capture([seed, "e" * count + "iii"]) == seed[offset:] + seed[:offset]
+
+
+@pytest.mark.parametrize(
+    ("seed", "commands", "stdin"),
+    [
+        ("ABC", "eeqeeiii", ""),
+        (chr(3), "gy" + "e" * 31 + "jgzi", ""),
+        ("", "h" + "e" * 17 + "i", "A"),
+        ("", "ee", ""),
+        ("A", "iee", ""),
+        ("A", "e" * 17 + "gz", ""),
+        ("\x00A", "gy" + "e" * 17, ""),
+        ("ABC", "ffi", ""),
+        ("ABC", "fffhiii", "A"),
+        ("ABC", "f" * 17 + "i", ""),
+        ("", "ff", ""),
+    ],
+)
+def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch):
+    from esolangs._drive import drive
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.queue_based import taglate
+
+    original = taglate._Machine  # noqa: SLF001
+    machines = []
+
+    def create(code, port):
+        machine = original(code, port)
+        machines.append(machine)
+        return machine
+
+    monkeypatch.setattr(taglate, "_Machine", create)
+    ports = [ScriptedIO(stdin), ScriptedIO(stdin)]
+    reference = original([seed, commands], ports[0])
+    errors = []
+    for execute in (
+        lambda: drive(reference),
+        lambda: taglate.run([seed, commands], ports[1]),
+    ):
+        try:
+            execute()
+        except (HaltError, EOFError, ValueError) as error:
+            errors.append((type(error), error.args))
+        else:
+            errors.append(None)
+    assert errors[0] == errors[1]
+    assert ports[0].getvalue() == ports[1].getvalue()
+    assert reference.snapshot() == machines[0].snapshot()
+
+
+@pytest.mark.parametrize("seed", ["", "A"])
+@pytest.mark.parametrize("command", ["a", "b", "c", "d"])
+def test_binary_underflow_retains_consumed_pops(seed, command):
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.queue_based.taglate import _Machine
+
+    machine = _Machine([seed, command], ScriptedIO(""))
+    with pytest.raises(HaltError, match="queue is empty"):
+        machine.step()
+    assert machine.queue == ()
+    assert machine.ind == 0
+
+
+def test_repeated_programs_keep_parser_state_private():
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.queue_based.taglate import _Machine
+
+    code = ["ABC", "gyeigz"]
+    first = _Machine(code, ScriptedIO(""))
+    second = _Machine(code, ScriptedIO(""))
+    first.tokens[0] = "i"
+    first.match.clear()
+    assert second.tokens == ["gy", "e", "i", "gz"]
+    assert second.match == {0: 3, 3: 0}
+    third = _Machine(code, ScriptedIO(""))
+    assert third.tokens == second.tokens
+    assert third.match == second.match
+    code[1] = "i"
+    changed = _Machine(code, ScriptedIO(""))
+    assert changed.tokens == ["i"]
+    assert changed.match == {}
 
 
 class TestTaglate:
@@ -39,6 +125,9 @@ class TestTaglate:
     def test_subtract_wraps(self) -> None:
         # ord('1') - ord('2') = -1, wrapping to 65535
         assert run_and_capture(["12", "bi"]) == chr(65535)
+
+    def test_multiply_wraps(self) -> None:
+        assert run_and_capture([chr(65535) + chr(2), "ci"]) == chr(65534)
 
     def test_divide_by_zero_halts(self) -> None:
         """Division by zero is invalid, so the interpreter halts on it."""
@@ -134,22 +223,6 @@ class TestContract(SnapshotContract, CycleContract):
 
 class TestTheTwoQueueLanguagesDifferOnPurpose:
     """Both silently accepted nonsense; only one of them meant to."""
-
-    def test_bitdeque_refuses_a_word_it_does_not_know(self) -> None:
-        """``findall`` kept what matched and dropped the rest in silence."""
-        with pytest.raises(esolangs.ProgramError, match="not a Bitdeque command"):
-            esolangs.run("Bitdeque", "PUSH FROB PUSH", stdin="", timeout=5)
-
-    def test_bitdeque_refuses_the_lower_case_program(self) -> None:
-        """The whole language was a no-op for anyone who guessed the case."""
-        with pytest.raises(esolangs.ProgramError, match="upper case"):
-            esolangs.run("Bitdeque", "push invert push", stdin="", timeout=5)
-
-    def test_bitdeque_still_runs_a_real_program(self) -> None:
-        """Three refusals are worth nothing if the valid case broke."""
-        assert (
-            esolangs.run("Bitdeque", "PUSH INVERT PUSH", stdin="", timeout=5) == "0 1"
-        )
 
     def test_taglate_still_skips_a_non_command(self) -> None:
         """Deliberately unchanged, and the docstring now says why."""

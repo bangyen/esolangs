@@ -79,7 +79,9 @@ class _MinifuckCase:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from tests.tools.fills import _fill_minifuck
+        from tests.tools.fills import fill
+
+        _fill_minifuck = fill("Minifuck")
 
         return _fill_minifuck(tpl, bits)
 

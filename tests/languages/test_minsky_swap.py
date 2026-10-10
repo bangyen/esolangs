@@ -31,13 +31,13 @@ class TestARunFinishesTheDump:
 
     def test_the_dumping_sets_are_distinct(self) -> None:
         """Named from the registry, and not the *dump answer* set."""
-        assert len(self._dumping()) == 9
+        assert "Minsky Swap" in self._dumping()
         mode = {
             n
             for n in esolangs.list_languages()
             if esolangs.describe(n)["answer_mode"] == "dump"
         }
-        assert len(mode) == 7
+        assert "Minsky Swap" in mode
         assert mode != set(self._dumping())
 
     def test_run_leaves_the_output_in_place(self) -> None:

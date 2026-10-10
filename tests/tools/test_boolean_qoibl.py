@@ -88,3 +88,25 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.qoibl, range(7, 11), 800)
+
+
+def test_qoibl_affine_row_envelope_minima():
+    from itertools import product
+
+    from esolangs.tools.qoibl.balance import _best_width
+    from esolangs.tools.wrap import balance_score
+
+    for negative, constant, positive, extra in product(
+        [32, 45, 60], [1, 5, 15], [-1, 4, 12], [0, 10, 30]
+    ):
+        rows = [(-2, negative), (0, constant), (1, positive)] + [(0, 1)] * extra
+        length = (
+            sum(slope for slope, _ in rows),
+            sum(offset for _, offset in rows) + len(rows) - 1,
+        )
+        width = _best_width(rows, length, 1, 15)
+        layouts = [
+            "\n".join("x" * (slope * columns + offset) for slope, offset in rows)
+            for columns in range(1, 16)
+        ]
+        assert balance_score(layouts[width - 1]) == min(map(balance_score, layouts))

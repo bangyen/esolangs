@@ -15,7 +15,7 @@ Sharing costs no execution. The diagram gives every distinct subtable one
 state, so it names `O(T / log T)` primes, and a run still fires at most a
 fraction a level, one for the leaf, and a clear a set input left unread:
 `n + 1` fractions on `O(n log n)`-bit values. Both constructions are executed
-in `tests/proofs/deep/fractran_shared.py`.
+in `tests/proofs/deep/fractran.py`.
 
 ## Setup
 
@@ -268,7 +268,7 @@ continuation, agree. The clears come after every state fraction, so they
 fire only once the leaf has spent the last state. It is checked by
 execution: every row of every table at every arity from one to nine, over
 random, constant, parity and half-split tables, in
-`tests/proofs/deep/fractran_shared.py` (10,220 rows at the pinned seed) and
+`tests/proofs/deep/fractran.py` (10,220 rows at the pinned seed) and
 in `tests/proofs/test_fractran_bound.py`.
 
 *Cost.* Depth `d` holds at most `2**d` prefixes and at most `2**2**(n-d)`
@@ -471,7 +471,7 @@ with the four rows carrying one guard of each sign. All 24 orders of the
 same four fractions execute on all rows. Exactly 14 of 16 tables occur;
 XOR and XNOR are missing because the four feature rows are dependent.
 The eight-fraction independent-pair control realizes all sixteen tables.
-Both controls live in `tests/proofs/test_research_tracks.py`.
+Both controls live in `tests/proofs/test_fractran_routing.py`.
 
 ### Order-only decoding with two priority consultations
 
@@ -1193,6 +1193,14 @@ For cursor execution, phase changes use their frequent primary anchors.
 Each feature's secondary live guard crosses once; the mapping flag's
 secondary guards cross once, and decoder register watchers are fixed in
 number. Hence `D+H=O(k+n+F)` and normal execution has `O(T)` word work.
+The cursor now switches to a forward scan once the first rule in a
+strictly factor-removing suffix fires. Earlier failed guards cannot become
+true when exponents only decrease. Each failed suffix guard is inspected
+once; successful guards repeat until exhausted, without minimum-tree
+updates. At ten inputs, three seeded queries retain exactly the same
+firing sequences and answers while reducing tree updates by 538, 527 and
+528 respectively. This removes cleanup tree overhead; the generation sieve
+remains super-linear in bit work.
 Generation, loading and execution still fit `O(T log T)` bit work in the
 materialized-word model. The retained generation sieve supplies the same
 matching lower bound. Removing rank selection therefore removes one

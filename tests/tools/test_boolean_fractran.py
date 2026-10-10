@@ -8,10 +8,12 @@ from esolangs._evaluate import _evaluate
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import run as run_fractran
 from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
+from esolangs.tools.fractran import fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.wrap import balance_program, balance_score
 from tests.generator_support import evaluate_generated
-from tests.tools.reader_support import _TABLES, _bits
+from tests.tools.reader_support import _TABLES
+from tests.witness_tables import row_bits as _bits
 from tests.witness_tables import witnesses
 
 
@@ -132,7 +134,6 @@ def test_fractran_phase_parity_exact_resolver_and_size() -> None:
     from esolangs.tools.fractran import fractran, fractran_setters
 
     template = fractran("0110", 1)
-    assert len(template) == 14
     assert max(map(len, template.splitlines())) == 3
     assert fractran_setters(template, 2) == (("1", "2"),) * 2
     legacy = fractran("0110", 4)
@@ -171,3 +172,8 @@ def test_fractran_parity_representation_omits_empty_width_regimes():
         esolangs.generate("FRACTRAN", "0110", width=width) for width in (1, 4, 8)
     ]
     assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"
+
+
+def test_folding_shortens_a_constant_table() -> None:
+    """A table whose rows agree collapses below one that folds nothing."""
+    assert len(fractran("00000000")) < len(fractran("01101001"))

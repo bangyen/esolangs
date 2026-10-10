@@ -104,3 +104,32 @@ class TestBfstack:
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """``,<``."""
     assert_an_ignored_input_costs("BFStack", 6, 2)
+
+
+@pytest.mark.parametrize("n", range(1, 9))
+@pytest.mark.parametrize("bit", "01")
+def test_constant_leaf_is_used_at_every_arity(n: int, bit: str) -> None:
+    """A constant needs only input discards and the printed literal."""
+    program = boolean.bfstack(bit * (1 << n))
+    assert len(program) == 2 * n + 51 + int(bit)
+    for row in range(1 << n):
+        assert run_bfstack(program, list(format(row, f"0{n}b"))) == bit
+    stdin = esolangs.encode_inputs("BFStack", [1] * n) + "0"
+    assert esolangs.run("BFStack", program + ",.", stdin=stdin) == bit + "0"
+
+
+def test_small_tables_do_not_grow_and_execute() -> None:
+    """The n=3 total drops from 58,948 to 58,934 characters."""
+    from esolangs.tools.bfstack import _bfstack_small
+
+    total = 0
+    for n in range(1, 4):
+        for value in range(1 << (1 << n)):
+            table = format(value, f"0{1 << n}b")
+            program = boolean.bfstack(table)
+            assert len(program) <= len(_bfstack_small(table, n))
+            if n == 3:
+                total += len(program)
+            for row, expected in enumerate(table):
+                assert run_bfstack(program, list(format(row, f"0{n}b"))) == expected
+    assert total == 58_934

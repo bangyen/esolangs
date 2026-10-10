@@ -240,7 +240,7 @@ class _Machine:
         return [self.state.grids, self.state.positions, self.state.program]
 
     def snapshot(self) -> tuple[object, ...]:
-        return (self.state, self.io.position())
+        return (self.state, self.io.progress())
 
     def step(self) -> None:
         if self.halted:

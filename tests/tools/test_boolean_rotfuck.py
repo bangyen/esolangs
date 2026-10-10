@@ -6,6 +6,7 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_rotfuck,
 )
+from tests.witness_tables import row_bits
 
 
 class TestRotfuck:
@@ -27,7 +28,7 @@ class TestRotfuck:
         table = "".join(str(bin(row).count("1") & 1) for row in range(2**n))
         program = boolean.rotfuck(table)
         for combo in (0, 1, 2**n - 1, 2**n - 2, 2 ** (n - 1), 2 ** (n - 1) - 1):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = run_rotfuck(program, [str(b) for b in bits])
             assert got == table[combo], f"n={n} inputs {bits}"
 

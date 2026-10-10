@@ -23,26 +23,31 @@ _INTERPRETERS = pathlib.Path(__file__).resolve().parents[1] / (
 # one module-level function that is *supposed* to reach the ports.
 _IO_OWNER = "run"
 
-# Functions and methods that call an IO effect outside the normal
-# ``run``/``_Machine`` shells.  Each is a documented decision rather than a
-# lapse, and the reason differs:
-#
-# * ``forbin._call`` is a documented, nonconforming recursive evaluator.
-#   The template does not exempt it: a read or write happens part-way down
-#   a recursive descent, so making it pure would require an explicit
-#   continuation stack and ordered I/O effects.  The exception stays narrow
-#   and visible here until that architecture earns its risk.
-# * ``_BitReader.read`` and Suptiftam's ``_State._read_cell`` are the same
-#   recursive-evaluation boundary under their owning helper types.
-#
-# Pinned as a set, in both directions, so it cannot quietly grow and cannot
-# go stale.
-_MAY_REACH_IO = frozenset(
-    {
-        ("other/forbin.py", "_BitReader.read"),
-        ("other/forbin.py", "_call"),
-    }
-)
+#: A module's own ``REACHES_IO`` names the functions and methods that call
+#: an IO effect outside the normal ``run``/``_Machine`` shells -- each a
+#: documented decision, with its reason beside it.  Pinned in both
+#: directions below, so the list cannot quietly grow or go stale, and it
+#: leaves with its language.
+_EXCEPTIONS = "REACHES_IO"
+
+
+def _may_reach_io() -> frozenset[tuple[str, str]]:
+    """Return every ``(module, function)`` a module lists in ``REACHES_IO``."""
+    found: set[tuple[str, str]] = set()
+    for path in _module_files():
+        relative = path.relative_to(_INTERPRETERS).as_posix()
+        for node in ast.parse(path.read_text(encoding="utf-8")).body:
+            if (
+                isinstance(node, ast.Assign)
+                and any(
+                    isinstance(t, ast.Name) and t.id == _EXCEPTIONS
+                    for t in node.targets
+                )
+                and isinstance(node.value, ast.Call)
+            ):
+                for name in ast.literal_eval(node.value.args[0]):
+                    found.add((relative, name))
+    return frozenset(found)
 
 
 def _io_surface() -> frozenset[str]:
@@ -144,13 +149,13 @@ class TestTransitionsDoNotReachIO:
         unexpected = {
             where: calls
             for where, calls in _reaching_functions().items()
-            if where not in _MAY_REACH_IO
+            if where not in _may_reach_io()
         }
         assert unexpected == {}
 
     @pytest.mark.parametrize(
         ("module", "function"),
-        sorted(_MAY_REACH_IO),
+        sorted(_may_reach_io()),
         ids=lambda value: value.replace("/", ".") if isinstance(value, str) else value,
     )
     def test_each_listed_exception_still_reaches_io(

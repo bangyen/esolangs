@@ -265,7 +265,7 @@ class _Machine:
                 )
                 for f in self.frames
             ),
-            self.io.position(),
+            self.io.progress(),
         )
 
     def frame_entry_key(self, frame: object) -> tuple[object, ...]:
@@ -283,7 +283,7 @@ class _Machine:
         return (
             self._key(frame.fn),
             tuple(sorted((k, self._key(v)) for k, v in frame.locals.items())),
-            self.io.position(),
+            self.io.progress(),
         )
 
     def _serial(self, thing: object) -> int:

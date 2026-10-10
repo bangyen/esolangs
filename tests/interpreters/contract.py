@@ -123,22 +123,30 @@ class CycleContract:
 
     def test_halting_program_is_detected(self) -> None:
         """A program that reaches its halt is reported as halting."""
-        from esolangs.vm import run_until_halt_or_cycle
+        from esolangs.vm import run_until_halt
 
-        assert run_until_halt_or_cycle(
+        assert run_until_halt(
             type(self).machine(self.halting_program), limit=_HALT_BUDGET
         )
 
     def test_loop_is_detected_as_a_cycle(self) -> None:
         """A program that revisits a snapshot is proven to hang."""
-        from esolangs.vm import run_until_halt_or_cycle
+        from esolangs.vm import (
+            _BranchingStepMachine,
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
 
         if self.looping_program is None:
             assert self.no_cycle_reason is not None
             pytest.skip(self.no_cycle_reason)
-        assert not run_until_halt_or_cycle(
-            type(self).machine(self.looping_program), limit=_HALT_BUDGET
+        machine = type(self).machine(self.looping_program)
+        prove = (
+            run_until_halt_or_all_branches_cycle
+            if isinstance(machine, _BranchingStepMachine)
+            else run_until_halt_or_cycle
         )
+        assert not prove(machine, limit=_HALT_BUDGET)
 
     def test_stepping_past_the_halt_does_not_raise(self) -> None:
         """A halted machine ignores a further step instead of failing."""

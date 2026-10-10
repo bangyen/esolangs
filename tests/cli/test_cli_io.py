@@ -15,6 +15,12 @@ from esolangs.cli_io import (
 )
 from tests.cli.test_cli import call_main, run_cli
 from tests.cli_support import EXAMPLES
+from tests.pick import languages, one_where
+
+#: A language whose input bits are not spelled 0 and 1, if one is registered.
+_SPELLED = one_where(
+    lambda d: d["input_encoding"] != ("0", "1"), boolean_generator=True
+)
 
 
 class TestTheStdinReaderInProcess:
@@ -203,29 +209,33 @@ class TestAClosedPipeIsNotAnError:
 class TestProgramFilesLoad:
     """The newline a text file ends with is the file's, not the program's."""
 
+    @pytest.mark.parametrize("spelled", _SPELLED)
     def test_a_generated_file_runs_as_written(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, spelled: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``esolangs generate > f`` wrote a newline three interpreters reject."""
         path = tmp_path / "g.txt"
-        path.write_text(esolangs.generate("Grapheme", "0110") + "\n")
-        assert call_main(["run", "Grapheme", str(path)], capsys, stdin="%\nA\n") == "1"
+        path.write_text(esolangs.generate(spelled, "0110") + "\n")
+        stdin = esolangs.encode_inputs(spelled, [0, 1])
+        assert call_main(["run", spelled, str(path)], capsys, stdin=stdin) == "1"
 
     @pytest.mark.parametrize(
-        ("stem", "name"),
-        [("cvnc", "CV(N)(C)"), ("grapheme", "Grapheme"), ("nocomment", "NoComment")],
+        "name",
+        [
+            name
+            for name in languages(
+                source_kind="text", parameterized=False, answer_mode="output"
+            )
+            if esolangs.describe(name)["examples"]
+        ],
     )
     def test_the_committed_examples_run(
-        self, stem: str, name: str, capsys: pytest.CaptureFixture[str]
+        self, name: str, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """All three failed on the newline their own file ends with."""
-        zero, one = esolangs.describe(name)["input_encoding"]  # type: ignore[misc]
-        out = call_main(
-            ["run", name, str(EXAMPLES / f"{stem}.txt")],
-            capsys,
-            stdin=f"{zero}\n{one}\n",
-        )
-        assert out
+        """Three once failed on the newline their own file ends with."""
+        path = EXAMPLES.parent / esolangs.describe(name)["examples"][0]
+        stdin = esolangs.encode_inputs(name, [0, 1])
+        assert call_main(["run", name, str(path)], capsys, stdin=stdin)
 
 
 @pytest.mark.parametrize("filename", ["--timeout", "--help"])

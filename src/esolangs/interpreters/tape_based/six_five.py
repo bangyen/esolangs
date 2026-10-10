@@ -189,7 +189,7 @@ class _Machine:
 
     def input_position(self) -> int:
         """Report the input cursor for the growth detector."""
-        return self.io.position()
+        return self.io.progress()
 
     @property
     def halted(self) -> bool:
@@ -214,7 +214,7 @@ class _Machine:
         # The tape is already a tuple, so it goes in as it stands, in the
         # order this returned before the fields moved into a state value.
         ind, cell, tape = self.state
-        return (cell, tape, ind, self.io.position())
+        return (cell, tape, ind, self.io.progress())
 
     def step(self) -> None:
         """Execute one token, advancing the cursor.

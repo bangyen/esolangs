@@ -163,7 +163,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # ?(!?)! can revisit this state while consuming 1 1 0; the input
         # cursor separates the repeat from the later zero that ends the loop.
-        return (*self.state, self.io.position())
+        return (*self.state, self.io.progress())
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the cursor."""

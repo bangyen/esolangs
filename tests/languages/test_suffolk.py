@@ -1,6 +1,7 @@
 """Suffolk through the shared API, CLI and machinery."""
 
 import warnings
+from pathlib import Path
 
 import pytest
 
@@ -13,6 +14,7 @@ from esolangs.vm import (
     run_until_halt_or_cycle,
     run_until_halt_or_value_growth,
 )
+from tests.cli.test_cli import run_cli
 from tests.generator_support import evaluate_generated
 from tests.test_stepping_parity import _STEP_BUDGET, _row
 
@@ -103,3 +105,22 @@ def test_suffolk_no_longer_disagrees_with_itself() -> None:
         debugger = debugger_api.make_debugger("Suffolk", program, stdin=stdin)
         assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
         assert debugger.output == want
+
+
+@pytest.mark.slow
+def test_the_readme_suffolk_flow_completes(tmp_path: Path) -> None:
+    """Generate then run, the README's first pair, for all four rows."""
+    generated = run_cli("generate", "Suffolk", "0110")
+    path = tmp_path / "su.txt"
+    path.write_text(generated.stdout.rstrip("\n"))
+    got = "".join(
+        run_cli(
+            "run",
+            "Suffolk",
+            str(path),
+            stdin=esolangs.encode_inputs("Suffolk", [a, b]),
+        ).stdout
+        for a in (0, 1)
+        for b in (0, 1)
+    )
+    assert got == "0110"

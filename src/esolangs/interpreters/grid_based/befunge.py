@@ -251,7 +251,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         cursor, grid, stack, string, done = self.state
-        return (*cursor, grid, tuple(stack), string, done, self.io.position())
+        return (*cursor, grid, tuple(stack), string, done, self.io.progress())
 
     def branching_snapshot(self) -> _State:
         """Return the current state as the hang search's starting point."""

@@ -22,7 +22,8 @@ from tests.proofs.deep import deep_arities
 #: band is a cost call rather than a triage one: it builds every generator at
 #: rising arity, and 30s is too slow for CI to spend on every push.
 from tests.source_support import source_units
-from tests.tools.test_boolean_contract import _nested_dense, _parity
+from tests.witness_tables import nested_dense as _nested_dense
+from tests.witness_tables import parity as _parity
 
 BAND = "by-hand"
 COST = 30.0

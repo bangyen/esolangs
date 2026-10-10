@@ -16,10 +16,10 @@ from dataclasses import dataclass
 from itertools import islice
 from typing import Any
 
+from esolangs.factor_primes import prime_segments
 from esolangs.interpreters.other.fractran.index import SMALL_BASE
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
-from esolangs.tools.factor import _primes as _prime_stream
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -55,7 +55,8 @@ class _Node:
 
 def _primes(count: int) -> list[int]:
     """Return the first ``count`` primes, 2 first."""
-    return list(islice(_prime_stream(), count))
+    stream = (prime for *_, segment in prime_segments(count + 2) for prime in segment)
+    return list(islice(stream, count))
 
 
 def _tree(truth_table: str, n: int) -> list[_Leaf | _Node]:

@@ -168,7 +168,7 @@ class _Machine:
             self.remaining,
             self.outgoing,
             self.used,
-            self.io.position(),
+            self.io.progress(),
         )
 
     def _read_bit(self) -> str:

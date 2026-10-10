@@ -98,7 +98,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.code, *self.state, self.stopped, self.io.position())
+        return (self.code, *self.state, self.stopped, self.io.progress())
 
     def step(self) -> None:
         """Execute one character, printing when it is an ``o``."""

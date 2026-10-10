@@ -191,7 +191,7 @@ class _Machine:
         for at in self._dirty:
             self._chunks[at] = tuple(self.memory[at * CHUNK : (at + 1) * CHUNK])
         self._dirty.clear()
-        return (*self.state, tuple(self._chunks), self.io.position())
+        return (*self.state, tuple(self._chunks), self.io.progress())
 
     def step(self) -> None:
         if self.halted:

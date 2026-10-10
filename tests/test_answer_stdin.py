@@ -5,38 +5,60 @@ import warnings
 import pytest
 
 import esolangs
+from esolangs.registry import LANGUAGES
+from tests.pick import first, languages, one, one_where
 from tests.stdin_check import _check_stdin
+from tests.test_language_coupling import REFERENCE
+
+#: A line-per-bit reader whose bits are not spelled ``0`` and ``1``, if any.
+_SPELLED = one_where(
+    lambda d: d["input_encoding"] != ("0", "1"),
+    reads_input=True,
+    input_shape="line_per_bit",
+)
 
 #: ``_check_stdin`` arguments it refuses, and what the refusal says.
 _REFUSED = {
-    # 0/1 lines into Grapheme, the sharpest edge in the package.
-    "it_catches_the_wrong_alphabet": (("Grapheme", "0\n1\n"), "spells its bits"),
+    # 0/1 lines into a language spelling its bits otherwise: the sharpest edge.
+    **dict.fromkeys(
+        ["it_catches_the_wrong_alphabet"] * len(_SPELLED),
+        ((*_SPELLED, "0\n1\n"), "spells its bits"),
+    ),
     # Six lines into a three-input program answered the first three.
     "it_catches_a_surplus_line": (
-        ("brainfuck", "110011", "00010111"),
+        (REFERENCE, "110011", "00010111"),
         "reads 3 characters",
     ),
     "it_catches_a_missing_line": (
-        ("brainfuck", "10", "00010111"),
+        (REFERENCE, "10", "00010111"),
         "reads 3 characters",
     ),
-    # What `run` could not check, because it does not know the arity.
-    "it_catches_an_out_of_range_row_index": (
-        ("Fargo", "8\n", "00010111"),
-        "out of range",
-    ),
-    # ``"\u00b2".isdigit()`` is true, but ``int`` rejects it.
-    "a_superscript_digit_is_refused_not_int_parsed": (
-        ("Fargo", "\u00b2", "01"),
-        "decimal row index",
-    ),
+    **{
+        key: case
+        for row_index in one(input_shape="row_index")
+        for key, case in {
+            # What `run` could not check, because it does not know the arity.
+            "it_catches_an_out_of_range_row_index": (
+                (row_index, "8\n", "00010111"),
+                "out of range",
+            ),
+            # ``"\u00b2".isdigit()`` is true, but ``int`` rejects it.
+            "a_superscript_digit_is_refused_not_int_parsed": (
+                (row_index, "\u00b2", "01"),
+                "decimal row index",
+            ),
+        }.items()
+    },
     # brainfuck reads the space as a character, so it stays refused.
     "whitespace_still_counts_for_a_reader_that_reads_it": (
-        ("brainfuck", "0 1", "0110"),
+        (REFERENCE, "0 1", "0110"),
         "unexpected character",
     ),
     # A template language reads none, so there is nothing to judge.
-    "it_refuses_a_language_with_no_stdin": (("Minifuck", "1\n0\n"), "reads no stdin"),
+    "it_refuses_a_language_with_no_stdin": (
+        (first(reads_input=False), "1\n0\n"),
+        "reads no stdin",
+    ),
 }
 
 
@@ -70,10 +92,10 @@ class TestRunSaysWhenStdinLooksWrong:
 
     def test_a_surplus_line_is_warned_about(self) -> None:
         """Six lines into a three-input program answered the first three."""
-        program = esolangs.generate("brainfuck", "00010111")
+        program = esolangs.generate(REFERENCE, "00010111")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            answer = esolangs.run("brainfuck", program, stdin="110011", timeout=10)
+            answer = esolangs.run(REFERENCE, program, stdin="110011", timeout=10)
         # A warning, not a refusal: the run still happened and still answered.
         assert answer == "1"
 
@@ -83,12 +105,16 @@ class TestRunSaysWhenStdinLooksWrong:
 
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            esolangs.run("brainfuck", "+.", stdin="1\n0\n", timeout=10)
+            esolangs.run(REFERENCE, "+.", stdin="1\n0\n", timeout=10)
         assert not [c for c in caught if "lines supplied" in str(c.message)]
 
     def test_taking_a_value_from_past_the_end_is_warned_about(self) -> None:
         """The six that answer an underfed program now say they did."""
-        for name in ("Circuit Diagram", "Flowchart", "S*bleq"):
+        carry_on = languages(
+            eof_is_a_value=True, input_shape="char_stream", parameterized=False
+        )
+        # A language that refuses instead is ``test_debug``'s exception.
+        for name in [n for n in carry_on if not LANGUAGES[n].underfed_raises][:3]:
             program = esolangs.generate(name, "10010110")
             short = esolangs.encode_inputs(name, [1, 0])
             with warnings.catch_warnings():
@@ -96,7 +122,10 @@ class TestRunSaysWhenStdinLooksWrong:
                 esolangs.run(name, program, stdin=short, timeout=10)
 
 
-@pytest.mark.parametrize("language", ["Grapheme", "Line", "Piet"])
+@pytest.mark.parametrize(
+    "language",
+    [*_SPELLED, *languages(source_kind="raster", input_shape="line_per_bit")],
+)
 def test_numeric_or_line_input_count_is_checked_for_text_and_raster(
     language: str,
 ) -> None:

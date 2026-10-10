@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs.interpreters.grid_based.a_painter_ant import _Machine, run
+from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _AntMachine
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.contract import EmptyProgramContract
 
@@ -106,13 +107,22 @@ class TestStepMachine:
         assert run_until_halt_or_cycle(_Machine("N")) is False
 
 
-def test_an_empty_program_leaves_the_ant_where_it_started() -> None:
-    """With no instructions each step returns at once, painting nothing."""
-    assert run_program("") == "o"
-
-
 class TestContract(EmptyProgramContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
     empty_output = "o"
+
+
+class TestPainterAntDumpsOnce:
+    def test_stepping_an_interrupted_machine_again_does_not_redump(self) -> None:
+        """The picture is printed once, however often the machine is stepped."""
+        io = ScriptedIO()
+        machine = _AntMachine("Pn", io)
+        machine.interrupt()
+        machine.step()
+        first = io.getvalue()
+        assert first
+        machine.step()
+        machine.step()
+        assert io.getvalue() == first

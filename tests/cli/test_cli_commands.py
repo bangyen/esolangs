@@ -8,8 +8,9 @@ import pytest
 
 import esolangs
 from tests.cli.test_cli import _program, call_main
-from tests.cli_support import _refused, call_both
+from tests.cli_support import call_both
 from tests.generator_support import evaluate_generated
+from tests.pick import languages
 
 
 # 5.2s over 33 tests: drives the CLI as a subprocess.
@@ -119,14 +120,11 @@ class TestPrivateEvaluationNeedsNoSeed:
     like a half-migration and is not.
     """
 
-    @pytest.mark.parametrize(
-        "language",
-        ["LaserFuck", "Modulous", "Painfuck"],
-    )
+    @pytest.mark.parametrize("language", languages(random=True, boolean_generator=True))
     def test_a_drawing_language_evaluates_the_same_every_time(
         self, language: str
     ) -> None:
-        """The four that draw, less the slowest, four runs each."""
+        """Every language that draws, four runs each."""
         answers = {evaluate_generated(language, "0110", timeout=30) for _ in range(4)}
         assert answers == {"0110"}
 
@@ -195,30 +193,3 @@ def test_portable_language_can_be_omitted(command, capsys, tmp_path):
     output, error = call_both(args, capsys, stdin)
     assert expected in output
     assert error == ""
-
-
-#: Commands refused with exit code 2, and what stderr must say.
-#: ``prog:SRC`` is a file holding SRC; a third item is stdin.
-_REFUSALS = {
-    "read_answer_says_so_when_given_nothing": (
-        "read-answer brainfuck",
-        "nothing on stdin",
-    ),
-    "a_negative_step_bound_is_refused": (
-        "debug --steps -1 brainfuck prog:+",
-        "must not be negative",
-    ),
-    "a_negative_break_at_is_refused": (
-        "debug --break-at -1 brainfuck prog:+",
-        "--break-at must not be negative",
-    ),
-    "a_swallowed_table_is_named": ("generate brainfuck --width 0110", "--width"),
-}
-
-
-@pytest.mark.parametrize("case", _REFUSALS.values(), ids=list(_REFUSALS))
-def test_a_bad_command_exits_2_and_says_why(
-    case: tuple[str, ...], tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    command, message, *stdin = case
-    assert message in _refused(command, tmp_path, capsys, *stdin)

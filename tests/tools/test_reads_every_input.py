@@ -29,21 +29,35 @@ def _audit(name, program, n, mp):
     return rows, unread, past
 
 
+GENERATED = [
+    n for n, i in INFOS.items() if i["boolean_generator"] and not i["parameterized"]
+]
+
+
 @pytest.mark.medium
-@pytest.mark.parametrize("path", [{}, {"width": 1}, {"balance": True}], ids=str)
-def test_every_input_is_read(monkeypatch, path):
-    assert _audit("brainfuck", ",.", 2, monkeypatch) == (4, 4, 0)  # positive control
-    for name, info in INFOS.items():
-        if info["parameterized"] or not info["boolean_generator"]:
-            continue
-        if "width" in path and not info["width_aware"]:
-            continue
-        for table in IGNORING:
-            n = (len(table) - 1).bit_length()
-            if n <= (INFOS[name]["generator_max_inputs"] or 6):
-                program = esolangs.generate(name, table, **path)
-                rows, unread, past = _audit(name, program, n, monkeypatch)
-                assert rows > 0
-                assert unread == 0, (name, table)
-                # A language that ends at EOF probes it once a row, no more.
-                assert past in (0, rows), (name, table)
+def test_the_audit_sees_unread_input(monkeypatch):
+    assert _audit("brainfuck", ",.", 2, monkeypatch) == (4, 4, 0)
+
+
+# One case per language and path: the whole sweep in one test overran its band.
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("name", "path"),
+    [
+        (name, path)
+        for path in ({}, {"width": 1}, {"balance": True})
+        for name in GENERATED
+        if "width" not in path or INFOS[name]["width_aware"]
+    ],
+    ids=str,
+)
+def test_every_input_is_read(monkeypatch, name, path):
+    for table in IGNORING:
+        n = (len(table) - 1).bit_length()
+        if n <= (INFOS[name]["generator_max_inputs"] or 6):
+            program = esolangs.generate(name, table, **path)
+            rows, unread, past = _audit(name, program, n, monkeypatch)
+            assert rows > 0
+            assert unread == 0, (name, table)
+            # A language that ends at EOF probes it once a row, no more.
+            assert past in (0, rows), (name, table)

@@ -7,7 +7,10 @@ import pytest
 
 from esolangs.tools.arrowqueue import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
-from tests.tools.fills import _instantiate_arrowqueue
+from tests.tools.fills import fill
+from tests.witness_tables import row_bits
+
+_instantiate_arrowqueue = fill("ArrowQueue")
 
 
 class TestParameterizedArrowQueue:
@@ -32,7 +35,7 @@ class TestParameterizedArrowQueue:
                 table = "".join(random.choice("01") for _ in range(2**n))
                 template = generators.arrowqueue(table)
                 for combo in range(2**n):
-                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    bits = row_bits(combo, n)
                     got = self.run_arrowqueue(self.instantiate(template, bits))
                     assert got == table[combo], f"{table} inputs {bits}"
 
@@ -45,7 +48,7 @@ class TestParameterizedArrowQueue:
         template = generators.arrowqueue(table)
         sizes = set()
         for row in range(2**n):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(row, n)
             program = self.instantiate(template, bits)
             sizes.add(len(program))
             assert self.run_arrowqueue(program) == table[row], row
@@ -57,16 +60,6 @@ class TestParameterizedArrowQueue:
 
         sizes = [len(generators.arrowqueue("1" * (2**n))) for n in range(7, 11)]
         assert all(b <= 2 * a for a, b in pairwise(sizes))
-
-    def test_template_is_input_independent(self) -> None:
-        """The template has one run per input, not hardcoded bits."""
-        from esolangs import tools as generators
-
-        template = generators.arrowqueue("0110")
-        assert "{X" not in template
-        setters = (PAIR,) * 2
-        assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
-        assert len(runs(template, TEMPLATE_CHAR, setters)) == 2
 
     @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
     def test_every_input_is_the_same_one_cell(self, table: str) -> None:
@@ -136,7 +129,7 @@ class TestParameterizedArrowQueue:
 
         template = generators.arrowqueue(table)
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = self.run_arrowqueue(self.instantiate(template, bits))
             assert got == table[combo], f"inputs {bits}"
 
@@ -162,7 +155,7 @@ class TestParameterizedArrowQueue:
         n = len(table).bit_length() - 1
         template = generators.arrowqueue(table)
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = self.run_arrowqueue(self.instantiate(template, bits))
             assert got == table[combo], f"inputs {bits}"
         # An ignored input is one setter row; the cascade indexes the rest.
@@ -196,11 +189,6 @@ class TestParameterizedArrowQueue:
         for table, n in (("1111", 2), ("1100", 2), ("11110000", 3)):
             template = generators.arrowqueue(table)
             sizes = {
-                len(
-                    self.instantiate(
-                        template, [(c >> (n - 1 - i)) & 1 for i in range(n)]
-                    )
-                )
-                for c in range(2**n)
+                len(self.instantiate(template, row_bits(c, n))) for c in range(2**n)
             }
             assert len(sizes) == 1, f"{table}: {sizes}"

@@ -152,8 +152,15 @@ class TestATemplateCarriesItsSetters:
             assert esolangs.instantiate(name, str(template), [1, 0]) == (
                 esolangs.instantiate(name, template, [1, 0])
             ), name
-        with pytest.raises(esolangs.TemplateError, match=f"not a {TEMPLATED} templ"):
-            esolangs.instantiate(TEMPLATED, "abc$$$", [1, 0])
+        # Text no input count makes a template is refused by name, by every
+        # language that recovers its setters from the text.
+        refused = []
+        for name in languages(parameterized=True):
+            with pytest.raises(esolangs.TemplateError) as exc:
+                esolangs.instantiate(name, "abc$$$", [1, 0])
+            if str(exc.value).startswith(f"not a {name} templ"):
+                refused.append(name)
+        assert refused
 
     def test_the_setters_survive_a_width_and_a_pickle(self) -> None:
         import pickle

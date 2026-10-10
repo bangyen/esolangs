@@ -83,7 +83,7 @@ class _Machine:
         return [ord(c) for c in self.state[0]]
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.position())
+        return (*self.state, self.io.progress())
 
     def step(self) -> None:
         self.state, output = _advance(self.state)

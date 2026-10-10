@@ -11,7 +11,7 @@ from esolangs.interpreters.grid_based.laserfuck import _Machine as Laserfuck
 from esolangs.interpreters.grid_based.laserfuck import run
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
-from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
+from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
 from tests.interpreters.contract import SnapshotContract
 
 
@@ -258,13 +258,13 @@ class TestSnapshotProgress:
     def test_a_cursorless_read_ring_is_not_a_cycle(self) -> None:
         """``,`` re-reading ``a`` round a ring runs to EOF, not a false cycle."""
         from esolangs.interpreters.grid_based.laserfuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+        from esolangs.vm import run_until_halt
         from tests.interpreters.cursorless_io import CursorlessIO
 
         ring = ["/o,\\", "\\  /"]
         machine = _Machine(ring, CursorlessIO("aaaaaaaa"), rng=FirstDraw(3, rest=0))
         with pytest.raises(EOFError):
-            run_until_halt_or_cycle(machine)
+            run_until_halt(machine, limit=1000)
 
 
 def _machine(code: object) -> object:
@@ -311,7 +311,7 @@ def test_laserfuck_all_initial_headings_can_be_proved_to_loop() -> None:
     for heading in range(4):
         draws = FirstDraw(heading, rest=heading)
         machine = Laserfuck(code, ScriptedIO(), draws)
-        assert run_until_halt_or_cycle(machine) is False
+        assert run_until_halt(machine, limit=1000) is False
 
 
 def test_laserfuck_one_halting_heading_refutes_an_all_branches_hang() -> None:
@@ -320,9 +320,9 @@ def test_laserfuck_one_halting_heading_refutes_an_all_branches_hang() -> None:
     machine = Laserfuck(code, ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(machine) is True
     up = Laserfuck(code, ScriptedIO(), FirstDraw(0))
-    assert run_until_halt_or_cycle(up) is True
+    assert run_until_halt(up, limit=1000) is True
     left = Laserfuck(code, ScriptedIO(), FirstDraw(2, rest=2))
-    assert run_until_halt_or_cycle(left) is False
+    assert run_until_halt(left, limit=1000) is False
 
 
 def test_laserfuck_grid_without_a_start_marker_places_no_beam() -> None:
@@ -366,9 +366,9 @@ def test_laserfuck_explores_both_beam_splitter_outcomes() -> None:
     for heading in range(4):
         draws = FirstDraw(heading, rest=0)
         machine = Laserfuck(code, ScriptedIO(), draws)
-        assert run_until_halt_or_cycle(machine) is False
+        assert run_until_halt(machine, limit=1000) is False
     escaping = Laserfuck(code, ScriptedIO(), FirstDraw(1, rest=1))
-    assert run_until_halt_or_cycle(escaping) is True
+    assert run_until_halt(escaping, limit=1000) is True
     machine = Laserfuck(code, ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(machine, limit=5000) is True
 

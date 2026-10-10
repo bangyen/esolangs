@@ -773,6 +773,11 @@ def malbolge(truth_table: str) -> str:
 LANGUAGE = Language(
     "Malbolge",
     "other.malbolge",
+    # The program is the full 59049-cell store.
+    slow_stepping=True,
+    # Every source loads into 59,049 cells, so every program -- this
+    # generator's or any other -- is bounded by a constant.
+    size_bound=lambda _n: 59_049,
     generator_max_inputs=MAX_INPUTS,
     boolean=malbolge,
     # Not a tree: straight-line code into a fixed 59049-cell store.

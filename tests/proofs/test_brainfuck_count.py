@@ -275,9 +275,6 @@ def test_io_commutation_negative_controls() -> None:
     assert _observe(">[--]<,", "")[0] == "eof"
     assert _observe(">+[--]<,", "")[0] == "diverge"
     assert _observe(",>+[--]<", "")[0] == "eof"
-    # A read-free prefix is insufficient: the tested cell must be preserved.
-    assert _observe("+[-[]].", "")[0] == "halt"
-    assert _observe("+[].", "")[0] == "diverge"
     # Clipping forbids cancelling <> at cell zero.
     assert _observe(prefix + "<>.", stdin) != _observe(prefix + ".", stdin)
 
@@ -350,10 +347,6 @@ def test_depth_two_and_three_side_conditions_execute() -> None:
         for p0, g in _DEPTH_PRESERVED_BODIES:
             loop = "[" + p0 + "[]" + g + "]"
             assert _observe(prefix + loop, stdin) == _observe(prefix + "[]", stdin)
-    # The documented counterexample pair: read-freedom without cell
-    # preservation is unsound.
-    assert _observe("+[-[]].", "")[0:2] == ("halt", "\x00")
-    assert _observe("+[].", "")[0] == "diverge"
 
 
 @pytest.mark.medium

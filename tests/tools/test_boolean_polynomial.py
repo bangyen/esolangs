@@ -5,17 +5,24 @@ import random
 import pytest
 
 import esolangs
+from esolangs import generate
 from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
 from esolangs.tools.polynomial import _polynomial_dag, _polynomial_states
-from esolangs.tools.wrap import balance_score, wrap_program
-from tests.tools.boolean_oracles import (
-    _polynomial_tree,
+from esolangs.tools.wrap import (
+    DEFAULT_WIDTH,
+    _polynomial,
+    balance_score,
+    wrap_program,
 )
 from tests.tools.boolean_runners import (
     run_polynomial,
     run_polynomial_from,
 )
+from tests.tools.polynomial_support import (
+    _polynomial_tree,
+)
+from tests.witness_tables import row_bits
 
 
 @pytest.mark.medium
@@ -23,7 +30,7 @@ class TestPolynomial:
     def test_uncapped_dag_has_matching_text_bound(self) -> None:
         """Pin and execute the construction matching the language lower bound."""
         from esolangs.tools.polynomial import _polynomial_assemble
-        from tests.tools.test_boolean_contract import _dense
+        from tests.witness_tables import dense as _dense
 
         for n in range(4, 9):
             table = _dense(n)
@@ -90,7 +97,7 @@ class TestPolynomial:
     @pytest.mark.slow  # 4.5s: one NTT factorization, then 256 cached rows
     def test_a_dense_eight_input_table_runs_every_row(self) -> None:
         """The arity the old cap refused now builds, and every row answers."""
-        from tests.tools.test_boolean_contract import _dense
+        from tests.witness_tables import dense as _dense
 
         table = _dense(8)
         program = boolean.polynomial(table)
@@ -221,7 +228,7 @@ class TestPolynomial:
         for table, n in (("0110", 2), ("10101010", 3), ("00001111", 3)):
             program = boolean.polynomial(table)
             for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 feed = iter([str(b) for b in bits])
                 got = run_polynomial_from(program, feed)
                 assert got == table[combo], f"{table} inputs {bits}"
@@ -246,3 +253,99 @@ def test_polynomial_balanced_folds_compute_the_table(table):
     assert (
         _evaluate("Polynomial", balanced, inputs=len(table).bit_length() - 1) == table
     )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("options", [{}, {"balance": True}])
+def test_dense_polynomial_eight_executes_every_row(options) -> None:
+    from esolangs.interpreters.register_based.polynomial import _parse_program
+    from esolangs.interpreters.register_based.polynomial.roots import _factor_roots
+
+    _parse_program.cache_clear()
+    _factor_roots.cache_clear()
+    table = format(random.Random(2034).getrandbits(256), "0256b")
+    program = esolangs.generate("Polynomial", table, **options)
+    # Cold root recovery exceeded the row deadline on CI; the medium band's
+    # hard stop bounds parsing, while every execution still gets two seconds.
+    _parse_program(program)
+    for row, expected in enumerate(table):
+        stdin = esolangs.encode_inputs("Polynomial", list(map(int, format(row, "08b"))))
+        assert (
+            esolangs.read_answer(
+                "Polynomial",
+                esolangs.run("Polynomial", program, stdin=stdin, timeout=2),
+            )
+            == expected
+        )
+
+
+def test_polynomial_never_strands_a_sign_on_its_own_line() -> None:
+    """The raggedness this wrapper exists to fix: a line that is just a sign."""
+    program = generate("Polynomial", "0110", width=DEFAULT_WIDTH)
+    assert "\n" in program
+    assert not [line for line in program.split("\n") if line.strip() in ("+", "-")]
+
+
+def test_polynomial_starts_a_term_only_on_a_line_of_its_own() -> None:
+    """The layout: a term starts a line, and only ever at the start of one."""
+    program = generate("Polynomial", "0110", width=DEFAULT_WIDTH)
+    lines = program.split("\n")
+    # Line 1 is ``f(x) = <term>``: ``f(x)``, ``=`` and the unsigned term.
+    assert lines[0].startswith("f(x) = ")
+    assert len(lines[0].split()) == 3
+    for line in lines[1:]:
+        # Either a line that starts a term -- ``<sign> <term>`` -- or a row
+        # carrying the previous one over, which is one unbroken run.
+        assert len(line.split()) == (2 if line.startswith(("+ ", "- ")) else 1)
+
+
+def test_polynomial_carries_a_term_over_without_inventing_a_sign() -> None:
+    """A row continuing a term is bare: the sign belongs to the term's start."""
+    # Four-input parity: XOR's coefficients no longer reach the width now
+    # that the generator spells itself on the cheap opcodes.
+    program = generate("Polynomial", "0110100110010110", width=DEFAULT_WIDTH)
+    carried = [
+        line for line in program.split("\n")[1:] if not line.startswith(("+ ", "- "))
+    ]
+    assert carried, "the table is too small to fold a term -- pick a wider one"
+    assert all(line.strip() and " " not in line for line in carried)
+
+
+def test_polynomial_keeps_the_header_with_the_first_term() -> None:
+    """``f(x)`` and ``=`` are not terms and do not get lines of their own."""
+    assert _polynomial("f(x) = x^2 - 3x + 7", 80).split("\n")[0] == "f(x) = x^2"
+
+
+def test_polynomial_meets_the_width_it_is_given() -> None:
+    """Every row fits, at every width -- the coefficients fold too."""
+    program = generate("Polynomial", "0110")
+    for width in (13, 40, 80, 200):
+        for line in _polynomial(program, width).split("\n"):
+            assert len(line) <= width
+
+
+def test_polynomial_keeps_an_oversized_term_with_its_sign() -> None:
+    """A term wider than the width keeps its sign rather than shedding it."""
+    wrapped = _polynomial("f(x) = x^2 - 123456789x + 7", 12)
+    assert "- 123456789x" in wrapped.split("\n")
+
+
+def test_polynomial_leaves_a_trailing_sign_alone() -> None:
+    """A sign with no term after it is kept rather than dropped."""
+    assert _polynomial("f(x) = x +", 80) == "f(x) = x\n+"
+
+
+def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
+    """Two signs in a row: the first has no term, and is kept as a line."""
+    assert _polynomial("f(x) = x + - 7", 80) == "f(x) = x\n+\n- 7"
+
+
+def test_polynomial_leaves_a_program_too_short_to_have_a_header() -> None:
+    """The ``f(x) =`` header is three terms; a shorter program has none."""
+    assert _polynomial("1", 10) == "1"
+
+
+def test_generator_restrictions_name_both_budgets() -> None:
+    restrictions = esolangs.describe("Polynomial")["generator_restrictions"]
+    assert "1934 instructions" in restrictions
+    assert "1000000000 estimated characters" in restrictions

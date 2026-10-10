@@ -7,7 +7,7 @@ from typing import Any
 
 from esolangs.interpreters.io import IO, ScriptedIO
 
-__all__ = ["run_printing", "run_program"]
+__all__ = ["run_lines", "run_printing", "run_program"]
 
 
 def run_program(
@@ -34,3 +34,12 @@ def run_printing(run: Callable[..., Any], code: Any) -> str:
     with contextlib.redirect_stdout(buffer):
         run(code, IO())
     return buffer.getvalue()
+
+
+def run_lines(run: Callable[..., Any]) -> Callable[..., str]:
+    """``(code, inputs=None) -> output``, feeding each input as one line."""
+
+    def run_and_capture(code: Any, inputs: list[str] | None = None) -> str:
+        return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+
+    return run_and_capture

@@ -416,7 +416,48 @@ def _package_sources(source: Source, target: str) -> tuple[dict[str, str], set[s
     visit(target)
     visit(target + ".__main__")
     visit("esolangs.interpreters._entry")
+    if "esolangs.raster" in sources:
+        sources["esolangs.registry"] = _raster_registry(source, target)
+        packages.add("esolangs.registry")
+        visit("esolangs.registry._slug")
+        visit("esolangs.settings")
+        visit("esolangs._validate")
     return sources, packages
+
+
+def _raster_registry(source: Source, target: str) -> str:
+    """Return the selected raster language's metadata validation registry."""
+    interpreter = target.removeprefix("esolangs.interpreters.")
+    declarations = (
+        node
+        for text in _generator_modules(source)
+        for node in ast.walk(ast.parse(text))
+        if isinstance(node, ast.Call) and _interpreter_of(node) == interpreter
+    )
+    declaration = next(declarations)
+    name = ast.literal_eval(declaration.args[0])
+    options = {keyword.arg: keyword.value for keyword in declaration.keywords}
+    # These raster interpreters expose no dialect. Refuse a future dialect
+    # rather than silently validating it as the default-only interpreter.
+    if "dialect" in options and ast.literal_eval(options["dialect"]) is not None:
+        raise ValueError("raster bundles with dialect settings are not supported")
+    language_id = ast.literal_eval(options["id"]) if "id" in options else None
+    registry = ast.parse(source.get("registry/__init__.py"))
+    resolver = next(
+        node
+        for node in registry.body
+        if isinstance(node, ast.FunctionDef) and node.name == "resolve"
+    )
+    return (
+        "import difflib\nfrom types import SimpleNamespace\n"
+        "from esolangs.exceptions import UnknownLanguageError\n"
+        "from esolangs.registry._slug import canonical_id, SUGGESTION_CUTOFF\n"
+        f"LANGUAGES = {{{name!r}: SimpleNamespace(dialect=None)}}\n"
+        f"_BY_ID = {{({language_id!r} or canonical_id({name!r})): {name!r}}}\n"
+        f"_BY_FOLDED = {{{name.strip().casefold()!r}: {name!r}}}\n"
+        + ast.unparse(resolver)
+        + "\n"
+    )
 
 
 _PACKAGE_RUNTIME = """

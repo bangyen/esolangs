@@ -2,6 +2,7 @@ from functools import partial
 
 import pytest
 
+import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.queue_based.bitdeque import run
@@ -145,3 +146,23 @@ def test_stray_text_is_rejected_with_the_first_invalid_word(
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Bitdeque", "PUHS", "did you mean 'PUSH'")
+
+
+class TestBitdequeRefusesNonsense:
+    """Unlike Taglate, which skips a non-command on purpose."""
+
+    def test_bitdeque_refuses_a_word_it_does_not_know(self) -> None:
+        """``findall`` kept what matched and dropped the rest in silence."""
+        with pytest.raises(esolangs.ProgramError, match="not a Bitdeque command"):
+            esolangs.run("Bitdeque", "PUSH FROB PUSH", stdin="", timeout=5)
+
+    def test_bitdeque_refuses_the_lower_case_program(self) -> None:
+        """The whole language was a no-op for anyone who guessed the case."""
+        with pytest.raises(esolangs.ProgramError, match="upper case"):
+            esolangs.run("Bitdeque", "push invert push", stdin="", timeout=5)
+
+    def test_bitdeque_still_runs_a_real_program(self) -> None:
+        """Three refusals are worth nothing if the valid case broke."""
+        assert (
+            esolangs.run("Bitdeque", "PUSH INVERT PUSH", stdin="", timeout=5) == "0 1"
+        )

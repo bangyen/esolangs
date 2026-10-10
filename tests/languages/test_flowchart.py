@@ -6,6 +6,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from tests.samples import FLOWCHART_CAT, FLOWCHART_TRUTH_MACHINE
 from tests.test_vm import _run_all
+from tests.test_vm_protocol import assert_starts_downward
 
 
 class TestTheDebuggerWarnsAboutStdinToo:
@@ -65,3 +66,8 @@ class TestFlowchart:
         while not vm.halted and not vm.memory:
             vm.step()
         assert vm.memory == [1]
+
+
+def test_the_first_move_is_down_the_rows() -> None:
+    """It begins vertically, so ``VM.ip``'s first component moves first."""
+    assert_starts_downward("Flowchart", 1)

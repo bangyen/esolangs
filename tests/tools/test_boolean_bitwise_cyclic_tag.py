@@ -12,8 +12,9 @@ from esolangs.interpreters.queue_based.bitwise_cyclic_tag import (
 )
 from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from tests.tools.reader_support import _TABLES, _bits
-from tests.tools.test_boolean_contract import _parity
+from tests.tools.reader_support import _TABLES
+from tests.witness_tables import parity as _parity
+from tests.witness_tables import row_bits as _bits
 
 
 def _bct_program(table: str, row: int) -> str:

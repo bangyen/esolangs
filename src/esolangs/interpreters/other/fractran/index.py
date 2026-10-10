@@ -230,6 +230,13 @@ class Cursor:
         self.index = index
         self.value = dict(index.initial)
         self.absent = len(index.rules)
+        self.cleanup_start = self.absent
+        for rule in range(self.absent - 1, -1, -1):
+            delta = index.rules[rule][1]
+            if not delta or any(change > 0 for _prime, change in delta):
+                break
+            self.cleanup_start = rule
+        self.cleanup_position: int | None = None
         counts: dict[int, int] = {}
         for guard, _delta in index.rules:
             for prime, _threshold in guard:
@@ -295,6 +302,17 @@ class Cursor:
 
     def choose(self) -> tuple[int | None, int]:
         """Return the exact first eligible fraction and candidate inspections."""
+        if self.cleanup_position is not None:
+            probes = 0
+            while self.cleanup_position < self.absent:
+                probes += 1
+                guard = self.index.rules[self.cleanup_position][0]
+                if all(
+                    self.value.get(prime, 0) >= exponent for prime, exponent in guard
+                ):
+                    return self.cleanup_position, probes
+                self.cleanup_position += 1
+            return None, probes
         rule = min(
             self.best.tree[1],
             self.absent
@@ -305,6 +323,19 @@ class Cursor:
 
     def advance(self, rule: int) -> None:
         """Update exponents and guards whose secondary thresholds were crossed."""
+        if rule >= self.cleanup_start:
+            # Pure removal cannot enable an earlier failed guard. Once this
+            # suffix fires, retain its priority with a forward scan alone.
+            self.cleanup_position = rule
+            for prime, delta in self.index.rules[rule][1]:
+                self.factor_updates += 1
+                new = self.value.get(prime, 0) + delta
+                if new:
+                    self.value[prime] = new
+                else:
+                    self.value.pop(prime, None)
+            self.version += 1
+            return
         dirty = set()
         for prime, delta in self.index.rules[rule][1]:
             self.factor_updates += 1

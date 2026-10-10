@@ -173,7 +173,7 @@ class _Machine:
 
     def input_position(self) -> int:
         """Report the input cursor for the growth detector."""
-        return self.io.position()
+        return self.io.progress()
 
     @property
     def halted(self) -> bool:
@@ -206,7 +206,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # Six live fields plus input cursor; ``done`` stays out.
         row, col, a, b, tape, cell, _done = self.state
-        return (row, col, a, b, tape, cell, self.io.position())
+        return (row, col, a, b, tape, cell, self.io.progress())
 
     def step(self) -> None:
         """Execute one cell, or dump the tape on the post-halt step.

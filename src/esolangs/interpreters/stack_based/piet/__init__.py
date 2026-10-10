@@ -276,7 +276,7 @@ class _Machine:
             self.dp,
             self.cc,
             self.stack,
-            self.io.position(),
+            self.io.progress(),
             self.halted,
             self._program_key,
             self._input_reads,

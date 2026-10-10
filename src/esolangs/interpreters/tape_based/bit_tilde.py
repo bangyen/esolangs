@@ -145,7 +145,7 @@ class _Machine:
         # The pool is already a tuple, so it goes in as it stands, in the
         # order this returned before the fields moved into a state value.
         ind, cell, tape = self.state
-        return (tape, cell, ind, self.io.position())
+        return (tape, cell, ind, self.io.progress())
 
     def step(self) -> None:
         """Execute one character, advancing the cursor.

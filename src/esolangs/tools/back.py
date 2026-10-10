@@ -6,6 +6,7 @@ from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+from esolangs.tools.back_routes import _back_bend, _back_walk
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -129,11 +130,13 @@ def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> st
     level draws none: the beam falls down the column onto that node's mirror,
     the first cell below, and turns east into the zero side.  The column
     wraps, so the level's last node reaches its first the same way, from eight
-    rows up.  Other repeats are drawn again: bending the beam round column 1,
-    the one lane free below the root, to any mirror in its column saves 0.7 /
-    0.8 more points of characters (tiled, n=8/9) but takes the worst commands
-    from 122 / 221 to 154 / 306 at n=6/7, since a bend walks the distance
-    between the nodes.  Area (rows x longest row), seeded tables, n=6/7:
+    rows up.  At 6..12 essential inputs, the first nonadjacent repeat may
+    bend through column 1. Admission preserves existing falls, reduces text
+    and rectangular area, and bounds both outcomes of each skip. A seeded
+    n=7 three-block control shrinks 1,267 to 1,156 characters and 1,560 to
+    1,274 cells, executing all 128 inputs within 179 commands (bound 221).
+    Unrestricted bends previously raised n=6/7 worst commands from 122/221
+    to 154/306, past that bound.  Straight-fall area (rows x longest row), n=6/7:
     random -21.9% / -23.6%, tiled from two random blocks -17.5% / -35.8%,
     constant half 0% / -13.1%; n <= 5 is unchanged, the load column setting
     the height.  The wrap, over the next-node fall alone, n=8/9: tiled -9.7% /
@@ -154,6 +157,15 @@ def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> st
         ),
         key=len,
     )
+    # Bound the admission analysis; larger trees retain their existing scaling.
+    if wrap and width is None and 6 <= levels <= 12:
+        candidate = _back_ordered(
+            table, tuple(range(levels)), weights=weights, wrap=True, bend=True
+        )
+        if len(candidate) < len(program) and len(candidate.splitlines()) * grid_width(
+            candidate
+        ) < len(program.splitlines()) * grid_width(program):
+            program = candidate
     if width is not None and width > 0 and max(map(len, program.splitlines())) > width:
         parity = _back_parity(truth_table, n)
         if parity is not None:
@@ -168,6 +180,7 @@ def _back_ordered(
     weights: list[int] | None = None,
     *,
     wrap: bool = False,
+    bend: bool = False,
 ) -> str:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 
@@ -240,7 +253,10 @@ def _back_ordered(
     ids = subtree_ids(truth_table)
 
     def draw(
-        shared: set[tuple[int, int]], *, vertical: bool
+        shared: set[tuple[int, int]],
+        *,
+        vertical: bool,
+        reserved: tuple[int, int] | None = None,
     ) -> tuple[dict[tuple[int, int], str], dict[tuple[int, int], tuple[int, int]]]:
         """Draw the tree; return its cells and each node's cell by (level, block).
 
@@ -277,6 +293,9 @@ def _back_ordered(
             where[level, block] = (row, col + 1)
             emit(level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
             if (level, block) in shared:
+                # Keep one empty row for the bend before compacting later nodes.
+                if (level, block) == reserved:
+                    next_row[0] += 1
                 return
             nrow = next_row[0]
             next_row[0] += 1
@@ -345,7 +364,19 @@ def _back_ordered(
                     shared.add((k, a))
         return shared
 
-    grid, _ = draw(plan(vertical=False), vertical=False)
+    shared = plan(vertical=False)
+    grid, positions = draw(shared, vertical=False)
+    bent = None
+    if bend and width is None and 6 <= levels <= 12:
+        bent = _back_bend(
+            grid,
+            positions,
+            shared,
+            ids,
+            lambda chosen: draw(
+                chosen, vertical=False, reserved=next(iter(chosen - shared))
+            ),
+        )
 
     if width is not None and width > 0:
         span = max(c for _, c in grid) + 3
@@ -368,7 +399,24 @@ def _back_ordered(
         grid[(height - 1 - k, 0)] = unit
     # No input row can instantiate to whitespace (a zero used to embed as a
     # blank, and the height revealed it).
-    return _reflect_back(grid, height, tree_width)
+    program = _reflect_back(grid, height, tree_width)
+    if bent is not None:
+        bent_height = max(max(r for r, _ in bent) + 1, 1 + len(units))
+        bent_width = max(c for _, c in bent) + 1
+        commands = _back_walk(bent, bent_height, bent_width + 2)
+        limit_rows = 3 * 2**n // 4 + 1
+        limit = max(limit_rows, 6 * n - 1) + limit_rows + 3 * n + 6
+        # Five entry turns plus the full load column bound either bit value.
+        if commands is not None and bent_height + 5 + commands <= limit:
+            bent[(0, 0)] = "/"
+            for k, unit in enumerate(units):
+                bent[(bent_height - 1 - k, 0)] = unit
+            candidate = _reflect_back(bent, bent_height, bent_width)
+            if len(candidate) < len(program) and bent_height * (
+                bent_width + 2
+            ) < height * (tree_width + 2):
+                return candidate
+    return program
 
 
 def _balance(table: str, default: str) -> str:

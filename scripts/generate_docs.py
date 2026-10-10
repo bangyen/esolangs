@@ -8,6 +8,7 @@ to hold them, which is why the gates could stop matching wording.
 
 import pathlib
 import re
+import shlex
 import sys
 import tomllib
 from typing import cast
@@ -71,27 +72,14 @@ _SHAPES_START = "<!-- INPUT-SHAPES:START -->"
 _SHAPES_END = "<!-- INPUT-SHAPES:END -->"
 _API_START = "<!-- PUBLIC-API:START -->"
 _API_END = "<!-- PUBLIC-API:END -->"
-_TUI_START = "<!-- TUI-FRAME:START -->"
-_TUI_END = "<!-- TUI-FRAME:END -->"
+_XOR_START = "<!-- XOR-EXAMPLE:START -->"
+_XOR_END = "<!-- XOR-EXAMPLE:END -->"
 _RASTER_START = "<!-- RASTER-SOURCES:START -->"
 _RASTER_END = "<!-- RASTER-SOURCES:END -->"
 _SIZE_START = "<!-- COLLECTION-SIZE:START -->"
 _SIZE_END = "<!-- COLLECTION-SIZE:END -->"
 _CENSUS_START = "<!-- CURATION-CENSUS:START -->"
 _CENSUS_END = "<!-- CURATION-CENSUS:END -->"
-
-#: The frame the README shows.  Flowchart because the pane is worth seeing:
-#: it is a grid language, so the screenshot shows the 2D program pane and a
-#: tuple ``ip``, neither of which a tape language exercises.  ``replay``
-#: derives the frame from nothing, so this is a coordinate, not a recording.
-_TUI_LANGUAGE = "Flowchart"
-_TUI_TABLE = "0110"
-_TUI_BITS = [0, 1]
-_TUI_STEP = 14
-_TUI_HEIGHT = 20
-_TUI_WIDTH = 74
-
-_ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 #: The bit vector the stdin table is rendered for.  Three bits, because an
 #: odd count is what makes Taglate's padding visible -- at two it encodes
@@ -298,44 +286,39 @@ def render_api_section() -> str:
     return "\n".join(lines)
 
 
-def render_tui_section() -> str:
-    """Render the README's TUI screen between the markers.
+def xor_language() -> str:
+    """Return the language whose XOR program the README shows first.
 
-    A real frame, not a mock-up: ``tui.replay`` reconstructs the state
-    ``_TUI_STEP`` commands into a fresh run and ``tui.render`` draws it.  So
-    the block is the screen, and a layout change fails the sync test rather
-    than leaving a stale picture on the front page -- which is the whole
-    reason this is text and not a recording.
-
-    Two departures from the live screen, both forced by the page.  Colour is
-    dropped, so the reverse-video cell marking the op about to run does not
-    survive; the header's ``ip`` names it instead, which is the same fallback
-    an ``opaque`` language gets.  And every line is right-stripped, because
-    ``trailing-whitespace`` runs on README.md and would otherwise strip the
-    grid's padding back out from under the committed block.
+    The shortest XOR among the languages reading their inputs as adjacent
+    characters, so it is short enough to read and never a removed language.
     """
-    from esolangs import tui
+    readers = [
+        name
+        for name in LANGUAGES
+        if (facts := esolangs.describe(name))["boolean_generator"]
+        and not facts["parameterized"]
+        and not facts["random"]
+        and facts["answer_mode"] == "output"
+        and facts["input_shape"] == "char_stream"
+        and facts["source_kind"] == "text"
+    ]
+    return min(readers, key=lambda name: len(str(esolangs.generate(name, "0110"))))
 
-    program = esolangs.generate(_TUI_LANGUAGE, _TUI_TABLE)
-    program = cast(str, program)
-    stdin = esolangs.encode_inputs(_TUI_LANGUAGE, _TUI_BITS)
-    frame = tui.replay(_TUI_LANGUAGE, program, stdin, _TUI_STEP)
-    screen = tui.render(frame, height=_TUI_HEIGHT, width=_TUI_WIDTH)
-    drawn = "\n".join(line.rstrip() for line in _ANSI.sub("", screen).splitlines())
+
+def render_xor_section() -> str:
+    """Render the README's first example: a generated XOR, and its length."""
+    language = xor_language()
+    program = str(esolangs.generate(language, "0110"))
     return "\n".join(
         [
-            f"Generate a program with `esolangs generate {_TUI_LANGUAGE}"
-            f" {_TUI_TABLE} > flowchart.txt`, then run",
-            "`esolangs debug --tui --stdin 01"
-            f" {_TUI_LANGUAGE} flowchart.txt` in a terminal.",
-            f"Here is {_TUI_LANGUAGE} at step {_TUI_STEP}:",
+            f"`esolangs generate {shlex.quote(language)} 0110` emits"
+            f" {len(program)} characters computing XOR:",
             "",
             "```",
-            drawn,
+            program,
             "```",
             "",
-            "See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging)"
-            " for controls.",
+            "Feeding it the two adjacent input characters prints their XOR.",
         ]
     )
 
@@ -451,7 +434,7 @@ def update_readme(root: pathlib.Path = ROOT) -> None:
         (_README_START, _README_END, render_languages_section),
         (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
         (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),
-        (_TUI_START, _TUI_END, render_tui_section),
+        (_XOR_START, _XOR_END, render_xor_section),
     ):
         text = _splice(text, start, end, render())
     path.write_text(text)

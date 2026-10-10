@@ -84,7 +84,6 @@ from esolangs.cli_io import (
     _read_stdin,
 )
 from esolangs.cli_run import _run
-from esolangs.cli_suggest import _suggest
 from esolangs.exceptions import (
     EsolangError,
 )
@@ -397,6 +396,7 @@ def _describe(rest: list[str]) -> None:
         ("dumps_on_the_post_halt_step", facts["dumps_on_the_post_halt_step"]),
         ("steppable_to_answer", facts["steppable_to_answer"]),
         ("eof_is_a_value", facts["eof_is_a_value"]),
+        ("random", facts["random"]),
         ("examples", f"{len(facts['examples'])} committed (paths in --json)"),
         ("wiki_url", facts["wiki_url"]),
     ]
@@ -522,7 +522,6 @@ def _dispatch() -> None:
         "encode": _encode,
         "generate": _generate,
         "run": _run,
-        "suggest": _suggest,
         "read-answer": _read_answer,
         "debug": _debug,
     }[cmd](rest)

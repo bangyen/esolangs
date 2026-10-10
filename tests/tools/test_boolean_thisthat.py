@@ -11,26 +11,18 @@ import esolangs
 from esolangs.interpreters.grid_based.thisthat import run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.thisthat import _Builder, _deque_plan, _tree, thisthat
-from tests.generator_support import evaluate_generated, verify_generated
-from tests.witness_tables import witnesses
+from tests.generator_support import evaluate_generated, run_lines, verify_generated
+from tests.witness_tables import parity, witnesses
 
 
 def _run(table: str, row: int) -> tuple[str, int]:
-    n = len(table).bit_length() - 1
-    bits = f"{row:0{n}b}"
-    io = ScriptedIO("".join(f"{bit}" for bit in bits))
-    run(thisthat(table).splitlines(), io)
-    return io.getvalue(), io.reads
-
-
-def _parity(n: int) -> str:
-    return "".join(str(row.bit_count() & 1) for row in range(1 << n))
+    return run_lines(run, thisthat(table), f"{row:0{len(table).bit_length() - 1}b}")
 
 
 @pytest.mark.medium
 def test_source_growth_is_linear_in_the_table() -> None:
     """Parity keeps every node, so it is the full tree's growth."""
-    sizes = [len(thisthat(_parity(n))) for n in range(1, 13)]
+    sizes = [len(thisthat(parity(n))) for n in range(1, 13)]
     assert all(right <= 3 * left for left, right in pairwise(sizes[3:]))
     assert max(size / (1 << n) for n, size in enumerate(sizes, 1)) < 300
 
@@ -135,7 +127,7 @@ def test_layout_collisions_abort() -> None:
 def test_rotated_layout_keeps_ports_and_bistack_axes(width: int) -> None:
     """Rotation changes physical directions while input deque order stays fixed."""
     for n in (1, 3, 5):
-        table = _parity(n)
+        table = parity(n)
         plain = thisthat(table)
         program = esolangs.generate("thisthat", table, width=width)
         floor = min(max(map(len, plain.splitlines())), len(plain.splitlines()))
@@ -148,7 +140,7 @@ def test_rotated_layout_keeps_ports_and_bistack_axes(width: int) -> None:
 
 
 def test_rotated_rendered_area_remains_linear() -> None:
-    sizes = [len(thisthat(_parity(n), 1)) for n in (5, 7, 9)]
+    sizes = [len(thisthat(parity(n), 1)) for n in (5, 7, 9)]
     assert sizes[-1] / (1 << 9) < 300
     assert sizes[2] / sizes[1] < 5
 
@@ -211,3 +203,8 @@ def test_narrow_strip_counts_kept_inputs() -> None:
     source = esolangs.generate("thisthat", table, width=1)
     assert max(map(len, source.splitlines())) <= 9
     assert verify_generated("thisthat", table, width=1)
+
+
+def test_xor_has_one_column() -> None:
+    xor = esolangs.generate("thisthat", "0110", width=1)
+    assert max(map(len, xor.splitlines())) == 1

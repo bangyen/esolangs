@@ -184,7 +184,7 @@ class _Machine:
             acc,
             stack,
             jumps,
-            self.io.position(),
+            self.io.progress(),
             self.code,
             self._input_reads,
         )

@@ -8,7 +8,7 @@ from esolangs.tools.back import _back_ordered
 from esolangs.tools.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from tests.generator_support import assert_an_ignored_input_costs
 from tests.tools.test_boolean_parameterized_contract import _drawing
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 class TestParameterizedBack:
@@ -28,21 +28,22 @@ class TestParameterizedBack:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from tests.tools.fills import _fill_back
+        from tests.tools.fills import fill
+
+        _fill_back = fill("Back")
 
         return _fill_back(tpl, bits)
 
     def test_program_length_is_the_same_for_every_input(self) -> None:
         """Both bits cost one command, so the size reveals nothing."""
         from esolangs import tools as generators
-        from tests.tools.fills import _fill_back
+        from tests.tools.fills import fill
+
+        _fill_back = fill("Back")
 
         for n in (1, 2, 3):
             template = generators.back(format(0, f"0{2**n}b"))
-            sizes = {
-                len(_fill_back(template, [(c >> (n - 1 - i)) & 1 for i in range(n)]))
-                for c in range(2**n)
-            }
+            sizes = {len(_fill_back(template, row_bits(c, n))) for c in range(2**n)}
             assert len(sizes) == 1, f"n={n} sizes {sorted(sizes)}"
 
     def test_a_falling_beam_reuses_the_next_zero_subtree(self) -> None:
@@ -161,7 +162,9 @@ class TestParameterizedBack:
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
         """Reordered loads still cost the same for either bit."""
         from esolangs import tools as generators
-        from tests.tools.fills import _fill_back
+        from tests.tools.fills import fill
+
+        _fill_back = fill("Back")
 
         for table in ("10101010", "11001100", "01101001"):
             template = generators.back(table)
@@ -240,32 +243,30 @@ def test_vertical_leaf_finish_preserves_every_small_table() -> None:
     assert max(map(len, esolangs.generate("back", "0110", width=8).splitlines())) == 8
 
 
+@pytest.mark.parametrize("width", [1, 4, 7, 10, 80])
 @pytest.mark.parametrize("n", [1, 2, 3, 5])
 @pytest.mark.parametrize("bias", [0, 1])
 def test_parity_accumulator_keeps_public_slots_and_provenance(
-    n: int, bias: int
+    n: int, bias: int, width: int
 ) -> None:
     import esolangs
 
     table = "".join(str((row.bit_count() & 1) ^ bias) for row in range(1 << n))
     runner = TestParameterizedBack()
-    for width in (1, 4, 7, 10, 80):
-        tagged = esolangs.generate("Back", table, width=width)
-        assert tagged.setters == (("-", "+"),) * n
-        for template in (tagged, str(tagged)):
-            for row, expected in enumerate(table):
-                bits = list(map(int, f"{row:0{n}b}"))
-                program = esolangs.instantiate(
-                    "Back", template, bits, truth_table=table
-                )
-                assert runner.run_back(program, n) == expected
-                assert len(program) == len(tagged)
-                if width == 1:
-                    assert max(map(len, program.splitlines())) == 1
-            with pytest.raises(esolangs.TemplateError):
-                esolangs.instantiate(
-                    "Back", template, [0] * n, truth_table="0" * len(table)
-                )
+    tagged = esolangs.generate("Back", table, width=width)
+    assert tagged.setters == (("-", "+"),) * n
+    for template in (tagged, str(tagged)):
+        for row, expected in enumerate(table):
+            bits = list(map(int, f"{row:0{n}b}"))
+            program = esolangs.instantiate("Back", template, bits, truth_table=table)
+            assert runner.run_back(program, n) == expected
+            assert len(program) == len(tagged)
+            if width == 1:
+                assert max(map(len, program.splitlines())) == 1
+        with pytest.raises(esolangs.TemplateError):
+            esolangs.instantiate(
+                "Back", template, [0] * n, truth_table="0" * len(table)
+            )
     assert max(map(len, esolangs.generate("Back", table, width=1).splitlines())) == 1
 
 
@@ -305,3 +306,93 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
             for drawing, sizes in builds.items():
                 assert len(sizes) == 1, (name, table, len(drawing), sorted(sizes))
     assert checked >= 3, checked
+
+
+@pytest.mark.parametrize(
+    ("n", "seed"),
+    [
+        (6, 2031),
+        (7, 2033),
+        (8, 2034),
+        (9, 2035),
+        (10, 2036),
+        pytest.param(11, 2037, marks=pytest.mark.medium),
+        # 5.24s alone with coverage exceeds the five-second medium band.
+        pytest.param(12, 2038, marks=pytest.mark.slow),
+    ],
+)
+def test_selective_bend_preserves_the_command_bound(n: int, seed: int) -> None:
+    """Every input executes; admission compares with both original layouts."""
+    import random
+
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.back import _Machine
+    from esolangs.tools.back import back
+    from tests.tools.fills import fill
+
+    _fill_back = fill("Back")
+
+    rng = random.Random(seed)
+    blocks = ["".join(rng.choice("01") for _ in range(2 ** (n - 3))) for _ in range(3)]
+    table = "".join(blocks[int(c)] for c in "01201201")
+    baseline = min(
+        (_back_ordered(table, tuple(range(n)), wrap=w) for w in (False, True)), key=len
+    )
+    program = back(table)
+
+    def area(code: str) -> int:
+        return len(code.splitlines()) * max(map(len, code.splitlines()))
+
+    assert len(program) <= len(baseline)
+    assert area(program) <= area(baseline)
+    rows = 3 * 2**n // 4 + 1
+    bound = max(rows, 6 * n - 1) + rows + 3 * n + 6
+    worst = 0
+    for row, answer in enumerate(table):
+        bits = [row >> (n - 1 - i) & 1 for i in range(n)]
+        machine = _Machine(_fill_back(program, bits).splitlines(), ScriptedIO())
+        steps = 0
+        while not machine.halted and steps < bound:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert machine.tape[n] == int(answer)
+        worst = max(worst, steps)
+    if n == 7:
+        assert (len(baseline), len(program), area(baseline), area(program), worst) == (
+            1267,
+            1156,
+            1560,
+            1274,
+            179,
+        )
+
+
+def test_bend_walk_rejects_cycles_and_counts_both_skip_outcomes() -> None:
+    from esolangs.tools.back_routes import _back_walk
+
+    assert _back_walk({(0, 1): "*"}, 1, 3) == 1
+    assert _back_walk({(0, 1): "+", (0, 3): "*"}, 1, 4) == 3
+    assert _back_walk({(0, 1): " "}, 1, 3) is None
+
+
+@pytest.mark.parametrize("obstruction", ["owner", "distance", "occupied"])
+def test_bend_refuses_a_missing_owner_or_blocked_corridor(obstruction: str) -> None:
+    from esolangs.tools.back_routes import _back_bend
+
+    positions = {(1, 0): (1, 5), (1, 1): (4, 5), (1, 2): (10, 5)}
+    grid = dict.fromkeys(positions.values(), "\\")
+    ids = [[0], [0, 0], [0, 7, 1, 8, 7, 9]]
+
+    def draw(_shared: set[tuple[int, int]]):
+        cells = dict(grid)
+        nodes = dict(positions)
+        if obstruction == "owner":
+            del nodes[1, 2]
+        elif obstruction == "distance":
+            nodes[1, 2] = (2, 5)
+        else:
+            cells[2, 3] = ">"
+        return cells, nodes
+
+    assert _back_bend(grid, positions, set(), ids, draw) is None

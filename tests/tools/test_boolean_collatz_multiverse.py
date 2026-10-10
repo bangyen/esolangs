@@ -10,7 +10,7 @@ from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import (
     run_collatz_multiverse,
 )
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 class TestCollatzMultiverse:
@@ -49,7 +49,7 @@ class TestCollatzMultiverse:
             for shape in (table, table[: 2 ** (n - 1)] * 2):
                 program = boolean.collatz_multiverse(shape)
                 for combo in range(2**n):
-                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    bits = row_bits(combo, n)
                     assert run_collatz_multiverse(program, bits) == shape[combo]
 
     def test_numbered_cells_halve_the_three_input_total(self) -> None:
@@ -158,3 +158,13 @@ class TestCollatzMultiverse:
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.collatz_multiverse, (7, 8), 255)
+
+
+def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
+    """Nothing above k2 is needed, so the plan sieve is never entered."""
+    from esolangs.tools.collatz_multiverse import _cm_constants
+
+    lines = _cm_constants([1, 2])
+    assert len(lines) == 4
+    assert all(line.endswith("NOT PRINT.") for line in lines)
+    assert _cm_constants([]) == lines

@@ -16,6 +16,7 @@ from esolangs.tools.flowchart import (
 from tests.tools.boolean_runners import (
     run_flowchart,
 )
+from tests.witness_tables import row_bits
 
 
 class TestFlowchart:
@@ -158,7 +159,7 @@ class TestFlowchart:
                 columns = max(len(row) for row in narrow.splitlines())
                 assert columns <= max(width, floor), (table, width, columns)
                 for combo in range(2**n):
-                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    bits = row_bits(combo, n)
                     got = run_flowchart(narrow, [str(b) for b in bits])
                     assert got == table[combo], (table, width, bits)
 

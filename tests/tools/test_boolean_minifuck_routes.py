@@ -10,6 +10,7 @@ from esolangs.tools.minifuck import _solve
 from esolangs.tools.minifuck.mux import _MUX_MIN_ARITY, _mux, _mux_lookup
 from esolangs.tools.minifuck.sim import _MINIFUCK_INPUT, PAIR
 from tests.tools.minifuck_support import _MinifuckCase, _mux_separate, run_count
+from tests.witness_tables import row_bits
 
 
 class TestParameterizedMinifuck(_MinifuckCase):
@@ -54,7 +55,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         assert run_count(template, n) == n
         widths = set()
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             program = self.instantiate(template, bits)
             widths.add(len(program))
             assert self.run_minifuck(program) == table[combo], (table, bits)
