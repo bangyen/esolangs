@@ -667,7 +667,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "finish":
         return finish(args.name)
     if args.command == "remove":
-        leftover = remove(args.name)
+        try:
+            leftover = remove(args.name)
+        except ValueError as exc:
+            parser.error(str(exc))
         print(f"removed {args.name}; {len(leftover)} mention(s) left to edit by hand")
         print("\n".join(leftover))
         return 0

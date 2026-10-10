@@ -28,7 +28,8 @@ TREES = ("src/", "tests/", "scripts/")
 #: Per-language registries a new language may skip: a missing differential
 #: spec only means no reference comparison for it.
 OPTIONAL = ("scripts/differential",)
-#: Files ``new_language.py remove`` edits by itself.
+#: Files ``new_language.py remove`` edits, or its own test, which names
+#: languages as examples.  The coupling guard does not count them.
 MANAGED = frozenset(
     {
         "src/esolangs/registry/_table.py",
@@ -41,6 +42,8 @@ MANAGED = frozenset(
         "tests/proofs/test_schemes.py",
         "tests/tools/mutate_generator.py",
         "tests/test_language_coupling.py",
+        "tests/test_interpreter_only_admissions.py",
+        "tests/scripts/test_new_language.py",
     }
 )
 

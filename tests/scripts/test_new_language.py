@@ -156,3 +156,83 @@ def test_gap_report_prints_a_shell_safe_followup(
     )
     command = capsys.readouterr().out.split("after fixing these: ")[1].strip()
     assert shlex.split(command) == ["just", "check-language", name]
+
+
+def test_remove_refuses_the_reference_language() -> None:
+    """``brainfuck`` is spelled out by shared tests and generate_docs.py."""
+    with pytest.raises(ValueError, match="reference language"):
+        remove_language.remove("brainfuck")
+
+
+def test_owner_id_prefers_the_longest_id() -> None:
+    ids = {"piet", "piet_plus_plus", "line", "back"}
+    owner = remove_language._owner_id  # noqa: SLF001
+    assert owner("piet_plus_plus.toml", ids) == "piet_plus_plus"
+    assert owner("piet.toml", ids) == "piet"
+    assert owner("back_routes.py", ids) == "back"
+    # ``linearity`` is not ``line``'s: the id must end at a name boundary.
+    assert owner("linearity.py", ids) is None
+
+
+def test_stale_timing_matches_any_parametrize_component() -> None:
+    names = {"Line", "line", "Piet"}
+    gone = {"tests/tools/test_boolean_line.py"}
+    stale = remove_language._stale_timing  # noqa: SLF001
+    assert stale("x.py::t[1-Line]", names, gone)
+    assert stale("x.py::t[Line-2]", names, gone)
+    assert stale("x.py::t[a-Line-b]", names, gone)
+    assert stale("x.py::t[Line]", names, gone)
+    assert stale("tests/tools/test_boolean_line.py::t", names, gone)
+    # ``Piet++`` is another language: only a whole ``-``-delimited part counts.
+    assert not stale("x.py::t[Piet++-5]", names, gone)
+    assert not stale("x.py::t[Piet++]", names, gone)
+    assert not stale("x.py::t", names, gone)
+
+
+def test_dead_test_files_catch_a_submodule_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pkg = tmp_path / "src/esolangs/tools/pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    (pkg / "sub.py").write_text("thing = 1\n")
+    tests = tmp_path / "tests/tools"
+    tests.mkdir(parents=True)
+    (tests / "test_sub.py").write_text("from esolangs.tools.pkg.sub import thing\n")
+    (tests / "test_shared.py").write_text(
+        "import esolangs.tools.pkg.sub\nimport esolangs\n"
+    )
+    monkeypatch.setattr(remove_language, "ROOT", tmp_path)
+    doomed = {pkg}
+    gone = remove_language._gone_modules(doomed)  # noqa: SLF001
+    users = {
+        "esolangs.tools.pkg.sub": {
+            "tests/tools/test_sub.py",
+            "tests/tools/test_shared.py",
+        }
+    }
+    assert remove_language._dead_test_files(doomed, gone, users) == {  # noqa: SLF001
+        tmp_path / "tests/tools/test_sub.py"
+    }
+
+
+def test_orphans_drop_a_helper_only_the_language_imports(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tools = tmp_path / "src/esolangs/tools"
+    tools.mkdir(parents=True)
+    (tools / "gone.py").write_text("from esolangs.tools.helper import h\n")
+    (tools / "helper.py").write_text("h = 1\n")
+    monkeypatch.setattr(remove_language, "ROOT", tmp_path)
+    doomed = {tools / "gone.py"}
+    private = {"esolangs.tools.helper": {"src/esolangs/tools/gone.py"}}
+    assert remove_language._orphans(doomed, private) == {  # noqa: SLF001
+        tools / "helper.py"
+    }
+    shared = {
+        "esolangs.tools.helper": {
+            "src/esolangs/tools/gone.py",
+            "src/esolangs/tools/keeper.py",
+        }
+    }
+    assert remove_language._orphans(doomed, shared) == set()  # noqa: SLF001
