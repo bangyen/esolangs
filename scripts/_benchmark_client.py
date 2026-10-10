@@ -19,6 +19,8 @@ import esolangs
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _verify_process import EXCERPT_BYTES, stop_process_tree
 
+MAX_RECORD_CHARS = 1024 * 1024
+
 
 class Worker:
     """Reuse one interpreter across a sweep; kill the tree on any deadline."""
@@ -64,14 +66,24 @@ class Worker:
             def read() -> None:
                 assert process.stdout is not None
                 while not stopped.is_set():
-                    line = process.stdout.readline() or None
+                    line = process.stdout.readline(MAX_RECORD_CHARS + 1) or None
+                    oversized = line is not None and len(line) > MAX_RECORD_CHARS
+                    if oversized:
+                        line = json.dumps(
+                            {
+                                "error": {
+                                    "type": "RuntimeError",
+                                    "message": "benchmark worker record exceeds limit",
+                                }
+                            }
+                        )
                     while not stopped.is_set():
                         try:
                             messages.put(line, timeout=0.05)
                             break
                         except queue.Full:
                             pass
-                    if line is None:
+                    if line is None or oversized:
                         break
 
             self.reader = threading.Thread(target=read, daemon=True)
@@ -100,6 +112,13 @@ class Worker:
         process = self.start()
         phase, limit = "generation", generation_timeout
         deadline = None if limit is None else time.monotonic() + limit
+        generated = False
+        executed = 0
+        expected = (
+            len(arguments.get("table", ""))
+            if arguments.get("all_rows")
+            else len(arguments.get("sample_rows") or (0,))
+        )
         try:
             messages, stopped = self.messages, self.stopped
 
@@ -137,15 +156,50 @@ class Worker:
                 if line is None:
                     raise RuntimeError("benchmark worker exited without evidence")
                 message = json.loads(line)
+                if not isinstance(message, dict):
+                    raise RuntimeError("invalid benchmark worker record")
                 if "phase" in message:
-                    phase = message["phase"]
-                    if phase == "execution":
+                    next_phase = message["phase"]
+                    if (
+                        next_phase == "generation"
+                        and not generated
+                        and set(message) == {"phase"}
+                    ):
+                        generated = True
+                    elif (
+                        next_phase == "execution"
+                        and generated
+                        and executed < expected
+                        and type(message.get("index")) is int
+                        and message["index"] == executed
+                        and set(message) == {"phase", "index"}
+                    ):
+                        phase = next_phase
+                        executed += 1
                         limit = arguments["timeout"]
                         deadline = None if limit is None else time.monotonic() + limit
+                    else:
+                        raise RuntimeError("invalid benchmark worker phase transition")
                 elif "result" in message:
+                    if (
+                        not generated
+                        or executed != expected
+                        or set(message) != {"result"}
+                        or not isinstance(message["result"], dict)
+                    ):
+                        raise RuntimeError(
+                            "premature or invalid benchmark worker result"
+                        )
                     return dict(message["result"])
                 elif "error" in message:
                     error = message["error"]
+                    if (
+                        set(message) != {"error"}
+                        or not isinstance(error, dict)
+                        or set(error) != {"type", "message"}
+                        or not all(isinstance(value, str) for value in error.values())
+                    ):
+                        raise RuntimeError("invalid benchmark worker error")
                     cls = getattr(
                         esolangs,
                         error["type"],

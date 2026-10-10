@@ -91,6 +91,17 @@ jobs:
           test-durations*.json
           certificate-durations*.json
 
+    - name: Retain worker and verification logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: logs-${{ github.job }}-${{ strategy.job-index }}
+        path: |
+          notes/verification/*.log
+          notes/benchmarks/*.log
+        if-no-files-found: ignore
+        retention-days: 14
+
   # Generation *time* is the one axis the per-PR gate cannot judge: it is
   # machine- and load-dependent, and a threshold loose enough not to flake on
   # a shared runner is loose enough to miss the regression it is there for.
@@ -144,6 +155,17 @@ jobs:
         name: generator-timings
         path: generator-timings.json
         retention-days: 90
+
+    - name: Retain worker and verification logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: logs-${{ github.job }}-${{ strategy.job-index }}
+        path: |
+          notes/verification/*.log
+          notes/benchmarks/*.log
+        if-no-files-found: ignore
+        retention-days: 14
 
   mutations:
     runs-on: ubuntu-latest

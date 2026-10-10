@@ -15,10 +15,18 @@ import benchmark
 def main() -> None:
     protocol = sys.stdout
 
+    execution = 0
+
     def progress(phase: str) -> None:
-        print(json.dumps({"phase": phase}), file=protocol, flush=True)
+        nonlocal execution
+        message: dict[str, str | int] = {"phase": phase}
+        if phase == "execution":
+            message["index"] = execution
+            execution += 1
+        print(json.dumps(message), file=protocol, flush=True)
 
     for line in sys.stdin:
+        execution = 0
         request = json.loads(line)
         token = benchmark._EVIDENCE.set(request["identity"])  # noqa: SLF001
         try:

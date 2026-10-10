@@ -71,3 +71,20 @@ def test_coverage_gate_requires_success_and_both_artifacts():
     assert "test -f .coverage.shard-1" in commands
     assert "coverage report --fail-under=97" in commands
     assert "check_diff_coverage.py --partial --strict" in commands
+
+
+def test_failure_log_uploads_are_unconditional_and_unique():
+    for name in ("ci.yml", "weekly.yml", "release.yml"):
+        jobs = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())["jobs"]
+        for job in jobs.values():
+            uploads = [
+                step
+                for step in job["steps"]
+                if "actions/upload-artifact@" in step.get("uses", "")
+            ]
+            names = [step["with"]["name"] for step in uploads]
+            assert len(names) == len(set(names))
+            for upload in uploads:
+                if "notes/benchmarks" in upload["with"]["path"]:
+                    assert upload["if"] == "always()"
+                    assert "notes/verification" in upload["with"]["path"]

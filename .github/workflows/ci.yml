@@ -100,6 +100,17 @@ jobs:
     - name: Check that no interpreter leaks a raw exception
       run: uv run python scripts/verify_no_exception_leaks.py --all
 
+    - name: Retain worker and verification logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: logs-${{ github.job }}-${{ strategy.job-index }}
+        path: |
+          notes/verification/*.log
+          notes/benchmarks/*.log
+        if-no-files-found: ignore
+        retention-days: 14
+
   test:
     # The fast band on the non-coverage interpreters, sharded in two.
     # Measured in run 37334678602, the plain legs set the wall clock
@@ -141,6 +152,17 @@ jobs:
     - name: Test with pytest (shard ${{ matrix.shard }} of 2)
       run: uv run python scripts/pytest_shard.py --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 -- -n auto
 
+    - name: Retain worker and verification logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: logs-${{ github.job }}-${{ strategy.job-index }}
+        path: |
+          notes/verification/*.log
+          notes/benchmarks/*.log
+        if-no-files-found: ignore
+        retention-days: 14
+
   # Branch monitoring needs 3.14: local line/branch coverage measured
   # 36.1/119.3s on 3.13 versus 17.81/17.89s on 3.14 (coverage 7.13.4).
   coverage-tests:
@@ -174,6 +196,17 @@ jobs:
         include-hidden-files: true
         if-no-files-found: error
         retention-days: 1
+
+    - name: Retain worker and verification logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: logs-${{ github.job }}-${{ strategy.job-index }}
+        path: |
+          notes/verification/*.log
+          notes/benchmarks/*.log
+        if-no-files-found: ignore
+        retention-days: 14
 
   coverage:
     needs: coverage-tests
@@ -269,6 +302,17 @@ jobs:
           certificate-durations*.json
         if-no-files-found: error
         retention-days: 7
+
+    - name: Retain worker and verification logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: logs-${{ github.job }}-${{ strategy.job-index }}
+        path: |
+          notes/verification/*.log
+          notes/benchmarks/*.log
+        if-no-files-found: ignore
+        retention-days: 14
 
 
   generated-docs:
@@ -395,6 +439,21 @@ jobs:
       run: >
         uv run pytest -q -o addopts=""
         tests/test_run_bounded.py tests/test_memory_budget.py
+        tests/scripts/test_engineering_followups.py
+        tests/scripts/test_artifact_retention.py
+        tests/scripts/test_benchmark_protocol.py
+        tests/scripts/test_check_generator_sizes.py::test_benchmark_deadline_reaps_workers_with_positive_control
         tests/test_run_isolated.py::test_output_limit_stops_an_infinite_writer_and_reaps
         tests/test_run_isolated.py::test_capped_timeout_retains_output_and_reaps
         tests/test_run_isolated.py::test_input_error_retains_counts_and_output
+
+    - name: Retain worker and verification logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: logs-${{ github.job }}-${{ strategy.job-index }}
+        path: |
+          notes/verification/*.log
+          notes/benchmarks/*.log
+        if-no-files-found: ignore
+        retention-days: 14
