@@ -126,6 +126,9 @@ class TestTaglate:
         # ord('1') - ord('2') = -1, wrapping to 65535
         assert run_and_capture(["12", "bi"]) == chr(65535)
 
+    def test_multiply_wraps(self) -> None:
+        assert run_and_capture([chr(65535) + chr(2), "ci"]) == chr(65534)
+
     def test_divide_by_zero_halts(self) -> None:
         """Division by zero is invalid, so the interpreter halts on it."""
         import pytest

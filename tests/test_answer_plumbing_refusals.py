@@ -373,9 +373,13 @@ def test_periodic_caller_alarm_fires_during_guard():
     try:
         _run(lambda *_args: time.sleep(0.06), "", ScriptedIO(""), 1)
         assert len(calls) >= 2
-        remaining, interval = signal.getitimer(signal.ITIMER_REAL)
-        assert remaining > 0
+        _remaining, interval = signal.getitimer(signal.ITIMER_REAL)
         assert interval == 0.01
+        # Darwin reported zero for 28/30 live native timers; verify a later tick.
+        for _ in range(2):
+            before = len(calls)
+            time.sleep(0.03)
+            assert len(calls) > before
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous)

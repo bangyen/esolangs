@@ -42,6 +42,7 @@ SHARED_INTERPRETER = (
 # does, so it can never be validated by a scoped run of that same machinery.
 SHARED_TOOLING = (
     "scripts/verify.py",
+    "scripts/_verify_cache.py",
     "scripts/_scope.py",
     "scripts/check_diff_coverage.py",
     "pyproject.toml",

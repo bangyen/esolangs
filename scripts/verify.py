@@ -47,6 +47,7 @@ Usage:
 import argparse
 import ast
 import atexit
+import contextlib
 import functools
 import os
 import shlex
@@ -60,6 +61,9 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from _verify_cache import CACHED_STEPS, VerifiedCache  # noqa: E402
 
 # Git runs this hook with its stdout attached to a pipe, not the terminal, so
 # Python block-buffers our own prints while the steps -- which inherit the
@@ -110,6 +114,7 @@ HEARTBEAT_SECONDS = 20.0
 # short steps go by.  A sibling step would race it and read a half-written
 # file, so the gate is run by _run_steps once the long step has exited.
 DIFF_COVERAGE_STEP = "touched-file coverage"
+COVERAGE_TEST_STEP = "coverage tests"
 
 
 # Which paths each step actually guards.  A step whose prefixes the branch did
@@ -246,7 +251,9 @@ def _rerun_hint(name: str) -> list[str]:
     The coverage gate is not a ``STEPS`` entry, so ``--only`` cannot name it;
     it runs after pytest, which is what reproduces it.
     """
-    step = "pytest" if name == DIFF_COVERAGE_STEP else name
+    if name == "verification inputs":
+        return ["  rerun: uv run python scripts/verify.py"]
+    step = "pytest" if name in (DIFF_COVERAGE_STEP, COVERAGE_TEST_STEP) else name
     rerun = f"  rerun: uv run python scripts/verify.py --only {shlex.quote(step)}"
     return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
 
@@ -559,6 +566,56 @@ def _scoped_coverage(cmd: list[str], changed: list[str]) -> list[str]:
     return [*without, "--cov", f"--cov-config={rc}", "--cov-report="]
 
 
+def _split_coverage(
+    runnable: list[tuple[str, list[str], dict[str, str]]], changed: list[str]
+) -> list[tuple[str, list[str], dict[str, str]]]:
+    """Measure leaf interpreter units separately from a whole-suite run."""
+    touched = [
+        path for path in changed if path.startswith("src/") and path.endswith(".py")
+    ]
+    if any(not path.startswith("src/esolangs/interpreters/") for path in touched):
+        return runnable
+    paths = _pytest_scope(touched)
+    if not touched or paths == WHOLE_SUITE:
+        return runnable
+    paths = [
+        path
+        for path in paths
+        if path.startswith("tests/interpreters/")
+        and path not in INTERPRETER_CONTRACT_TESTS
+    ]
+    if not paths:
+        return runnable
+    result = []
+    for name, cmd, env in runnable:
+        options = shlex.split(env.get("PYTEST_ADDOPTS", ""))
+        if (
+            name != LONG_STEP
+            or "--cov" not in cmd
+            or any(arg.startswith("tests/") for arg in cmd)
+            or any(arg.startswith(("--cov", "--no-cov")) for arg in options)
+        ):
+            result.append((name, cmd, env))
+            continue
+        bare = [arg for arg in cmd if not arg.startswith("--cov")]
+        if not any(
+            arg.startswith(("-n", "--numprocesses")) for arg in [*cmd, *options]
+        ):
+            bare += ["-n", "8"]
+        if not any(arg.startswith("--dist") for arg in [*cmd, *options]):
+            bare += ["--dist", "worksteal"]
+        result.insert(
+            0,
+            (
+                COVERAGE_TEST_STEP,
+                [*cmd, "-n", "0", *paths],
+                env,
+            ),
+        )
+        result.append((name, [*bare, "--no-cov"], env))
+    return result
+
+
 def _parse_only_skip() -> tuple[
     set[str] | None, set[str] | None, bool, bool, bool, bool
 ]:
@@ -737,6 +794,8 @@ def _run_steps(
     failed: list[str] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.time()
+    clean_cache: VerifiedCache | None = None
+    cache_keys: dict[str, str | None] = {}
 
     def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
         timings.append((name, elapsed))
@@ -748,6 +807,15 @@ def _run_steps(
         # Only the captured branch has output to replay; the streaming one
         # already wrote it straight to the terminal.
         captured: str | None = None
+        key = None
+        if clean_cache is not None and name in CACHED_STEPS:
+            key = cache_keys.get(name)
+            if key is not None:
+                cached = clean_cache.load(key)
+                if cached is not None:
+                    print(f"[cache] {name}: identical verified inputs")
+                    record(name, time.time() - start, 0, cached)
+                    return
         if stream:
             returncode = subprocess.run(cmd, env=step_env).returncode
         else:
@@ -766,11 +834,42 @@ def _run_steps(
                 start,
             )
         record(name, time.time() - start, returncode, captured)
+        if key is not None and returncode == 0 and captured is not None:
+            assert clean_cache is not None
+            clean_cache.remember(key, captured, returncode)
 
-    # Phase 1: the tree-mutating step, alone, before anything reads the tree.
-    for name, cmd, step_env in runnable:
-        if name == MUTATES_TREE:
-            run_serial(name, cmd, step_env)
+    # Companion checks wait for formatting; runtime probes may overlap it.
+    # The cache's initial snapshot rejects entries if formatting changed inputs.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = []
+        if not stream and any(
+            name in CACHED_STEPS and env.get("VERIFY_CLEAN_CACHE", "1") != "0"
+            for name, _, env in runnable
+        ):
+            with contextlib.suppress(OSError, subprocess.CalledProcessError):
+                clean_cache = VerifiedCache(ROOT)
+
+                def prepare(steps: list[tuple[str, list[str], dict[str, str]]]) -> None:
+                    assert clean_cache is not None
+                    for name, cmd, step_env in steps:
+                        cache_keys[name] = clean_cache.key(name, cmd, step_env)
+
+                eligible = [step for step in runnable if step[0] in CACHED_STEPS]
+                futures = [
+                    pool.submit(
+                        prepare,
+                        [step for step in eligible if (step[0] == "bandit") == bandit],
+                    )
+                    for bandit in (False, True)
+                ]
+        for name, cmd, step_env in runnable:
+            if name == MUTATES_TREE:
+                run_serial(name, cmd, step_env)
+        for future in futures:
+            future.result()
+    if MUTATES_TREE in failed:
+        clean_cache = None
+        cache_keys.clear()
 
     # Phase 2: launch the long step, then run the cheap ones in its shadow.
     rest = [s for s in runnable if s[0] != MUTATES_TREE]
@@ -812,10 +911,14 @@ def _run_steps(
                 for name, cmd, step_env in shadow:
                     run_serial(name, cmd, step_env)
             else:
+
+                def run_shadow() -> None:
+                    for step in shadow:
+                        run_serial(*step)
+
                 with ThreadPoolExecutor(max_workers=2) as checks:
-                    results = [
-                        checks.submit(run_serial, *step) for step in [*heavy, *shadow]
-                    ]
+                    results = [checks.submit(run_serial, *step) for step in heavy]
+                    results.append(checks.submit(run_shadow))
                     for result in results:
                         result.result()
                 heavy = []
@@ -832,12 +935,20 @@ def _run_steps(
     # nothing about the data file.  It is 0.2s and it unblocks nothing, so it
     # goes before the heavy steps rather than after them.
     ran_pytest = any(name == LONG_STEP for name, _ in timings)
-    if gate is not None and ran_pytest and LONG_STEP not in failed:
+    if (
+        gate is not None
+        and ran_pytest
+        and LONG_STEP not in failed
+        and COVERAGE_TEST_STEP not in failed
+    ):
         run_serial(*gate)
 
     # Phase 4: the parallel steps, now that they can have the machine.
     for name, cmd, step_env in heavy:
         run_serial(name, cmd, step_env)
+
+    if clean_cache is not None and not clean_cache.finish():
+        record("verification inputs", 0.0, 1, "Inputs changed during verification")
 
     for name in failed:
         print(f"[FAIL] {name}", *_rerun_hint(name), sep="\n")
@@ -865,6 +976,8 @@ def main() -> int:
         print(f"scope: {len(STEPS) - len(unaffected)}/{len(STEPS)} steps ({why})")
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
+    if only is not None or full or os.environ.get("VERIFY_FULL", "0") not in ("", "0"):
+        env["VERIFY_CLEAN_CACHE"] = "0"
     # Probe PY rather than the running interpreter: verify.py may be launched
     # by a different python than the one it runs the steps with (e.g.
     # `uv run --with pylint python scripts/verify.py`, which leaves PY pointing
@@ -958,6 +1071,9 @@ def main() -> int:
                 "verification failed: install required tools or use --allow-incomplete"
             )
             return 1
+
+    if only is None and not full and changed:
+        runnable = _split_coverage(runnable, changed)
 
     if "LEAKSWEEP_JOBS" not in env:
         overlap = not _should_stream(
