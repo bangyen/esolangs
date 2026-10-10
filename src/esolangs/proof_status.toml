@@ -190,9 +190,9 @@ labels = ["tree"]
 qualification = """\
     each input byte's low bit is read onto its own cell and tested in place by a \
     flip-only decision tree, one flag interleaved beside each bit, consuming and \
-    emitting complete bytes; unused level flags defer repeated residuals in depth \
-    order"""
-scaling = "linear: constant cost per node, difference ratio ~3.9 at n=8..12"
+    emitting complete bytes; repeated residuals use level flags or normalized \
+    AND/XOR bodies, and affine tables stream through one accumulator"""
+scaling = "linear: geometric tree walk; affine tables use O(n) characters"
 execution = "poly n: worst 2n^2 + 27n + 8 commands; reads shuttle to scratch"
 workspace = """\
     poly n: at most bl(L-1) + max(12, bl(2n-2)+10) + n + Σ_{i<n} bl(i) + bl(2n) + \

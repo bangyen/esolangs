@@ -23,6 +23,10 @@ leaf ever executes, so R flips at most once. Repeated residuals defer
 to unused level flags and emit once in depth order after the prefix tree,
 only when text shrinks and the unchanged command bound admits it.
 Same-level banks use distinct unused descendant flags, cleared before reuse.
+At n>=9, two-input cofactors also normalize to shared AND/XOR gates;
+input flips and output bias distinguish their functions without extra flags.
+Affine tables stream through two data cells, toggling the accumulator once
+per selected bit; ignored bytes are still consumed whole.
 
 Print: R prints as bit 0 of the answer byte; bits 1..3 print from a
 cleared flag cell, bits 4..5 after flipping it, bits 6..7 cleared
@@ -31,6 +35,7 @@ again -- the ASCII ``'0'``/``'1'`` byte in exactly 8 prints.
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.tools.boolfuck_gates import affine_stream, normal_gates
 from esolangs.tools.helpers import (
     _validate_truth_table,
     move_text,
@@ -45,6 +50,12 @@ _SCRATCH = -1
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
     plain, _ = _boolfuck_tree(truth_table)
+    affine = affine_stream(truth_table)
+    if affine is not None and len(affine) < len(plain):
+        plain = affine
+    gates = normal_gates(truth_table)
+    if gates is not None and len(gates) < len(plain):
+        plain = gates
     shared = repeated_block(truth_table)
     if shared is None:
         return plain
