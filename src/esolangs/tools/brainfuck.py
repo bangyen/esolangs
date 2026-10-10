@@ -32,6 +32,7 @@ def bf_tree(truth_table: str) -> str:
     folding and shared output cut n=10 XOR from 77,939 to 18,495.  Equal
     sibling halves merge; repeated residuals use one unused flag per level
     and emit once in depth order, within the existing command bound.
+    A same-level bank can use several unused descendant flags instead.
     Affine tables also stream through three cells: n=16 parity falls from
     672,691 to 1,186 chars, with at most 66 commands per selected input.
     An ignored input before the last kept one is read bare into the next
@@ -75,7 +76,9 @@ def _affine_stream(table: str) -> str | None:
     return "".join(parts)
 
 
-def _bf_ordered(truth_table: str, perm: tuple[int, ...], *, share: bool = True) -> str:
+def _bf_ordered(
+    truth_table: str, perm: tuple[int, ...], *, share: bool = True, bank: bool = True
+) -> str:
     """Emit a permuted table; node i tests cell 2*perm[i], reads stay ordered."""
     n = _validate_truth_table(truth_table)
 
@@ -113,6 +116,7 @@ def _bf_ordered(truth_table: str, perm: tuple[int, ...], *, share: bool = True) 
         tree_start,
         2 * n,
         command_budget=69 * n + 44 - len(header) - _ASCII_ZERO - 1,
+        bank=bank,
     )
     if shared is None:
         return plain

@@ -229,3 +229,37 @@ def test_constant_projection_retains_balanced_encoding(n, bit):
     assert_constant_balanced_shape(
         "Factor", "factor", table, _factor(table, keep_constant_input=True)
     )
+
+
+@pytest.mark.medium
+def test_factor_bank_compares_decimal_encodings_and_executes_within_ledger():
+    from esolangs.tools.factor import _encode, _program
+    from tests.generator_support import assert_shared_program
+
+    n = 8
+    a, b = "00010111" * 4, "01101001" * 4
+    table = a + b + b + a + a + b + a + b
+    previous = min(
+        (
+            str(_encode(code))
+            for code in (
+                _program(table),
+                _program(table, shared=True, multiple=False),
+                _program(table, shared=True, bank=False),
+            )
+        ),
+        key=len,
+    )
+    assert_shared_program(
+        "Factor",
+        table,
+        previous,
+        265 * n + 231,
+        lambda _: (
+            7 * n
+            + 12
+            + (2 * n + 1).bit_length()
+            + n.bit_length()
+            + (51 * 2 ** (n - 2) + 16 * n + 14).bit_length()
+        ),
+    )

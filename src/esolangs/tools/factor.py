@@ -7,6 +7,8 @@ build and subtract the ASCII offsets; only this tree is encoded.  Equal
 sibling halves merge; repeated residuals emit in depth order after the prefix,
 using one unused flag per level when the encoded integer is shorter and
 the unchanged command bound admits it.
+Same-level banks use unused descendant flags; each admitted bank is encoded
+separately so decimal size, rather than decoded text length, selects it.
 An ignored cell is read but not dedented.
 """
 
@@ -94,6 +96,9 @@ def _program(
     shared: bool = False,
     keep_constant_input: bool = False,
     multiple: bool = True,
+    bank: bool = True,
+    bank_only: bool = False,
+    bank_ranked: bool = True,
 ) -> str:
     """Build the compact tree in input order, using the final input's flag.
 
@@ -166,6 +171,9 @@ def _program(
         binary_leaves=True,
         command_budget=265 * n + 230 - prelude,
         multiple=multiple,
+        bank=bank,
+        bank_only=bank_only,
+        bank_ranked=bank_ranked,
     )
     if candidate is None:
         return plain
@@ -193,7 +201,20 @@ def _factor(truth_table: str, *, keep_constant_input: bool = False) -> str:
     """Encode the tree, optionally retaining constant-input normalization."""
     plain = _program(truth_table, keep_constant_input=keep_constant_input)
     candidate = _program(
-        truth_table, shared=True, keep_constant_input=keep_constant_input
+        truth_table,
+        shared=True,
+        bank_only=True,
+        keep_constant_input=keep_constant_input,
+    )
+    layered = _program(
+        truth_table, shared=True, bank=False, keep_constant_input=keep_constant_input
+    )
+    first = _program(
+        truth_table,
+        shared=True,
+        bank_only=True,
+        bank_ranked=False,
+        keep_constant_input=keep_constant_input,
     )
     single = _program(
         truth_table,
@@ -208,7 +229,11 @@ def _factor(truth_table: str, *, keep_constant_input: bool = False) -> str:
             return str(number)
 
     return min(
-        (encoded(code) for code in dict.fromkeys((plain, single, candidate))), key=len
+        (
+            encoded(code)
+            for code in dict.fromkeys((plain, single, layered, first, candidate))
+        ),
+        key=len,
     )
 
 

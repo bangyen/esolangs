@@ -22,6 +22,7 @@ Constant subtrees fold to a leaf, exactly as in
 leaf ever executes, so R flips at most once. Repeated residuals defer
 to unused level flags and emit once in depth order after the prefix tree,
 only when text shrinks and the unchanged command bound admits it.
+Same-level banks use distinct unused descendant flags, cleared before reuse.
 
 Print: R prints as bit 0 of the answer byte; bits 1..3 print from a
 cleared flag cell, bits 4..5 after flipping it, bits 6..7 cleared
@@ -34,7 +35,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     move_text,
 )
-from esolangs.tools.shared_block import repeated_block, repeated_blocks
+from esolangs.tools.shared_block import repeated_bank, repeated_block, repeated_blocks
 from esolangs.tools.shared_flag import flag_tree_body
 from esolangs.tools.wrap import wrap_chars
 
@@ -53,6 +54,14 @@ def boolfuck(truth_table: str) -> str:
     blocks = repeated_blocks(truth_table)
     if len(blocks) > 1:
         forms.append(_boolfuck_tree(truth_table, shared_blocks=blocks))
+    seen = set()
+    for ranked in (False, True):
+        bank, levels = repeated_bank(truth_table, ranked=ranked)
+        if bank and bank not in seen:
+            seen.add(bank)
+            forms.append(
+                _boolfuck_tree(truth_table, shared_blocks=bank, flag_levels=levels)
+            )
     return min(
         (program for program, cost in forms if cost <= 2 * n * n + 27 * n + 8),
         key=len,
@@ -64,6 +73,7 @@ def _boolfuck_tree(
     shared: tuple[int, int] | None = None,
     *,
     shared_blocks: tuple[tuple[int, int], ...] = (),
+    flag_levels: tuple[int, ...] = (),
 ) -> tuple[str, int]:
     """Emit a tree, optionally deferring a block into its first unused flag."""
     n = _validate_truth_table(truth_table)
@@ -99,6 +109,7 @@ def _boolfuck_tree(
         result,
         shared=shared,
         shared_blocks=shared_blocks,
+        flag_levels=flag_levels,
         flip=True,
     )
     emit(body)

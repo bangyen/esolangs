@@ -11,7 +11,7 @@ from esolangs.tools.helpers import (
     move_text,
     subtree_ids,
 )
-from esolangs.tools.shared_block import repeated_block, repeated_blocks
+from esolangs.tools.shared_block import repeated_bank, repeated_block, repeated_blocks
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +39,9 @@ def shared_flag_tree(
     binary_leaves: bool = False,
     command_budget: int | None = None,
     multiple: bool = True,
+    bank: bool = True,
+    bank_only: bool = False,
+    bank_ranked: bool = True,
 ) -> tuple[str, int] | None:
     """Return the shortest admitted single- or multiple-residual byte-tape body."""
     shared = repeated_block(truth_table)
@@ -48,8 +51,8 @@ def shared_flag_tree(
         truth_table, perm, start, result, shared=shared, binary_leaves=binary_leaves
     )
     blocks = repeated_blocks(truth_table)
-    forms = [single]
-    if multiple and len(blocks) > 1:
+    forms = [] if bank_only else [single]
+    if multiple and not bank_only and len(blocks) > 1:
         forms.append(
             flag_tree_body(
                 truth_table,
@@ -60,6 +63,25 @@ def shared_flag_tree(
                 binary_leaves=binary_leaves,
             )
         )
+    if multiple and bank:
+        seen = set()
+        for ranked in (bank_ranked,) if bank_only else (False, True):
+            banked, levels = repeated_bank(
+                truth_table, reserve_last=2 * perm[-1] + 1 == result, ranked=ranked
+            )
+            if banked and banked not in seen:
+                seen.add(banked)
+                forms.append(
+                    flag_tree_body(
+                        truth_table,
+                        perm,
+                        start,
+                        result,
+                        shared_blocks=banked,
+                        flag_levels=levels,
+                        binary_leaves=binary_leaves,
+                    )
+                )
     admitted = [
         form for form in forms if command_budget is None or form[1] <= command_budget
     ]
@@ -74,6 +96,7 @@ def flag_tree_body(
     *,
     shared: tuple[int, int] | None = None,
     shared_blocks: tuple[tuple[int, int], ...] = (),
+    flag_levels: tuple[int, ...] = (),
     binary_leaves: bool = False,
     flip: bool = False,
 ) -> tuple[str, int]:
@@ -82,22 +105,36 @@ def flag_tree_body(
     Inputs at cells 2*perm[i] are bits and following flags are zero; binary
     leaves may reserve the final flag for result. Flip-only loop closers
     retest the opener; byte loops do not.
+    A same-level bank uses distinct descendant flags; dispatch clears each
+    before its body reuses it. Other pending flags stay zero on that path.
     """
     n = _validate_truth_table(truth_table)
     clear = "+" if flip else "-"
     retest = int(flip)
     blocks = (shared,) if shared is not None else shared_blocks
     depths = [depth for depth, _ in blocks]
-    if any(depth < 0 or depth >= n for depth in depths) or any(
-        left >= right for left, right in pairwise(depths)
-    ):
+    if flag_levels:
+        if (
+            len(flag_levels) != len(blocks)
+            or len(set(depths)) != 1
+            or len(set(flag_levels)) != len(flag_levels)
+            or any(level < depths[0] or level >= n for level in flag_levels)
+            or any(2 * perm[level] + 1 == result for level in flag_levels)
+        ):
+            raise ValueError("a residual bank needs distinct unused flags at one level")
+    elif any(left >= right for left, right in pairwise(depths)):
         raise ValueError("deferred levels must be distinct, increasing input levels")
+    if any(depth < 0 or depth >= n for depth in depths):
+        raise ValueError("deferred levels must be distinct, increasing input levels")
+    pending_levels = flag_levels or tuple(depths)
     fold_zero = bool(blocks)
     ids = subtree_ids(truth_table)
     selected = {
         (depth, ids[depth][row >> (n - depth)]): i
         for i, (depth, row) in enumerate(blocks)
     }
+    if len(selected) != len(blocks):
+        raise ValueError("deferred definitions must name distinct residuals")
     is_constant = constant_span_test(truth_table)
 
     def bit(i: int) -> int:
@@ -143,7 +180,7 @@ def flag_tree_body(
         start = count
         key = (i, ids[i][combo >> (n - i)])
         if key in selected:
-            move(flag(i))
+            move(flag(pending_levels[selected[key]]))
             emit("+")
             return _Cost(count - start, target=selected[key])
         bit_cell = bit(i)
@@ -211,7 +248,7 @@ def flag_tree_body(
     stages = []
     for i, (depth, row) in enumerate(blocks):
         tail_start = count
-        pending = flag(depth)
+        pending = flag(pending_levels[i])
         move(pending)
         dispatch_test = count - tail_start + 1
         emit("[" + clear)

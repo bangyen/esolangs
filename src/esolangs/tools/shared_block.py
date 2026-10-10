@@ -14,7 +14,50 @@ def repeated_block(table: str) -> tuple[int, int] | None:
 
 def repeated_blocks(table: str) -> tuple[tuple[int, int], ...]:
     """Return the greatest repeated-span residual at each folded tree level."""
-    return tuple((depth, row) for depth, row, _ in _repeated_blocks(table))
+    best: dict[int, tuple[int, int]] = {}
+    for depth, row, saving in _repeated_blocks(table):
+        if depth not in best or saving > best[depth][1]:
+            best[depth] = row, saving
+    return tuple((depth, row) for depth, (row, _) in best.items())
+
+
+def repeated_bank(
+    table: str, *, reserve_last: bool = False, ranked: bool = True
+) -> tuple[tuple[tuple[int, int], ...], tuple[int, ...]]:
+    """Bank repeats by occurrence or copy count at the greatest-saving level."""
+    n = len(table).bit_length() - 1
+    groups: dict[int, list[tuple[int, int]]] = {}
+    for depth, row, saving in _repeated_blocks(table):
+        groups.setdefault(depth, []).append((row, saving >> (n - depth)))
+    best: tuple[tuple[int, int], ...] = ()
+    flags: tuple[int, ...] = ()
+    greatest = 0
+    for depth, group in groups.items():
+        capacity = n - depth - reserve_last
+        if capacity < 2 or len(group) < 2:
+            continue
+        if ranked:
+            # Copy counts are bounded by 2**depth; counting buckets over all
+            # levels cost sum(2**depth) = O(T), without sorting or a search.
+            buckets: list[list[int]] = [
+                [] for _ in range(max(copies for _, copies in group) + 1)
+            ]
+            for row, copies in group:
+                buckets[copies].append(row)
+            ordered = [
+                (row, copies)
+                for copies in range(len(buckets) - 1, 0, -1)
+                for row in buckets[copies]
+            ]
+        else:
+            ordered = group
+        chosen = [(depth, row) for row, _ in ordered[:capacity]]
+        saved = sum(copies << (n - depth) for _, copies in ordered[:capacity])
+        if saved > greatest:
+            greatest = saved
+            best = tuple(chosen)
+            flags = tuple(range(depth, depth + len(best)))
+    return best, flags
 
 
 def _repeated_blocks(table: str) -> list[tuple[int, int, int]]:
@@ -23,16 +66,14 @@ def _repeated_blocks(table: str) -> list[tuple[int, int, int]]:
     live = {ids[0][0]: (1, 0)}
     found: list[tuple[int, int, int]] = []
     for depth in range(n):
-        best = None
-        saved = 0
         span = 1 << (n - depth)
         following: dict[int, tuple[int, int]] = {}
         for key, (copies, row) in live.items():
             if key < 2:
                 continue
             saving = (copies - 1) * span
-            if span >= 4 and saving > saved:
-                saved, best = saving, (depth, row)
+            if span >= 4 and saving > 0:
+                found.append((depth, row, saving))
             block = row // span
             zero, one = ids[depth + 1][2 * block : 2 * block + 2]
             children = (
@@ -42,8 +83,6 @@ def _repeated_blocks(table: str) -> list[tuple[int, int, int]]:
                 previous, first = following.get(child, (0, first))
                 following[child] = (previous + copies, first)
         live = following
-        if best is not None:
-            found.append((*best, saved))
     return found
 
 
