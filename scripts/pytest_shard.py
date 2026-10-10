@@ -23,7 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _atomic import write_text  # noqa: E402
+from _verify_process import write_text  # noqa: E402
 
 
 def collect_ids(marker: str) -> list[str]:

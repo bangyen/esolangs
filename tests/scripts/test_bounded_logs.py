@@ -9,7 +9,7 @@ import pytest
 
 from scripts import _benchmark_client as client
 from scripts import _verify_process as processes
-from scripts._bounded_log import MARKER, spool
+from scripts._verify_process import MARKER, spool
 
 
 def test_spool_keeps_complete_small_logs_and_bounded_overflow(tmp_path):

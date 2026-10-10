@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import codecs
+import ctypes
 import io
 import os
 import re
@@ -12,16 +13,12 @@ import sys
 import tempfile
 import threading
 import time
+from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+from typing import BinaryIO, cast
 from weakref import WeakKeyDictionary
-
-from _bounded_log import MAX_LOG_BYTES, spool
-from _process_children import children as child_pids
 
 EXCERPT_BYTES = 32 * 1024
 
@@ -217,3 +214,89 @@ def run_bounded(
         if check:
             result.check_returncode()
         return result
+
+
+def write_text(path: Path, text: str) -> None:
+    """Flush a sibling temporary file and replace the destination atomically."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        # newline="" keeps the bytes exactly as written: on Windows the
+        # default text mode translates "\n" to "\r\n", which would make a
+        # content hash (durations_sha256) disagree with the file it names.
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", newline="", dir=path.parent, delete=False
+        ) as stream:
+            temporary = Path(stream.name)
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+MAX_LOG_BYTES = 8 * 1024 * 1024
+MARKER = b"\n[diagnostic byte limit exceeded]\n"
+
+
+def spool(
+    stream: BinaryIO,
+    path: Path,
+    limit: int,
+    stop: Callable[[], None],
+    tee: Callable[[bytes], None] | None = None,
+) -> None:
+    """Keep a bounded prefix and overflow excerpt, then stop the process tree."""
+    written = 0
+    with path.open("wb") as output:
+        while chunk := cast(bytes, getattr(stream, "read1", stream.read)(8192)):
+            if written + len(chunk) > limit - len(MARKER):
+                available = max(0, limit - written - len(MARKER))
+                excerpt = chunk[-available:] if available else b""
+                output.write(excerpt)
+                output.write(MARKER)
+                output.flush()
+                if tee is not None:
+                    tee(MARKER)
+                stop()
+                return
+            output.write(chunk)
+            output.flush()
+            written += len(chunk)
+            if tee is not None:
+                tee(chunk)
+
+
+def child_pids(pid: int) -> list[int]:
+    """Return direct child PIDs; refuse truncated or unreadable process evidence."""
+    platform = sys.platform
+    if platform == "darwin":
+        library = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
+        list_children = library.proc_listchildpids
+        list_children.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+        list_children.restype = ctypes.c_int
+        capacity = 65536
+        buffer = (ctypes.c_int * capacity)()
+        count = list_children(pid, buffer, ctypes.sizeof(buffer))
+        if count < 0:
+            raise OSError(ctypes.get_errno(), "cannot enumerate child processes")
+        if count >= capacity:
+            raise RuntimeError("child process enumeration exceeds capacity")
+        return [value for value in buffer[:count] if value > 0]
+    if platform.startswith("linux"):
+        try:
+            tasks = list(Path(f"/proc/{pid}/task").iterdir())
+        except FileNotFoundError:
+            return []
+        found: set[int] = set()
+        for task in tasks:
+            try:
+                found.update(
+                    int(value) for value in (task / "children").read_text().split()
+                )
+            except FileNotFoundError:
+                continue
+        return sorted(found)
+    raise RuntimeError("child process enumeration is unavailable on this platform")

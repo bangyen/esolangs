@@ -16,7 +16,7 @@ import pytest
 from _pytest.reports import TestReport
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _atomic import write_text
+from _verify_process import write_text
 
 
 class _Worker(Protocol):

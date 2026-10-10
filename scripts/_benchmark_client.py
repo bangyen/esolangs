@@ -19,7 +19,7 @@ from typing import Any, BinaryIO, cast
 import esolangs
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _bounded_log import MAX_LOG_BYTES, spool
+from _verify_process import MAX_LOG_BYTES, spool
 from _verify_process import EXCERPT_BYTES, stop_process_tree
 
 MAX_RECORD_CHARS = 1024 * 1024

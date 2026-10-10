@@ -11,7 +11,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _atomic import write_text
+from _verify_process import write_text
 
 Key = tuple[str, str]
 

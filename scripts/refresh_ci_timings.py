@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _atomic import write_text
+from _verify_process import write_text
 from pytest_shard import collect_ids, load_durations, shard_ids
 
 

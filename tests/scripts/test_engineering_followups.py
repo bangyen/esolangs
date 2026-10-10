@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from scripts import _atomic, _verify_process, normalize_sdist, report_generator_timings
+from scripts import _verify_process, normalize_sdist, report_generator_timings
 from scripts.pytest_durations import Recorder
 from scripts.refresh_ci_timings import refresh
 
@@ -46,7 +46,7 @@ def test_atomic_failure_preserves_file(tmp_path, monkeypatch):
 
     monkeypatch.setattr(os, "fsync", fail)
     with pytest.raises(OSError, match="interrupted"):
-        _atomic.write_text(path, "new")
+        _verify_process.write_text(path, "new")
     assert path.read_text() == "previous"
     assert list(tmp_path.iterdir()) == [path]
 
