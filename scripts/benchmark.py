@@ -22,6 +22,10 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES
 from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 
+_TEXT_TYPES = (str, bytes, bytearray)
+_CONTAINER_TYPES = (tuple, list, frozenset, set)
+_MEMO_TYPES = (tuple, frozenset, Fraction)
+
 
 def _bits(row: int, inputs: int) -> list[int]:
     return [(row >> shift) & 1 for shift in range(inputs - 1, -1, -1)]
@@ -35,7 +39,7 @@ def _source_size(program: esolangs.Program) -> int:
 
 def _integer_bits(value: int) -> int:
     """Count magnitude bits (one for zero) and a sign bit for negatives."""
-    return max(1, value.bit_length()) + int(value < 0)
+    return (value.bit_length() or 1) + (value < 0)
 
 
 def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
@@ -52,7 +56,7 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
         return _integer_bits(value)
     if isinstance(value, float):
         return 64
-    if isinstance(value, str | bytes | bytearray):
+    if isinstance(value, _TEXT_TYPES):
         return 8 * len(value)
     hit = memo.get(id(value))
     if hit is not None and hit[0] is value:
@@ -61,7 +65,7 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
         total = state_bits(value.numerator, memo) + state_bits(value.denominator, memo)
     elif isinstance(value, dict):
         total = sum(state_bits(k, memo) + state_bits(v, memo) for k, v in value.items())
-    elif isinstance(value, tuple | list | frozenset | set):
+    elif isinstance(value, _CONTAINER_TYPES):
         items = value
         if value and set(map(type, value)) == {tuple}:
             # Records of ints (a sparse tape's address-value pairs) count
@@ -89,7 +93,7 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
         total = sum(state_bits(getattr(value, name, None), memo) for name in slots)
     else:
         raise TypeError(f"cannot count bits of {type(value).__name__}")
-    if isinstance(value, tuple | frozenset | Fraction):
+    if isinstance(value, _MEMO_TYPES):
         memo[id(value)] = (value, total)
     return total
 
