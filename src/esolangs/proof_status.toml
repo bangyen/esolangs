@@ -178,7 +178,7 @@ evidence = "docs/proofs/index.md#generator-ledger"
 [[ledger]]
 generator = "brainfuck"
 labels = ["tree"]
-qualification = "folded decision tree; unused level flags defer repeated residuals in depth order"
+qualification = "folded decision tree; residuals defer through level flags or binary words; affine tables stream"
 scaling = "linear: decision_tree_program, span walk, leaf moves geometric"
 execution = "poly n: worst 69n + 44 commands, the AND table's all-ones row"
 workspace = "poly n: worst 2n + 6 + bl(2n) + bl(n) + bl(L) bits"

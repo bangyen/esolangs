@@ -2,6 +2,7 @@
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.tools.brainfuck_binary import binary_bank
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -33,6 +34,8 @@ def bf_tree(truth_table: str) -> str:
     sibling halves merge; repeated residuals use one unused flag per level
     and emit once in depth order, within the existing command bound.
     A same-level bank can use several unused descendant flags instead.
+    Two-input banks also use four-bit labels, with a retired input holding
+    the high bit; labels are consumed before their shared bodies execute.
     Affine tables also stream through three cells: n=16 parity falls from
     672,691 to 1,186 chars, with at most 66 commands per selected input.
     An ignored input before the last kept one is read bare into the next
@@ -118,16 +121,21 @@ def _bf_ordered(
         command_budget=69 * n + 44 - len(header) - _ASCII_ZERO - 1,
         bank=bank,
     )
-    if shared is None:
-        return plain
-    body, commands = shared
-    candidate = header + body + "+" * _ASCII_ZERO + "."
-    return (
-        candidate
-        if len(header) + commands + _ASCII_ZERO + 1 <= 69 * n + 44
-        and len(candidate) < len(plain)
-        else plain
-    )
+    if shared is not None:
+        body, commands = shared
+        candidate = header + body + "+" * _ASCII_ZERO + "."
+        if len(header) + commands + _ASCII_ZERO + 1 <= 69 * n + 44 and len(
+            candidate
+        ) < len(plain):
+            plain = candidate
+    if bank and perm == tuple(range(n)):
+        binary = binary_bank(truth_table, 69 * n + 44 - len(header) - _ASCII_ZERO - 1)
+        if binary is not None:
+            body, _ = binary
+            candidate = header + body + "+" * _ASCII_ZERO + "."
+            if len(candidate) < len(plain):
+                plain = candidate
+    return plain
 
 
 LANGUAGE = Language(
