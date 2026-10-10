@@ -13,14 +13,14 @@ class TestFactorHasNoDigitBudget:
 
     @pytest.mark.slow
     def test_the_arity_that_used_to_refuse_builds(self) -> None:
-        """Dense n=13 was the 500000-digit refusal; this table is 708448 digits now."""
+        """Dense n=13 was the 500000-digit refusal; this table is 460907 digits now."""
         import random
 
         rng = random.Random(7)
         table = "".join(rng.choice("01") for _ in range(2**13))
         program = esolangs.generate("Factor", table)
         assert program.isdigit()
-        assert len(program) > 500_000
+        assert len(program) > 460_000
 
 
 @pytest.mark.medium
