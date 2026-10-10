@@ -25,11 +25,11 @@ def encode_inputs(
 ) -> str:
     """Return the stdin that feeds ``bits`` to a ``language`` program.
 
-    Character readers take adjacent digits; numeric readers take tokens.
-    Grapheme spells ``%``/``A``, Fargo takes a row index, Taglate pads odd counts --
-    each answering the obvious guess with a wrong bit.  ``truth_table`` is
-    needed only where the encoding depends on arity.  A language that embeds
-    its inputs is refused; use :func:`instantiate`.
+    Character readers take adjacent digits; numeric readers take tokens;
+    each language spells its bits per its registered ``input_encoding`` and
+    ``input_shape``, so the obvious guess is often a wrong bit.
+    ``truth_table`` is needed only where the encoding depends on arity.  A
+    language that embeds its inputs is refused; use :func:`instantiate`.
     """
     name = resolve(language)
     contract = LANGUAGES[name].contract
@@ -70,7 +70,7 @@ def encode_inputs(
             # CPython caps int->str at 4300 digits, and a row index that wide
             # names a row no program could read.  It escaped as a bare
             # ValueError past the "every deliberate error is an EsolangError"
-            # promise (``encode_inputs("Fargo", [1] * 15000)``).
+            # promise (``encode_inputs(name, [1] * 15000)``).
             raise ArgumentError(
                 f"{name} reads a decimal row index, and {len(bits)} bits name "
                 f"an integer too large to render as one: {exc}"
@@ -90,14 +90,12 @@ def encode_inputs(
 def read_answer(language: str, output: str) -> str:
     """Return the answer bit a ``language`` program's ``output`` carries.
 
-    Most print it (last non-whitespace character); some dump their state, and
-    two differ -- RAM0's answer is on its ``z:`` line, A Painter Ant marks
-    the ant's cell ``o``/``@``.
-    ``describe(language)["answer_pattern"]`` is the same fact as data (a
-    verifier that hardcoded two dumps and forgot a third reported a passing
-    language as broken).  A termination-answer language (123, ArrowQueue,
-    Crement, Vandevelo) raises :class:`~esolangs.exceptions.ArgumentError`:
-    its answer is whether it halts, not anything printed.
+    Most print it (last non-whitespace character); some dump their state.
+    ``describe(language)["answer_pattern"]`` and ``answer_mode`` are the
+    same facts as data (a verifier that hardcoded two dumps and forgot a
+    third reported a passing language as broken).  A termination-answer
+    language raises :class:`~esolangs.exceptions.ArgumentError`: its answer
+    is whether it halts, not anything printed.
     """
     name = resolve(language)
     if not isinstance(output, str):
@@ -123,10 +121,10 @@ def read_answer(language: str, output: str) -> str:
     # is the plain-language half and already exists; the pattern follows it
     # in parentheses, so neither reader loses.
     where = "in its final state" if contract.answer_pattern else "as the last character"
-    # The note whenever there is one, not just for the two pattern
-    # languages: Back, Minsky Swap and LaserFuck dump their state and are
-    # read by last character, so "as the last character" is a true account
-    # of the mechanism and no account at all of where the answer lives.
+    # The note whenever there is one, not just for the pattern languages:
+    # a state-dumping language read by last character makes "as the last
+    # character" a true account of the mechanism and no account at all of
+    # where the answer lives.
     detail = f" -- {contract.note}" if contract.note else ""
     if contract.answer_pattern:
         detail += f" (matched with {contract.answer_pattern!r})"
