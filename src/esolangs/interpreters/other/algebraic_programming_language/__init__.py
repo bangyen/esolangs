@@ -327,7 +327,7 @@ class _Machine:
         lhs, rhs = split
         name, params = _parse_lhs(lhs)
         if not params and _is_lower(name):
-            # ``n = 123``: a plain assignment.  It binds rather than
+            # ``n = 7``: a plain assignment.  It binds rather than
             # prints and takes no input, so its body runs in a frame
             # flagged to assign the result instead of printing it.
             self._push(_Definition("", [], _body(rhs, self.defs)), {}, assign=name)

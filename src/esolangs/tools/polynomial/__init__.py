@@ -41,7 +41,7 @@ _POLYNOMIAL_MAX_ESTIMATED_CHARS = 1_000_000_000
 
 # Instruction-count slack the dispatch still renders; selection is on
 # characters, and the two disagree (later instructions take larger primes,
-# ``*=`` costs 3x the digits of ``+=``).  n <= 3 needs 1, 2000 sampled n=4
+# ``*=`` costs three times the digits of ``+=``).  n <= 3 needs 1, 2000 sampled n=4
 # tables reach 6; held at the old builder's 10 so more is a real finding.
 # ``test_polynomial_screen_slack`` re-derives the n <= 3 figure.
 _POLYNOMIAL_SCREEN_SLACK = 10

@@ -416,7 +416,7 @@ def _container_threshold(truth_table: str) -> str:
 
 
 def _narrow_rule_parts(program: str, width: int) -> list[str | tuple[int, str]]:
-    """Factor numeric conditions, retaining deltas before their partition."""
+    """Reduce numeric conditions to factors, retaining deltas before their partition."""
     lines = program.splitlines()
     occupied = {
         line[:-1].split("=", 1)[0] for line in lines if line.endswith(":")
@@ -453,7 +453,7 @@ def _narrow_rule_parts(program: str, width: int) -> list[str | tuple[int, str]]:
 
 
 def _narrow_rules(program: str, width: int) -> str:
-    """Factor numeric conditions and partition deltas into complete rules."""
+    """Reduce numeric conditions to factors and partition deltas into complete rules."""
     output: list[str] = []
     for part in _narrow_rule_parts(program, width):
         if isinstance(part, str):

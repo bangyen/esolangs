@@ -138,7 +138,7 @@ def _truthy(value: _Value) -> bool:
 #: One call context: ``(code, pc, mode, buf, pending_at, repeat)``.
 #:
 #: A tuple rather than a record, so the whole call stack is a value that
-#: :meth:`_Machine.snapshot` can hash -- Eval's frames are tuples for the
+#: :meth:`_Machine.snapshot` can hash -- the shared frames are tuples for the
 #: same reason.  ``repeat`` marks a ``Z`` body: a frame holding one is
 #: rewound instead of popped while the stack is non-empty.
 type _Frame = tuple[str, int, str, tuple[str, ...], int, bool]

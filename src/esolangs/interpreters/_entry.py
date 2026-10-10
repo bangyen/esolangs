@@ -30,7 +30,7 @@ def script_main(
     """Run the program file named by ``sys.argv[1]``, if one was given.
 
     A missing argument is a no-op; a non-``None`` return becomes the exit
-    status (Container's halt).  Read as UTF-8, not the locale encoding.
+    status (the language's halt).  Read as UTF-8, not the locale encoding.
     """
     if len(sys.argv) < 2:
         return

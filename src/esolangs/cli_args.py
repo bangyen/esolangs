@@ -180,7 +180,7 @@ def _check_count(
 
     Extra arguments used to be dropped in silence, which turned a wrong
     command into a confident wrong answer.  It also made the bare-``--width``
-    rule unreadable: ``generate --width abc Sophie 0110`` consumed nothing as
+    rule unreadable: ``generate --width abc brainfuck 0110`` consumed nothing as
     a width, read ``abc`` as the language, and reported *that* as unknown --
     a message pointing at the wrong word entirely.  Saying which argument was
     unexpected, and why the count came out that way, is what turns it back

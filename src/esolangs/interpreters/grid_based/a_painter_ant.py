@@ -91,7 +91,7 @@ class _Machine:
     self_halts = False
 
     #: The answer is the render after the walk is proven periodic; use
-    #: :func:`esolangs.run` (Suffolk carries ``self_halts = False`` too).
+    #: :func:`esolangs.run` (some languages carry ``self_halts = False`` too).
     steppable_to_answer = False
 
     def __init__(

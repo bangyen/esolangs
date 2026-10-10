@@ -260,7 +260,7 @@ LANGUAGE = Language(
     # The trailing ``1`` is a terminator, not a structural line.
     wrap=wrap_chars,
     empty_program="an empty 123 program never halts",
-    # 123 answers with the termination convention, as ArrowQueue does, so
+    # 123 answers with the termination convention, so
     # only the halting (0) branch is committed.  The constructed template
     # pops through location -2 while merging, which prints junk bytes on
     # every row; ``test_boolean_example`` asserts the halt and ignores

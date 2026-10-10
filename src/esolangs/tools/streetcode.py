@@ -386,7 +386,7 @@ def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]
     for cell in cells:
         reads += move_text(at, cell, "=", "_") + "I"
         at = cell
-    # Back to cell ``n``, which the seeding suffix below counts from.  Under
+    # Backtrack to cell ``n``, which the seeding suffix below counts from.  Under
     # the identity order the last read already left CP there and the walk is
     # empty, so the prefix is spelled exactly as it was.
     prefix = "C" + reads + move_text(at, n, "=", "_") + "=^==^"

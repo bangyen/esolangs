@@ -1,6 +1,6 @@
 """Interpreter for BrainIf.
 
-Line-based: ``if <value> <command>`` runs when the cell equals the
+Line-oriented: ``if <value> <command>`` runs when the cell equals the
 value; commands increment, move, goto a line, read a byte, or output.
 Cells are wrapping bytes: the page gives BrainIf "an identical memory
 tape" to brainfuck, whose bytes wrap here (so ``if 256 ...`` never fires).

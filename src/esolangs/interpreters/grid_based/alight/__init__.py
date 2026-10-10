@@ -25,7 +25,7 @@ operations raise :class:`~esolangs.exceptions.HaltError`.
   ``skip sign{x} > 0``.  This repository retains infix syntax for existing
   programs and generators as a spec deviation, applied strictly left to
   right with no precedence and no grouping:
-  ``a+b*c`` is ``(a+b)*c``.  Unary ``!`` appears in no example and is taken
+  ``a+b*c`` is ``(a+b)*c``.  The unary ``!`` appears in no example and is taken
   as prefix, the only reading that does not need an operand it lacks.
 * **Three-argument ``at`` sets in place** by default (``list_update``).
   The prose says it "return[s] a copy of the list with that point set to

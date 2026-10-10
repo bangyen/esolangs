@@ -1,6 +1,6 @@
 """Boolean-function generator for Flowchart.
 
-I/O is Boolfuck's: bytes, low bit first.  Each input is a ``'0'``/``'1'``
+I/O is byte-oriented, low bit first.  Each input is a ``'0'``/``'1'``
 byte whose low bit is the value, so input ``k`` is read by eight ``/ /``
 nodes -- the previous byte's seven high bits, then this byte's value bit,
 which the switch tests.  The first input has no previous byte and the last

@@ -399,7 +399,7 @@ def _split_definition(line: str) -> tuple[str, str] | None:
 def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
     r"""Parse a definition's left-hand side into a name and parameters.
 
-    Three shapes: a bare variable (``n = 123``), a function with
+    Three shapes: a bare variable (``n = 7``), a function with
     parentheses (``F(x) = ...``), and a custom operator pattern
     (``a ~ b = ...``, ``a@ = ...``), whose name records its symbols with
     ``\0`` standing in for each argument slot so the parser can match it

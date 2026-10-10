@@ -7,7 +7,7 @@ a path and rasterizes it like the wiki's examples -- straight runs,
 corners, a diagonal kink per instruction, a filled arrowhead cursor.
 The kink shapes (``_OPS``) were measured from ``Lineanim4-11.png`` and
 fall into two families: ``+``/``-`` are one diagonal jog whose repeats
-stretch it (``+++`` is exactly 3x in ``Lineanim6.png``); ``>``/``<``/
+stretch it (``+++`` is exactly three times in ``Lineanim6.png``); ``>``/``<``/
 ``i``/``o`` have a purely sideways connector and never merge.  ``?``
 (``Lineanim9.png``) is a T-branch with two children.  Generation keeps
 unrelated strokes apart, sidestepping the crossing-vs-merge ambiguity
@@ -69,7 +69,7 @@ def _rotate(d: tuple[int, int], heading: tuple[int, int]) -> tuple[int, int]:
 # * `+`/`-` (Lineanim4/5): `vertical(2) -> diagonal(1) -> vertical(2)`, no
 #   sideways connector.  The diagonal's length is the run's opcode count:
 #   Lineanim6 draws three `+` as one 3-unit diagonal (measured at exactly
-#   3x), so these are templates over `count`, built by :func:`_op_segments`
+#   three times), so these are templates over `count`, built by :func:`_op_segments`
 #   and fed by :func:`_Cursor.emit_op`.
 # * `>`/`<`/`i`/`o` (Lineanim7/8/10/11): a pure sideways connector
 #   (`_turn_right`/`_turn_left`) bridging the diagonal legs; `i`/`o` have

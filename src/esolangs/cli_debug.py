@@ -135,7 +135,7 @@ def _debug(rest: list[str]) -> None:
     # state up to the fault is the thing they asked to see.
     fault = None
     reason = None
-    # ``run`` gained this last round and ``debug`` did not, so `debug 123
+    # ``run`` gained this last round and ``debug`` did not, so `debug brainfuck
     # prog.txt` -- the command you reach for precisely when something is
     # not stopping -- still hung with nothing on screen.  ``--steps`` counts
     # as a bound here as much as ``--timeout`` does, so a run that has one

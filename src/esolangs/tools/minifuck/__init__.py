@@ -392,7 +392,7 @@ def _balance(table: str, default: str) -> str:
             continue
         marked = mark_runs(shared, TEMPLATE_CHAR, (PAIR,) * n)
         tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
-        # Unary tape walks can contain O(T) tokens. A square-root wrap and
+        # A unary tape walk can contain O(T) tokens. A square-root wrap and
         # inert tail give a square without enumerating token-fit widths.
         width = (
             max(isqrt(len(shared)) + 1, max(map(len, tokens)))

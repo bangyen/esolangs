@@ -1,6 +1,6 @@
 r"""Interpreter for S*bleq.
 
-A Subleq derivative: each instruction ``a b c`` does ``mem[a] -= mem[b]``
+A subtract-and-branch machine: each instruction ``a b c`` does ``mem[a] -= mem[b]``
 and, if the result is ``<= 0``, jumps to ``mem[c]`` (indirect); otherwise
 the pointer advances by three.  Address ``-1`` is the instruction
 pointer, ``-2`` the next input character (zero at EOF), ``-3``

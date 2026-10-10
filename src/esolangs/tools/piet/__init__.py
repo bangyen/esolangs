@@ -52,7 +52,7 @@ def _literal_product(
 ) -> list[_Operation] | None:
     """Return a conjunction or its complement, consuming inputs in order.
 
-    One-hot and one-cold tables: Piet++ raster area (3 rows x width, codels)
+    One-hot and one-cold tables: the raster area (3 rows x width, codels)
     is 97.0% / 95.5% smaller than the lookup at n=8 (10 tables each).
     """
     if table.count("1") == 1:

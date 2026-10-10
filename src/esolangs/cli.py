@@ -20,7 +20,7 @@ every wrong answer this tool ever handed out -- how a language wants its
 input bits, and where in the output its answer sits -- were readable from
 Python and from nowhere else.  A shell user could run all ten of the
 languages that do not simply print their answer, and could not judge one of
-them: A Painter Ant's answer is a mark on one cell of its grid.
+them: some languages' answer is a mark on one cell of a grid.
 
 Exit codes separate the failures a caller handles differently: **2** is a
 usage error (an unknown command, option, or language -- nothing ran), **1**
