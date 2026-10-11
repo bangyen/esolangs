@@ -139,7 +139,11 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 def _compatibility_module(
-    module: str, names: tuple[str, ...], *, interpreter: bool = False
+    module: str,
+    names: tuple[str, ...],
+    *,
+    interpreter: bool = False,
+    entry_keywords: str = "",
 ) -> str:
     """Alias the implementation at runtime and expose its static exports."""
     imports = "".join(
@@ -151,7 +155,7 @@ def _compatibility_module(
     entry = (
         '\nif __name__ == "__main__":\n'
         "    from esolangs.interpreters._entry import script_main\n\n"
-        "    script_main(_implementation.run)\n"
+        f"    script_main(_implementation.run{entry_keywords})\n"
         if interpreter
         else ""
     )

@@ -229,7 +229,9 @@ def render_contributor_tools_section() -> str:
             or source == colocated.with_suffix(".py").resolve()
         ):
             raise ValueError(f"{language.name}'s generator is outside {generator_dir}")
-    return "| `src/esolangs/tools/` | generators |"
+    return (
+        "| `src/esolangs/tools/` | shared generator helpers and compatibility imports |"
+    )
 
 
 def _reads_stdin() -> list[str]:

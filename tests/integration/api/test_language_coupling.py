@@ -14,6 +14,7 @@ import ast
 import io
 import re
 import subprocess
+import sys
 import tokenize
 import tomllib
 from collections import Counter
@@ -218,7 +219,18 @@ def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
     if lang.boolean is not None:
         modules.append(lang.boolean.__module__.removesuffix(".__init__"))
     canonical = [m for m in modules if m.startswith("esolangs.languages.")]
-    modules += [f"esolangs.tools.{lang.id}"] if canonical else []
+    if canonical:
+        implementation = sys.modules.get(canonical[0])
+        modules.extend(
+            [
+                name
+                for name, candidate in sorted(sys.modules.items())
+                if implementation is not None
+                and candidate is implementation
+                and name.startswith("esolangs.tools.")
+            ]
+            or [f"esolangs.tools.{lang.id}"]
+        )
     stems = {
         m.rsplit(".", 1)[-1] for m in modules if not m.startswith("esolangs.languages.")
     } | {lang.id}

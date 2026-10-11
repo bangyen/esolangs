@@ -48,8 +48,8 @@ axes never remove a language; a stalled row moves to the
 
 | Path | Holds |
 | --- | --- |
-| `src/esolangs/interpreters/` | interpreter modules and `run(code, io)` |
-| `src/esolangs/tools/` | generators |
+| `src/esolangs/interpreters/` | shared runtime machinery and compatibility imports |
+| `src/esolangs/tools/` | shared generator helpers and compatibility imports |
 | `src/esolangs/languages/` | colocated language implementations; legacy imports remain supported |
 | `src/esolangs/registry/` | the source of truth for public integration |
 | `tests/` | interpreter and generator coverage |
@@ -79,9 +79,9 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   in `registry/_table.py`. `esolangs.tools`'s imports are generated from
   the declarations (`scripts/docs/generate.py`, run by `generate.py docs`
   and by `check`).
-- Generators live in `src/esolangs/tools/`, one module or package per language;
-  shared helpers sit at its root. Most return runnable
-  source;
+- Interpreters and generators live in `src/esolangs/languages/<id>/`, each
+  as a module or package. Shared generator helpers live in `src/esolangs/tools/`.
+  Most generators return runnable source;
   input-embedding languages return a `$`-run template for `instantiate`.
   `encode_inputs` handles stdin conventions, and `read_answer` reads printed
   and state-dump answers through the contract; termination answers (halt or
@@ -242,5 +242,5 @@ covers languages whose stdin packs bits into bytes (Boolfuck, Smu): each
 input is then the byte `'0'` (0x30) or `'1'` (0x31), whose low bit is the
 input's value, so a program that reads low bit first takes that bit and must
 read and drop the byte's other seven before the next input (see
-`src/esolangs/tools/smu.py`). `answer_mode` covers state-dump and
+`src/esolangs/languages/smu/generator.py`). `answer_mode` covers state-dump and
 termination answers.

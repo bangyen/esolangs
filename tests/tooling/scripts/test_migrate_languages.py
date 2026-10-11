@@ -2,6 +2,8 @@
 
 import ast
 import importlib
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -100,8 +102,12 @@ def test_plan_classifies_existing_layouts(tmp_path, layout):
     if layout == "colocated":
         (tmp_path / "src/esolangs/languages/fixture").mkdir(parents=True)
     elif layout == "package":
-        (tmp_path / "src/esolangs/interpreters/fixture").mkdir(parents=True)
-    assert migrate.plan(lang, tmp_path) == (layout, [])
+        package = tmp_path / "src/esolangs/interpreters/fixture"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("value = 1\n")
+    status, moves = migrate.plan(lang, tmp_path)
+    assert status == layout
+    assert bool(moves) == (layout == "package")
 
 
 def test_flat_selection_skips_packages(monkeypatch):
@@ -202,3 +208,104 @@ def test_colocated_aliases_share_runtime_state(monkeypatch):
                 assert new.migration_probe is marker
                 checked += 1
     assert checked > 0
+
+
+def test_package_helpers_preserve_identity(tmp_path, monkeypatch):
+    package = tmp_path / "package_fixture"
+    legacy = package / "legacy"
+    legacy.mkdir(parents=True)
+    (package / "__init__.py").write_text("")
+    (legacy / "__init__.py").write_text(
+        "from package_fixture.legacy.core import run as run\n__all__ = ['run']\n"
+    )
+    (legacy / "core.py").write_text("def run(): return 7\n")
+    target = package / "language/interpreter"
+    migrate.apply(
+        [
+            migrate.Move(
+                legacy,
+                target,
+                "package_fixture.language.interpreter",
+                interpreter=False,
+                legacy="package_fixture.legacy",
+            )
+        ]
+    )
+    assert not (legacy / "core.py").exists()
+    assert (legacy / "core.pyi").exists()
+    monkeypatch.syspath_prepend(str(tmp_path))
+    try:
+        old = importlib.import_module("package_fixture.legacy.core")
+        new = importlib.import_module("package_fixture.language.interpreter.core")
+        assert old is new
+        assert old.run() == 7
+        assert importlib.import_module("package_fixture.legacy").run is new.run
+    finally:
+        for name in tuple(sys.modules):
+            if name.startswith("package_fixture"):
+                del sys.modules[name]
+
+
+def test_module_rewrites_leave_program_literals_and_comments():
+    source = (
+        "from old.package import core\n"
+        "module = 'old.package.core'\n"
+        "program = 'print old.package.core'\n"
+        "# old.package.core remains explanatory text\n"
+    )
+    rewritten = migrate._rewrite_imports(source, {"old.package": "new.package"})  # noqa: SLF001
+    assert "from new.package import core" in rewritten
+    assert "module = 'new.package.core'" in rewritten
+    assert "program = 'print old.package.core'" in rewritten
+    assert "# old.package.core" in rewritten
+
+
+def test_optional_import_fallback_is_not_an_implicit_reexport():
+    source = (
+        "try:\n    import optional as value\nexcept ImportError:\n    value = None\n"
+    )
+    assert migrate._exports(source) == ()  # noqa: SLF001
+    assert migrate._exports(source + "__all__ = ['value']\n") == ("value",)  # noqa: SLF001
+
+
+@pytest.mark.parametrize("shape", ["keep", "strip"])
+def test_migrated_file_entry_preserves_line_shape(tmp_path, shape):
+    package = tmp_path / "entry_fixture"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    source = package / "legacy.py"
+    expected = ["hello\n"] if shape == "keep" else ["hello"]
+    source.write_text(
+        "from esolangs.interpreters._entry import script_main\n"
+        f"def run(code, io): assert code == {expected!r}\n"
+        f"if __name__ == '__main__': script_main(run, shape={shape!r})\n"
+    )
+    program = tmp_path / "program.txt"
+    program.write_text("hello\n")
+    env = {**os.environ, "PYTHONPATH": str(tmp_path)}
+    command = [sys.executable, str(source), str(program)]
+    before = subprocess.run(
+        command, env=env, capture_output=True, check=True, timeout=5
+    )
+    migrate.apply(
+        [
+            migrate.Move(
+                source,
+                package / "language/interpreter.py",
+                "entry_fixture.language.interpreter",
+                interpreter=True,
+            )
+        ]
+    )
+    after = subprocess.run(command, env=env, capture_output=True, check=True, timeout=5)
+    assert after.stdout == before.stdout
+
+
+def test_raster_loader_entry_is_preserved():
+    source = "script_main(run, loader=load_source)\n"
+    assert migrate._entry_keywords(source) == ", loader=_implementation.load_source"  # noqa: SLF001
+
+
+def test_unknown_entry_option_aborts():
+    with pytest.raises(ValueError, match="unsupported interpreter entry"):
+        migrate._entry_keywords("script_main(run, shape=dynamic)\n")  # noqa: SLF001

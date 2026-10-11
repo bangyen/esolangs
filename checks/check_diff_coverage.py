@@ -6,6 +6,7 @@ still fail in strict mode; modules never imported always fail.
 """
 
 import argparse
+import codecs
 import fnmatch
 import json
 import os
@@ -50,35 +51,56 @@ def _added_lines(base: str) -> dict[str, set[int]] | None:
     paths = diff_paths(ROOT, "--diff-filter=ACMT", base, "--")
     if paths is None:
         return None
-    added: dict[str, set[int]] = {}
-    for path in paths:
-        got = subprocess.run(
-            [
-                "git",
-                "--literal-pathspecs",
-                "diff",
-                "--no-renames",
-                "--no-ext-diff",
-                "--no-textconv",
-                "-U0",
-                base,
-                "--",
-                path,
-            ],
-            capture_output=True,
-            cwd=ROOT,
-            check=False,
-            timeout=60,
-        )
-        if got.returncode != 0:
-            return None
-        added[path] = set()
-        for line in got.stdout.splitlines():
-            if line.startswith(b"@@ "):
-                span = line.split(b"+")[1].split(b"@@")[0].strip()
-                start, _, count = span.partition(b",")
-                length = int(count) if count else 1
-                added[path].update(range(int(start), int(start) + length))
+    added: dict[str, set[int]] = {path: set() for path in paths}
+    if not paths:
+        return added
+    got = subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.quotePath=false",
+            "--literal-pathspecs",
+            "diff",
+            "--no-renames",
+            "--no-ext-diff",
+            "--no-textconv",
+            "-U0",
+            base,
+            "--",
+            *paths,
+        ],
+        capture_output=True,
+        cwd=ROOT,
+        check=False,
+        timeout=60,
+    )
+    if got.returncode != 0:
+        return None
+    current = None
+    old_remaining = new_remaining = 0
+    for line in got.stdout.split(b"\n"):
+        if old_remaining or new_remaining:
+            if line.startswith(b"+"):
+                new_remaining -= 1
+            elif line.startswith(b"-"):
+                old_remaining -= 1
+            elif line.startswith(b" "):
+                old_remaining -= 1
+                new_remaining -= 1
+            continue
+        if line.startswith(b"+++ "):
+            header = line[4:].removesuffix(b"\t")
+            if header.startswith(b'"'):
+                header = codecs.escape_decode(header[1:-1])[0]
+            path = header.removeprefix(b"b/").decode("utf-8", errors="surrogateescape")
+            current = path if path in added else None
+        elif line.startswith(b"@@ "):
+            old_span, new_span = line.split(b"@@", 2)[1].split()
+            old_remaining = int(old_span.partition(b",")[2] or b"1")
+            start, _, count = new_span[1:].partition(b",")
+            new_remaining = int(count or b"1")
+            if current is not None:
+                added[current].update(range(int(start), int(start) + new_remaining))
     return added
 
 

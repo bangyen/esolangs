@@ -1,0 +1,188 @@
+"""Interpreter for Suffolk.
+
+``>`` moves right, ``<`` sums the cell into the accumulator and rewinds,
+``!`` writes the cell a value from the accumulator clamped at zero, ``,``
+reads a byte, ``.`` prints the accumulator minus one; the code reruns
+forever.  The wiki has ``,`` read one character with EOF zeroing the
+accumulator; this reads consecutive characters, zeroes the accumulator at EOF,
+and ends the scripted run there.  ``self_halts`` is ``False``: it does not promise
+the run never ends -- a read that runs out of input ends it.  An empty
+program raises :class:`ValueError`.
+:func:`run` otherwise stops on a repeated state, never a pass count.
+The transition :func:`_advance` is pure over an immutable ``_State``
+(a tuple tape, so ``run`` can put states straight into a set).
+"""
+
+from __future__ import annotations
+
+from esolangs.interpreters._entry import script_main
+from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
+
+#: ``(ind, ptr, acc, tape)``: an immutable value, rebound per step.  No
+#: halted flag: Suffolk has no instruction-level halt.
+type _State = tuple[int, int, int, tuple[int, ...]]
+
+
+def _advance(state: _State, code: str, byte: int | None = None) -> _State:
+    """Return the state after executing one command.
+
+    ``,``'s read and ``.``'s print are the caller's: the read arrives as
+    ``byte`` already summed or zeroed.  ``<`` sums and rewinds; ``!`` writes
+    the clamped value and clears pointer and accumulator; the cursor wraps.
+    """
+    ind, ptr, acc, tape = state
+    sym = code[ind]
+    if sym == ">":
+        ptr += 1
+        if ptr == len(tape):
+            tape = (*tape, 0)
+    elif sym == "<":
+        acc += tape[ptr]
+        ptr = 0
+    elif sym == "!":
+        tape = (*tape[:ptr], max(0, tape[ptr] + 1 - acc), *tape[ptr + 1 :])
+        ptr = acc = 0
+    elif sym == ",":
+        acc = byte if byte is not None else 0
+    ind += 1
+    return (0 if ind == len(code) else ind, ptr, acc, tape)
+
+
+class _Machine:
+    """Per-run Suffolk state: the code, tape, and accumulator."""
+
+    #: Non-reading execution needs a repeat certificate; EOF ends scripted input.
+    self_halts = False
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Store ``code`` and start the tape and accumulator at zero.
+
+        ``code`` must be non-empty.
+        """
+        if not code:
+            raise syntax_error(
+                "Suffolk program cannot be empty",
+                (
+                    "provide a nonempty program; , reads input and ends the "
+                    "scripted run at EOF"
+                ),
+            )
+        self.io = io
+        self.code = code
+        self.state: _State = (0, 0, 0, (0,))
+        self._exhausted = False
+
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
+
+    @property
+    def ind(self) -> int:
+        return self.state[0]
+
+    @property
+    def ptr(self) -> int:
+        return self.state[1]
+
+    @property
+    def acc(self) -> int:
+        return self.state[2]
+
+    @property
+    def tape(self) -> tuple[int, ...]:
+        return self.state[3]
+
+    @property
+    def halted(self) -> bool:
+        """Whether EOF zeroed the accumulator and ended this scripted run."""
+        return self._exhausted
+
+    # ``_AffineMachine`` (growing-cell hang certificate): control never
+    # reads a value, and every write is affine but ``!``'s ``max(0, ...)``,
+    # which ``clamp_slack`` exposes.
+
+    @property
+    def key(self) -> tuple[int, int, int]:
+        """The equality-compared state: cursor, pointer, and tape width."""
+        ind, ptr, _acc, tape = self.state
+        return (ind, ptr, len(tape))
+
+    @property
+    def values(self) -> tuple[int, ...]:
+        """The unbounded values: the accumulator, then the cells."""
+        _ind, _ptr, acc, tape = self.state
+        return (acc, *tape)
+
+    @property
+    def clamp_slack(self) -> int | None:
+        """``!``'s clamped quantity before it is clamped, else ``None``.
+
+        ``max(0, tape[ptr] + 1 - acc)``: the one place a value steers the machine.
+        """
+        ind, ptr, acc, tape = self.state
+        if self.code[ind] != "!":
+            return None
+        return tape[ptr] + 1 - acc
+
+    def input_position(self) -> int:
+        """Return the input cursor, so a reading loop is not a repeat."""
+        return self.io.progress()
+
+    # The VM's language-shaped view: Tape + accumulator; ip the cursor, memory the tape.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.state[0]
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.state[3])
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection.
+
+        No pass count (it never steers, and would reduce the detector to a step
+        budget).  The input cursor is required: without it two generated
+        programs that read once more and hit EOF were called periodic.
+        """
+        ind, ptr, acc, tape = self.state
+        return (ind, ptr, acc, tape, self.io.progress(), self._exhausted)
+
+    def step(self) -> None:
+        """Execute one command, wrapping to the start at the end of the code.
+
+        ``,`` hands the transition the new accumulator: the sum on a character,
+        zero at EOF.
+        """
+        if self._exhausted:
+            return
+        ind, _ptr, acc, _tape = self.state
+        sym = self.code[ind]
+        byte = None
+        if sym == ",":
+            try:
+                byte = acc + self.io.input_char()
+            except EOFError:
+                byte = 0
+                self._exhausted = True
+        elif sym == "." and acc:
+            self.io.print_char(chr(acc - 1))
+        self.state = _advance(self.state, self.code, byte)
+
+
+def run(code: str, io: IO) -> None:
+    """Run until EOF zeroes the accumulator or a state repeats."""
+    machine = _Machine(code, io)
+    seen: set[tuple[object, ...]] = set()
+    while not machine.halted:
+        state = machine.snapshot()
+        if state in seen:
+            return
+        seen.add(state)
+        machine.step()
+
+
+if __name__ == "__main__":
+    script_main(run)

@@ -1,0 +1,332 @@
+"""Dig interpreter implementation.
+
+2D esoteric language with a mole that moves on a grid and can dig underground.
+Movement commands work overground, work commands function underground.
+
+The wiki only lists ``@`` as a halt; this interpreter also stops the program
+(without error) when the mole walks off the grid.  A work command that needs a
+digit from an adjacent cell but finds none, or divides by an adjacent zero, is
+an invalid runtime operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`; an empty program is malformed and
+rejected with :class:`ValueError`.
+
+``#`` reads its steer from an adjacent digit and the wiki covers every case
+("Rotates Mole to left when value beside it is 0, and right when 1.  When
+it's neither of those, keep straight.").  ``%`` is specified only for 0 and
+1 ("Overrides current value with space when 0, and newline when 1"); the
+other eight digits leave the mole unchanged here rather than being assigned
+a meaning the wiki does not give them.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The mole holds one integer (a letter is its code), and ``:`` prints one
+below 10 as a decimal and any other as a character: the page has no
+types.  ``;`` copies the mole into its cell and keeps it ("the ``;`` is
+given the Moles current value"), so the truth machine prints ``2111...``
+on 1, as drawn; zeroing the mole there would make it print ``111...``.
+"""
+
+from functools import lru_cache
+
+from esolangs._drive import drive
+from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
+from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import format_integer, parse_integer
+from esolangs.interpreters.source_hints import syntax_error
+
+# Headings as (drow, dcol), in the order the ``^>'<`` glyphs select
+# them: up, right, down, left.  Row grows downward.
+_DIRECT = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+_CONTROL = frozenset("^>'<#$@")
+
+
+#: One instant of a run: ``(code, row, col, move, mole, num, done)`` -- the
+#: grid, where the mole is and which way it faces, the value it carries,
+#: how many work commands remain armed, and whether it has stopped.  A
+#: value :func:`_advance` maps forward, with the grid as a ``tuple`` of
+#: rows for the same reason.
+#:
+#: The grid is state, not a fixed program: ``;`` writes the mole back into
+#: the cell under it, so what a later pass reads is something an earlier
+#: step wrote.  ``snapshot`` already included it for that reason.
+#:
+#: ``num`` is the underground counter ``$`` arms.  Every work command is
+#: inert unless it is positive, so it is what decides whether a cell is an
+#: instruction or scenery.
+type _Cell = str | int
+type _Grid = tuple[tuple[_Cell, ...], ...]
+type _State = tuple[_Grid, int, int, int, int, int, bool]
+
+
+@lru_cache(maxsize=8)
+def _padded_grid(code: tuple[str, ...]) -> _Grid:
+    """Return reusable initial rows; stores replace tuples rather than edit them."""
+    size = max(map(len, code))
+    return tuple(tuple(line.ljust(size)) for line in code)
+
+
+def _value(code: _Grid, row: int, col: int, size: int) -> int:
+    """Return the first numeric cell adjacent to ``(row, col)``.
+
+    A work command that needs a digit and finds none is an invalid runtime
+    operation, so this halts rather than inventing a default.
+    """
+    for d_row, d_col in _DIRECT:
+        if 0 <= row + d_row < len(code) and 0 <= col + d_col < size:
+            val = code[row + d_row][col + d_col]
+            if isinstance(val, int):
+                # A stored12 is one operand; it must not become two cells.
+                return val
+            if val.isdigit():
+                return int(val)
+    raise HaltError(
+        f"the operator at row {row}, column {col} has no digit beside it "
+        f"to use as its operand",
+        hint="put a digit beside the operator to supply its operand",
+    )
+
+
+def _write(code: _Grid, row: int, col: int, value: int) -> _Grid:
+    """Return a grid with one cell replaced by the mole's integer value."""
+    line = code[row]
+    return (*code[:row], (*line[:col], value, *line[col + 1 :]), *code[row + 1 :])
+
+
+def _advance(
+    state: _State,
+    size: int,
+    value: int | None = None,
+) -> _State:
+    """Return the state after executing the cell under the mole.
+
+    Pure: it reads ``state`` and returns a new one.  Two effects stay with
+    the caller.  ``:`` prints the mole -- this only clears it -- and the
+    reads ``=``/``~`` arrive as ``value``, already taken from the port,
+    with ``None`` standing for the empty read that zeroes the mole.
+
+    A work command fires only while ``num`` is positive, and every one that
+    fires spends one.  Outside that, a cell is scenery the mole walks over
+    -- which is what lets a Dig grid carry its data in plain sight.
+    """
+    code, row, col, move, mole, num, done = state
+    char = code[row][col]
+
+    if isinstance(char, int):
+        if num:
+            mole = char
+            num -= 1
+    elif num:
+        if char == "%":
+            # "Overrides current value with space when 0, and newline when
+            # 1."  The wiki stops there, unlike ``#`` below, which spells
+            # out its third case -- so the other eight digits are a gap in
+            # the spec, and the choice here is to leave the mole alone.
+            if (n := _value(code, row, col, size)) == 1:
+                mole = 10
+            elif n == 0:
+                mole = 32
+        elif char in "=~":
+            mole = value if value is not None else 0
+        elif char == ":":
+            mole = 0  # the print itself already happened in the shell
+        elif char == "+":
+            mole += _value(code, row, col, size)
+        elif char == "-":
+            mole -= _value(code, row, col, size)
+        elif char == "*":
+            mole *= _value(code, row, col, size)
+        elif char == "/":
+            if (n := _value(code, row, col, size)) == 0:
+                raise HaltError(
+                    f"division by zero at row {row}, column {col}",
+                    hint="ensure the divisor is nonzero before dividing",
+                )
+            mole //= n
+        elif char == ";":
+            code = _write(code, row, col, mole)
+        elif char.isdigit():
+            mole = int(char)
+        elif char.isalpha() or char in ".,!?":
+            mole = ord(char)
+        num -= 1
+    elif char in "^>'<":
+        move = "^>'<".find(char)
+    elif char == "#":
+        # The adjacent digit steers, and the wiki spells out all three
+        # cases: "Rotates Mole to left when value beside it is 0, and right
+        # when 1.  When it's neither of those, keep straight."  So the
+        # third arm is specified behaviour, not a fall-through.
+        if (n := _value(code, row, col, size)) == 1:
+            move += 1
+        elif n == 0:
+            move -= 1
+        # The modulo is required, not defensive: a grid that keeps
+        # turning drives the heading past the ends of _DIRECT.
+        move %= 4
+    elif char == "$":
+        num = _value(code, row, col, size)
+        if num < 0:
+            raise HaltError(f"negative digging distance at row {row}, column {col}")
+    elif char == "@":
+        return (code, row, col, move, mole, num, True)
+
+    row += _DIRECT[move][0]
+    col += _DIRECT[move][1]
+
+    # Walking off the grid stops the program, without error.
+    if row < 0 or row >= len(code) or col < 0 or col >= size:
+        done = True
+    return (code, row, col, move, mole, num, done)
+
+
+class _Machine:
+    """Per-run Dig state: the mole, its heading, and the underground counter.
+
+    ``step()`` executes the cell under the mole and advances it one cell in
+    the current heading; ``halted`` is true once the mole hits ``@`` or
+    walks off the grid.  The VM and the state-cycle hang detector expose
+    this object.
+    """
+
+    def __init__(
+        self,
+        code: list[str],
+        io: IO,
+    ) -> None:
+        """Pad ``code`` to a rectangular grid, like :func:`run`."""
+        if not code or not any(line.strip() for line in code):
+            raise syntax_error(
+                "Dig program cannot be empty",
+                "provide a nonempty grid; @ halts immediately",
+            )
+        self.io = io
+        self.code = _padded_grid(tuple(code))
+        self.size = len(self.code[0])
+        self.mole = self.num = self.row = self.col = 0
+        self.move = 1
+        self._done = False
+        self._input_reads = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the mole has halted or left the grid."""
+        return self._done
+
+    # The VM's language-shaped view.  Dig is a 2D grid walked by a mole, so
+    # the instruction position is where the mole is *and* which way it faces
+    # -- a bare index would not say where the next step lands.  ``memory`` is
+    # the one value the mole carries; there is no stack.
+
+    #: ``ip`` is a cell of the program's own rectangle: the first two
+    #: parts are a row and a column, and the rest is a heading.  Without
+    #: this a caller cannot tell the pair from a call depth or a frame
+    #: stack, which look identical and mean somewhere else entirely.
+    ip_shape = "grid"
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """The mole's ``(row, col, heading)``."""
+        return (self.row, self.col, self.move)
+
+    @property
+    def memory(self) -> list[int]:
+        """The value the mole is carrying."""
+        return [self.mole]
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection.
+
+        The grid is included because ``;`` writes the mole back into it.
+        """
+        return (
+            self.row,
+            self.col,
+            self.move,
+            self.mole,
+            self.num,
+            self.code,
+            self.io.progress(),
+            self._input_reads,  # IO providers may expose no cursor.
+        )
+
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (
+            self.code,
+            self.row,
+            self.col,
+            self.move,
+            self.mole,
+            self.num,
+            self._done,
+        )
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's published shape -- the VM's views and
+        the tests read them -- so they stay; the one assignment a step
+        makes is here rather than scattered through the rules above.
+        """
+        (
+            self.code,
+            self.row,
+            self.col,
+            self.move,
+            self.mole,
+            self.num,
+            self._done,
+        ) = state
+
+    def step(self) -> None:
+        """Execute the cell under the mole, then move it one cell.
+
+        The two effects live here rather than in the transition: this is
+        the shell.  ``:`` prints the mole the transition then clears, and
+        the reads ``=`` and ``~`` take a line here -- ``=`` as its first
+        character and ``~`` as an integer.  They are consulted only when
+        they can fire, which requires the underground counter to be armed.
+        """
+        if self._done:
+            return
+        char = self.code[self.row][self.col]
+
+        # Scenery only moves the mole; avoid rebuilding its whole state.
+        if not self.num and char not in _CONTROL:
+            self.row += _DIRECT[self.move][0]
+            self.col += _DIRECT[self.move][1]
+            self._done = not (
+                0 <= self.row < len(self.code) and 0 <= self.col < self.size
+            )
+            return
+
+        value: int | None = None
+        if self.num and char == "=":
+            value = self.io.input_char()
+            self._input_reads += 1
+        elif self.num and char == "~":
+            temp = self.io.input_token()
+            self._input_reads += 1
+            value = parse_integer(temp)
+        elif self.num and char == ":":
+            if self.mole < 10:
+                self.io.print_str(format_integer(self.mole))
+            else:
+                self.io.print_char(chr(self.mole))
+
+        self._restore(_advance(self._state, self.size, value))
+
+
+def run(
+    code: list[str],
+    io: IO,
+) -> None:
+    """Execute a Dig program with mole movement and underground work commands."""
+    machine = _Machine(code, io)
+    drive(machine)
+
+
+if __name__ == "__main__":
+    script_main(run, shape="keep")

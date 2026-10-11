@@ -74,7 +74,9 @@ def test_a_language_without_a_generator_is_ignored() -> None:
     module = load_script()
     language = next(iter(module.LANGUAGES.values()))
     module.LANGUAGES = {language.name: replace(language, boolean=None)}
-    assert module.render_contributor_tools_section().endswith("| generators |")
+    assert module.render_contributor_tools_section().endswith(
+        "| shared generator helpers and compatibility imports |"
+    )
 
 
 def test_an_incorrect_contributor_path_is_rejected(tmp_path: Path) -> None:

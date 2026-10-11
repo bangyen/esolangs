@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,6 +25,7 @@ class Move:
     target: Path
     module: str
     interpreter: bool
+    legacy: str = ""
 
 
 def plan(lang: Language, root: Path = ROOT) -> tuple[str, list[Move]]:
@@ -37,31 +39,66 @@ def plan(lang: Language, root: Path = ROOT) -> tuple[str, list[Move]]:
     if lang.boolean:
         modules.append((lang.boolean.__module__, "generator"))
     moves = []
+    packaged = False
     for module, leaf in modules:
         source = root / "src" / module.replace(".", "/")
-        if source.is_dir():
-            return "package", []
-        source = source.with_suffix(".py")
-        if not source.is_file():
+        is_package = source.is_dir()
+        packaged |= is_package
+        if not is_package:
+            source = source.with_suffix(".py")
+        if (
+            not (source / "__init__.py").is_file()
+            if is_package
+            else not source.is_file()
+        ):
             return "missing source", []
         moves.append(
             Move(
                 source,
-                package / f"{leaf}.py",
+                package / (leaf if is_package else f"{leaf}.py"),
                 f"esolangs.languages.{lang.id}.{leaf}",
                 leaf == "interpreter",
+                legacy=module,
             )
         )
-    return ("flat", moves) if moves else ("no implementation", [])
+    return (
+        ("package" if packaged else "flat", moves)
+        if moves
+        else ("no implementation", [])
+    )
 
 
 def _exports(source: str) -> tuple[str, ...]:
     """Collect module definitions without inlined comprehension temporaries."""
-    names = set()
+    names: set[str] = set()
+    imported: set[str] = set()
+    explicit: set[str] = set()
+    tree = ast.parse(source)
+    for statement in tree.body:
+        if (
+            isinstance(statement, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "__all__"
+                for target in statement.targets
+            )
+            and isinstance(statement.value, ast.List | ast.Tuple)
+        ):
+            explicit.update(
+                item.value
+                for item in statement.value.elts
+                if isinstance(item, ast.Constant) and isinstance(item.value, str)
+            )
     pending: list[ast.AST] = list(ast.parse(source).body)
     while pending:
         node = pending.pop()
-        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+        if isinstance(node, ast.Import | ast.ImportFrom):
+            imported.update(
+                alias.asname or alias.name.split(".")[0] for alias in node.names
+            )
+            explicit.update(
+                alias.name for alias in node.names if alias.asname == alias.name
+            )
+        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
             names.add(node.name)
         elif isinstance(node, ast.TypeAlias):
             names.add(node.name.id)
@@ -74,27 +111,135 @@ def _exports(source: str) -> tuple[str, ...]:
             if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
                 names.add(node.id)
             pending.extend(ast.iter_child_nodes(node))
-    return tuple(sorted(name for name in names if not name.startswith("__")))
+    return tuple(
+        sorted(
+            name for name in (names - imported) | explicit if not name.startswith("__")
+        )
+    )
+
+
+def _rewrite_imports(source: str, replacements: dict[str, str]) -> str:
+    """Rewrite module references while retaining program literals and comments."""
+    data = source.encode()
+    offsets = [0]
+    for line in data.splitlines(keepends=True):
+        offsets.append(offsets[-1] + len(line))
+    edits = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import | ast.ImportFrom) or (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and any(
+                node.value == old or node.value.startswith(old + ".")
+                for old in replacements
+            )
+        ):
+            assert node.end_lineno is not None
+            assert node.end_col_offset is not None
+            start = offsets[node.lineno - 1] + node.col_offset
+            end = offsets[node.end_lineno - 1] + node.end_col_offset
+            text = data[start:end].decode()
+            for old, new in replacements.items():
+                text = re.sub(r"\b" + re.escape(old) + r"(?=\.|\b)", new, text)
+            edits.append((start, end, text.encode()))
+    for start, end, payload in sorted(edits, reverse=True):
+        data = data[:start] + payload + data[end:]
+    return data.decode()
+
+
+def _entry_keywords(source: str) -> str:
+    """Preserve the shared CLI entry point's source shape and raster loader."""
+    keywords = []
+    for node in ast.walk(ast.parse(source)):
+        if (
+            not isinstance(node, ast.Call)
+            or not isinstance(node.func, ast.Name)
+            or node.func.id != "script_main"
+        ):
+            continue
+        for keyword in node.keywords:
+            if (
+                keyword.arg == "shape"
+                and isinstance(keyword.value, ast.Constant)
+                and keyword.value.value in {"text", "keep", "strip"}
+            ):
+                value = repr(keyword.value.value)
+            elif (
+                keyword.arg == "loader"
+                and isinstance(keyword.value, ast.Name)
+                and keyword.value.id == "load_source"
+            ):
+                value = "_implementation.load_source"
+            else:
+                raise ValueError("unsupported interpreter entry point")
+            keywords.append(f", {keyword.arg}={value}")
+    return "".join(keywords)
 
 
 def apply(moves: list[Move]) -> None:
-    """Preflight every write before preserving sources and installing aliases."""
+    """Preflight every write, preserve implementations, and install aliases."""
     writes: dict[Path, str] = {}
+    deletes = set()
+    seen = set()
+    replacements = {move.legacy: move.module for move in moves if move.legacy}
     for move in moves:
         if move.target.exists() or move.target.parent.exists():
             raise FileExistsError(f"refusing to overwrite {move.target.parent}")
-        if move.source in writes or move.target in writes:
+        if move.source in seen:
             raise ValueError(
                 f"shared implementation requires manual migration: {move.source}"
             )
-        source = move.source.read_text(encoding="utf-8")
-        names = _exports(source)
-        if not names:
-            raise ValueError(f"no static exports in {move.source}")
-        writes[move.target] = source
-        writes[move.source] = _compatibility_module(
-            move.module, names, interpreter=move.interpreter
-        )
+        seen.add(move.source)
+        package = move.source.is_dir()
+        files = sorted(move.source.rglob("*.py")) if package else [move.source]
+        descendants = []
+        for original in files:
+            relative = original.relative_to(move.source) if package else Path(".")
+            target = move.target / relative if package else move.target
+            source = _rewrite_imports(
+                original.read_text(encoding="utf-8"), replacements
+            )
+            writes[target] = source
+            names = _exports(source)
+            if not package or relative == Path("__init__.py"):
+                if not names:
+                    raise ValueError(f"no static exports in {original}")
+                writes[original] = _compatibility_module(
+                    move.module,
+                    names,
+                    interpreter=move.interpreter,
+                    entry_keywords=_entry_keywords(
+                        (move.source / "__main__.py").read_text()
+                        if package and (move.source / "__main__.py").exists()
+                        else source
+                    )
+                    if move.interpreter
+                    else "",
+                )
+            else:
+                parts = relative.with_suffix("").parts
+                suffix = ".".join(
+                    parts[:-1] if original.name == "__init__.py" else parts
+                )
+                if original.name != "__main__.py":
+                    descendants.append(suffix)
+                    writes[original.with_suffix(".pyi")] = (
+                        "".join(
+                            f"from {move.module}.{suffix} import {name} as {name}\n"
+                            for name in names
+                        )
+                        or '"""Compatibility module."""\n'
+                    )
+                deletes.add(original)
+        if package:
+            entry = move.source / "__init__.py"
+            registrations = "".join(
+                f'sys.modules[__name__ + ".{suffix}"] = importlib.import_module(\n'
+                f'    "{move.module}.{suffix}"\n)\n'
+                for suffix in sorted(descendants)
+            )
+            anchor = "sys.modules[__name__] = _implementation\n"
+            writes[entry] = writes[entry].replace(anchor, anchor + registrations)
     for move in moves:
         writes[move.target.parent / "__init__.py"] = (
             '"""Language implementation modules."""\n'
@@ -102,6 +247,8 @@ def apply(moves: list[Move]) -> None:
     for path, source in writes.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(source, encoding="utf-8")
+    for path in deletes:
+        path.unlink()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -115,6 +262,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--flat", action="store_true", help="select only flat layouts")
+    parser.add_argument("--packages", action="store_true", help="allow package layouts")
     args = parser.parse_args(argv)
     unknown = set(args.names) - LANGUAGES.keys()
     if unknown:
@@ -124,8 +272,11 @@ def main(argv: list[str] | None = None) -> int:
     for name in args.names or LANGUAGES:
         status, owned = plan(LANGUAGES[name])
         print(f"{status}: {name}")
-        moves.extend(owned)
-        if status not in {"flat", "colocated"} and not args.flat:
+        if status == "flat" or (
+            status == "package" and args.packages and not args.flat
+        ):
+            moves.extend(owned)
+        elif status != "colocated" and not args.flat:
             blocked.append(name)
     if args.apply:
         if blocked:

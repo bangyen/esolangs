@@ -20,4 +20,4 @@ sys.modules[__name__] = _implementation
 if __name__ == "__main__":
     from esolangs.interpreters._entry import script_main
 
-    script_main(_implementation.run)
+    script_main(_implementation.run, shape="keep")

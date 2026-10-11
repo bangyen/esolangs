@@ -378,3 +378,23 @@ def test_diff_uses_exact_git_paths(tmp_path, monkeypatch, name):
     )
     path.write_text("first = 1\nsecond = 2\n")
     assert gate._added_lines("HEAD") == {name: {2}}  # noqa: SLF001
+
+
+def test_added_source_cannot_spoof_a_patch_file_header(monkeypatch):
+    gate = load_script()
+    paths = ["first.py", "second.py"]
+    diff = (
+        "--- a/first.py\n+++ b/first.py\n@@ -0,0 +1,2 @@\n"
+        "+++ b/second.py\n+@@ -1 +88 @@\n"
+        "--- a/second.py\n+++ b/second.py\n@@ -1 +2 @@\n-old\n+new\n"
+    )
+    monkeypatch.setattr(gate, "diff_paths", lambda *_args: paths)
+    calls = []
+
+    def run(*args, **_kwargs):
+        calls.append(args[0])
+        return subprocess.CompletedProcess([], 0, diff.encode(), b"")
+
+    monkeypatch.setattr(gate.subprocess, "run", run)
+    assert gate._added_lines("BASE") == {"first.py": {1, 2}, "second.py": {2}}  # noqa: SLF001
+    assert len(calls) == 1
