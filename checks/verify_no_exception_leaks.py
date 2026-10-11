@@ -25,9 +25,9 @@ as the ``input_char`` bug this script was written to catch did.
 
 Run::
 
-    python scripts/verify_no_exception_leaks.py            # touched languages
-    python scripts/verify_no_exception_leaks.py --all      # every language
-    python scripts/verify_no_exception_leaks.py --all out.json
+    python checks/verify_no_exception_leaks.py            # touched languages
+    python checks/verify_no_exception_leaks.py --all      # every language
+    python checks/verify_no_exception_leaks.py --all out.json
 
 A clean sweep is remembered in ``.leaksweep-cache.json`` under a hash of
 the interpreter, the shared machinery, the language's examples and this
@@ -574,6 +574,11 @@ def main() -> None:
         return
 
     args = [a for a in sys.argv[1:] if a != "--all"]
+    unknown = [a for a in args if a.startswith("-")]
+    if unknown:
+        # A bare positional is the JSON report path; an unrecognized flag used
+        # to become that path, so `--help` wrote a file named `--help`.
+        raise SystemExit(f"unknown option(s): {' '.join(unknown)}")
     langs = sorted(INTERPRETERS)
     imports: dict[pathlib.Path, set[str]] = {}
     if "--all" in sys.argv[1:]:

@@ -218,3 +218,16 @@ def test_concurrent_cache_publication_keeps_valid_json(tmp_path, monkeypatch):
         str(index) for index in range(16)
     }
     assert list(tmp_path.iterdir()) == [path]
+
+
+def test_an_unknown_flag_is_refused_not_written_as_a_report(tmp_path, monkeypatch):
+    """A stray flag must not become the report path.
+
+    ``main`` treats its first positional as the JSON report path, so ``--help``
+    used to write a file literally named ``--help``.
+    """
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(leaks.sys, "argv", ["verify_no_exception_leaks.py", "--help"])
+    with pytest.raises(SystemExit, match="unknown option"):
+        leaks.main()
+    assert not (tmp_path / "--help").exists()
