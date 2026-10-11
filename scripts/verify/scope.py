@@ -6,7 +6,6 @@ is skipped by accident is a check that silently stops guarding.
 """
 
 import ast
-import atexit
 import functools
 import hashlib
 import importlib
@@ -447,9 +446,6 @@ class VerifiedCache:
         return True
 
 
-COVERAGE_TEST_STEP = "coverage tests"
-
-
 # Which paths each step actually guards.  A step whose prefixes the branch did
 # not touch cannot have been broken by that branch, so a scoped run skips it.
 # A step absent from this table is always run: it is either cheap enough not to
@@ -722,44 +718,10 @@ def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | No
         paths = _pytest_scope(changed)
         if not paths:
             return None  # nothing the Python tests cover moved
-        cmd = _scoped_coverage(cmd, changed)
         if paths == WHOLE_SUITE:
             return cmd  # not localisable: run every test
         return [*cmd, *paths]
     return cmd
-
-
-def _scoped_coverage(cmd: list[str], changed: list[str]) -> list[str]:
-    """Measure coverage over the touched source files only.
-
-    The gate that reads the data judges just the ``src/esolangs`` files the
-    branch touched, so measuring the whole package is overhead spent on files
-    nothing will look at.  Whole-package ``--cov --cov-branch`` costs 13s on
-    top of a 27s run; an ``include`` of the touched files costs nothing
-    measurable, because sys.monitoring never instruments the rest.  A branch
-    that touched no source file measures nothing at all -- the gate skips on
-    its own, having no targets.
-
-    coverage refuses ``include`` beside ``source`` (it warns and ignores the
-    include), so this cannot be a pyproject default; the rc is written for
-    the run and replaces the pyproject one for *measurement* only.  Reporting
-    is untouched: the gate reads the data through ``coverage json``, which
-    consults pyproject and so keeps ``exclude_lines``.
-    """
-    if "--cov" not in cmd:
-        return cmd
-    touched = [
-        f for f in changed if f.startswith("src/esolangs/") and f.endswith(".py")
-    ]
-    without = [c for c in cmd if c not in ("--cov", "--cov-branch", "--cov-report=")]
-    if not touched:
-        return without
-    fd, rc = tempfile.mkstemp(prefix="verify-coverage-", suffix=".rc")
-    with os.fdopen(fd, "w") as f:
-        f.write("[run]\ncore = sysmon\nbranch = True\ninclude =\n")
-        f.writelines(f"    {path}\n" for path in touched)
-    atexit.register(os.unlink, rc)
-    return [*without, "--cov", f"--cov-config={rc}", "--cov-report="]
 
 
 if __name__ == "__main__":
