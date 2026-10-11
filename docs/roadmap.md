@@ -54,12 +54,6 @@ exception. Those limits remain evidence, not optimization tasks.
   records before capture; see [the layout gap](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09).
 - **Vandevelo:** settle generation time and structural output scaling via
   the `O(log n)` DNF-of-parities gap; see [the audit](proofs/index.md#vandevelo-identifier-and-fallback-audit).
-- **FRACTRAN:** complete verification of the bit-linear direct mapping
-  pipeline. Packed decimal counters and power-of-ten blocks account for
-  scalar addresses; native loading and decoding avoid the growing sieve
-  and repeated mapping bisections. The full gate still exceeds its
-  sixty-second limit. See
-  [direct mapping numerators](proofs/fractran.md#direct-mapping-numerators).
 
 Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
