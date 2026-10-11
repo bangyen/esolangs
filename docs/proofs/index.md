@@ -588,7 +588,11 @@ it. With `u <= min(n, 2**dim - 1)` distinct columns and core size `c`,
 work is `O(n + u*c)` and cache entries are `O(u + c**2)`. Since
 `c <= 1 + sqrt(2*2**dim)`, the disjoint cubes and `C <= 17*T/n` give
 `sum(n*c) <= 17*T + sqrt(34)*T*sqrt(n)` by Cauchy--Schwarz. Cache
-insertions and witness-cache upkeep total `O(T)`, but the queries still have only an
+insertions and witness-cache upkeep total `O(T)`. Core queries stop once
+the ascending core passes the current witness's last input: later triples
+cannot precede it. On all 276 tables through three inputs and 24 seeded
+tables per arity at n=4..8, this reduces pair lookups from 3,744 to 3,615
+with byte-identical emitted programs. The queries still have only an
 `O(T*sqrt(n))` bound. The former triple cache cost `c**3/3` a clause. A core with no relation of weight four or less can hold all `n`
 inputs: the extended-BCH columns `(1, x, x**3)` over GF(16) do, with
 `dim = 9`. Half the cosets of that subspace at n=16 reach a 16-input core,

@@ -10,19 +10,24 @@ from esolangs.interpreters.fractran import _choose, _Machine, _parse
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.fractran import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from tests.proofs._fractran_chunks import chunk_template, chunk_width
+from tests.proofs._fractran_chunks import (
+    chunk_template,
+    chunk_width,
+    decimal_progression,
+    mapped_chunk_template,
+)
 from tests.support.witness_tables import row_bits
 
 
-def _run(template: str, table: str, row: int, k: int) -> int:
+def _run(template: str, table: str, row: int, k: int, watchers: int | None = 4) -> int:
     n = len(table).bit_length() - 1
     bits = row_bits(row, n)
     source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
     io = ScriptedIO("")
     machine = _Machine(source, io)
-    if k >= 64:
+    if k >= 64 and watchers is not None:
         assert machine._cursor is not None
-        assert len(machine._cursor.watchers.get(7, ())) == 4
+        assert len(machine._cursor.watchers.get(7, ())) == watchers
     for _steps in range(200 * k + 100):
         if machine.halted:
             break
@@ -30,7 +35,55 @@ def _run(template: str, table: str, row: int, k: int) -> int:
     else:
         pytest.fail("direct chunk program exceeded control budget")
     assert io.getvalue().strip() == str(1 + int(table[row]))
+    if watchers is None:
+        assert machine._cursor is None
+        assert machine.inspections <= 32 * (_steps + n + 1)
     return _steps - 1
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "n", [0, 1, 2, 3, 6, 10, pytest.param(16, marks=pytest.mark.slow)]
+)
+def test_mapped_chunks_execute(n: int) -> None:
+    size = 1 << n
+    width = chunk_width(n)
+    k = (size + width - 1) // width
+    rng = random.Random(20261011)
+    tables = (
+        [format(value, f"0{size}b") for value in range(1 << size)]
+        if n <= 3
+        else ["0" * size, "1" * size, "".join(rng.choices("01", k=size))]
+    )
+    for table in tables:
+        template = mapped_chunk_template(table)
+        assert len(template.split()) - 1 == k + n + 256
+        rows = (
+            range(size)
+            if n <= 3
+            else sorted({0, width - 1, width, size // 3, size - 1})
+        )
+        for row in rows:
+            _run(template, table, row, k, watchers=None)
+            if n <= 2:
+                source = fill_runs(
+                    template, TEMPLATE_CHAR, [PAIR] * n, row_bits(row, n)
+                )
+                state, fractions, _ = _parse(source)
+                for _ in range(200 * size + 100):
+                    index = _choose(state, fractions)
+                    if index is None:
+                        break
+                    numerator, denominator = fractions[index]
+                    state = state * numerator // denominator
+                else:
+                    pytest.fail("literal mapped chunk program exceeded control budget")
+                assert state == 1 + int(table[row])
+
+
+@pytest.mark.parametrize("step", [1, 3, 11, 99, 1001])
+def test_decimal_progression_carries(step: int) -> None:
+    assert list(decimal_progression(2049, step)) == [str(i * step) for i in range(2049)]
 
 
 @pytest.mark.medium

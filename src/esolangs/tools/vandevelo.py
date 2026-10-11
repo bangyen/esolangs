@@ -778,6 +778,10 @@ def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
         if witness is None:
             witness = pairs.get(col)
             for c in core:
+                # Witnesses rank by their last input first. The ascending
+                # core cannot improve a witness once it passes that input.
+                if witness is not None and c >= witness.bit_length():
+                    break
                 pair = pairs.get(col ^ cols[c])
                 if pair is not None and not pair & (1 << c):
                     triple = pair | (1 << c)

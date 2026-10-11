@@ -1223,6 +1223,52 @@ zero- and one-table cleanup controls at eight. At sixteen inputs,
 the three queries use 84,912, 103,704 and 31,060 firings. These are
 construction controls, not a claim that it is the practical generator.
 
+### Direct mapping numerators
+
+The feature primes are unnecessary when each mapping numerator carries its
+own chunk value. `mapped_chunk_template` in
+`tests/proofs/_fractran_chunks.py` starts with mapping flag `29`, decoder
+constant `103**2` and the same input primes. The input loaders still put
+row `r` in register `107`. For each block, in descending order, emit
+
+    109*7**a_i / (29*107**(b*i)).
+
+The first applicable rule selects `i=floor(r/b)`, consumes the mapping
+flag, loads the chunk into register `7` and leaves local index `r-b*i`.
+The fixed decoder then returns the selected bit. There are no unselected
+features to clean up, and the halt value is exactly `1` or `2`, including
+when `a_i=0`. The source has `k+n+256` fractions. This remains a sparse-factor
+construction: materializing the register integers is outside its bounds.
+
+Generation now needs only `n` variable primes. Their sieve costs a
+polynomial in `n`, hence `O(T)` asymptotically. Chunk values are bounded by
+`2**b=O(k)`; a decimal odometer spells every value below `2**b` once and
+stores its string. Its total written digits are `O(k*n)=O(T)`. Another
+decimal counter advances by `b` to spell mapping offsets. Adding that
+stride costs `O(log b)` digit operations plus amortized carries per
+offset; writing the offsets costs `O(k*n)`. Binary chunk parsing costs
+`O(b)` per block. Thus generation, including literal rendering, takes
+`O(T)` bit work without converting each wide binary integer to decimal.
+The strings and generated source occupy `O(T)` bits.
+
+The normal machine selects indexed scans rather than the dense cursor.
+While loading, at most `n` input registers are live. Once a mapping fires,
+register `107` is below `b`, so no positive-offset mapping can apply;
+the zero-offset mapping is anchored on the absent flag `29`. The
+positive-offset mapping thresholds decrease in source order, so the index
+skips them by bisection during decoding. Only the fixed decoder's guard
+groups remain relevant. Loading still converts the decimal literals back
+to binary, and execution still uses the index's comparisons; this does
+not prove a bit-linear loading and execution pipeline.
+
+Controls execute all 2,122 rows through three inputs, including 74
+independent literal-arithmetic checks through two inputs. Zero, one and
+seeded tables execute boundary and interior rows at six, ten and sixteen
+inputs. On `Random(20261011)`'s sixteen-input table, emitted source is
+142,789 characters and 6,230 fractions, against 558,012 characters for the
+feature construction on that same table. First, one-third and last rows
+use 76,614, 118,749 and 27,939 firings. The full pipeline remains open.
+
 ## The other end: the row-addressing tree
 
 The generator that shipped before this was a decision tree with one prime
