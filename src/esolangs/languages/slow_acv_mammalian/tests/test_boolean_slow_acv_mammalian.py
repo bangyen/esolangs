@@ -30,7 +30,7 @@ def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
     essential, io_modulus
 ):
     import esolangs
-    from esolangs.tools._mammalian_compact import compact_chain
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 
     used = [*range(essential - 1), 7]
     # Parity makes every selected coordinate essential, including both ends.
@@ -439,8 +439,8 @@ def test_coprime_chain_generates_every_small_table(
     table: str, modulus: int, io_modulus: int
 ) -> None:
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
     from esolangs.languages.slow_acv_mammalian.interpreter import run
-    from esolangs.tools._mammalian_compact import compact_chain
 
     n = len(table).bit_length() - 1
     source = compact_chain(table, n, modulus=modulus, io_modulus=io_modulus)
@@ -456,8 +456,8 @@ def test_coprime_chain_generates_every_small_table(
 @pytest.mark.parametrize("io_modulus", [255, 256])
 def test_coprime_chain_generates_asymmetric_tables(n: int, io_modulus: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
     from esolangs.languages.slow_acv_mammalian.interpreter import run
-    from esolangs.tools._mammalian_compact import compact_chain
 
     rng = random.Random(20261003 + n)
     table = "".join(str(rng.getrandbits(1)) for _ in range(1 << n))
@@ -470,7 +470,7 @@ def test_coprime_chain_generates_asymmetric_tables(n: int, io_modulus: int) -> N
 
 
 def test_coprime_chain_rejects_backward_targets() -> None:
-    from esolangs.tools._mammalian_compact import _Chain, _State
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import _Chain, _State
 
     chain = _Chain(255)
     with pytest.raises(ValueError, match="precedes"):
@@ -484,7 +484,7 @@ def test_coprime_chain_rejects_backward_targets() -> None:
 def test_chain_greedy_chunks_keep_their_short_continuation(
     modulus: int, io_modulus: int
 ) -> None:
-    from esolangs.tools._mammalian_compact import _Chain, _State
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import _Chain, _State
 
     chain = _Chain(modulus, io_modulus=io_modulus)
     for head in range(modulus):
@@ -505,8 +505,8 @@ def test_mixed_chain_appends_all_missing_head_values(
     ptr: int, head: int, extra: int
 ) -> None:
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import _Chain, _State
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-    from esolangs.tools._mammalian_compact import _Chain, _State
 
     chain = _Chain(255, io_modulus=256)
     for value in range(256):
@@ -532,7 +532,7 @@ def test_mixed_chain_appends_all_missing_head_values(
 
 @pytest.fixture(scope="module")
 def stepped_chain_program():
-    from esolangs.tools._mammalian_compact import compact_chain
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 
     @cache
     def build(inputs: int, modulus: int, io_modulus: int):
@@ -605,8 +605,8 @@ def test_chain_regions_cover_distant_nodes_and_large_weights(
     modulus: int, io_modulus: int, head: int, pos: int, weight: int, bit: int
 ) -> None:
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import _Chain, _State
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-    from esolangs.tools._mammalian_compact import _Chain, _State
 
     chain = _Chain(modulus, io_modulus=io_modulus)
     state = _State(head=head, acc=io_modulus + 48)
@@ -651,8 +651,8 @@ def test_compact_pool_retrieves_weight_and_routes(
     modulus: int, io_modulus: int, weight: int, *, compact: bool
 ) -> None:
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import _Chain, _State
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-    from esolangs.tools._mammalian_compact import _Chain, _State
 
     chain = _Chain(modulus, io_modulus=io_modulus)
     pool = chain.pools[-1]
@@ -678,8 +678,8 @@ def test_compact_pool_retrieves_weight_and_routes(
 @pytest.mark.parametrize(("modulus", "budget"), [(255, 63_845), (256, 62_600)])
 def test_pool_compaction_preserves_three_input_size(modulus: int, budget: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
     from esolangs.languages.slow_acv_mammalian.interpreter import run
-    from esolangs.tools._mammalian_compact import compact_chain
 
     table = "00101101"
     source = compact_chain(table, 3, modulus=modulus)
@@ -692,7 +692,7 @@ def test_pool_compaction_preserves_three_input_size(modulus: int, budget: int) -
 
 
 def test_cell_255_tree_rejects_backward_sum_targets() -> None:
-    from esolangs.tools._mammalian255 import _State
+    from esolangs.languages.slow_acv_mammalian._mammalian255 import _State
 
     with pytest.raises(AssertionError, match="precedes"):
         _State(rest=1).raise_to(0)
@@ -709,8 +709,8 @@ def test_cell_255_appends_every_value_with_a_missing_head(
     head: int, extra: int, values: tuple[int, ...] | range
 ) -> None:
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.slow_acv_mammalian._mammalian255 import _State
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-    from esolangs.tools._mammalian255 import _State
 
     for value in values:
         rest = value + 1 + extra
@@ -732,8 +732,8 @@ def test_cell_255_appends_every_value_with_a_missing_head(
 @pytest.mark.parametrize("io_modulus", [255, 256])
 def test_cell_255_tree_runs_in_stepped_interpreter(io_modulus: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.slow_acv_mammalian._mammalian255 import decision_tree
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-    from esolangs.tools._mammalian255 import decision_tree
 
     table = "00101101"
     source = decision_tree(table, 3, io_modulus=io_modulus)
@@ -812,7 +812,7 @@ def test_modulo_255_merge_rejects_a_one_branch_past_the_target() -> None:
     [(m, s) for m in (255, 256) for s in (1, 7, 22) if gcd(s, m) == 1],
 )
 def test_short_routing_is_earliest(modulus: int, step: int) -> None:
-    from esolangs.tools._mammalian_compact import _routing_seeds
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import _routing_seeds
 
     for head in range(modulus):
         earliest = {}
@@ -830,8 +830,8 @@ def test_missing_head_raise_uses_reachable_nonfinal_chunks(
     head: int, rest: int, remaining: int
 ) -> None:
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import _Chain, _State
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-    from esolangs.tools._mammalian_compact import _Chain, _State
 
     chain = _Chain(255, io_modulus=256)
     state = _State(head=head)
@@ -853,7 +853,7 @@ def test_missing_head_raise_uses_reachable_nonfinal_chunks(
 
 @pytest.mark.parametrize("modulus", [255, 256])
 def test_read_calibration_reaches_earliest_safe_head(modulus: int) -> None:
-    from esolangs.tools._mammalian_compact import _read_seeds
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import _read_seeds
 
     for total in range(64):
         for head in range(modulus):

@@ -966,7 +966,9 @@ def _program(
     if not keep_constant_input and len(set(truth_table)) == 1:
         return _constant_read(truth_table[0], n, moduli.cell_modulus)
     if moduli.cell_modulus == 255:
-        from esolangs.tools._mammalian_compact import compact_chain
+        from esolangs.languages.slow_acv_mammalian._mammalian_compact import (
+            compact_chain,
+        )
 
         # Chain/tree characters: 64835/95678 at n=3 with I/O 255;
         # 83404/83749 at n=2 with I/O 256. Smaller trees win below these.
@@ -978,7 +980,9 @@ def _program(
                 io_modulus=moduli.io_modulus,
             )
         else:
-            from esolangs.tools._mammalian255 import decision_tree
+            from esolangs.languages.slow_acv_mammalian._mammalian255 import (
+                decision_tree,
+            )
 
             legacy = decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
         used = essential_inputs(truth_table, n)
