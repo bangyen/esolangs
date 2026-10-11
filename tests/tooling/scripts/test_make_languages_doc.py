@@ -251,6 +251,17 @@ def test_documentation_check_preserves_source_files(
     assert ("run python scripts/docs/generate.py docs: README.md" in error) == stale
 
 
+def test_missing_canonical_interpreter_does_not_link_to_an_old_path(tmp_path):
+    module = load_script()
+    module.ROOT = tmp_path
+    language = next(iter(module.LANGUAGES.values()))
+    old = tmp_path / "src/esolangs/interpreters" / f"{language.interpreter}.py"
+    old.parent.mkdir(parents=True)
+    old.write_text("owned")
+    with pytest.raises(FileNotFoundError, match="no canonical interpreter"):
+        module._source_link(language.name)  # noqa: SLF001
+
+
 def test_exports_use_the_canonical_generator_module(tmp_path):
     from scripts.docs.generate import declared
 

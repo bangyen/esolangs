@@ -435,7 +435,7 @@ def _declaring_module(lang: Language) -> str | None:
 
 
 def _owned_module_paths(lang: Language) -> tuple[set[str], set[Path]]:
-    """Return implementation and compatibility modules, keeping leaves separate."""
+    """Return owned implementation modules, keeping leaves separate."""
     modules = (
         {f"esolangs.languages.{lang.id}.interpreter"} if lang.interpreter else set()
     )

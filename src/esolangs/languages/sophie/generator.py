@@ -134,9 +134,9 @@ def sophie_labels(retained: list[list[int]]) -> list[dict[int, int]]:
 
 
 def _payload(state: Any) -> Payload:
-    """Split out the accumulator, control stack, pc and two flags."""
-    pc, accumulator, _skip, control, _halted, _cursor = state
-    return (accumulator,), control, pc, 2
+    """Split out the accumulator, control stack, pc and halt flag."""
+    pc, accumulator, control, _halted, _cursor = state
+    return (accumulator,), control, pc, 1
 
 
 LANGUAGE = Language(

@@ -14,8 +14,7 @@ empty it runs the seconds-long tests ``finish`` would otherwise fail late.
 ``bounds`` measures what the proof ledger's cells state.  ``finish``
 regenerates every committed artifact and runs the full ``verify.py`` gate.
 ``remove`` deletes what ``check`` asks for, regenerates, and lists the
-mentions left in prose for a hand edit.  The bare ``"Name" --category ...``
-form still means ``start``.
+mentions left in prose for a hand edit.
 """
 
 from __future__ import annotations
@@ -55,7 +54,6 @@ CATEGORIES = (
     "register_based",
     "other",
 )
-COMMANDS = ("start", "check", "finish", "remove", "bounds")
 
 
 def _slug(name: str) -> str:
@@ -168,6 +166,7 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     collisions += [
         path
         for path in (
+            package.with_suffix(".py"),
             ROOT / "src/esolangs/interpreters" / slug,
             ROOT / "src/esolangs/tools" / slug,
         )
@@ -229,7 +228,6 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
             for path in (
                 package.with_suffix(".py"),
                 package / "__init__.py",
-                ROOT / "src/esolangs/tools" / f"{slug}.py",
             )
             if path.exists()
         ),
@@ -622,8 +620,6 @@ def _report(name: str, gaps: list[Gap]) -> None:
 def main(argv: list[str] | None = None) -> int:
     """Dispatch ``start``, ``check``, ``finish`` or ``remove``."""
     argv = list(sys.argv[1:] if argv is None else argv)
-    if not argv or argv[0] not in COMMANDS:
-        argv.insert(0, "start")
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
     start = sub.add_parser("start", help="write the stubs")

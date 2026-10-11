@@ -77,14 +77,14 @@ def _partners(code: str) -> dict[int, int]:
     return table
 
 
-#: One instant of a run: ``(acc, ind, skp, stk, halted)`` -- the
-#: accumulator, the cursor, the break flag, the stack of loop-entry
+#: One instant of a run: ``(acc, ind, stk, halted)`` -- the
+#: accumulator, the cursor, the stack of loop-entry
 #: positions, and whether ``&`` fired.  A value :func:`_advance` maps
 #: forward, with the stack as a ``tuple`` for the same reason.
 #:
-#: ``skp`` remains a compatibility view, always false. Break jumps directly
+#: Break jumps directly
 #: past its own loop: propagating a skip flag wrongly skipped later loops.
-type _State = tuple[int, int, bool, tuple[int, ...], bool]
+type _State = tuple[int, int, tuple[int, ...], bool]
 
 
 def _advance(
@@ -106,7 +106,7 @@ def _advance(
     conditional that fails jumps to its block's ``}`` -- or to the ``{`` of
     an else-block if one follows, so the trailing advance enters it.
     """
-    acc, ind, skp, stk, halted = state
+    acc, ind, stk, halted = state
 
     if (c := code[ind]) == "[":
         stk = (*stk, ind)
@@ -127,7 +127,7 @@ def _advance(
     elif c == "{":
         ind = partners[ind]
     elif c == "&":
-        return (acc, ind, skp, stk, True)
+        return (acc, ind, stk, True)
     else:
         val = code[ind:]
         if m := re.match(r"@\$(\d+){", val):
@@ -143,7 +143,7 @@ def _advance(
             acc = ord(m[1])
             ind += m.end() - 1
 
-    return (acc, ind + 1, skp, stk, halted)
+    return (acc, ind + 1, stk, halted)
 
 
 def _branch(
@@ -181,7 +181,6 @@ class _Machine:
         self.io = io
         self.code = code
         self.acc = self.ind = 0
-        self.skp = False
         self.stk: tuple[int, ...] = ()
         self._halted_by_command = False
 
@@ -208,7 +207,6 @@ class _Machine:
         return (
             self.ind,
             self.acc,
-            self.skp,
             self.stk,
             self._halted_by_command,
             self.io.progress(),
@@ -217,7 +215,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (self.acc, self.ind, self.skp, self.stk, self._halted_by_command)
+        return (self.acc, self.ind, self.stk, self._halted_by_command)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.
@@ -226,7 +224,7 @@ class _Machine:
         the tests read them -- so they stay; the one assignment a step
         makes is here rather than scattered through the rules above.
         """
-        self.acc, self.ind, self.skp, self.stk, self._halted_by_command = state
+        self.acc, self.ind, self.stk, self._halted_by_command = state
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the cursor.

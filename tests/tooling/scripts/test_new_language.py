@@ -62,6 +62,32 @@ def test_scaffold_refuses_overwrite(root: Path) -> None:
         new_language.scaffold("Tiny", "other")
 
 
+def test_scaffold_refuses_a_shared_namespace_module(root: Path) -> None:
+    target = root / "src/esolangs/languages/generators.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("owned")
+    with pytest.raises(FileExistsError, match="refusing to overwrite"):
+        new_language.scaffold("Generators", "other")
+    assert target.read_text() == "owned"
+    assert not target.with_suffix("").exists()
+
+
+@pytest.mark.parametrize("argv", [[], ["Tiny", "--category", "other"]])
+def test_start_requires_an_explicit_command(root: Path, argv: list[str]) -> None:
+    with pytest.raises(SystemExit) as caught:
+        new_language.main(argv)
+    assert caught.value.code == 2
+    assert not (root / "src/esolangs/languages").exists()
+
+
+def test_registration_ignores_old_generator_locations(root: Path) -> None:
+    old = root / "src/esolangs/tools/tiny.py"
+    old.parent.mkdir(parents=True)
+    old.write_text("owned")
+    (gap,) = new_language._unregistered("Tiny", "tiny")  # noqa: SLF001
+    assert gap.where == "src/esolangs/registry/_table.py"
+
+
 def test_the_slug_is_the_registry_id() -> None:
     """A second slug rule refused ``123`` and gave Piet++ Piet's file."""
     from esolangs.registry import LANGUAGES

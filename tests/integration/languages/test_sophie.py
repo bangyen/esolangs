@@ -117,7 +117,7 @@ def _bounds(profile: dict[str, Any]) -> None:
     assert memory == 1
     assert stack == 0
     assert profile["peak_control_stack_items"] == 0
-    assert profile["peak_machine_bits"] <= 8 + units.bit_length() + 2
+    assert profile["peak_machine_bits"] <= 8 + units.bit_length() + 1
 
 
 @pytest.mark.medium

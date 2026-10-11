@@ -13,7 +13,6 @@ import re
 import shlex
 import sys
 import tomllib
-from typing import cast
 
 import esolangs
 from esolangs.languages.generators import BOOLEAN
@@ -39,7 +38,6 @@ def main() -> int:
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-_INTERPRETERS = ROOT / "src" / "esolangs" / "interpreters"
 CURATION = ROOT / "tests" / "support/fixtures" / "curation.toml"
 
 
@@ -121,19 +119,12 @@ def render_package_count_section() -> str:
 
 def _source_link(name: str) -> str:
     """Return the GitHub URL of the language's Python interpreter."""
-    module = cast(str, LANGUAGES[name].interpreter)
-    path = module.replace(".", "/")
-    canonical = ROOT / "src/esolangs/languages" / module / "interpreter"
+    canonical = ROOT / "src/esolangs/languages" / LANGUAGES[name].id / "interpreter"
     for source in (canonical.with_suffix(".py"), canonical / "__init__.py"):
         if source.is_file():
             relative = source.relative_to(ROOT).as_posix()
             return f"https://github.com/bangyen/esolangs/blob/main/{relative}"
-    if not (_INTERPRETERS / f"{path}.py").is_file():
-        path += "/__init__"
-    return (
-        f"https://github.com/bangyen/esolangs/blob/main/"
-        f"src/esolangs/interpreters/{path}.py"
-    )
+    raise FileNotFoundError(f"no canonical interpreter for {name}")
 
 
 def render_languages_section() -> str:
@@ -217,18 +208,16 @@ def render_boolean_count_section() -> str:
 def render_contributor_tools_section() -> str:
     """Render the generator directory after checking it against the registry."""
     root = ROOT / "src" / "esolangs"
-    generator_dir = root / "tools"
     for language in LANGUAGES.values():
         if language.boolean is None:
             continue
         source = pathlib.Path(language.boolean.__code__.co_filename).resolve()
         colocated = root / "languages" / language.id / "generator"
         if not (
-            source.is_relative_to(generator_dir.resolve())
-            or source.is_relative_to(colocated.resolve())
+            source.is_relative_to(colocated.resolve())
             or source == colocated.with_suffix(".py").resolve()
         ):
-            raise ValueError(f"{language.name}'s generator is outside {generator_dir}")
+            raise ValueError(f"{language.name}'s generator is outside {colocated}")
     return "| `src/esolangs/tools/` | shared generator helpers |"
 
 

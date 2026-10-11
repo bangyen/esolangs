@@ -547,16 +547,12 @@ def _generator_test_scope(module: str) -> list[str] | None:
     from esolangs.registry import LANGUAGES
 
     owners: dict[str, str] = {}
-    aliases: dict[str, str] = {}
+    modules: dict[str, str] = {}
     for language in LANGUAGES.values():
         if language.boolean is not None:
             defining = language.boolean.__module__
-            owner = (
-                language.id
-                if defining.startswith("esolangs.languages.")
-                else defining.removeprefix("esolangs.tools.")
-            )
-            aliases[defining] = owner
+            owner = language.id
+            modules[defining] = owner
             for name in (
                 language.id,
                 language.name,
@@ -567,10 +563,10 @@ def _generator_test_scope(module: str) -> list[str] | None:
                 owners[name] = owner
 
     def normalise(reference: str) -> str:
-        for canonical, legacy in aliases.items():
+        for canonical, owner in modules.items():
             if reference == canonical or reference.startswith(canonical + "."):
-                return legacy + reference[len(canonical) :]
-        return reference.removeprefix("esolangs.tools.")
+                return owner + reference[len(canonical) :]
+        return reference
 
     module = normalise(module)
     if module not in owners.values():
@@ -678,15 +674,15 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             if (ROOT / f).exists():
                 paths.add(f)
             continue
-        if f.startswith("src/esolangs/interpreters/") and f.endswith(".py"):
-            relative = Path(f).relative_to("src/esolangs/interpreters")
+        if f.startswith("src/esolangs/languages/") and f.endswith("/interpreter.py"):
+            relative = Path(f).relative_to("src/esolangs/languages")
             # Package helpers can share a filename with another interpreter.
-            if len(relative.parts) != 1:
+            if len(relative.parts) != 2:
                 return WHOLE_SUITE
             from esolangs.registry import LANGUAGES
 
-            stem = Path(f).stem
-            if stem not in {lang.interpreter for lang in LANGUAGES.values()}:
+            stem = relative.parts[0]
+            if stem not in {lang.id for lang in LANGUAGES.values()}:
                 return WHOLE_SUITE
             candidate = f"tests/interpreters/test_{stem}.py"
             if not (ROOT / candidate).exists():
@@ -700,14 +696,14 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             if (ROOT / generator_tests).exists():
                 paths.add(generator_tests)
             continue
-        if f.startswith("src/esolangs/tools/") and f.endswith(".py"):
-            relative = Path(f).relative_to("src/esolangs/tools")
+        if f.startswith("src/esolangs/languages/") and f.endswith("/generator.py"):
+            relative = Path(f).relative_to("src/esolangs/languages")
             parts = relative.with_suffix("").parts
-            # Only a leaf generator at ``<name>.py`` is localisable;
+            # Only a leaf generator at ``<id>/generator.py`` is localisable;
             # a root helper or a package submodule keeps the whole suite.
-            if len(parts) != 1 or any(part.startswith("_") for part in parts):
+            if len(parts) != 2 or any(part.startswith("_") for part in parts):
                 return WHOLE_SUITE
-            selected = _generator_test_scope(".".join(parts))
+            selected = _generator_test_scope(f"esolangs.languages.{parts[0]}.generator")
             if selected is None:
                 return WHOLE_SUITE
             paths.update(selected)
