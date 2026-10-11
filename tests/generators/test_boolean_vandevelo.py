@@ -449,6 +449,75 @@ def test_the_clause_bound_holds_on_assure_alone(
         assert len(cubes) * n < 1 << n
 
 
+def test_certification_refresh_scans_charge_to_removed_cosets(monkeypatch) -> None:
+    from esolangs.tools.vandevelo import _Peel
+
+    peel = _Peel(set(range(128)), 7)
+    refresh = _Peel.refresh
+    charges = []
+
+    def counted(self, node):
+        removed = node.removed >> node.dim
+        assert len(node.reps) <= 4 * removed
+        charges.append((len(node.reps), removed))
+        refresh(self, node)
+
+    monkeypatch.setattr(_Peel, "refresh", counted)
+    first = peel.certify()
+    for _ in range(8):
+        assert peel.certify() is first
+    assert charges == [], "unchanged certification rescanned a candidate pool"
+    for point in range(32):
+        peel.take(point)
+        peel.certify()
+    assert charges, "no refresh crossed the removal threshold"
+    assert sum(q for q, _ in charges) <= 4 * sum(r for _, r in charges)
+
+
+def test_certification_assures_unrefreshed_candidate_pools(monkeypatch) -> None:
+    from esolangs.tools.vandevelo import _Peel
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+    monkeypatch.setattr(module, "_nearest", lambda *_, **__: [])
+    monkeypatch.setattr(module, "_ensure_popular", lambda *_: None)
+    peel = _Peel({row for row in range(256) if row % 5 != 0}, 8)
+
+    def reject(*_args):
+        raise AssertionError("an unchanged pool was refreshed")
+
+    monkeypatch.setattr(_Peel, "refresh", reject)
+    node = peel.certify()
+    assert node is not None
+    # Empty candidate pools force the exact fallback at every new level.
+    for parent in (peel.root, node):
+        while parent.child is not None:
+            child = parent.child
+            count = _pairs(parent, parent.reduce(child.v))
+            size, span = parent.size, 1 << parent.dim
+            assert 2 * count * (256 - span) >= size * (size - span)
+            parent = child
+    assert peel.certify() is node
+
+
+def test_certification_discards_dead_candidates_before_refresh() -> None:
+    from esolangs.tools.vandevelo import _Peel
+
+    peel = _Peel({*range(128), 200, 201}, 8)
+    node = peel.certify()
+    assert node is not None
+    direction = node.reduce(200) ^ min(node.reps)
+    node.canon[direction] = direction
+    node.cands[direction] = _pairs(node, direction)
+    assert node.cands[direction] == 2 << node.dim
+    peel.take(200)
+    assert node.cands[direction] == 0
+    assert node.removed * 4 < node.size
+    assert peel.certify() is node
+    assert direction not in node.cands
+    assert direction not in node.canon
+    assert node.removed > 0, "discarding candidates reset the removal charge"
+
+
 @pytest.mark.medium
 def test_identifier_charge_on_a_rendered_wide_program() -> None:
     import random

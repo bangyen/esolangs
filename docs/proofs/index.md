@@ -561,10 +561,19 @@ removes one. Measured, the levels do halve: three zeros at n=14 build
 12.96, 6.47, 3.23 and 1.61 `T` cosets at levels one to four. Rebuilding
 in `extend` only after a node loses three quarters would make the bound
 geometric. Over a 433-table corpus through n=13 that costs 2.5% of
-emitted size, and 4--6% at n=11..13. It also leaves `certify`, which
-refreshes every level on every call and rescores each pairless
-candidate at `q`; the untried fix keeps a level while its direction holds
-half the average, rebuilding only on a crossing. Measured, `certify`
+emitted size, and 4--6% at n=11..13. Certification now discards pairless
+candidates on every call but refills a pool only when removals reach a
+quarter of the current size. If `r` cosets left since the last refill,
+its representative scan costs `q <= 4*r`; summing over disjoint refresh
+epochs charges those scans to removals. `_assure` still runs at every
+level, preserving the half-average guarantee. Across 354 tables through
+n=9, refresh calls fell from 14,298 to 13,992; their summed node sizes
+fell from 110,943 to 108,907 cosets. No program grew and both builds
+matched all 3,590 executed rows. The exact `_assure` fallback sorts its
+representatives, costing `O(q log q)` per call; repeated assurance and
+child rebuilding remain uncharged. A separate untried fix keeps a
+level while its direction holds half the average, rebuilding only on a
+crossing. Historically, `certify`
 inclusive is 0.003s of a 0.53s build at n=13 and 0.184s of 6.27s at n=16,
 under 3%, so the fix moves no gate: the axis is proof-shaped, and the
 refresh cost it would trim is mostly `extend` and `run` -- 17% at n=16.

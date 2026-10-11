@@ -47,18 +47,22 @@ filled from its successors in row order when probes fall short.
 
 Nodes hold cosets, not points: a node ``l`` levels down stores one
 representative per coset of its ``l``-dimensional span (:class:`_Node`), so
-building, scoring, removal, refresh and :func:`_assure` cost its coset
+building, scoring, removal and refresh passes visit its coset
 count ``q``, which at least halves a level.  Removal charges to cosets
-built.  So does refresh in :meth:`_Peel.extend` (after a quarter is lost),
-but not :meth:`_Peel.certify`, which refreshes every level on every call.
+built.  Refresh in both :meth:`_Peel.extend` and :meth:`_Peel.certify` waits
+until removals reach a quarter of the current size: scanning ``q``
+representatives then charges at most four visits per removed coset.
+The exact :func:`_assure` fallback sorts representatives, so its cost
+is ``O(q log q)`` per call, before charging repeated certification.
 The sampled fallback scores :data:`_SAMPLES` uniform pair differences; it
 is a heuristic -- :func:`_assure` carries the bound and on measured tables
 never computes.  The sparse tail costs a constant per point.
 
 Linear time is not proved, and cannot be before linear output.  Four build
 terms escape the charge: a child rebuilt after it empties scans its
-parent's ``q`` cosets (bounded by ``q**2`` a node, likewise
-:meth:`_Peel.certify`); cosets built cost ``O(T * n)`` a chain; halving
+parent's ``q`` cosets (bounded by ``q**2`` a node, likewise the repeated
+assurance and child replacement in :meth:`_Peel.certify`); cosets built cost
+``O(T * n)`` a chain; halving
 would need both halves of each child coset to leave together, and
 rebuilding in :meth:`_Peel.extend` only after three quarters is lost
 costs 2.5% over a 433-table corpus; :func:`_nearest`'s sparse fallback
@@ -496,14 +500,18 @@ class _Peel:
         _ensure_popular(child, self.n)
         return child
 
-    def refresh(self, node: _Node) -> None:
-        """Replace the node's pairless candidates with fresh nearest differences."""
-        node.removed = 0
+    def discard_pairless(self, node: _Node) -> None:
+        """Drop dead candidates without scanning the node's representatives."""
         for v in [v for v, c in node.cands.items() if c < 2]:
             del node.cands[v], node.canon[v]
             if node is self.root:
                 self.nodes.pop(v, None)
                 self.tried.discard(v)
+
+    def refresh(self, node: _Node) -> None:
+        """Replace the node's pairless candidates with fresh nearest differences."""
+        node.removed = 0
+        self.discard_pairless(node)
         if len(node.cands) < _CANDIDATES:
             # With a full pool _nearest returns nothing, but min still
             # scanned 262,863 cosets over the 364-table audit corpus.
@@ -585,7 +593,13 @@ class _Peel:
             self.nodes[best_v] = self.make_child(self.root, best_v)
         node = cur = self.nodes[best_v]
         while True:
-            self.refresh(cur)
+            # Scores are exact after _remove; pool refill is optional.
+            # At this threshold q <= 4 * removed cosets, so its scan has
+            # a removal charge even when certification is called often.
+            if cur.removed >= _REFRESH * cur.size:
+                self.refresh(cur)
+            else:
+                self.discard_pairless(cur)
             _assure(cur, self.n)
             best_w, _ = _best(cur)
             if best_w is None:
