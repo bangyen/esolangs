@@ -27,10 +27,14 @@ exemption supported by a structural proof or the measured criterion in
   1,290,226 cells / 1,176,281 characters against the minterm lattice's
   1,946,024 / 1,780,773; every row executes natively. Three- and four-input
   pools keep both arity parities inside the measured growth gate. Global
-  repeats across pools remain open when all three fixed fold orders exceed
+  complete cofactors also share through four predicate-and-function banks:
+  the n=10 ABBA control occupies 2,943,760 cells against 5,935,410; 62
+  native rows pass. Internal residual repeats across banks/pools remain
+  open when all three fixed fold orders exceed
   the node-count budget. Moving three/four tail inputs first avoids the
   expander control's original graph: n=12 drops from 221 to 60 fold nodes
   and executes in 138,953 cells. Controls in
+  `tests/tools/test_boolean_circuit_diagram_banks.py`,
   `tests/tools/test_boolean_circuit_diagram_order.py`,
   `tests/tools/test_boolean_circuit_diagram_pool.py` and
   `tests/tools/test_boolean_circuit_diagram_share.py`.

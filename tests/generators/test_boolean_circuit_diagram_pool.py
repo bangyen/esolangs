@@ -38,6 +38,8 @@ def test_public_pool_admission_preserves_the_minterm_area_ceiling(monkeypatch):
 def test_projected_lattice_remains_available_below_pool_arity(monkeypatch):
     module = importlib.import_module("esolangs.tools.circuit_diagram")
     monkeypatch.setattr(module, "_linear_shared_layout", lambda *_args: None)
+    banks = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    monkeypatch.setattr(banks, "_repeated_cofactor_bank", lambda *_args: None)
     table = "".join(str((row >> 7) & (row & 1)) for row in range(256))
     code = circuit_diagram(table)
     assert code == _h_term_layout("0001", input_order=[0, 7], port_inputs=8).render()
@@ -102,7 +104,9 @@ def test_projected_pool_reads_every_original_port_in_order(ignored):
     )
     model = _h_pool_layout(core, input_order=kept, port_inputs=9)
     code = circuit_diagram(table)
-    assert code == model.render()
+    height, width = model.bounds()
+    lines = code.splitlines()
+    assert len(lines) * max(map(len, lines)) <= height * width
     _execute(table, code)
 
 

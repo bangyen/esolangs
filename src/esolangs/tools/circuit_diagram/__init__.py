@@ -633,7 +633,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
 
     From eight inputs an unconstrained nonconstant build tries three fixed
     shared-fold orders within linear work and area budgets, then a prefix H-layout
-    with fixed-size cofactor pools when it beats the minterm lattice.
+    with fixed-size cofactor pools when it beats the minterm lattice. Repeated
+    complete cofactors also compete as four predicate-and-function banks.
 
     What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
     floor is what a band cannot reclaim -- the rails and complements, live
@@ -645,20 +646,29 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     inputs = len(truth_table).bit_length() - 1
     # Constants need only the scalar clock gate, not a minterm lattice.
     if width is None and inputs >= 8 and "1" in truth_table and "0" in truth_table:
-        shared = _linear_shared_layout(truth_table, inputs)
-        if shared is not None:
-            return shared.render()
-        used, projected = _essential_table(truth_table, inputs)
-        lattice = _h_term_layout(projected, input_order=used, port_inputs=inputs)
-        if len(used) >= 6:
-            from .hpool import _h_pool_layout
+        selected = _linear_shared_layout(truth_table, inputs)
+        if selected is None:
+            used, projected = _essential_table(truth_table, inputs)
+            selected = _h_term_layout(projected, input_order=used, port_inputs=inputs)
+            if len(used) >= 6:
+                from .hpool import _h_pool_layout
 
-            pooled = _h_pool_layout(projected, input_order=used, port_inputs=inputs)
-            height, columns = lattice.bounds()
-            pool_height, pool_columns = pooled.bounds()
-            if pool_height * pool_columns < height * columns:
-                return pooled.render()
-        return lattice.render()
+                pooled = _h_pool_layout(projected, input_order=used, port_inputs=inputs)
+                height, columns = selected.bounds()
+                pool_height, pool_columns = pooled.bounds()
+                if pool_height * pool_columns < height * columns:
+                    selected = pooled
+        from .banks import _repeated_cofactor_bank
+
+        bank = _repeated_cofactor_bank(truth_table)
+        if bank is not None:
+            height, columns = selected.bounds()
+            bank_height, bank_columns = bank.bounds()
+            # ABBA dense cofactors at n=10: 2,943,760 versus 5,935,410
+            # cells, with identical 16-command native runs. Keep all ties.
+            if bank_height * bank_columns < height * columns:
+                selected = bank
+        return selected.render()
     flat = _circuit_diagram_at(truth_table, None)
     if width is None or grid_width(flat) <= width:
         return flat
