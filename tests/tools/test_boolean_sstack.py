@@ -123,7 +123,7 @@ def test_the_program_is_only_sstack_glyphs() -> None:
 def test_shared_residual_executes_within_ledger() -> None:
     from esolangs.interpreters.stack_based.sstack import _parse
     from esolangs.tools.sstack import _sstack_tree
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     a, b = "0001" * 16, "0110" * 16
     table = a + b + b + a
@@ -233,7 +233,7 @@ def test_multiple_definitions_reduce_cap_program_within_ledger():
     from esolangs.interpreters.stack_based.sstack import _parse
     from esolangs.tools.shared_block import repeated_block
     from esolangs.tools.sstack import _sstack_tree
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     n = 16
     a, b = "0001" * (1 << (n - 4)), "0110" * (1 << (n - 4))

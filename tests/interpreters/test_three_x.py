@@ -14,7 +14,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
 

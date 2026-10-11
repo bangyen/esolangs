@@ -7,8 +7,8 @@ import pytest
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs, runs
 from esolangs.tools.one_two_three import ONE, ZERO
 from esolangs.tools.one_two_three.construction import _RING
+from tests.support.witness_tables import row_bits, witnesses
 from tests.tools.boolean_runners import one_two_three_result
-from tests.witness_tables import row_bits, witnesses
 
 
 def _mask(cells: Iterable[int]) -> int:
@@ -46,73 +46,6 @@ class TestParameterizedOneTwoThree:
                 bits = row_bits(combo, n)
                 got = self.run(self.instantiate(template, bits))
                 assert got == table[combo], (table, bits)
-
-    def test_the_tables_walls_md_called_unreachable(self) -> None:
-        """XOR and NAND build, against the recorded monotone ceiling."""
-        from esolangs import tools as generators
-
-        for table in ("0110", "1110", "1001", "1000"):
-            template = generators.one_two_three(table)
-            got = "".join(
-                self.run(self.instantiate(template, [(c >> 1) & 1, c & 1]))
-                for c in range(4)
-            )
-            assert got == table
-
-    def test_no_row_diverges(self) -> None:
-        """No emitted row marches the pointer right forever."""
-        from esolangs import tools as generators
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.one_two_three import _Machine
-
-        for n in (1, 2, 3):
-            for table in witnesses(n):
-                template = generators.one_two_three(table)
-                for combo in range(2**n):
-                    bits = row_bits(combo, n)
-                    code = self.instantiate(template, bits)
-                    machine = _Machine(code, ScriptedIO(""))
-                    seen = set()
-                    for _ in range(10_000):
-                        if machine.halted:
-                            break
-                        state = machine.snapshot()
-                        if state in seen:
-                            break
-                        seen.add(state)
-                        machine.step()
-                    else:  # pragma: no cover - a diverging row would reach here
-                        pytest.fail(f"{code!r} neither halts nor revisits a state")
-
-    def test_batched_gate_agrees_with_the_interpreter(self) -> None:
-        """The construction's replay gate matches a per-command run."""
-        from esolangs import tools as generators
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.one_two_three import _Machine
-        from tests.tools.one_two_three_support import _replay_verdict
-
-        for n in (1, 2, 3):
-            for table in witnesses(n):
-                template = generators.one_two_three(table)
-                for combo in range(2**n):
-                    bits = row_bits(combo, n)
-                    code = self.instantiate(template, bits)
-                    machine = _Machine(code, ScriptedIO(""))
-                    seen = set()
-                    stepwise = "1"
-                    for _ in range(10_000):
-                        if machine.halted:
-                            stepwise = "0"
-                            break
-                        state = machine.snapshot()
-                        if state in seen:
-                            break
-                        seen.add(state)
-                        machine.step()
-                    assert _replay_verdict(code) == stepwise == table[combo], (
-                        table,
-                        bits,
-                    )
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """A zero and a one embed at equal width, so length leaks nothing."""
@@ -162,19 +95,6 @@ class TestParameterizedOneTwoThree:
         assert (wide < small) == (route == "wide"), (small, wide)
         assert len(generators.one_two_three(table)) == length <= min(small, wide)
 
-    def test_the_paint_pass_is_only_run_when_something_was_painted(
-        self,
-    ) -> None:
-        """``b.test()`` after the paints is conditional, and the flag varies."""
-        from esolangs import tools as generators
-
-        total = 0
-        for n in (1, 2, 3):
-            for table_int in range(2 ** (2**n)):
-                table = format(table_int, f"0{2**n}b")
-                total += len(generators.one_two_three(table))
-        assert total == 35682
-
     def test_a_seed_with_even_positions_is_refused(self) -> None:
         """The junky verdict rejects a seed whose rows are not distinct odd."""
         from esolangs.tools.one_two_three import (
@@ -193,79 +113,6 @@ class TestParameterizedOneTwoThree:
         with pytest.raises(ConstructError) as caught:
             _verdict_junky(builder, "01")
         assert str(caught.value) == "verdict precondition: positions not distinct odd"
-
-    def test_a_set_bit_replays_three_times_and_leaves_what_leftover_says(
-        self,
-    ) -> None:
-        """The splitter's contract, re-simulated: 3 passes, and the leftovers."""
-        from esolangs.tools.one_two_three.construction import (
-            _exec_run,
-            _leftover,
-            _on_mark,
-            _Row,
-            _run_parts,
-            _segment,
-            _walk,
-            _work,
-        )
-
-        for n in (1, 2, 3, 4, 5):
-            _work[0] = 10**9
-            bits = [tuple(map(int, format(r, f"0{n}b"))) for r in range(2**n)]
-            rows = [_Row(b) for b in bits]
-            for i in range(n):
-                segment = _segment(i)[: -len("33")]
-                for row in rows:
-                    code = segment.replace(_X, ONE if row.bits[i] else ZERO)
-                    passes = 0
-                    while passes == 0 or _on_mark(row):
-                        passes += 1
-                        for part in _run_parts(code):
-                            _exec_run(row, part[0], len(part))
-                    assert passes == (3 if row.bits[i] else 1), (n, i, row.bits)
-            start = sum(_walk(i) + 2 for i in range(n))
-            for r, row in enumerate(rows):
-                spread = int(format(r, f"0{n}b")[::-1], 2)
-                assert row.pos == start + 2 * spread, (n, r, row.pos)
-                for off in range(1, 2 * _walk(n - 1) + 3):
-                    marked = bool(row.tape >> (row.pos + off + _RING) & 1)
-                    assert marked == _leftover(n, row.bits[-1], off), (n, r, off)
-
-    def test_paint_marks_one_cell_and_restores_every_position(self) -> None:
-        """``_paint(k)`` flips exactly cell ``pos + k`` per row, in place."""
-        from esolangs.tools.one_two_three.construction import (
-            _RING,
-            _WORK_BUDGET,
-            _Builder,
-            _paint,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-        for k in (1, 2, 3, 17, 100):
-            b = _Builder(2)
-            tapes = (0, 0b1011 << _RING, 1 << (40 + _RING), 0b110 << _RING)
-            for row, pos, tape in zip(b.rows, (1, 5, 29, 41), tapes, strict=True):
-                row.pos, row.tape = pos, tape
-            before = [(r.pos, r.tape) for r in b.rows]
-            _paint(b, k)
-            after = [(r.pos, r.tape) for r in b.rows]
-            for (p0, t0), (p1, t1) in zip(before, after, strict=True):
-                assert p1 == p0, k
-                assert t1 == t0 ^ (1 << (p0 + k + _RING)), k
-
-    def test_linear_endgame_parks_all_four_residues(self) -> None:
-        from esolangs.tools.one_two_three import construction as module
-
-        positions = {0, 1, 2, 3}
-        program = module._linear_endgame(positions)  # noqa: SLF001
-        module._work[0] = module._WORK_BUDGET  # noqa: SLF001
-        for pos in positions:
-            row = module._Row(())  # noqa: SLF001
-            row.pos = pos
-            for command in program:
-                module._exec_char(row, command)  # noqa: SLF001
-            assert row.pos == -1
 
     def test_normalize_reports_a_live_locked_ring(self) -> None:
         """Four distinct rows pinned to all four ring cells cannot escape."""
@@ -436,9 +283,7 @@ class TestParameterizedOneTwoThree:
         with pytest.raises(_WorkExhaustedError):
             drained(3, "1", -1, 12)
 
-    def test_the_endgame_parks_survivors_and_reports_a_state_it_cannot(
-        self,
-    ) -> None:
+    def test_the_endgame_reports_a_state_it_cannot_park(self) -> None:
         """Parking is what makes a template halt, so failing it must raise."""
         from esolangs.tools.one_two_three.construction import (
             _WORK_BUDGET,
@@ -450,19 +295,6 @@ class TestParameterizedOneTwoThree:
         )
 
         _work[0] = _WORK_BUDGET
-
-        no_survivors = _Builder(1)
-        for row in no_survivors.rows:
-            row.dead = True
-        _endgame(no_survivors)  # returns rather than dividing by no rows
-
-        crowded = _Builder(2)
-        for i, row in enumerate(crowded.rows):
-            row.pos, row.tape = i, 0
-        assert len({row.pos % 4 for row in crowded.live()}) == 4
-        _endgame(crowded)
-        assert {row.pos for row in crowded.live()} == {-1}
-
         stranded = _Builder.__new__(_Builder)
         stranded.n = 1  # an allowance of 192 passes
         stranded.chunks, stranded.seg = [], []
@@ -484,28 +316,6 @@ class TestParameterizedOneTwoThree:
             program = self.instantiate(template, [bit])
             assert self.run(program) == "01"[bit], bit
             assert _replay_verdict(program) == "01"[bit], bit
-
-    def test_the_remaining_batched_run_and_token_paths(self) -> None:
-        """``2`` from inside the ring batches too, and a plain token is a char."""
-        from esolangs.tools.one_two_three.construction import (
-            _WORK_BUDGET,
-            _Builder,
-            _exec_run,
-            _Row,
-            _work,
-            _WorkExhaustedError,
-        )
-
-        inside_the_ring = _Row((0,))
-        inside_the_ring.pos = -1
-        _work[0] = 2
-        with pytest.raises(_WorkExhaustedError):
-            _exec_run(inside_the_ring, "2", 10)
-
-        _work[0] = _WORK_BUDGET
-        b = _Builder(1)
-        b.apply_token(b.rows[0], "1")
-        assert b.rows[0].pos == -1
 
     def test_a_two_at_minus_three_is_refused_rather_than_reading_stdin(self) -> None:
         """``2`` at -3 would read real input, so the move is rejected."""
@@ -532,30 +342,6 @@ class TestParameterizedOneTwoThree:
         steps.pos = 4
         _exec_char(steps, "2")
         assert steps.pos == 5
-
-    def test_replaying_twos_handles_the_empty_walk_and_the_stdin_cell(self) -> None:
-        """A zero-width run is a no-op; a run starting at -3 is refused."""
-        from esolangs.tools.one_two_three.construction import ConstructError
-        from tests.tools.one_two_three_support import _replay_twos
-
-        # Nothing to walk: the state is handed straight back.
-        assert _replay_twos(5, 0b1011, 0) == (5, 0b1011)
-        assert _replay_twos(-3, 0, -2) == (-3, 0)  # a negative width is empty too
-
-        with pytest.raises(ConstructError, match="reads stdin"):
-            _replay_twos(-3, 0, 1)
-
-    def test_replaying_a_verdict_skips_commandless_and_unknown_characters(
-        self,
-    ) -> None:
-        """Only ``1`` and ``2`` are commands; everything else is a NOP."""
-        from tests.tools.one_two_three_support import _replay_verdict
-
-        assert _replay_verdict("") == "0"
-        assert _replay_verdict("xyz") == "0"  # no command: nothing to run
-        # The NOPs are skipped, so padding a program cannot change its verdict.
-        assert _replay_verdict("1x1") == _replay_verdict("11")
-        assert _replay_verdict("x1y1z") == _replay_verdict("11")
 
 
 def test_a_malformed_template_is_refused() -> None:

@@ -11,12 +11,15 @@ from esolangs import tools as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.algebraic_programming_language import _Machine
 from esolangs.tools.helpers import best_input_order
-from tests.generator_support import assert_parity_at_most_doubles, verify_generated
+from tests.support.generator_support import (
+    assert_parity_at_most_doubles,
+    verify_generated,
+)
+from tests.support.witness_tables import witnesses
 from tests.tools.boolean_runners import (
     run_algebraic_programming_language,
 )
 from tests.tools.sample_tables import five_input_sample
-from tests.witness_tables import witnesses
 
 
 class TestAlgebraicProgrammingLanguage:
@@ -345,7 +348,7 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 @pytest.mark.medium
 def test_default_reuses_emitted_frames() -> None:
     from esolangs.tools.algebraic_programming_language import _apl_reduced_ordered
-    from tests.screen_support import corpus, execute
+    from tests.support.screen_support import corpus, execute
 
     table = corpus(8)["tiled"]
     plain = _apl_reduced_ordered(table, tuple(range(8)))

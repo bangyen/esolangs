@@ -14,7 +14,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import raises_message
+from tests.support.raises import raises_message
 
 HELLO_WORLD = "\n".join(
     [
@@ -44,10 +44,10 @@ WIKI_TRUTH_MACHINE = "\n".join(
 
 # A corrected truth machine: the wiki's own is inverted (see the
 # interpreter's module docstring).  Halts on "0" after printing it, loops
-# forever on "1".  Defined here rather than imported from ``tests.samples``
+# forever on "1".  Defined here rather than imported from ``tests.support.samples``
 # because that module pulls in the registry, which the mutation bundle does
 # not inline -- a module-level import of it fails collection there before
-# any mutant runs.  ``tests.samples`` imports this name instead.
+# any mutant runs.  ``tests.support.samples`` imports this name instead.
 INJECT_TRUTH_MACHINE = "\n".join(
     [
         "readto data",

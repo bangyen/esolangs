@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from tests.generator_support import verify_generated
+from tests.support.generator_support import verify_generated
 
 
 class TestAnInterpreterLimitIsStillAnEsolangError:

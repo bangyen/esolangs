@@ -5,8 +5,8 @@ import json
 import pytest
 
 import esolangs
-from tests.cli_support import call_both
-from tests.pick import languages
+from tests.support.cli_support import call_both
+from tests.support.pick import languages
 
 
 def _names(args, capsys):

@@ -11,9 +11,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR, input_weights
+from tests.support.witness_tables import row_bits
 from tests.tools.a_painter_ant_trace import run
 from tests.tools.fills import fill
-from tests.witness_tables import row_bits
 
 _instantiate_apa = fill("A Painter Ant")
 

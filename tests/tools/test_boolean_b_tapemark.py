@@ -9,8 +9,8 @@ from esolangs.interpreters.grid_based.b_tapemark import run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.b_tapemark import _Builder
 from esolangs.tools.helpers import essential_inputs
-from tests.generator_support import assert_an_ignored_input_costs
-from tests.witness_tables import witnesses
+from tests.support.generator_support import assert_an_ignored_input_costs
+from tests.support.witness_tables import witnesses
 
 
 def execute(program: str, bits: str) -> tuple[str, int]:

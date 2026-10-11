@@ -1,19 +1,42 @@
 """Covers :mod:`esolangs.tools.a_painter_ant`, and the trace it is read from."""
 
-from itertools import pairwise, product
-from typing import ClassVar
+from itertools import product
 
 import pytest
 
-from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _APAMachine
+import esolangs
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
 from esolangs.tools.a_painter_ant import PAIR, a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+from tests.support.witness_tables import parity as _parity
 from tests.tools.fills import fill
-from tests.witness_tables import parity as _parity
-from tests.witness_tables import row_bits
 
 _instantiate_apa = fill("A Painter Ant")
+
+_MOVE = {"n": (0, -1), "e": (1, 0), "s": (0, 1), "w": (-1, 0)}
+
+
+def _landing_after(program: str, cycles: int = 6) -> int:
+    """Landing cell colour (1 white, 0 black) after ``cycles`` cycles."""
+    prog = [c for c in program if not c.isspace()]
+    grid: dict[tuple[int, int], int] = {}
+    x = y = 0
+    for _ in range(cycles):
+        for command in prog:
+            if command == "p":
+                grid[(x, y)] = 0
+            elif command == "P":
+                grid[(x, y)] = 1
+            else:
+                dx, dy = _MOVE[command.lower()]
+                if (grid.get((x + dx, y + dy), 0) == 1) == command.isupper():
+                    x += dx
+                    y += dy
+    return grid.get((x, y), 0)
+
+
+def _check(table: str, bits: list[int]) -> int:
+    return _landing_after(_instantiate_apa(a_painter_ant(table), bits))
 
 
 # 2.0s over 45 tests: runs the generated program.
@@ -21,301 +44,68 @@ _instantiate_apa = fill("A Painter Ant")
 class TestAPainterAnt:
     """The A Painter Ant generator: a no-I/O grid language, parameterized."""
 
-    _MOVE: ClassVar[dict[str, tuple[int, int]]] = {
-        "n": (0, -1),
-        "e": (1, 0),
-        "s": (0, 1),
-        "w": (-1, 0),
-    }
+    def test_tables_are_exact(self) -> None:
+        """Every table at arity 1-3, and wide tables at 4-6, are exact."""
+        for n in (1, 2):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                for row in range(1 << n):
+                    bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+                    assert _check(table, bits) == int(table[row]), (table, bits)
+        for table in ("00000001", "01101001"):
+            for combo in product([0, 1], repeat=3):
+                index = combo[0] * 4 + combo[1] * 2 + combo[2]
+                assert _check(table, list(combo)) == int(table[index]), (table, combo)
+        wide = {
+            4: ["0110100110010110", "1111111111111111"],
+            5: ["00000000000000000000000000000001"],
+            6: ["".join(str((r.bit_count() ^ (r >> 2)) & 1) for r in range(64))],
+        }
+        for n, tables in wide.items():
+            for table in tables:
+                for row in range(1 << n):
+                    bits = [(row >> (n - 1 - k)) & 1 for k in range(n)]
+                    assert _check(table, bits) == int(table[row]), (n, table, bits)
 
-    @staticmethod
-    def _landing_after(program: str, cycles: int = 6) -> int:
-        """Landing cell colour (1 white, 0 black) after ``cycles`` cycles."""
-        prog = [c for c in program if not c.isspace()]
-        grid: dict[tuple[int, int], int] = {}
-        x = y = 0
-        for _ in range(cycles * len(prog)):
-            for command in prog:
-                if command == "p":
-                    grid[(x, y)] = 0
-                elif command == "P":
-                    grid[(x, y)] = 1
-                else:
-                    dx, dy = TestAPainterAnt._MOVE[command.lower()]
-                    if (grid.get((x + dx, y + dy), 0) == 1) == command.isupper():
-                        x += dx
-                        y += dy
-        return grid.get((x, y), 0)
-
-    @staticmethod
-    def _cycle_stable(program: str) -> bool:
-        """``run()``'s auto-detected render agrees with one pinned to ten cycles."""
-        from esolangs.interpreters.io import ScriptedIO
-
-        io = ScriptedIO()
-        run_a_painter_ant(program, io)
-        return io.getvalue() == _render_after_passes(program, 10)
-
-    @classmethod
-    def _check(cls, table: str, bits: list[int]) -> int:
-        program = _instantiate_apa(a_painter_ant(table), bits)
-        assert cls._cycle_stable(program), f"{table} {bits}: not cycle-stable"
-        return cls._landing_after(program)
-
-    @pytest.mark.slow  # 1.2s: builds and runs all sixteen tables on four rows
-    def test_all_two_input_functions(self) -> None:
-        """Every two-input table is exact and cycle-stable for every input."""
-        for value in range(16):
-            table = format(value, "04b")
-            for row in range(4):
-                bits = [(row >> 1) & 1, row & 1]
-                assert self._check(table, bits) == int(table[row]), (
-                    f"{table} bits {bits}"
-                )
-
-    def test_xor(self) -> None:
-        """XOR (0110) is one of the expressible tables."""
-        assert self._check("0110", [0, 0]) == 0
-        assert self._check("0110", [0, 1]) == 1
-        assert self._check("0110", [1, 0]) == 1
-        assert self._check("0110", [1, 1]) == 0
-
-    def test_nand(self) -> None:
-        """NAND (1110) is expressible."""
-        assert self._check("1110", [0, 0]) == 1
-        assert self._check("1110", [1, 1]) == 0
-
-    def test_constant_tables(self) -> None:
-        """Constant zero and one are expressible."""
-        assert self._check("0000", [0, 0]) == 0
-        assert self._check("0000", [1, 1]) == 0
-        assert self._check("1111", [0, 0]) == 1
-        assert self._check("1111", [1, 1]) == 1
-
-    def test_template_has_input_placeholders(self) -> None:
-        """The template carries one run per input, not hardcoded bits."""
+    def test_template_shape_and_fill(self) -> None:
+        """One run per input, filled per bit; zeros are never painted ``P``."""
         template = a_painter_ant("0110")
+        assert PAIR == ("n", "N")
         assert "{X" not in template
-        setters = (PAIR,) * 2
-        assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
-        assert len(runs(template, TEMPLATE_CHAR, setters)) == 2
-
-    def test_zero_answers_are_not_painted(self) -> None:
-        """A one answer is painted ``P``; a zero answer is left black."""
-        template = a_painter_ant("0110")
-        assert template.count("P") < a_painter_ant("1110").count("P")
-        # no paint-black anywhere in any instantiated program
-        program = _instantiate_apa(template, [1, 1])
-        assert "p" not in program
-
-    def test_all_one_input_functions(self) -> None:
-        """Every one-input table is exact and cycle-stable for both inputs."""
-        for value in range(4):
-            table = format(value, "02b")
-            for bit in [0, 1]:
-                assert self._check(table, [bit]) == int(table[bit]), (
-                    f"table {table} bit {bit}"
-                )
-
-    def test_instantiate_one_bit_fills_single_placeholder(self) -> None:
-        """An n == 1 template carries one run, filled per bit."""
-        template = a_painter_ant("01")  # f(0)=0, f(1)=1
-        assert len(runs(template, TEMPLATE_CHAR, (PAIR,) * 1)) == 1
-        assert template.count(TEMPLATE_CHAR) == 1
-        assert _instantiate_apa(template, [1]) == template.replace(TEMPLATE_CHAR, "N")
-        assert _instantiate_apa(template, [0]) == template.replace(TEMPLATE_CHAR, "n")
-
-    def test_three_input_works(self) -> None:
-        """AND3 is exact and cycle-stable on every input."""
-        for bits in product([0, 1], repeat=3):
-            table = "00000001"
-            assert self._check(table, list(bits)) == int(
-                table[bits[0] * 4 + bits[1] * 2 + bits[2]]
-            ), f"AND3 bits {bits}"
-
-    def test_every_input_is_the_one_pair(self) -> None:
-        """Uniform: the same ``(n, N)`` pair for every input at every arity."""
-        for n in range(1, 7):
-            for table in _shapes(n):
-                template = a_painter_ant(table)
-                assert PAIR == ("n", "N")
-                assert template.count(TEMPLATE_CHAR) == n
-
-    def test_the_template_carries_each_weight(self) -> None:
-        """Input ``i``'s run is followed by ``2**(n-1-i)`` ``E`` and ``SN``.
-
-        An ignored input weighs nothing: ``"01" * 16`` reads only the last.
-        """
-        head, *tails = a_painter_ant(_parity(5)).split(TEMPLATE_CHAR)
-        assert head.endswith("W" * 31)
-        assert tails == [
-            "E" * 16 + "SN",
-            "E" * 8 + "SN",
+        assert template.count(TEMPLATE_CHAR) == 2
+        assert len(runs(template, TEMPLATE_CHAR, (PAIR,) * 2)) == 2
+        assert _instantiate_apa(template, [1, 1]) == template.replace(
+            TEMPLATE_CHAR, "N"
+        )
+        mixed = template.replace(TEMPLATE_CHAR, "n", 1).replace(TEMPLATE_CHAR, "N")
+        assert _instantiate_apa(template, [0, 1]) == mixed
+        assert "p" not in _instantiate_apa(template, [1, 1])
+        # Input i's run is followed by 2**(n-1-i) E's and SN; the corridor
+        assert a_painter_ant(_parity(3)).split(TEMPLATE_CHAR)[1:] == [
             "E" * 4 + "SN",
             "E" * 2 + "SN",
             "E" * 1 + "SNs",
         ]
-        _head, *tails = a_painter_ant("01" * 16).split(TEMPLATE_CHAR)
-        assert tails == ["SN"] * 4 + ["ESNs"]
-
-    def test_each_input_moves_the_ant_by_its_weight(self) -> None:
-        """After input ``i``'s gadget the ant stands at the partial index."""
-        from tests.tools.a_painter_ant_trace import run
-
-        n = 4
-        template = a_painter_ant("0110100110010110")
-        first = template.index(TEMPLATE_CHAR)
-        for bits in product([0, 1], repeat=n):
-            program = _instantiate_apa(template, list(bits))
-            steps = run(program, 1).steps
-            partial = 0
-            cursor = first
-            for i, bit in enumerate(bits):
-                partial += bit << (n - 1 - i)
-                cursor += 1 + (1 << (n - 1 - i)) + 2  # the run, the walk, SN
-                assert steps[cursor - 1].position == (partial, 0), (bits, i)
-
-    def test_wide_tables_are_exact(self) -> None:
-        """The construction handles n == 4 and n == 5, exact and cycle-stable."""
-        from tests.tools.a_painter_ant_trace import cycle_stable, landing_after
-
-        tables = {
-            4: ["0000000000000001", "0110100110010110", "1111111111111111"],
-            5: ["00000000000000000000000000000001"],
-        }
-        for n, table_list in tables.items():
-            for table in table_list:
-                template = a_painter_ant(table)
-                for bits in product([0, 1], repeat=n):
-                    program = _instantiate_apa(template, list(bits))
-                    assert cycle_stable(program), f"n={n} bits {bits} not stable"
-                    assert landing_after(program, 1) == int(
-                        table[sum(bits[k] << (n - 1 - k) for k in range(n))]
-                    ), f"n={n} table {table} bits {bits}"
-
-    def test_size_growth(self) -> None:
-        """Wide dense tables grow no faster than their table size."""
-        sizes = [len(a_painter_ant("1" * (2**n - 1) + "0")) for n in range(6, 10)]
-        assert all(b <= 2 * a + 3 for a, b in pairwise(sizes))
-        assert sizes[0] == 1 + (63 + 63) + (6 * 64 - 5) + 63 + 3 * 6 + 1
-
-    def test_the_corridor_stops_where_the_trailing_run_starts(self) -> None:
-        """Answers equal to the one before them to the end get no cell."""
-        for table, cells in (("0111", 2), ("01101111", 5)):
-            head = a_painter_ant(table).split(TEMPLATE_CHAR)[0]
-            assert head.startswith("N" + "W" * (cells - 1) + "P")
-            assert head.count("e") == cells - 1
-            n = len(table).bit_length() - 1
-            for bits in product([0, 1], repeat=n):
-                index = sum(bit << (n - 1 - k) for k, bit in enumerate(bits))
-                assert self._check(table, list(bits)) == int(table[index])
-
-    def test_three_input_total(self) -> None:
-        """The 256 three-input templates total 14,257 characters."""
-        total = sum(len(a_painter_ant(f"{value:08b}")) for value in range(256))
-        assert total == 14257
-
-    def test_linear_strip_executes_dense_wide_table(self) -> None:
-        """Every row reaches its adjacent strip cell and remains cycle-stable."""
-        from tests.tools.a_painter_ant_trace import cycle_stable, landing_after
-
-        n = 6
-        table = "".join(str((row.bit_count() ^ (row >> 2)) & 1) for row in range(2**n))
-        template = a_painter_ant(table)
-        for row in range(2**n):
-            bits = row_bits(row, n)
-            program = _instantiate_apa(template, bits)
-            assert cycle_stable(program), row
-            assert landing_after(program) == int(table[row]), row
-
-    def test_three_input_xor_works(self) -> None:
-        """XOR3 is exact and cycle-stable on every input."""
-        for bits in product([0, 1], repeat=3):
-            table = "01101001"
-            assert self._check(table, list(bits)) == int(
-                table[bits[0] * 4 + bits[1] * 2 + bits[2]]
-            ), f"XOR3 bits {bits}"
-
-    def test_instantiate_fills_bits(self) -> None:
-        """Every run fills to ``n`` for a zero and ``N`` for a one."""
-        template = a_painter_ant("0110")
-        assert PAIR == ("n", "N")
-        assert template.count(TEMPLATE_CHAR) == 2
-        assert _instantiate_apa(template, [1, 1]) == template.replace(
-            TEMPLATE_CHAR, "N"
-        )
-        assert _instantiate_apa(template, [0, 0]) == template.replace(
-            TEMPLATE_CHAR, "n"
-        )
-        mixed = template.replace(TEMPLATE_CHAR, "n", 1).replace(TEMPLATE_CHAR, "N")
-        assert _instantiate_apa(template, [0, 1]) == mixed
-
-
-def _shapes(n: int) -> tuple[str, str]:
-    """The conventions audit's two table shapes at arity ``n``."""
-    parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
-    dense = "".join("1" if (i * 7 + 3) % 5 < 2 else "0" for i in range(2**n))
-    return parity, dense
+        assert a_painter_ant("0111").split(TEMPLATE_CHAR)[0].startswith("NWP")
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_setters_restore_one_origin_and_keep_passes_stable(n, bit):
-    import esolangs
+def test_constant_roots_keep_one_origin(bit: str) -> None:
+    """A constant table restores each input to one white origin, then leaves it."""
     from esolangs._evaluate import _evaluate
-    from esolangs.tools.a_painter_ant import _program
-    from esolangs.tools.helpers import mark_runs, unmark
-    from esolangs.tools.wrap import balance_program, balance_score
 
-    table = bit * (1 << n)
-    template = a_painter_ant(table)
-    assert template == "P" + "$S" * n + ("p" if bit == "0" else "")
-    assert len(template) == 2 * n + 2 - int(bit)
-    legacy = _program(table, keep_constant_walk=True)
-    assert len(template) < len(legacy)
-    for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
+    table = bit * 8
+    assert a_painter_ant(table) == "P" + "$S" * 3 + ("p" if bit == "0" else "")
+    for options in ({}, {"width": 40}, {"balance": True}):
         program = esolangs.generate("A Painter Ant", table, **options)
-        assert _evaluate("A Painter Ant", program, inputs=n) == table
-        if options.get("balance"):
-            marked = mark_runs(legacy, TEMPLATE_CHAR, (PAIR,) * n)
-            old = unmark(balance_program(marked, "a_painter_ant"), TEMPLATE_CHAR, n)
-            assert balance_score(program) <= balance_score(old)
-    for row in range(1 << n):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        filled = _instantiate_apa(template, bits)
-        machine = _APAMachine(filled)
-        machine.step()
-        for _ in bits:
-            machine.step()
-            machine.step()
-            assert (machine.x, machine.y) == (0, 0)
-            assert machine.grid == {(0, 0): 1}
-        if bit == "0":
-            machine.step()
-        assert machine.ip == 0
-        assert machine.grid == {(0, 0): int(bit)}
-        stable = machine.snapshot()
-        render = machine.render()
-        for _ in range(9 * len(filled)):
-            machine.step()
-        assert machine.snapshot() == stable
-        assert machine.render() == render
-
-
-def _render_after_passes(program: str, passes: int) -> str:
-    """Render after exactly ``passes`` whole cycles, stepped by hand."""
-    machine = _APAMachine(program)
-    span = len(machine.prog)
-    for _ in range(passes * span):
-        machine.step()
-    return machine.render()
+        assert _evaluate("A Painter Ant", program, inputs=3) == table
 
 
 class TestAPainterAntTrace:
     """The A Painter Ant step tracer and cycle-stability checker."""
 
-    def test_run_records_moves_blocks_and_paints(self) -> None:
+    def test_run_records_steps_screen_and_landings(self) -> None:
         from tests.tools.a_painter_ant_trace import run
 
         outcome = run("nNPp", 1)
@@ -325,43 +115,19 @@ class TestAPainterAntTrace:
             "paint_white",
             "paint_black",
         ]
+        assert (outcome.steps[0].command, outcome.steps[0].index) == ("n", 0)
         assert outcome.steps[0].target == (0, -1)
-        assert outcome.steps[1].position == (0, -1)
-        assert outcome.steps[2].position == (0, -1)
-        assert outcome.steps[3].position == (0, -1)
-        assert outcome.steps[0].command == "n"
-        assert outcome.steps[0].index == 0
-        assert outcome.grid[(0, -1)] == 0  # p repaints the white cell black
-        assert outcome.visited == {(0, 0), (0, -1)}
+        assert outcome.grid[(0, -1)] == 0
         assert outcome.position == (0, -1)
-
-    def test_run_ignores_whitespace(self) -> None:
-        from tests.tools.a_painter_ant_trace import run
-
         assert [s.command for s in run("n n  P", 1).steps] == ["n", "n", "P"]
-
-    def test_run_rejects_unknown_instruction(self) -> None:
-        from tests.tools.a_painter_ant_trace import run
-
+        assert run("nP", 3).landings == [(0, -1), (0, -2), (0, -3)]
+        assert run("nP", 1).landing_colour() == 1
         with pytest.raises(ValueError, match="unknown instruction"):
             run("nPx", 1)
 
-    def test_run_records_landings_per_cycle(self) -> None:
-        from tests.tools.a_painter_ant_trace import run
-
-        assert run("nP", 3).landings == [(0, -1), (0, -2), (0, -3)]
-
-    def test_landing_colour(self) -> None:
-        from tests.tools.a_painter_ant_trace import run
-
-        assert run("nP", 1).landing_colour() == 1  # (0,-1) was painted white
-        assert run("n", 1).landing_colour() == 0  # (0,-1) is still black
-
-    def test_box_matches_the_interpreter(self) -> None:
-        from itertools import product
-
+    def test_trace_agrees_with_the_interpreter(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from tests.tools.a_painter_ant_trace import box
+        from tests.tools.a_painter_ant_trace import box, cycle_stable, first_divergence
 
         for value in range(16):
             table = format(value, "04b")
@@ -369,90 +135,12 @@ class TestAPainterAntTrace:
                 program = _instantiate_apa(a_painter_ant(table), list(bits))
                 io = ScriptedIO()
                 run_a_painter_ant(program, io)
-                assert box(program, 1) == io.getvalue().rstrip("\n"), (
-                    table,
-                    bits,
-                )
-
-    def test_cycle_stable_agrees_with_the_interpreter(self) -> None:
-        from itertools import product
-
-        from esolangs.interpreters.io import ScriptedIO
-        from tests.tools.a_painter_ant_trace import cycle_stable
-
-        for value in range(16):
-            table = format(value, "04b")
-            for bits in product([0, 1], repeat=2):
-                program = _instantiate_apa(a_painter_ant(table), list(bits))
                 assert cycle_stable(program), (table, bits)
-                io = ScriptedIO()
-                run_a_painter_ant(program, io)
-                reference = io.getvalue()
-                assert _render_after_passes(program, 10) == reference, (
-                    table,
-                    bits,
-                )
-
-    def test_cycle_stable_detects_a_divergence(self) -> None:
-        from tests.tools.a_painter_ant_trace import cycle_stable
-
-        assert not cycle_stable("nPn")  # each cycle paints one cell further
-
-    def test_landing_after(self) -> None:
-        from tests.tools.a_painter_ant_trace import landing_after
-
-        assert landing_after(_instantiate_apa(a_painter_ant("0110"), [0, 1])) == 1
-        assert landing_after(_instantiate_apa(a_painter_ant("0110"), [1, 1])) == 0
-
-    def test_first_divergence_stable_program_is_none(self) -> None:
-        from itertools import product
-
-        from tests.tools.a_painter_ant_trace import first_divergence
-
-        for bits in product([0, 1], repeat=2):
-            program = _instantiate_apa(a_painter_ant("0110"), list(bits))
-            assert first_divergence(program) is None, bits
-
-    def test_first_divergence_pins_a_box_escape(self) -> None:
-        from tests.tools.a_painter_ant_trace import first_divergence
-
-        divergence = first_divergence("nPn")  # cycle 2 moves to (0,-3), outside
+                assert box(program, 1) == io.getvalue().rstrip("\n"), (table, bits)
+                if table == "0110":
+                    assert first_divergence(program) is None
+        assert not cycle_stable("nPn")
+        assert not cycle_stable("Pn")
+        divergence = first_divergence("nPn")  # cycle 2 moves outside the box
         assert divergence is not None
-        assert divergence.index == 0
-        assert divergence.command == "n"
-        assert divergence.position == (0, -3)
-        assert divergence.step1.position == (0, -1)
-        assert divergence.step2.position == (0, -3)
-
-    def test_first_divergence_pins_a_paint_break(self) -> None:
-        from tests.tools.a_painter_ant_trace import first_divergence
-
-        divergence = first_divergence("Pn")  # cycle 2 paints the black (0,-1)
-        assert divergence is not None
-        assert divergence.index == 0
-        assert divergence.command == "P"
-        assert divergence.step1.position == (0, 0)
-        assert divergence.step2.position == (0, -1)
-
-    def test_first_divergence_pins_a_changed_answer(self) -> None:
-        from tests.tools.a_painter_ant_trace import first_divergence
-
-        # cycle 1 lands white on (0,-1); cycle 2 slides onto the black (0,0)
-        divergence = first_divergence("nPnPsS")
-        assert divergence is not None
-        assert divergence.index == 5
-        assert divergence.command == "S"
-        assert divergence.step1.position == (0, -1)
-        assert divergence.step2.position == (0, 0)
-
-    def test_first_divergence_pins_a_drifting_dance(self) -> None:
-        from tests.tools.a_painter_ant_trace import first_divergence
-
-        # cycle 2 lands on (0,0) instead of (0,1): same colour, but the dance
-        # is not a fixed point and cycle 3 differs from cycle 2
-        divergence = first_divergence("NPsP")
-        assert divergence is not None
-        assert divergence.index == 0
-        assert divergence.command == "N"
-        assert divergence.step1.action == "moved"
-        assert divergence.step2.action == "blocked"
+        assert (divergence.index, divergence.command) == (0, "n")

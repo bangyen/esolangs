@@ -1,6 +1,6 @@
 """Super SNUSP through the shared API, CLI and machinery."""
 
-from tests.test_vm_protocol import assert_one_row_moves_along_it
+from tests.vm.test_vm_protocol import assert_one_row_moves_along_it
 
 
 def test_its_one_row_program_moves_along_the_columns() -> None:

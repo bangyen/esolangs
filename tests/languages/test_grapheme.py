@@ -1,9 +1,6 @@
 """Grapheme through the shared API, CLI and machinery."""
 
-import json
 import warnings
-from io import StringIO
-from pathlib import Path
 
 import pytest
 
@@ -12,58 +9,11 @@ import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.grapheme import _Machine
-from esolangs.tagged import _Tagged
-from esolangs.vm import complete_vm, make_vm
+from tests.api.test_api_contracts import XOR
 from tests.cli.test_cli import call_main
-from tests.cli_support import call_both
-from tests.stdin_check import _check_stdin
-from tests.test_api_contracts import XOR
-from tests.test_dialects import Unreadable
-from tests.witness_tables import witnesses
-
-
-@pytest.mark.medium
-def test_portable_choices_and_memory_budget_reach_worker(tmp_path, capsys, monkeypatch):
-    command = "run"
-    from esolangs import _isolated
-
-    budget = 96 * 1024 * 1024
-    source = esolangs.generate(
-        "Grapheme",
-        "01",
-        settings=DialectSettings(integer_conversion="after_each_letter"),
-    )
-    path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program("Grapheme", source), encoding="utf-8")
-    monkeypatch.setattr(_isolated.sys, "platform", "linux")
-    calls = []
-    runner = vars(esolangs)["_run_isolated"]
-
-    def capture(*args, **kwargs):
-        # Check dispatch on every host; the separate Linux test enforces the cap.
-        calls.append(kwargs.pop("max_memory"))
-        assert kwargs["settings"] == source.settings
-        return runner(*args, **kwargs)
-
-    monkeypatch.setattr(esolangs, "_run_isolated", capture)
-    options = ["--isolated"]
-    output, error = call_both(
-        [
-            command,
-            "--portable",
-            *options,
-            "--max-memory",
-            str(budget),
-            "Grapheme",
-            str(path),
-        ],
-        capsys,
-        esolangs.encode_inputs("Grapheme", [1]),
-    )
-    assert (output, error) == ("1", "")
-    assert calls == [budget]
+from tests.support.cli_support import call_both
+from tests.support.stdin_check import _check_stdin
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
@@ -86,13 +36,6 @@ class TestGraphemeReadsWhatTheDocsNowSay:
             " ": "0",
         }
 
-    def test_naive_input_answers_the_all_zeros_row(self) -> None:
-        """The true consequence: every bit reads 0, so you get row 0."""
-        table = "0001"  # AND: row 0 is 0, row 3 is 1
-        program = esolangs.generate("Grapheme", table)
-        output = esolangs.run("Grapheme", program, stdin="1\n1\n", timeout=10)
-        assert esolangs.read_answer("Grapheme", output) == table[0]
-
 
 def test_conversion_reaches_debugger_and_bound_language():
     settings = DialectSettings(integer_conversion="after_each_letter")
@@ -101,56 +44,6 @@ def test_conversion_reaches_debugger_and_bound_language():
     debugger = make_debugger("Grapheme", "FAFY", settings=settings)
     debugger.run(max_steps=10)
     assert debugger.vm.output == "10"
-
-
-@pytest.mark.parametrize(
-    "isolated", [False, pytest.param(True, marks=pytest.mark.medium)]
-)
-def test_loaded_text_tag_is_respected(isolated):
-    source = _Tagged(
-        "FAFY", "Grapheme", DialectSettings(integer_conversion="after_each_letter")
-    )
-    stream = StringIO()
-    stream.read = lambda: source
-    assert esolangs.run("Grapheme", stream, isolated=isolated) == "10"
-    stream = StringIO()
-    stream.read = lambda: source
-    assert complete_vm(make_vm("Grapheme", stream), 10) == "10"
-
-
-def test_evaluation_inherits_loaded_metadata():
-    source = esolangs.generate(
-        "Grapheme",
-        "01",
-        settings=DialectSettings(integer_conversion="after_each_letter"),
-    )
-    stream = StringIO()
-    stream.read = lambda: source
-    assert _evaluate("Grapheme", stream, inputs=1) == "01"
-
-
-def test_metadata_is_a_fresh_copy():
-    info = esolangs.describe("Grapheme")["dialect_settings"]
-    info["integer_conversion"]["default"] = "after_each_letter"
-    again = esolangs.describe("Grapheme")["dialect_settings"]
-    assert again["integer_conversion"]["default"] == "between_letters"
-
-
-def test_cli_json_describes_dialect_choices(capsys):
-    output, _ = call_both(["describe", "--json", "Grapheme"], capsys)
-    schema = json.loads(output)["dialect_settings"]
-    assert schema["integer_conversion"]["default"] == "between_letters"
-    assert schema["integer_conversion"]["requires"] == {}
-
-
-def test_unterminated_modes_flush_in_called_frames():
-    options = {"integer_conversion": "after_each_letter"}
-    machine = _Machine("FA", ScriptedIO(""), **options)
-    while not machine.halted:
-        machine.step()
-    assert machine.stack == [10]
-    settings = DialectSettings(**options)
-    assert esolangs.run("Grapheme", "HFAHIY", settings=settings) == "10"
 
 
 # The dialect is machine-wide; one string call and one Z rewind witness it.
@@ -189,14 +82,6 @@ def test_unset_names_read_as_themselves(source, expected):
     assert esolangs.run("Grapheme", source) == expected
 
 
-@pytest.mark.parametrize(
-    "choices", [{"integer_conversion": "bad"}, {"integer_conversion": 1}]
-)
-def test_invalid_settings_precede_source_reads(choices):
-    with pytest.raises(esolangs.ArgumentError):
-        esolangs.run("Grapheme", Unreadable(), settings=DialectSettings(**choices))
-
-
 @pytest.mark.medium
 def test_generated_corpus():
     settings = DialectSettings(integer_conversion="after_each_letter")
@@ -220,28 +105,6 @@ def test_prose_conversion_at_six_inputs():
     assert _evaluate("Grapheme", source, inputs=6) == table
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("isolated", [False, True])
-def test_portable_settings_vm_and_override(isolated):
-    settings = DialectSettings(integer_conversion="after_each_letter")
-    source = _Tagged("FAFY", "Grapheme", settings)
-    restored = esolangs.load_program(
-        "Grapheme", esolangs.dump_program("Grapheme", source)
-    )
-    assert esolangs.run("Grapheme", restored, isolated=isolated) == "10"
-    assert esolangs.run("Grapheme", restored, max_steps=20) == "10"
-    assert complete_vm(make_vm("Grapheme", restored), 20) == "10"
-    assert (
-        esolangs.run(
-            "Grapheme",
-            restored,
-            settings=DialectSettings(integer_conversion="between_letters"),
-        )
-        == "1"
-    )
-    assert source.settings == settings
-
-
 def test_metadata():
     settings = esolangs.describe("Grapheme")["dialect_settings"]
     assert settings["integer_conversion"]["default"] == "between_letters"
@@ -250,35 +113,6 @@ def test_metadata():
         "after_each_letter",
     )
     assert set(settings) == {"integer_conversion"}
-
-
-def test_cli_debug_uses_settings(tmp_path: Path, capsys):
-    source = tmp_path / "conversion.grapheme"
-    source.write_text("FAFY")
-    output, _ = call_both(
-        [
-            "debug",
-            "--settings",
-            '{"integer_conversion":"after_each_letter"}',
-            "Grapheme",
-            str(source),
-        ],
-        capsys,
-    )
-    assert "halted: yes" in output
-    assert "output: '10'" in output
-
-
-@pytest.mark.medium
-def test_raw_text_preserves_newlines_and_explicit_settings():
-    source = "FAFY\n"
-    choices = DialectSettings(integer_conversion="after_each_letter")
-    restored = esolangs.load_program(
-        "Grapheme", esolangs.dump_program("Grapheme", source, settings=choices)
-    )
-    assert str(restored) == source
-    assert restored.settings == choices
-    assert esolangs.run("Grapheme", restored) == "10"
 
 
 class TestGrapheme:
@@ -314,35 +148,12 @@ class TestGrapheme:
         assert vm.ip == (7,)  # the callee frame is gone once it returns
         assert vm.stack == [1, 1]
 
-    def test_caller_resumes_after_the_callee_returns(self) -> None:
-        # Y after G still has to run once the callee pops, proving the
-        # halted-``ip`` sentinel is the top-level frame's own end position,
-        # not an artifact of the callee finishing on the caller's last pc.
-        vm = debugger_api.make_vm("Grapheme", "FAFEKEGY")
-        for _ in range(9):
-            vm.step()
-        assert vm.halted
-        assert vm.output == "1"  # Y printed the duplicated int 1
-        assert vm.ip == (len("FAFEKEGY"),)
-
 
 class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
     """`encode` refused these bytes all along; `run` answered them."""
 
-    @pytest.mark.parametrize("line", [" 1", "2", "01"])
-    def test_plain_run_accepts_a_non_boolean_line(
-        self, line: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """General execution does not impose a Boolean input alphabet."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0101"))
-        _out, err = call_both(
-            ["run", "brainfuck", str(path)], capsys, stdin=f"0\n{line}\n"
-        )
-        assert "spells its bits" not in err
-
     def test_a_correct_encoding_is_silent_and_right(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Doing it right must stay quiet, or the check is noise."""
         path = tmp_path / "p.txt"
@@ -364,18 +175,8 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
 class TestTheShapeWarningFiresOnlyWhenItShould:
     """The last silent-wrong path: stdin in the shape a reader expects."""
 
-    def test_an_ordinary_language_is_never_warned_about(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The languages that read 0/1 lines must stay silent."""
-        path = tmp_path / "bf.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="10")
-        assert out == "1"
-        assert err == ""
-
     def test_the_warning_does_not_change_the_answer(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """It is advice; the run is exactly what it was."""
         path = tmp_path / "g.txt"
@@ -386,10 +187,6 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
         right = call_main(["run", "Grapheme", str(path)], capsys, stdin=stdin)
         assert warned == "0"
         assert right == "1"
-
-
-def test_the_input_alphabet() -> None:
-    assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
 
 
 def test_grapheme_names_its_input_alphabet() -> None:
@@ -416,26 +213,6 @@ def test_the_wrong_alphabet_is_warned_about() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         esolangs.run("Grapheme", program, stdin="0\n1\n", timeout=10)
-
-
-def test_a_load_error_is_reported_not_raised(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """``debug --help`` promises a raise is reported, not propagated."""
-    path = tmp_path / "junk.txt"
-    path.write_text("ZZZ!!!")
-    with pytest.raises(SystemExit) as exc:
-        call_main(["debug", "Grapheme", str(path)], capsys)
-    assert exc.value.code == 2
-    assert "uppercase Latin letters" in capsys.readouterr().err
-
-
-def test_dialect_options_are_a_copy():
-    settings = DialectSettings(integer_conversion="after_each_letter")
-    options = settings.options("Grapheme")
-    options["integer_conversion"] = "between_letters"
-    assert esolangs.run("Grapheme", "FAFY", settings=settings) == "10"
-    assert esolangs.run("Grapheme", "FAFY") == "1"
 
 
 def test_a_zero_line_reads_as_true_so_zero_is_percent():

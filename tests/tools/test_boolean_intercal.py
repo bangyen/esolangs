@@ -13,7 +13,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
 )
 from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, intercal
-from tests.generator_support import run_filled
+from tests.support.generator_support import run_filled
 
 
 def _run(table: str, row: int) -> str:

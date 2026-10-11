@@ -6,11 +6,11 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from tests.generator_support import assert_parity_at_most_doubles
+from tests.support.generator_support import assert_parity_at_most_doubles
+from tests.support.witness_tables import row_bits, witnesses
 from tests.tools.boolean_runners import (
     run_collatz_multiverse,
 )
-from tests.witness_tables import row_bits, witnesses
 
 
 class TestCollatzMultiverse:

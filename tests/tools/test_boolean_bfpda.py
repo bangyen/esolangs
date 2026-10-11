@@ -47,7 +47,7 @@ class TestParameterizedBfpda:
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
     from esolangs.tools.bfpda import _bfpda_tree, _reflected
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     a, b = "0001" * 16, "0110" * 16
     table = _reflected(a + b + b + a, 8)

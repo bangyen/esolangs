@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from esolangs.raster import png
-from tests.pick import one
+from tests.support.pick import one
 
 #: Two wiki images, kept apart from any one language's fixtures so the codec
 #: tests outlive the language that drew them.

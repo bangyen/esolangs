@@ -7,8 +7,8 @@ from esolangs._evaluate import _evaluate
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster
 from esolangs.raster.scale import detect_scale, normalize
-from tests.pick import languages
-from tests.test_language_coupling import REFERENCE
+from tests.api.test_language_coupling import REFERENCE
+from tests.support.pick import languages
 
 RASTER = languages(source_kind="raster", boolean_generator=True)
 

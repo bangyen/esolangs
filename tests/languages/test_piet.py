@@ -11,9 +11,9 @@ from esolangs._evaluate import _evaluate
 from esolangs._execution import interpreter_module
 from esolangs.exceptions import TemplateError
 from esolangs.registry import LANGUAGES, SourceKind
+from tests.api.test_api_contracts import XOR
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
-from tests.pick import languages
-from tests.test_api_contracts import XOR
+from tests.support.pick import languages
 
 
 def first_other_raster() -> str:

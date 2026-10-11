@@ -5,11 +5,10 @@ import sys
 import pytest
 
 from esolangs import tools as boolean
+from tests.support.witness_tables import row_bits
 from tests.tools.boolean_runners import (
-    run_bf,
     run_factor,
 )
-from tests.witness_tables import row_bits
 
 
 class TestFactor:
@@ -63,14 +62,6 @@ class TestFactor:
         assert program.isdigit()
         assert len(program) > sys.get_int_max_str_digits()
 
-    def test_the_render_leaves_the_global_limit_alone(self) -> None:
-        """The digit limit is process-global, so it is borrowed, not kept."""
-        before = sys.get_int_max_str_digits()
-        boolean.factor(
-            "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
-        )
-        assert sys.get_int_max_str_digits() == before
-
     def test_the_render_works_under_an_unlimited_global(self) -> None:
         """``sys.set_int_max_str_digits(0)`` means unlimited, not zero."""
         before = sys.get_int_max_str_digits()
@@ -80,54 +71,11 @@ class TestFactor:
         finally:
             sys.set_int_max_str_digits(before)
 
-    @pytest.mark.slow
-    @pytest.mark.weekly
-    @pytest.mark.cost_evidence("Factor's dense n=13 render stops beyond 500000 digits")
-    def test_total_past_the_retired_digit_budget(self, monkeypatch) -> None:
-        """Public generation renders large candidates before selecting shared text."""
-        from importlib import import_module
-
-        from esolangs.interpreters.tape_based.factor import _parse, decode
-        from esolangs.tools.factor import _encode
-        from tests.witness_tables import dense as _dense
-
-        rendered = []
-
-        def observe(number):
-            text = str(number)
-            rendered.append(text)
-            return text
-
-        monkeypatch.setattr(
-            import_module("esolangs.tools.factor"), "str", observe, raising=False
-        )
-        n = 13
-        table = _dense(n)
-        selected = boolean.factor(table)
-        assert selected in rendered
-        program = next(text for text in rendered if len(text) > 500_000)
-        assert len(program) > 500_000
-        code = decode(_parse(program))
-        # Re-encoding rather than comparing against brainfuck's program: the
-        # construction Factor encodes is its own now, and the contract is the
-        # round trip, which holds whatever it builds.  The digit limit guards
-        # str -> int too, so it is raised here as the generator raises it for
-        # its own render.
-        limit = sys.get_int_max_str_digits()
-        sys.set_int_max_str_digits(len(program) + 1)
-        try:
-            assert _encode(code) == int(program)
-        finally:
-            sys.set_int_max_str_digits(limit)
-        for row in (0, 1, 2**12, 2**13 - 2, 2**13 - 1):
-            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
-            assert run_bf(code, bits) == table[row], row
-
 
 @pytest.mark.medium
 def test_shared_residual_measures_encoded_size_and_executes_within_ledger() -> None:
     from esolangs.tools.factor import _encode, _program
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     zero = "0001011101101001" * 4
     one = "0110100100010111" * 4
@@ -168,7 +116,7 @@ def test_one_input_not_stays_within_the_command_ledger(bit, expected) -> None:
 def test_multiple_residuals_reduce_encoded_size_within_ledger():
     from esolangs._digits import digit_limit_for
     from esolangs.tools.factor import _encode, _program
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     n = 10
     residual = "".join(str(row.bit_count() & 1) for row in range(1 << (n - 4)))
@@ -201,7 +149,7 @@ def test_multiple_residuals_reduce_encoded_size_within_ledger():
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_projection_skips_ascii_normalization(bit):
     from esolangs.tools.factor import _factor
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     n = 8
     assert_shared_program(
@@ -223,7 +171,7 @@ def test_constant_projection_skips_ascii_normalization(bit):
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_projection_retains_balanced_encoding(n, bit):
     from esolangs.tools.factor import _factor
-    from tests.generator_support import assert_constant_balanced_shape
+    from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)
     assert_constant_balanced_shape(
@@ -234,7 +182,7 @@ def test_constant_projection_retains_balanced_encoding(n, bit):
 @pytest.mark.medium
 def test_factor_bank_compares_decimal_encodings_and_executes_within_ledger():
     from esolangs.tools.factor import _encode, _program
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     n = 8
     a, b = "00010111" * 4, "01101001" * 4

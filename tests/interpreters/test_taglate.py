@@ -10,7 +10,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.queue_based.taglate import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_lines
-from tests.raises import raises_message
+from tests.support.raises import raises_message
 
 run_and_capture = run_lines(run)
 

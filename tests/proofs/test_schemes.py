@@ -8,7 +8,7 @@ import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
 from esolangs.tools.helpers import runs
 from tests.proofs._ledger import Ledger, Row, load
-from tests.source_support import source_units
+from tests.support.source_support import source_units
 
 #: Every table at ``n == 3`` that depends on exactly one input, both
 #: polarities, all at ones-count 4 -- the same ones-count as parity, so the

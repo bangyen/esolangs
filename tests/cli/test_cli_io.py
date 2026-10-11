@@ -14,8 +14,8 @@ from esolangs.cli_io import (
     _bounded_read,
 )
 from tests.cli.test_cli import call_main, run_cli
-from tests.cli_support import EXAMPLES
-from tests.pick import languages, one_where
+from tests.support.cli_support import EXAMPLES
+from tests.support.pick import languages, one_where
 
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
 _SPELLED = one_where(

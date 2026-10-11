@@ -268,11 +268,11 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
         if "def test_placeholder_" in path.read_text(encoding="utf-8")
     )
     if _registered_generator(name):
-        pass  # tests/samples.py derives its sample from the generator
-    elif name not in _tests_module("samples", "SAMPLES"):
+        pass  # tests/support/samples.py derives its sample from the generator
+    elif name not in _tests_module("support.samples", "SAMPLES"):
         gaps.append(
             Gap(
-                "tests/samples.py",
+                "tests/support/samples.py",
                 f'add "{name}": (<tiny program>, <stdin>) to SAMPLES; the VM '
                 "protocol and debugger tests step it",
             )
@@ -308,7 +308,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         gaps.append(
             Gap(
                 str(source.relative_to(ROOT)),
-                "implement the generator; tests/samples.py derives the "
+                "implement the generator; tests/support/samples.py derives the "
                 "language's VM sample from its one-input program",
             )
         )
@@ -421,7 +421,7 @@ def quick_tests(name: str) -> list[str]:
         if (ROOT / path).exists()
     ]
     nodes += [
-        "tests/test_interpreter_conventions.py"
+        "tests/generators/test_interpreter_conventions.py"
         "::test_interpreter_docstrings_follow_the_template",
         f"tests/fuzz/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",

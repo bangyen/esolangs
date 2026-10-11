@@ -176,7 +176,7 @@ def test_the_flag_switches_input_sets(stdin: str, expected: str) -> None:
 def test_a_generated_program_reads_the_first_set_only() -> None:
     """Spaces are ignored, a newline is not: the stdin oracle refuses ``0\\n1``."""
     from esolangs.exceptions import ArgumentError
-    from tests.stdin_check import _check_stdin
+    from tests.support.stdin_check import _check_stdin
 
     xor = thisthat("0110").splitlines()
     for stdin, expected in (("0 1\n", "1"), ("0\n1", "")):

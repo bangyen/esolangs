@@ -31,8 +31,8 @@ from tests.proofs.deep.execution import (
     run_to_answer,
 )
 from tests.proofs.deep.linearity import _regime_start
-from tests.witness_tables import parity as _parity
-from tests.witness_tables import row_bits
+from tests.support.witness_tables import parity as _parity
+from tests.support.witness_tables import row_bits
 
 #: Cost band; see ``__main__.py``.
 BAND = "by-hand"

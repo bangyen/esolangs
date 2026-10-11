@@ -12,7 +12,7 @@ from esolangs.interpreters.grid_based.alight import run as alight_run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.alight.balance import _balance_postfix
 from esolangs.tools.wrap import balance_score
-from tests.generator_support import assert_an_ignored_input_costs
+from tests.support.generator_support import assert_an_ignored_input_costs
 
 
 @pytest.mark.medium

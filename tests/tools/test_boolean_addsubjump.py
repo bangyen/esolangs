@@ -13,12 +13,12 @@ from esolangs.tools.addsubjump import (
     addsubjump,
 )
 from esolangs.tools.helpers import in_input_order
-from tests.generator_support import assert_parity_at_most_doubles
+from tests.support.generator_support import assert_parity_at_most_doubles
+from tests.support.witness_tables import row_bits, witnesses
 from tests.tools.boolean_runners import (
     run_addsubjump,
     run_addsubjump_from,
 )
-from tests.witness_tables import row_bits, witnesses
 
 
 @pytest.mark.medium

@@ -13,10 +13,10 @@ from esolangs.tools.flowchart import (
     _flowchart_render,
     _flowchart_stacked,
 )
+from tests.support.witness_tables import row_bits
 from tests.tools.boolean_runners import (
     run_flowchart,
 )
-from tests.witness_tables import row_bits
 
 
 class TestFlowchart:
@@ -218,7 +218,7 @@ def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_lookup_reads_without_deque_or_selector(bit):
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     n = 8
     table = bit * (1 << n)

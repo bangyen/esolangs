@@ -3,7 +3,7 @@
 import random
 
 from esolangs.tools import helpers
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 def _oracle(table: str, n: int) -> list[int]:

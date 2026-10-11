@@ -10,7 +10,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.factor import run
 from esolangs.tools.factor import _encode
 from tests.proofs._factor_print import printed_program
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 def _render(code: str) -> str:

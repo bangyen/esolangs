@@ -7,7 +7,7 @@ import pytest
 from esolangs import tools
 from esolangs.interpreters.grid_based.egl import run
 from esolangs.interpreters.io import ScriptedIO
-from tests.generator_support import assert_an_ignored_input_costs
+from tests.support.generator_support import assert_an_ignored_input_costs
 
 
 def execute(program: str, bits: tuple[int, ...]) -> tuple[str, int]:

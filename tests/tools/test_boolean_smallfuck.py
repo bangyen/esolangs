@@ -10,7 +10,7 @@ from esolangs.interpreters.tape_based.smallfuck import run
 from esolangs.registry import LANGUAGES
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.smallfuck import PAIR, smallfuck
-from tests.generator_support import run_filled
+from tests.support.generator_support import run_filled
 
 
 def _run(table: str, row: int) -> str:
@@ -103,8 +103,8 @@ def test_smallfuck_matches_a_narrow_layout_without_its_newlines() -> None:
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
     from esolangs.tools.smallfuck import _smallfuck_tree
-    from tests.generator_support import assert_shared_program
-    from tests.screen_support import corpus
+    from tests.support.generator_support import assert_shared_program
+    from tests.support.screen_support import corpus
 
     table = corpus(8)["tiled"]
     plain, _ = _smallfuck_tree(table, tuple(range(8)))
@@ -119,7 +119,7 @@ def test_shared_residual_executes_within_ledger() -> None:
 
 def test_complemented_shared_arm_contributes_its_constant_first() -> None:
     from esolangs.tools.smallfuck import _smallfuck_tree
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     table = "1111011001101111"
     plain, _ = _smallfuck_tree(table, tuple(range(4)))
@@ -222,7 +222,7 @@ def test_invalid_multiple_definitions_abort(blocks, flags, message):
 def test_multiple_residuals_reduce_tiled_cap_program_within_ledger():
     from esolangs.tools.shared_block import repeated_block
     from esolangs.tools.smallfuck import _smallfuck_tree
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     n = 16
     a, b = "00010111" * (1 << (n - 6)), "01101001" * (1 << (n - 6))

@@ -17,7 +17,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
-from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
+from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 # The wiki's three examples, transcribed from the page source.  Trailing
 # spaces matter (each vertical ``turn right`` sits at a fixed column, and a

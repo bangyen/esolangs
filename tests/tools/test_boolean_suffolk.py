@@ -4,10 +4,10 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.suffolk import _suffolk_lookup
+from tests.support.witness_tables import row_bits
 from tests.tools.boolean_runners import (
     run_suffolk,
 )
-from tests.witness_tables import row_bits
 
 
 class TestSuffolk:
@@ -27,17 +27,9 @@ class TestSuffolk:
 
     def test_size_tracks_steps_rather_than_ones(self) -> None:
         """Cost is one op per *step* of a half-table, not per one-row."""
-        tables = (
-            "10000000",  # 1 one
-            "10010000",  # 2 ones
-            "11100000",  # 3 ones
-            "11101000",  # 4 ones
-            "11111000",  # 5 ones
-            "11111001",  # 6 ones
-            "11111110",  # 7 ones
-        )
+        tables = "10000000 10010000 11100000 11101000 11111000 11111001 11111110"
         groups: dict[tuple[int, ...], set[int]] = {}
-        for table in tables:
+        for table in tables.split():
             half = len(table) // 2
             profile = tuple(
                 sum(a != b for a, b in zip(part, f"{part[1:]}0", strict=True))

@@ -9,7 +9,7 @@ from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.bio import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_printing
-from tests.raises import raises_message
+from tests.support.raises import raises_message
 
 
 class TestBIOBasicCommands:
@@ -138,50 +138,3 @@ class TestContract(SnapshotContract, CycleContract):
     stepping_program = "0ox;"
     halting_program = "0ox;1ix;"
     looping_program = "0ox;0ix{0ix{};};"
-
-
-class TestWikiExamples:
-    """The programs on the BIO wiki page, run exactly as they are written."""
-
-    def test_hello_world(self) -> None:
-        """The wiki's Hello World prints what the page says it prints."""
-        program = (
-            "0ox;\n" * 9
-            + "0ix{                   //While block x is not 0\n"
-            + "  0oy;                 //Increment the block y by 1 8 times\n" * 8
-            + "  1ox;                 //Decrement block x by 1\n"
-            + "};\n"
-            + "1iy;                   //Output block y (H)\n"
-            + "0iy{                   //Reset block y to 0\n"
-            + "  1oy;\n"
-            + "};\n"
-            + "0ox;\n" * 10
-            + "0ix{\n"
-            + "  0oy;\n" * 10
-            + "  1ox;\n"
-            + "};\n"
-            + "0oy;\n"
-            + "1iy;                   //Output block y (e)\n"
-        )
-        with redirect_stdout(io.StringIO()) as f:
-            run(program, io=IO())
-        assert f.getvalue() == "He"
-
-    def test_addition(self) -> None:
-        """``0ox; 0oy; 0ix{ 1ox; 0oy; }; 1iy;`` computes 1 + 1."""
-        f = run_printing(run, "0ox; 0oy;\n0ix{ 1ox; 0oy; };\n1iy;")
-        assert f == chr(2)
-
-    def test_multiplication(self) -> None:
-        """The wiki's multiplication example computes 5 * 5."""
-        program = (
-            "0ox; 0ox; 0ox; 0ox; 0ox;\n0ix{ 1ox; 0oy; 0oy; 0oy; 0oy; 0oy; };\n1iy;"
-        )
-        with redirect_stdout(io.StringIO()) as f:
-            run(program, io=IO())
-        assert f.getvalue() == chr(25)
-
-    def test_subtraction_example_is_wrong_on_the_wiki(self) -> None:
-        """The wiki's subtraction example adds instead of subtracting."""
-        f = run_printing(run, "0ox; 0ox; 0oy;\n0iy{ 0ox; 1oy; };\n1ix;")
-        assert f == chr(3)

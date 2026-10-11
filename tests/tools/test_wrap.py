@@ -25,9 +25,9 @@ from esolangs.tools.wrap import (
     wrap_space_delimited,
     wrap_tokens,
 )
-from tests.divergence import diverges, terminates
-from tests.generator_support import CHECK
-from tests.witness_tables import parity
+from tests.support.divergence import diverges, terminates
+from tests.support.generator_support import CHECK
+from tests.support.witness_tables import parity
 
 # Every boolean generator can build two-input XOR.
 TABLE = "0110"

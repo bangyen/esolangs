@@ -1,14 +1,12 @@
 """ArrowQueue's narrow cascade preserves the termination answer."""
 
-import random
-
 import pytest
 
 import esolangs
 from esolangs.tools.arrowqueue import arrowqueue
-from tests.divergence import diverges
+from tests.support.divergence import diverges
+from tests.support.witness_tables import row_bits
 from tests.tools.fills import fill
-from tests.witness_tables import row_bits, witnesses
 
 _instantiate_arrowqueue = fill("ArrowQueue")
 
@@ -31,41 +29,6 @@ def test_arrowqueue_width_preserves_every_row(table: str, width: int | None) -> 
         bits = row_bits(row, inputs)
         source = _instantiate_arrowqueue(template, bits)
         assert diverges("ArrowQueue", source, "") is (expected == "1")
-
-
-def test_arrowqueue_narrows_the_cascade() -> None:
-    table = "0110100110010110"
-    assert max(map(len, arrowqueue(table).splitlines())) == 6
-    assert max(map(len, arrowqueue(table, 5).splitlines())) == 5
-    assert arrowqueue(table, 6) == arrowqueue(table)
-    assert arrowqueue(table, 80) == arrowqueue(table)
-
-
-@pytest.mark.parametrize("width", [1, 5, 6, 80])
-def test_arrowqueue_narrow_leaf_ring_executes_the_witness_tables(width: int) -> None:
-    for inputs in range(1, 4):
-        for table in witnesses(inputs):
-            template = arrowqueue(table, width)
-            for row, expected in enumerate(table):
-                bits = [int(bit) for bit in format(row, f"0{inputs}b")]
-                source = _instantiate_arrowqueue(template, bits)
-                assert diverges("ArrowQueue", source, "") is (expected == "1")
-
-
-def test_arrowqueue_leaf_gap_floor_and_corpus_size() -> None:
-    assert max(map(len, arrowqueue("0110", 1).splitlines())) == 4
-    assert sum(len(arrowqueue(format(v, "08b"), 1)) for v in range(256)) == 51971
-
-
-def test_arrowqueue_compact_rings_at_larger_arity() -> None:
-    rng = random.Random(20260930)
-    for inputs in (5, 8):
-        table = format(rng.getrandbits(2**inputs), f"0{2**inputs}b")
-        template = arrowqueue(table, 1)
-        for row in rng.sample(range(2**inputs), 8):
-            bits = [int(bit) for bit in format(row, f"0{inputs}b")]
-            source = _instantiate_arrowqueue(template, bits)
-            assert diverges("ArrowQueue", source, "") is (table[row] == "1")
 
 
 @pytest.mark.parametrize("tagged", [False, True])

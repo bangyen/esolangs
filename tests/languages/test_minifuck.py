@@ -11,9 +11,9 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import _check_program
 from esolangs.exceptions import TemplateError
+from tests.api.test_api_contracts import PUBLIC_MEMBERS, ROOT, SIGNATURES, XOR
 from tests.cli.test_cli import call_main
-from tests.cli_support import _failure, call_both
-from tests.test_api_contracts import PUBLIC_MEMBERS, ROOT, SIGNATURES, XOR
+from tests.support.cli_support import _failure, call_both
 
 
 def test_describe_template_still_hides_stdin_fields(capsys):

@@ -12,15 +12,15 @@ from esolangs.interpreters.other.thue import _Machine, _matches
 from esolangs.interpreters.other.thue import run as run_thue
 from esolangs.interpreters.randomness import Seeded
 from esolangs.tools.thue import thue
+from tests.support.witness_tables import row_bits as _bits
+from tests.support.witness_tables import witnesses
 from tests.tools.reader_support import _TABLES, assert_emissions_grow_by_a_line
-from tests.witness_tables import row_bits as _bits
-from tests.witness_tables import witnesses
 
 
 @pytest.mark.medium
 def test_shared_block_expands_before_lookup_within_ledger() -> None:
     from esolangs.tools.thue import _tables, _thue_entries, _thue_layout
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     entries = "0001011101101001" * 6 + "0110100100010111" + "0011010101010011"
     table = _thue_entries(entries).translate(str.maketrans("ab", "01")) * 2

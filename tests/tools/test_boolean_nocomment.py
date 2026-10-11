@@ -11,7 +11,7 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.tools.nocomment import PAIR
-from tests.witness_tables import row_bits
+from tests.support.witness_tables import row_bits
 
 
 class TestParameterizedNoComment:
@@ -168,7 +168,7 @@ class TestParameterizedNoComment:
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     from esolangs.tools.nocomment import _program
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     language = "NoComment"
     table = bit * 256
@@ -185,7 +185,7 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
     from esolangs.tools.nocomment import _program
-    from tests.generator_support import assert_constant_balanced_shape
+    from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)
     assert_constant_balanced_shape(

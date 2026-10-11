@@ -8,9 +8,9 @@ import pytest
 
 import esolangs
 from tests.cli.test_cli import _program, call_main
-from tests.cli_support import call_both
-from tests.generator_support import evaluate_generated
-from tests.pick import languages
+from tests.support.cli_support import call_both
+from tests.support.generator_support import evaluate_generated
+from tests.support.pick import languages
 
 
 # 5.2s over 33 tests: drives the CLI as a subprocess.

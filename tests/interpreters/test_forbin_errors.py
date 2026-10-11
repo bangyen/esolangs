@@ -6,7 +6,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.forbin import run
 from tests.interpreters.forbin_support import run_program
-from tests.raises import raises_message
+from tests.support.raises import raises_message
 
 
 @pytest.mark.parametrize(

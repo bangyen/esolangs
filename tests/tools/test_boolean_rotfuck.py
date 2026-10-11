@@ -3,11 +3,11 @@
 import pytest
 
 from esolangs import tools as boolean
+from tests.support.witness_tables import row_bits
 from tests.tools.boolean_runners import (
     run_rotfuck,
     run_rotfuck_forward,
 )
-from tests.witness_tables import row_bits
 
 
 class TestRotfuck:
@@ -192,7 +192,7 @@ def test_rotation_is_checked():
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     from esolangs import generate
     from esolangs.tools.rotfuck import _program
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     language = "ROTfuck"
     table = bit * 256
@@ -217,7 +217,7 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
     from esolangs.tools.rotfuck import _program
-    from tests.generator_support import assert_constant_balanced_shape
+    from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)
     assert_constant_balanced_shape(

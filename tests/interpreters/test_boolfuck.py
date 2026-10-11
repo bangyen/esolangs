@@ -10,8 +10,8 @@ from esolangs.interpreters.tape_based.boolfuck import _Machine, run
 from esolangs.tools.boolfuck import boolfuck
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import boolfuck as oracle
-from tests.raises import assert_rejected_with_hint
-from tests.witness_tables import witnesses
+from tests.support.raises import assert_rejected_with_hint
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.parametrize(

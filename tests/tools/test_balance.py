@@ -12,10 +12,10 @@ from esolangs.tools.wrap import (
     wrap_program,
     wrap_space_delimited,
 )
+from tests.api.test_language_coupling import REFERENCE
 from tests.cli.test_cli import call_main
-from tests.pick import first
-from tests.test_language_coupling import REFERENCE
-from tests.witness_tables import row_bits
+from tests.support.pick import first
+from tests.support.witness_tables import row_bits
 
 _TEXT = [
     lang

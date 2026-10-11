@@ -11,7 +11,7 @@ from esolangs.registry import LANGUAGES, SourceKind
 from esolangs.tools import wrap as _wrap
 from esolangs.tools.token_balance import balanced_token_width
 from esolangs.tools.wrap import balance_score, wrap_chars, wrap_program
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.parametrize(("minimum", "maximum"), [(1, 5), (2, 9), (6, 15)])

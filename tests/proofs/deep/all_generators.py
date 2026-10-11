@@ -28,8 +28,8 @@ from tests.proofs.deep._lemmas import (
 # worst case to fold and _parity the table with no constant subtree, and the
 # contract sweep is keyed by (name, shape) because a generator can cover one
 # and refuse the other.
-from tests.witness_tables import dense as _dense
-from tests.witness_tables import parity as _parity
+from tests.support.witness_tables import dense as _dense
+from tests.support.witness_tables import parity as _parity
 
 #: Cost band; see ``__main__.py``. Registry-wide, so its scope is every generator:
 #: too broad to re-run on every local edit, cheap enough that CI should never skip

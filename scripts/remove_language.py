@@ -371,7 +371,7 @@ def _owned_test_files(lang: Language) -> list[Path]:
     """
     from esolangs.registry import LANGUAGES
 
-    own = _tests_attr("test_language_coupling", "_own")
+    own = _tests_attr("api.test_language_coupling", "_own")
     files = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", *_TREES],
         cwd=ROOT,
@@ -799,13 +799,13 @@ def _drop_from_series(path: Path, name: str, tail: str) -> None:
 _EDITED = (
     "src/esolangs/registry/_table.py",
     "src/esolangs/tools/__init__.py",
-    "tests/samples.py",
+    "tests/support/samples.py",
     "tests/tools/boolean_runners.py",
     "tests/tools/test_wrap.py",
     "tests/proofs/test_execution_formulas.py",
     "tests/proofs/test_workspace_formulas.py",
     "tests/proofs/test_schemes.py",
-    "tests/test_interpreter_only_admissions.py",
+    "tests/api/test_interpreter_only_admissions.py",
     "tests/proofs/test_bands.py",
 )
 
@@ -830,7 +830,7 @@ def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
 
-    reference = _tests_attr("test_language_coupling", "REFERENCE")
+    reference = _tests_attr("api.test_language_coupling", "REFERENCE")
     if name == reference:
         raise ValueError(
             f"{reference} is the reference language: shared tests, the example "
@@ -924,7 +924,7 @@ def remove(name: str) -> list[str]:
     keys = {name, module, lang.id, gen, stem} - {""}
     # ``Path("tests/interpreters/test_inject.py")`` in a support list.
     paths = {str(p.relative_to(ROOT)) for p in doomed}
-    # A deleted test module too: ``tests/samples.py`` borrows Inject's program.
+    # A deleted test module too: ``tests/support/samples.py`` borrows Inject's program.
     gone_modules = _gone_modules(doomed)
     modules = {m for m in own_modules if _module_path(m) is None} | gone_modules
     edited = [*_EDITED]
@@ -1040,7 +1040,8 @@ def remove(name: str) -> list[str]:
         [
             sys.executable,
             "-c",
-            "from tests.test_language_coupling import lower_recorded; lower_recorded()",
+            "from tests.api.test_language_coupling import lower_recorded; "
+            "lower_recorded()",
         ],
         cwd=ROOT,
         check=True,

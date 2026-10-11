@@ -19,7 +19,7 @@ from esolangs.raster import Raster, png
 from esolangs.tools.line import line_boolean
 from esolangs.tools.line.render import Node, render
 from esolangs.tools.line.tree_layout import tree_extents
-from tests.witness_tables import row_bits
+from tests.support.witness_tables import row_bits
 
 
 def _forks(node: Node | None) -> int:
@@ -284,7 +284,7 @@ def test_shared_ancestor_return_executes_within_ledger(tmp_path: Path) -> None:
     from esolangs.tools.line import _render_node
     from esolangs.tools.line.render import _has_goto
     from esolangs.tools.line.shared import shared_canvas, shared_tree
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     residual = "00010111" * 8
     table = residual * 3 + "0" * len(residual)

@@ -11,8 +11,8 @@ from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
 from esolangs.tools.arrowqueue import _DRAINED_RING, _STAGE, arrowqueue
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.vm import run_until_halt_or_cycle
+from tests.support.witness_tables import row_bits
 from tests.tools.fills import fill
-from tests.witness_tables import row_bits
 
 _instantiate_arrowqueue = fill("ArrowQueue")
 

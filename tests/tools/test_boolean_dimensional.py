@@ -10,10 +10,10 @@ from esolangs.tools.dimensional import dimensional
 from esolangs.tools.wrap import (
     wrap_program,
 )
+from tests.support.witness_tables import witnesses
 from tests.tools.boolean_runners import (
     run_dimensional,
 )
-from tests.witness_tables import witnesses
 
 
 @pytest.mark.parametrize("n", [1, 2, 8])

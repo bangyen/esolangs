@@ -4,9 +4,9 @@ import warnings
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.samples import FLOWCHART_CAT, FLOWCHART_TRUTH_MACHINE
-from tests.test_vm import _run_all
-from tests.test_vm_protocol import assert_starts_downward
+from tests.support.samples import FLOWCHART_CAT, FLOWCHART_TRUTH_MACHINE
+from tests.vm.test_vm import _run_all
+from tests.vm.test_vm_protocol import assert_starts_downward
 
 
 class TestTheDebuggerWarnsAboutStdinToo:

@@ -5,8 +5,8 @@ import contextlib
 import pytest
 
 import esolangs.debugger as debugger_api
-from tests.duration_policy import limits
-from tests.samples import SAMPLES
+from tests.support.duration_policy import limits
+from tests.support.samples import SAMPLES
 
 
 @pytest.mark.parametrize("value", ["", "0", "false"])

@@ -48,7 +48,7 @@ def test_affine_stream_all_small_coefficients_within_ledger():
 @pytest.mark.medium
 def test_affine_stream_reduces_cap_parity_within_ledger():
     from esolangs.tools.brainfuck import _bf_ordered
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     n = 16
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
@@ -68,7 +68,7 @@ def test_affine_stream_reduces_cap_parity_within_ledger():
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
     from esolangs.tools.brainfuck import _bf_ordered
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     zero = "0001011101101001" * 4
     one = "0110100100010111" * 4
@@ -130,7 +130,7 @@ def test_multiple_residuals_reduce_guarded_parity_within_ledger():
     import esolangs
     from esolangs.tools.shared_block import repeated_block
     from esolangs.tools.shared_flag import flag_tree_body
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     n = 10
     residual = "".join(str(row.bit_count() & 1) for row in range(1 << (n - 4)))

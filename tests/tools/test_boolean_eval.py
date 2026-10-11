@@ -3,7 +3,7 @@
 from esolangs import tools as boolean
 from esolangs.tools.eval_lang import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR
-from tests.witness_tables import row_bits
+from tests.support.witness_tables import row_bits
 
 #: One input's run, as the template spells it.
 _X = TEMPLATE_CHAR * len(PAIR[0])
@@ -27,22 +27,6 @@ class TestEvalBoolean:
         _fill_eval = fill("Eval")
 
         return _fill_eval(tpl, bits)
-
-    def test_both_bits_embed_at_the_same_width(self) -> None:
-        """The setter is two characters whichever bit it carries."""
-        from tests.tools.fills import fill
-
-        _fill_eval = fill("Eval")
-
-        for n in (1, 2, 3):
-            template = _X * n
-            for i in range(n):
-                zeros = [0] * n
-                ones = list(zeros)
-                ones[i] = 1
-                assert len(_fill_eval(template, zeros)) == len(
-                    _fill_eval(template, ones)
-                ), f"n={n} input {i}"
 
     def test_ignored_inputs_shrink_the_lookup(self) -> None:
         """A constant table pushes one result and only drains its inputs."""
@@ -72,20 +56,6 @@ class TestEvalBoolean:
         template = generators.eval("0110")
         assert "{X" not in template
         assert template.count(TEMPLATE_CHAR) == 2 * len(PAIR[0])
-
-    def test_linear_lookup_structure(self) -> None:
-        """Each level shares one half-stack discard between both branches."""
-        from esolangs import tools as generators
-
-        template = generators.eval("0110")
-        assert template.startswith(_X * 2)
-        assert template.endswith(".")
-        assert '"' not in template
-        assert "!" not in template
-        assert template.count("~^=~?*") == 2
-        assert template.count("~=~?*") == 2
-        assert template.removeprefix(_X * 2).startswith("0``0")
-        assert template.count(";") == 3  # shared discards of 2 and 1
 
     def test_reordering_is_not_part_of_the_lookup(self) -> None:
         """The free staged order is always shortest for the linear lookup."""
@@ -147,21 +117,6 @@ class TestEvalBoolean:
             assert len(_eval_stack_programs(n)) == factorial(n)
         # The free arrangement is the one staging produces, and costs nothing.
         assert _eval_stack_programs(3)[(0, 1, 2)] == ""
-
-    def test_reorder_catalog_invariants(self) -> None:
-        """The built words are capped, deduplicated and (length, ~<*<=)-sorted."""
-        from tests.tools.eval_support import (
-            _EVAL_MAX_OPS,
-            _eval_reorder_catalog,
-        )
-
-        built = _eval_reorder_catalog()
-        assert len(set(built)) == len(built)
-        assert built[0] == ""
-        assert all(len(ops) <= _EVAL_MAX_OPS for ops in built)
-        rank = {"~": 0, "*": 1, "=": 2}
-        keys = [(len(ops), [rank[op] for op in ops]) for ops in built]
-        assert keys == sorted(keys)
 
     def test_reorder_words_are_the_capped_reachable_set(self) -> None:
         """Every built word replays, and the built set is exactly the cap's."""

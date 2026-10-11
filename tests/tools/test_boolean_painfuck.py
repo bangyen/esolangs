@@ -24,8 +24,8 @@ class TestPainfuck:
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
     from esolangs.tools.painfuck import _painfuck_tree
-    from tests.generator_support import assert_shared_program
-    from tests.screen_support import corpus
+    from tests.support.generator_support import assert_shared_program
+    from tests.support.screen_support import corpus
 
     table = corpus(8)["tiled"]
     plain, _ = _painfuck_tree(table, tuple(range(8)))
@@ -100,7 +100,7 @@ def test_multiple_flags_execute_with_their_native_command_price(table):
 def test_multiple_flags_reduce_dense_cap_program_within_ledger():
     from esolangs.tools.painfuck import _painfuck_tree
     from esolangs.tools.shared_block import repeated_block
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     n = 16
     rng = random.Random(99123)

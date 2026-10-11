@@ -19,8 +19,8 @@ from esolangs.vm import (
     run_until_halt_or_cycle,
     run_until_halt_or_growth,
 )
-from tests.generator_support import CHECK
-from tests.pick import first
+from tests.support.generator_support import CHECK
+from tests.support.pick import first
 
 BASE_DIR = Path(__file__).parents[2]
 

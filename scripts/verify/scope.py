@@ -533,10 +533,10 @@ def _is_collected(path: str) -> bool:
 
 
 INTERPRETER_CONTRACT_TESTS = (
-    "tests/test_vm_protocol.py",
-    "tests/test_stepping_parity.py",
-    "tests/test_api_contracts.py",
-    "tests/test_interpreter_conventions.py",
+    "tests/vm/test_vm_protocol.py",
+    "tests/vm/test_stepping_parity.py",
+    "tests/api/test_api_contracts.py",
+    "tests/generators/test_interpreter_conventions.py",
     "tests/interpreters/test_io.py",
     "tests/interpreters/test_input_convention.py",
 )

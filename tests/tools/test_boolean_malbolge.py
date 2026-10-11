@@ -13,7 +13,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import _XLAT1, _load, run
 from esolangs.tools.malbolge.core import _cascade
-from tests.witness_tables import dense, parity, row_bits
+from tests.support.witness_tables import dense, parity, row_bits
 
 _module = importlib.import_module("esolangs.tools.malbolge")
 

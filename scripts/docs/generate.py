@@ -377,7 +377,7 @@ def render_curation_census_section() -> str:
     """Render docs/limitations.md's census counts from the curation fixture.
 
     The fixture records one route per registry language;
-    ``tests/test_interpreter_only_admissions.py`` holds its keys to the
+    ``tests/api/test_interpreter_only_admissions.py`` holds its keys to the
     registry, so the counts here are the registry's too.
     """
     census = tomllib.loads(CURATION.read_text(encoding="utf-8"))

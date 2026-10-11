@@ -9,9 +9,9 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
-from tests.cli_support import _FakeStdin, _program, _refused
-from tests.pick import first
-from tests.test_language_coupling import REFERENCE
+from tests.api.test_language_coupling import REFERENCE
+from tests.support.cli_support import _FakeStdin, _program, _refused
+from tests.support.pick import first
 
 _RASTER = first(source_kind="raster", boolean_generator=True)
 

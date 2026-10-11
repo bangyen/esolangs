@@ -13,9 +13,9 @@ from esolangs.tools.helpers import (
     constant_span_test,
 )
 from esolangs.tools.underload import PAIR, underload, underload_setters
-from tests.generator_support import run_filled, verify_generated
+from tests.support.generator_support import run_filled, verify_generated
+from tests.support.witness_tables import witnesses
 from tests.tools.sample_tables import five_input_sample
-from tests.witness_tables import witnesses
 
 
 def _run(table: str, row: int, width: int | None = None) -> str:

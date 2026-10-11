@@ -11,8 +11,12 @@ import esolangs
 from esolangs.interpreters.grid_based.thisthat import run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.thisthat import _Builder, _deque_plan, _tree, thisthat
-from tests.generator_support import evaluate_generated, run_lines, verify_generated
-from tests.witness_tables import parity, witnesses
+from tests.support.generator_support import (
+    evaluate_generated,
+    run_lines,
+    verify_generated,
+)
+from tests.support.witness_tables import parity, witnesses
 
 
 def _run(table: str, row: int) -> tuple[str, int]:
@@ -213,7 +217,7 @@ def test_xor_has_one_column() -> None:
 @pytest.mark.medium
 def test_shared_residual_buses_execute_within_ledger() -> None:
     from esolangs.tools.thisthat._shared import shared_tree
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     a, b = "0001011101101001" * 4, "0110100100010111" * 4
     table = a + b + b + a

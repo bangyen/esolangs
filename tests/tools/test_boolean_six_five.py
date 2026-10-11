@@ -26,13 +26,13 @@ from esolangs.tools.six_five import (
 from esolangs.tools.wrap import (
     _six_five,
 )
+from tests.support.witness_tables import dense as _dense
+from tests.support.witness_tables import row_bits, witnesses
 from tests.tools.boolean_runners import (
     run_six_five,
     run_six_five_from,
 )
 from tests.tools.sample_tables import five_input_sample
-from tests.witness_tables import dense as _dense
-from tests.witness_tables import row_bits, witnesses
 
 
 def _leaves(table: str) -> int:

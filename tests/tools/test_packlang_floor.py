@@ -8,8 +8,8 @@ import esolangs
 from esolangs.interpreters.other.packlang._lex import _tokenize
 from esolangs.tools.packlang import packlang
 from esolangs.tools.wrap import wrap_program
-from tests.generator_support import evaluate_generated
-from tests.witness_tables import witnesses
+from tests.support.generator_support import evaluate_generated
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.parametrize("inputs", [1, 2, 3])

@@ -11,7 +11,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
     fill_runs,
 )
-from tests.witness_tables import row_bits
+from tests.support.witness_tables import row_bits
 
 #: Cost band; see ``__main__.py``.  Cheap because a run is a firing a level:
 #: the size claim is a text measurement, and the rows it executes are the

@@ -56,7 +56,7 @@ class TestResourceEstimate:
         import importlib
 
         from esolangs.tools.polynomial import _polynomial_dag, _polynomial_factors
-        from tests.witness_tables import dense as _dense
+        from tests.support.witness_tables import dense as _dense
 
         module = importlib.import_module("esolangs.tools.polynomial.algebra")
         original = _pack
@@ -210,7 +210,7 @@ def test_draining_remains_available_at_the_instruction_cap(
     """A leading drain preserves tables excluded by the ordinary builders."""
     import importlib
 
-    from tests.generator_support import evaluate_generated
+    from tests.support.generator_support import evaluate_generated
 
     module = importlib.import_module("esolangs.tools.polynomial")
     monkeypatch.setattr(module, "_POLYNOMIAL_MAX_INSTRS", 15)

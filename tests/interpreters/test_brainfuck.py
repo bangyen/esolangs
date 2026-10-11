@@ -10,7 +10,7 @@ from esolangs.vm import run_until_halt_or_cycle, run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 bf = importlib.import_module("esolangs.interpreters.tape_based.brainfuck")
 

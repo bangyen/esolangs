@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs import tools as boolean
-from tests.generator_support import assert_parity_at_most_doubles
+from tests.support.generator_support import assert_parity_at_most_doubles
 
 
 class TestBitTilde:
@@ -27,7 +27,7 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     from esolangs.tools.bit_tilde import _program
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     language = "bit~"
     table = bit * 256
@@ -44,7 +44,7 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
     from esolangs.tools.bit_tilde import _program
-    from tests.generator_support import assert_constant_balanced_shape
+    from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)
     assert_constant_balanced_shape(

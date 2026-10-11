@@ -1,0 +1,103 @@
+"""The API carries enough to use a language it has never heard of."""
+
+from __future__ import annotations
+
+import pytest
+
+import esolangs
+from tests.support.divergence import terminates
+from tests.support.pick import first, languages
+from tests.support.witness_tables import row_bits
+
+#: One two-input table, one asymmetric two-input table, and two three-input
+#: ones.  The asymmetry matters: a verifier that reads the wrong position
+#: can still pass a palindromic table by luck.
+_TABLES = ("0110", "0001", "10010110", "00010111")
+
+#: The fallback for a termination-answering language with no snapshot, and
+#: only that -- :func:`_terminates` prefers a proof.  A clock cannot tell a
+#: loop from a slow run, so every second spent here was dead wall time that
+#: bought no evidence: the run had already decided, and the bound only said
+#: how long the suite sat still.  That block was 152s of this file at the
+#: old 5.0-second bound and ~42s at 1.0; against a certificate it is 0.014s
+#: for every row of every table, and the answer is proved rather than timed.
+#:
+#: Kept for a language that cannot be stepped, where the floor is still the
+#: slowest *halting* row -- a 0-row over the bound would be misread as a
+#: loop.  Measured across 123, ArrowQueue, Crement and Vandevelo over all
+#: four tables below: 0.000s, every one sub-millisecond.  A second is three
+#: orders of magnitude of headroom, which survives CI's slower cores.
+_TERMINATION_TIMEOUT = 1.0
+_RUN_TIMEOUT = 30.0
+
+#: Step cap on the divergence certificate, matching
+#: :func:`~esolangs.vm.run_until_halt_or_growth`'s own 100_000.  Every row
+#: these sweeps ask about resolves in well under a millisecond, so this is
+#: not a bound anyone is near; it is there because a *cycle* detector does
+#: not return on divergence-by-growth, and a wrapping bug can produce one.
+#: Reaching it is not a verdict -- the caller falls back to the clock.
+_CYCLE_STEPS = 100_000
+
+
+def _terminates(name: str, source: str, stdin: str) -> str:
+    """``"0"`` if ``source`` halts, ``"1"`` if it provably does not."""
+    return "0" if terminates(name, source, stdin, _TERMINATION_TIMEOUT) else "1"
+
+
+def _verify(name: str, table: str) -> str:
+    """Return what ``name``'s program answers on every row of ``table``."""
+    facts = esolangs.describe(name)
+    inputs = len(table).bit_length() - 1
+    program = esolangs.generate(name, table)
+    got = ""
+    for row in range(len(table)):
+        bits = row_bits(row, inputs)
+        if facts["parameterized"]:
+            source, stdin = esolangs.instantiate(name, program, bits), ""
+        else:
+            source, stdin = program, esolangs.encode_inputs(name, bits)
+        if facts["answer_mode"] == "termination":
+            got += _terminates(name, source, stdin)
+        else:
+            output = esolangs.run(name, source, stdin=stdin, timeout=_RUN_TIMEOUT)
+            got += esolangs.read_answer(name, output)
+    return got
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("table", _TABLES)
+def test_every_language_verifies_with_no_per_language_knowledge(table: str) -> None:
+    """Every language, driven only by what the API reports about each."""
+    wrong = {}
+    for name in esolangs.list_languages():
+        if not esolangs.describe(name)["boolean_generator"]:
+            continue
+        got = _verify(name, table)
+        if got != table:
+            wrong[name] = got
+    assert wrong == {}, (
+        f"{len(wrong)} language(s) did not compute {table} through the "
+        f"generic path; a fact they need is still not on the API: {wrong}"
+    )
+
+
+class TestTheFactsThatMakeItPossible:
+    """Each of these was a wrong answer a blind reader hit."""
+
+    def test_a_dump_says_where_its_answer_is(self) -> None:
+        """``answer_mode`` said a language dumps, never where to look."""
+        infos = [esolangs.describe(name) for name in languages(answer_mode="dump")]
+        assert any(info["answer_pattern"] for info in infos)
+        assert any(info["answer_encoding"] != ("0", "1") for info in infos)
+
+    def test_a_termination_language_refuses_to_be_read(self) -> None:
+        """Its output is not the answer, so inventing one would be a lie."""
+        with pytest.raises(esolangs.ArgumentError, match="answers by terminating"):
+            esolangs.read_answer(first(answer_mode="termination"), "VO")
+
+    def test_a_timeout_is_distinguishable_from_a_faulting_halt(self) -> None:
+        """``except HaltError`` would score an invalid-op halt as a 1."""
+        with pytest.raises(esolangs.ExecutionTimeoutError) as exc:
+            esolangs.run("brainfuck", "+[]", timeout=0.01)
+        assert isinstance(exc.value, esolangs.HaltError)
+        assert isinstance(exc.value, TimeoutError)

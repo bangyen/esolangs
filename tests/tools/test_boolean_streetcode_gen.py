@@ -6,10 +6,10 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.wrap import shortest
+from tests.support.witness_tables import row_bits
 from tests.tools.boolean_runners import (
     run_streetcode,
 )
-from tests.witness_tables import row_bits
 
 
 def _columns(program: str) -> int:

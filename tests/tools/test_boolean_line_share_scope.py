@@ -26,7 +26,7 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.line.render import _has_goto
 from esolangs.tools.line.shared import shared_tree
-from tests.witness_tables import parity
+from tests.support.witness_tables import parity
 
 
 def _majority(n: int) -> str:

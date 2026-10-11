@@ -8,7 +8,7 @@ import esolangs
 from esolangs import _isolated
 from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES
-from tests.test_memory_budget import _BUDGET, _LINUX
+from tests.vm.test_memory_budget import _BUDGET, _LINUX
 
 
 @pytest.mark.medium
@@ -73,8 +73,8 @@ def test_evaluation_forwards_budget_without_changing_answers(
 @pytest.mark.medium
 def test_finite_timeout_has_no_boolean_verdict(capsys, monkeypatch) -> None:
     from esolangs import cli_run
-    from tests import divergence
     from tests.cli.test_cli import call_main
+    from tests.support import divergence
 
     finite = "a ~> Nil?\n" * 20000
     assert esolangs.run("Vandevelo", finite, timeout=1) == ""

@@ -118,7 +118,7 @@ class TestFargo:
 
 @pytest.mark.medium
 def test_default_compares_shared_definitions() -> None:
-    from tests.screen_support import corpus
+    from tests.support.screen_support import corpus
 
     table = corpus(8)["tiled"]
     program = boolean.fargo(table)

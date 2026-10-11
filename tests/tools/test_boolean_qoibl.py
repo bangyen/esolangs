@@ -6,14 +6,14 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from tests.generator_support import (
+from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,
 )
+from tests.support.witness_tables import witnesses
 from tests.tools.boolean_runners import (
     run_qoibl,
 )
-from tests.witness_tables import witnesses
 
 
 class TestQoibl:

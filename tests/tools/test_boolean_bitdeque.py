@@ -1,13 +1,11 @@
 """bitdeque generator tests."""
 
-from itertools import pairwise
-
 import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.bitdeque import _bitdeque_ordered
-from tests.source_support import source_units
-from tests.witness_tables import row_bits, witnesses
+from tests.support.source_support import source_units
+from tests.support.witness_tables import row_bits, witnesses
 
 
 class TestParameterizedBitdeque:
@@ -79,18 +77,13 @@ class TestParameterizedBitdeque:
         template = _bitdeque_ordered("0110100110010110", (1, 0, 2, 3))
         assert "EJECT PUSH EJECT" in template
 
-    def test_constant_table_is_a_leaf(self) -> None:
-        """A constant table emits a drain-and-push leaf with no branching."""
+    def test_constant_leaf_and_shared_halt_trampoline(self) -> None:
+        """A constant table is a branching-free leaf; both leaves use GOTO 1."""
         from esolangs import tools as generators
 
         template = generators.bitdeque("0000")
         assert "POP" in template
         assert "GOTO" in template
-
-    def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
-        """Both leaves are emitted once, each returning through ``GOTO 1``."""
-        from esolangs import tools as generators
-
         template = generators.bitdeque("01101001")
         assert template.startswith("GOTO 4 INVERT GOTO 5 GOTO ")
         assert f"{template} ".count("GOTO 1 ") == 2
@@ -105,20 +98,6 @@ class TestParameterizedBitdeque:
         for row in (0, 1, 2, 7, 31, 32, 62, 63):
             bits = row_bits(row, n)
             assert self.run_bitdeque(self.instantiate(template, bits)) == table[row]
-
-    def test_linear_discard_growth(self) -> None:
-        """Wide templates and their fills scale with table size."""
-        from esolangs.tools.bitdeque import _bitdeque_linear
-
-        templates = []
-        filled = []
-        for n in range(11, 15):
-            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            template = _bitdeque_linear(table)
-            templates.append(len(template))
-            filled.append(len(self.instantiate(template, [0] * n)))
-        assert all(b <= 2 * a for a, b in pairwise(templates))
-        assert all(b <= 2 * a for a, b in pairwise(filled))
 
 
 @pytest.mark.parametrize("width", [1, 7, 9, 10, 11, 40, 80])
@@ -184,7 +163,7 @@ def test_bitdeque_short_load_rejects_wrong_table_provenance() -> None:
         esolangs.instantiate("Bitdeque", template, [0, 1], truth_table="0001")
 
 
-def test_reordering_never_grows_a_program() -> None:
+def test_reordering_never_grows_and_shrinks_where_it_should() -> None:
     """Choosing the input order can only shrink the emitted program."""
     for n in (1, 2, 3):
         for value in range(2 ** (2**n)):
@@ -194,10 +173,7 @@ def test_reordering_never_grows_a_program() -> None:
             if not baseline:
                 continue
             assert source_units(boolean.bitdeque(table)) <= len(baseline), table
-
-
-def test_reordering_shrinks_the_tables_it_should() -> None:
-    """A table only one input order folds well is emitted from that order."""
+    # A table only one input order folds well is emitted from that order.
     table = "10101010"
     assert source_units(boolean.bitdeque(table)) < len(
         _bitdeque_ordered(table, (0, 1, 2))

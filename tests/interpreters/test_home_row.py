@@ -17,6 +17,9 @@ run_program = partial(runner.run_program, run, suppress_eof=False)
 
 
 _OUTPUT = {
+    # 65 increments then k prints 'A'; a following k prints the reset zero.
+    "print_65": ("a" * 65 + "k;", "A"),
+    "print_then_reset": ("a" * 65 + "kk;", "A\x00"),
     # cells are unbounded: 0 - 1 = -1, printed as its low byte
     "subtract": ("sk;", "\xff"),
     "semicolon_halts": ("ak;ak;", "\x01"),
@@ -44,44 +47,22 @@ def test_output(code, expected) -> None:
     assert run_program(code) == expected
 
 
-class TestBasics:
-    def test_print_and_reset(self) -> None:
-        # 65 increments then k prints 'A' and resets the cell to zero.
-        assert run_program("a" * 65 + "k;") == "A"
-        # the cell is zero again, so a following k prints NUL
-        assert run_program("a" * 65 + "k" + "k;") == "A\x00"
-
-
 class TestPointer:
-    def test_torus_wraps(self) -> None:
-        # f four times returns to the same column (5x5), so the fifth cell
-        # is cell 0 again: a fffff k prints the 1 from cell 0.
-        assert run_program("af" * 5 + "k;") == "\x01"
-        # d wraps the bottom row back to the top the same way.
-        assert run_program("ad" * 5 + "k;") == "\x01"
-
-    def test_down_lands_on_the_next_row(self) -> None:
-        """``d`` moves a whole row forward, not backward."""
+    def test_wraps_within_a_row_and_by_rows(self) -> None:
+        """``f`` wraps at the row edge; ``d`` moves a whole row forward."""
         from esolangs.interpreters.tape_based.home_row import _Machine
 
-        machine = _Machine("d", ScriptedIO())
-        machine.step()
-        assert machine.ptr == 5
-
-    def test_forward_wraps_at_the_row_edge(self) -> None:
-        """``f`` returns to the start of its row rather than crossing into
-        the next.
-        """
-        from esolangs.interpreters.tape_based.home_row import _Machine
-
-        machine = _Machine("f", ScriptedIO())
-        machine.step()
-        assert machine.ptr == 1
-
+        for code, ptr in (("d", 5), ("f", 1)):
+            machine = _Machine(code, ScriptedIO())
+            machine.step()
+            assert machine.ptr == ptr
         machine = _Machine("fffff", ScriptedIO())
         while not machine.halted:
             machine.step()
-        assert machine.ptr == 0
+        assert machine.ptr == 0  # f wraps back to its row's first cell
+        # f five times, and d five times, both return to cell 0.
+        assert run_program("af" * 5 + "k;") == "\x01"
+        assert run_program("ad" * 5 + "k;") == "\x01"
 
 
 class TestLoop:

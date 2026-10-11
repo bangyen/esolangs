@@ -13,11 +13,11 @@ import esolangs
 from esolangs.interpreters.stack_based.sstack import _parse
 from esolangs.tools.three_x import _level
 from scripts.benchmark import state_bits
-from tests.generator_support import CHECK
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
 from tests.proofs.test_execution_formulas import _measure, _tables
+from tests.support.generator_support import CHECK
 
 bl = int.bit_length
 

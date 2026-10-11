@@ -7,10 +7,10 @@ from esolangs import tools as boolean
 from esolangs.tools.wrap import (
     _taglate,
 )
+from tests.support.witness_tables import row_bits, witnesses
 from tests.tools.boolean_runners import (
     run_taglate,
 )
-from tests.witness_tables import row_bits, witnesses
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])

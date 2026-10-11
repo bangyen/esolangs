@@ -15,16 +15,14 @@ from esolangs.vm import (
     run_until_halt_or_value_growth,
 )
 from tests.cli.test_cli import run_cli
-from tests.generator_support import evaluate_generated
-from tests.test_stepping_parity import _STEP_BUDGET, _row
+from tests.support.generator_support import evaluate_generated
+from tests.vm.test_stepping_parity import _STEP_BUDGET, _row
 
 
 class TestSelfHaltsIsAWarningNotAGuarantee:
-    """``False`` used to promise the step loop never returns.  It can."""
+    """``False`` promised the step loop never returns.  It can."""
 
-    def test_suffolk_halts_under_a_bare_step_loop(self) -> None:
-        """The refutation, run rather than asserted."""
-        assert esolangs.describe("Suffolk")["self_halts"] is False
+    def test_a_bare_step_loop_halts_and_the_wording_says_so(self) -> None:
         program = esolangs.generate("Suffolk", "0110")
         vm = debugger_api.make_vm(
             "Suffolk", program, stdin=esolangs.encode_inputs("Suffolk", [1, 0])
@@ -33,11 +31,8 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
         while not vm.halted and steps < 100_000:
             vm.step()
             steps += 1
-        assert vm.halted, "Suffolk did not halt, so the old wording was right"
+        assert vm.halted
         assert vm.output == "1"
-
-    def test_the_docstring_no_longer_promises_otherwise(self) -> None:
-        """The wording is the fix, so the wording is what is checked."""
         doc = debugger_api.VM.self_halts.__doc__ or ""
         assert "does not promise" in doc
         # The fact lives on Suffolk, not in the shared VM docstring.
@@ -67,21 +62,18 @@ def test_a_non_self_halting_machine_can_already_be_finished():
     assert complete_vm(vm, max_steps=0) == esolangs.run("Suffolk", ",", stdin="1")
 
 
-def test_the_value_growth_detector_proves_a_climbing_cell() -> None:
+def test_the_value_growth_detector_proves_a_climb_and_declines_a_repeat() -> None:
     """Suffolk's ``>>!`` loops climb in value on a tape that never grows."""
     climbing = ">>!>>!>>!>>!>>!>>!>>!>>!>>>!>>!>>!>><!>>"
     assert run_until_halt_or_value_growth(make_vm("Suffolk", climbing)) is False
     lapping = make_vm("Suffolk", "1{z:[}] !. ;")
     assert run_until_halt_or_value_growth(lapping) is False
 
-
-def test_the_value_growth_detector_declines_a_repeating_program() -> None:
-    """A program that cycles is the cycle detector's, and is not certified."""
+    # A program that cycles is the cycle detector's, and is not certified.
     sample = "!" * 66 + "<."
     assert run_until_halt_or_cycle(make_vm("Suffolk", sample)) is False
     with pytest.raises(TimeoutError):
         run_until_halt_or_value_growth(make_vm("Suffolk", sample), 20_000)
-
     # `<` alone rewinds to a cell it already read: a repeat, not a climb.
     with pytest.raises(TimeoutError):
         run_until_halt_or_value_growth(make_vm("Suffolk", "<"), 5_000)

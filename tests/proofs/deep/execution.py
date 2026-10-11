@@ -20,8 +20,8 @@ from esolangs.vm import VM
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep import deep_arities
 from tests.proofs.deep.linearity import _regime_start
-from tests.witness_tables import parity as _parity
-from tests.witness_tables import row_bits
+from tests.support.witness_tables import parity as _parity
+from tests.support.witness_tables import row_bits
 
 #: Cost band; see ``__main__.py``.  It steps every generator's program at
 #: rising arity, which is tens of seconds and so cannot sit in CI.

@@ -6,8 +6,8 @@ import esolangs
 from esolangs.exceptions import TemplateError
 from esolangs.registry import recover_setters, render_template
 from esolangs.tools.helpers import runs
-from tests.pick import languages
-from tests.witness_tables import row_bits
+from tests.support.pick import languages
+from tests.support.witness_tables import row_bits
 
 #: Every template language, on XOR.
 _CASES = [

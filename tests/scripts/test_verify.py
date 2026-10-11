@@ -33,7 +33,7 @@ class TestPytestScopeCollects:
         ("path", "scoped"),
         [
             ("tests/tools/polynomial_support.py", False),
-            ("tests/test_vm.py", True),
+            ("tests/vm/test_vm.py", True),
             ("src/esolangs/interpreters/other/demo/brainfuck.py", False),
             ("src/esolangs/interpreters/io.py", False),
         ],
@@ -70,7 +70,7 @@ class TestScopedCoverage:
         verify = load_script()
         cmd = verify._scoped_coverage(  # noqa: SLF001
             list(self.COV),
-            ["src/esolangs/vm.py", "tests/test_vm.py", "src/esolangs/tools/x.py"],
+            ["src/esolangs/vm.py", "tests/vm/test_vm.py", "src/esolangs/tools/x.py"],
         )
         assert "--cov" in cmd
         assert "--cov-branch" not in cmd  # the rc carries branch=True
@@ -79,13 +79,13 @@ class TestScopedCoverage:
         assert "include =" in text
         assert "src/esolangs/vm.py" in text
         assert "src/esolangs/tools/x.py" in text
-        assert "tests/test_vm.py" not in text
+        assert "tests/vm/test_vm.py" not in text
         assert "branch = True" in text
         assert "source" not in text  # coverage ignores include beside source
 
     def test_no_touched_source_file_measures_nothing(self) -> None:
         verify = load_script()
-        cmd = verify._scoped_coverage(list(self.COV), ["tests/test_vm.py"])  # noqa: SLF001
+        cmd = verify._scoped_coverage(list(self.COV), ["tests/vm/test_vm.py"])  # noqa: SLF001
         assert not any(c.startswith("--cov") for c in cmd)
         assert cmd == ["python", "-m", "pytest", "-q"]
 

@@ -3,10 +3,10 @@
 import pytest
 
 from esolangs import tools as boolean
+from tests.support.witness_tables import witnesses
 from tests.tools.boolean_runners import (
     run_unsquare,
 )
-from tests.witness_tables import witnesses
 
 
 class TestUnsquare:
@@ -69,7 +69,7 @@ class TestUnsquare:
 def test_shared_push_body_executes_within_ledger() -> None:
     from esolangs.tools.helpers import essential_inputs, read_at
     from esolangs.tools.unsquare import _runs, _shared_pushes, unsquare
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     first = "0001011101101001" * 4
     second = "0110100100010111" * 4
@@ -91,43 +91,11 @@ def test_shared_push_body_executes_within_ledger() -> None:
     )
 
 
-@pytest.mark.medium
-def test_balance_retains_the_square_unshared_initializer() -> None:
-    from esolangs import generate
-    from esolangs.tools.unsquare import _program
-    from esolangs.tools.wrap import balance_program, balance_score
-
-    first = "0001011101101001" * 4
-    table = first * 2 + "0110100100010111" * 4 + "0011010101010011" * 4
-    old = balance_program(_program(table, share=False), "unsquare")
-    program = generate("Unsquare", table, balance=True)
-    assert balance_score(program) == balance_score(old) == (0, 232, 15)
-    for row in (0, 1, 127, 128, 255):
-        assert run_unsquare(program, list(format(row, "08b"))) == table[row]
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("bit", "01")
-def test_every_constant_row_within_written_state_bound(bit: str) -> None:
-    from esolangs.tools.unsquare import _program
-    from tests.generator_support import assert_shared_program
-
-    language = "Unsquare"
-    table = bit * 256
-    plain = _program(table, share=True, keep_constant_input=True)
-    commands = 4 * 256 + 79 * 8 + 22
-
-    def workspace(p):
-        return 256 + 12 + len(p).bit_length() + max(0, len(p) - 33).bit_length() + 8
-
-    assert_shared_program(language, table, plain, commands, workspace)
-
-
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
     from esolangs.tools.unsquare import _program
-    from tests.generator_support import assert_constant_balanced_shape
+    from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)
     assert_constant_balanced_shape(

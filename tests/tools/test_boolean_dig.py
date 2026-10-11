@@ -8,10 +8,10 @@ import esolangs
 from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
 from esolangs.tools.dig import _DIG_BRANCH, _DIG_STRIDE
+from tests.support.witness_tables import row_bits
 from tests.tools.boolean_runners import (
     run_dig,
 )
-from tests.witness_tables import row_bits
 
 
 class TestDig:

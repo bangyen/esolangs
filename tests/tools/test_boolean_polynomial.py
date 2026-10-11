@@ -15,6 +15,7 @@ from esolangs.tools.wrap import (
     balance_score,
     wrap_program,
 )
+from tests.support.witness_tables import row_bits
 from tests.tools.boolean_runners import (
     run_polynomial,
     run_polynomial_from,
@@ -22,7 +23,6 @@ from tests.tools.boolean_runners import (
 from tests.tools.polynomial_support import (
     _polynomial_tree,
 )
-from tests.witness_tables import row_bits
 
 
 @pytest.mark.medium
@@ -30,7 +30,7 @@ class TestPolynomial:
     def test_uncapped_dag_has_matching_text_bound(self) -> None:
         """Pin and execute the construction matching the language lower bound."""
         from esolangs.tools.polynomial import _polynomial_assemble
-        from tests.witness_tables import dense as _dense
+        from tests.support.witness_tables import dense as _dense
 
         for n in range(4, 9):
             table = _dense(n)
@@ -97,7 +97,7 @@ class TestPolynomial:
     @pytest.mark.slow  # 4.5s: one NTT factorization, then 256 cached rows
     def test_a_dense_eight_input_table_runs_every_row(self) -> None:
         """The arity the old cap refused now builds, and every row answers."""
-        from tests.witness_tables import dense as _dense
+        from tests.support.witness_tables import dense as _dense
 
         table = _dense(8)
         program = boolean.polynomial(table)
@@ -359,7 +359,7 @@ def test_generator_restrictions_name_both_budgets() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_root_ends_after_consuming_the_inputs(bit):
     from esolangs.tools.polynomial import _polynomial_assemble, _polynomial_hybrid
-    from tests.generator_support import assert_shared_program
+    from tests.support.generator_support import assert_shared_program
 
     n = 8
     table = bit * (1 << n)
@@ -378,7 +378,7 @@ def test_constant_root_ends_after_consuming_the_inputs(bit):
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_root_retains_the_previous_balanced_polynomial(n, bit):
     from esolangs.tools.polynomial import _polynomial_assemble, _polynomial_hybrid
-    from tests.generator_support import assert_constant_balanced_shape
+    from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)
     legacy = min(

@@ -20,7 +20,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 # The wiki's five example programs, verbatim.
 HELLO, TRUTH_MACHINE, CAT, PLUS_OR_MINUS, DEPENDENCY = (

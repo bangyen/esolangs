@@ -10,8 +10,8 @@ import esolangs
 from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
 from esolangs.tagged import _Tagged
-from tests.cli_support import call_both
-from tests.test_dialects import CASES
+from tests.api.test_dialects import CASES
+from tests.support.cli_support import call_both
 
 
 def save_generated(tmp_path, capsys, language, settings, *options, table="0110"):

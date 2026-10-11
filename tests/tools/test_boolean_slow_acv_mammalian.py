@@ -20,7 +20,7 @@ from esolangs.tools.slow_acv_mammalian import (
 from esolangs.tools.wrap import (
     _mammalian,
 )
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.medium

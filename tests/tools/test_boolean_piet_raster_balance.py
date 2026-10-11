@@ -4,7 +4,7 @@ import pytest
 
 from esolangs.raster import Raster
 from esolangs.tools.piet.balance import _bounded_operations, _emit, _plan
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 pytestmark = pytest.mark.medium
 

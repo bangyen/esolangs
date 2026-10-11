@@ -11,8 +11,8 @@ import esolangs
 from esolangs.cli import main
 from esolangs.cli_io import _write_output
 from tests.cli.test_cli import _FakeStdin, _program, call_main
-from tests.cli_support import _failure, _refused, call_both
-from tests.pick import one, one_where
+from tests.support.cli_support import _failure, _refused, call_both
+from tests.support.pick import one, one_where
 
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
 _SPELLED = one_where(

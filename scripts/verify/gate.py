@@ -265,7 +265,7 @@ def _split_coverage(
         "tests/line/test_mask.py"
     ]
     shared["src/esolangs/_isolated.py"] = [
-        "tests/test_run_isolated.py::test_raster_transport_preserves_every_pixel"
+        "tests/vm/test_run_isolated.py::test_raster_transport_preserves_every_pixel"
     ]
     leaves = [
         path

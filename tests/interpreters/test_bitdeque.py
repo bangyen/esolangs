@@ -13,7 +13,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_printing
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 run_and_capture = partial(run_printing, run)
 
@@ -22,12 +22,10 @@ class TestBitdeque:
     def test_invert_then_push(self) -> None:
         assert run_and_capture("INVERT PUSH PUSH") == "1 1"
 
-    def test_goto_does_not_jump_on_a_zero_register(self) -> None:
-        """GOTO is conditional, and nothing else here reaches the false arm."""
+    def test_goto_is_conditional_and_counts_from_one(self) -> None:
+        """GOTO jumps only on a nonzero register, and counts from one."""
         assert run_and_capture("GOTO 2 PUSH PUSH") == "0 0"
-
-    def test_goto_target_counts_from_one(self) -> None:
-        """GOTO 3 lands on the first PUSH; 0-based it would skip to the second."""
+        # GOTO 3 lands on the first PUSH; 0-based it would skip to the second.
         assert run_and_capture("INVERT GOTO 3 PUSH PUSH") == "1 1"
         assert run_and_capture("GOTO 0 PUSH") == "0"
         with pytest.raises(HaltError, match="GOTO 0 names no command"):
@@ -40,17 +38,11 @@ class TestBitdeque:
         with pytest.raises(ValueError, match="is not a Bitdeque command"):
             run_and_capture(code)
 
-    def test_inject_adds_to_the_front(self) -> None:
-        """INJECT puts the register at the front, where PUSH appends."""
+    def test_inject_push_and_eject_take_the_right_ends(self) -> None:
+        """PUSH appends the back, INJECT the front, EJECT pops the front."""
         assert run_and_capture("INVERT PUSH INVERT INJECT") == "0 1"
         assert run_and_capture("INVERT PUSH PUSH INVERT INJECT") == "0 1 1"
-
-    def test_push_appends_rather_than_prepending(self) -> None:
-        """PUSH works the back, told apart from INJECT rather than from nothing."""
         assert run_and_capture("INVERT PUSH PUSH INVERT PUSH") == "1 1 0"
-
-    def test_eject_takes_from_the_front(self) -> None:
-        """EJECT pops the front, where POP takes the back."""
         assert run_and_capture("INVERT PUSH INVERT PUSH EJECT PUSH") == "0 1"
         assert run_and_capture("INVERT PUSH INVERT PUSH POP PUSH") == "1 0"
 
@@ -151,18 +143,14 @@ def test_malformed_source_carries_a_repair_hint() -> None:
 class TestBitdequeRefusesNonsense:
     """A non-command is refused, not skipped."""
 
-    def test_bitdeque_refuses_a_word_it_does_not_know(self) -> None:
+    def test_refuses_nonsense_and_still_runs_a_real_program(self) -> None:
         """``findall`` kept what matched and dropped the rest in silence."""
         with pytest.raises(esolangs.ProgramError, match="not a Bitdeque command"):
             esolangs.run("Bitdeque", "PUSH FROB PUSH", stdin="", timeout=5)
-
-    def test_bitdeque_refuses_the_lower_case_program(self) -> None:
-        """The whole language was a no-op for anyone who guessed the case."""
+        # The whole language was a no-op for anyone who guessed the case.
         with pytest.raises(esolangs.ProgramError, match="upper case"):
             esolangs.run("Bitdeque", "push invert push", stdin="", timeout=5)
-
-    def test_bitdeque_still_runs_a_real_program(self) -> None:
-        """Three refusals are worth nothing if the valid case broke."""
+        # Three refusals are worth nothing if the valid case broke.
         assert (
             esolangs.run("Bitdeque", "PUSH INVERT PUSH", stdin="", timeout=5) == "0 1"
         )

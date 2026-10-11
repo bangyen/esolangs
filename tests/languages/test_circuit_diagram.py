@@ -4,9 +4,9 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.generator_support import evaluate_generated
-from tests.samples import CIRCUIT_PRIME_TESTER, bits_of
-from tests.test_vm import _run_all
+from tests.support.generator_support import evaluate_generated
+from tests.support.samples import CIRCUIT_PRIME_TESTER, bits_of
+from tests.vm.test_vm import _run_all
 
 
 class TestBreakAtWhereThereIsNoShape:

@@ -9,7 +9,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.source_hints import keyword_hint
 from esolangs.raster import Raster
 from esolangs.vm import make_vm
-from tests.test_language_coupling import REFERENCE
+from tests.api.test_language_coupling import REFERENCE
 
 
 @pytest.mark.medium

@@ -15,8 +15,8 @@ from esolangs.interpreters.tape_based.line.extract import detect_scale, normaliz
 from esolangs.interpreters.tape_based.line.mask import Mask
 from tests.cli.test_cli import _FakeStdin, call_main
 from tests.cli.test_cli_portable import save_generated
-from tests.cli_support import call_both
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
+from tests.support.cli_support import call_both
 
 
 @pytest.mark.medium

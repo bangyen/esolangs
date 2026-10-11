@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES
-from tests.pick import languages
+from tests.support.pick import languages
 
 
 def _parameterized_generators():

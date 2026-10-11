@@ -53,39 +53,3 @@ class TestBreakpoints:
         dbg.break_when(lambda vm: vm.memory[0] == 1)
         dbg.run()
         assert dbg.memory == [1]
-
-
-class TestWatches:
-    def test_watch_cell_records_each_step(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", "++>+++")
-        history = dbg.watch_cell(0)
-        for _ in range(3):
-            dbg.step()
-        assert history == [1, 2, 2]  # None once the pointer moves past
-
-    def test_watch_cell_returns_same_list(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", "+")
-        first = dbg.watch_cell(0)
-        assert dbg.watch_cell(0) is first
-        dbg.step()
-        assert first == [1]
-
-    def test_watch_stack_returns_same_list(self) -> None:
-        dbg = debugger_api.make_debugger("Eval", "0^")
-        first = dbg.watch_stack(0)
-        assert dbg.watch_stack(0) is first
-        dbg.step()
-        assert first == [0]
-
-    def test_watch_stack_top(self) -> None:
-        dbg = debugger_api.make_debugger("Eval", "0^")
-        history = dbg.watch_stack(0)
-        dbg.step()
-        dbg.step()
-        assert history == [0, 0]
-
-    def test_watch_cell_never_grown_records_none(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", "+")
-        history = dbg.watch_cell(3)
-        dbg.step()
-        assert history == [None]

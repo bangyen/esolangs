@@ -14,7 +14,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint, raises_message
+from tests.support.raises import assert_rejected_with_hint, raises_message
 
 # The wiki's own examples, which are the specification's ground truth.
 TRUTH_MACHINE = "x? = x & x?\nn?"

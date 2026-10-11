@@ -17,7 +17,7 @@ from tests.proofs._factor_semantic import (
     delete_pattern,
     first_output,
 )
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.parametrize("n", range(1, 6))

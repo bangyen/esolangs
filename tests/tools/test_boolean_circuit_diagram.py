@@ -9,7 +9,7 @@ import pytest
 import esolangs
 from esolangs import tools as boolean
 from esolangs.tools.wrap import balance_score
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 # 6.2s over 99 tests: builds and runs banded drawings.

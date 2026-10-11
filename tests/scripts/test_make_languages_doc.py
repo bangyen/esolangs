@@ -7,9 +7,9 @@ from typing import Any
 
 import pytest
 
-from tests.pick import one
+from tests.api.test_language_coupling import REFERENCE
 from tests.scripts.script_support import load
-from tests.test_language_coupling import REFERENCE
+from tests.support.pick import one
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "docs" / "generate.py"

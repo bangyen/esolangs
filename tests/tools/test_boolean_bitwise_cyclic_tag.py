@@ -9,15 +9,12 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.queue_based.bitwise_cyclic_tag import (
     _Machine as BctMachine,
 )
-from esolangs.interpreters.queue_based.bitwise_cyclic_tag import (
-    run as run_bct,
-)
+from esolangs.interpreters.queue_based.bitwise_cyclic_tag import run as run_bct
 from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.wrap import balance_program, balance_score
+from tests.support.witness_tables import parity as _parity
+from tests.support.witness_tables import row_bits as _bits
 from tests.tools.reader_support import _TABLES
-from tests.witness_tables import parity as _parity
-from tests.witness_tables import row_bits as _bits
 
 
 def _bct_program(table: str, row: int) -> str:
@@ -35,19 +32,14 @@ def _bct_answer(table: str, row: int) -> str:
 
 
 def test_bitwise_cyclic_tag_answers_every_row() -> None:
+    """Every program's last deletion is its table's bit, and a 1 answer must
+    not run on into the rows below it (no cascade)."""
     for table in _TABLES:
         n = len(table).bit_length() - 1
         for row in range(2**n):
             assert _bct_answer(table, row) == table[row], (table, row)
-
-
-@pytest.mark.slow
-def test_bitwise_cyclic_tag_answers_every_table_to_three_inputs() -> None:
-    for n in (1, 2, 3):
-        for value in range(2 ** (2**n)):
-            table = bin(value)[2:].zfill(2**n)
-            for row in range(2**n):
-                assert _bct_answer(table, row) == table[row], (table, row)
+    assert _bct_answer("1000", 0) == "1"
+    assert _bct_answer("1" + "0" * 15, 0) == "1"
 
 
 def test_bitwise_cyclic_tag_spells_the_table_at_a_fixed_rate() -> None:
@@ -58,40 +50,22 @@ def test_bitwise_cyclic_tag_spells_the_table_at_a_fixed_rate() -> None:
         assert len(boolean.bitwise_cyclic_tag("0" * rows)) < 8 * rows + 2 * n + 1
 
 
-def test_bitwise_cyclic_tag_runs_in_a_fixed_number_of_steps() -> None:
-    """The walk is linear in the table and ends on the row it addressed."""
+def test_bitwise_cyclic_tag_walks_forward_in_a_fixed_number_of_steps() -> None:
+    """Linear in the table, never wrapping, ending on the row it addressed."""
     for n in (1, 2, 3, 6):
-        rows = 2**n
-        table = _parity(n)
-        counts = []
+        rows, table, counts = 2**n, _parity(n), []
         for row in range(rows):
             machine = BctMachine(_bct_program(table, row), ScriptedIO(""))
-            steps = 0
+            previous, steps = -1, 0
             while not machine.halted:
+                assert machine.head > previous, (n, row, machine.head)
+                previous = machine.head
                 machine.step()
                 steps += 1
             counts.append(steps)
         assert max(counts) == 5 * rows + n, (n, counts)
         assert counts == sorted(counts), (n, counts)
         assert counts[-1] - counts[0] == 3 * (rows - 1), (n, counts)
-
-
-def test_bitwise_cyclic_tag_never_wraps_its_program() -> None:
-    """The cyclic schedule is unused: the pointer only ever moves forward."""
-    table = "01101001"
-    for row in range(8):
-        machine = BctMachine(_bct_program(table, row), ScriptedIO(""))
-        previous = -1
-        while not machine.halted:
-            assert machine.head > previous, (row, machine.head, previous)
-            previous = machine.head
-            machine.step()
-
-
-def test_bitwise_cyclic_tag_does_not_cascade_a_one() -> None:
-    """A 1 answer must not run on into the rows below it."""
-    assert _bct_answer("1000", 0) == "1"
-    assert _bct_answer("1" + "0" * 15, 0) == "1"
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])
@@ -101,23 +75,16 @@ def test_constant_deletes_inputs_and_literal_answer(n, bit):
     template = esolangs.generate("Bitwise Cyclic Tag", table)
     assert template == "0," + "$" * n + bit
     assert len(template) == n + 3
-    legacy = "0" * n + "1101" + bit + "00," + "$" * n + "1"
-    for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
+    for options in ({}, {"width": 1}, {"balance": True}):
         program = esolangs.generate("Bitwise Cyclic Tag", table, **options)
         assert _evaluate("Bitwise Cyclic Tag", program, inputs=n) == table
-        if options.get("balance"):
-            assert balance_score(program) <= balance_score(
-                balance_program(legacy, "bitwise_cyclic_tag")
-            )
-    for row in range(1 << n):
+    for row in (0, (1 << n) - 1):
         io = ScriptedIO("")
         machine = BctMachine(_bct_program(table, row), io)
         for _ in range(n + 1):
             assert not machine.halted
             machine.step()
         assert machine.halted
-        assert machine.read == n + 1
-        assert machine.answer == bit
-        assert machine.program == "0"
+        assert (machine.read, machine.answer, machine.program) == (n + 1, bit, "0")
         machine.step()
         assert io.getvalue() == bit

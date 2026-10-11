@@ -11,27 +11,23 @@ from tests.interpreters.test_input_convention import assert_echoes_a_newline
 class TestEdges:
     """The bounds and the slot arithmetic, pinned where they turn over."""
 
-    def test_no_input_means_no_input(self) -> None:
-        """``stdin`` defaults to nothing, not to something."""
+    def test_bounds_around_the_first_cell(self) -> None:
+        """``stdin`` defaults to nothing; the cell past the end is absent."""
         dbg = debugger_api.make_debugger("brainfuck", ",")
         with pytest.raises(EOFError):
             dbg.step()
-
-    def test_watching_the_cell_just_past_the_tape_is_absent(self) -> None:
         # One past the end, where a widened bound indexes out of range
         # instead of reporting the cell does not exist yet.
         dbg = debugger_api.make_debugger("brainfuck", "+")
         history = dbg.watch_cell(1)
         dbg.step()
         assert history == [None]
-
-    def test_breaking_on_the_cell_just_past_the_tape_never_fires(self) -> None:
         dbg = debugger_api.make_debugger("brainfuck", "+")
         dbg.break_on_cell(1, 0)
         dbg.run()
         assert dbg.halted
 
-    def test_watching_a_slot_below_the_top(self) -> None:
+    def test_watching_and_breaking_below_the_top(self) -> None:
         """Slot 1 is the second value down, not the bottom of the stack."""
         dbg = debugger_api.make_debugger("BFStack", ">+>++>+++")
         history = dbg.watch_stack(1)
@@ -39,7 +35,6 @@ class TestEdges:
         assert dbg.stack == [1, 2, 3]
         assert history[-1] == 2
 
-    def test_breaking_on_a_slot_below_the_top(self) -> None:
         dbg = debugger_api.make_debugger("BFStack", ">+>++>+++")
         dbg.break_on_stack(1, 2)
         dbg.run()
@@ -83,8 +78,8 @@ def _bounds(profile: dict[str, Any]) -> None:
 @pytest.mark.medium
 def test_resource_bounds() -> None:
     """The resource audit counts a UTF-8 byte per source unit."""
-    from tests.screen_support import audit
-    from tests.screen_support import resource_corpus as corpus
+    from tests.support.screen_support import audit
+    from tests.support.screen_support import resource_corpus as corpus
 
     result = audit("BFStack", 8, corpus(8)["dense"], _bounds)
     assert result["source_utf8_bits"] == 8 * result["source_units"]

@@ -13,12 +13,12 @@ import esolangs
 from esolangs.debugger import make_vm
 from esolangs.tools.one_two_three.construction import _leftover
 from scripts.benchmark import WrittenState
-from tests.generator_support import CHECK
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import _dense, run_to_answer
-from tests.witness_tables import parity as _parity
-from tests.witness_tables import row_bits
+from tests.support.generator_support import CHECK
+from tests.support.witness_tables import parity as _parity
+from tests.support.witness_tables import row_bits
 
 
 def _taglate(n: int) -> int:

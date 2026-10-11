@@ -11,7 +11,7 @@ from esolangs.interpreters.tape_based.brainfuck import _Machine
 from esolangs.interpreters.tape_based.factor import run
 from tests.proofs._factor_walk import packed_program, walked_program
 from tests.proofs.test_factor_print import _render
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.parametrize("n", [2, 4])

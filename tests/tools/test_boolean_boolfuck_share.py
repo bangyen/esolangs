@@ -7,8 +7,8 @@ figure; this pins it so the number stays reproducible rather than prose.
 from __future__ import annotations
 
 from esolangs.tools.boolfuck import boolfuck
+from tests.support.witness_tables import parity
 from tests.tools.sample_tables import five_input_sample
-from tests.witness_tables import parity
 
 
 def _repeated_nodes(table: str) -> int:

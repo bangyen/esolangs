@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 from esolangs.tools.crement import crement
-from tests.divergence import diverges
+from tests.support.divergence import diverges
 
 
 def test_crement_width_narrows_the_widest_instruction() -> None:
