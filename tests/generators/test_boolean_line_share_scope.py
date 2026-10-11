@@ -7,6 +7,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.tools.helpers import (
     _residual_ids,
     _validate_truth_table,
@@ -87,31 +88,30 @@ class TestLineReturnScope:
                 assert shared_tree(table, multiple=True) is None, (build.__name__, n)
 
     def test_forward_joins_admit_parity_beyond_ancestor_return_scope(self) -> None:
-        """Compact stems admit parity at n=6 and majority at n=7."""
+        """Streaming stems admit parity at n=5 and majority at n=6."""
         for build in (parity, _majority):
             for n in range(5, 9):
                 payload = esolangs.generate("Line", build(n))._payload  # noqa: SLF001
-                assert _has_goto(payload) == (n >= (6 if build is parity else 7)), (
+                assert _has_goto(payload) == (n >= (5 if build is parity else 6)), (
                     build.__name__,
                     n,
                 )
 
-    @pytest.mark.medium  # 1.6s: 800 generated graphs
-    def test_random_tables_generate_no_return(self) -> None:
-        """200 seeded tables per arity n=5..8: no program carries a loop-back.
-
-        Reachable fork candidates are present (the counter sums below), so the
-        wall is overhead and layout, not scarcity; the generator still keeps
-        the plain tree because every shared build is larger or fails to draw.
-        """
-        totals = []
-        for n in range(5, 9):
-            tables = _sample(n, 200, seed=11 + n)
-            gotos = sum(
-                1
-                for table in tables
-                if _has_goto(esolangs.generate("Line", table)._payload)  # noqa: SLF001
-            )
-            assert gotos == 0, n
-            totals.append(sum(_reachable_forks(table) for table in tables))
-        assert tuple(totals) == (315, 515, 854, 1361)
+    @pytest.mark.medium
+    @pytest.mark.parametrize(
+        ("n", "shared_count", "forks"),
+        [(5, 0, 315), (6, 1, 515), (7, 0, 854), (8, 0, 1361)],
+    )
+    def test_random_tables_rarely_admit_shared_layouts(
+        self, n: int, shared_count: int, forks: int
+    ) -> None:
+        """One of 800 seeded tables shares; execute every admitted input row."""
+        tables = _sample(n, 200, seed=11 + n)
+        gotos = 0
+        for table in tables:
+            generated = esolangs.generate("Line", table)
+            if _has_goto(generated._payload):  # noqa: SLF001
+                assert _evaluate("Line", generated.to_png(), inputs=n) == table
+                gotos += 1
+        assert gotos == shared_count
+        assert sum(_reachable_forks(table) for table in tables) == forks

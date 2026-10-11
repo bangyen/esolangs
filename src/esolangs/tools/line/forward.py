@@ -66,32 +66,42 @@ def destination_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | N
     return _forward_canvas(table, old_area, destination_moves=True)
 
 
+def streaming_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
+    """Read in input order on shared stems, overwriting cell zero."""
+    return _forward_canvas(table, old_area, destination_moves=True, streaming=True)
+
+
 def _forward_canvas(
-    table: str, old_area: int, *, destination_moves: bool
+    table: str, old_area: int, *, destination_moves: bool, streaming: bool = False
 ) -> tuple[Node, CanvasPlan] | None:
     original_n = _validate_truth_table(table)
-    kept = essential_inputs(table, original_n)
+    kept = list(range(original_n)) if streaming else essential_inputs(table, original_n)
     n = len(kept)
     if n < 2:
         return None
-    reduced = read_at(table, kept, original_n)
+    reduced = table if streaming else read_at(table, kept, original_n)
     levels, children, constants = _residual_ids(
-        permute_truth_table(reduced, tuple(range(n - 1, -1, -1))), n
+        reduced
+        if streaming
+        else permute_truth_table(reduced, tuple(range(n - 1, -1, -1))),
+        n,
     )
     root = (0, levels[0][0])
     seen: set[State] = set()
     first: dict[State, Edge] = {}
-    incoming: list[list[tuple[Edge, State]]] = [[] for _ in range(n)]
+    incoming: list[list[tuple[Edge, State]]] = [[] for _ in range(n + int(streaming))]
 
     def visit(state: State) -> None:
         if state in seen:
             return
         seen.add(state)
         depth, residual = state
+        if depth == n:
+            return
         arms = (0, 1) if children[residual][0] != children[residual][1] else (0,)
         for bit in arms:
             target = children[residual][bit]
-            if constants[target] is None:
+            if streaming or constants[target] is None:
                 edge = depth, residual, bit
                 dest = depth + 1, target
                 first.setdefault(dest, edge)
@@ -104,12 +114,13 @@ def _forward_canvas(
         return None
     members = [
         [residual for residual in level if (depth, residual) in seen]
-        for depth, level in enumerate(levels[:-1])
+        for depth, level in enumerate(levels if streaming else levels[:-1])
     ]
     gaps = {
         (depth, residual): (
             2
-            if all(constants[children[residual][bit]] is None for bit in (0, 1))
+            if streaming
+            or all(constants[children[residual][bit]] is None for bit in (0, 1))
             else 10
         )
         if destination_moves
@@ -192,35 +203,57 @@ def _forward_canvas(
         # 16 below, retaining a full 20px gap for the 15px extraction probe.
         base = forks[depth, level[-1]][0] + 12
 
-    reads = "".join(
-        "i" + (">" if index in kept and index < original_n - 1 else "")
-        for index in range(original_n)
-    )
-    if kept[-1] < original_n - 1:
-        reads += "<"
-    # Loader ink reaches x=-11; the left opcode envelope stops at x=-10.
-    start = -12 * original_n - 10, -12
-    loader = _StemCursor(*start, (1, 0))
-    for op in reads:
-        loader.emit_op(op)
-    loader.advance((1, 0), 6)
-    loader.advance((0, 1), -loader.x)
-    loader.advance((1, 0), forks[root][0] - loader.y)
-    loader.finish()
-    strokes = loader.strokes[:]
+    if streaming:
+        start = forks[root][0] - 10, forks[root][1]
+        strokes = []
+    else:
+        reads = "".join(
+            "i" + (">" if index in kept and index < original_n - 1 else "")
+            for index in range(original_n)
+        )
+        if kept[-1] < original_n - 1:
+            reads += "<"
+        # Loader ink reaches x=-11; the left opcode envelope stops at x=-10.
+        start = -12 * original_n - 10, -12
+        loader = _StemCursor(*start, (1, 0))
+        for op in reads:
+            loader.emit_op(op)
+        loader.advance((1, 0), 6)
+        loader.advance((0, 1), -loader.x)
+        loader.advance((1, 0), forks[root][0] - loader.y)
+        loader.finish()
+        strokes = loader.strokes[:]
     graph: dict[State, Node] = {}
 
     def build(state: State) -> Node:
         if state in graph:
             return graph[state]
         depth, residual = state
+        y, x = forks[state]
+        if streaming and depth == n:
+            value = constants[residual]
+            if value is None:
+                raise ValueError("streaming terminal residual is not constant")
+            # Cell one starts zero; n >= 2 keeps the fresh output cell
+            # within the original tape.
+            ops = ">" + "+" * value + "o"
+            graph[state] = chain(*ops)
+            cursor = _StemCursor(y - 10, x, (1, 0))
+            for op in ops:
+                cursor.emit_op(op)
+            cursor.advance((1, 0), 4)
+            cursor.finish()
+            strokes.extend(cursor.strokes)
+            return graph[state]
         is_fork = children[residual][0] != children[residual][1]
         node = Node("?" if is_fork else "<")
-        graph[state] = Node("<", next=node) if destination_moves and depth else node
-        y, x = forks[state]
-        if destination_moves and depth:
-            pre = _StemCursor(y - 9, x, (1, 0))
-            pre.emit_op("<")
+        if streaming:
+            graph[state] = Node("i", next=node)
+        else:
+            graph[state] = Node("<", next=node) if destination_moves and depth else node
+        if streaming or (destination_moves and depth):
+            pre = _StemCursor(y - (10 if streaming else 9), x, (1, 0))
+            pre.emit_op("i" if streaming else "<")
             pre.advance((1, 0), 4)
             pre.finish()
             strokes.extend(pre.strokes)
@@ -235,7 +268,7 @@ def _forward_canvas(
             cursor.advance((1, 0), 4)
             target = children[residual][bit]
             value = constants[target]
-            if value is not None:
+            if value is not None and not streaming:
                 correction = "" if value == bit else "+" if value else "-"
                 arm = chain(*correction, "o")
                 for op in correction + "o":
@@ -257,7 +290,9 @@ def _forward_canvas(
                     cursor.advance((0, sign), abs(dx))
                     cursor.advance(
                         (1, 0),
-                        forks[dest][0] - (9 if destination_moves else 0) - cursor.y,
+                        forks[dest][0]
+                        - (10 if streaming else 9 if destination_moves else 0)
+                        - cursor.y,
                     )
                 else:
                     cursor.advance((0, sign), abs(dx) - 1)
@@ -278,11 +313,14 @@ def _forward_canvas(
         return graph[state]
 
     decision = build(root)
-    head = chain(*reads)
-    tail = head
-    while tail.next is not None:
-        tail = tail.next
-    tail.next = decision
+    if streaming:
+        head = decision
+    else:
+        head = chain(*reads)
+        tail = head
+        while tail.next is not None:
+            tail = tail.next
+        tail.next = decision
     points = [point for stroke in strokes for point in stroke]
     top, bottom = min(y for y, _ in points), max(y for y, _ in points)
     left, right = min(x for _, x in points), max(x for _, x in points)
@@ -304,6 +342,9 @@ def _forward_canvas(
         )
         return canvas
 
+    # Streaming uses n reads, at most n tests and n joins, three output
+    # operations and a halt: 3n+4 <= 5n for n >= 2. Constant residuals
+    # drain the remaining inputs. Only original cells zero and one are used.
     # Descending tests remove the loader rewind. At most n-1 join ticks
     # replace those moves: 2n-1 loads, n tests, n-1 moves, n-1 joins, two
     # output ops and one halt tick give 5n. Projection adds fewer than

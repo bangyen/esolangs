@@ -17,7 +17,9 @@ next kept slot, or one spare slot after the last kept input. Projected trees
 and ancestor returns compete by emitted area, including balanced layouts.
 Descending residual stems also share forward joins: the saved loader rewind
 pays for join transitions, and their measured area must beat the tree.
-Shared destination moves allow narrower nonterminal forks; both layouts compete.
+Shared destination moves allow narrower nonterminal forks. Input-order streaming
+also shares reads on stems, overwriting cell zero and draining constant tails;
+its fresh output cell stays within the original tape. All layouts compete by area.
 """
 
 from __future__ import annotations
@@ -157,7 +159,7 @@ def _grey_rows(canvas: Canvas) -> Rows:
 @lru_cache(maxsize=8)
 def _generate(truth_table: str) -> Raster:
     """Return a Line raster computing ``truth_table``."""
-    from .forward import destination_canvas, forward_canvas
+    from .forward import destination_canvas, forward_canvas, streaming_canvas
     from .shared import shared_canvas, shared_tree
 
     node = line_boolean(truth_table)
@@ -201,7 +203,7 @@ def _generate(truth_table: str) -> Raster:
             smallest = draw.area
             selected_draw = draw
             node = graph
-    for build in (forward_canvas, destination_canvas):
+    for build in (forward_canvas, destination_canvas, streaming_canvas):
         forward = build(truth_table, smallest)
         if forward is not None:
             node, selected_draw = forward

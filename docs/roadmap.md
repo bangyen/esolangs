@@ -13,9 +13,12 @@ exemption supported by a structural proof or the measured criterion in
 [Contributing](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
 - **Line:** forward residual stems now share same-level duplicates within
-  the existing 5n command and workspace bounds. Descending tests save the
-  loader rewind, paying for joins. Parity at n=8 occupies 6,750,000 pixels
-  at scale 1 against the tree's 17,472,000; all 256 rows execute natively.
+  the existing 5n command and workspace bounds. Streaming reads overwrite
+  cell zero in input order; constant tails drain the remaining reads. Parity
+  at n=8 occupies 1,892,800 pixels at scale 1 against the tree's 17,472,000;
+  all 256 rows execute natively. Majority at n=8 occupies 4,924,800 pixels,
+  with all 256 rows checked. Descending tests also save the loader rewind,
+  paying for joins.
   Majority at n=9 shares in 13,438,400 pixels against 28,492,800; all 512
   rows execute. Disjoint arrivals/joins reuse channel rows; shared destination
   moves narrow nonterminal forks. The n=22 majority control occupies
@@ -25,6 +28,7 @@ exemption supported by a structural proof or the measured criterion in
   40.3% repeated-subtree upside remains open. Controls in
   `tests/tools/test_boolean_line_forward.py`,
   `tests/tools/test_boolean_line_destination.py`,
+  `tests/tools/test_boolean_line_streaming.py`,
   `tests/tools/test_boolean_line_join_lanes.py` and
   `tests/tools/test_boolean_line_share_scope.py`.
 - **Circuit Diagram:** fixed-size cofactor pools share locally inside
