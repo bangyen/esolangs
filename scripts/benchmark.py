@@ -615,8 +615,7 @@ class Worker:
         """Spawn ``command``, or this module in ``--worker`` mode by default."""
         self.command = command or [
             sys.executable,
-            str(Path(__file__).with_name("benchmark.py")),
-            "--worker",
+            str(Path(__file__).with_name("_benchmark_worker.py")),
         ]
         self.process: subprocess.Popen[str] | None = None
         self.messages: queue.Queue[str | None] = queue.Queue(maxsize=1)
@@ -873,40 +872,5 @@ class Worker:
             raise error
 
 
-def _worker_main() -> None:
-    protocol = sys.stdout
-
-    execution = 0
-
-    def progress(phase: str) -> None:
-        nonlocal execution
-        message: dict[str, str | int] = {"phase": phase}
-        if phase == "execution":
-            message["index"] = execution
-            execution += 1
-        print(json.dumps(message), file=protocol, flush=True)
-
-    for line in sys.stdin:
-        execution = 0
-        request = json.loads(line)
-        token = _EVIDENCE.set(request["identity"])
-        try:
-            arguments = request["arguments"]
-            timeout = arguments["timeout"]
-            arguments["timeout"] = None
-            with contextlib.redirect_stdout(sys.stderr):
-                result = _measure(**arguments, _progress=progress)
-            result["timeout"] = timeout
-            message = {"result": result}
-        except Exception as error:
-            message = {"error": {"type": type(error).__name__, "message": str(error)}}
-        finally:
-            _EVIDENCE.reset(token)
-        print(json.dumps(message), file=protocol, flush=True)
-
-
 if __name__ == "__main__":
-    if "--worker" in sys.argv:
-        _worker_main()
-    else:
-        raise SystemExit(main())
+    raise SystemExit(main())
