@@ -17,6 +17,7 @@ from tests.support.witness_tables import dense, nested_dense, parity
 @pytest.mark.medium
 def test_public_pool_admission_preserves_the_minterm_area_ceiling(monkeypatch):
     module = importlib.import_module("esolangs.tools.circuit_diagram.hpool")
+    monkeypatch.setattr(module, "_large_pool_layout", lambda *_args, **_kwargs: None)
     table = dense(8)
     banks = importlib.import_module("esolangs.tools.circuit_diagram.banks")
     monkeypatch.setattr(banks, "_cofactor_bank_candidate", lambda *_args: None)
@@ -40,6 +41,8 @@ def test_public_pool_admission_preserves_the_minterm_area_ceiling(monkeypatch):
 def test_projected_lattice_remains_available_below_pool_arity(monkeypatch):
     module = importlib.import_module("esolangs.tools.circuit_diagram")
     monkeypatch.setattr(module, "_linear_shared_layout", lambda *_args: None)
+    pools = importlib.import_module("esolangs.tools.circuit_diagram.hpool")
+    monkeypatch.setattr(pools, "_large_pool_layout", lambda *_args, **_kwargs: None)
     banks = importlib.import_module("esolangs.tools.circuit_diagram.banks")
     monkeypatch.setattr(banks, "_cofactor_bank_candidate", lambda *_args: None)
     table = "".join(str((row >> 7) & (row & 1)) for row in range(256))
@@ -89,7 +92,7 @@ def test_public_dense_candidates_beat_minterms_without_relaxing_contracts(n):
     height, width = model.bounds()
     lines = code.splitlines()
     assert len(lines) * max(map(len, lines)) <= height * width
-    assert len(code) == {8: 270_688, 9: 2_308_769}[n]
+    assert len(code) == {8: 147_264, 9: 1_832_734}[n]
     legacy = _h_term_layout(table)
     assert model.bounds()[0] * model.bounds()[1] < (
         legacy.bounds()[0] * legacy.bounds()[1]

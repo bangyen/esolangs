@@ -39,12 +39,17 @@ def test_public_repeated_cofactors_select_the_smaller_bank(n):
     table = a + b + b + a
     model = _cofactor_bank_candidate(table)
     code = circuit_diagram(table)
-    assert code == model.render()
-    assert len(code) == {8: 140_520, 9: 1_273_998}[n]
+    lines = code.splitlines()
+    height, width = model.bounds()
+    assert len(lines) * max(map(len, lines)) <= height * width
+    if n == 9:
+        assert code == model.render()
+        assert len(code) == 1_273_998
     assert sum(char in "ao~" for char in model.glyphs.values()) <= (
         2 * len(table) + 8 * n + 111
     )
     _execute(table, code)
+    _execute(table, model.render())
 
 
 @pytest.mark.medium
@@ -53,9 +58,12 @@ def test_unique_cofactors_share_internal_residuals_in_eight_banks():
     assert _repeated_cofactor_bank(table) is None
     model = _cofactor_bank_layout(table, 3)
     code = circuit_diagram(table)
-    assert code == model.render()
-    assert len(code) == 270_688
+    lines = code.splitlines()
+    height, width = model.bounds()
+    assert len(lines) * max(map(len, lines)) < height * width
+    assert len(model.render()) == 270_688
     _execute(table, code)
+    _execute(table, model.render())
 
 
 @pytest.mark.medium
@@ -96,6 +104,8 @@ def test_explicit_width_never_builds_a_bank(monkeypatch):
 def test_equal_area_bank_preserves_existing_output(monkeypatch):
     from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
 
+    pools = importlib.import_module("esolangs.tools.circuit_diagram.hpool")
+    monkeypatch.setattr(pools, "_large_pool_layout", lambda *_args, **_kwargs: None)
     table = dense(8)
     module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
     monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: None)

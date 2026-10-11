@@ -78,7 +78,11 @@ from typing import Any, Literal
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.tools.circuit_diagram.columns import _FreeColumns
-from esolangs.tools.circuit_diagram.hlayout import _h_minterm_sites, _h_term_layout
+from esolangs.tools.circuit_diagram.hlayout import (
+    _h_minterm_sites,
+    _h_term_area_floor,
+    _h_term_layout,
+)
 from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import (
     _validate_truth_table,
@@ -635,7 +639,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     shared-fold orders within linear work and area budgets, then a prefix H-layout
     with fixed-size cofactor pools when it beats the minterm lattice. Repeated
     complete cofactors and five-input residuals also compete through fixed
-    four/eight predicate-and-function banks.
+    four/eight predicate-and-function banks. Seven/eight-input H atoms
+    share larger residual classes under the same area ceiling.
 
     What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
     floor is what a band cannot reclaim -- the rails and complements, live
@@ -647,27 +652,59 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     inputs = len(truth_table).bit_length() - 1
     # Constants need only the scalar clock gate, not a minterm lattice.
     if width is None and inputs >= 8 and "1" in truth_table and "0" in truth_table:
-        selected = _linear_shared_layout(truth_table, inputs)
-        if selected is None:
-            used, projected = _essential_table(truth_table, inputs)
-            selected = _h_term_layout(projected, input_order=used, port_inputs=inputs)
-            if len(used) >= 6:
-                from .hpool import _h_pool_layout
-
-                pooled = _h_pool_layout(projected, input_order=used, port_inputs=inputs)
-                height, columns = selected.bounds()
-                pool_height, pool_columns = pooled.bounds()
-                if pool_height * pool_columns < height * columns:
-                    selected = pooled
         from .banks import _cofactor_bank_candidate
+        from .hpool import _h_pool_area_floor, _h_pool_layout, _large_pool_layout
 
+        selected = _linear_shared_layout(truth_table, inputs)
+        used, projected = _essential_table(truth_table, inputs)
+        ceiling = None
+        if selected is not None:
+            height, columns = selected.bounds()
+            ceiling = height * columns
+        large = _large_pool_layout(
+            projected, input_order=used, port_inputs=inputs, ceiling=ceiling
+        )
+        large_area = None
+        if large is not None:
+            height, columns = large.bounds()
+            large_area = height * columns
+        if selected is None:
+            # Mandatory term glyphs prove these floors. Only skip an older
+            # layout when it is strictly larger, preserving its area ties.
+            if large_area is None or large_area >= _h_term_area_floor(
+                len(used), inputs
+            ):
+                selected = _h_term_layout(
+                    projected, input_order=used, port_inputs=inputs
+                )
+            if len(used) >= 6 and (
+                large_area is None
+                or large_area >= _h_pool_area_floor(len(used), inputs)
+            ):
+                pooled = _h_pool_layout(projected, input_order=used, port_inputs=inputs)
+                pool_height, pool_columns = pooled.bounds()
+                if selected is None:
+                    selected = pooled
+                else:
+                    height, columns = selected.bounds()
+                    if pool_height * pool_columns < height * columns:
+                        selected = pooled
+        is_large = selected is None
+        if large is not None:
+            if selected is None:
+                selected = large
+            else:
+                height, columns = selected.bounds()
+                if large_area is not None and large_area < height * columns:
+                    selected, is_large = large, True
+        if selected is None:  # both fallbacks above are construction invariants
+            raise AssertionError("missing Circuit Diagram layout")
         height, columns = selected.bounds()
         bank = _cofactor_bank_candidate(truth_table, height * columns)
         if bank is not None:
             bank_height, bank_columns = bank.bounds()
-            # Dense n=8: 355,866 versus 1,290,226 cells; all 256 native
-            # rows pass in at most 15 commands. Keep all area ties.
-            if bank_height * bank_columns < height * columns:
+            area = bank_height * bank_columns
+            if area < height * columns or (is_large and area == height * columns):
                 selected = bank
         return selected.render()
     flat = _circuit_diagram_at(truth_table, None)
@@ -703,7 +740,7 @@ LANGUAGE = Language(
     # invariants.
     scaling_rungs=(8, 9),
     boolean=circuit_diagram,
-    documented_sizes=(270_688, 2_308_769, 8.5),
+    documented_sizes=(147_264, 1_832_734, 12.4),
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

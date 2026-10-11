@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from esolangs.tools.helpers import _validate_truth_table
 
 from .hcells import _HCellLayout
 from .hlayout import (
-    _Block,
     _depth,
     _h_reserve_terms,
     _h_route_literals,
@@ -16,6 +15,47 @@ from .hlayout import (
     _HTermPlan,
 )
 from .layout import _Layout, _Shape
+
+
+@dataclass(frozen=True)
+class _PoolBlock:
+    x: int
+    y: int
+    width: int
+    height: int
+
+    def quadrants(self, width: int, height: int) -> tuple[_PoolBlock, ...]:
+        far_x, far_y = self.width - width, self.height - height
+        return tuple(
+            _PoolBlock(self.x + dx, self.y + dy, width, height)
+            for dx, dy in ((0, 0), (far_x, 0), (0, far_y), (far_x, far_y))
+        )
+
+
+@dataclass(frozen=True)
+class _FooterPlan(_HTermPlan):
+    leaf_height: int
+
+    def result_anchor(self, prefix: int) -> tuple[int, int]:
+        x, y = self.sites[prefix]
+        return (
+            (x + 4, y + self.leaf_height - 24)
+            if _depth(prefix) == self.inputs
+            else (x + 4, y - 3)
+        )
+
+
+def _atom_gate_bound(inputs: int) -> int:
+    # Eight one-gate and two three-gate two-variable functions use fourteen
+    # binary gates. Higher levels have at most 2**(inputs-level) residuals;
+    # each takes three gates. Selector complements contribute at most inputs.
+    return 14 + 3 * ((1 << (inputs - 2)) - 1) + inputs
+
+
+def _large_leaf_height(inputs: int) -> int:
+    # The builder uses two input rows and four rows per gate. Reserve the
+    # suffix bank plus a footer below every atom, rounded to the H lattice.
+    return 8 * ((_atom_gate_bound(inputs) * 4 + 10 * inputs + 59) // 8)
 
 
 def _h_pool_size(prefix_inputs: int, tail_inputs: int) -> int:
@@ -34,46 +74,129 @@ def _h_pool_size(prefix_inputs: int, tail_inputs: int) -> int:
     )
 
 
+def _h_pool_area_floor(inputs: int, ports: int) -> int:
+    """Bound small-pool area from its bottom-right retained term glyph."""
+    tail = 3 if inputs % 2 else 4
+    prefix = inputs - tail
+    if prefix < 2:
+        return 0
+    side = _h_pool_size(prefix, tail)
+    leaf, inset = (96, 8) if tail == 3 else (192, 16)
+    margin = 8 * ports + 8
+    return (margin + side - inset + 1) * (margin + side - leaf + 9)
+
+
 def _h_pool_layout(
     table: str, *, input_order: list[int] | None = None, port_inputs: int | None = None
 ) -> _Layout:
     """Route fixed-size cofactor pools through a prefix H tree in O(T) area."""
-    from . import _circuit_diagram_model
+    return _pool_layout(
+        table,
+        3 if (len(table).bit_length() - 1) % 2 else 4,
+        input_order=input_order,
+        port_inputs=port_inputs,
+    )
 
+
+def _large_pool_layout(
+    table: str,
+    *,
+    input_order: list[int] | None = None,
+    port_inputs: int | None = None,
+    ceiling: int | None = None,
+) -> _Layout | None:
+    """Share seven/eight-input atoms under linear work, area and state bounds.
+
+    Atom gate caps are 114/211; total G<=T+n keeps state below 7T+2n-9.
+    Prefix gating and OR returns take at most 2n+2 commands. Across dense
+    n=8/10/12 and n=9/11/13, native emitted growth ratios are 3.369/4.209.
+    """
+    n, order, ports = _pool_inputs(table, input_order, port_inputs)
+    k = 7 if n % 2 else 8
+    if ceiling is not None and n > k:
+        leaf = _large_leaf_height(k)
+        side = leaf
+        for remaining in range(2, n - k + 1, 2):
+            side = 2 * side + 16 * (remaining + k) + 8
+        margin = 8 * ports + 8
+        # Every prefix leaf retains its AND glyph, even if unselected.
+        # The bottom-right one proves this floor before atoms are built.
+        if (margin + side - 15) * (margin + side - leaf + 9) > ceiling:
+            return None
+    model = _pool_layout(table, k, input_order=order, port_inputs=ports)
+    height, width = model.bounds()
+    return model if ceiling is None or height * width <= ceiling else None
+
+
+def _pool_inputs(
+    table: str,
+    order: list[int] | None,
+    ports: int | None,
+) -> tuple[int, list[int], int]:
     _validate_truth_table(table)
     n = len(table).bit_length() - 1
-    order = list(range(n)) if input_order is None else input_order
-    port_inputs = n if port_inputs is None else port_inputs
+    order = list(range(n)) if order is None else order
+    ports = n if ports is None else ports
     if (
         len(order) != n
         or len(set(order)) != n
-        or any(index < 0 or index >= port_inputs for index in order)
+        or any(index < 0 or index >= ports for index in order)
     ):
         raise ValueError("cofactor pool input order must name distinct original ports")
-    k = 3 if n % 2 else 4
+    return n, order, ports
+
+
+def _pool_layout(
+    table: str,
+    k: int,
+    *,
+    input_order: list[int] | None,
+    port_inputs: int | None,
+) -> _Layout:
+    from . import _circuit_diagram_model
+
+    n, order, port_inputs = _pool_inputs(table, input_order, port_inputs)
+    large = k >= 7
+    if large and n <= k:
+        return _circuit_diagram_model(
+            table, None, input_order=order, port_inputs=port_inputs
+        )
+    atoms = {}
     p = n - k
     if p < 2:
         raise ValueError("cofactor pools need at least two prefix inputs")
-    pool_side = 96 if k == 3 else 192
-    prefix_x = pool_side - (8 if k == 3 else 16)
-
-    def size(r: int) -> int:
-        return _h_pool_size(r, k)
-
-    blocks = {1: _Block(0, 0, size(p))}
+    for i in range(0, len(table), 1 << k):
+        chunk = table[i : i + (1 << k)]
+        if "0" in chunk and "1" in chunk and chunk not in atoms:
+            atoms[chunk] = _circuit_diagram_model(chunk, None)
+    if large:
+        leaf_height = _large_leaf_height(k)
+        atom_width = max((atom.bounds()[1] for atom in atoms.values()), default=0)
+        leaf_width = max(leaf_height, 8 * ((atom_width + 8 * k + 55) // 8))
+        prefix_x, bank_y = leaf_width - 16, 8 * k + 8
+    else:
+        leaf_width = leaf_height = 96 if k == 3 else 192
+        prefix_x, bank_y = leaf_width - (8 if k == 3 else 16), 40
+    dimensions = {0: (leaf_width, leaf_height)}
+    for remaining in range(2, p + 1, 2):
+        width, height = dimensions[remaining - 2]
+        band = 16 * (remaining + k) + 8
+        dimensions[remaining] = 2 * width + band, 2 * height + band
+    width, height = dimensions[p]
+    blocks = {1: _PoolBlock(0, 0, width, height)}
     sites: dict[int, tuple[int, int]] = {}
 
-    def descend(prefix: int, r: int, block: _Block) -> None:
+    def descend(prefix: int, r: int, block: _PoolBlock) -> None:
         if r == 0:
             sites[prefix] = (block.x + prefix_x, block.y + 8)
             return
-        childsize = size(r - 2)
+        child_width, child_height = dimensions[r - 2]
         track = 8 * (r + k)
-        left, top = block.x + childsize, block.y + childsize
+        left, top = block.x + child_width, block.y + child_height
         sites[prefix] = (left + 2 * track + 8, top + track + 8)
         sites[2 * prefix] = (left + track, top + track)
         sites[2 * prefix + 1] = (left + track, top + 2 * track + 8)
-        for bits, child in enumerate(block.quadrants(childsize)):
+        for bits, child in enumerate(block.quadrants(child_width, child_height)):
             blocks[4 * prefix + bits] = child
             descend(4 * prefix + bits, r - 2, child)
 
@@ -95,8 +218,12 @@ def _h_pool_layout(
         serial += 1
         return serial - 1
 
-    plan = _HTermPlan(p, sites, signals, literal_start, {}, set(), 0, levels)
-    layout = _HCellLayout(margin + size(p) + 64)
+    plan: _HTermPlan = (
+        _FooterPlan(p, sites, signals, literal_start, {}, set(), 0, levels, leaf_height)
+        if large
+        else _HTermPlan(p, sites, signals, literal_start, {}, set(), 0, levels)
+    )
+    layout = _HCellLayout(margin + dimensions[p][0] + 64)
     anchors = _h_reserve_terms(layout, plan)
     points: dict[int, tuple[int, int]] = {}
     values: dict[int, int | None] = {}
@@ -114,14 +241,19 @@ def _h_pool_layout(
             values[prefix] = signals[prefix]
             points[prefix] = (x + 1, y)
             continue
-        atom = _circuit_diagram_model(chunk, None)
+        atom = atoms[chunk]
         h, w = atom.bounds()
-        # At most 12/25 gates for three/four inputs give 79x54/159x108
-        # cells. Keep the return column outside that fixed atom rectangle.
-        if w > (80 if k == 3 else 168) or h > (56 if k == 3 else 132):
+        # Three/four-input bounds retain the original leaf geometry.
+        # Larger atoms reserve their proven height and measured width.
+        too_large = (
+            w + 8 * k + 48 > leaf_width or h + 8 * k + 48 > leaf_height
+            if large
+            else w > (80 if k == 3 else 168) or h > (56 if k == 3 else 132)
+        )
+        if too_large:
             raise AssertionError(f"cofactor pool exceeded its rectangle: {w}x{h}")
         block = blocks[prefix]
-        ox, oy = block.x + margin + 8, block.y + margin + 40
+        ox, oy = block.x + margin + 8, block.y + margin + bank_y
         owners = {i: plan.literal(p + i, "1") for i in range(k)}
 
         def owner(signal: int, mapping: dict[int, int] = owners) -> int:
@@ -158,7 +290,16 @@ def _h_pool_layout(
         points[prefix] = (gx + 1, gy)
         values[prefix] = result
         atom_routes.append(((x + 1, y), (gx - 1, gy - 1), signals[prefix], "down"))
-        atom_routes.append((output_point, (gx - 1, gy + 1), atom_signal, "across"))
+        # A footer's lower input must be approached from below: descending
+        # along its input column would cross the upper prefix port.
+        atom_routes.append(
+            (
+                output_point,
+                (gx - 1, gy + 1),
+                atom_signal,
+                "under" if large else "across",
+            )
+        )
     result_gates = set()
     for depth in range(p - 1, -1, -1):
         for prefix in levels[depth]:

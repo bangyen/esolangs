@@ -27,10 +27,10 @@ exemption supported by a structural proof or the measured criterion in
   `tests/tools/test_boolean_line_share_scope.py`.
 - **Circuit Diagram:** fixed-size cofactor pools share locally inside
   a prefix H recursion; cell guards and coordinate buckets give linear
-  expected work and area. Dense n=8 now uses eight banks and occupies
-  355,866 cells / 270,688 characters against the minterm lattice's
+  expected work and area. Seven/eight-input atoms use fixed footer routing;
+  dense n=8 occupies 194,775 cells / 147,264 characters against the minterm lattice's
   1,946,024 / 1,780,773; every row executes natively. Three- and four-input
-  pools keep both arity parities inside the measured growth gate. Global
+  pools and larger atoms keep both arity parities inside the measured growth gate. Global
   complete cofactors share through four/eight predicate-and-function banks:
   the n=10 ABBA control occupies 2,684,592 cells against 5,935,410; 62
   native rows pass. Internal residual repeats across banks/pools remain

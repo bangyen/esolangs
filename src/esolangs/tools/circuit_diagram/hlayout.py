@@ -423,6 +423,21 @@ def _result_children(results: dict[int, int | None], prefix: int) -> list[int]:
     ]
 
 
+def _h_term_area_floor(inputs: int, ports: int) -> int:
+    """Bound area from the term glyphs retained regardless of selected rows."""
+    sites = [
+        point
+        for prefix, point in _h_minterm_sites(inputs).items()
+        if _depth(prefix) >= 2
+    ]
+    if not sites:
+        return 0
+    margin = 8 * ports + 8
+    return (max(x for x, _ in sites) + margin + 1) * (
+        max(y for _, y in sites) + margin + 1
+    )
+
+
 def _h_term_layout(
     table: str,
     *,
