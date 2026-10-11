@@ -13,7 +13,7 @@ SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "verify" / "scope.py"
 def cache_repo(tmp_path, monkeypatch):
     module = load(SCRIPT)
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
-    (tmp_path / ".gitignore").write_text(".cache/\n")
+    (tmp_path / ".gitignore").write_text(".cache/\n*.egg-info/\n")
     (tmp_path / "src").mkdir()
     (tmp_path / "src/input.py").write_text("value = 1\n")
     original = module.run_bounded
@@ -100,3 +100,18 @@ def test_runtime_timeout_declines_certificate(cache_repo, monkeypatch):
     monkeypatch.setattr(module, "run_bounded", timeout)
     assert cache.key("generator size baseline", ["python", "check.py"], {}) is None
     assert not cache.finish()
+
+
+def test_a_gitignored_artifact_under_src_is_not_an_input(cache_repo):
+    """A rebuilt ``src/*.egg-info`` must not invalidate an otherwise clean run.
+
+    The fingerprint once walked ``src`` and ``scripts`` and swept gitignored
+    build artifacts in, so a ``uv run`` in another shell rewrote one mid-gate
+    and the run's own stability check rejected a clean result.
+    """
+    _, root, cache, _ = cache_repo
+    assert cache.finish()
+    artifact = root / "src" / "esolangs.egg-info"
+    artifact.mkdir()
+    (artifact / "PKG-INFO").write_text("Name: esolangs\n")
+    assert cache.finish()

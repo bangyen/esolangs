@@ -250,6 +250,14 @@ def runtime_digest(step: str) -> str:
 def _tree(
     root: Path, *, bandit: bool = False
 ) -> tuple[str, dict[str, tuple[int, int, int]]]:
+    """Return the digest of every git-visible input, plus its stat tuple.
+
+    ``git ls-files`` lists tracked and untracked-unignored files, so no
+    directory walk is needed.  The walk that used to run over ``src`` and
+    ``scripts`` also swept gitignored build artifacts (``src/*.egg-info``),
+    and a ``uv run`` in another shell rewrote one mid-gate, so the run's own
+    stability check rejected an otherwise clean result.
+    """
     result = run_bounded(
         ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
         cwd=root,
@@ -258,12 +266,6 @@ def _tree(
         check=True,
     )
     paths = {root / name for name in result.stdout.split("\0") if name}
-    for directory in ("src", "scripts"):
-        paths.update(
-            path
-            for path in (root / directory).rglob("*")
-            if path.is_file() and "__pycache__" not in path.parts
-        )
     paths.update(root / name for name in (".bandit", ".pylintrc", "setup.cfg"))
     if bandit:
         paths = {
