@@ -186,6 +186,15 @@ def test_remove_refuses_the_reference_language() -> None:
         remove_language.remove("brainfuck")
 
 
+def test_mention_edit_labels_the_edit_each_path_needs() -> None:
+    """The report says what to do, not just where the mention is."""
+    label = remove_language._mention_edit  # noqa: SLF001
+    assert label("src/esolangs/cli_help.py:171:  Gone 0110").startswith("example")
+    assert label("docs/limitations.md:253:... Gone ...").startswith("prose")
+    assert label("tests/tools/test_wrap.py:66:# ... Gone ...").startswith("comment")
+    assert label(".pre-commit-config.yaml:6:# ... Gone ...").startswith("comment")
+
+
 def test_owner_id_prefers_the_longest_id() -> None:
     ids = {"piet", "piet_plus_plus", "line", "back"}
     owner = remove_language._owner_id  # noqa: SLF001

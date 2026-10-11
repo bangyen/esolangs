@@ -209,9 +209,10 @@ imported and the per-language code the shared generators and
 `wrap.py` no longer reference, drops its wiki fixtures, timing rows and
 prose entries, regenerates, lowers `tests/fixtures/coupling.toml`, and
 lists the mentions left to edit by hand (display name and aliases, quoted
-ids, dotted module paths). brainfuck is the reference language shared
-tests, the examples and `scripts/generate_docs.py` spell out, so `remove`
-refuses it rather than leave a tree that cannot build.
+ids, dotted module paths), each labelled with the edit it needs -- a
+runnable example, prose, or a comment. brainfuck is the reference language
+shared tests, the examples and `scripts/docs/generate.py` spell out, so
+`remove` refuses it rather than leave a tree that cannot build.
 
 A language should live in its own files: its generator module's
 `LANGUAGE`, its interpreter, and its own test files. A fact another file
