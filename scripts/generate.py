@@ -710,8 +710,6 @@ def update_exports(
     path.write_text(head + block + rest.split(END, 1)[1], encoding="utf-8")
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
 
 
 MANIFEST = ROOT / "src" / "esolangs" / "proof_status.toml"
@@ -911,3 +909,7 @@ def update_docs(root: Path = ROOT) -> None:
             before + start + "\n\n" + body + "\n\n" + indent + end + after,
             encoding="utf-8",
         )
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
