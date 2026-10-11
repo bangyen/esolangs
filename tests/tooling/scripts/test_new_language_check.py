@@ -1,5 +1,8 @@
 """``new_language.py check`` agrees with the suite on every registered language."""
 
+import inspect
+from pathlib import Path
+
 import pytest
 
 from esolangs.registry import LANGUAGES
@@ -37,4 +40,7 @@ def test_sources_names_the_interpreter_and_generator() -> None:
         interpreter = "src/esolangs/interpreters/" + lang.interpreter.replace(".", "/")
         # A package interpreter is its directory.
         assert found[0] in {f"{interpreter}.py", interpreter}, name
-        assert found[1].startswith("src/esolangs/tools/"), name
+        generator = Path(inspect.getfile(lang.boolean))
+        if generator.name == "__init__.py":
+            generator = generator.parent
+        assert found[1] == generator.relative_to(new_language.ROOT).as_posix(), name
