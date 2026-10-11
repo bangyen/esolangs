@@ -73,15 +73,18 @@ def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
     base = 0
     for depth, level in enumerate(members):
         extras = [(edge, dest) for edge, dest in incoming[depth] if first[dest] != edge]
+        # Across all 81 adjacent arm-shape pairs, a 20-unit pitch keeps
+        # opcode ink at least one unit apart (20px > the 15px star probe).
+        # Entry/join lanes contain no opcodes and use two-unit spacing.
         for index, residual in enumerate(level):
             state = depth, residual
-            entry[state] = base + 4 + 4 * index, 25 * index
+            entry[state] = base + 4 + 2 * index, 20 * index
             forks[state] = (
-                base + 16 + 4 * len(level) + 4 * len(extras) + 6 * index,
-                25 * index,
+                base + 16 + 2 * len(level) + 2 * len(extras),
+                20 * index,
             )
         for index, (edge, dest) in enumerate(extras):
-            join[edge] = base + 8 + 4 * len(level) + 4 * index, entry[dest][1]
+            join[edge] = base + 8 + 2 * len(level) + 2 * index, entry[dest][1]
         # The last leaf ends 15 units below its fork; the next entry starts
         # 16 below, retaining a full 20px gap for the 15px extraction probe.
         base = forks[depth, level[-1]][0] + 12
@@ -92,7 +95,8 @@ def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
     )
     if kept[-1] < original_n - 1:
         reads += "<"
-    start = -12 * original_n - 10, -40
+    # Loader ink reaches x=-11; the left opcode envelope stops at x=-10.
+    start = -12 * original_n - 10, -12
     loader = _StemCursor(*start, (1, 0))
     for op in reads:
         loader.emit_op(op)
