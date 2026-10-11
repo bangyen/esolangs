@@ -1,6 +1,6 @@
 """Boolean-function program generators and shared generation helpers."""
 
-# BEGIN GENERATED EXPORTS: python scripts/generate.py docs
+# BEGIN GENERATED EXPORTS: python scripts/docs/generate.py docs
 from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.addsubjump import addsubjump
 from esolangs.tools.algebraic_programming_language import algebraic_programming_language

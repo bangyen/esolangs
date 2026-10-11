@@ -19,7 +19,7 @@ import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def normalize(path: Path, epoch: int) -> None:

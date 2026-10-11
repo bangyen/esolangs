@@ -1,0 +1,19 @@
+Package : IO {
+  Char i;
+  Char d;
+  Char c;
+  Array(Char,4) t;
+  Integer main {
+  charGet ( c ) ; If
+  c ^ 48 Then { INCR
+  d ; }
+  While d Do { DECR
+  d ; INCR i ; INCR
+  i ; } charGet ( c
+  ) ; If c ^ 48 Then
+  { INCR i ; }
+  INCR t ( 3 ) ;
+  charPut ( 48 ^ t (
+  i ) ) ; 0 ;
+  }
+} truthTable;

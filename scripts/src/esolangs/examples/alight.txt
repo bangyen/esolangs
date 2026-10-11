@@ -1,0 +1,43 @@
+begin;var a;var i;var r;;turn right;
+                                   t
+                                   u
+                                   r
+                                   n
+
+                                   r
+                                   i
+                                   g
+                                   h
+                                   t
+;tfel nrut;;;a pni;84-a i tes;a pni;
+t
+u
+r
+n
+
+l
+e
+f
+t
+;set i i*2+a-48;;;;;;;;;;turn right;
+                                   t
+                                   u
+                                   r
+                                   n
+
+                                   r
+                                   i
+                                   g
+                                   h
+                                   t
+;tfel nrut;;}5.0+i ,"1000"{ta r tes;
+t
+u
+r
+n
+
+l
+e
+f
+t
+;out r;end;

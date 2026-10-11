@@ -8,9 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-import generate
-
-import examples
+from docs import examples, generate
 
 ROOT = Path(__file__).parents[1]
 GENERATED = (
@@ -52,14 +50,14 @@ def main() -> int:
         ]
     if changed:
         print(
-            "generated documentation is stale; run python scripts/generate.py docs: "
+            "generated documentation is stale; run python scripts/docs/generate.py docs: "
             + ", ".join(changed),
             file=sys.stderr,
         )
         return 1
     if _manifest_is_stale():
         print(
-            "examples/MANIFEST.md is stale; run python scripts/generate.py examples",
+            "examples/MANIFEST.md is stale; run python scripts/docs/generate.py examples",
             file=sys.stderr,
         )
         return 1

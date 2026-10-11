@@ -13,7 +13,7 @@ def source_tree(tmp_path, monkeypatch):
     monkeypatch.setattr(leaks, "_ROOT", tmp_path)
     monkeypatch.setattr(leaks, "_SHARED", ())
     files = {
-        "scripts/_scope.py": "",
+        "scripts/_lib/scope.py": "",
         "src/esolangs/__init__.py": "",
         "src/esolangs/interpreters/__init__.py": "",
         "src/esolangs/interpreters/other/__init__.py": "",

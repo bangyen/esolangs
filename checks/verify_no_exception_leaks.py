@@ -55,7 +55,7 @@ _HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
-from _process import write_text
+from _lib.process import write_text
 
 from esolangs._program import Program
 from esolangs.exceptions import EsolangError
@@ -209,8 +209,8 @@ def mutate(text: str, rng: random.Random, n: int = 12) -> list[str]:
 # The scoping rule (which files changed, and what forces a full sweep) is
 # shared with scripts/verify.py, so both agree on when a narrowed run is safe.
 sys.path.insert(0, str(_ROOT / "scripts"))
-from _scope import SHARED_INTERPRETER as _SHARED
-from _scope import changed_files as _changed_files
+from _lib.scope import SHARED_INTERPRETER as _SHARED
+from _lib.scope import changed_files as _changed_files
 
 
 def _select(

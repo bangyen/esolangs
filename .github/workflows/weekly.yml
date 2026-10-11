@@ -77,10 +77,10 @@ jobs:
     # command that report prints.
     # Preserve the native construction cap without competing xdist workers.
     - name: Check the preserving certificate without competing workers
-      run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci --duration-output certificate-durations.json
+      run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci.shard --duration-output certificate-durations.json
 
     - name: Test with pytest (full suite, including the slow band)
-      run: uv run python -m pytest -n auto -k "not test_preserving_certificate" -p scripts.ci --duration-output test-durations.json
+      run: uv run python -m pytest -n auto -k "not test_preserving_certificate" -p scripts.ci.shard --duration-output test-durations.json
 
     - name: Retain measured test durations
       if: always()

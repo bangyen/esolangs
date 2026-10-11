@@ -51,7 +51,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _process import (  # noqa: E402  # noqa: E402
+from _lib.process import (  # noqa: E402  # noqa: E402
     run_bounded,
     start_logged,
     wait_with_heartbeat,
@@ -196,7 +196,7 @@ STEPS = [
 # What fixes a step beyond rerunning it, for the steps whose failure is a
 # stale committed file a script rewrites.  Printed under its rerun command.
 FIXES: dict[str, tuple[str, ...]] = {
-    "generated docs": ("uv run python scripts/generate.py docs",),
+    "generated docs": ("uv run python scripts/docs/generate.py docs",),
     "generator size baseline": (
         "uv run python checks/check_generator_sizes.py --update  "
         "(only if the size change is intended)",

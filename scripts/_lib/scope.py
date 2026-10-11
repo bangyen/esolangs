@@ -9,7 +9,7 @@ import os
 import subprocess
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 # Changing any of these changes how *every* interpreter reads, steps, or
 # reports, so touching one sweeps the whole registry rather than nothing.
@@ -33,7 +33,7 @@ SHARED_INTERPRETER = (
 # does, so it can never be validated by a scoped run of that same machinery.
 SHARED_TOOLING = (
     "scripts/verify.py",
-    "scripts/_scope.py",
+    "scripts/_lib/scope.py",
     "checks/check_diff_coverage.py",
     "pyproject.toml",
     ".pre-commit-config.yaml",
@@ -116,7 +116,7 @@ TOOLING_INTEGRATIONS = {
         ("test_combining_shards_retains_every_branch",),
         (
             ".github/workflows/",
-            "scripts/ci.py",
+            "scripts/ci/shard.py",
             "checks/check_diff_coverage.py",
         ),
     ),

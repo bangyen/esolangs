@@ -245,4 +245,4 @@ def test_documentation_check_preserves_source_files(
         for relative in check_generated_docs.GENERATED
     } == before
     error = capsys.readouterr().err
-    assert ("run python scripts/generate.py docs: README.md" in error) == stale
+    assert ("run python scripts/docs/generate.py docs: README.md" in error) == stale

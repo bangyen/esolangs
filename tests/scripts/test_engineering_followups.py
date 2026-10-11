@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from scripts import _process as _verify_process
+from scripts._lib import process as _verify_process
 
 
 def test_preflight_reaps_descendants(tmp_path):

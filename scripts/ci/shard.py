@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import argparse
 import hashlib
 import json
@@ -16,12 +21,10 @@ from pathlib import Path
 from typing import Protocol
 
 import pytest
+from _lib.process import write_text
 from _pytest.reports import TestReport
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _process import write_text
-
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def collect_ids(marker: str) -> list[str]:

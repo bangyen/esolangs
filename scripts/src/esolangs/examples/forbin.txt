@@ -1,0 +1,14 @@
+main { f , f ,
+f , f , f , f ,
+f , a , f , f ,
+f , f , f , f ,
+f , b = ( in 0
+) ; c g , h , i
+, j { for _ : 1
+.. a { g , h =
+i , j } for _ :
+1 .. b { g = h
+} out 0 , 0 , 1
+, 1 , 0 , 0 , 0
+, g ; } c 0 , 0
+, 0 , 1 ; }

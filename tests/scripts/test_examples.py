@@ -54,7 +54,7 @@ HALT_CONVENTION = {
 }
 
 # The command every staleness message names.
-REGENERATE = "`uv run python scripts/generate.py examples`"
+REGENERATE = "`uv run python scripts/docs/generate.py examples`"
 
 
 @pytest.mark.parametrize(
@@ -83,7 +83,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
 @pytest.mark.medium
 def test_regeneration_yields_public_balanced_programs() -> None:
     import esolangs
-    from scripts.examples import boolean_programs
+    from scripts.docs.examples import boolean_programs
 
     programs = dict(boolean_programs())
     assert programs.keys() == BOOLEAN_GENERATED.keys()
@@ -100,7 +100,7 @@ def test_regeneration_yields_public_balanced_programs() -> None:
 def test_the_manifest_matches_what_the_script_would_write() -> None:
     """The committed table is what ``generate.py examples`` produces today."""
     sys.path.insert(0, str(BASE_DIR / "scripts"))
-    from scripts.examples import boolean_manifest_text
+    from scripts.docs.examples import boolean_manifest_text
 
     path = BASE_DIR / "examples" / "MANIFEST.md"
     assert path.read_text(encoding="utf-8") == boolean_manifest_text(), (
@@ -239,7 +239,7 @@ class TestTheWritersWriteWhatTheBuildersBuild:
 
     @staticmethod
     def _redirect(monkeypatch: pytest.MonkeyPatch, target: Path) -> object:
-        from scripts import examples as generate
+        from scripts.docs import examples as generate
 
         monkeypatch.setattr(generate, "EXAMPLES", target)
         return generate

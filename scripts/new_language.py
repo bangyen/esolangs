@@ -536,8 +536,8 @@ def _gate() -> int:
     """Regenerate, run the gate, and rerun its failures alone."""
     python = [sys.executable]
     for cmd in (
-        [*python, "scripts/generate.py", "examples"],
-        [*python, "scripts/generate.py", "docs"],
+        [*python, "scripts/docs/generate.py", "examples"],
+        [*python, "scripts/docs/generate.py", "docs"],
         [*python, "checks/check_generator_sizes.py", "--update"],
     ):
         print("+", " ".join(cmd[1:]), flush=True)
@@ -629,7 +629,7 @@ def main(argv: list[str] | None = None) -> int:
         # Before anything imports the package: a new LANGUAGE is registered
         # by the export this writes.
         sys.path.insert(0, str(ROOT / "scripts"))
-        from generate import update_exports
+        from docs.generate import update_exports
 
         update_exports(ROOT, ROOT)
     if args.command == "check":
@@ -642,7 +642,7 @@ def main(argv: list[str] | None = None) -> int:
         before = _dirty()
         for target in ("examples", "docs"):
             subprocess.run(
-                [sys.executable, "scripts/generate.py", target],
+                [sys.executable, "scripts/docs/generate.py", target],
                 cwd=ROOT,
                 check=True,
                 stdout=subprocess.DEVNULL,

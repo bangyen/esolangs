@@ -5,7 +5,7 @@ import json
 import pytest
 
 from checks.check_shard_manifests import check
-from scripts.ci import Recorder
+from scripts.ci.shard import Recorder
 
 
 def evidence(tmp_path):
@@ -99,7 +99,7 @@ def test_bad_shard_evidence_fails_closed(tmp_path, fault):
 def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch):
     from pathlib import Path
 
-    from scripts import ci as pytest_shard
+    from scripts.ci import shard as pytest_shard
 
     (tmp_path / "test_example.py").write_text(
         "def test_one():\n    assert 1 + 1 == 2\n\n"
@@ -125,7 +125,7 @@ def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch):
                     "--",
                     "-q",
                     "-p",
-                    "scripts.ci",
+                    "scripts.ci.shard",
                     "--duration-output",
                     str(directory / "durations.json"),
                 ]

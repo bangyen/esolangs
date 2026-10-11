@@ -1,5 +1,10 @@
 """Regenerate the committed documentation and the tools export block."""
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import argparse
 import ast
 import builtins
@@ -27,13 +32,13 @@ def main() -> int:
         return docs_main()
     if args.target == "examples":
         sys.argv = [sys.argv[0], *args.args]
-        from examples import examples_main
+        from docs.examples import examples_main
 
         return examples_main()
     raise AssertionError(args.target)
 
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 _INTERPRETERS = ROOT / "src" / "esolangs" / "interpreters"
 CURATION = ROOT / "tests" / "fixtures" / "curation.toml"
 
@@ -147,7 +152,7 @@ def render_languages_section() -> str:
         if category not in groups:
             raise ValueError(
                 f"{name}'s interpreter category {category!r} has no README "
-                "heading; add one to _README_HEADINGS in scripts/generate.py"
+                "heading; add one to _README_HEADINGS in scripts/docs/generate.py"
             )
         groups[category].append(name)
 
@@ -460,7 +465,7 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     """Write every generated documentation section."""
     # Imported here so the module also loads from a test, where this directory
     # is not on ``sys.path`` until now.
-    from proof_status import update_docs
+    from docs.proof_status import update_docs
 
     update_exports(output_root)
     print("updated the generated exports of esolangs.tools")
@@ -479,7 +484,7 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
 
 
 INIT = "src/esolangs/tools/__init__.py"
-START = "# BEGIN GENERATED EXPORTS: python scripts/generate.py docs"
+START = "# BEGIN GENERATED EXPORTS: python scripts/docs/generate.py docs"
 END = "# END GENERATED EXPORTS"
 
 

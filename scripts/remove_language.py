@@ -818,7 +818,7 @@ def remove(name: str) -> list[str]:
     if name == reference:
         raise ValueError(
             f"{reference} is the reference language: shared tests, the example "
-            "commands and scripts/generate.py spell it out, so it is not "
+            "commands and scripts/docs/generate.py spell it out, so it is not "
             "removable"
         )
     lang = LANGUAGES[name]
@@ -1013,7 +1013,7 @@ def remove(name: str) -> list[str]:
     )
     for target in ("docs", "examples"):
         subprocess.run(
-            [sys.executable, "scripts/generate.py", target],
+            [sys.executable, "scripts/docs/generate.py", target],
             cwd=ROOT,
             check=True,
             stdout=subprocess.DEVNULL,
