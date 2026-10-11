@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.circuit_diagram.banks import (
+    _cofactor_bank_candidate,
     _cofactor_bank_layout,
     _repeated_cofactor_bank,
 )
@@ -14,46 +15,54 @@ from tests.tools.test_boolean_circuit_diagram_pool import _execute
 
 
 @pytest.mark.medium
-def test_every_function_through_three_inputs_executes():
+@pytest.mark.parametrize("prefix", [2, 3])
+def test_every_function_through_three_inputs_executes(prefix):
     for n in (1, 2, 3):
         for value in range(1 << (1 << n)):
             table = f"{value:0{1 << n}b}"
-            _execute(table, _cofactor_bank_layout(table).render())
+            _execute(table, _cofactor_bank_layout(table, prefix).render())
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [4, 5, 6])
-def test_sampled_small_banks_execute(n):
+@pytest.mark.parametrize("prefix", [2, 3])
+def test_sampled_small_banks_execute(n, prefix):
     for seed in range(4):
         table = dense(n, f"bank:{seed}".encode())
-        _execute(table, _cofactor_bank_layout(table).render())
+        _execute(table, _cofactor_bank_layout(table, prefix).render())
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [8, 9])
-def test_public_repeated_cofactors_share_one_body(n):
+def test_public_repeated_cofactors_select_the_smaller_bank(n):
     a, b = dense(n - 2, b"bank-a"), dense(n - 2, b"bank-b")
     table = a + b + b + a
-    model = _cofactor_bank_layout(table)
+    model = _cofactor_bank_candidate(table)
     code = circuit_diagram(table)
     assert code == model.render()
-    assert len(code) == {8: 628_854, 9: 1_273_998}[n]
+    assert len(code) == {8: 140_520, 9: 1_273_998}[n]
     assert sum(char in "ao~" for char in model.glyphs.values()) <= (
-        2 * len(table) + 4 * n + 27
+        2 * len(table) + 8 * n + 111
     )
     _execute(table, code)
 
 
 @pytest.mark.medium
-def test_unique_dense_cofactors_leave_no_bank_candidate():
+def test_unique_cofactors_share_internal_residuals_in_eight_banks():
     table = dense(8)
     assert _repeated_cofactor_bank(table) is None
-    assert len(circuit_diagram(table)) == 1_176_281
+    model = _cofactor_bank_layout(table, 3)
+    code = circuit_diagram(table)
+    assert code == model.render()
+    assert len(code) == 270_688
+    _execute(table, code)
 
 
 @pytest.mark.medium
 def test_oversized_bank_cannot_displace_existing_output(monkeypatch):
     table = dense(8)
+    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: None)
     expected = circuit_diagram(table)
 
     class Oversized:
@@ -64,7 +73,7 @@ def test_oversized_bank_cannot_displace_existing_output(monkeypatch):
             pytest.fail("oversized bank must not be emitted")
 
     module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
-    monkeypatch.setattr(module, "_repeated_cofactor_bank", lambda _: Oversized())
+    monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: Oversized())
     assert circuit_diagram(table) == expected
 
 
@@ -73,8 +82,10 @@ def test_explicit_width_never_builds_a_bank(monkeypatch):
     module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
     monkeypatch.setattr(
         module,
-        "_repeated_cofactor_bank",
-        lambda _: pytest.fail("width-constrained construction must remain independent"),
+        "_cofactor_bank_candidate",
+        lambda *_args: pytest.fail(
+            "width-constrained construction must remain independent"
+        ),
     )
     a, b = dense(6, b"bank-a"), dense(6, b"bank-b")
     table = a + b + b + a
@@ -86,6 +97,8 @@ def test_equal_area_bank_preserves_existing_output(monkeypatch):
     from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
 
     table = dense(8)
+    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: None)
     expected = circuit_diagram(table)
     bounds = _h_pool_layout(table).bounds()
 
@@ -97,7 +110,7 @@ def test_equal_area_bank_preserves_existing_output(monkeypatch):
             pytest.fail("area ties must preserve the existing candidate")
 
     module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
-    monkeypatch.setattr(module, "_repeated_cofactor_bank", lambda _: EqualArea())
+    monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: EqualArea())
     assert circuit_diagram(table) == expected
 
 
@@ -113,3 +126,68 @@ def test_bank_scaling_retains_native_contracts(arities):
         rows = sorted({0, len(table) - 1, *range(0, len(table), len(table) // 32)})
         _execute(table, code, rows)
     assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) < 4.4
+
+
+@pytest.mark.parametrize("prefix", [-1, 1, 4])
+def test_unsupported_prefix_sizes_abort(prefix):
+    with pytest.raises(ValueError, match="two or three prefix inputs"):
+        _cofactor_bank_layout(dense(8), prefix)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("n", "cap"), [(8, 511), (9, 1015)])
+def test_eight_distinct_bodies_obey_small_arity_workspace_caps(n, cap):
+    table = "".join(dense(n - 3, f"eight:{i}".encode()) for i in range(8))
+    model = _cofactor_bank_layout(table, 3)
+    assert sum(char in "ao~" for char in model.glyphs.values()) <= cap
+    _execute(table, model.render())
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [9, 10])
+def test_repeats_below_distinct_four_bank_cofactors_share(n):
+    a, b, c = [dense(n - 3, f"deep-bank:{i}".encode()) for i in range(3)]
+    table = a + b + a + c + b + c + a + a
+    assert _repeated_cofactor_bank(table) is None
+    model = _cofactor_bank_layout(table, 3)
+    code = circuit_diagram(table)
+    assert code == model.render()
+    assert len(code) == {9: 956_518, 10: 1_928_450}[n]
+    rows = None if n == 9 else sorted({0, len(table) - 1, *range(0, len(table), 32)})
+    _execute(table, code, rows)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("arities", [(9, 11, 13), (10, 12, 14)])
+def test_eight_bank_growth_with_native_positive_controls(arities):
+    sizes = []
+    for n in arities:
+        a, b, c = [dense(n - 3, f"deep-bank:{i}".encode()) for i in range(3)]
+        table = a + b + a + c + b + c + a + a
+        code = _cofactor_bank_layout(table, 3).render()
+        rows = sorted({0, len(table) - 1, *range(0, len(table), len(table) // 32)})
+        _execute(table, code, rows)
+        sizes.append(len(code))
+    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) <= 4.4
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("prefix", [2, 3])
+def test_bank_glyph_floor_never_rejects_a_fitting_native_layout(prefix):
+    from esolangs.tools.circuit_diagram.banks import _bank_exceeds_area
+
+    table = dense(10, b"bank-floor")
+    model = _cofactor_bank_layout(table, prefix)
+    height, width = model.bounds()
+    assert not _bank_exceeds_area(table, prefix, height * width)
+    _execute(table, model.render(), (0, len(table) - 1))
+
+
+def test_bank_glyph_floor_skips_provably_oversized_bodies(monkeypatch):
+    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    monkeypatch.setattr(
+        module,
+        "_cofactor_bank_layout",
+        lambda *_args: pytest.fail("a body exceeding the ceiling must not be routed"),
+    )
+    assert _cofactor_bank_candidate(dense(10), 1) is None

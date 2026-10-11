@@ -18,6 +18,8 @@ from tests.support.witness_tables import dense, nested_dense, parity
 def test_public_pool_admission_preserves_the_minterm_area_ceiling(monkeypatch):
     module = importlib.import_module("esolangs.tools.circuit_diagram.hpool")
     table = dense(8)
+    banks = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    monkeypatch.setattr(banks, "_cofactor_bank_candidate", lambda *_args: None)
     lattice = _h_term_layout(table)
     height, width = lattice.bounds()
 
@@ -39,7 +41,7 @@ def test_projected_lattice_remains_available_below_pool_arity(monkeypatch):
     module = importlib.import_module("esolangs.tools.circuit_diagram")
     monkeypatch.setattr(module, "_linear_shared_layout", lambda *_args: None)
     banks = importlib.import_module("esolangs.tools.circuit_diagram.banks")
-    monkeypatch.setattr(banks, "_repeated_cofactor_bank", lambda *_args: None)
+    monkeypatch.setattr(banks, "_cofactor_bank_candidate", lambda *_args: None)
     table = "".join(str((row >> 7) & (row & 1)) for row in range(256))
     code = circuit_diagram(table)
     assert code == _h_term_layout("0001", input_order=[0, 7], port_inputs=8).render()
@@ -80,12 +82,14 @@ def test_every_three_input_cofactor_through_a_pool_and_prefix_tree():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [8, 9])
-def test_public_dense_pool_beats_minterms_without_relaxing_contracts(n):
+def test_public_dense_candidates_beat_minterms_without_relaxing_contracts(n):
     table = dense(n)
     model = _h_pool_layout(table)
     code = circuit_diagram(table)
-    assert code == model.render()
-    assert len(code) == {8: 1_176_281, 9: 2_308_769}[n]
+    height, width = model.bounds()
+    lines = code.splitlines()
+    assert len(lines) * max(map(len, lines)) <= height * width
+    assert len(code) == {8: 270_688, 9: 2_308_769}[n]
     legacy = _h_term_layout(table)
     assert model.bounds()[0] * model.bounds()[1] < (
         legacy.bounds()[0] * legacy.bounds()[1]

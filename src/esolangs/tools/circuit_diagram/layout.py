@@ -18,9 +18,10 @@ class _Layout:
     collision (two segments of different signals running the same way
     through one cell, which would merge them).
 
-    A run is stored as one interval, not cell by cell: taps grow linearly
-    with the drawing, so per-cell tables cost quadratic time and memory --
-    n=9 held ~20M dict entries and n=10 would not fit.  The collision
+    A run is stored as one interval: unrestricted shared folds can make
+    per-cell tables cost quadratic time and memory -- n=9 held ~20M dict
+    entries and n=10 would not fit. H builders use separate cell guards
+    with a linear wire-length bound, then seal to these intervals. The collision
     checks compare intervals instead, and the renderer paints them with
     slice assignment.
     """

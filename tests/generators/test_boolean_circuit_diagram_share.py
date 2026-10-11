@@ -17,6 +17,7 @@ from esolangs.tools.circuit_diagram import (
 from esolangs.tools.circuit_diagram.hlayout import _h_minterm_sites, _h_term_layout
 from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
 from tests.support.witness_tables import nested_dense
+from tests.tools.test_boolean_circuit_diagram_pool import _execute
 
 
 def _dense(n: int) -> str:
@@ -46,10 +47,14 @@ class TestCircuitDiagramShareScope:
         assert _area(_circuit_diagram_model(table, None)) < _area(_h_term_layout(table))
         assert _linear_shared_layout(table, 8) is None
 
-    def test_the_public_build_uses_linear_area_local_cofactor_pools(self) -> None:
+    @pytest.mark.medium
+    def test_the_public_build_admits_smaller_cofactor_candidates(self) -> None:
         table = _dense(8)
-        assert circuit_diagram(table) == _h_pool_layout(table).render()
+        code = circuit_diagram(table)
+        lines = code.splitlines()
+        assert len(lines) * max(map(len, lines)) <= _area(_h_pool_layout(table))
         assert _area(_h_pool_layout(table)) < _area(_h_term_layout(table))
+        _execute(table, code)
 
     def test_shared_fold_growth_exceeds_the_linear_contract(self) -> None:
         """Same-parity size difference n=8->10 against the x4.4 contract."""

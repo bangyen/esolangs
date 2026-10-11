@@ -1,8 +1,9 @@
-"""Share complete cofactors across four predicate-and-function banks.
+"""Share cofactors through fixed four/eight predicate-and-function banks.
 
-For n>=8, G<=2T+4n+27 bounds written state by n+3G+1, below
-7T+2n-9. Four bounded H bodies and coordinate-bucket copying use O(T)
-area and work. This shares complete cofactors, not all internal residuals.
+For eight banks, G<=2T+8n+111 gives state<=6T+25n+334, below
+7T+2n-9 from n=10; the exact n=8/9 gate caps are 511/1015.
+Bounded H bodies and coordinate-bucket copying use O(T) area and work.
+This still does not share every residual across bodies.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ from collections.abc import Callable
 
 from esolangs.tools.helpers import _validate_truth_table
 
-from .hpool import _h_pool_layout
+from .hpool import _h_pool_layout, _h_pool_size
 from .layout import _Layout, _RoutingLayout
 
 
@@ -76,17 +77,19 @@ class _BankLayout(_RoutingLayout):
             destination.extend(translated)
 
 
-def _cofactor_bank_layout(table: str) -> _Layout:
-    """Return a four-bank layout with shared prefix complements in O(T) area."""
+def _cofactor_bank_layout(table: str, prefix_inputs: int = 2) -> _Layout:
+    """Return four/eight banks with shared prefix complements in O(T) area."""
     from . import _circuit_diagram_model, _essential_table
 
     _validate_truth_table(table)
+    if prefix_inputs not in (2, 3):
+        raise ValueError("cofactor banks need two or three prefix inputs")
     n = len(table).bit_length() - 1
     if n < 3 or len(set(table)) == 1:
         return _circuit_diagram_model(table, None)
-    chunks = [
-        table[i : i + len(table) // 4] for i in range(0, len(table), len(table) // 4)
-    ]
+    prefix_order = list(range(prefix_inputs))
+    size = len(table) // (1 << prefix_inputs)
+    chunks = [table[i : i + size] for i in range(0, len(table), size)]
     parts: list[list[tuple[_Layout, list[int]]]] = []
     for cofactor in dict.fromkeys(chunks):
         if "1" not in cofactor:
@@ -94,15 +97,15 @@ def _cofactor_bank_layout(table: str) -> _Layout:
         mask = "".join("1" if chunk == cofactor else "0" for chunk in chunks)
         models: list[tuple[_Layout, list[int]]] = []
         if "0" in mask:
-            models.append((_circuit_diagram_model(mask, None), [0, 1]))
+            models.append((_circuit_diagram_model(mask, None), prefix_order))
         if "0" in cofactor:
-            used, reduced = _essential_table(cofactor, n - 2)
+            used, reduced = _essential_table(cofactor, n - prefix_inputs)
             model = (
-                _h_pool_layout(reduced, input_order=used, port_inputs=n - 2)
+                _h_pool_layout(reduced, input_order=used, port_inputs=n - prefix_inputs)
                 if len(used) >= 6
                 else _circuit_diagram_model(cofactor, None)
             )
-            models.append((model, list(range(2, n))))
+            models.append((model, list(range(prefix_inputs, n))))
         parts.append(models)
     right = (
         max(model.bounds()[1] for models in parts for model, _ in models) + 2 * n + 12
@@ -128,7 +131,7 @@ def _cofactor_bank_layout(table: str) -> _Layout:
     required = set()
     for models in parts:
         for model, ports in models:
-            if ports == [0, 1]:
+            if ports == prefix_order:
                 for (x, row), char in model.glyphs.items():
                     if char == "~":
                         required.add(model.junctions[x - 1, row])
@@ -141,7 +144,7 @@ def _cofactor_bank_layout(table: str) -> _Layout:
         reached[i] = reached[i][0], row
         negative[i] = ((column, row), signal)
     results: list[tuple[tuple[int, int], int]] = []
-    y = 2 * n + 16
+    y = 2 * n + 8 + 4 * prefix_inputs
     for group, models in enumerate(parts):
         outputs: list[tuple[tuple[int, int], int]] = []
         for model, port_order in models:
@@ -169,7 +172,7 @@ def _cofactor_bank_layout(table: str) -> _Layout:
 
             removed = set()
             negative_feeds: list[tuple[int, tuple[int, int]]] = []
-            if port_order == [0, 1]:
+            if port_order == prefix_order:
                 for (x, row), char in model.glyphs.items():
                     if char != "~":
                         continue
@@ -217,7 +220,7 @@ def _cofactor_bank_layout(table: str) -> _Layout:
     for i, target in feeds:
         layout.route(reached[i], target, i)
         reached[i] = reached[i][0], target[1]
-    # Every independent term arrives once; the OR tree has depth at most two.
+    # Each term arrives once; OR depth is bounded by the prefix arity.
     row = y + 8
     column = right + 22 + 2 * len(parts) + 4
     while len(results) > 1:
@@ -252,3 +255,47 @@ def _repeated_cofactor_bank(table: str) -> _Layout | None:
     ):
         return None
     return _cofactor_bank_layout(table)
+
+
+def _bank_exceeds_area(table: str, prefix_inputs: int, ceiling: int) -> bool:
+    """Reject a bank whose retained H term glyphs already exceed the ceiling."""
+    from . import _essential_table
+
+    inputs = len(table).bit_length() - 1 - prefix_inputs
+    size = 1 << inputs
+    for chunk in dict.fromkeys(table[i : i + size] for i in range(0, len(table), size)):
+        if "0" not in chunk or "1" not in chunk:
+            continue
+        used, _ = _essential_table(chunk, inputs)
+        if len(used) < 6:
+            continue
+        tail = 3 if len(used) % 2 else 4
+        leaf_side, offset = (96, 88) if tail == 3 else (192, 176)
+        # The bottom-right prefix leaf always retains its term AND glyph,
+        # even for an unselected chunk. Copying removes only external ports
+        # and output glyphs. Translation can only enlarge this rectangle.
+        far = 8 * inputs + 8 + _h_pool_size(len(used) - tail, tail) - leaf_side
+        if (far + offset + 1) * (far + 9) > ceiling:
+            return True
+    return False
+
+
+def _cofactor_bank_candidate(table: str, ceiling: int | None = None) -> _Layout | None:
+    """Return the smaller named four/eight-bank candidate, preserving ties."""
+    four = (
+        _repeated_cofactor_bank(table)
+        if ceiling is None or not _bank_exceeds_area(table, 2, ceiling)
+        else None
+    )
+    eight = (
+        _cofactor_bank_layout(table, 3)
+        if ceiling is None or not _bank_exceeds_area(table, 3, ceiling)
+        else None
+    )
+    if eight is None:
+        return four
+    if four is None:
+        return eight
+    four_height, four_width = four.bounds()
+    eight_height, eight_width = eight.bounds()
+    return eight if eight_height * eight_width < four_height * four_width else four

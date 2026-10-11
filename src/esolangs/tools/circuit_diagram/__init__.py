@@ -634,7 +634,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     From eight inputs an unconstrained nonconstant build tries three fixed
     shared-fold orders within linear work and area budgets, then a prefix H-layout
     with fixed-size cofactor pools when it beats the minterm lattice. Repeated
-    complete cofactors also compete as four predicate-and-function banks.
+    complete cofactors and five-input residuals also compete through fixed
+    four/eight predicate-and-function banks.
 
     What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
     floor is what a band cannot reclaim -- the rails and complements, live
@@ -658,14 +659,14 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
                 pool_height, pool_columns = pooled.bounds()
                 if pool_height * pool_columns < height * columns:
                     selected = pooled
-        from .banks import _repeated_cofactor_bank
+        from .banks import _cofactor_bank_candidate
 
-        bank = _repeated_cofactor_bank(truth_table)
+        height, columns = selected.bounds()
+        bank = _cofactor_bank_candidate(truth_table, height * columns)
         if bank is not None:
-            height, columns = selected.bounds()
             bank_height, bank_columns = bank.bounds()
-            # ABBA dense cofactors at n=10: 2,943,760 versus 5,935,410
-            # cells, with identical 16-command native runs. Keep all ties.
+            # Dense n=8: 355,866 versus 1,290,226 cells; all 256 native
+            # rows pass in at most 15 commands. Keep all area ties.
             if bank_height * bank_columns < height * columns:
                 selected = bank
         return selected.render()
@@ -702,7 +703,7 @@ LANGUAGE = Language(
     # invariants.
     scaling_rungs=(8, 9),
     boolean=circuit_diagram,
-    documented_sizes=(1_176_281, 2_308_769, 2.0),
+    documented_sizes=(270_688, 2_308_769, 8.5),
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

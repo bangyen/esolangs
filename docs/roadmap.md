@@ -25,19 +25,21 @@ exemption supported by a structural proof or the measured criterion in
   `tests/tools/test_boolean_line_forward.py`,
   `tests/tools/test_boolean_line_join_lanes.py` and
   `tests/tools/test_boolean_line_share_scope.py`.
-- **Circuit Diagram:** fixed-size cofactor pools now share locally inside
-  a prefix H recursion with linear work and area. Dense n=8 occupies
-  1,290,226 cells / 1,176,281 characters against the minterm lattice's
+- **Circuit Diagram:** fixed-size cofactor pools share locally inside
+  a prefix H recursion; cell guards and coordinate buckets give linear
+  expected work and area. Dense n=8 now uses eight banks and occupies
+  355,866 cells / 270,688 characters against the minterm lattice's
   1,946,024 / 1,780,773; every row executes natively. Three- and four-input
   pools keep both arity parities inside the measured growth gate. Global
-  complete cofactors also share through four predicate-and-function banks:
-  the n=10 ABBA control occupies 2,943,760 cells against 5,935,410; 62
+  complete cofactors share through four/eight predicate-and-function banks:
+  the n=10 ABBA control occupies 2,684,592 cells against 5,935,410; 62
   native rows pass. Internal residual repeats across banks/pools remain
   open when all three fixed fold orders exceed
   the node-count budget. Moving three/four tail inputs first avoids the
   expander control's original graph: n=12 drops from 221 to 60 fold nodes
   and executes in 138,953 cells. Controls in
   `tests/tools/test_boolean_circuit_diagram_banks.py`,
+  `tests/tools/test_boolean_circuit_diagram_hcells.py`,
   `tests/tools/test_boolean_circuit_diagram_order.py`,
   `tests/tools/test_boolean_circuit_diagram_pool.py` and
   `tests/tools/test_boolean_circuit_diagram_share.py`.

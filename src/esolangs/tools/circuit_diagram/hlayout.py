@@ -14,12 +14,8 @@ essential inputs; ignored inputs keep their original ports and drive no gates.
 from dataclasses import dataclass
 from typing import cast
 
-from esolangs.tools.circuit_diagram.layout import (
-    _HOLD,
-    _Layout,
-    _RoutingLayout,
-    _Shape,
-)
+from esolangs.tools.circuit_diagram.hcells import _HCellLayout
+from esolangs.tools.circuit_diagram.layout import _HOLD, _Layout, _RoutingLayout, _Shape
 
 # H-layout lattice.  Every site sits on a multiple of eight in both axes, and
 # each wire class owns residues no other class uses, so wires of different
@@ -443,7 +439,8 @@ def _h_term_layout(
     a guard on the lattice.
     """
     plan = _h_term_plan(table, port_inputs=port_inputs)
-    layout = _RoutingLayout()
+    ports = plan.inputs if port_inputs is None else port_inputs
+    layout = _HCellLayout(_h_size(plan.inputs) + 8 * ports + 64)
     literal_anchors = _h_reserve_terms(layout, plan)
     _h_route_literals(
         layout,
@@ -453,4 +450,4 @@ def _h_term_layout(
         port_inputs=port_inputs,
     )
     _h_route_results(layout, plan)
-    return layout
+    return layout.seal()

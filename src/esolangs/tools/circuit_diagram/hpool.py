@@ -6,6 +6,7 @@ from dataclasses import replace
 
 from esolangs.tools.helpers import _validate_truth_table
 
+from .hcells import _HCellLayout
 from .hlayout import (
     _Block,
     _depth,
@@ -14,7 +15,7 @@ from .hlayout import (
     _h_route_results,
     _HTermPlan,
 )
-from .layout import _Layout, _RoutingLayout, _Shape
+from .layout import _Layout, _Shape
 
 
 def _h_pool_size(prefix_inputs: int, tail_inputs: int) -> int:
@@ -95,7 +96,7 @@ def _h_pool_layout(
         return serial - 1
 
     plan = _HTermPlan(p, sites, signals, literal_start, {}, set(), 0, levels)
-    layout = _RoutingLayout()
+    layout = _HCellLayout(margin + size(p) + 64)
     anchors = _h_reserve_terms(layout, plan)
     points: dict[int, tuple[int, int]] = {}
     values: dict[int, int | None] = {}
@@ -212,4 +213,4 @@ def _h_pool_layout(
         plan, results=values, result_gates=result_gates, result_signal=result_signal
     )
     _h_route_results(layout, plan, leaf_points=points)
-    return layout
+    return layout.seal()
