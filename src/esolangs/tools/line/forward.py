@@ -71,8 +71,22 @@ def streaming_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | Non
     return _forward_canvas(table, old_area, destination_moves=True, streaming=True)
 
 
+def centered_streaming_canvas(
+    table: str, old_area: int
+) -> tuple[Node, CanvasPlan] | None:
+    """Center streamed layers on eight-unit columns to shorten arrivals."""
+    return _forward_canvas(
+        table, old_area, destination_moves=True, streaming=True, centered=True
+    )
+
+
 def _forward_canvas(
-    table: str, old_area: int, *, destination_moves: bool, streaming: bool = False
+    table: str,
+    old_area: int,
+    *,
+    destination_moves: bool,
+    streaming: bool = False,
+    centered: bool = False,
 ) -> tuple[Node, CanvasPlan] | None:
     original_n = _validate_truth_table(table)
     kept = list(range(original_n)) if streaming else essential_inputs(table, original_n)
@@ -147,6 +161,10 @@ def _forward_canvas(
                 column += previous_gap + gap + 4 if destination_moves else 20
             columns[residual] = column
             previous_gap = gap
+        if centered:
+            # Eight-unit translation preserves node/rail residue separation.
+            offset = -8 * (column // 16)
+            columns = {residual: x + offset for residual, x in columns.items()}
         lanes, lane_count = _join_lanes(
             [
                 (

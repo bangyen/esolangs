@@ -159,7 +159,12 @@ def _grey_rows(canvas: Canvas) -> Rows:
 @lru_cache(maxsize=8)
 def _generate(truth_table: str) -> Raster:
     """Return a Line raster computing ``truth_table``."""
-    from .forward import destination_canvas, forward_canvas, streaming_canvas
+    from .forward import (
+        centered_streaming_canvas,
+        destination_canvas,
+        forward_canvas,
+        streaming_canvas,
+    )
     from .shared import shared_canvas, shared_tree
 
     node = line_boolean(truth_table)
@@ -203,7 +208,12 @@ def _generate(truth_table: str) -> Raster:
             smallest = draw.area
             selected_draw = draw
             node = graph
-    for build in (forward_canvas, destination_canvas, streaming_canvas):
+    for build in (
+        forward_canvas,
+        destination_canvas,
+        streaming_canvas,
+        centered_streaming_canvas,
+    ):
         forward = build(truth_table, smallest)
         if forward is not None:
             node, selected_draw = forward
