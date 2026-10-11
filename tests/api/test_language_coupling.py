@@ -93,6 +93,11 @@ _CITATION_PHRASES = (
     "mirroring",
     "mirrors",
 )
+#: Suffixes that cite a language as a model rather than describe it: a
+#: ``-like`` or ``-based`` compound.  The phrase list above only catches a
+#: citation that comes first, so these compounds slipped through.  A
+#: possessive is not a citation, so it is left alone.
+_CITATION_SUFFIXES = ("-like", "-based", "-style", "-family")
 #: Prose that records history, not a statement about a live language.
 _HISTORY = frozenset({"CHANGELOG.md"})
 #: The file kinds whose prose is scanned for citations.
@@ -124,6 +129,20 @@ def _prose(path: Path, text: str) -> list[str]:
     return lines
 
 
+def _cites(line: str, name: re.Pattern[str], phrase: re.Pattern[str]) -> bool:
+    """Whether a prose line cites a language rather than describes one.
+
+    A citation is a phrase before the name ("like a second language") or a
+    compound after it ("a second-language-like machine"); a bare mention is
+    not.
+    """
+    return any(
+        phrase.search(line[: match.start()])
+        or line[match.end() :].startswith(_CITATION_SUFFIXES)
+        for match in name.finditer(line)
+    )
+
+
 @cache
 def _citations() -> list[str]:
     """Return each docstring, comment or text line that cites a language."""
@@ -151,10 +170,8 @@ def _citations() -> list[str]:
         if not name.search(text):
             continue
         for line in _prose(path, text):
-            for match in name.finditer(line):
-                if phrase.search(line[: match.start()]):
-                    found.append(f"{relative}: {line.strip()[:100]}")
-                    break
+            if _cites(line, name, phrase):
+                found.append(f"{relative}: {line.strip()[:100]}")
     return sorted(set(found))
 
 
@@ -166,6 +183,16 @@ def test_no_file_cites_another_language() -> None:
         "a shared file cites another language; state the fact without naming a "
         f"second language: {found}"
     )
+
+
+def test_citation_matching_covers_a_compound() -> None:
+    """A compound after the name cites it; a bare mention or possessive does not."""
+    name = re.compile(r"(?<!\w)(?:Zork)(?!\w)")
+    phrase = re.compile(r"(?i)\b(like)\s*$")
+    assert _cites("Zork wraps its bytes", name, phrase) is False
+    assert _cites("like Zork, it wraps", name, phrase) is True
+    assert _cites("a Zork-like machine", name, phrase) is True
+    assert _cites("Zork's tape grows", name, phrase) is False
 
 
 def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:

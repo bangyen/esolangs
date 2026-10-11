@@ -1,6 +1,6 @@
 """Interpreter for Jaune.
 
-A brainfuck-like cell array with a hold cell.  ``^`` prints the cell as a
+A cell array with a hold cell.  ``^`` prints the cell as a
 decimal, ``v`` reads a digit, ``>``/``<`` move, ``#`` copies to the hold,
 ``&`` adds it back, ``%`` zeroes, ``+``/``-`` with an optional count
 adjust.  ``(number):`` labels, ``?``/``!`` jump when nonzero/zero, ``$``
