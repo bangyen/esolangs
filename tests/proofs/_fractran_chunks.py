@@ -10,21 +10,27 @@ def chunk_width(n: int) -> int:
     return max(1, n - n.bit_length())
 
 
+def mapped_chunk_width(n: int) -> int:
+    """Return a power-of-ten width below the feature construction's width."""
+    return 10 ** (len(str(chunk_width(n))) - 1)
+
+
 def decimal_progression(count: int, step: int = 1) -> Iterator[str]:
     """Yield decimal multiples of ``step`` without wide binary conversion."""
-    digits = [0]
-    stride = [int(char) for char in str(step)[::-1]]
+    digits = bytearray(b"0")
+    stride = str(step)[::-1].encode("ascii")
     for _ in range(count):
-        yield "".join(str(digit) for digit in reversed(digits))
+        yield digits[::-1].decode("ascii")
         carry = 0
         position = 0
         while position < len(stride) or carry:
             if position == len(digits):
-                digits.append(0)
-            value = digits[position] + carry
+                digits.append(ord("0"))
+            value = digits[position] - ord("0") + carry
             if position < len(stride):
-                value += stride[position]
-            carry, digits[position] = divmod(value, 10)
+                value += stride[position] - ord("0")
+            carry, digit = divmod(value, 10)
+            digits[position] = ord("0") + digit
             position += 1
 
 
@@ -32,18 +38,22 @@ def mapped_chunk_template(table: str) -> str:
     """Load the selected chunk directly from its mapping numerator."""
     n = len(table).bit_length() - 1
     assert len(table) == 1 << n
-    width = chunk_width(n)
+    width = mapped_chunk_width(n)
     k = (len(table) + width - 1) // width
     inputs = [prime for prime in _linear_primes(40 + n) if prime > 149][:n]
     start = "*".join(["29", "103^2", *(f"{prime}^{TEMPLATE_CHAR}" for prime in inputs)])
     loaders = [f"107^{1 << (n - 1 - i)}/{prime}" for i, prime in enumerate(inputs)]
     # All chunk values fit this dictionary: its O(2**width * n) text is O(T).
-    # Decimal counters also spell the row offsets in O(k*n) digit work.
+    # Power-of-ten strides append zeros to the unit counter; both counters
+    # use amortized constant digit updates, with O(n)-bit scalar addresses.
     literals = list(decimal_progression(1 << width))
+    suffix = "0" * (len(str(width)) - 1)
     mappings = [
-        f"109*7^{literals[int(table[i * width : (i + 1) * width][::-1], 2)]}"
-        f"/29*107^{offset}"
-        for i, offset in enumerate(decimal_progression(k, width))
+        f"109*7^{literals[int(table[position : position + width][::-1], 2)]}"
+        f"/29*107^{number + suffix if number != '0' else '0'}"
+        for position, number in zip(
+            range(0, len(table), width), decimal_progression(k), strict=True
+        )
     ]
     return " ".join([start, *loaders, *reversed(mappings), *bit_decoder()[1]])
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from functools import cache
@@ -16,6 +17,73 @@ _POWER = re.compile(r"^(\d+)(?:\^(\d+))?$")
 
 #: Every source may name bases up to this, however short it is.
 SMALL_BASE = 256
+
+
+class _DecimalReader:
+    """Parse shared prefixes and descending exponent progressions exactly."""
+
+    def __init__(self, max_step: int) -> None:
+        self.max_step = max_step
+        self.values: dict[str, int] = {"": 0}
+        self.previous: dict[int, tuple[str, int]] = {}
+        self.steps: dict[int, tuple[int, int]] = {}
+
+    def _prefix(self, text: str) -> int:
+        pending = []
+        prefix = text
+        while prefix not in self.values:
+            pending.append(prefix)
+            prefix = prefix[:-1]
+        value = self.values[prefix]
+        for prefix in reversed(pending):
+            value = 10 * value + int(prefix[-1])
+            self.values[prefix] = value
+        return value
+
+    @staticmethod
+    def _decrement(text: str, zeros: int) -> str:
+        digits = bytearray(text, "ascii")
+        position = len(digits) - 1 - zeros
+        while position >= 0:
+            if digits[position] > ord("0"):
+                digits[position] -= 1
+                return digits.decode("ascii").lstrip("0") or "0"
+            digits[position] = ord("9")
+            position -= 1
+        return ""
+
+    def read(self, base: int, text: str, *, progression: bool = False) -> int:
+        limit = sys.get_int_max_str_digits()
+        if limit and len(text) > limit:
+            return int(text)  # Preserve Python's decimal-input limit.
+        text = text.lstrip("0") or "0"
+        if len(text) > self.max_step:
+            # Cache generated word-sized fields, not every prefix of an
+            # arbitrary long literal, whose prefix storage would be quadratic.
+            self.previous.pop(base, None)
+            self.steps.pop(base, None)
+            return int(text)
+        if not progression:
+            return self._prefix(text)
+        old = self.previous.get(base)
+        step = self.steps.get(base)
+        if (
+            old is not None
+            and step is not None
+            and old[0].isascii()
+            and text == self._decrement(old[0], step[1])
+        ):
+            value = old[1] - step[0]
+            self.values[text] = value
+        else:
+            value = self._prefix(text)
+            self.steps.pop(base, None)
+            if old is not None and 0 < old[1] - value <= self.max_step:
+                stride = str(old[1] - value)
+                if stride[0] == "1" and not stride[1:].strip("0"):
+                    self.steps[base] = old[1] - value, len(stride) - 1
+        self.previous[base] = text, value
+        return value
 
 
 def integer(value: Factors) -> int:
@@ -56,7 +124,14 @@ class Index:
             if group is None:
                 continue
             keys = self.keys[p]
-            start = bisect_left(keys, -exponent) if keys is not None else 0
+            if keys is not None and exponent < group[-1][1]:
+                continue  # The smallest monotone threshold is already too large.
+            if keys is not None and len(group) > 1 and exponent < group[-2][1]:
+                # Decoder cleanup can leave one small threshold below a long
+                # mapping progression. Its singleton suffix needs no bisection.
+                start = len(group) - 1
+            else:
+                start = bisect_left(keys, -exponent) if keys is not None else 0
             for j in range(start, len(group)):
                 index, threshold = group[j]
                 if best is not None and index >= best:
@@ -102,11 +177,12 @@ def compile_index(code: str) -> Index | None:
     )
 
     terms: dict[str, tuple[int, int]] = {}
+    decimals = _DecimalReader(len(code).bit_length())
     maximum = 1
     for position, (_offset, token) in enumerate(tokens):
         head, slash, tail = token.partition("/")
         products = (token,) if position == 0 else (head, tail if slash else "1")
-        for text in products:
+        for product_index, text in enumerate(products):
             for term in text.split("*"):
                 if term in terms:
                     continue
@@ -116,7 +192,13 @@ def compile_index(code: str) -> Index | None:
                 base = int(match[1])
                 if not 1 <= base <= limit:
                     return None
-                exponent = 1 if match[2] is None else int(match[2])
+                exponent = (
+                    1
+                    if match[2] is None
+                    else decimals.read(
+                        base, match[2], progression=position > 0 and product_index == 1
+                    )
+                )
                 terms[term] = base, exponent
                 maximum = max(maximum, base)
     # Sieve actual bases, never the quadratic admission limit. Cap scratch

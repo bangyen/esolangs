@@ -2,7 +2,9 @@
 
 # ruff: noqa: SLF001
 
+import random
 import re
+import sys
 
 import pytest
 
@@ -16,6 +18,107 @@ from tests.support.raises import assert_rejected_with_hint
 PRIMEGAME = (
     "17/91 78/85 19/51 23/38 29/33 77/29 95/23 77/19 1/17 11/13 13/11 15/14 15/2 55/1"
 )
+
+
+@pytest.mark.parametrize("step", [1, 3, 10, 11, 99, 100])
+def test_decimal_progressions_and_dense_values(step: int) -> None:
+    reader = fractran_index._DecimalReader(128)
+    for value in reversed(range(2049)):
+        assert reader.read(107, str(step * value), progression=True) == step * value
+    rng = random.Random(20261011)
+    for _ in range(2049):
+        value = rng.randrange(2049)
+        assert reader.read(7, str(value)) == value
+    for text in (
+        "0",
+        "000000",
+        "00037",
+        "\u0660\u0660\u0661\u0662",
+        "\uff11\uff12\uff13",
+        "999",
+        "1000",
+        "8",
+    ):
+        assert reader.read(107, text, progression=True) == int(text)
+
+
+def test_decimal_cache_keeps_long_literals_out_and_preserves_limits() -> None:
+    reader = fractran_index._DecimalReader(16)
+    text = "9" * 129
+    assert reader.read(7, text) == int(text)
+    assert reader.values == {"": 0}
+    limit = sys.get_int_max_str_digits()
+    if limit:
+        with pytest.raises(ValueError, match="limit"):
+            reader.read(7, "1" * (limit + 1))
+
+
+def test_decimal_guard_progression_amortizes_scalar_byte_addresses(monkeypatch) -> None:
+    reads = writes = 0
+
+    class CountedBytes(bytearray):
+        def __getitem__(self, key):
+            nonlocal reads
+            reads += isinstance(key, int)
+            return super().__getitem__(key)
+
+        def __setitem__(self, key, value):
+            nonlocal writes
+            writes += isinstance(key, int)
+            super().__setitem__(key, value)
+
+    monkeypatch.setattr(fractran_index, "bytearray", CountedBytes, raising=False)
+    reader = fractran_index._DecimalReader(1000)
+    count = 2049
+    for value in reversed(range(count)):
+        assert reader.read(107, str(1000 * value), progression=True) == 1000 * value
+    assert 2 * (count - 2) < reads < 3 * count
+    assert count - 2 < writes < 2 * count
+
+
+def test_monotone_empty_or_singleton_suffix_skips_bisection(monkeypatch) -> None:
+    index = fractran_index.compile_index("107^2 7/107^99 11/107^3 1/107^2")
+    assert index is not None
+
+    def forbidden(*_args):
+        pytest.fail("an empty or singleton eligible suffix reached bisection")
+
+    monkeypatch.setattr(fractran_index, "bisect_left", forbidden)
+    assert index.choose(((107, 2),)) == (2, 1)
+    assert index.choose(((107, 1),)) == (None, 0)
+
+
+def test_indexed_removal_guards_match_independent_literal_runs() -> None:
+    rng = random.Random(20261011)
+    primes = (2, 3, 107)
+    for _ in range(24):
+        start = "*".join(f"{prime}^{rng.randrange(11)}" for prime in primes)
+        rules = []
+        for _ in range(12):
+            exponents = [rng.randrange(6) for _ in primes]
+            if not any(exponents):
+                exponents[0] = 1
+            guard = "*".join(
+                f"{prime}^{exponent}"
+                for prime, exponent in zip(primes, exponents, strict=True)
+            )
+            rules.append(f"1/{guard}")
+        source = " ".join([start, *rules])
+        index = fractran_index.compile_index(source)
+        assert index is not None
+        value, fractions, _offsets = _parse(source)
+        factors = index.initial
+        for _ in range(31):
+            assert fractran_index.integer(factors) == value
+            rule, _probes = index.choose(factors)
+            assert rule == _choose(value, fractions)
+            if rule is None:
+                break
+            numerator, denominator = fractions[rule]
+            value = value * numerator // denominator
+            factors = fractran_index.advance(factors, index.rules[rule][1])
+        else:
+            pytest.fail("strict removal exceeded its initial exponent sum")
 
 
 @pytest.mark.parametrize(

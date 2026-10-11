@@ -7,6 +7,7 @@ import random
 import pytest
 
 from esolangs.interpreters.fractran import _choose, _Machine, _parse
+from esolangs.interpreters.fractran import index as fractran_index
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.fractran import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
@@ -15,6 +16,7 @@ from tests.proofs._fractran_chunks import (
     chunk_width,
     decimal_progression,
     mapped_chunk_template,
+    mapped_chunk_width,
 )
 from tests.support.witness_tables import row_bits
 
@@ -45,11 +47,20 @@ def _run(template: str, table: str, row: int, k: int, watchers: int | None = 4) 
 @pytest.mark.parametrize(
     "n", [0, 1, 2, 3, 6, 10, pytest.param(16, marks=pytest.mark.slow)]
 )
-def test_mapped_chunks_execute(n: int) -> None:
+def test_mapped_chunks_execute(n: int, monkeypatch: pytest.MonkeyPatch) -> None:
     size = 1 << n
-    width = chunk_width(n)
+    width = mapped_chunk_width(n)
     k = (size + width - 1) // width
     rng = random.Random(20261011)
+    bisect = fractran_index.bisect_left
+    mapping_queries = 0
+
+    def count_bisections(keys: tuple[int, ...], value: int) -> int:
+        nonlocal mapping_queries
+        mapping_queries += len(keys) > 256
+        return bisect(keys, value)
+
+    monkeypatch.setattr(fractran_index, "bisect_left", count_bisections)
     tables = (
         [format(value, f"0{size}b") for value in range(1 << size)]
         if n <= 3
@@ -64,8 +75,12 @@ def test_mapped_chunks_execute(n: int) -> None:
             else sorted({0, width - 1, width, size // 3, size - 1})
         )
         for row in rows:
+            mapping_queries = 0
             _run(template, table, row, k, watchers=None)
-            if n <= 2:
+            assert mapping_queries <= n
+            if n == 16 and row == size - 1:
+                assert mapping_queries == n
+            if n <= 2 or n == 6:
                 source = fill_runs(
                     template, TEMPLATE_CHAR, [PAIR] * n, row_bits(row, n)
                 )

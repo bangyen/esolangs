@@ -1228,7 +1228,9 @@ construction controls, not a claim that it is the practical generator.
 The feature primes are unnecessary when each mapping numerator carries its
 own chunk value. `mapped_chunk_template` in
 `tests/proofs/_fractran_chunks.py` starts with mapping flag `29`, decoder
-constant `103**2` and the same input primes. The input loaders still put
+constant `103**2` and the same input primes. Here `b` is the largest power
+of ten at most `max(1,n-bit_length(n))`; thus `b=Theta(n)` and
+`2**b=O(k)` still hold. The input loaders still put
 row `r` in register `107`. For each block, in descending order, emit
 
     109*7**a_i / (29*107**(b*i)).
@@ -1243,31 +1245,72 @@ construction: materializing the register integers is outside its bounds.
 Generation now needs only `n` variable primes. Their sieve costs a
 polynomial in `n`, hence `O(T)` asymptotically. Chunk values are bounded by
 `2**b=O(k)`; a decimal odometer spells every value below `2**b` once and
-stores its string. Its total written digits are `O(k*n)=O(T)`. Another
-decimal counter advances by `b` to spell mapping offsets. Adding that
-stride costs `O(log b)` digit operations plus amortized carries per
-offset; writing the offsets costs `O(k*n)`. Binary chunk parsing costs
-`O(b)` per block. Thus generation, including literal rendering, takes
-`O(T)` bit work without converting each wide binary integer to decimal.
-The strings and generated source occupy `O(T)` bits.
+stores its string. It uses packed ASCII bytes rather than word-sized
+digit cells. Incrementing a unit counter visits `O(1)` digits amortized,
+so full-word scalar addresses cost `O(n)` per value. Bulk copies of each
+packed `O(n)`-bit literal also cost `O(n)`. Total counter and rendering
+work is `O(2**b*n)=O(T)`. Mapping offsets append the fixed zero suffix
+of `b` to a second unit counter, costing `O(k*n)=O(T)` bits. Slice
+positions advance by addition, not a separate multiplication per block;
+binary chunk parsing costs `O(b)` per block. Thus generation, including
+addresses and literal rendering, takes `O(T)` bit work. The strings and
+generated source occupy `O(T)` bits. The earlier word-cell decimal
+odometer did not justify this bit bound.
+
+The native decimal reader memoizes decimal prefixes. For chunk values
+below `2**b`, there are only `O(2**b)` possible nonempty prefixes; each
+stores and computes an `O(n)`-bit integer. Their total bit work is
+`O(2**b*n)=O(T)`, including string slicing and hashing. Mapping offsets
+form a descending progression of stride `b`. After two offsets, the
+reader verifies the next numeral by decrementing at the decimal position
+of `b` and subtracts `b` from the previous binary value. The packed
+decimal buffer is copied in `O(n)` bit work; the descending unit counter
+has `O(1)` scalar byte visits amortized, each with an `O(n)`-bit address.
+Materialized binary subtraction costs `O(n)` per field as well. Hence
+progression parsing costs `O(k*n)=O(T)` in all. Only guard thresholds use
+this prediction; arbitrary chunk-value order uses prefix memoization.
+The first offset and the `n` input-weight literals cost a polynomial in
+`n`. All bases are bounded by a polynomial in `n`, so factoring and the
+native loading sieve are also polynomial in `n`. The remaining token,
+guard and monotone-index work costs `O(n)` per fraction. Loading therefore
+takes `O(T)` bit work and stores `O(T)` bits.
 
 The normal machine selects indexed scans rather than the dense cursor.
-While loading, at most `n` input registers are live. Once a mapping fires,
-register `107` is below `b`, so no positive-offset mapping can apply;
-the zero-offset mapping is anchored on the absent flag `29`. The
-positive-offset mapping thresholds decrease in source order, so the index
-skips them by bisection during decoding. Only the fixed decoder's guard
-groups remain relevant. Loading still converts the decimal literals back
-to binary, and execution still uses the index's comparisons; this does
-not prove a bit-linear loading and execution pipeline.
+Once a mapping fires, register `107` is below `b`, so no positive-offset
+mapping can apply; the zero-offset mapping is anchored on the absent
+flag `29`. The `107` group has decreasing mapping thresholds followed by
+one cleanup threshold of `1`. The index now recognizes a wholly
+ineligible monotone group or an eligible singleton suffix before
+bisection. Thus a decoder step inspects only that cleanup candidate and
+the fixed decoder groups. Large-group bisections occur at most once per
+input loader and once for mapping, with `O(n)` comparisons of `O(n)`-bit
+integers each; the loading phase has polynomial bit cost in `n`.
+
+Successive divisions halve the selected chunk, so the decoder's firings
+sum to `O(2**b+b)=O(k+n)`. Each firing changes a fixed number of `O(n)`-bit
+exponents and consults only fixed-size groups. Execution therefore takes
+`O(k*n+poly(n))=O(T)` bit work. The live sparse state has a polynomial
+number of bits in `n`; the source and persistent index occupy `O(T)`
+bits. Together with the generation argument, this establishes a bit-linear
+pipeline under the existing sparse-factor contract. It does not change
+the public decision-diagram generator or its polynomial command bound.
 
 Controls execute all 2,122 rows through three inputs, including 74
-independent literal-arithmetic checks through two inputs. Zero, one and
+independent literal-arithmetic checks through two inputs, plus boundary
+and interior literal checks at six. Zero, one and
 seeded tables execute boundary and interior rows at six, ten and sixteen
 inputs. On `Random(20261011)`'s sixteen-input table, emitted source is
-142,789 characters and 6,230 fractions, against 558,012 characters for the
+153,071 characters and 6,826 fractions, against 558,012 characters for the
 feature construction on that same table. First, one-third and last rows
-use 76,614, 118,749 and 27,939 firings. The full pipeline remains open.
+use 32,070, 3,793 and 3,679 firings. The one-third-row loading control
+creates 1,036 decimal prefixes carrying 33,683 ASCII-key and binary-value
+bits in total, verifies 31,821 progression digits, and makes eight large-group
+bisections. The last-row positive controls make exactly sixteen such
+bisections on zero, one and seeded tables; none occur during decoding.
+The scalar-address control parses 2,049 descending multiples of 1,000,
+checks every value against literal conversion, and bounds actual byte
+reads below three per value and writes below two. Both counts exceed
+their no-borrow baselines, positively exercising decimal carries.
 
 ## The other end: the row-addressing tree
 
