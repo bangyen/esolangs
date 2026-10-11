@@ -94,7 +94,7 @@ def test_every_admitted_three_input_residual_dag_executes(tmp_path):
 def test_parity_shares_same_level_residuals_within_existing_contract(n, tmp_path):
     table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
     area, commands = _check(table, tmp_path)
-    assert area == {6: 5_274_000, 7: 6_138_000, 8: 7_002_000}[n]
+    assert area == {6: 5_094_000, 7: 5_922_000, 8: 6_750_000}[n]
     assert area < {6: 5_328_000, 7: 14_280_000, 8: 17_472_000}[n]
     assert commands == 5 * n - 1
 
@@ -104,7 +104,7 @@ def test_parity_shares_same_level_residuals_within_existing_contract(n, tmp_path
 def test_public_majority_shares_residuals_and_executes_every_row(n, tmp_path):
     table = "".join(str(int(row.bit_count() > n // 2)) for row in range(1 << n))
     area, _ = _check(table, tmp_path)
-    assert area == {8: 13_238_400, 9: 18_803_200}[n]
+    assert area == {8: 12_028_800, 9: 16_723_200}[n]
     assert area < {8: 13_920_000, 9: 28_492_800}[n]
     public = line(table)
     assert len(public.rows) * len(public.rows[0]) == area

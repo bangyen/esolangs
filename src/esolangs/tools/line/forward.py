@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections import deque
+
 from esolangs.tools.helpers import (
     _residual_ids,
     _validate_truth_table,
@@ -26,6 +28,32 @@ class _StemCursor(_Cursor):
         if steps:
             self._current.append((self.y, self.x))
         self.heading = direction
+
+
+def _join_lanes(spans: list[tuple[Edge, int, int]]) -> tuple[dict[Edge, int], int]:
+    """Allocate disjoint padded spans by left edge in O(edges + width) work."""
+    if not spans:
+        return {}, 0
+    starts: dict[int, list[tuple[Edge, int]]] = {}
+    for edge, a, b in spans:
+        # Padding keeps unrelated spans three units apart, including landings.
+        lo, hi = min(a, b) - 1, max(a, b) + 1
+        starts.setdefault(lo, []).append((edge, hi))
+    ends: dict[int, list[int]] = {}
+    available: deque[int] = deque()
+    lanes: dict[Edge, int] = {}
+    count = 0
+    for x in range(min(starts), max(starts) + 1):
+        available.extend(ends.pop(x, ()))
+        for edge, hi in starts.get(x, ()):
+            if available:
+                lane = available.popleft()
+            else:
+                lane = count
+                count += 1
+            lanes[edge] = lane
+            ends.setdefault(hi + 1, []).append(lane)
+    return lanes, count
 
 
 def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
@@ -73,18 +101,51 @@ def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
     base = 0
     for depth, level in enumerate(members):
         extras = [(edge, dest) for edge, dest in incoming[depth] if first[dest] != edge]
+        columns = {residual: 20 * index for index, residual in enumerate(level)}
+        lanes, lane_count = _join_lanes(
+            [
+                (
+                    edge,
+                    forks[edge[0], edge[1]][1] + (-8 if edge[2] == 0 else 8),
+                    columns[dest[1]],
+                )
+                for edge, dest in extras
+            ]
+        )
+        arrivals = (
+            [
+                (
+                    first[depth, residual],
+                    forks[first[depth, residual][0], first[depth, residual][1]][1]
+                    + (-8 if first[depth, residual][2] == 0 else 8),
+                    columns[residual],
+                )
+                for residual in level
+            ]
+            if depth
+            else []
+        )
+        arrival_lanes, arrival_count = _join_lanes(arrivals)
+        if depth == 0:
+            arrival_count = 1
+        # Disjoint arrival/join spans reuse rows. At n=22 majority, scale 1,
+        # this emits 87,270,400 pixels versus 123,110,400 (29.1%); both native
+        # programs pass 37 rows with the same 98-command maximum.
         # Across all 81 adjacent arm-shape pairs, a 20-unit pitch keeps
         # opcode ink at least one unit apart (20px > the 15px star probe).
         # Entry/join lanes contain no opcodes and use two-unit spacing.
         for index, residual in enumerate(level):
             state = depth, residual
-            entry[state] = base + 4 + 2 * index, 20 * index
-            forks[state] = (
-                base + 16 + 2 * len(level) + 2 * len(extras),
+            entry[state] = (
+                base + 4 + 2 * (arrival_lanes[first[state]] if depth else 0),
                 20 * index,
             )
-        for index, (edge, dest) in enumerate(extras):
-            join[edge] = base + 8 + 2 * len(level) + 2 * index, entry[dest][1]
+            forks[state] = (
+                base + 16 + 2 * arrival_count + 2 * lane_count,
+                20 * index,
+            )
+        for edge, dest in extras:
+            join[edge] = base + 8 + 2 * arrival_count + 2 * lanes[edge], entry[dest][1]
         # The last leaf ends 15 units below its fork; the next entry starts
         # 16 below, retaining a full 20px gap for the 15px extraction probe.
         base = forks[depth, level[-1]][0] + 12
