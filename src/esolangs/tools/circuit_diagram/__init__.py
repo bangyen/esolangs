@@ -77,10 +77,8 @@ from typing import Any, Literal
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
-from esolangs.tools.circuit_diagram.hlayout import (
-    _h_minterm_sites,
-    _h_term_layout,
-)
+from esolangs.tools.circuit_diagram.columns import _FreeColumns
+from esolangs.tools.circuit_diagram.hlayout import _h_minterm_sites, _h_term_layout
 from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import (
     _validate_truth_table,
@@ -126,7 +124,7 @@ class _Builder:
         # recyclable signal was cut from.  Only a *gate's* output is ever
         # entered here: selector rails are shared, while every mux result is
         # read once by the carry that consumes it and then dies.
-        self.free_strides: list[int] = []
+        self.free_strides = _FreeColumns()
         self.stride_of: dict[int, int] = {}
         # Set once a width is asked for: the column a new band starts at, and
         # the width the bands stay inside.  ``live`` is every intermediate
@@ -171,11 +169,8 @@ class _Builder:
         # whatever is drawn into it.  Columns: a gate must sit *right* of every
         # bus it reads (``after`` is the rightmost), or the tap would cross the
         # gate's own glyph (:class:`_Layout` refuses it).
-        usable = [group for group in self.free_strides if group + _COL_STEP > after]
-        if usable:
-            first = min(usable)
-            self.free_strides.remove(first)
-        else:
+        first = self.free_strides.take_after(after - _COL_STEP)
+        if first is None:
             first = self.next_column
             self.next_column += self.gate_stride
         return first, first + _COL_STEP
@@ -215,7 +210,7 @@ class _Builder:
         """Whether a gate reading up to ``after`` fits without a new band."""
         if self.limit is None:
             return True
-        if any(group + _COL_STEP > after for group in self.free_strides):
+        if self.free_strides.first_after(after - _COL_STEP) is not None:
             return True
         boundary = self.next_column + self.gate_stride
         if boundary > self.limit:
@@ -235,7 +230,7 @@ class _Builder:
         """
         stride = self.stride_of.pop(signal, None)
         if stride is not None:
-            self.free_strides.append(stride)
+            self.free_strides.add(stride)
         if signal in self.live:
             self.live.remove(signal)
 
@@ -569,8 +564,9 @@ def _linear_shared_layout(table: str, inputs: int) -> _Layout | None:
     """Admit the folded model only within the H-layout's linear work and area."""
     used, projected = _essential_table(table, inputs)
     ops = _dag(projected, len(used))[0]
-    # At most three gates per node, with O(nodes**2) interval insertion
-    # and column scans. At most twice sqrt(T) nodes keeps that work O(T).
+    # At most three gates per node; the coarse O(nodes**2) model-work
+    # bound stays O(T) at twice sqrt(T). Area admission alone also admits
+    # the nested dense fold's measured 9.455 size-difference ratio.
     if len(ops) ** 2 > 4 * len(table):
         return None
     sites = [

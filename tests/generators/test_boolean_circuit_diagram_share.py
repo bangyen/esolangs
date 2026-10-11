@@ -4,14 +4,19 @@ from __future__ import annotations
 
 import hashlib
 
+import pytest
+
+from esolangs.interpreters.grid_based.circuit_diagram import _Machine
+from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.circuit_diagram import (
     _circuit_diagram_model,
     _dag,
     _linear_shared_layout,
     circuit_diagram,
 )
-from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+from esolangs.tools.circuit_diagram.hlayout import _h_minterm_sites, _h_term_layout
 from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
+from tests.support.witness_tables import nested_dense
 
 
 def _dense(n: int) -> str:
@@ -54,3 +59,32 @@ class TestCircuitDiagramShareScope:
         hlay = _area(_h_term_layout(_dense(10))) / _area(_h_term_layout(_dense(8)))
         assert round(shared, 3) == 4.926
         assert hlay <= 4.4 < shared
+
+    @pytest.mark.slow
+    def test_exact_area_admission_alone_breaks_measured_text_growth(self) -> None:
+        sizes = []
+        for n in (8, 10, 12):
+            table = nested_dense(n)
+            model = _circuit_diagram_model(table, None)
+            sites = _h_minterm_sites(n)
+            xs, ys = zip(
+                *(point for prefix, point in sites.items() if prefix.bit_length() >= 3),
+                strict=True,
+            )
+            floor = (max(xs) - min(xs) + 1) * (max(ys) - min(ys) + 1)
+            assert _area(model) < floor
+            code = model.render()
+            sizes.append(len(code))
+            for row in (0, (1 << n) - 1):
+                io = ScriptedIO(f"{row:0{n}b}")
+                vm = _Machine(code.splitlines(), io)
+                assert io.progress() == n
+                commands = 0
+                while not vm.halted and commands <= 2 * n + 2:
+                    vm.step()
+                    commands += 1
+                assert vm.halted
+                assert io.getvalue() == table[row]
+        ratio = (sizes[2] - sizes[1]) / (sizes[1] - sizes[0])
+        assert round(ratio, 3) == 9.455
+        assert ratio > 4.4
