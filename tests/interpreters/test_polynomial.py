@@ -11,16 +11,16 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs.interpreters import polynomial as polynomial_module
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based import polynomial as polynomial_module
-from esolangs.interpreters.register_based.polynomial import (
+from esolangs.interpreters.polynomial import (
     brackets,
     convert,
     run,
     sanitize,
 )
-from esolangs.interpreters.register_based.polynomial import roots as roots_module
-from esolangs.interpreters.register_based.polynomial.roots import (
+from esolangs.interpreters.polynomial import roots as roots_module
+from esolangs.interpreters.polynomial.roots import (
     _TRIAL_MODULUS,
     _dense_gaussian_roots,
     _divide_out_quadratics,
@@ -38,7 +38,9 @@ from tests.interpreters.cursorless_io import PositionlessIO
 # cases where a float64 solver rounds a root and drops or corrupts a
 # character.  Kept as data because only the decode is under test.
 _PRECISION_PROGRAMS: dict[str, str] = json.loads(
-    (Path(__file__).parents[2] / "tests/fixtures/polynomial_precision.json").read_text()
+    (
+        Path(__file__).parents[2] / "tests/support/fixtures/polynomial_precision.json"
+    ).read_text()
 )
 
 
@@ -65,7 +67,7 @@ def test_missing_math_extra_is_actionable(monkeypatch: pytest.MonkeyPatch) -> No
 
 class TestPolynomialValidation:
     def test_empty_program_validation(self) -> None:
-        from esolangs.interpreters.register_based.polynomial import run
+        from esolangs.interpreters.polynomial import run
 
         with pytest.raises(
             ValueError, match=r"Polynomial program must start with 'f\(x\) = '"
@@ -144,7 +146,7 @@ class TestPolynomialExecution:
 
     def test_wiki_hello_world(self) -> None:
         """Enedil's degree-50 program: 25 instructions, alternating += and print."""
-        path = Path(__file__).parents[1] / "fixtures" / "polynomial_hello.txt"
+        path = Path(__file__).parents[1] / "support/fixtures" / "polynomial_hello.txt"
         assert esolangs.run("Polynomial", path.read_text()) == "Hello World!\n"
 
     def test_while_loop(self) -> None:
@@ -162,7 +164,7 @@ class TestPolynomialExecution:
         """A root of 4i encodes an input instruction (value stored in reg)."""
         import unittest.mock
 
-        from esolangs.interpreters.register_based.polynomial import _Machine
+        from esolangs.interpreters.polynomial import _Machine
 
         for text, expected in (("A", 65), ("z", 122)):
             with unittest.mock.patch("builtins.input", return_value=text):
@@ -174,7 +176,7 @@ class TestPolynomialExecution:
         """A NUL byte is a byte, not EOF: only EOF stores -1 (wiki, Cat)."""
         import unittest.mock
 
-        from esolangs.interpreters.register_based.polynomial import _Machine
+        from esolangs.interpreters.polynomial import _Machine
 
         with unittest.mock.patch("builtins.input", return_value="\x00"):
             machine = _Machine("f(x) = x^2+16", IO())
@@ -183,7 +185,7 @@ class TestPolynomialExecution:
 
     def test_division_remainder_and_power_follow_the_wiki_c_code(self) -> None:
         """``register /= a`` etc. are C: truncate toward zero, int ``pow``."""
-        from esolangs.interpreters.register_based.polynomial import _advance
+        from esolangs.interpreters.polynomial import _advance
 
         def apply(reg: int, operand: int, code: int) -> int:
             return _advance((reg, 0), [[operand, code]])[0][0]
@@ -195,27 +197,27 @@ class TestPolynomialExecution:
 
     def test_a_nonnegative_power_is_exact_pow(self) -> None:
         """``register = pow(register, a)`` with ``a >= 0`` is ordinary pow."""
-        from esolangs.interpreters.register_based.polynomial import _advance
+        from esolangs.interpreters.polynomial import _advance
 
         assert _advance((3, 0), [[2, 6]])[0][0] == 9
 
     def test_zero_to_a_negative_power_is_refused(self) -> None:
         """``pow(0, -1)`` is infinite, so it has no integer register value."""
         from esolangs.exceptions import HaltError
-        from esolangs.interpreters.register_based.polynomial import _advance
+        from esolangs.interpreters.polynomial import _advance
 
         with pytest.raises(HaltError):
             _advance((0, 0), [[-1, 6]])
 
     def test_a_negative_register_prints_nothing(self) -> None:
         """Wiki (Cat): "negative values of output are ignored"."""
-        from esolangs.interpreters.register_based.polynomial import _advance
+        from esolangs.interpreters.polynomial import _advance
 
         assert _advance((-5, 0), [[0, 1]]) == ((-5, 1), None)
 
     def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle(self) -> None:
         """A port with no cursor reports position 0; the snapshot counts reads."""
-        from esolangs.interpreters.register_based.polynomial import _Machine
+        from esolangs.interpreters.polynomial import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         # Roots 1 + 2i, 3^5, 5^2 i, 7^6: reg += 1; while reg > 0 { read }.
@@ -230,7 +232,7 @@ class TestPolynomialExecution:
 
     def test_eof_reads_as_minus_one(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.polynomial import _Machine
+        from esolangs.interpreters.polynomial import _Machine
 
         machine = _Machine("f(x) = x^2+16", ScriptedIO())
         machine.step()
@@ -271,7 +273,7 @@ class TestPeelPrimePowerRoots:
         """Every shape the peel cannot enumerate still comes back."""
         import sympy as sp
 
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _PEEL_MAX_EXPONENT,
             _factor_roots,
         )
@@ -300,7 +302,7 @@ class TestPeelPrimePowerRoots:
         """A root outside the enumeration stays in the remainder."""
         import sympy as sp
 
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _peel_prime_power_roots,
         )
 
@@ -318,7 +320,7 @@ class TestPeelPrimePowerRoots:
         """Anything peeled divides the polynomial with no remainder."""
         import sympy as sp
 
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _peel_prime_power_roots,
         )
 
@@ -356,7 +358,7 @@ class TestFactorRootsRejections:
 
     def test_a_pair_the_peels_miss_is_decoded_by_the_remainder_search(self) -> None:
         """A real part past the peel's bound still decodes, one stage later."""
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _PEEL_MAX_REAL_PART,
         )
 
@@ -378,7 +380,7 @@ class TestPeelQuadraticsFallback:
         """A ``PolynomialError`` from sympy leaves the coefficients alone."""
         import sympy as sp
 
-        from esolangs.interpreters.register_based.polynomial import roots as mod
+        from esolangs.interpreters.polynomial import roots as mod
 
         def refuse(*_args: object, **_kwargs: object) -> object:
             raise sp.PolynomialError("constructed")
@@ -472,7 +474,7 @@ class TestPeelInstructionQuadratics:
         """``_PEEL_MODULUS`` must be ``1 (mod 4)``, or the peel finds nothing."""
         import sympy as sp
 
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _PEEL_MAX_IMAGINARY_EXPONENT,
             _PEEL_MODULUS,
         )
@@ -498,7 +500,7 @@ class TestPeelInstructionQuadratics:
         """What the peel cannot take stays in the remainder, exactly."""
         import sympy as sp
 
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _PEEL_MAX_REAL_PART,
             _peel_instruction_quadratics,
         )
@@ -541,8 +543,8 @@ class TestNttRecovery:
     """The large-degree path: roots from exhaustive field evaluation."""
 
     def test_large_real_only_remainder_uses_parse_estimate(self, monkeypatch) -> None:
-        import esolangs.interpreters.register_based.polynomial.roots as module
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        import esolangs.interpreters.polynomial.roots as module
+        from esolangs.interpreters.polynomial.roots import (
             _factor_roots,
             _Root,
         )
@@ -584,7 +586,7 @@ class TestNttRecovery:
     # never run a program.  See `duration_policy.CI_SCALE` for the ceiling.
     def test_roots_mod_is_the_exact_root_set(self) -> None:
         """Planted roots come back exactly -- no more, no fewer."""
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _NTT_FIELDS,
             _roots_mod,
         )
@@ -597,7 +599,7 @@ class TestNttRecovery:
 
     def test_zero_is_reported_when_x_divides(self) -> None:
         """The one point outside the multiplicative group is still seen."""
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _NTT_FIELDS,
             _roots_mod,
         )
@@ -608,7 +610,7 @@ class TestNttRecovery:
         """A field collision swaps pairing fields instead of losing the root."""
         import sympy as sp
 
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _NTT_FIELDS,
             _quadratic_candidates_ntt,
         )
@@ -633,7 +635,7 @@ class TestNttRecovery:
         """
         import sympy as sp
 
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _NTT_MIN_DEGREE,
             _factor_roots,
             _Root,
@@ -667,13 +669,13 @@ class TestNttRecovery:
         """Arbitrary operands outside the generated envelope retain fallback."""
         import sympy as sp
 
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _NTT_MIN_DEGREE,
             _factor_roots,
             _ntt_real_bound,
             _Root,
         )
-        from esolangs.interpreters.register_based.polynomial.roots import (
+        from esolangs.interpreters.polynomial.roots import (
             _remainder_roots as original,
         )
 
@@ -690,7 +692,7 @@ class TestNttRecovery:
             return original(*args, **kwargs)
 
         monkeypatch.setattr(
-            "esolangs.interpreters.register_based.polynomial.roots._remainder_roots",
+            "esolangs.interpreters.polynomial.roots._remainder_roots",
             recording_fallback,
         )
         _factor_roots.cache_clear()
@@ -703,7 +705,7 @@ class TestNttRecovery:
         """Each field is ``(c * 2**k + 1, c, k, g)``, prime, ``1 (mod 4)``."""
         import sympy as sp
 
-        from esolangs.interpreters.register_based.polynomial.roots import _NTT_FIELDS
+        from esolangs.interpreters.polynomial.roots import _NTT_FIELDS
 
         seen = set()
         for modulus, cofactor, log_size, generator in _NTT_FIELDS:
@@ -749,7 +751,7 @@ class TestPolynomialHighPrecisionRoots:
 
     def test_a_real_root_past_float64_still_decodes(self) -> None:
         """``251**8`` exceeds 2**53, where ``complex`` would round it."""
-        from esolangs.interpreters.register_based.polynomial.roots import _Root
+        from esolangs.interpreters.polynomial.roots import _Root
 
         root = 251**8
         assert float(root) != root, "the witness must not fit float64"
@@ -782,7 +784,7 @@ class TestStepMachine:
 
     def test_step_tracks_register_and_cursor(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.polynomial import _Machine
+        from esolangs.interpreters.polynomial import _Machine
 
         machine = _Machine("f(x) = x^2+4", ScriptedIO())
         assert (machine.ind, machine.reg) == (0, 0)
@@ -795,7 +797,7 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.register_based.polynomial import _Machine
+    from esolangs.interpreters.polynomial import _Machine
 
     return _Machine(code, ScriptedIO())
 

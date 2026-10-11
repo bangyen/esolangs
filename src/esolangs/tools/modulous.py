@@ -135,7 +135,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Modulous",
-    "stack_based.modulous",
+    "modulous",
+    category="stack_based",
     random=True,
     boolean=modulous,
     # Not a tree: pops a ``PSH STR`` table down to the indexed character.

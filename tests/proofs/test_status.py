@@ -11,7 +11,7 @@ def test_rendering_preserves_committed_tables(
 ) -> None:
     proofs, audits = status.load()
     files = {row.evidence.split("#", 1)[0] for row in (*proofs, *audits)}
-    files.update({"docs/proofs/index.md", "docs/roadmap.md"})
+    files.add("docs/proofs/index.md")
     for relative in files:
         path = tmp_path / relative
         path.parent.mkdir(parents=True, exist_ok=True)

@@ -230,7 +230,8 @@ def _bfpda_tree(
 
 LANGUAGE = Language(
     "BF-PDA",
-    "stack_based.bf_pda",
+    "bf_pda",
+    category="stack_based",
     boolean=bfpda,
     contract=BooleanContract(),
     wrap=wrap_chars,

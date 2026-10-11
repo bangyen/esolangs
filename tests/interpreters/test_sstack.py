@@ -6,7 +6,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.sstack import _Machine, run
+from esolangs.interpreters.sstack import _Machine, run
 
 
 def _out(code: str, stdin: str = "") -> str:

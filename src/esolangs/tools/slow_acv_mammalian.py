@@ -47,7 +47,7 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 
 from collections.abc import Sequence
 
-from esolangs.interpreters.tape_based.slow_acv_mammalian._dialect import (
+from esolangs.interpreters.slow_acv_mammalian._dialect import (
     DEFAULT_MODULI,
     MODULI,
     MammalianModuli,
@@ -1122,7 +1122,8 @@ def balance_slow_acv_mammalian(
 
 LANGUAGE = Language(
     "SLOW ACV MAMMALIAN",
-    "tape_based.slow_acv_mammalian",
+    "slow_acv_mammalian",
+    category="tape_based",
     boolean=slow_acv_mammalian,
     balance=balance_slow_acv_mammalian,
     dialect=MammalianModuli,

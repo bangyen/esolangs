@@ -1,4 +1,4 @@
-"""``docs/roadmap.md``'s scaling audit must agree with the registry and the suite."""
+"""The scaling audit must agree with the registry and the suite."""
 
 from __future__ import annotations
 
@@ -93,7 +93,7 @@ def test_the_scaling_column_is_the_audit(audit: Audit) -> None:
 
 
 def test_the_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
-    """The bound's exemptions come from the roadmap and from ``proofs/index.md``."""
+    """The bound's exemptions come from the status manifest and ``proofs/index.md``."""
     exempt = exempt_generators()
     ledger = load_ledger()
     qualified = {

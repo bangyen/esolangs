@@ -452,7 +452,8 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "Smallfuck",
-    "tape_based.smallfuck",
+    "smallfuck",
+    category="tape_based",
     weekly_mutation=("interpreter", "generator"),
     boolean=smallfuck,
     same_layout=_same_layout,

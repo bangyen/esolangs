@@ -53,7 +53,8 @@ def balance_cyclic_tag(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Cyclic tag",
-    "queue_based.cyclic_tag",
+    "cyclic_tag",
+    category="queue_based",
     boolean=cyclic_tag,
     balance=balance_cyclic_tag,
     # A positional production walk, not a tree of callable residuals.

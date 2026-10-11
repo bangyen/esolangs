@@ -9,7 +9,7 @@ pointer, so returning to the reads costs one character instead of one
 per cell.
 """
 
-from esolangs.interpreters.tape_based.painfuck import _CYCLES
+from esolangs.interpreters.painfuck import _CYCLES
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
@@ -264,7 +264,8 @@ def _painfuck_tree(
 
 LANGUAGE = Language(
     "Painfuck",
-    "tape_based.painfuck",
+    "painfuck",
+    category="tape_based",
     random=True,
     boolean=painfuck,
     wrap=wrap_chars,

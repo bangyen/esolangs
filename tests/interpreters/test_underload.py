@@ -6,7 +6,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.underload import _advance, _Machine, run
+from esolangs.interpreters.underload import _advance, _Machine, run
 from tests.interpreters.runner import run_program
 
 _run = partial(run_program, run, suppress_eof=False)

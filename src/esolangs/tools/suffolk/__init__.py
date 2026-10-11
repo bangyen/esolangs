@@ -123,7 +123,8 @@ def _suffolk_lookup(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Suffolk",
-    "tape_based.suffolk",
+    "suffolk",
+    category="tape_based",
     weekly_mutation=("generator",),
     boolean=suffolk,
     # Both routes project to the essential inputs.

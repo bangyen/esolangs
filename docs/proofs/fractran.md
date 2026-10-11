@@ -414,7 +414,7 @@ buckets of `O(1)` rules on `O(n log n)`-bit exponent vectors, and a run
 makes at most `n + 1` selections and one final failed one. Parsing reads
 each character a bounded number of times. QED.
 
-`tests/tools/test_boolean_fractran.py` checks that every generated program
+`tests/generators/test_boolean_fractran.py` checks that every generated program
 through ten inputs compiles to the index. Executed on six rows of one seeded
 dense table per arity, the slowest loaded run stays flat while loading
 follows the text:

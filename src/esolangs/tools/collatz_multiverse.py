@@ -421,7 +421,8 @@ def _cm_constants(needed: Iterable[int], zero: str = "zero") -> list[str]:
 
 LANGUAGE = Language(
     "Collatz Multiverse",
-    "register_based.collatz_multiverse",
+    "collatz_multiverse",
+    category="register_based",
     boolean=collatz_multiverse,
     balance=balance_collatz_multiverse,
     no_wrap="each line is one complete register assignment",

@@ -39,7 +39,7 @@ from functools import cache
 from itertools import product
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.interpreters.other.malbolge import _XLAT1, _XLAT2, _crazy
+from esolangs.interpreters.malbolge import _XLAT1, _XLAT2, _crazy
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -772,7 +772,8 @@ def malbolge(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Malbolge",
-    "other.malbolge",
+    "malbolge",
+    category="other",
     # The program is the full 59049-cell store.
     slow_stepping=True,
     # Every source loads into 59,049 cells, so every program -- this

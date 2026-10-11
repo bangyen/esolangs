@@ -1000,7 +1000,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Vandevelo",
-    "other.vandevelo",
+    "vandevelo",
+    category="other",
     boolean=vandevelo,
     contract=BooleanContract(
         answer_mode="termination",

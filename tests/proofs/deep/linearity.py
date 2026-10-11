@@ -345,7 +345,7 @@ def main() -> int:
             print(f"  {row.generator}: {why}")
         print(
             "\nEither the construction regressed, or the document is wrong and the\n"
-            "generator belongs in the roadmap's scaling audit."
+            "generator belongs in the scaling audit."
         )
         return 1
 

@@ -707,7 +707,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Streetcode",
-    "grid_based.streetcode",
+    "streetcode",
+    category="grid_based",
     layout_switch=(5, 6),
     slow_scaling=True,
     boolean=streetcode,

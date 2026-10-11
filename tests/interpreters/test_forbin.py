@@ -3,9 +3,9 @@
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters.forbin import _Machine as Forbin
+from esolangs.interpreters.forbin import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.forbin import _Machine as Forbin
-from esolangs.interpreters.other.forbin import run
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.forbin_support import run_program
 
@@ -65,8 +65,8 @@ class TestStepMachine:
     def test_main_with_parameters_defaults_to_zero(self) -> None:
         # main's own parameters are set to 0 (per the wiki), same as any
         # other function's unpassed arguments
+        from esolangs.interpreters.forbin import _Machine
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.forbin import _Machine
 
         machine = _Machine("main a { out 0,0,0,0,0,0,0,a; }", ScriptedIO())
         while not machine.halted:
@@ -74,8 +74,8 @@ class TestStepMachine:
         assert machine.io.getvalue() == "\x00"
 
     def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.forbin import _Machine
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.forbin import _Machine
 
         machine = _Machine("main { out 0,0,0,0,0,0,0,1; }", ScriptedIO())
         assert hash(machine.snapshot()) is not None
@@ -89,8 +89,8 @@ class TestForbinMutationSurvivors:
     @staticmethod
     def _drive(code: str, stdin: str = "") -> tuple[int, str, int]:
         """Run ``code`` to a halt; return (steps, output, deepest frame stack)."""
+        from esolangs.interpreters.forbin import _Machine
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.forbin import _Machine
 
         machine = _Machine(code, ScriptedIO(stdin))
         steps, deepest = 0, 0
@@ -129,7 +129,7 @@ class TestForbinAncestorHangDetection:
 
     @staticmethod
     def _verdict(code: str, stdin: str = "") -> bool:
-        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.interpreters.forbin import _Machine
 
         return walk_until_halt_or_ancestor(_Machine(code, ScriptedIO(stdin)))
 
@@ -166,7 +166,7 @@ class TestForbinAncestorHangDetection:
 
     def test_an_undecided_walk_raises_rather_than_claiming_a_halt(self) -> None:
         """Exhausting the bound is not a verdict, and must not read as one."""
-        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.interpreters.forbin import _Machine
 
         class _NeverRepeats(_Machine):
             """Stands in for any mutant whose key stops repeating."""
@@ -187,7 +187,7 @@ class TestSnapshotWithoutTheCycleDetector:
 
     def test_a_snapshot_distinguishes_the_states_it_must(self) -> None:
         """Every component of the snapshot has to move something."""
-        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.interpreters.forbin import _Machine
 
         def at(code: str, steps: int, stdin: str = "") -> tuple[object, ...]:
             machine = _Machine(code, ScriptedIO(stdin))
@@ -216,7 +216,7 @@ class TestSnapshotWithoutTheCycleDetector:
 
     def test_an_anonymous_function_is_named_by_the_empty_string(self) -> None:
         """``""`` is a real value here, not a placeholder nobody reads."""
-        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.interpreters.forbin import _Machine
 
         machine = _Machine(
             "main { f = { out 0,1,0,0,1,0,0,0; }; f 0; }", ScriptedIO("")
@@ -238,7 +238,7 @@ class TestSnapshotWithoutTheCycleDetector:
 
     def test_a_frame_outside_a_loop_reports_a_sentinel(self) -> None:
         """The two loop counters need a value meaning "not in a loop"."""
-        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.interpreters.forbin import _Machine
 
         def frames(code: str, steps: int) -> tuple[object, ...]:
             machine = _Machine(code, ScriptedIO(""))

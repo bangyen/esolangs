@@ -37,7 +37,7 @@ from __future__ import annotations
 
 from functools import cache
 
-from esolangs.interpreters.other.malbolge import _crazy
+from esolangs.interpreters.malbolge import _crazy
 
 from .core import (
     _ANSWER,

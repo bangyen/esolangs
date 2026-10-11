@@ -18,7 +18,7 @@ line, tape, route-width, work and generation-time guards when lifting them
 leaves the construction unchanged; invalid tables are outside the domain.
 
 The exhaustive `n <= 3` and sampled `n <= 10` sweeps in
-`tests/tools/test_boolean_contract.py` seek counterexamples; they do not prove
+`tests/generators/test_boolean_contract.py` seek counterexamples; they do not prove
 the coverage arguments.
 
 In `tests/proofs/`, fast-band `test_ledger.py` checks registry consistency,
@@ -38,9 +38,9 @@ file's declaration and enforces its stated budget, not a measured runtime.
 
 Coverage does not bound source size: the schemes count nodes and entries,
 so a total generator can still emit super-linear text.  `linearity.py` is the
-separate, registry-wide scaling contract the roadmap asks for.  It measures
+separate, registry-wide scaling contract the project enforces.  It measures
 characters per table entry past each generator's last route change and holds
-every generator to it except those the roadmap's scaling audit or this
+every generator to it except those the scaling audit or this
 document's `cap` and `exception` rows already exempt. Exceeding the bound is
 evidence against linearity; passing it is not a
 proof. Factor passes at x2.11 despite its language-level super-linear bound
@@ -128,7 +128,7 @@ output size, build time or execution time -- by the shipped construction,
 and a uniform lift (below) proves the program exists without it.  The
 ceiling is one named constant; reaching it refuses, never truncates.  A
 construction that is polynomial in the table and inside the budget gets no
-ceiling: super-linear growth there is an open roadmap cell for the linearity
+ceiling: super-linear growth there is an open scaling-audit cell for the linearity
 contract to hold, and a ceiling would hide it.  A refusal with no lift
 argument is `exception`, not `cap`.  Audited across every one:
 every other arity threshold is a route switch to a total construction or an
@@ -228,7 +228,7 @@ table; the clause names the argument in twelve words or fewer); `linear,
 time n log: <term>` (size O(T), one stated `log T` factor in generation
 time); `measured: <what is unbounded>` (no invariant bounds it); `open:
 <term>` (a super-linear term with its bound -- exactly the rows open on size
-or time in the roadmap's audit); `lower bound: <bound>` (the language forces
+or time in the scaling audit); `lower bound: <bound>` (the language forces
 it).  Where a generator dispatches on table size, the cell describes the
 wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 `tests/proofs/test_linearity.py` checks the column against the audit.
@@ -524,7 +524,7 @@ dense clauses; the sparse tail, below density `1/max(48, n)`, adds at most
 `2**n/n`. On a corpus through n=13 `_assure` checked 1,712 levels and
 never computed, so output is byte-identical. With candidates and the
 sampled fallback disabled, it alone keeps n=8 and n=10 random tables under
-`T/n` clauses (`tests/tools/test_boolean_vandevelo.py`).
+`T/n` clauses (`tests/generators/test_boolean_vandevelo.py`).
 
 Commands per row are therefore linear. A halting row fails one part of
 each guard, and every value is a strict boolean. So a register toggle
@@ -692,3 +692,21 @@ step leaves 32 in `F_2^9`. That 2-flat lifts twice, so `D(11, 1/2) >= 4`.
 invariant 256-point set without a 4-flat, 12 groups in all. Groups with
 60 to 80 orbits, Frobenius among them, were undecided at the time
 limit.
+
+## Scaling status
+
+These verdicts describe shipped generators and exemptions from the measured
+size regression. Open generator-linearity work lives in the
+[roadmap](../roadmap.md#generator-linearity).
+
+<!-- SCALING-STATUS:START -->
+
+| Language | Totality | Generation time | Output size |
+| --- | --- | --- | --- |
+| Befunge | Exception | Linear | Linear |
+| Factor | Total | Language lower bound | Language lower bound |
+| Malbolge | Exception | Open | Linear |
+| Polynomial | Cap | Language lower bound | Language lower bound |
+| Vandevelo | Total | Open | Measured |
+
+<!-- SCALING-STATUS:END -->

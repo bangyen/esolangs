@@ -600,7 +600,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Dig",
-    "grid_based.dig",
+    "dig",
+    category="grid_based",
     boolean=dig,
     split=True,
     balance=_balance,

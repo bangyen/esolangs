@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.grid_based.flowchart import _Machine, run
+from esolangs.interpreters.flowchart import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
-from tests.fixtures import grid
 from tests.interpreters.runner import run_program as _run_program
+from tests.support.fixtures import grid
 
 # The wiki's truth machine: read a bit, and on 0 print it once and halt, on
 # 1 print it forever.  The switch is entered travelling downward, so its
@@ -140,7 +140,7 @@ class TestParsing:
 
     def test_turning_left_rotates_every_heading(self) -> None:
         """A left turn is a rotation, so four of them return the heading."""
-        from esolangs.interpreters.grid_based.flowchart import _turn_left
+        from esolangs.interpreters.flowchart import _turn_left
 
         north, south, west, east = (-1, 0), (1, 0), (0, -1), (0, 1)
         assert _turn_left(north) == west
@@ -165,7 +165,11 @@ class TestParsing:
         The eight-pointer version also needs the spec's pointer order and
         its left-most start, and paths that take no time.
         """
-        path = Path(__file__).parent.parent / "fixtures" / f"flowchart_hello_{name}.txt"
+        path = (
+            Path(__file__).parent.parent
+            / "support/fixtures"
+            / f"flowchart_hello_{name}.txt"
+        )
         program = path.read_text(encoding="utf-8").splitlines()
         assert run_program(program) == "Hello, world!"
 

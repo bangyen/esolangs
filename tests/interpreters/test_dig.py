@@ -4,7 +4,7 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.interpreters.grid_based.dig import run
+from esolangs.interpreters.dig import run
 from esolangs.interpreters.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract, InputCursorContract
 from tests.interpreters.runner import run_lines
@@ -72,7 +72,7 @@ class TestDigInput:
 
     def test_integer_input_keeps_all_digits(self) -> None:
         """``~`` reads an integer, rather than only its first digit."""
-        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.interpreters.dig import _Machine
 
         machine = _Machine([">$~:", " 2 "], ScriptedIO("12"))
         for _ in range(3):  # move over, dig, read
@@ -89,7 +89,7 @@ class TestDigInput:
 
     def test_a_cursorless_read_loop_is_not_a_cycle(self) -> None:
         """Reads count in the snapshot: the loop runs to EOF, not a false cycle."""
-        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.interpreters.dig import _Machine
         from esolangs.vm import run_until_halt_or_cycle
         from tests.interpreters.cursorless_io import CursorlessIO
 
@@ -163,7 +163,7 @@ class TestDigEdgeCases:
 
     def test_a_steer_digit_outside_zero_and_one_goes_straight(self) -> None:
         """``#`` turns on 1 and 0; every other digit holds the heading."""
-        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.interpreters.dig import _Machine
         from esolangs.interpreters.io import ScriptedIO
 
         def heading_after(digit: str) -> int:
@@ -182,7 +182,7 @@ class TestDigEdgeCases:
 
     def test_a_whitespace_digit_outside_zero_and_one_is_inert(self) -> None:
         """``%`` loads a newline for 1 and a space for 0, nothing otherwise."""
-        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.interpreters.dig import _Machine
         from esolangs.interpreters.io import ScriptedIO
 
         def mole_after(digit: str) -> int:
@@ -201,7 +201,7 @@ class TestDigEdgeCases:
 
 class TestStepMachine:
     def test_step_tracks_position_direction_and_mole(self) -> None:
-        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.interpreters.dig import _Machine
 
         machine = _Machine([">$5:", " 2 "], IO())
         assert (machine.row, machine.col, machine.move, machine.mole) == (0, 0, 1, 0)
@@ -214,7 +214,7 @@ class TestStepMachine:
 
     def test_the_read_lands_in_the_mole(self) -> None:
         """``=`` puts the line it read where the language says it goes."""
-        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.interpreters.dig import _Machine
 
         machine = _Machine([">$=:", " 2 "], ScriptedIO("A"))
         for _ in range(3):  # move over, dig, read
@@ -224,7 +224,7 @@ class TestStepMachine:
 
 def test_repeated_runs_keep_stores_private() -> None:
     from esolangs._drive import drive
-    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.dig import _Machine
 
     rows = [">$3~;:@"]
     first = _Machine(rows, ScriptedIO("12\n"))
@@ -241,7 +241,7 @@ def test_repeated_runs_keep_stores_private() -> None:
 
 
 def test_overground_data_steps_match_the_transition() -> None:
-    from esolangs.interpreters.grid_based.dig import _advance, _Machine
+    from esolangs.interpreters.dig import _advance, _Machine
 
     for char in (" ", "é", ";", ":", "~", "7", 12, -3):
         for move in range(4):
@@ -262,14 +262,14 @@ def test_overground_data_steps_match_the_transition() -> None:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.dig import _Machine
     from esolangs.interpreters.io import IO
 
     return _Machine(code, IO())
 
 
 def _reader(code: object, stdin: str) -> object:
-    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.dig import _Machine
 
     return _Machine(code, ScriptedIO(stdin))
 

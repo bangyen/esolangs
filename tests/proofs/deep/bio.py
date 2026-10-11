@@ -120,8 +120,8 @@ def check_l1(max_n: int = 7) -> list[str]:
 
 def _executed_answer(program: str, n: int, index: int) -> int:
     """Run ``program`` for input ``index`` and read the register it leaves."""
+    from esolangs.interpreters.bio import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.register_based.bio import _Machine
 
     bits = format(index, f"0{n}b")
     filled = _fill(program, bits)
@@ -199,7 +199,7 @@ def check_l3(max_n: int = 8) -> list[str]:
 
 def _fill(template: str, bits: str) -> str:
     """Instantiate through the *shipped* fill, not a local copy of it."""
-    from tests.tools.fills import fill
+    from tests.generators.fills import fill
 
     _fill_bio = fill("BIO")
 

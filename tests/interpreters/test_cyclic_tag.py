@@ -2,8 +2,8 @@
 
 import pytest
 
+from esolangs.interpreters.cyclic_tag import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.queue_based.cyclic_tag import _Machine, run
 from esolangs.tools.cyclic_tag import cyclic_tag
 from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, fill_runs
 from tests.support.raises import assert_rejected_with_hint

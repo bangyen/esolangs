@@ -824,7 +824,8 @@ def balance_laserfuck(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "LaserFuck",
-    "grid_based.laserfuck",
+    "laserfuck",
+    category="grid_based",
     random=True,
     boolean=laserfuck,
     split=True,

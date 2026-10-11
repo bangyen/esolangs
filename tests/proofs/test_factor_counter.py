@@ -4,9 +4,9 @@ import random
 
 import pytest
 
+from esolangs.interpreters.brainfuck import _Machine
+from esolangs.interpreters.brainfuck import run as run_bf
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.brainfuck import _Machine
-from esolangs.interpreters.tape_based.brainfuck import run as run_bf
 from tests.proofs._factor_counter import _counter, _decoder, counter_program
 
 

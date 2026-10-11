@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from functools import cache
 from typing import Any
 
-from esolangs.interpreters.stack_based.piet import _COLOURS, BLACK
+from esolangs.interpreters.piet import _COLOURS, BLACK
 from esolangs.raster import Raster
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, SourceKind
@@ -273,7 +273,8 @@ def _balance(table: str, default: Any, **options: Any) -> Any:
 
 LANGUAGE = Language(
     "Piet",
-    "stack_based.piet",
+    "piet",
+    category="stack_based",
     weekly_mutation=("interpreter", "generator"),
     source_kind=SourceKind.RASTER,
     boolean=piet,

@@ -165,7 +165,8 @@ def _decleq_build(
 
 LANGUAGE = Language(
     "Decleq",
-    "register_based.decleq",
+    "decleq",
+    category="register_based",
     boolean=decleq,
     contract=BooleanContract(
         input_shape="char_stream",

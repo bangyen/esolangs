@@ -12,14 +12,14 @@ no subtrees to fold or share.  The reads are unconditional and first.
 from math import prod
 from typing import Any
 
-from esolangs.interpreters.grid_based.alight._dialect import (
+from esolangs.interpreters.alight._dialect import (
     EXPRESSION_SYNTAXES,
     LIST_UPDATES,
 )
-from esolangs.interpreters.grid_based.alight._dialect import (
+from esolangs.interpreters.alight._dialect import (
     expression_syntax as validate_expression_syntax,
 )
-from esolangs.interpreters.grid_based.alight._dialect import (
+from esolangs.interpreters.alight._dialect import (
     list_update as validate_list_update,
 )
 from esolangs.registry._contracts import BooleanContract
@@ -426,7 +426,8 @@ def _dialect(expression_syntax: str = "infix", list_update: str = "in_place") ->
 
 LANGUAGE = Language(
     "Alight",
-    "grid_based.alight",
+    "alight",
+    category="grid_based",
     boolean=alight,
     dialect=_dialect,
     dialect_values={

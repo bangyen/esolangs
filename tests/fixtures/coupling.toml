@@ -1,5 +1,0 @@
-# Per file: code mentions of languages the file does not belong to.
-# tests/api/test_language_coupling.py holds each count to this ceiling and asks
-# for it to be lowered as mentions go; a language is removable when no file
-# names it.
-

@@ -6,8 +6,8 @@ from collections import Counter
 
 import pytest
 
+from esolangs.interpreters.fractran import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.fractran import run
 
 
 @pytest.mark.medium
@@ -60,7 +60,7 @@ def test_two_priority_consultations_shatter_a_guard_cycle() -> None:
     test_one_priority_consultation_cannot_shatter_a_guard_cycle()
     test_fraction_order_encodes_four_independent_answers()
 
-    from esolangs.interpreters.other.fractran import _Machine
+    from esolangs.interpreters.fractran import _Machine
 
     # Round one consumes phase 13 and one feature and produces 17; the run
     # then consults the same priority list again and round two consumes 17 and

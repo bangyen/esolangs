@@ -464,7 +464,8 @@ def _deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
 
 LANGUAGE = Language(
     "thisthat",
-    "grid_based.thisthat",
+    "thisthat",
+    category="grid_based",
     random=True,
     boolean=thisthat,
     split=True,

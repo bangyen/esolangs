@@ -98,7 +98,8 @@ def _deleter(digit: int) -> str:
 
 LANGUAGE = Language(
     "Circlefuck",
-    "tape_based.circlefuck",
+    "circlefuck",
+    category="tape_based",
     boolean=circlefuck,
     balance=balance_circlefuck,
     # A sum, not a tree: a lookup over the essential inputs only.

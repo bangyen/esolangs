@@ -53,7 +53,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "S*bleq",
-    "tape_based.sbleq",
+    "sbleq",
+    category="tape_based",
     boolean=sbleq,
     contract=BooleanContract(
         input_shape="char_stream",

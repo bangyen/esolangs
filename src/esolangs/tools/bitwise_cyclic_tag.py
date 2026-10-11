@@ -70,7 +70,8 @@ def balance_bitwise_cyclic_tag(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Bitwise Cyclic Tag",
-    "queue_based.bitwise_cyclic_tag",
+    "bitwise_cyclic_tag",
+    category="queue_based",
     boolean=bitwise_cyclic_tag,
     balance=balance_bitwise_cyclic_tag,
     # A positional walk, not a tree of callable residuals.

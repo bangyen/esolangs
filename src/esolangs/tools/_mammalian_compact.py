@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field, replace
 from math import gcd, lcm
 
-from esolangs.interpreters.tape_based.slow_acv_mammalian._dialect import MammalianModuli
+from esolangs.interpreters.slow_acv_mammalian._dialect import MammalianModuli
 from esolangs.tools.helpers import essential_inputs, read_at
 
 

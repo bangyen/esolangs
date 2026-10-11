@@ -14,7 +14,12 @@ _MIN_NODE_BUDGET = 8
 
 def shared_tree(table: str) -> tuple[str, int] | None:
     """Return a shared grid and maximum cycles within the previous area envelope."""
-    from esolangs.tools.thisthat import _Builder, _deque_plan, _essential, _path
+    from esolangs.tools.thisthat import (
+        _Builder,
+        _deque_plan,
+        _essential,
+        _path,
+    )
 
     n = _validate_truth_table(table)
     limit = max(_MIN_NODE_BUDGET, 2 * isqrt(len(table)))

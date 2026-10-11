@@ -22,7 +22,7 @@ from esolangs.vm import machine_traits
 #: The committed examples, inside the package so the wheel ships them.
 _EXAMPLES = pathlib.Path(__file__).resolve().parent / "examples"
 
-# Interpreter module family -> state model name.
+# Registry category -> state model name.
 _STATE_MODELS = {
     "register_based": "register",
     "tape_based": "tape",
@@ -82,7 +82,7 @@ def describe(language: str) -> LanguageInfo:
     ``spec`` contains the interpreter docstring; missing docstrings raise.
     ``dialect_settings`` gives runtime defaults, choices, bounds and dependencies.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the language's
-    category, derived from its interpreter family), ``wiki_url``.
+    category, recorded by the registry), ``wiki_url``.
     Generation: ``generator_max_inputs`` is an explicit arity cap (None means
     none declared, or no generator); ``generator_restrictions`` names additional
     table-dependent budgets, None when there are none.  ``boolean_generator``;
@@ -112,7 +112,7 @@ def describe(language: str) -> LanguageInfo:
     """
     name = resolve(language)
     lang = LANGUAGES[name]
-    family = lang.interpreter.split(".")[0] if lang.interpreter else None
+    family = lang.category if lang.interpreter else None
     stem = example_stems().get(lang.id, lang.id)
     # Package-relative: repository-relative paths broke a ``chdir`` away and
     # under any install, and absolute ones froze the install location into

@@ -10,7 +10,7 @@ from collections.abc import Callable
 import pytest
 
 import esolangs
-from esolangs.interpreters.stack_based.sstack import _parse
+from esolangs.interpreters.sstack import _parse
 from esolangs.tools.three_x import _level
 from scripts.benchmark import state_bits
 from tests.proofs._formula import ledger_formulas

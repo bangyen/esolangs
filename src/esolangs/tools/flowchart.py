@@ -553,7 +553,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Flowchart",
-    "grid_based.flowchart",
+    "flowchart",
+    category="grid_based",
     # The README frame: a grid language, so the screenshot shows the 2D
     # program pane and a tuple ``ip``, neither of which a tape language
     # exercises.  ``replay`` derives the frame from nothing, so this is a

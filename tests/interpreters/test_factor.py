@@ -4,9 +4,9 @@ import sys
 
 import pytest
 
+from esolangs.interpreters.factor import _Machine as Factor
+from esolangs.interpreters.factor import decode, run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.factor import _Machine as Factor
-from esolangs.interpreters.tape_based.factor import decode, run
 from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
@@ -81,7 +81,7 @@ class TestRun:
 
     def test_wiki_truth_machine_one_repeats(self) -> None:
         """Input 1 prints 1 forever; a bounded run sees only 1s."""
-        from esolangs.interpreters.tape_based.factor import _Machine
+        from esolangs.interpreters.factor import _Machine
 
         io = ScriptedIO("1")
         machine = _Machine(str(TRUTH), io)
@@ -104,15 +104,15 @@ class TestRun:
 class TestStepMachine:
     def test_a_program_with_no_digits_is_the_number_one(self) -> None:
         """No digits means 1, which factors to nothing and runs no commands."""
+        from esolangs.interpreters.factor import _Machine
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.factor import _Machine
 
         assert _Machine("", ScriptedIO()).bf.code == ""
         assert _Machine("no digits here", ScriptedIO()).bf.code == ""
 
     def test_step_tracks_the_decoded_tape(self) -> None:
+        from esolangs.interpreters.factor import _Machine
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.factor import _Machine
 
         machine = _Machine("15", ScriptedIO())
         assert (machine.bf.ind, list(machine.bf.tape)) == (0, [0])
@@ -146,10 +146,20 @@ class TestFactorint:
     """``_factorint`` must answer exactly what ``sympy.factorint`` would."""
 
     def test_primality_boundaries(self) -> None:
-        from esolangs.interpreters.tape_based.factor import _isprime64
+        from esolangs.interpreters.factor import _isprime64
 
         assert not _isprime64(0)
         assert _isprime64(2)
+
+    @pytest.mark.parametrize(
+        ("number", "expected"),
+        [(1_000_000_007, {1_000_000_007: 1}), (20011**2, {20011: 2})],
+    )
+    def test_factors_above_the_first_sieve_chunk(self, number, expected) -> None:
+        """A barren first chunk must certify a prime or keep factoring a composite."""
+        from esolangs.interpreters.factor import _factorint
+
+        assert _factorint(number) == expected
 
     @pytest.mark.parametrize(
         "number",
@@ -170,15 +180,15 @@ class TestFactorint:
         """The gcd shortcut must find exactly the primes the loop found."""
         import sympy
 
-        from esolangs.interpreters.tape_based.factor import _BATCH_BITS, _factorint
+        from esolangs.interpreters.factor import _BATCH_BITS, _factorint
 
         assert number.bit_length() >= _BATCH_BITS, "would not reach the batch"
         assert _factorint(number) == sympy.factorint(number)
 
 
 def _machine(code: object) -> object:
+    from esolangs.interpreters.factor import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.factor import _Machine
 
     return _Machine(code, ScriptedIO())
 

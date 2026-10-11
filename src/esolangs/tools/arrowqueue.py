@@ -128,7 +128,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "ArrowQueue",
-    "grid_based.arrowqueue",
+    "arrowqueue",
+    category="grid_based",
     boolean=arrowqueue,
     split=True,
     contract=BooleanContract(

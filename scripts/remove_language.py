@@ -371,7 +371,7 @@ def _owned_test_files(lang: Language) -> list[Path]:
     """
     from esolangs.registry import LANGUAGES
 
-    own = _tests_attr("api.test_language_coupling", "_own")
+    own = _tests_attr("integration.api.test_language_coupling", "_own")
     files = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", *_TREES],
         cwd=ROOT,
@@ -545,7 +545,7 @@ def _dead_test_files(
     """Return test files that import a gone module and nothing that survives.
 
     The owned prefixes name a language's module stems, not its submodules, so
-    ``tests/tools/test_circuit_free_columns.py`` (importing
+    ``tests/generators/test_circuit_free_columns.py`` (importing
     ``esolangs.tools.circuit_diagram.free_columns``) is caught here instead;
     it cannot run once the module is gone.
     """
@@ -800,12 +800,12 @@ _EDITED = (
     "src/esolangs/registry/_table.py",
     "src/esolangs/tools/__init__.py",
     "tests/support/samples.py",
-    "tests/tools/boolean_runners.py",
-    "tests/tools/test_wrap.py",
+    "tests/generators/boolean_runners.py",
+    "tests/generators/test_wrap.py",
     "tests/proofs/test_execution_formulas.py",
     "tests/proofs/test_workspace_formulas.py",
     "tests/proofs/test_schemes.py",
-    "tests/api/test_interpreter_only_admissions.py",
+    "tests/integration/api/test_interpreter_only_admissions.py",
     "tests/proofs/test_bands.py",
 )
 
@@ -830,7 +830,7 @@ def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
 
-    reference = _tests_attr("api.test_language_coupling", "REFERENCE")
+    reference = _tests_attr("integration.api.test_language_coupling", "REFERENCE")
     if name == reference:
         raise ValueError(
             f"{reference} is the reference language: shared tests, the example "
@@ -853,13 +853,13 @@ def remove(name: str) -> list[str]:
     # ``slashes_*.txt`` go with ``///``, not ``piet_plus_plus.toml`` with Piet.
     wiki = [
         path
-        for path in (ROOT / "tests/fixtures/wiki_examples").iterdir()
+        for path in (ROOT / "tests/support/fixtures/wiki_examples").iterdir()
         if path.is_file() and _owner_id(path.name, ids) == lang.id
     ]
     doomed: set[Path] = {
         *module_paths,
         ROOT / f"tests/interpreters/test_{lang.id}.py",
-        ROOT / f"tests/tools/test_boolean_{gen}.py",
+        ROOT / f"tests/generators/test_boolean_{gen}.py",
         *wiki,
         *(ROOT / "src/esolangs/examples").glob(f"{stem}.*" if stem else "-"),
         *_owned_test_files(lang),
@@ -959,10 +959,10 @@ def remove(name: str) -> list[str]:
             ]
         return node
 
-    _drop_json(ROOT / "tests/fixtures/generator_sizes.json", prune)
+    _drop_json(ROOT / "tests/support/fixtures/generator_sizes.json", prune)
     # Timing snapshots keep one entry per pytest node ID; drop the removed
     # language's parametrized rows and its own deleted test files.
-    timings = ROOT / "tests/fixtures/slow_durations.json"
+    timings = ROOT / "tests/support/fixtures/slow_durations.json"
 
     def drop_timings(node: object) -> object:
         if not isinstance(node, dict):
@@ -977,16 +977,16 @@ def remove(name: str) -> list[str]:
     if timings.is_file():
         _drop_json(timings, drop_timings)
     for relative in (
-        "tests/fixtures/curation.toml",
+        "tests/support/fixtures/curation.toml",
         "src/esolangs/proof_status.toml",
-        "tests/fixtures/sharing_catalogue.toml",
-        "tests/fixtures/canonical_folding_catalogue.toml",
+        "tests/support/fixtures/sharing_catalogue.toml",
+        "tests/support/fixtures/canonical_folding_catalogue.toml",
     ):
         _drop_toml(ROOT / relative, name)
     for relative in ("docs/limitations.md", "docs/proofs/index.md"):
         _drop_bullets(ROOT / relative, name)
     _drop_from_series(ROOT / "docs/proofs/index.md", name, "keeps? no tree route")
-    tuning = ROOT / "tests/fixtures/deep_arities.toml"
+    tuning = ROOT / "tests/support/fixtures/deep_arities.toml"
     tuning.write_text(
         "".join(
             line
@@ -1040,7 +1040,7 @@ def remove(name: str) -> list[str]:
         [
             sys.executable,
             "-c",
-            "from tests.api.test_language_coupling import lower_recorded; "
+            "from tests.integration.api.test_language_coupling import lower_recorded; "
             "lower_recorded()",
         ],
         cwd=ROOT,

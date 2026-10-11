@@ -5,8 +5,8 @@ import random
 
 import pytest
 
+from esolangs.interpreters.boolfuck import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.boolfuck import _Machine, run
 from esolangs.tools.boolfuck import boolfuck
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import boolfuck as oracle

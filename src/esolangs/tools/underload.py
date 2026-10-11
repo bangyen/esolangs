@@ -184,7 +184,8 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "Underload",
-    "stack_based.underload",
+    "underload",
+    category="stack_based",
     weekly_mutation=("generator",),
     boolean=underload,
     same_layout=_same_layout,

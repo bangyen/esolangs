@@ -191,7 +191,8 @@ def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str
 
 LANGUAGE = Language(
     "SStack",
-    "stack_based.sstack",
+    "sstack",
+    category="stack_based",
     boolean=sstack,
     contract=BooleanContract(
         input_shape="char_stream",

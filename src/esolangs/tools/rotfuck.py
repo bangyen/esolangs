@@ -25,11 +25,11 @@ import heapq
 from collections.abc import Callable
 from itertools import product
 
-from esolangs.interpreters.tape_based.rotfuck._dialect import (
+from esolangs.interpreters.rotfuck._dialect import (
     ROTATIONS,
     ROTFUCK_CYCLES,
 )
-from esolangs.interpreters.tape_based.rotfuck._dialect import (
+from esolangs.interpreters.rotfuck._dialect import (
     rotation as validate_rotation,
 )
 from esolangs.registry._contracts import BooleanContract
@@ -366,7 +366,8 @@ def _dialect(rotation: str = "backward") -> None:
 
 LANGUAGE = Language(
     "ROTfuck",
-    "tape_based.rotfuck",
+    "rotfuck",
+    category="tape_based",
     boolean=rotfuck,
     dialect=_dialect,
     dialect_values={"rotation": ROTATIONS},

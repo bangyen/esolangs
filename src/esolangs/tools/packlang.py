@@ -25,7 +25,7 @@ time, so the two alternate and no copy is ever needed.
 import re
 from itertools import pairwise, product
 
-from esolangs.interpreters.other.packlang._literals import (
+from esolangs.interpreters.packlang._literals import (
     LITERAL_POLICIES,
     PacklangLiterals,
 )
@@ -322,7 +322,8 @@ def _dialect(literal_policy: str = "decimal") -> None:
 
 LANGUAGE = Language(
     "Packlang",
-    "other.packlang",
+    "packlang",
+    category="other",
     boolean=packlang,
     dialect=_dialect,
     dialect_values={"literal_policy": LITERAL_POLICIES},

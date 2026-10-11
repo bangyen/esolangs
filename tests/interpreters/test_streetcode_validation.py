@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.grid_based.streetcode import _Machine, run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.streetcode import _Machine, run
 from tests.interpreters.streetcode_support import run_street
 
 
@@ -92,7 +92,7 @@ class TestStreetcodeStreetWidth:
             # With no walls there is no street network to measure.
             pytest.param(["CU"], id="grid_without_walls_is_exempt"),
             # Whether a divider must end in a '+' the wiki does not settle; the
-            # ring in tests/fixtures/streetcode_hello.txt draws bare ends.
+            # ring in tests/support/fixtures/streetcode_hello.txt draws bare ends.
             pytest.param(
                 [
                     "+------+",
@@ -251,7 +251,7 @@ class TestStreetcodeStreetWidth:
 
     @pytest.mark.parametrize(
         "path",
-        ["tests/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
+        ["tests/support/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
     )
     def test_shipped_examples_are_accepted(self, path: str) -> None:
         """The repo's own programs must survive the check."""

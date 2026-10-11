@@ -6,7 +6,7 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.grid_based.circuit_diagram import (
+from esolangs.interpreters.circuit_diagram import (
     _compile,
     _functions,
     _Machine,
@@ -14,8 +14,8 @@ from esolangs.interpreters.grid_based.circuit_diagram import (
     _seconds_since_2000,
     run,
 )
-from esolangs.interpreters.grid_based.circuit_diagram._functions import _remember_width
-from esolangs.interpreters.grid_based.circuit_diagram._parse import (
+from esolangs.interpreters.circuit_diagram._functions import _remember_width
+from esolangs.interpreters.circuit_diagram._parse import (
     _OUTPUT,
     _Connections,
     _Grid,
@@ -23,8 +23,8 @@ from esolangs.interpreters.grid_based.circuit_diagram._parse import (
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
-from tests.fixtures import grid
 from tests.interpreters.runner import run_program
+from tests.support.fixtures import grid
 
 # The wiki's 4-bit prime tester, exactly as the page draws it.  Two of its
 # OR gates have an input no gate ever drives, so it prints nothing; see
@@ -244,7 +244,7 @@ class TestSpecifiedSourcesAndRemoval:
 
     def test_clock_is_a_32_bit_source(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "esolangs.interpreters.grid_based.circuit_diagram._seconds_since_2000",
+            "esolangs.interpreters.circuit_diagram._seconds_since_2000",
             lambda: 5,
         )
         assert output_for(["t-32-:"], "") == f"{5:032b}"
@@ -347,7 +347,7 @@ class TestSpecRepairs:
         # The call's one clock read advances the caller's cursor, so a
         # changing clock cannot fake a cycle.
         monkeypatch.setattr(
-            "esolangs.interpreters.grid_based.circuit_diagram._seconds_since_2000",
+            "esolangs.interpreters.circuit_diagram._seconds_since_2000",
             lambda: 5,
         )
         code = ["{stamp", "-.~.-:", "t-32-:", "}", "-stamp-:"]
@@ -362,7 +362,7 @@ class TestSpecRepairs:
     ) -> None:
         reads = iter(range(1, 10))
         monkeypatch.setattr(
-            "esolangs.interpreters.grid_based.circuit_diagram._seconds_since_2000",
+            "esolangs.interpreters.circuit_diagram._seconds_since_2000",
             lambda: next(reads),
         )
         code = ["{inv", "-.~.-:", "}", "{stamp", "t-32-:", "-inv-:", "}", "-stamp-:"]

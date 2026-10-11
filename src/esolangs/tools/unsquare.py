@@ -122,7 +122,8 @@ def balance_unsquare(truth_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Unsquare",
-    "stack_based.unsquare",
+    "unsquare",
+    category="stack_based",
     boolean=unsquare,
     contract=BooleanContract(
         input_shape="char_stream",

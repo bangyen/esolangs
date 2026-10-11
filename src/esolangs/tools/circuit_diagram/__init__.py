@@ -77,7 +77,10 @@ from typing import Any, Literal
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
-from esolangs.tools.circuit_diagram.hlayout import _h_minterm_sites, _h_term_layout
+from esolangs.tools.circuit_diagram.hlayout import (
+    _h_minterm_sites,
+    _h_term_layout,
+)
 from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import (
     _validate_truth_table,
@@ -650,7 +653,8 @@ def _balance(table: str, default: Any, **options: Any) -> Any:
 
 LANGUAGE = Language(
     "Circuit Diagram",
-    "grid_based.circuit_diagram",
+    "circuit_diagram",
+    category="grid_based",
     layout_switch=(7, 8),
     example=Example(slow_build=True),
     # The H-layout is not asymptotic below n=8, so it has no room for a

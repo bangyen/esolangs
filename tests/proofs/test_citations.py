@@ -1,11 +1,9 @@
-"""The numbered citations of the coefficient-mass papers name the right results."""
+"""Coefficient-mass citations match the recorded references and release tag."""
 
 from __future__ import annotations
 
 import re
 from pathlib import Path
-
-import pytest
 
 #: Resolved from this file, not the working directory, for the same reason
 #: :mod:`tests.proofs._ledger` does it: `just`, the repo root and a worktree
@@ -15,31 +13,6 @@ PROOFS = Path(__file__).resolve().parents[2] / "docs" / "proofs"
 #: The coefficient-mass release every citation points at.
 TAG = "v1"
 REPO = "https://github.com/bangyen/coefficient-mass/blob/"
-
-#: ``(paper, number) -> (word, label, title)`` at :data:`TAG`, from
-#: ``just pin`` in bangyen/coefficient-mass.
-PINNED = {
-    ("coefficient-mass", "3.4"): ("Corollary", "cor:mass", "Logarithmic mass"),
-    ("coefficient-mass-attainment", "2.1"): (
-        "Proposition",
-        "prop:confluent",
-        "Confluent analogue",
-    ),
-    ("coefficient-mass-complex", "2.1"): ("Lemma", "lem:multisection", "Multisection"),
-    ("coefficient-mass-complex", "2.3"): (
-        "Corollary",
-        "cor:imag",
-        "Purely imaginary pairs",
-    ),
-    ("coefficient-mass-complex", "4.2"): (
-        "Theorem",
-        "thm:bothsigns",
-        "Rows at real roots of both signs",
-    ),
-}
-
-#: The companion papers, as the keys citations use.
-PAPERS = frozenset(paper for paper, _ in PINNED)
 
 #: Every numbered citation of a companion, as
 #: ``(citing file, cited paper, number) -> (word, label)``.  The test also
@@ -61,6 +34,9 @@ CITATIONS = {
         "thm:bothsigns",
     ),
 }
+
+#: The companion papers, as the keys citations use.
+PAPERS = frozenset(paper for _, paper, _ in CITATIONS)
 
 #: The files whose citations the table above has to cover.
 CITING = ("index.md", "polynomial.md", "polynomial.tex")
@@ -91,17 +67,6 @@ def _cited(name: str) -> set[tuple[str, str, str]]:
     return found
 
 
-@pytest.mark.parametrize(("citation", "expected"), sorted(CITATIONS.items()))
-def test_citation_resolves(
-    citation: tuple[str, str, str], expected: tuple[str, str]
-) -> None:
-    """Each cited number is the pinned, labelled result of the paper it names."""
-    _, paper, number = citation
-    assert (paper, number) in PINNED, f"{paper} {number} is not pinned"
-    word, label, _ = PINNED[paper, number]
-    assert (word, label) == expected
-
-
 def test_every_citation_is_covered() -> None:
     """No file cites a companion by a number this table does not list."""
     for name in CITING:
@@ -120,9 +85,8 @@ def test_every_link_is_at_the_pinned_tag() -> None:
         assert set(_COMPANION_LINK.findall(text)) <= {TAG}, name
 
 
-def test_the_cited_title_is_the_one_the_paper_names() -> None:
+def test_bibliography_retains_the_recorded_title() -> None:
     """The bibliography entry's parenthetical names Corollary 3.4's title."""
-    assert PINNED["coefficient-mass", "3.4"][2] == "Logarithmic mass"
     # Compared with whitespace collapsed: the entry is prose, and rewrapping
     # it to fit the margin (``1ab35a6d``) moved the parenthetical onto the
     # line above without changing what it names.

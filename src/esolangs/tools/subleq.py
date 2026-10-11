@@ -44,7 +44,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Subleq",
-    "tape_based.subleq",
+    "subleq",
+    category="tape_based",
     payload=_payload,
     boolean=subleq,
     # Shared tree or packed lookup.

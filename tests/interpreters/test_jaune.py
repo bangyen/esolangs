@@ -6,8 +6,8 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.jaune import _Machine as Jaune
-from esolangs.interpreters.tape_based.jaune import run
+from esolangs.interpreters.jaune import _Machine as Jaune
+from esolangs.interpreters.jaune import run
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters import runner
 from tests.interpreters.contract import SnapshotContract
@@ -89,7 +89,7 @@ class TestComputedDispatch:
 
     def test_a_read_marker_defines_nothing(self) -> None:
         """``v:`` and ``v$`` are grammatical but have no findable identity."""
-        from esolangs.interpreters.tape_based.jaune import _parse
+        from esolangs.interpreters.jaune import _parse
 
         assert [c.op for c in _parse("v:5+")] == ["+"]
         assert [c.op for c in _parse("v$5+")] == ["+"]
@@ -124,7 +124,7 @@ class TestParsing:
 
     def test_runs_of_an_operator_carry_their_length(self) -> None:
         """``++`` is one command repeated twice, not two commands."""
-        from esolangs.interpreters.tape_based.jaune import _parse
+        from esolangs.interpreters.jaune import _parse
 
         assert [(c.op, c.arg) for c in _parse("+++")] == [("+", 3)]
         assert [(c.op, c.arg) for c in _parse("--")] == [("-", 2)]
@@ -134,7 +134,7 @@ class TestParsing:
         """``v`` takes the next character as its operand only if there is
         one; at the end of the code it stands alone.
         """
-        from esolangs.interpreters.tape_based.jaune import _parse
+        from esolangs.interpreters.jaune import _parse
 
         assert [c.op for c in _parse("v+")] == ["v+"]
         assert [c.op for c in _parse("v")] == ["v"]
@@ -142,7 +142,7 @@ class TestParsing:
 
     def test_a_number_takes_the_operator_that_follows_it(self) -> None:
         """``3+`` is a single counted command; a number alone is dropped."""
-        from esolangs.interpreters.tape_based.jaune import _parse
+        from esolangs.interpreters.jaune import _parse
 
         assert [(c.op, c.arg) for c in _parse("3+")] == [("+", 3)]
         assert [(c.op, c.arg) for c in _parse("12+")] == [("+", 12)]
@@ -170,7 +170,7 @@ class TestErrors:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.tape_based.jaune import _Machine
+    from esolangs.interpreters.jaune import _Machine
 
     return _Machine(code, ScriptedIO())
 

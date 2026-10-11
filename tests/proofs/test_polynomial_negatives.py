@@ -12,7 +12,7 @@ import sympy as sp
 import z3
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.register_based.polynomial import (
+from esolangs.interpreters.polynomial import (
     _parse_program,
     run,
     sanitize,

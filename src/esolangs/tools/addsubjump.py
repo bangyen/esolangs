@@ -377,7 +377,8 @@ def _addsubjump_ordered(
 
 LANGUAGE = Language(
     "AddSubJump",
-    "register_based.addsubjump",
+    "addsubjump",
+    category="register_based",
     boolean=addsubjump,
     balance=balance_addsubjump,
     contract=BooleanContract(

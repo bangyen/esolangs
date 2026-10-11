@@ -273,7 +273,8 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "INTERCAL",
-    "other.intercal",
+    "intercal",
+    category="other",
     random=True,
     boolean=intercal,
     same_layout=_same_layout,

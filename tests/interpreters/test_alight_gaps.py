@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grid_based.alight import run
+from esolangs.interpreters.alight import run
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.runner import run_program
 

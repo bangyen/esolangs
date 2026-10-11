@@ -9,17 +9,17 @@ import pytest
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.packlang import _get, _Machine, _node, run
-from esolangs.interpreters.other.packlang._parse import _Parser
+from esolangs.interpreters.packlang import _get, _Machine, _node, run
+from esolangs.interpreters.packlang._parse import _Parser
 from esolangs.tools.packlang import packlang
 from esolangs.vm import run_until_halt_or_cycle
-from tests.fixtures import text
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
+from tests.support.fixtures import text
 from tests.support.raises import assert_rejected_with_hint
 
 # The wiki's five example programs, verbatim.
@@ -567,9 +567,19 @@ def test_dependency_readings_under_each_literal_policy():
 
 @pytest.mark.parametrize("policy", ["decimal", "binary_digits"])
 def test_literal_roundtrip(policy):
-    from esolangs.interpreters.other.packlang._literals import PacklangLiterals
+    from esolangs.interpreters.packlang._literals import PacklangLiterals
 
     literals = PacklangLiterals(policy)
     for value in (0, 1, 2, 10, 48, 128, 255):
         assert literals.parse(literals.emit(value)) == value
     assert literals.parse("255") == 255
+
+
+@pytest.mark.parametrize("value", [True, "text"])
+def test_scalar_numbers_reject_booleans_and_text(value):
+    from esolangs.interpreters.packlang._values import _int
+
+    with pytest.raises(HaltError, match="expected a number") as raised:
+        _int(value)
+    assert raised.value.__notes__ == ["hint: use a numeric value in this expression"]
+    assert _int(7) == 7

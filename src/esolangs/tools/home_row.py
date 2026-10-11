@@ -95,7 +95,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Home Row",
-    "tape_based.home_row",
+    "home_row",
+    category="tape_based",
     boolean=home_row,
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,

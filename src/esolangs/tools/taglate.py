@@ -253,7 +253,7 @@ def _taglate_raw(truth_table: str, *, keep_constant_layout: bool = False) -> str
 
 def _seed_commands(seed: str) -> str:
     """Build a generator seed from the empty queue with bounded ASCII passes."""
-    from esolangs.interpreters.queue_based.taglate import _PREFIX, _SUFFIX, _URL_SAFE
+    from esolangs.interpreters.taglate import _PREFIX, _SUFFIX, _URL_SAFE
 
     targets = list(map(ord, seed))
     subtract = len(targets) == 3 and targets[1] == 65535
@@ -347,7 +347,8 @@ def _balanced(default: str) -> str:
 
 LANGUAGE = Language(
     "Taglate",
-    "queue_based.taglate",
+    "taglate",
+    category="queue_based",
     boolean=taglate,
     split=True,
     contract=BooleanContract(

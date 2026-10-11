@@ -5,15 +5,15 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.interpreters.grid_based.streetcode import _Machine, _State
-from esolangs.interpreters.grid_based.streetcode.geometry import (
+from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.streetcode import _Machine, _State
+from esolangs.interpreters.streetcode.geometry import (
     _NO_LATCHES,
     _drive,
     _Grid,
     _Latches,
     _Merge,
 )
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import _StepMachine, run_until_halt_or_cycle
 from tests.interpreters.contract import InputCursorContract
 from tests.interpreters.streetcode_support import _RING_PROGRAM
@@ -118,7 +118,7 @@ class TestStreetcodeDriveStates:
 
     def test_a_wedging_phase_is_rejected_at_construction(self) -> None:
         """The check fires when the movement rules do run out of road."""
-        from esolangs.interpreters.grid_based.streetcode import geometry as module
+        from esolangs.interpreters.streetcode import geometry as module
 
         with (
             patch.object(
@@ -132,11 +132,11 @@ class TestStreetcodeDriveStates:
 
     @pytest.mark.parametrize(
         "path",
-        ["tests/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
+        ["tests/support/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
     )
     def test_mouth_depth_bound_does_not_change_the_driving(self, path: str) -> None:
         """``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans."""
-        from esolangs.interpreters.grid_based.streetcode import geometry as module
+        from esolangs.interpreters.streetcode import geometry as module
 
         root = Path(__file__).resolve().parents[2]
         code = (root / path).read_text().split("\n")
@@ -283,7 +283,7 @@ class TestStreetcodeGraphBackedStepping:
 
     @pytest.mark.parametrize(
         "path",
-        ["tests/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
+        ["tests/support/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
     )
     def test_the_shipped_examples_agree(self, path: str) -> None:
         root = Path(__file__).resolve().parents[2]

@@ -86,7 +86,8 @@ def _balanced(default: str) -> str:
 
 LANGUAGE = Language(
     "EGL",
-    "grid_based.egl",
+    "egl",
+    category="grid_based",
     boolean=egl,
     # Not a tree: one painted grid cell per entry, walked to by weighted guards.
     shape=Shape.LOOKUP,

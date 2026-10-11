@@ -4,7 +4,7 @@ import io
 from contextlib import redirect_stdout
 
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.tape_based.suffolk import _Machine, run
+from esolangs.interpreters.suffolk import _Machine, run
 from esolangs.vm import run_until_halt_or_cycle
 
 

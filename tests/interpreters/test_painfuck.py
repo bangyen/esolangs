@@ -6,8 +6,8 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.painfuck import _Machine as Painfuck
 from esolangs.interpreters.randomness import FirstDraw
-from esolangs.interpreters.tape_based.painfuck import _Machine as Painfuck
 from esolangs.vm import (
     run_until_halt,
     run_until_halt_or_all_branches_cycle,
@@ -20,7 +20,7 @@ from tests.interpreters.contract import (
 )
 from tests.support.raises import assert_halts_with_hint
 
-run = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
+run = importlib.import_module("esolangs.interpreters.painfuck").run
 
 # The source text is translated through a position-dependent shift per cycle
 # before execution.  _encode builds a source program whose translation is
@@ -198,7 +198,7 @@ class TestStepMachine:
 
     def test_growing_the_tape_leaves_an_addressable_pointer_alone(self) -> None:
         """``_grow`` returns the tape untouched when the pointer already fits."""
-        from esolangs.interpreters.tape_based.painfuck import _grow
+        from esolangs.interpreters.painfuck import _grow
 
         tape = (1, 2, 3)
         assert _grow(tape, 0) is tape  # in range, so the same object comes back
@@ -214,7 +214,7 @@ class TestRepeatCollapsing:
         op: str, tape: tuple[int, ...], ptr: int, origin: int, rep: int
     ) -> tuple:
         """Apply ``op`` ``rep`` times, one step at a time."""
-        from esolangs.interpreters.tape_based.painfuck import _half, _set
+        from esolangs.interpreters.painfuck import _half, _set
 
         for _ in range(rep):
             if op == "p":
@@ -255,7 +255,7 @@ class TestRepeatCollapsing:
     def test_a_collapsed_op_equals_repeating_it(
         self, op: str, rep: int, cells: list[int]
     ) -> None:
-        from esolangs.interpreters.tape_based.painfuck import _advance
+        from esolangs.interpreters.painfuck import _advance
 
         for ptr in range(len(cells)):
             tape = tuple(cells)
@@ -273,7 +273,7 @@ class TestRepeatCollapsing:
 
     def test_a_repeated_loop_command_decides_once(self) -> None:
         """``a``/``b`` are jumps, so repeating one changes nothing."""
-        from esolangs.interpreters.tape_based.painfuck import _advance
+        from esolangs.interpreters.painfuck import _advance
 
         entered = None
         for rep in (1, 2, 7, 1000):
@@ -303,7 +303,7 @@ class TestRepeatCollapsing:
     )
     def test_a_c_run_absorbs_the_t_run_after_it(self, prog: str, runs: int) -> None:
         """A ``t`` run after a ``c`` run repeats *the ``c``*."""
-        from esolangs.interpreters.tape_based.painfuck import _advance
+        from esolangs.interpreters.painfuck import _advance
 
         state = ((0,), (), 0, 0, 1, 0)
         (tape, _loop, _ptr, _ind, _r, _o), _fx = _advance(
@@ -320,7 +320,7 @@ class TestRepeatCollapsing:
         self, prog: str, runs: int
     ) -> None:
         """Each ``t`` in a run repeats the previous repeat three times."""
-        from esolangs.interpreters.tape_based.painfuck import _advance
+        from esolangs.interpreters.painfuck import _advance
 
         tape: tuple[int, ...] = (0,)
         loop: tuple[int, ...] = ()
@@ -340,7 +340,7 @@ class TestRepeatCollapsing:
         self, prog: str, trace: list[int]
     ) -> None:
         """The forward read is only for a ``t`` reached from a ``c`` run."""
-        from esolangs.interpreters.tape_based.painfuck import _advance
+        from esolangs.interpreters.painfuck import _advance
 
         tape: tuple[int, ...] = (0,)
         loop: tuple[int, ...] = ()
@@ -356,7 +356,7 @@ class TestRepeatCollapsing:
 
     def test_halving_rounds_down_not_toward_zero(self) -> None:
         """The one collapse a truncating shift would get wrong."""
-        from esolangs.interpreters.tape_based.painfuck import _advance
+        from esolangs.interpreters.painfuck import _advance
 
         state = ((-7,), (), 0, 0, 2, 0)
         (tape, _loop, _ptr, _ind, _r, _o), _fx = _advance(state, "h", 1, (), ())

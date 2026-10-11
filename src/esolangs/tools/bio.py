@@ -110,7 +110,8 @@ def _same_layout(template: str, plain: str, _layout: Callable[[int], Any]) -> bo
 
 LANGUAGE = Language(
     "BIO",
-    "register_based.bio",
+    "bio",
+    category="register_based",
     boolean=bio,
     balance=balance_bio,
     same_layout=_same_layout,

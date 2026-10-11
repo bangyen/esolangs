@@ -3,7 +3,7 @@
 One program per language whose generator can be verified end to end;
 :class:`BooleanExample` records generator, table, inputs and invocation,
 deriving Boolean I/O fields from the registry.
-``scripts/docs/generate.py examples`` and ``tests/scripts/test_examples.py``
+``scripts/docs/generate.py examples`` and ``tests/tooling/scripts/test_examples.py``
 both derive from :data:`BOOLEAN_EXAMPLES`.  Parameterized generators carry
 a ``fill``.  A language qualifies when its answer is recoverable from what
 it prints -- including a fixed position in a state dump -- or by
@@ -181,7 +181,7 @@ def _contract_for(interpreter: str) -> BooleanContract:
     raise LookupError(
         f"no registered language runs interpreter {interpreter!r}; the second "
         "argument of an example in src/esolangs/tools/examples.py is the "
-        "module under esolangs.interpreters, e.g. 'tape_based.brainfuck'"
+        "module under esolangs.interpreters, e.g. 'brainfuck'"
     )
 
 

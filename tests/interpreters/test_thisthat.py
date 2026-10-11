@@ -5,9 +5,9 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grid_based.thisthat import _Machine, _Pointer, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
+from esolangs.interpreters.thisthat import _Machine, _Pointer, run
 from esolangs.tools.thisthat import thisthat
 
 
@@ -328,7 +328,7 @@ def test_cat_and_kolakoski_wiki_examples() -> None:
     """The Cat echoes and halts; Kolakoski prints the sequence, 1 as 0, 2 as 1."""
     from pathlib import Path
 
-    pages = Path(__file__).parent.parent / "fixtures" / "wiki_examples"
+    pages = Path(__file__).parent.parent / "support/fixtures" / "wiki_examples"
     cat = (pages / "thisthat_cat.txt").read_text(encoding="utf-8").splitlines()
     for bits in ("", "0", "1", "0110"):
         io = ScriptedIO(bits)

@@ -5,8 +5,8 @@ import random
 
 import pytest
 
+from esolangs.interpreters.fractran import _Machine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.fractran import _Machine
 from esolangs.tools.fractran import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs import _fractran_order

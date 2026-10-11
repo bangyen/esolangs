@@ -510,7 +510,8 @@ def balance_apl(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Algebraic Programming Language",
-    "other.algebraic_programming_language",
+    "algebraic_programming_language",
+    category="other",
     boolean=algebraic_programming_language,
     contract=BooleanContract(
         note="an executed line prints its result, so the answer ends in a newline",

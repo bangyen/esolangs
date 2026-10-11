@@ -141,7 +141,8 @@ def _payload(state: Any) -> Payload:
 
 LANGUAGE = Language(
     "Sophie",
-    "register_based.sophie",
+    "sophie",
+    category="register_based",
     payload=_payload,
     boolean=sophie,
     contract=BooleanContract(

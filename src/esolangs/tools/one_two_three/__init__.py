@@ -91,7 +91,7 @@ type _Law = tuple[tuple[int, ...], tuple[int, ...]]
 #: the rest are a greedy cover (seeds 0..6 per fill, up to four displacements
 #: of 1..10): each most shrinks the total over every table given the laws
 #: before it and the wide chain, at most four in all.  Both rules are
-#: re-derived in ``tests/tools/test_boolean_one_two_three_laws.py``.  A
+#: re-derived in ``tests/generators/test_boolean_one_two_three_laws.py``.  A
 #: failing law could only raise, never mis-emit.
 _LAWS: dict[int, tuple[_Law, ...]] = {
     1: (((0,), ()), ((1,), (1, 2, 2)), ((0,), (2,))),
@@ -244,7 +244,8 @@ def one_two_three(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "123",
-    "tape_based.one_two_three",
+    "one_two_three",
+    category="tape_based",
     boolean=one_two_three,
     # Not a tree: a flat plan; the answer is the pointer phase the embeds leave.
     shape=Shape.LOOKUP,

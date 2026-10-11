@@ -278,7 +278,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "B-tapemark",
-    "grid_based.b_tapemark",
+    "b_tapemark",
+    category="grid_based",
     boolean=b_tapemark,
     # Not a tree: the table copied onto the grid, one mark per row.
     shape=Shape.LOOKUP,

@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grid_based.befunge import _advance, _Machine, run
+from esolangs.interpreters.befunge import _advance, _Machine, run
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Seeded
 from esolangs.vm import run_until_halt

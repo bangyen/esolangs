@@ -1,7 +1,7 @@
 """Boolean-function generator for Dimensional.
 
 A bare ``>`` takes its dimension from the byte it stands on (``:260`` parses
-none, ``:382`` reads the cell, in ``interpreters/tape_based/dimensional.py``),
+none, ``:382`` reads the cell, in ``interpreters/dimensional.py``),
 so ``d>`` displaces the pointer by the bit read -- dimension 1 for a one, 0 for
 a zero; ``{d`` loops on a *coordinate* (``:296``), so the index doubles.
 
@@ -185,7 +185,8 @@ def _balanced(table: str, default: str, *, keep_constant_layout: bool = False) -
 
 LANGUAGE = Language(
     "Dimensional",
-    "tape_based.dimensional",
+    "dimensional",
+    category="tape_based",
     boolean=dimensional,
     # Not a tree: one painted cell per entry along dimension 1.
     shape=Shape.LOOKUP,

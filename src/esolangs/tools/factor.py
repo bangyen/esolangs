@@ -250,7 +250,8 @@ def balance_factor(truth_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Factor",
-    "tape_based.factor",
+    "factor",
+    category="tape_based",
     # A one-character mutation can turn the deliberately factorable example
     # into a huge semiprime, unbounded work before the first VM step.
     # Twelve digits still exercise the same parser and factorization paths

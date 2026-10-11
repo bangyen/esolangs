@@ -7,12 +7,12 @@ import argparse
 import random
 import sys
 
-from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
+from esolangs.interpreters.arrowqueue import _advance, _Machine
 from esolangs.tools.arrowqueue import _DRAINED_RING, _STAGE, arrowqueue
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.vm import run_until_halt_or_cycle
+from tests.generators.fills import fill
 from tests.support.witness_tables import row_bits
-from tests.tools.fills import fill
 
 _instantiate_arrowqueue = fill("ArrowQueue")
 

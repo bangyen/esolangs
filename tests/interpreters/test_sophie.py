@@ -8,7 +8,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based.sophie import run
+from esolangs.interpreters.sophie import run
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -115,7 +115,7 @@ class TestStepMachine:
     def test_a_read_loop_is_not_a_cycle(self) -> None:
         """The snapshot holds the input cursor (a85db79a)."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.sophie import _Machine
+        from esolangs.interpreters.sophie import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         io_ = ScriptedIO("AAB\x00")
@@ -125,7 +125,7 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import IO
-    from esolangs.interpreters.register_based.sophie import _Machine
+    from esolangs.interpreters.sophie import _Machine
 
     return _Machine(code, IO())
 

@@ -4,8 +4,8 @@ import random
 
 import pytest
 
+from esolangs.interpreters.brainif import _Machine as BrainIf
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.brainif import _Machine as BrainIf
 from esolangs.tools.brainif import (
     _brainif_dag,
     _brainif_tree,

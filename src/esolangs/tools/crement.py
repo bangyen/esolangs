@@ -197,7 +197,8 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "Crement",
-    "other.crement",
+    "crement",
+    category="other",
     boolean=crement,
     same_layout=_same_layout,
     contract=BooleanContract(

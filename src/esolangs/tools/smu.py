@@ -94,7 +94,8 @@ def smu(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Smu",
-    "stack_based.smu",
+    "smu",
+    category="stack_based",
     boolean=smu,
     contract=BooleanContract(
         input_shape="char_stream",

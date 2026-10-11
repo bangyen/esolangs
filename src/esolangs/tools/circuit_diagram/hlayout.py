@@ -15,7 +15,12 @@ unshared.
 from dataclasses import dataclass
 from typing import cast
 
-from esolangs.tools.circuit_diagram.layout import _HOLD, _Layout, _RoutingLayout, _Shape
+from esolangs.tools.circuit_diagram.layout import (
+    _HOLD,
+    _Layout,
+    _RoutingLayout,
+    _Shape,
+)
 
 # H-layout lattice.  Every site sits on a multiple of eight in both axes, and
 # each wire class owns residues no other class uses, so wires of different

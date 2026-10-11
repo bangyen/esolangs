@@ -212,7 +212,8 @@ def _same_layout(template: str, plain: str, _layout: Callable[[int], Any]) -> bo
 
 LANGUAGE = Language(
     "RAM0",
-    "register_based.ram0",
+    "ram0",
+    category="register_based",
     boolean=ram0,
     same_layout=_same_layout,
     contract=BooleanContract(

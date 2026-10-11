@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs.interpreters.tape_based.minifuck import run
+from esolangs.interpreters.minifuck import run
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -46,7 +46,7 @@ class TestMinifuck:
 class TestStepMachine:
     def test_step_tracks_tape_and_cursor(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.minifuck import _Machine
+        from esolangs.interpreters.minifuck import _Machine
 
         machine = _Machine(".", ScriptedIO())
         assert (machine.ind, machine.ptr) == (0, 0)
@@ -59,7 +59,7 @@ class TestStepMachine:
     def test_tape_state_when_the_pointer_runs_deep(self) -> None:
         """The grown tape's exact contents, not just the byte it prints."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.minifuck import _Machine
+        from esolangs.interpreters.minifuck import _Machine
 
         machine = _Machine("[[[[[[[", ScriptedIO())
         while not machine.halted:
@@ -70,14 +70,14 @@ class TestStepMachine:
     def test_the_tape_starts_eight_cells_wide(self) -> None:
         """The tape starts eight cells wide, which no output can reveal."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.minifuck import _Machine
+        from esolangs.interpreters.minifuck import _Machine
 
         assert _Machine("", ScriptedIO()).tape == [0] * 8
 
     def test_a_read_keeps_the_tape_past_the_print_window(self) -> None:
         """Reading input replaces cells 0-7 and keeps everything after them."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.minifuck import _Machine
+        from esolangs.interpreters.minifuck import _Machine
 
         machine = _Machine(".<<[<<<.[<<.<<<..[<[.[.[..", ScriptedIO("ABCDEFGH"))
         while not machine.halted:
@@ -136,14 +136,14 @@ def test_step_is_the_language_as_plain_scalars(
     expected: tuple[int, int, int, bool, str | None, bool],
 ) -> None:
     """``_step`` is the definition the boolean emitter's laws are pinned to."""
-    from esolangs.interpreters.tape_based.minifuck import _step
+    from esolangs.interpreters.minifuck import _step
 
     assert _step(ins, tape, 8, ptr) == expected
 
 
 def _machine(code: object, stdin: str = "") -> object:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.minifuck import _Machine
+    from esolangs.interpreters.minifuck import _Machine
 
     return _Machine(code, ScriptedIO(stdin))
 

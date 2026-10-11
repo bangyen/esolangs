@@ -7,7 +7,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.three_x import run
+from esolangs.interpreters.three_x import run
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
@@ -115,7 +115,7 @@ class Test3x:
 class TestStepMachine:
     def test_stack_commands_replace_or_consume_their_operands(self) -> None:
         """Arithmetic, output, and swap do not leave stale operands behind."""
-        from esolangs.interpreters.stack_based.three_x import _advance
+        from esolangs.interpreters.three_x import _advance
 
         three = Fraction(3)
         zero = Fraction(0)
@@ -130,7 +130,7 @@ class TestStepMachine:
 
     def test_an_open_paren_on_zero_skips_only_when_it_has_a_target(self) -> None:
         """``(`` on a zero jumps past the loop, or advances with no target."""
-        from esolangs.interpreters.stack_based.three_x import _advance
+        from esolangs.interpreters.three_x import _advance
 
         zero = Fraction(0)
         assert _advance((0, (zero,), (), ()), "(") == (1, (zero,), (), ())
@@ -139,7 +139,7 @@ class TestStepMachine:
     def test_a_close_paren_with_no_open_loop(self) -> None:
         """``)`` on a zero falls out of a loop it was never inside."""
         from esolangs.exceptions import HaltError
-        from esolangs.interpreters.stack_based.three_x import _Machine
+        from esolangs.interpreters.three_x import _Machine
 
         machine = _Machine("?)", ScriptedIO("0\n"))
         while not machine.halted:
@@ -156,7 +156,7 @@ class TestStepMachine:
 
     def test_an_unterminated_literal_prints_nothing(self) -> None:
         """``[`` with no closing ``]`` prints the empty string, not the rest."""
-        from esolangs.interpreters.stack_based.three_x import _Machine
+        from esolangs.interpreters.three_x import _Machine
 
         machine = _Machine("[abc", ScriptedIO())
         while not machine.halted:
@@ -180,7 +180,7 @@ class TestStepMachine:
 
     def test_a_closed_literal_prints_its_contents(self) -> None:
         """The companion to the unterminated case: a closed ``[`` prints."""
-        from esolangs.interpreters.stack_based.three_x import _Machine
+        from esolangs.interpreters.three_x import _Machine
 
         closed = _Machine("[abc]", ScriptedIO())
         while not closed.halted:
@@ -189,7 +189,7 @@ class TestStepMachine:
 
     def test_a_loop_that_reads_is_not_a_cycle(self) -> None:
         """The snapshot holds the input cursor (214c4f77)."""
-        from esolangs.interpreters.stack_based.three_x import _Machine
+        from esolangs.interpreters.three_x import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         io = ScriptedIO("1 1 0")
@@ -199,7 +199,7 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.stack_based.three_x import _Machine
+    from esolangs.interpreters.three_x import _Machine
 
     return _Machine(code, ScriptedIO())
 

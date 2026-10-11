@@ -5,9 +5,9 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters.forth import _Machine as Forth
+from esolangs.interpreters.forth import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.forth import _Machine as Forth
-from esolangs.interpreters.stack_based.forth import run
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
     CycleContract,
@@ -120,7 +120,7 @@ class TestForth:
 class TestStepMachine:
     def test_arithmetic_wraps_to_a_signed_32_bit_range(self) -> None:
         """Results wrap into -2**31 .. 2**31-1, which only the stack shows."""
-        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.interpreters.forth import _Machine
 
         machine = _Machine("9:*:*:*:*", ScriptedIO())
         while not machine.halted:
@@ -128,7 +128,7 @@ class TestStepMachine:
         assert list(machine.stack) == [-501334399]
 
     def test_step_tracks_stack_and_active_frame_cursor(self) -> None:
-        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.interpreters.forth import _Machine
 
         machine = _Machine("65.", ScriptedIO())
         assert (list(machine.stack), machine.frames[0].pc) == ([], 0)
@@ -144,7 +144,7 @@ class TestStepMachine:
         assert list(machine.frames) == []
 
     def test_nested_scope_pushes_a_frame_and_aborts_discard_the_error(self) -> None:
-        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.interpreters.forth import _Machine
 
         machine = _Machine("1{/}1;", ScriptedIO())
         for _ in range(4):  # 1 {/} 1 ; -> the ; pushes the "/" scope
@@ -156,7 +156,7 @@ class TestStepMachine:
 
     def test_a_top_level_abort_raises_from_step(self) -> None:
         """A stepped run fails as ``run`` does, not as a quiet halt."""
-        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.interpreters.forth import _Machine
 
         machine = _Machine("0/", ScriptedIO())
         machine.step()
@@ -165,7 +165,7 @@ class TestStepMachine:
 
     def test_the_wrap_folds_at_exactly_two_to_the_thirty_first(self) -> None:
         """2**31 is the first value that wraps, and it lands on the floor."""
-        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.interpreters.forth import _Machine
 
         machine = _Machine("2:*:*:*:*88*8*8*8**", ScriptedIO())
         while not machine.halted:
@@ -174,7 +174,7 @@ class TestStepMachine:
 
     def test_the_read_pushes_every_byte_of_the_line(self) -> None:
         """``,`` pushes the whole line, one byte per cell."""
-        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.interpreters.forth import _Machine
 
         machine = _Machine(",", ScriptedIO("hi"))
         machine.step()
@@ -182,7 +182,7 @@ class TestStepMachine:
 
     def test_a_loop_reenters_its_frame_each_pass(self) -> None:
         """A loop restarts its body until the top reaches zero."""
-        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.interpreters.forth import _Machine
 
         machine = _Machine("3[:1-]", ScriptedIO())
         while not machine.halted:
@@ -191,7 +191,7 @@ class TestStepMachine:
 
     def test_an_unstored_key_calls_an_empty_scope(self) -> None:
         """``;`` falls back to the empty string, so the pushed frame has code."""
-        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.interpreters.forth import _Machine
 
         machine = _Machine("1;", ScriptedIO())
         machine.step()  # 1 pushes the key
@@ -200,22 +200,22 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
+    from esolangs.interpreters.forth import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.stack_based.forth import _Machine
 
     return _Machine(code, ScriptedIO())
 
 
 def _reader(code: object, stdin: str) -> object:
+    from esolangs.interpreters.forth import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.stack_based.forth import _Machine
 
     return _Machine(code, ScriptedIO(stdin))
 
 
 def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle() -> None:
     """A port with no cursor reports position 0; the snapshot counts reads."""
-    from esolangs.interpreters.stack_based.forth import _Machine
+    from esolangs.interpreters.forth import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
     with pytest.raises(EOFError):

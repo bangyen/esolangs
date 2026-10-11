@@ -132,7 +132,7 @@ def ledger_formulas(
     Arities run from the first n through three more for a ``poly n`` row,
     two more otherwise (each rung of a linear row costs twice the last),
     unless ``arities`` names them. ``column`` loads language-owned formulas
-    from ``tests/<language id>/formulas.py`` when present.
+    from ``tests/generators/<language id>/formulas.py`` when present.
     """
     from tests.proofs._ledger import load
 
@@ -141,9 +141,14 @@ def ledger_formulas(
     for row in load().rows:
         if column is not None:
             stem = canonical_id(row.generator)
-            path = Path(__file__).resolve().parents[1] / stem / "formulas.py"
+            path = (
+                Path(__file__).resolve().parents[1]
+                / "generators"
+                / stem
+                / "formulas.py"
+            )
             if path.is_file():
-                owner = importlib.import_module(f"tests.{stem}.formulas")
+                owner = importlib.import_module(f"tests.generators.{stem}.formulas")
                 if formula := owner.FORMULAS.get(column):
                     local[row.generator] = formula
                     continue

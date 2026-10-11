@@ -5,23 +5,23 @@ from typing import ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grid_based.alight import _Machine, _replace_first, run
+from esolangs.interpreters.alight import _Machine, _replace_first, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.alight import alight
 from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
-from tests.fixtures import grid
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
+from tests.support.fixtures import grid
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 # The wiki's three examples, transcribed from the page source.  Trailing
 # spaces matter (each vertical ``turn right`` sits at a fixed column, and a
-# blank row is a legal in-command space), so tests/fixtures is exempt from
+# blank row is a legal in-command space), so tests/support/fixtures is exempt from
 # the whitespace hooks.
 CAT_TURN = grid("alight/cat_turn.txt")
 CAT_SKIP = grid("alight/cat_skip.txt")
@@ -548,7 +548,7 @@ class TestFunctionDefinitionEdges:
 
     def test_a_malformed_number_literal_is_refused(self) -> None:
         """Two decimal points is not a number."""
-        from esolangs.interpreters.grid_based.alight import _parse_number, _Parser
+        from esolangs.interpreters.alight import _parse_number, _Parser
 
         with pytest.raises(ValueError, match="bad number literal"):
             _parse_number(_Parser("1.2.3"))

@@ -83,7 +83,8 @@ def balance_bit_tilde(truth_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "bit~",
-    "tape_based.bit_tilde",
+    "bit_tilde",
+    category="tape_based",
     boolean=bit_tilde,
     contract=BooleanContract(
         input_shape="char_stream",

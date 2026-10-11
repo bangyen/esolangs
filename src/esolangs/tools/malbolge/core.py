@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable
 from functools import cache
 from typing import Protocol
 
-from esolangs.interpreters.other.malbolge import _XLAT1, _XLAT2, _crazy
+from esolangs.interpreters.malbolge import _XLAT1, _XLAT2, _crazy
 
 _WORDS = 3**10
 #: Weight of the top trit, which ``_rot`` moves the low trit to.

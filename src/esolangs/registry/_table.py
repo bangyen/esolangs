@@ -19,10 +19,10 @@ __all__ = ["LANGUAGES", "Generator", "Language", "SourceKind"]
 
 # Interpreter-only entries qualify through the fame route.
 _INTERPRETER_ONLY = (
-    Language("HQ9+", "register_based.hq9", id="hq9"),
-    Language("Nope.", "other.nope"),
-    Language("Unary", "tape_based.unary"),
-    Language("Deadfish", "register_based.deadfish"),
+    Language("HQ9+", "hq9", category="register_based", id="hq9"),
+    Language("Nope.", "nope", category="other"),
+    Language("Unary", "unary", category="tape_based"),
+    Language("Deadfish", "deadfish", category="register_based"),
 )
 
 

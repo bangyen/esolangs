@@ -192,7 +192,8 @@ def _balance(_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Super SNUSP",
-    "grid_based.super_snusp",
+    "super_snusp",
+    category="grid_based",
     random=True,
     boolean=super_snusp,
     # A sum, not a tree: a lookup over the essential inputs only.

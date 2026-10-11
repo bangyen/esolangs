@@ -392,7 +392,8 @@ def balance_polynomial(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Polynomial",
-    "register_based.polynomial",
+    "polynomial",
+    category="register_based",
     extra="math",
     generator_restrictions=f"at most {_POLYNOMIAL_MAX_INSTRS} instructions and "
     f"{_POLYNOMIAL_MAX_ESTIMATED_CHARS} estimated characters; "

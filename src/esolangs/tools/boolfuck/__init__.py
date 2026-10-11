@@ -151,7 +151,8 @@ def _boolfuck_tree(
 
 LANGUAGE = Language(
     "Boolfuck",
-    "tape_based.boolfuck",
+    "boolfuck",
+    category="tape_based",
     boolean=boolfuck,
     contract=BooleanContract(
         input_shape="char_stream",

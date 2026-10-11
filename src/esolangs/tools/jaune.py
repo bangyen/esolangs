@@ -226,7 +226,8 @@ def _jaune_ordered(
 
 LANGUAGE = Language(
     "Jaune",
-    "tape_based.jaune",
+    "jaune",
+    category="tape_based",
     boolean=jaune,
     # Operand-before-operator, so a break between the two is a load error.
     wrap=_jaune,

@@ -1,6 +1,6 @@
 """Revision-pinned published programs, independent of this repo's generators.
 
-Each ``tests/fixtures/wiki_examples/<language>.toml`` holds one wiki page's
+Each ``tests/support/fixtures/wiki_examples/<language>.toml`` holds one wiki page's
 examples (CC0): ``language``, ``oldid`` and one ``[[examples]]`` table each.
 An example has an ``id``, its ``source`` (or a ``source_file`` beside the
 TOML), optional ``stdin``, and the page's stated output as ``expected`` (or
@@ -27,7 +27,7 @@ from esolangs.exceptions import ExecutionTimeoutError, InputExhaustedError
 from esolangs.settings import DialectSettings
 from esolangs.vm import complete_vm, make_vm
 
-_DIR = Path(__file__).parent.parent / "fixtures" / "wiki_examples"
+_DIR = Path(__file__).parent.parent / "support/fixtures" / "wiki_examples"
 
 
 def _bits(text: str, *, lsb_first: bool) -> str:

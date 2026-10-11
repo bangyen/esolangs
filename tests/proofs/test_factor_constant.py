@@ -5,9 +5,9 @@ import random
 
 import pytest
 
+from esolangs.interpreters.brainfuck import run as run_brainfuck
+from esolangs.interpreters.factor import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.brainfuck import run as run_brainfuck
-from esolangs.interpreters.tape_based.factor import run
 from esolangs.tools.factor import _program, factor
 from tests.proofs._factor_counter import counter_program
 from tests.proofs._factor_normal import FORBIDDEN, prefix_normalize

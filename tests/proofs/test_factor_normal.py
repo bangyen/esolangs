@@ -6,10 +6,10 @@ from itertools import pairwise
 import pytest
 import sympy
 
+from esolangs.interpreters.brainfuck import _Machine
+from esolangs.interpreters.brainfuck import run as run_bf
+from esolangs.interpreters.factor import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.brainfuck import _Machine
-from esolangs.interpreters.tape_based.brainfuck import run as run_bf
-from esolangs.interpreters.tape_based.factor import run
 from tests.proofs._factor_counter import counter_program
 from tests.proofs._factor_normal import ALPHABET, FORBIDDEN, growth, normalize
 from tests.proofs.test_factor_print import _render

@@ -172,7 +172,8 @@ def unlambda(truth_table: str) -> str:
 
 LANGUAGE = Language(
     "Unlambda",
-    "other.unlambda",
+    "unlambda",
+    category="other",
     reader_checked=True,
     boolean=unlambda,
     contract=BooleanContract(

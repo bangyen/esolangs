@@ -15,7 +15,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 
-nocomment = importlib.import_module("esolangs.interpreters.tape_based.nocomment")
+nocomment = importlib.import_module("esolangs.interpreters.nocomment")
 
 
 def run_and_capture(code: str) -> str:
@@ -76,7 +76,7 @@ class TestNoComment:
     def test_tape_size_is_configurable(self) -> None:
         """The wiki fixes the wrap but not the size, so the size is a knob."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _TAPE, _Machine
+        from esolangs.interpreters.nocomment import _TAPE, _Machine
 
         assert _TAPE == 4096  # the default stays put; moving it moves behaviour
 
@@ -93,7 +93,7 @@ class TestNoComment:
     def test_tape_size_must_be_positive(self) -> None:
         """A tape with no cells has no cell to point at."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _Machine
+        from esolangs.interpreters.nocomment import _Machine
 
         for size in (0, -1):
             with pytest.raises(ValueError, match="at least one cell"):
@@ -195,7 +195,7 @@ class TestTheWikiExamples:
     @pytest.mark.parametrize(("value", "expected"), [(0, 1), (1, 0), (7, 0)])
     def test_logical_not(self, value: int, expected: int) -> None:
         """The result lands in the pointer's cell; the stack ends empty."""
-        from esolangs.interpreters.tape_based.nocomment import _Machine
+        from esolangs.interpreters.nocomment import _Machine
 
         machine = _Machine("rrr" + "i" * value + "rnciiinclsrilrnlfrffl", IO())
         while not machine.halted:
@@ -206,7 +206,7 @@ class TestTheWikiExamples:
 class TestStepMachine:
     def test_step_tracks_tape_stack_and_cursor(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _Machine
+        from esolangs.interpreters.nocomment import _Machine
 
         machine = _Machine("cino", ScriptedIO())
         assert (machine.ptr, machine.ind, machine.stack) == (0, 0, ())
@@ -223,7 +223,7 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.nocomment import _Machine
+    from esolangs.interpreters.nocomment import _Machine
 
     return _Machine(code, ScriptedIO())
 

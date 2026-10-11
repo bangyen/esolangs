@@ -8,13 +8,13 @@ import time
 import pytest
 import sympy as sp
 
-from esolangs.interpreters.register_based.polynomial import (
+from esolangs.interpreters.polynomial import (
     _parse_program,
     convert,
     sanitize,
     sanitize_terms,
 )
-from esolangs.interpreters.register_based.polynomial.roots import (
+from esolangs.interpreters.polynomial.roots import (
     _aks,
     _dense_gaussian_roots,
     _gap_chunks,
@@ -332,7 +332,7 @@ class TestProvenPrimality:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Past the Miller--Rabin range a probable prime is certified by AKS."""
-        import esolangs.interpreters.register_based.polynomial.roots as module
+        import esolangs.interpreters.polynomial.roots as module
 
         monkeypatch.setattr(module, "_EXACT_ISPRIME_LIMIT", 100)
         calls: list[int] = []

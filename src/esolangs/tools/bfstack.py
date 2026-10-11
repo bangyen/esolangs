@@ -172,7 +172,8 @@ def _payload(state: Any) -> Payload:
 
 LANGUAGE = Language(
     "BFStack",
-    "stack_based.bfstack",
+    "bfstack",
+    category="stack_based",
     payload=_payload,
     boolean=bfstack,
     # A sum, not a tree: a lookup over the essential inputs only.

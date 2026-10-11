@@ -5,8 +5,8 @@ import random
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.slashes import _Machine as SlashMachine
-from esolangs.interpreters.other.slashes import run as run_slashes
+from esolangs.interpreters.slashes import _Machine as SlashMachine
+from esolangs.interpreters.slashes import run as run_slashes
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.slashes import slashes
 from tests.support.witness_tables import witnesses

@@ -3,7 +3,7 @@
 The table is one integer literal, so it has no subtrees to fold or share.
 """
 
-from esolangs.interpreters.stack_based.grapheme._dialect import (
+from esolangs.interpreters.grapheme._dialect import (
     DEFAULT_GRAPHEME,
     INTEGER_CONVERSIONS,
     GraphemeDialect,
@@ -127,7 +127,8 @@ def balance_grapheme(
 
 LANGUAGE = Language(
     "Grapheme",
-    "stack_based.grapheme",
+    "grapheme",
+    category="stack_based",
     boolean=grapheme,
     dialect=GraphemeDialect,
     dialect_values={"integer_conversion": INTEGER_CONVERSIONS},

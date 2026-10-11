@@ -727,7 +727,8 @@ def _six_five_const(value: int) -> str:
 
 LANGUAGE = Language(
     "6-5",
-    "tape_based.six_five",
+    "six_five",
+    category="tape_based",
     boolean=six_five,
     internal_cap="the stream-ordered tree is tried only when its labels fit",
     contract=BooleanContract(

@@ -175,15 +175,15 @@ exemptions rest on the construction that cannot take the repeat, not a
 sub-gate bound. SStack's 24.6% is 82% subtables of size 2, below the
 two-unread-input depth a deferral needs, so its constructs reach the size >= 4
 repeats and save 4.8% of the plain tree
-(`tests/tools/test_boolean_sstack.py`); thisthat, Back, Dig and BF-PDA rest on
+(`tests/generators/test_boolean_sstack.py`); thisthat, Back, Dig and BF-PDA rest on
 their own admission tests. Boolfuck's is a sub-gate potential -- 2.3% of
 emitted size at n=5, below the gate, pinned in
-`tests/tools/test_boolean_boolfuck.py`. Home
+`tests/generators/test_boolean_boolfuck.py`. Home
 Row, ROTfuck and Dimensional are lookups that name no decision-tree node, and
 LaserFuck's path-dependent leaf code makes equal subtables unequal text.
 No decision-diagram generator leaves its repeats unshared, and the presence
 proxy is now enforced for the 48 tree-shaped generators by
-`tests/tools/test_boolean_sharing_catalogue.py`: 44 reference a canonical
+`tests/generators/test_boolean_sharing_catalogue.py`: 44 reference a canonical
 helper (`subtree_ids`, `SubtreeDiagram` -- Underload and Unlambda included),
 Circuit Diagram (`_dag`), Line (`shared_tree`) and Polynomial
 (`_polynomial_states`) a declared language-local one, and Piet is exempt (a
@@ -199,7 +199,7 @@ digit over 2..6 prefix bits, so a larger pool needs a multi-digit index.
 The ignored-input and constant-folding pieces are held to
 `test_generator_shape_is_what_the_catalogue_says` (a tree row folds on a
 one-dependency table, a reducing row drops its ignored inputs) and to the
-presence proxy in `tests/tools/test_boolean_canonical_catalogue.py`, whose
+presence proxy in `tests/generators/test_boolean_canonical_catalogue.py`, whose
 declared exceptions carry the piece natively (three rows for ignored inputs,
 eleven for constants).
 
@@ -303,7 +303,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 <!-- CURATION-CENSUS:START -->
 
-The 2026-10-06 census (`tests/fixtures/curation.toml`) records each
+The 2026-10-06 census (`tests/support/fixtures/curation.toml`) records each
 language's backlinks and route: 21 clear the fame gate,
 56 are first implementations and 6 are grandfathered.
 
@@ -446,7 +446,7 @@ languages remain rejected from the same image-source screen.
   would change overlapping-rule programs; `--seed` makes the draws repeatable.
   The generator writes rules that never overlap,
   so each state it reaches has exactly one rewrite and the draw cannot change
-  the answer; `tests/tools/test_boolean_thue.py` asserts that over every
+  the answer; `tests/generators/test_boolean_thue.py` asserts that over every
   table to three inputs, and checks the answer under three seeds and the
   unseeded draw.
 - Unlambda's `@` reads a Unicode character, including newlines. At EOF,
@@ -470,7 +470,7 @@ languages remain rejected from the same image-source screen.
   wiki cat's final empty pop pads to a trailing NUL.
 - LaserFuck inherits Brainfuck commands without defining EOF: exhausted input
   raises `EOFError`.
-- SStack's page has no example with a stated output; its brainfuck
+- The SStack page has no example with a stated output; its brainfuck
   interpreter is marked untested. Popping an empty stack reads 0 and leaves it
   empty, `:x:` peeks and raises `HaltError` above 255, EOF raises, and
   whitespace is discarded anywhere, inside a token too.

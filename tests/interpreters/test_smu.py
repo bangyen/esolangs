@@ -4,7 +4,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.smu import preprocess, run
+from esolangs.interpreters.smu import preprocess, run
 from esolangs.tools.smu import smu
 from tests.support.witness_tables import witnesses
 

@@ -6,10 +6,10 @@ from typing import ClassVar
 
 import pytest
 
+from esolangs.interpreters.container import run
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.container import run
-from tests.fixtures import grid
 from tests.interpreters.contract import SnapshotContract, StateViewContract
+from tests.support.fixtures import grid
 from tests.support.raises import raises_message
 
 HELLO_WORLD = grid("container/hello_world.txt")
@@ -26,7 +26,7 @@ class TestContainer:
 
     def test_container_update_clamps_at_zero(self) -> None:
         """Negative results are clamped to zero."""
-        from esolangs.interpreters.other.container import Con
+        from esolangs.interpreters.container import Con
 
         con = Con("A")
         con.add("-5 B>=1")
@@ -89,7 +89,7 @@ class TestPublicAPI:
 
 class TestStepMachine:
     def test_exit_sets_halted_and_exit_code(self) -> None:
-        from esolangs.interpreters.other.container import _Machine
+        from esolangs.interpreters.container import _Machine
 
         machine = _Machine(HELLO_WORLD, IO())
         while not machine.halted:
@@ -97,7 +97,7 @@ class TestStepMachine:
         assert machine.exit_code == 0
 
     def test_tick_counts_the_steps_taken(self) -> None:
-        from esolangs.interpreters.other.container import _Machine
+        from esolangs.interpreters.container import _Machine
 
         machine = _Machine(HELLO_WORLD, IO())
         steps = 0
@@ -109,7 +109,7 @@ class TestStepMachine:
     def test_loop_is_detected_as_a_cycle(self) -> None:
         # A oscillates 0 -> 1 -> 0 forever with no EXIT rule: a genuine
         # state cycle since the containers' values repeat exactly.
-        from esolangs.interpreters.other.container import _Machine
+        from esolangs.interpreters.container import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         code = ["A=0:", "+1 A<=0", "-1 A>=1"]
@@ -117,8 +117,8 @@ class TestStepMachine:
 
     def test_the_read_container_takes_one_character_per_firing(self) -> None:
         """The empty-named container reads one character each time it turns on."""
+        from esolangs.interpreters.container import _Machine
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.container import _Machine
 
         code = [":", "+1 <=0", "-1 >=1", "", "IN:"]
         machine = _Machine(code, ScriptedIO("AB"))
@@ -130,8 +130,8 @@ class TestStepMachine:
 
     def test_a_read_at_eof_sets_in_to_zero(self) -> None:
         """Wiki rev 135848: the read sets IN "with EOF returning 0"."""
+        from esolangs.interpreters.container import _Machine
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.container import _Machine
 
         machine = _Machine([":", "+1 <=0", "-1 >=1", "", "IN:"], ScriptedIO("A"))
         seen = []
@@ -147,15 +147,15 @@ class TestStepMachine:
 
     def test_an_initial_value_past_the_host_digit_cap_parses(self) -> None:
         """Python's int() refuses 4300+ digits; the language has no cap."""
-        from esolangs.interpreters.other.container import _Machine
+        from esolangs.interpreters.container import _Machine
 
         machine = _Machine(["A=1" + "0" * 5000 + ":"], IO())
         assert machine.var["A"] == 10**5000
 
 
 def _machine(code: object) -> object:
+    from esolangs.interpreters.container import _Machine
     from esolangs.interpreters.io import IO
-    from esolangs.interpreters.other.container import _Machine
 
     return _Machine(code, IO())
 

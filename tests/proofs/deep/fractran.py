@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 
-from esolangs.interpreters.other.fractran import _choose, _parse
+from esolangs.interpreters.fractran import _choose, _parse
 from esolangs.tools.fractran import PAIR, _primes, _tree, fractran
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,

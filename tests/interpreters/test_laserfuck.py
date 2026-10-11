@@ -7,9 +7,9 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.interpreters.grid_based.laserfuck import _Machine as Laserfuck
-from esolangs.interpreters.grid_based.laserfuck import run
 from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.laserfuck import _Machine as Laserfuck
+from esolangs.interpreters.laserfuck import run
 from esolangs.interpreters.randomness import FirstDraw
 from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
 from tests.interpreters.contract import SnapshotContract
@@ -123,7 +123,7 @@ class TestLaserFuck:
 
     def test_cells_wrap_at_signed_32_bit_bounds(self) -> None:
         """The fixed-width tape wraps in signed two's-complement order."""
-        from esolangs.interpreters.grid_based.laserfuck import _advance
+        from esolangs.interpreters.laserfuck import _advance
         from esolangs.interpreters.persistent import chunked, flatten
 
         def advance(value: int, op: str) -> int:
@@ -145,7 +145,7 @@ class TestLaserFuck:
 
     def test_step_on_an_already_halted_machine(self) -> None:
         # a second start halts the machine before any step; stepping is a no-op
-        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.laserfuck import _Machine
 
         machine = _Machine(["oo"], IO(), rng=FirstDraw(3))
         assert machine.halted
@@ -205,8 +205,8 @@ class TestSurvivorGaps:
 
     def test_the_tape_dumps_once_however_far_it_is_stepped(self) -> None:
         """The post-halt step dumps the tape, and only the first one does."""
-        from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.laserfuck import _Machine
 
         io_obj = ScriptedIO()
         machine = _Machine(["o+x"], io_obj, rng=FirstDraw(3))
@@ -257,7 +257,7 @@ class TestSnapshotProgress:
 
     def test_a_cursorless_read_ring_is_not_a_cycle(self) -> None:
         """``,`` re-reading ``a`` round a ring runs to EOF, not a false cycle."""
-        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.laserfuck import _Machine
         from esolangs.vm import run_until_halt
         from tests.interpreters.cursorless_io import CursorlessIO
 
@@ -268,8 +268,8 @@ class TestSnapshotProgress:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.grid_based.laserfuck import _Machine
     from esolangs.interpreters.io import IO
+    from esolangs.interpreters.laserfuck import _Machine
 
     return _Machine(code, IO(), rng=FirstDraw(3))
 
@@ -282,7 +282,7 @@ class TestContract(SnapshotContract):
 
 
 #: The wiki's Hello world rows are wider than a source line.
-FIXTURES = Path(__file__).parents[1] / "fixtures"
+FIXTURES = Path(__file__).parents[1] / "support/fixtures"
 
 
 def _wiki_run(code: str, stdin: str, heading: int) -> str:

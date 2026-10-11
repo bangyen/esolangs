@@ -310,7 +310,8 @@ def anf_coefficients(truth_table: str) -> list[int]:
 
 LANGUAGE = Language(
     "Fargo",
-    "other.fargo",
+    "fargo",
+    category="other",
     boolean=fargo,
     contract=BooleanContract(
         input_shape="row_index",

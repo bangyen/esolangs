@@ -126,7 +126,8 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
 
 LANGUAGE = Language(
     "Forþ",
-    "stack_based.forth",
+    "forth",
+    category="stack_based",
     boolean=forth,
     wrap=wrap_chars,
 )

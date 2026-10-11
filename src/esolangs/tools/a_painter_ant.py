@@ -78,7 +78,8 @@ def balance_a_painter_ant(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "A Painter Ant",
-    "grid_based.a_painter_ant",
+    "a_painter_ant",
+    category="grid_based",
     boolean=a_painter_ant,
     balance=balance_a_painter_ant,
     # Not a tree: one corridor cell per row, walked by the inputs' weights.

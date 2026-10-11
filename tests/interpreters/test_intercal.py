@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters.intercal import _expression, _Machine, run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.intercal import _expression, _Machine, run
 from esolangs.interpreters.randomness import FirstDraw
 from esolangs.vm import run_until_halt_or_all_branches_cycle
 from tests.interpreters.runner import run_program
@@ -507,7 +507,7 @@ def test_c_intercal_test2_multiplies_with_its_library_copy() -> None:
 
     Its library copy splits ``#`` from ``0`` across a line; test2.chk is XXXV.
     """
-    path = Path(__file__).parents[1] / "fixtures" / "intercal_test2.i"
+    path = Path(__file__).parents[1] / "support/fixtures" / "intercal_test2.i"
     assert _run(path.read_text(encoding="utf-8"), "FIVE\nSEVEN\n") == "XXXV\n"
 
 

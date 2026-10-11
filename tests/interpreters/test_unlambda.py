@@ -5,7 +5,7 @@ import re
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.unlambda import (
+from esolangs.interpreters.unlambda import (
     _advance,
     _App,
     _Machine,

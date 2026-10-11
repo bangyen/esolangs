@@ -150,7 +150,8 @@ def _bf_ordered(
 
 LANGUAGE = Language(
     "brainfuck",
-    "tape_based.brainfuck",
+    "brainfuck",
+    category="tape_based",
     weekly_mutation=("interpreter",),
     boolean=brainfuck,
     contract=BooleanContract(

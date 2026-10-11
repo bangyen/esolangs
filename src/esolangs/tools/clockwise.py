@@ -327,7 +327,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Clockwise",
-    "grid_based.clockwise",
+    "clockwise",
+    category="grid_based",
     boolean=clockwise,
     # Not a tree: a countdown stops on the entry's own column.
     shape=Shape.LOOKUP,

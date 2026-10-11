@@ -6,7 +6,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.rotfuck import run
+from esolangs.interpreters.rotfuck import run
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
@@ -58,7 +58,7 @@ class TestTape:
         assert run_program(build("+<<<<>>>>.")) == "\x01"
 
     def test_the_step_machine_grows_left_as_run_does(self) -> None:
-        from esolangs.interpreters.tape_based.rotfuck import _Machine
+        from esolangs.interpreters.rotfuck import _Machine
 
         machine = _Machine(build("+<<++>"), ScriptedIO())
         while not machine.halted:
@@ -122,7 +122,7 @@ class TestBrackets:
         Outer counter 4, dropped by two a trip: two trips, each running the
         inner loop (prints 3 and 1) and then printing the counter.
         """
-        from esolangs.interpreters.tape_based.rotfuck import _Machine
+        from esolangs.interpreters.rotfuck import _Machine
 
         machine = _Machine(build("++++[>+[++.--.-]<--.]"), ScriptedIO())
         while not machine.halted:
@@ -165,7 +165,7 @@ class TestBrackets:
 
 class TestStepMachine:
     def test_step_tracks_tape_cursor_and_rotation(self) -> None:
-        from esolangs.interpreters.tape_based.rotfuck import _Machine
+        from esolangs.interpreters.rotfuck import _Machine
 
         machine = _Machine(build("+."), ScriptedIO())
         assert (machine.ind, machine.ptr, list(machine.tape)) == (0, 0, [0])
@@ -179,7 +179,7 @@ class TestStepMachine:
         assert machine.ind == 2
 
     def test_pure_transition_moves_left_and_checks_backward_partners(self) -> None:
-        from esolangs.interpreters.tape_based.rotfuck import _advance
+        from esolangs.interpreters.rotfuck import _advance
 
         chars = tuple("<[]")
         assert _advance(((0, 1), 1, 0, 0), chars) == ((0, 1), 0, 1, 1)
@@ -196,7 +196,7 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.rotfuck import _Machine
+    from esolangs.interpreters.rotfuck import _Machine
 
     return _Machine(code, ScriptedIO())
 
@@ -213,7 +213,7 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
 
 @pytest.mark.parametrize("code", [build("+-><,.[]"), "+<.]>", "[[]", "comment"])
 def test_rotation_and_cursor_preclude_snapshot_cycles(code: str) -> None:
-    from esolangs.interpreters.tape_based.rotfuck import _Machine
+    from esolangs.interpreters.rotfuck import _Machine
 
     machine = _Machine(code, ScriptedIO("x\n" * 100))
     for _ in range(100):

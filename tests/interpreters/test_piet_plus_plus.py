@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.piet_plus_plus import _COMMANDS, run
+from esolangs.interpreters.piet_plus_plus import _COMMANDS, run
 from esolangs.raster import Raster
 
 _DELTA = {name: delta for delta, name in _COMMANDS.items()}
@@ -222,8 +222,8 @@ def test_a_black_start_halts_at_once() -> None:
 
 
 def test_entry_point_shares_the_run() -> None:
-    from esolangs.interpreters.stack_based import piet_plus_plus
-    from esolangs.interpreters.stack_based.piet_plus_plus import __main__ as entry
+    from esolangs.interpreters import piet_plus_plus
+    from esolangs.interpreters.piet_plus_plus import __main__ as entry
 
     assert entry.run is piet_plus_plus.run
 

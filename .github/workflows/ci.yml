@@ -312,7 +312,7 @@ jobs:
       run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci.shard --duration-output certificate-durations.json
 
     - name: Test one slow shard
-      run: uv run python scripts/ci/shard.py shard --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 --manifest slow.shard.json --exclude-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -- -n auto -p scripts.ci.shard --duration-output test-durations.json
+      run: uv run python scripts/ci/shard.py shard --marker "slow and not weekly" --durations tests/support/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 --manifest slow.shard.json --exclude-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -- -n auto -p scripts.ci.shard --duration-output test-durations.json
 
     - name: Retain measured slow-test durations
       if: always()
@@ -461,14 +461,14 @@ jobs:
     - name: Exercise paths, deadlines, output limits and worker cleanup
       run: >
         uv run pytest -q -o addopts=""
-        tests/test_run_bounded.py tests/test_memory_budget.py
-        tests/scripts/test_engineering_followups.py
-        tests/scripts/test_benchmark_protocol.py
-        tests/scripts/test_bounded_logs.py
-        tests/scripts/test_check_generator_sizes.py::test_benchmark_deadline_reaps_workers_with_positive_control
-        tests/test_run_isolated.py::test_output_limit_stops_an_infinite_writer_and_reaps
-        tests/test_run_isolated.py::test_capped_timeout_retains_output_and_reaps
-        tests/test_run_isolated.py::test_input_error_retains_counts_and_output
+        tests/runtime/vm/test_run_bounded.py tests/runtime/vm/test_memory_budget.py
+        tests/tooling/scripts/test_engineering_followups.py
+        tests/tooling/scripts/test_benchmark_protocol.py
+        tests/tooling/scripts/test_bounded_logs.py
+        tests/tooling/scripts/test_check_generator_sizes.py::test_benchmark_deadline_reaps_workers_with_positive_control
+        tests/runtime/vm/test_run_isolated.py::test_output_limit_stops_an_infinite_writer_and_reaps
+        tests/runtime/vm/test_run_isolated.py::test_capped_timeout_retains_output_and_reaps
+        tests/runtime/vm/test_run_isolated.py::test_input_error_retains_counts_and_output
 
     - name: Retain worker and verification logs
       if: always()

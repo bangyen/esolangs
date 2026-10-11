@@ -127,7 +127,7 @@ def widens_to_everything(changed: list[str]) -> str | None:
 
 
 TOOLING_INTEGRATIONS = {
-    "tests/scripts/test_ci_coverage.py": (
+    "tests/tooling/scripts/test_ci_coverage.py": (
         ("test_combining_shards_retains_every_branch",),
         (
             ".github/workflows/",
@@ -148,13 +148,16 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
             ".coveragerc",
             "tests/conftest.py",
             "tests/__init__.py",
-            "tests/scripts/script_support.py",
+            "tests/tooling/scripts/script_support.py",
             "setup.cfg",
             "pytest.ini",
             "tox.ini",
         }
-        or path.startswith("tests/fixtures/")
-        or (path.startswith("tests/scripts/") and Path(path).name == "conftest.py")
+        or path.startswith("tests/support/fixtures/")
+        or (
+            path.startswith("tests/tooling/scripts/")
+            and Path(path).name == "conftest.py"
+        )
         for path in changed
     ):
         return []
@@ -163,7 +166,7 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
         for suite, (tests, dependencies) in TOOLING_INTEGRATIONS.items()
         if not any(
             path == suite
-            or path.startswith((*dependencies, "tests/scripts/__init__.py"))
+            or path.startswith((*dependencies, "tests/tooling/scripts/__init__.py"))
             for path in changed
         )
         for test in tests
@@ -462,7 +465,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "src/esolangs/interpreters/",
         "checks/check_generator_sizes.py",
         "scripts/benchmark.py",
-        "tests/fixtures/generator_sizes.json",
+        "tests/support/fixtures/generator_sizes.json",
     ),
     # The union of what the two proofs in this band read: ArrowQueue's lemmas
     # import the generator and nothing else, and BIO's also parse the emitted
@@ -533,9 +536,9 @@ def _is_collected(path: str) -> bool:
 
 
 INTERPRETER_CONTRACT_TESTS = (
-    "tests/vm/test_vm_protocol.py",
-    "tests/vm/test_stepping_parity.py",
-    "tests/api/test_api_contracts.py",
+    "tests/runtime/vm/test_vm_protocol.py",
+    "tests/runtime/vm/test_stepping_parity.py",
+    "tests/integration/api/test_api_contracts.py",
     "tests/generators/test_interpreter_conventions.py",
     "tests/interpreters/test_io.py",
     "tests/interpreters/test_input_convention.py",
@@ -628,7 +631,7 @@ def _generator_test_scope(module: str) -> list[str] | None:
                     test_owner = owners[max(matches, key=len)]
                     break
         # Only language-local directories follow this naming convention.
-        local = test.parent.name in {"tools", "interpreters", "languages"}
+        local = test.parent.name in {"generators", "interpreters", "languages"}
         if local and test_owner is not None and test_owner not in dependents:
             text = test.read_text(encoding="utf-8").lower()
             if not any(needle.lower() in text for needle in needles):
@@ -663,10 +666,12 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
         if f.startswith("src/esolangs/interpreters/") and f.endswith(".py"):
             relative = Path(f).relative_to("src/esolangs/interpreters")
             # Package helpers can share a filename with another interpreter.
-            if len(relative.parts) != 2:
+            if len(relative.parts) != 1:
                 return WHOLE_SUITE
+            from esolangs.registry import LANGUAGES
+
             stem = Path(f).stem
-            if stem.startswith("_"):
+            if stem not in {lang.interpreter for lang in LANGUAGES.values()}:
                 return WHOLE_SUITE
             candidate = f"tests/interpreters/test_{stem}.py"
             if not (ROOT / candidate).exists():
@@ -676,15 +681,18 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
                 paths.add(suite.relative_to(ROOT).as_posix())
             # Language-local tests cannot detect broken VM or public I/O contracts.
             paths.update(INTERPRETER_CONTRACT_TESTS)
-            generator_tests = f"tests/tools/test_boolean_{stem}.py"
+            generator_tests = f"tests/generators/test_boolean_{stem}.py"
             if (ROOT / generator_tests).exists():
                 paths.add(generator_tests)
             continue
         if f.startswith("src/esolangs/tools/") and f.endswith(".py"):
             relative = Path(f).relative_to("src/esolangs/tools")
-            if len(relative.parts) != 1 or relative.stem.startswith("_"):
+            parts = relative.with_suffix("").parts
+            # Only a leaf generator at ``<name>.py`` is localisable;
+            # a root helper or a package submodule keeps the whole suite.
+            if len(parts) != 1 or any(part.startswith("_") for part in parts):
                 return WHOLE_SUITE
-            selected = _generator_test_scope(relative.stem)
+            selected = _generator_test_scope(".".join(parts))
             if selected is None:
                 return WHOLE_SUITE
             paths.update(selected)

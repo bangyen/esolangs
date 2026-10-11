@@ -269,7 +269,8 @@ def balance_nocomment(truth_table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "NoComment",
-    "tape_based.nocomment",
+    "nocomment",
+    category="tape_based",
     weekly_mutation=("generator",),
     boolean=nocomment,
     # A sum, not a tree: a lookup over the essential inputs only.

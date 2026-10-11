@@ -282,7 +282,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "Inject",
-    "other.inject",
+    "inject",
+    category="other",
     boolean=inject,
     contract=BooleanContract(
         note="send terminates each line, so the answer ends in a newline",

@@ -62,10 +62,13 @@ def _io_surface() -> frozenset[str]:
 
 def _module_files() -> list[pathlib.Path]:
     """Return every interpreter module, read off the tree."""
-    return sorted(
-        [path for path in _INTERPRETERS.glob("*/*.py") if not path.name.startswith("_")]
-        + list(_INTERPRETERS.glob("*/*/__init__.py"))
-    )
+    paths = []
+    for language in LANGUAGES.values():
+        if language.interpreter is None:
+            continue
+        path = _INTERPRETERS / language.interpreter
+        paths.append(path / "__init__.py" if path.is_dir() else path.with_suffix(".py"))
+    return sorted(paths)
 
 
 def _is_io_receiver(node: ast.expr) -> bool:
@@ -201,7 +204,7 @@ def test_no_interpreter_halts_without_saying_why() -> None:
     assert _BARE_RAISE.match("        raise ValueError()")
     assert not _BARE_RAISE.match('    raise HaltError("division by zero")')
     # Modulous was the reported case and is fixed, so it must not be here.
-    assert "stack_based/modulous.py" not in _wordless_halts()
+    assert "modulous.py" not in _wordless_halts()
 
 
 def _docstring_issues(path: pathlib.Path, language: str | None) -> list[str]:

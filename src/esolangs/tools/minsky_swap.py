@@ -136,7 +136,8 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "Minsky Swap",
-    "register_based.minsky_swap",
+    "minsky_swap",
+    category="register_based",
     boolean=minsky_swap,
     same_layout=_same_layout,
     # Not a tree: each input adds its weight; a ``~`` cascade picks one of two leaves.

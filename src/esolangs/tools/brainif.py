@@ -595,7 +595,8 @@ def _balance(table: str, default: str) -> str:
 
 LANGUAGE = Language(
     "BrainIf",
-    "tape_based.brainif",
+    "brainif",
+    category="tape_based",
     boolean=brainif,
     split=True,
     contract=BooleanContract(

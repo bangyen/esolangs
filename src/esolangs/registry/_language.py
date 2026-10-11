@@ -128,6 +128,7 @@ class Language:
     fuzz_max_digits: int | None = None
     weekly_mutation: tuple[str, ...] = ()
     showcase: bool = False
+    category: str = "other"
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""

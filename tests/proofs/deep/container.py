@@ -10,8 +10,8 @@ from pathlib import Path
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
+from esolangs.interpreters.container import _Machine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.container import _Machine
 from esolangs.tools.container import _container_threshold
 
 #: Cost band; see ``__main__.py``. L1 enumerates every row of twelve arities

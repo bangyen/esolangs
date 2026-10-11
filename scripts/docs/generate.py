@@ -40,7 +40,7 @@ def main() -> int:
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 _INTERPRETERS = ROOT / "src" / "esolangs" / "interpreters"
-CURATION = ROOT / "tests" / "fixtures" / "curation.toml"
+CURATION = ROOT / "tests" / "support/fixtures" / "curation.toml"
 
 
 # The README's Implemented Languages section, grouped by interpreter
@@ -148,7 +148,7 @@ def render_languages_section() -> str:
     for name, lang in LANGUAGES.items():
         if lang.interpreter is None:
             continue
-        category = lang.interpreter.split(".")[0]
+        category = lang.category
         if category not in groups:
             raise ValueError(
                 f"{name}'s interpreter category {category!r} has no README "
@@ -377,14 +377,14 @@ def render_curation_census_section() -> str:
     """Render docs/limitations.md's census counts from the curation fixture.
 
     The fixture records one route per registry language;
-    ``tests/api/test_interpreter_only_admissions.py`` holds its keys to the
+    ``tests/integration/api/test_interpreter_only_admissions.py`` holds its keys to the
     registry, so the counts here are the registry's too.
     """
     census = tomllib.loads(CURATION.read_text(encoding="utf-8"))
     routes = [entry["route"] for entry in census["languages"].values()]
     return "\n".join(
         [
-            f"The {census['checked']} census (`tests/fixtures/curation.toml`)"
+            f"The {census['checked']} census (`tests/support/fixtures/curation.toml`)"
             " records each",
             f"language's backlinks and route: {routes.count('fame')} clear the"
             " fame gate,",
@@ -486,13 +486,17 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
 INIT = "src/esolangs/tools/__init__.py"
 START = "# BEGIN GENERATED EXPORTS: python scripts/docs/generate.py docs"
 END = "# END GENERATED EXPORTS"
+#: Ruff's line limit, which the generated import block must respect.
+LINE_LIMIT = 88
 
 
 def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
     """Return ``(module, generator)`` for every module declaring a ``LANGUAGE``."""
     tools = root / "src/esolangs/tools"
     found = []
-    for path in [*tools.glob("*.py"), *tools.glob("*/__init__.py")]:
+    for path in sorted(tools.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
         text = path.read_text(encoding="utf-8")
         start = text.find("\nLANGUAGE = Language(")
         if start < 0:
@@ -505,7 +509,9 @@ def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
             for kw in statement.value.keywords
             if kw.arg == "boolean" and isinstance(kw.value, ast.Name)
         )
-        module = path.parent.name if path.name == "__init__.py" else path.stem
+        # ``tools/<name>[.py|/__init__.py]`` -> ``<name>``.
+        parts = path.relative_to(tools).with_suffix("").parts
+        module = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
         found.append((module, generator))
     return sorted(found)
 
@@ -513,12 +519,18 @@ def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
 def render(root: pathlib.Path = ROOT) -> str:
     """Return the import block and ``__all__`` for :data:`declared`."""
     pairs = declared(root)
-    imports = "\n".join(
-        f"from esolangs.tools.{m} import {g}"
+    lines = []
+    for m, g in pairs:
         # A generator named for its language may shadow a builtin (Eval).
-        + ("  # noqa: A004 - the language's name" if hasattr(builtins, g) else "")
-        for m, g in pairs
-    )
+        comment = "  # noqa: A004 - the language's name" if hasattr(builtins, g) else ""
+        line = f"from esolangs.tools.{m} import {g}"
+        # Keep the block stable under `ruff format`: past the line limit, a
+        # trailing comma forces the multi-line form ruff would write anyway.
+        if len(line + comment) > LINE_LIMIT:
+            lines.append(f"from esolangs.tools.{m} import (\n    {g},{comment}\n)")
+        else:
+            lines.append(line + comment)
+    imports = "\n".join(lines)
     names = sorted(["BOOLEAN", *(g for _, g in pairs)])
     listed = "\n".join(f'    "{name}",' for name in names)
     return f"{imports}\n\n__all__ = [\n{listed}\n]"

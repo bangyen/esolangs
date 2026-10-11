@@ -4,10 +4,10 @@ import re
 
 import pytest
 
+from esolangs.interpreters import thue
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other import thue
-from esolangs.interpreters.other.thue import _advance, _Machine, _matches, _parse, run
 from esolangs.interpreters.randomness import FirstDraw, Seeded
+from esolangs.interpreters.thue import _advance, _Machine, _matches, _parse, run
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
 

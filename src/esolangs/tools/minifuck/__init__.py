@@ -422,7 +422,8 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "Minifuck",
-    "tape_based.minifuck",
+    "minifuck",
+    category="tape_based",
     size_bound=lambda n: 70 * 2**n,
     boolean=minifuck,
     same_layout=_same_layout,

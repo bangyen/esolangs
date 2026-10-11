@@ -9,7 +9,7 @@ from math import gcd
 
 import pytest
 
-from esolangs.interpreters.other.fractran import _choose, _parse
+from esolangs.interpreters.fractran import _choose, _parse
 from esolangs.tools.fractran import PAIR, fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs.deep.fractran import row_addressed, rows, spelled

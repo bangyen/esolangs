@@ -314,7 +314,8 @@ def _three_x_emit(
 
 LANGUAGE = Language(
     "3x",
-    "stack_based.three_x",
+    "three_x",
+    category="stack_based",
     boolean=three_x,
     wrap=_bracket_literal,
 )

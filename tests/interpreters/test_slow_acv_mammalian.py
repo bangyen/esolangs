@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.tape_based.slow_acv_mammalian import (
+from esolangs.interpreters.slow_acv_mammalian import (
     _Machine as SlowAcvMammalian,
 )
-from esolangs.interpreters.tape_based.slow_acv_mammalian import run
+from esolangs.interpreters.slow_acv_mammalian import run
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_printing
@@ -39,13 +39,13 @@ class TestMammalian:
 
     def test_hello_world(self) -> None:
         """Hello World program from the language docs."""
-        program = Path(__file__).parents[2] / "tests/fixtures/mammalian.txt"
+        program = Path(__file__).parents[2] / "tests/support/fixtures/mammalian.txt"
         assert run_and_capture(program.read_text()) == "Hello, world!\n"
 
     def test_accept_appends_a_newline(self) -> None:
         """ACCEPT appends a newline byte, narrowed like other input."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.interpreters.slow_acv_mammalian import _Machine
 
         def accepted(stdin: str) -> list[int]:
             machine = _Machine("ACCEPT", ScriptedIO(stdin))
@@ -64,7 +64,7 @@ class TestMammalian:
     ) -> None:
         """PRONOUNCE prints ``acc`` modulo 255 ("modulo 255"), or 256 if asked."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.interpreters.slow_acv_mammalian import _Machine
 
         # SEED puts 1 in lst[0]; ACCEPT folds 0xff against acc 0 and appends
         # it; DIGEST xors the accumulator with the sum, giving 256.
@@ -79,7 +79,7 @@ class TestMammalian:
     def test_seed_wraps_its_register_at_a_byte(self) -> None:
         """``SEED``'s addition wraps too, at the same 256."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.interpreters.slow_acv_mammalian import _Machine
 
         machine = _Machine("CONSUME ACCEPT SEED", ScriptedIO("\xff\n"))
         while not machine.halted:
@@ -88,7 +88,7 @@ class TestMammalian:
 
     def test_sprint_needs_a_position_inside_the_array(self) -> None:
         """``SPRINT`` is a NOP unless the accumulator indexes a real cell."""
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.interpreters.slow_acv_mammalian import _Machine
 
         machine = _Machine("CONSUME SPRINT", IO())
         while not machine.halted:
@@ -113,20 +113,20 @@ class TestPartial:
 
     def test_consume_takes_the_middle_cell(self) -> None:
         """``CONSUME`` pops ``(len - 1) // 2``, the lower of the two middles."""
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
+        from esolangs.interpreters.slow_acv_mammalian import _partial
 
         after, acc = _partial(3, (10, 11, 12), 0)
         assert acc == 11
         assert after == (10, 12)
 
     def test_consume_on_an_empty_array_leaves_the_state_alone(self) -> None:
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
+        from esolangs.interpreters.slow_acv_mammalian import _partial
 
         assert _partial(3, (), 7) == ((), 7)
 
     def test_fission_splits_the_middle_cell(self) -> None:
         """``FISSION`` halves the same middle cell and hangs it off both ends."""
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
+        from esolangs.interpreters.slow_acv_mammalian import _partial
 
         after, acc = _partial(4, (10, 12, 14), 3)
         assert acc == 3
@@ -134,7 +134,7 @@ class TestPartial:
 
     def test_excrete_stores_the_accumulator_modulo_the_io_modulus(self) -> None:
         """``EXCRETE`` appends ``acc % 255`` by default and clears ``acc``."""
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
+        from esolangs.interpreters.slow_acv_mammalian import _partial
 
         after, acc = _partial(2, (), 256)
         assert acc == 0
@@ -152,7 +152,7 @@ class TestTotal:
 
     def test_seed_adds_each_arrays_index_to_its_head(self) -> None:
         """``SEED`` adds ``index + 1`` to every array's first cell."""
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _total
+        from esolangs.interpreters.slow_acv_mammalian import _total
 
         arrays = _total(0, tuple((10, 0) for _ in range(23)))
         assert [arr[0] for arr in arrays] == [11 + k for k in range(23)]
@@ -160,7 +160,7 @@ class TestTotal:
 
     def test_seed_skips_an_empty_array(self) -> None:
         """An empty array has no head to seed, so it stays empty."""
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _total
+        from esolangs.interpreters.slow_acv_mammalian import _total
 
         before = [() for _ in range(23)]
         before[5] = (1,)
@@ -170,7 +170,7 @@ class TestTotal:
 
     def test_conflagrate_pairs_the_flattened_memory(self) -> None:
         """``CONFLAGRATE`` folds the memory end to end, across array bounds."""
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _total
+        from esolangs.interpreters.slow_acv_mammalian import _total
 
         before = [() for _ in range(23)]
         before[0] = (9, 2)
@@ -183,7 +183,7 @@ class TestSprintIndex:
 
     def test_an_accumulator_past_the_far_end_reports_a_list(self) -> None:
         """Walking off the front raises, and says "list", not "tuple"."""
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _advance
+        from esolangs.interpreters.slow_acv_mammalian import _advance
 
         arrays = tuple((0,) for _ in range(23))
         with raises_message(IndexError, "list index out of range"):
@@ -196,7 +196,7 @@ class TestLeapfrog:
     """``LEAPFROG`` jumps the cursor, or halts when the target is negative."""
 
     def test_a_negative_target_halts(self) -> None:
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.interpreters.slow_acv_mammalian import _Machine
 
         # acc 0 and a head of 0 give target -1, which halts instead of jumping.
         machine = _Machine("LEAPFROG PRONOUNCE", IO())
@@ -210,7 +210,7 @@ class TestLeapfrog:
 
     def test_the_target_subtracts_the_head_from_the_accumulator(self) -> None:
         """``target`` is ``acc - head - 1``, so a larger head jumps lower."""
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.interpreters.slow_acv_mammalian import _Machine
 
         machine = _Machine("LEAPFROG PRONOUNCE PRONOUNCE PRONOUNCE", IO())
         machine.lst = (
@@ -225,7 +225,7 @@ class TestLeapfrog:
 
     def test_leapfrog_reads_the_last_cell_to_decide_whether_to_jump(self) -> None:
         """The guard is the array's *last* value, not its second."""
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.interpreters.slow_acv_mammalian import _Machine
 
         machine = _Machine("LEAPFROG PRONOUNCE", IO())
         machine.lst = (
@@ -241,7 +241,7 @@ class TestLeapfrog:
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import IO
-    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.interpreters.slow_acv_mammalian import _Machine
 
     return _Machine(code, IO())
 
@@ -255,7 +255,7 @@ class TestContract(SnapshotContract):
 
 @pytest.mark.parametrize("cell_modulus", [255, 256])
 def test_conflagrate_uses_cell_modulus(cell_modulus: int) -> None:
-    from esolangs.interpreters.tape_based.slow_acv_mammalian import _total
+    from esolangs.interpreters.slow_acv_mammalian import _total
 
     arrays = ((512, 254),) + ((),) * 22
     assert _total(1, arrays, cell_modulus)[0] == (510, 256 % cell_modulus)
@@ -264,7 +264,7 @@ def test_conflagrate_uses_cell_modulus(cell_modulus: int) -> None:
 @pytest.mark.parametrize("io_modulus", [255])
 def test_excrete_uses_io_modulus_without_changing_seed(io_modulus: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.interpreters.slow_acv_mammalian import _Machine
 
     machine = _Machine("EXCRETE SEED", ScriptedIO(), io_modulus=io_modulus)
     machine.acc = 256
@@ -286,7 +286,7 @@ def test_excrete_uses_io_modulus_without_changing_seed(io_modulus: int) -> None:
 )
 def test_unsupported_moduli_are_rejected_before_execution(settings) -> None:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine, run
+    from esolangs.interpreters.slow_acv_mammalian import _Machine, run
 
     for entry in (_Machine, run):
         with pytest.raises(ValueError, match="modulus must"):

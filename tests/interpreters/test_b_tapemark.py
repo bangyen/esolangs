@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs.interpreters.grid_based.b_tapemark import (
+from esolangs.interpreters.b_tapemark import (
     _advance,
     _Grid,
     _load,

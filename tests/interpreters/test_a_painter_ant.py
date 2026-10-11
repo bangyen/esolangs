@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs.interpreters.grid_based.a_painter_ant import _Machine, run
+from esolangs.interpreters.a_painter_ant import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.contract import EmptyProgramContract
 

@@ -257,15 +257,15 @@ def _split_coverage(
     ]
     shared = {
         "src/esolangs/tools/wrap.py": [
-            "tests/tools/test_wrap.py",
-            "tests/tools/test_balance.py",
+            "tests/generators/test_wrap.py",
+            "tests/generators/test_balance.py",
         ]
     }
-    shared["src/esolangs/interpreters/tape_based/line/mask.py"] = [
-        "tests/line/test_mask.py"
+    shared["src/esolangs/interpreters/line/mask.py"] = [
+        "tests/formats/line/test_mask.py"
     ]
     shared["src/esolangs/_isolated.py"] = [
-        "tests/vm/test_run_isolated.py::test_raster_transport_preserves_every_pixel"
+        "tests/runtime/vm/test_run_isolated.py::test_raster_transport_preserves_every_pixel"
     ]
     leaves = [
         path
@@ -308,7 +308,7 @@ def _split_coverage(
                 "loadfile",
                 "--no-loadscope-reorder",
                 "-p",
-                "scripts.ci",
+                "scripts.ci.shard",
                 "--duration-order",
                 "--duration-output=.cache/pytest/durations.json",
             ]

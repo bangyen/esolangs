@@ -2,8 +2,8 @@
 
 import contextlib
 
+from esolangs.interpreters.forbin import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.forbin import run
 
 
 def run_program(code: str, stdin: str = "") -> str:

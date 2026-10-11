@@ -2,8 +2,8 @@
 
 import pytest
 
+from esolangs.interpreters.brainfuck import _Machine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.brainfuck import _Machine
 from esolangs.vm import run_until_halt_or_growth
 
 

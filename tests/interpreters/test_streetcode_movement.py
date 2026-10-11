@@ -2,8 +2,9 @@
 
 from pathlib import Path
 
-from esolangs.interpreters.grid_based.streetcode import _Machine
-from esolangs.interpreters.grid_based.streetcode.geometry import (
+from esolangs.interpreters.io import IO
+from esolangs.interpreters.streetcode import _Machine
+from esolangs.interpreters.streetcode.geometry import (
     _NO_LATCHES,
     _Car,
     _choose_heading,
@@ -18,7 +19,6 @@ from esolangs.interpreters.grid_based.streetcode.geometry import (
     _open_toward,
     _road_mouth,
 )
-from esolangs.interpreters.io import IO
 from tests.interpreters.streetcode_support import machine_unvalidated, run_and_capture
 
 
@@ -169,8 +169,8 @@ class TestStreetcodeAmbiguousTurns:
         """A junction never offers a road the car cannot step onto."""
         root = Path(__file__).resolve().parents[2]
         for path in (
-            "tests/fixtures/streetcode_hello.txt",
-            "tests/fixtures/streetcode_and2_wide.txt",
+            "tests/support/fixtures/streetcode_hello.txt",
+            "tests/support/fixtures/streetcode_and2_wide.txt",
             "examples/streetcode.txt",
         ):
             code = (root / path).read_text().split("\n")

@@ -6,7 +6,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.unsquare import run
+from esolangs.interpreters.unsquare import run
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
@@ -107,7 +107,7 @@ class TestUnsquare:
 class TestStepMachine:
     def test_the_read_pushes_the_first_character(self) -> None:
         """A character read pushes the next character code."""
-        from esolangs.interpreters.stack_based.unsquare import _Machine
+        from esolangs.interpreters.unsquare import _Machine
 
         machine = _Machine("i", ScriptedIO("hi"))
         machine.step()
@@ -115,7 +115,7 @@ class TestStepMachine:
 
     def test_memory_views_the_accumulator_not_the_stack(self) -> None:
         """``memory`` is the accumulator; ``stack`` is the stack."""
-        from esolangs.interpreters.stack_based.unsquare import _Machine
+        from esolangs.interpreters.unsquare import _Machine
 
         machine = _Machine("+I", ScriptedIO())
         for _ in range(2):
@@ -125,7 +125,7 @@ class TestStepMachine:
 
     def test_an_unmatched_bracket_leaves_the_machine_halted(self) -> None:
         """The cursor is moved to the end before the error is raised."""
-        from esolangs.interpreters.stack_based.unsquare import _Machine
+        from esolangs.interpreters.unsquare import _Machine
 
         machine = _Machine(">", ScriptedIO())
         with raises_message(HaltError, "unmatched >"):
@@ -135,7 +135,7 @@ class TestStepMachine:
 
     def test_a_close_with_acc_zero_falls_through(self) -> None:
         """Wiki: ``<`` jumps back only "if the accumulator is not 0 nor 1"."""
-        from esolangs.interpreters.stack_based.unsquare import _Machine
+        from esolangs.interpreters.unsquare import _Machine
 
         machine = _Machine("+>-<", ScriptedIO())
         steps = 0
@@ -146,7 +146,7 @@ class TestStepMachine:
 
     def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle(self) -> None:
         """A port with no cursor reports position 0; the snapshot counts reads."""
-        from esolangs.interpreters.stack_based.unsquare import _Machine
+        from esolangs.interpreters.unsquare import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         machine = _Machine("+>iA+<", PositionlessIO("\x00" * 10))
@@ -156,14 +156,14 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.stack_based.unsquare import _Machine
+    from esolangs.interpreters.unsquare import _Machine
 
     return _Machine(code, ScriptedIO())
 
 
 def _reader(code: object, stdin: str) -> object:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.stack_based.unsquare import _Machine
+    from esolangs.interpreters.unsquare import _Machine
 
     return _Machine(code, ScriptedIO(stdin))
 
@@ -200,7 +200,7 @@ class TestStateViewValues:
 
 
 def test_loading_a_stack_detaches_it_and_preserves_other_state() -> None:
-    from esolangs.interpreters.stack_based.unsquare import _Machine
+    from esolangs.interpreters.unsquare import _Machine
 
     machine = _Machine("+o", ScriptedIO())
     machine.step()

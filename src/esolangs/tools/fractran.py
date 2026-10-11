@@ -17,7 +17,7 @@ from itertools import islice
 from typing import Any
 
 from esolangs.factor_primes import prime_segments
-from esolangs.interpreters.other.fractran.index import SMALL_BASE
+from esolangs.interpreters.fractran.index import SMALL_BASE
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
@@ -236,7 +236,8 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 LANGUAGE = Language(
     "FRACTRAN",
-    "other.fractran",
+    "fractran",
+    category="other",
     boolean=fractran,
     same_layout=_same_layout,
     contract=BooleanContract(

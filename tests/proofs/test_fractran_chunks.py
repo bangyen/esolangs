@@ -6,8 +6,8 @@ import random
 
 import pytest
 
+from esolangs.interpreters.fractran import _choose, _Machine, _parse
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.fractran import _choose, _Machine, _parse
 from esolangs.tools.fractran import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs._fractran_chunks import chunk_template, chunk_width
