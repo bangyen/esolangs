@@ -640,8 +640,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     with fixed-size cofactor pools when it beats the minterm lattice. Repeated
     complete cofactors and five-input residuals also compete through fixed
     four/eight predicate-and-function banks. Seven/eight-input H atoms
-    share larger residual classes under the same area ceiling. Up to eight
-    repeated suffix classes share across every prefix through bounded H masks.
+    share larger residual classes under the same area ceiling. Repeated suffix
+    classes share across every prefix through workspace-admitted H masks.
 
     What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
     floor is what a band cannot reclaim -- the rails and complements, live

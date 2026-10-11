@@ -28,9 +28,9 @@ class _ForestBuilder(_Builder):
 
 
 def _suffix_forest(words: list[str], inputs: int) -> _Forest:
-    """Fold at most eight nonzero classes over at most eight suffix inputs."""
-    if not 1 <= inputs <= 8 or not 1 <= len(words) <= 8:
-        raise ValueError("suffix forests need one to eight inputs and classes")
+    """Fold nonzero classes within their Boolean capacity, through eight inputs."""
+    if not 1 <= inputs <= 8 or not 1 <= len(words) < 1 << (1 << inputs):
+        raise ValueError("suffix forests exceed their input or class capacity")
     for word in words:
         if _validate_truth_table(word) != inputs or "1" not in word:
             raise ValueError("suffix classes must be nonzero tables of the same arity")

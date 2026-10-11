@@ -315,10 +315,10 @@ def _residual_class_bank_candidate(
 def _class_bank_layout(
     table: str, ceiling: int | None = None, *, shared: bool
 ) -> _Layout | None:
-    """Share up to eight repeated seven/eight-input classes across all prefixes.
+    """Share workspace-admitted seven/eight-input classes across all prefixes.
 
-    Fixed class count and bounded H masks give O(T) work and area.
-    Predicate depth, suffix depth and three OR levels stay within 2n+2 ticks.
+    The gate budget bounds class count below the fixed suffix-row capacity;
+    bounded H masks then give O(T) work and area.
     """
     from . import _essential_table
 
@@ -330,7 +330,11 @@ def _class_bank_layout(
     size = 1 << tail
     chunks = [table[start : start + size] for start in range(0, len(table), size)]
     classes = [chunk for chunk in dict.fromkeys(chunks) if "1" in chunk]
-    if len(classes) > 8 or not any(
+    body_bound = 114 if tail == 7 else 211
+    # Masks use <=2L+p gates. One suffix and two term/OR gates per class
+    # give this bound; rejecting by it keeps q<2**tail without a fixed cap.
+    gate_bound = len(classes) * (2 * len(chunks) + prefix + body_bound + 2) - 1
+    if gate_bound > 2 * len(table) + 8 * n + 111 or not any(
         "0" in chunk and chunks.count(chunk) > 1 for chunk in classes
     ):
         return None

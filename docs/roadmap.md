@@ -35,17 +35,20 @@ exemption supported by a structural proof or the measured criterion in
   pools and larger atoms keep both arity parities inside the measured growth gate. Global
   complete cofactors share through four/eight predicate-and-function banks:
   the n=10 ABBA control occupies 389,994 cells against 492,826; all 1,024
-  native rows pass. Up to eight repeated seven/eight-input classes now share
-  across all prefixes through H masks. The n=13 eight-class witness drops
+  native rows pass. Repeated seven/eight-input classes now share across all
+  prefixes through H masks, admitted by a conservative workspace gate bound.
+  The n=13 sixteen-class witness occupies 3,386,744 cells against 35,581,224;
+  both execute 33 native rows. The n=13 eight-class witness drops
   from 1,530,528 to 1,251,332 cells and 1,064 to 874 gates; both execute 33 native rows, with
   all three global fold orders rejected and all eight top-level banks distinct.
   A bounded multi-output forest now shares internal residuals between class roots.
-  Repeats beyond the class cap remain open when all three fixed fold orders exceed
-  the node-count budget. Moving three/four tail inputs first avoids the
+  Repeats beyond the class-bank gate budget remain open when all three fixed
+  fold orders exceed the node-count budget. Moving three/four tail inputs first avoids the
   expander control's original graph: n=12 drops from 221 to 60 fold nodes
   and executes in 138,953 cells. Controls in
   `tests/tools/test_boolean_circuit_diagram_banks.py`,
   `tests/tools/test_boolean_circuit_diagram_classes.py`,
+  `tests/tools/test_boolean_circuit_diagram_class_budget.py`,
   `tests/tools/test_boolean_circuit_diagram_forest.py`,
   `tests/tools/test_boolean_circuit_diagram_hcells.py`,
   `tests/tools/test_boolean_circuit_diagram_order.py`,

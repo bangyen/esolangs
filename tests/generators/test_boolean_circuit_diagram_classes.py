@@ -85,9 +85,9 @@ def test_unrepeated_and_excess_classes_reject_before_routing(monkeypatch):
 
     monkeypatch.setattr(module, "_large_pool_layout", unexpected)
     assert _residual_class_bank_candidate(dense(10)) is None
-    atoms = [dense(7, f"too-many:{i}".encode()) for i in range(9)]
+    atoms = [dense(7, f"too-many:{i}".encode()) for i in range(129)]
     assert (
-        _residual_class_bank_candidate("".join(atoms[row % 9] for row in range(64)))
+        _residual_class_bank_candidate("".join(atoms[row % 129] for row in range(256)))
         is None
     )
     assert _residual_class_bank_candidate("0" * 512) is None
