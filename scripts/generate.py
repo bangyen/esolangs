@@ -710,8 +710,6 @@ def update_exports(
     path.write_text(head + block + rest.split(END, 1)[1], encoding="utf-8")
 
 
-
-
 MANIFEST = ROOT / "src" / "esolangs" / "proof_status.toml"
 
 

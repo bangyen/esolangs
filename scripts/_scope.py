@@ -463,10 +463,6 @@ class VerifiedCache:
         return True
 
 
-if __name__ == "__main__":
-    print(runtime_digest(sys.argv[1]))
-
-
 EXCERPT_BYTES = 32 * 1024
 
 
@@ -747,3 +743,7 @@ def child_pids(pid: int) -> list[int]:
                 continue
         return sorted(found)
     raise RuntimeError("child process enumeration is unavailable on this platform")
+
+
+if __name__ == "__main__":
+    print(runtime_digest(sys.argv[1]))
