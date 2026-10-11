@@ -61,7 +61,7 @@ dev = [
 Homepage = "https://github.com/bangyen/esolangs"
 Repository = "https://github.com/bangyen/esolangs"
 Issues = "https://github.com/bangyen/esolangs/issues"
-Changelog = "https://github.com/bangyen/esolangs/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/bangyen/esolangs/blob/main/docs/CHANGELOG.md"
 
 [project.scripts]
 esolangs = "esolangs.cli:main"

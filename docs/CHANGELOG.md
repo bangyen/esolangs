@@ -1,7 +1,7 @@
 # Changelog
 
 Breaking changes are listed first. Before 1.0 a minor release may break the
-public API; see [the compatibility policy](docs/usage.md#compatibility).
+public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 

@@ -106,7 +106,7 @@ _CITATION_SOURCE = re.compile(
     r"|interpreter|implementation|module)\b"
 )
 #: Prose that records history, not a statement about a live language.
-_HISTORY = frozenset({"CHANGELOG.md"})
+_HISTORY = frozenset({"docs/CHANGELOG.md"})
 #: The file kinds whose prose is scanned for citations.
 _PROSE = (".py", ".md", ".tex")
 

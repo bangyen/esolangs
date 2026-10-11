@@ -1100,6 +1100,6 @@ def remove(name: str) -> list[str]:
     mentions = [
         f"[{_mention_edit(line)}] {line}"
         for line in grep.stdout.splitlines()
-        if not line.startswith(("scripts/remove_language.py:", "CHANGELOG.md:"))
+        if not line.startswith(("scripts/remove_language.py:", "docs/CHANGELOG.md:"))
     ]
     return kept + survived + broken + mentions

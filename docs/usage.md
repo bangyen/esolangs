@@ -293,7 +293,7 @@ shows the `gen`, `tmpl`, and `ex` markers.
 ## Compatibility
 
 The package is beta until 1.0: a 0.x minor release may still break the
-surface below, and [CHANGELOG.md](../CHANGELOG.md) lists every break. The
+surface below, and [CHANGELOG.md](CHANGELOG.md) lists every break. The
 public API is `esolangs.__all__` and `esolangs.debugger.__all__`, plus the
 documented CLI; every other module (`esolangs.vm`, `esolangs.registry`,
 `esolangs.tools`, `esolangs.interpreters`, ...) is internal. From 1.0, within
