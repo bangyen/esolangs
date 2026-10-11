@@ -21,6 +21,7 @@ form still means ``start``.
 from __future__ import annotations
 
 import argparse
+import builtins
 import itertools
 import json
 import keyword
@@ -43,6 +44,7 @@ ROOT = Path(__file__).parents[1]
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
 from remove_language import (  # noqa: E402
+    _legacy_generator_module,
     _tests_attr,
     remove,
 )
@@ -140,7 +142,12 @@ def _compatibility_module(
     module: str, names: tuple[str, ...], *, interpreter: bool = False
 ) -> str:
     """Alias the implementation at runtime and expose its static exports."""
-    imports = "".join(f"    from {module} import {name} as {name}\n" for name in names)
+    imports = "".join(
+        f"    from {module} import {name} as {name}"
+        + ("  # noqa: A004" if hasattr(builtins, name) else "")
+        + "\n"
+        for name in names
+    )
     entry = (
         '\nif __name__ == "__main__":\n'
         "    from esolangs.interpreters._entry import script_main\n\n"
@@ -554,7 +561,7 @@ def sources(name: str) -> list[str]:
     if package.exists():
         modules.append(f"esolangs.languages.{lang.id}.interpreter")
         if lang.boolean is not None:
-            modules.append(f"esolangs.tools.{lang.id}")
+            modules.append(_legacy_generator_module(lang))
     return [
         str(path.relative_to(ROOT))
         for module in dict.fromkeys(modules)

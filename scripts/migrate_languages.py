@@ -71,8 +71,7 @@ def apply(moves: list[Move]) -> None:
             sorted(
                 symbol.get_name()
                 for symbol in symbols.get_symbols()
-                if (symbol.is_assigned() or symbol.is_imported())
-                and not symbol.get_name().startswith("__")
+                if symbol.is_assigned() and not symbol.get_name().startswith("__")
             )
         )
         if not names:

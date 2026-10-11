@@ -15,7 +15,7 @@ def test_alias_preserves_private_exports_and_module_state(tmp_path, monkeypatch)
     package.mkdir()
     (package / "__init__.py").write_text("")
     source = package / "legacy.py"
-    original = "_value = 7\ndef run():\n    return _value\n"
+    original = "import math\n_value = 7\ndef run():\n    return _value\n"
     source.write_text(original)
     target = package / "language/interpreter.py"
     migrate.apply(
@@ -30,6 +30,7 @@ def test_alias_preserves_private_exports_and_module_state(tmp_path, monkeypatch)
     )
     assert target.read_text() == original
     assert "_value as _value" in source.read_text()
+    assert "import math as math" not in source.read_text()
     monkeypatch.syspath_prepend(str(tmp_path))
     try:
         old = importlib.import_module("migration_fixture.legacy")
@@ -157,3 +158,9 @@ def test_empty_module_is_rejected(tmp_path):
             ]
         )
     assert not (tmp_path / "new").exists()
+
+
+def test_builtin_export_keeps_its_legacy_name():
+    source = migrate._compatibility_module("fixture.generator", ("eval",))  # noqa: SLF001
+    assert "import eval as eval  # noqa: A004" in source
+    compile(source, "compatibility.py", "exec")

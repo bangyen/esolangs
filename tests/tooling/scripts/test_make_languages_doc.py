@@ -247,3 +247,21 @@ def test_documentation_check_preserves_source_files(
     } == before
     error = capsys.readouterr().err
     assert ("run python scripts/docs/generate.py docs: README.md" in error) == stale
+
+
+def test_colocated_exports_preserve_a_different_legacy_filename(tmp_path):
+    from scripts.docs.generate import declared
+
+    tools = tmp_path / "src/esolangs/tools"
+    tools.mkdir(parents=True)
+    (tools / "different.py").write_text(
+        "if TYPE_CHECKING:\n"
+        "    from esolangs.languages.fixture.generator import fixture as fixture\n"
+    )
+    package = tmp_path / "src/esolangs/languages/fixture"
+    package.mkdir(parents=True)
+    (package / "generator.py").write_text(
+        "def fixture(table): return table\n"
+        "LANGUAGE = Language('Fixture', boolean=fixture)\n"
+    )
+    assert declared(tmp_path) == [("different", "fixture")]

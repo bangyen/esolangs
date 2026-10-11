@@ -422,3 +422,15 @@ def test_retained_generator_alias_drops_registration_only(tmp_path: Path) -> Non
     assert "LANGUAGE" not in source
     assert "helper as helper" in source
     compile(source, str(path), "exec")
+
+
+def test_eval_source_listing_includes_its_legacy_generator():
+    assert "src/esolangs/tools/eval_lang.py" in new_language.sources("Eval")
+
+
+def test_eval_removal_owns_its_legacy_generator():
+    from esolangs.registry import LANGUAGES
+
+    modules, paths = remove_language._owned_module_paths(LANGUAGES["Eval"])  # noqa: SLF001
+    assert "esolangs.tools.eval_lang" in modules
+    assert remove_language.ROOT / "src/esolangs/tools/eval_lang.py" in paths

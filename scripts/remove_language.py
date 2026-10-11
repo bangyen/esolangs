@@ -434,6 +434,19 @@ def _declaring_module(lang: Language) -> str | None:
     return None
 
 
+def _legacy_generator_module(lang: Language) -> str:
+    """Resolve a runtime compatibility alias even when its filename differs."""
+    implementation = sys.modules.get(lang.boolean.__module__) if lang.boolean else None
+    return next(
+        (
+            name
+            for name, module in sorted(sys.modules.items())
+            if name.startswith("esolangs.tools.") and module is implementation
+        ),
+        f"esolangs.tools.{lang.id}",
+    )
+
+
 def _owned_module_paths(lang: Language) -> tuple[set[str], set[Path]]:
     """Return implementation and compatibility modules, keeping leaves separate."""
     modules = (
@@ -446,7 +459,7 @@ def _owned_module_paths(lang: Language) -> tuple[set[str], set[Path]]:
     if package.is_dir():
         modules.add(f"esolangs.languages.{lang.id}.interpreter")
         if lang.boolean is not None:
-            modules.add(f"esolangs.tools.{lang.id}")
+            modules.add(_legacy_generator_module(lang))
     paths = {path for module in modules if (path := _module_path(module))}
     init = package / "__init__.py"
     if init.is_file():

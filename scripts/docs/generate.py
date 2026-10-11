@@ -508,6 +508,19 @@ LINE_LIMIT = 88
 def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
     """Return ``(module, generator)`` for every module declaring a ``LANGUAGE``."""
     tools = root / "src/esolangs/tools"
+    aliases = {
+        node.module: ".".join(
+            path.relative_to(tools).with_suffix("").parts[:-1]
+            if path.name == "__init__.py"
+            else path.relative_to(tools).with_suffix("").parts
+        )
+        for path in sorted(tools.rglob("*.py"))
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8")))
+        if isinstance(node, ast.ImportFrom)
+        and node.module
+        and node.module.startswith("esolangs.languages.")
+        and node.module.endswith(".generator")
+    }
     found = []
     paths = [*tools.rglob("*.py"), *(root / "src/esolangs/languages").rglob("*.py")]
     for path in sorted(paths):
@@ -530,7 +543,11 @@ def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
             parts = path.relative_to(tools).with_suffix("").parts
             module = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
         else:
-            module = path.relative_to(root / "src/esolangs/languages").parts[0]
+            parts = path.relative_to(root / "src").with_suffix("").parts
+            canonical = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
+            module = aliases.get(
+                canonical, path.relative_to(root / "src/esolangs/languages").parts[0]
+            )
         found.append((module, generator))
     return sorted(found)
 
