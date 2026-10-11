@@ -1,9 +1,8 @@
 """The shared ``python <file>`` entry point behind every interpreter.
 
-Each interpreter keeps a two-line ``__main__`` block, because
-``bundle_one.py`` keeps the target's one and a curl-fetched bundle has to
-run standalone.  Its body moved here from 63 copies in nine variants, which
-coverage's ``exclude_lines`` measured in none of them.
+Each interpreter keeps a two-line ``__main__`` block so a standalone
+``python <file>`` runs it.  Its body moved here from 63 copies in nine
+variants, which coverage's ``exclude_lines`` measured in none of them.
 """
 
 from __future__ import annotations
