@@ -8,8 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from pytest_shard import collect_ids
-from refresh_ci_timings import load_run
+from ci import collect_ids, load_run
 
 
 def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> None:

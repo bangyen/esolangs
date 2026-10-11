@@ -8,7 +8,7 @@ import pytest
 from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "pytest_shard.py"
+SCRIPT = REPO_ROOT / "scripts" / "ci.py"
 
 
 def load_script() -> Any:
@@ -34,7 +34,7 @@ class TestShardIds:
     def test_out_of_range_shard_is_rejected(self) -> None:
         shard = load_script()
         with pytest.raises(SystemExit):
-            shard.main(["--marker", "slow", "--shard", "4", "--shards", "4"])  # type: ignore[attr-defined]
+            shard.shard_main(["--marker", "slow", "--shard", "4", "--shards", "4"])  # type: ignore[attr-defined]
 
     def test_an_empty_slice_exits_clean_without_running_pytest(
         self, monkeypatch: pytest.MonkeyPatch
@@ -42,7 +42,10 @@ class TestShardIds:
         """Fewer tests than shards is not a failure in any of them."""
         shard = load_script()
         monkeypatch.setattr(shard, "collect_ids", lambda _marker: [])  # type: ignore[attr-defined]
-        assert shard.main(["--marker", "slow", "--shard", "3", "--shards", "4"]) == 0  # type: ignore[attr-defined]
+        assert (
+            shard.shard_main(["--marker", "slow", "--shard", "3", "--shards", "4"])
+            == 0
+        )  # type: ignore[attr-defined]
 
 
 def test_duration_assignment_improves_longest_shard_and_covers_unknowns():
@@ -86,7 +89,7 @@ def test_shard_reports_estimate_and_unknown_weights(tmp_path, monkeypatch, capsy
         lambda *_args, **_kwargs: type("Result", (), {"returncode": 0})(),
     )
     assert (
-        shard.main(
+        shard.shard_main(
             [
                 "--marker",
                 "slow",

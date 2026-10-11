@@ -99,7 +99,7 @@ def test_bad_shard_evidence_fails_closed(tmp_path, fault):
 def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch):
     from pathlib import Path
 
-    from scripts import pytest_shard
+    from scripts import ci as pytest_shard
 
     (tmp_path / "test_example.py").write_text(
         "def test_one():\n    assert 1 + 1 == 2\n\n"
@@ -112,7 +112,7 @@ def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch):
         directory = tmp_path / str(index)
         path = directory / "test.shard.json"
         assert (
-            pytest_shard.main(
+            pytest_shard.shard_main(
                 [
                     "--marker",
                     "not slow",

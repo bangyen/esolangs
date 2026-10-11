@@ -155,7 +155,7 @@ TOOLING_INTEGRATIONS = {
         ("test_combining_shards_retains_every_branch",),
         (
             ".github/workflows/",
-            "scripts/pytest_shard.py",
+            "scripts/ci.py",
             "checks/check_diff_coverage.py",
         ),
     ),

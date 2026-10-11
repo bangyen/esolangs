@@ -150,7 +150,7 @@ jobs:
       run: uv sync --group dev --python ${{ matrix.python-version }}
 
     - name: Test with pytest (shard ${{ matrix.shard }} of 2)
-      run: uv run python scripts/pytest_shard.py --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 --manifest test.shard.json -- -n auto -p scripts.pytest_durations --duration-output test-durations.json
+      run: uv run python scripts/ci.py shard --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 --manifest test.shard.json -- -n auto -p scripts.pytest_durations --duration-output test-durations.json
 
     - name: Retain shard selection and completion evidence
       if: always()
@@ -197,7 +197,7 @@ jobs:
     # retain branch data from both shards before applying either coverage gate.
     - name: Test one coverage shard
       run: >
-        uv run python scripts/pytest_shard.py --marker "not slow and not weekly"
+        uv run python scripts/ci.py shard --marker "not slow and not weekly"
         --shard ${{ matrix.shard }} --shards 2 --manifest coverage.shard.json --
         -n auto -p scripts.pytest_durations --duration-output test-durations.json --cov --cov-branch --cov-report=
     - uses: actions/upload-artifact@v7
@@ -312,7 +312,7 @@ jobs:
       run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.pytest_durations --duration-output certificate-durations.json
 
     - name: Test one slow shard
-      run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 --manifest slow.shard.json --exclude-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -- -n auto -p scripts.pytest_durations --duration-output test-durations.json
+      run: uv run python scripts/ci.py shard --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 --manifest slow.shard.json --exclude-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -- -n auto -p scripts.pytest_durations --duration-output test-durations.json
 
     - name: Retain measured slow-test durations
       if: always()
@@ -424,14 +424,14 @@ jobs:
         fi
         echo "ARTIFACT_PYTHON=$artifact_python" >> "$GITHUB_ENV"
         uv pip install --python "$artifact_python" dist/*.whl
-        "$artifact_python" -I scripts/smoke_distribution.py
+        "$artifact_python" -I scripts/ci.py smoke
     - name: Install optional extras and exercise Polynomial and PNG I/O
       run: |
         wheels=(dist/*.whl)
         uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[math]"
-        "$ARTIFACT_PYTHON" -I scripts/smoke_distribution.py --math
+        "$ARTIFACT_PYTHON" -I scripts/ci.py smoke --math
         uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[image]"
-        "$ARTIFACT_PYTHON" -I scripts/smoke_distribution.py --math --image
+        "$ARTIFACT_PYTHON" -I scripts/ci.py smoke --math --image
 
   execution-platform:
     runs-on: ${{ matrix.os }}
