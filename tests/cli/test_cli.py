@@ -9,7 +9,7 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
-from tests.api.test_language_coupling import REFERENCE
+from tests.reference import REFERENCE
 from tests.support.cli_support import _FakeStdin, _program, _refused
 from tests.support.pick import first
 
@@ -97,16 +97,16 @@ class TestInProcess:
     ("args", "limit", "runs"),
     [
         # ``--width N`` bounds the generated program's columns.
-        pytest.param(["brainfuck", TABLE3, "--width", "20"], 20, True, id="value"),
+        pytest.param([REFERENCE, TABLE3, "--width", "20"], 20, True, id="value"),
         # The guard rejects zero and below, not one.
-        pytest.param(["brainfuck", "0110", "--width", "1"], None, False, id="one"),
+        pytest.param([REFERENCE, "0110", "--width", "1"], None, False, id="one"),
         # ``--width N`` consumes two arguments, not three.
-        pytest.param(["--width", "20", "brainfuck", TABLE3], 20, True, id="first"),
-        pytest.param(["brainfuck", TABLE3, "--width=20"], 20, False, id="equals"),
+        pytest.param(["--width", "20", REFERENCE, TABLE3], 20, True, id="first"),
+        pytest.param([REFERENCE, TABLE3, "--width=20"], 20, False, id="equals"),
         # A bare ``--width`` wraps to the conventional default.
-        pytest.param(["brainfuck", TABLE3, "--width"], "default", False, id="bare"),
+        pytest.param([REFERENCE, TABLE3, "--width"], "default", False, id="bare"),
         # A following word is an argument, not a width.
-        pytest.param(["--width", "brainfuck", TABLE3], None, True, id="bare_first"),
+        pytest.param(["--width", REFERENCE, TABLE3], None, True, id="bare_first"),
     ],
 )
 def test_width_option(
@@ -126,7 +126,7 @@ def test_width_option(
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= limit
         assert "\n" in out.rstrip("\n")
     if runs:
-        assert esolangs.run("brainfuck", out, stdin="011") == "0"
+        assert esolangs.run(REFERENCE, out, stdin="011") == "0"
 
 
 # ``+.+.+.`` after an 8x8 loop prints A, B, C -- three separate writes, so a
@@ -178,7 +178,7 @@ def test_debug_report(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """``esolangs debug`` exposes the breakpoint/watch VM on the CLI."""
-    out = call_main(["debug", *flags, "brainfuck", _program(tmp_path, program)], capsys)
+    out = call_main(["debug", *flags, REFERENCE, _program(tmp_path, program)], capsys)
     for line in expected:
         assert line in out
 
@@ -193,7 +193,7 @@ class TestDebugCommand:
         # own failure.  `debug` used to exit 0 for every outcome alike, so
         # a script could not tell a crash from a clean halt.
         with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "brainfuck", _program(tmp_path, ",.")], capsys)
+            call_main(["debug", REFERENCE, _program(tmp_path, ",.")], capsys)
         assert exc.value.code == 1
         out = capsys.readouterr().out
         assert "raised: InputExhaustedError" in out
@@ -244,7 +244,7 @@ class TestProgramFailuresAreReported:
 
     def test_reading_past_the_input_is_a_clean_message(self, tmp_path: Path) -> None:
         """The traceback leaked src/ paths and an empty EOFError message."""
-        result = run_cli("run", "brainfuck", str(_program(tmp_path, ",.")), stdin="")
+        result = run_cli("run", REFERENCE, str(_program(tmp_path, ",.")), stdin="")
         assert result.returncode == 1
         assert "Traceback" not in result.stderr
         assert "read past the end of input" in result.stderr
@@ -271,17 +271,15 @@ class TestOutputAndAbridging:
         """Piped output is compared and diffed, so it stays byte-exact."""
         program = _program(tmp_path, "+.")
         with patch.object(sys.stdout, "isatty", lambda: True):
-            assert call_main(["run", "brainfuck", str(program)], capsys) == "\x01\n"
-        assert call_main(["run", "brainfuck", str(program)], capsys) == "\x01"
+            assert call_main(["run", REFERENCE, str(program)], capsys) == "\x01\n"
+        assert call_main(["run", REFERENCE, str(program)], capsys) == "\x01"
 
     def test_a_long_watch_history_is_abridged(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """It was one line of 486 values, which buries the ends."""
         program = _program(tmp_path, "+" * 200)
-        out = call_main(
-            ["debug", "--watch-cell", "0", "brainfuck", str(program)], capsys
-        )
+        out = call_main(["debug", "--watch-cell", "0", REFERENCE, str(program)], capsys)
         assert "more ..." in out
         assert len(out.splitlines()[-1]) < 400
 
@@ -292,7 +290,7 @@ class TestGenerateArgumentTypes:
     def test_a_non_integer_width_from_the_api_is_refused(self) -> None:
         """The CLI parses its width; a Python caller can pass anything."""
         with pytest.raises(ValueError, match="width must be an integer"):
-            esolangs.generate("brainfuck", "0110", width="80")  # type: ignore[arg-type]
+            esolangs.generate(REFERENCE, "0110", width="80")  # type: ignore[arg-type]
 
 
 #: Commands refused with exit code 2, and what stderr must say.

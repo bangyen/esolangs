@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from scripts import new_language, remove_language
+from tests.reference import REFERENCE
 
 
 @pytest.fixture
@@ -183,7 +184,7 @@ def test_gap_report_prints_a_shell_safe_followup(
 def test_remove_refuses_the_reference_language() -> None:
     """``brainfuck`` is spelled out by shared tests and generate.py."""
     with pytest.raises(ValueError, match="reference language"):
-        remove_language.remove("brainfuck")
+        remove_language.remove(REFERENCE)
 
 
 def test_mention_edit_labels_the_edit_each_path_needs() -> None:

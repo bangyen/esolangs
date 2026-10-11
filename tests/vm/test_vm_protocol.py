@@ -14,6 +14,7 @@ from esolangs.debugger import complete_vm
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.registry import INTERPRETERS
 from esolangs.vm import VM, _climbs_forever, make_vm, run_until_halt
+from tests.reference import REFERENCE
 from tests.support.generator_support import CHECK
 from tests.support.pick import languages
 from tests.support.samples import (
@@ -285,7 +286,7 @@ def test_completion_agrees_with_running(name):
 
 @pytest.mark.medium
 def test_exhaustion_keeps_partial_state_and_can_resume():
-    vm = make_vm("brainfuck", "+.")
+    vm = make_vm(REFERENCE, "+.")
     with pytest.raises(esolangs.InterpreterLimitError):
         complete_vm(vm, max_steps=1)
     assert vm.output == ""
@@ -295,12 +296,12 @@ def test_exhaustion_keeps_partial_state_and_can_resume():
 @pytest.mark.parametrize("budget", [-1, True, 1.5])
 def test_completion_rejects_invalid_budgets(budget):
     with pytest.raises(esolangs.ArgumentError):
-        complete_vm(make_vm("brainfuck", "+."), max_steps=budget)
+        complete_vm(make_vm(REFERENCE, "+."), max_steps=budget)
 
 
 @pytest.mark.medium
 def test_completion_can_opt_out_of_the_step_budget():
-    assert complete_vm(make_vm("brainfuck", "+."), max_steps=None) == "\x01"
+    assert complete_vm(make_vm(REFERENCE, "+."), max_steps=None) == "\x01"
 
 
 # Three visits, ten steps apart, whose values climb by a constant 1 with
@@ -343,30 +344,30 @@ class TestTheArmsThatTranslateWhatAnInterpreterRaises:
         planted = ProgramError("unmatched something")
         with (
             patch.object(
-                vm_module.interpreter_module("brainfuck"),
+                vm_module.interpreter_module(REFERENCE),
                 "_Machine",
                 self._adapter(planted),
             ),
             pytest.raises(ProgramError) as exc,
         ):
-            debugger_api.make_vm("brainfuck", "+")
+            debugger_api.make_vm(REFERENCE, "+")
         assert exc.value is planted
 
     def test_a_recursion_error_from_the_loader_becomes_a_limit(self) -> None:
         """A loader that recurses past CPython's stack is a limit, not a bug."""
         with (
             patch.object(
-                vm_module.interpreter_module("brainfuck"),
+                vm_module.interpreter_module(REFERENCE),
                 "_Machine",
                 self._adapter(RecursionError()),
             ),
             pytest.raises(InterpreterLimitError, match="recursed deeper"),
         ):
-            debugger_api.make_vm("brainfuck", "+")
+            debugger_api.make_vm(REFERENCE, "+")
 
     def test_a_program_error_from_a_step_passes_through(self) -> None:
         """The same promise one layer down, where the machine is running."""
-        machine = debugger_api.make_vm("brainfuck", "+++")
+        machine = debugger_api.make_vm(REFERENCE, "+++")
         planted = ProgramError("bad instruction")
 
         def boom() -> None:
@@ -391,14 +392,14 @@ class TestTheArmsThatTranslateWhatAnInterpreterRaises:
     ],
 )
 def test_step_keeps_shared_failure_translation(fault, error_type):
-    machine = debugger_api.make_vm("brainfuck", "+")
+    machine = debugger_api.make_vm(REFERENCE, "+")
     message = (
         "the brainfuck interpreter recursed deeper than "
         "CPython's stack limit allows on this program"
     )
     with (
         pytest.raises(error_type) as expected,
-        vm_module.interpreter_errors(message, language="brainfuck"),
+        vm_module.interpreter_errors(message, language=REFERENCE),
     ):
         raise fault
 
@@ -502,20 +503,20 @@ class TestRunUntilHalt:
 
         for limit in (-1, -1000):
             with pytest.raises(esolangs.ArgumentError, match="limit"):
-                run_until_halt(debugger_api.make_vm("brainfuck", "+[]"), limit)
+                run_until_halt(debugger_api.make_vm(REFERENCE, "+[]"), limit)
 
 
 class TestViews:
     """The machine's own named state, found rather than listed."""
 
     def test_it_finds_the_names_the_machine_gives_its_state(self) -> None:
-        vm = debugger_api.make_vm("brainfuck", "+++")
+        vm = debugger_api.make_vm(REFERENCE, "+++")
         vm.step()
         assert dict(vm.views)["ptr"] == "0"
         assert dict(vm.views)["ind"] == "1"
 
     def test_it_leaves_out_what_every_language_already_offers(self) -> None:
-        vm = debugger_api.make_vm("brainfuck", "+++")
+        vm = debugger_api.make_vm(REFERENCE, "+++")
         named = dict(vm.views)
         for standard in ("ip", "memory", "stack", "output", "halted"):
             assert standard not in named
@@ -559,6 +560,6 @@ class TestViews:
             def broken(self) -> int:
                 raise RuntimeError("no")
 
-        vm = debugger_api.make_vm("brainfuck", "+")
+        vm = debugger_api.make_vm(REFERENCE, "+")
         object.__setattr__(vm, "_machine", _Machine())
         assert _DelegatingVM.views.fget(vm) == (("fine", "7"),)

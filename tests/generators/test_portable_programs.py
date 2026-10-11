@@ -9,6 +9,7 @@ from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
 from esolangs.tagged import _Tagged
 from tests.api.test_dialects import CASES
+from tests.reference import REFERENCE
 
 
 @pytest.mark.medium
@@ -22,8 +23,8 @@ def test_restored_isolated_execution(language):
 @pytest.mark.medium
 @pytest.mark.parametrize("choices", [None, DialectSettings()])
 def test_default_settings_distinction(choices):
-    document = esolangs.dump_program("Brainfuck", _Tagged("+.", "brainfuck", choices))
-    restored = esolangs.load_program("brainfuck", document)
+    document = esolangs.dump_program("Brainfuck", _Tagged("+.", REFERENCE, choices))
+    restored = esolangs.load_program(REFERENCE, document)
     assert restored.settings == choices
     assert esolangs.run("Brainfuck", restored) == "\x01"
 

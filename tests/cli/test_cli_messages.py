@@ -11,6 +11,7 @@ import esolangs
 from esolangs.cli import main
 from esolangs.cli_io import _write_output
 from tests.cli.test_cli import _FakeStdin, _program, call_main
+from tests.reference import REFERENCE
 from tests.support.cli_support import _failure, _refused, call_both
 from tests.support.pick import one, one_where
 
@@ -42,21 +43,21 @@ class TestSmallerReportsFromRoundFifteen:
     def test_a_bad_truth_table_echoes_the_argument(self) -> None:
         """It printed ``sorted(set(...))``: "nonsense" came back as "enos"."""
         with pytest.raises(esolangs.TruthTableError, match="got 'nonsense'"):
-            esolangs.generate("brainfuck", "nonsense")
+            esolangs.generate(REFERENCE, "nonsense")
 
     def test_it_also_names_the_offending_character(self) -> None:
         """So a long table does not have to be diffed by eye."""
         with pytest.raises(esolangs.TruthTableError, match="at position 2"):
-            esolangs.generate("brainfuck", "01x1")
+            esolangs.generate(REFERENCE, "01x1")
 
     def test_a_never_written_cell_reports_a_verdict_not_a_wall(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Four hundred Nones with the answer at the far right of the line."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
+        path.write_text(esolangs.generate(REFERENCE, "0110"))
         out = call_main(
-            ["debug", "--steps", "40", "--watch-cell", "999", "brainfuck", str(path)],
+            ["debug", "--steps", "40", "--watch-cell", "999", REFERENCE, str(path)],
             capsys,
             stdin="1\n0\n",
         )
@@ -72,7 +73,7 @@ class TestSmallerReportsFromRoundFifteen:
             ),
             *((n, "one decimal row index") for n in one(input_shape="row_index")),
             *((n, "padded with a leading") for n in _PADDED),
-            ("brainfuck", "adjacent bit characters"),
+            (REFERENCE, "adjacent bit characters"),
         ],
     )
     def test_describe_spells_the_stdin_out(
@@ -128,7 +129,7 @@ class TestRoundSixQol:
         # `run` has always called exit 1 -- but the report is still printed
         # first, which is the property under test.
         with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "brainfuck", _program(tmp_path, ",.")], capsys)
+            call_main(["debug", REFERENCE, _program(tmp_path, ",.")], capsys)
         assert exc.value.code == 1
         out = capsys.readouterr().out
         assert "stopped: raised" in out
@@ -143,7 +144,7 @@ class TestRoundSixQol:
         # Not ``call_main``: it drains the capture buffer to return stdout,
         # and the note under test goes to stderr.
         with (
-            patch.object(sys, "argv", ["esolangs", "run", "brainfuck", str(empty)]),
+            patch.object(sys, "argv", ["esolangs", "run", REFERENCE, str(empty)]),
             patch.object(sys, "stdin", _FakeStdin("")),
             patch.object(sys.stdout, "isatty", lambda: True),
         ):
@@ -159,7 +160,7 @@ class TestRoundSixQol:
         """The note is for a terminal; piped output stays byte-exact."""
         empty = tmp_path / "empty.txt"
         empty.write_text("")
-        assert call_main(["run", "brainfuck", str(empty)], capsys) == ""
+        assert call_main(["run", REFERENCE, str(empty)], capsys) == ""
 
 
 class TestTheLastResortPaths:
@@ -172,7 +173,7 @@ class TestTheLastResortPaths:
         path = tmp_path / "huge.bf"
         path.write_text("+" * (1024 * 1024 + 1))
         with pytest.raises(SystemExit) as exc:
-            call_main(["run", "brainfuck", str(path)], capsys)
+            call_main(["run", REFERENCE, str(path)], capsys)
         assert exc.value.code == 2
         assert "larger than" in capsys.readouterr().err
 
@@ -212,24 +213,24 @@ class TestTheLastResortPaths:
     ],
 )
 def test_truth_table_hint_and_corrected_cli_program(bad, good, hint, tmp_path, capsys):
-    out, err = _failure(["generate", "brainfuck", bad], capsys)
+    out, err = _failure(["generate", REFERENCE, bad], capsys)
     assert out == ""
     assert err.count("hint:") == 1
     assert hint in err
-    program, err = call_both(["generate", "brainfuck", good], capsys)
+    program, err = call_both(["generate", REFERENCE, good], capsys)
     assert err == ""
     path = tmp_path / "generated.bf"
     path.write_text(program)
     bits = "01" if len(good) == 4 else "0"
-    stdin, err = call_both(["encode", "brainfuck", bits], capsys)
+    stdin, err = call_both(["encode", REFERENCE, bits], capsys)
     assert err == ""
-    answer, err = call_both(["run", "brainfuck", str(path)], capsys, stdin)
+    answer, err = call_both(["run", REFERENCE, str(path)], capsys, stdin)
     assert answer.strip() == "1"
     assert err == ""
 
 
 def test_reader_template_hint_names_cli_encode(capsys):
-    _, err = _failure(["generate", "--bits", "01", "brainfuck", "0110"], capsys)
+    _, err = _failure(["generate", "--bits", "01", REFERENCE, "0110"], capsys)
     assert "hint: pipe input from esolangs encode brainfuck <bits>" in err
     assert "stdin=encode_inputs" not in err
 
@@ -237,10 +238,10 @@ def test_reader_template_hint_names_cli_encode(capsys):
 def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys):
     path = tmp_path / "program.bf"
     path.write_text("+.")
-    _, err = _failure(["run", "--timeout", "0", "brainfuck", str(path)], capsys)
+    _, err = _failure(["run", "--timeout", "0", REFERENCE, str(path)], capsys)
     assert err.startswith("--timeout must be positive, got 0.0\n")
     assert "hint: set a timeout in seconds, for example --timeout 5.0" in err
-    output, err = call_both(["run", "--timeout", "5.0", "brainfuck", str(path)], capsys)
+    output, err = call_both(["run", "--timeout", "5.0", REFERENCE, str(path)], capsys)
     assert output == "\x01"
     assert err == ""
 
@@ -258,7 +259,7 @@ def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes():
 
 
 def test_text_generator_scale_hint_uses_cli_flag(capsys):
-    _, err = _failure(["generate", "--scale", "2", "brainfuck", "0110"], capsys)
+    _, err = _failure(["generate", "--scale", "2", REFERENCE, "0110"], capsys)
     assert "hint: omit --scale for text languages" in err
 
 

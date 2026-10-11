@@ -12,6 +12,7 @@ from esolangs._evaluate import _evaluate
 from esolangs._isolated import _worker
 from esolangs.exceptions import ArgumentError
 from tests.cli.test_cli import _program, call_main
+from tests.reference import REFERENCE
 from tests.support.cli_support import _LOOPS, call_both
 from tests.support.generator_support import evaluate_generated, verify_generated
 
@@ -166,7 +167,7 @@ class TestTheVerifierIsShipped:
     def test_a_malformed_table_is_refused_before_anything_runs(self) -> None:
         """Named as a table, not as whichever generator saw it first."""
         with pytest.raises(esolangs.TruthTableError):
-            evaluate_generated("brainfuck", "011")
+            evaluate_generated(REFERENCE, "011")
 
 
 class TestTheCallersSignalsAreTheirOwn:
@@ -180,7 +181,7 @@ class TestTheCallersSignalsAreTheirOwn:
         timer = signal.setitimer(signal.ITIMER_REAL, 30, 5)
         try:
             with contextlib.suppress(esolangs.EsolangError):
-                esolangs.run("brainfuck", program, timeout=1)
+                esolangs.run(REFERENCE, program, timeout=1)
             remaining, interval = signal.getitimer(signal.ITIMER_REAL)
             assert remaining > 0
             assert interval == 5
@@ -196,9 +197,9 @@ class TestTheCallersSignalsAreTheirOwn:
         previous = signal.signal(signal.SIGALRM, lambda *_a: None)
         try:
             signal.alarm(30)
-            program = esolangs.generate("brainfuck", "0110")
-            stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
-            esolangs.run("brainfuck", program, stdin=stdin, timeout=5)
+            program = esolangs.generate(REFERENCE, "0110")
+            stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
+            esolangs.run(REFERENCE, program, stdin=stdin, timeout=5)
             remaining = signal.alarm(0)
             assert remaining > 0, "the caller's alarm was cancelled"
         finally:
@@ -221,7 +222,7 @@ class TestTheEncodersRefuseWhatTheyCannotAnswer:
 
     def test_read_answer_refuses_a_non_string(self) -> None:
         with pytest.raises(esolangs.ProgramError, match="output must be a string"):
-            esolangs.read_answer("brainfuck", None)  # type: ignore[arg-type]
+            esolangs.read_answer(REFERENCE, None)  # type: ignore[arg-type]
 
 
 def test_read_answer_refuses_a_termination_language(

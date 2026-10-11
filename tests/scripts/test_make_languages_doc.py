@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from tests.api.test_language_coupling import REFERENCE
+from tests.reference import REFERENCE
 from tests.scripts.script_support import load
 from tests.support.pick import one
 

@@ -4,6 +4,8 @@ import random
 
 import pytest
 
+from tests.reference import REFERENCE
+
 
 @pytest.mark.medium
 def test_affine_stream_all_small_coefficients_within_ledger():
@@ -23,7 +25,7 @@ def test_affine_stream_all_small_coefficients_within_ledger():
                     continue
                 admitted += 1
                 for row, expected in enumerate(table):
-                    vm = make_vm("brainfuck", source, stdin=f"{row:0{n}b}")
+                    vm = make_vm(REFERENCE, source, stdin=f"{row:0{n}b}")
                     written = WrittenState(vm.snapshot())
                     commands = 0
                     while not vm.halted and commands <= 69 * n + 44:
@@ -54,7 +56,7 @@ def test_affine_stream_reduces_cap_parity_within_ledger():
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     previous = _bf_ordered(table, tuple(range(n)))
     assert_shared_program(
-        "brainfuck",
+        REFERENCE,
         table,
         previous,
         69 * n + 44,
@@ -75,7 +77,7 @@ def test_shared_residual_executes_within_ledger() -> None:
     table = zero + one + one + zero
     plain = _bf_ordered(table, tuple(range(8)), share=False)
     assert_shared_program(
-        "brainfuck",
+        REFERENCE,
         table,
         plain,
         69 * 8 + 44,
@@ -106,7 +108,7 @@ def test_multiple_residual_dispatches_match_outputs_and_command_prices():
         source = header + body + "+" * 48 + "."
         limit = len(header) + cost + 49
         for row, expected in enumerate(table):
-            machine = make_vm("brainfuck", source, stdin=f"{row:0{n}b}")
+            machine = make_vm(REFERENCE, source, stdin=f"{row:0{n}b}")
             commands = 0
             while not machine.halted and commands <= limit:
                 machine.step()
@@ -139,9 +141,9 @@ def test_multiple_residuals_reduce_guarded_parity_within_ledger():
         table, tuple(range(n)), 2 * (n - 1), 2 * n, shared=repeated_block(table)
     )
     previous = ">>".join("," + "-" * 48 for _ in range(n)) + body + "+" * 48 + "."
-    assert len(esolangs.generate("brainfuck", table)) < len(previous)
+    assert len(esolangs.generate(REFERENCE, table)) < len(previous)
     assert_shared_program(
-        "brainfuck",
+        REFERENCE,
         table,
         previous,
         69 * n + 44,

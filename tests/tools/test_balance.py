@@ -12,8 +12,8 @@ from esolangs.tools.wrap import (
     wrap_program,
     wrap_space_delimited,
 )
-from tests.api.test_language_coupling import REFERENCE
 from tests.cli.test_cli import call_main
+from tests.reference import REFERENCE
 from tests.support.pick import first
 from tests.support.witness_tables import row_bits
 
@@ -91,11 +91,11 @@ def test_balance_rejects_width() -> None:
 
 
 def test_character_balance() -> None:
-    assert balance_program("+" * 100, "brainfuck") == "\n".join(["+" * 10] * 10)
+    assert balance_program("+" * 100, REFERENCE) == "\n".join(["+" * 10] * 10)
     marker = mark(0) * 100
-    assert balance_program(
-        marker + "+" * 100, "brainfuck"
-    ) == marker + "\n" + "\n".join("+" * 100)
+    assert balance_program(marker + "+" * 100, REFERENCE) == marker + "\n" + "\n".join(
+        "+" * 100
+    )
 
 
 def test_cli_balance(capsys: pytest.CaptureFixture[str]) -> None:

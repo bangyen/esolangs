@@ -23,11 +23,11 @@ from pathlib import Path
 import pytest
 
 from esolangs.registry import LANGUAGES, Language
+from tests.reference import REFERENCE
 
 ROOT = Path(__file__).resolve().parents[2]
 ALLOWED = ROOT / "tests/fixtures/coupling.toml"
 #: The language shared tests use as their example: naming it is not coupling.
-REFERENCE = "brainfuck"
 TREES = ("src/", "tests/", "scripts/")
 #: Files ``new_language.py remove`` edits, or its own test, which names
 #: languages as examples.  The coupling guard does not count them.

@@ -16,6 +16,7 @@ from esolangs.interpreters.tape_based.line.mask import Mask
 from tests.cli.test_cli import _FakeStdin, call_main
 from tests.cli.test_cli_portable import save_generated
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
+from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
 
 
@@ -60,10 +61,10 @@ class TestTheSmallInconsistencies:
     ) -> None:
         """Every value-taking option refused a repeat; this flag did not."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
+        path.write_text(esolangs.generate(REFERENCE, "0110"))
         with pytest.raises(SystemExit) as exc:
             call_main(
-                ["run", "--isolated", "--isolated", "brainfuck", str(path)],
+                ["run", "--isolated", "--isolated", REFERENCE, str(path)],
                 capsys,
                 stdin="0\n1\n",
             )
@@ -91,7 +92,7 @@ class TestTheSmallInconsistencies:
     ) -> None:
         """It looked exactly like a program that never reached it."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
+        path.write_text(esolangs.generate(REFERENCE, "0110"))
         _out, err = call_both(
             [
                 "debug",
@@ -99,7 +100,7 @@ class TestTheSmallInconsistencies:
                 "Z",
                 "--steps",
                 "5000",
-                "brainfuck",
+                REFERENCE,
                 str(path),
             ],
             capsys,
@@ -112,7 +113,7 @@ class TestTheSmallInconsistencies:
     ) -> None:
         """The other half, so the note means something."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
+        path.write_text(esolangs.generate(REFERENCE, "0110"))
         out, err = call_both(
             [
                 "debug",
@@ -120,7 +121,7 @@ class TestTheSmallInconsistencies:
                 "1",
                 "--steps",
                 "5000",
-                "brainfuck",
+                REFERENCE,
                 str(path),
             ],
             capsys,
@@ -134,7 +135,7 @@ def test_source_kind_cannot_change_language_contract():
     document = json.loads(
         esolangs.dump_program("Line", esolangs.generate("Line", "01"))
     )
-    document["language"] = "brainfuck"
+    document["language"] = REFERENCE
     with pytest.raises(esolangs.ProgramError):
         esolangs.load_program("Brainfuck", json.dumps(document))
 

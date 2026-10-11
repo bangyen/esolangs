@@ -11,7 +11,7 @@ import esolangs
 from esolangs import _check_program
 from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
-from tests.api.test_language_coupling import REFERENCE
+from tests.reference import REFERENCE
 from tests.support.pick import languages
 
 _RASTERS = languages(source_kind="raster", boolean_generator=True)
@@ -81,27 +81,27 @@ def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
             return self.value
 
     program, stdin = Stream(b",.,."), Stream("\n\x00")
-    assert _check_program("brainfuck", program, stdin) == ",.,."
+    assert _check_program(REFERENCE, program, stdin) == ",.,."
     assert stdin.reads == 0
-    assert esolangs.run("brainfuck", ",.,.", stdin=stdin) == "\n\x00"
+    assert esolangs.run(REFERENCE, ",.,.", stdin=stdin) == "\n\x00"
     assert (program.reads, stdin.reads) == (1, 1)
     source = io.StringIO("ignored,.")
     source.seek(7)
-    assert esolangs.run("brainfuck", source, stdin="Z") == "Z"
+    assert esolangs.run(REFERENCE, source, stdin="Z") == "Z"
 
 
 @pytest.mark.parametrize(
     "stdin", ["é", "é".encode(), io.StringIO("é"), io.BytesIO("é".encode())]
 )
 def test_binary_stdin_uses_the_same_unicode_character_stream(stdin: Any) -> None:
-    assert esolangs.run("brainfuck", ",.", stdin=stdin) == "é"
+    assert esolangs.run(REFERENCE, ",.", stdin=stdin) == "é"
 
 
 def test_path_loading_retains_existing_newline_normalization(tmp_path: Path) -> None:
     path = tmp_path / "source.txt"
     path.write_bytes(b"+,\r\n.\r\n")
-    assert _check_program("brainfuck", path) == "+,\n."
-    assert esolangs.run("brainfuck", path, stdin="Q") == "Q"
+    assert _check_program(REFERENCE, path) == "+,\n."
+    assert esolangs.run(REFERENCE, path, stdin="Q") == "Q"
 
 
 @pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
@@ -126,9 +126,9 @@ def test_stream_failures_keep_public_error_types(mode: str) -> None:
 
     for stream in (Broken(), Wrong(), NeedsArgument()):
         with pytest.raises(esolangs.ProgramError):
-            esolangs.run("brainfuck", stream, **bounds)  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, stream, **bounds)  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError):
-            esolangs.run("brainfuck", ",.", stdin=stream, **bounds)  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, ",.", stdin=stream, **bounds)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("blocked", ["program", "stdin"])
@@ -154,7 +154,7 @@ def test_isolated_deadline_bounds_stream_acquisition(
     stdin: Any = Stream() if blocked == "stdin" else "A"
     try:
         with pytest.raises(esolangs.ExecutionTimeoutError, match="loading input"):
-            esolangs.run("brainfuck", program, stdin=stdin, isolated=True, timeout=0.1)
+            esolangs.run(REFERENCE, program, stdin=stdin, isolated=True, timeout=0.1)
         assert entered.is_set()
         assert not finished.is_set()
     finally:

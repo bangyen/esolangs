@@ -9,6 +9,7 @@ import pytest
 import esolangs
 import esolangs._evaluate as evaluator
 from esolangs._evaluate import _evaluate, _iter_evaluate
+from tests.reference import REFERENCE
 from tests.support.pick import first, languages
 
 
@@ -37,12 +38,12 @@ def test_evaluate_files(name: str, tmp_path: Path) -> None:
 @pytest.mark.parametrize("inputs", [True, 0, 65, 2.5, "2"])
 def test_api_refuses_bad_inputs(inputs: object) -> None:
     with pytest.raises(esolangs.ArgumentError, match="inputs must"):
-        _evaluate("brainfuck", ",.", inputs=inputs)  # type: ignore[arg-type]
+        _evaluate(REFERENCE, ",.", inputs=inputs)  # type: ignore[arg-type]
 
 
 def test_api_refuses_bad_source() -> None:
     with pytest.raises(esolangs.ProgramError, match="string of source"):
-        _evaluate("brainfuck", 42, inputs=1)  # type: ignore[arg-type]
+        _evaluate(REFERENCE, 42, inputs=1)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -57,7 +58,7 @@ def test_api_refuses_raster_for_text_answer(name: str) -> None:
 
 def test_timeout_is_not_a_boolean_answer() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as exc:
-        _evaluate("brainfuck", "+[]", inputs=1, timeout=0.01)
+        _evaluate(REFERENCE, "+[]", inputs=1, timeout=0.01)
     assert any("row 0" in note for note in exc.value.__notes__)
 
 
@@ -67,7 +68,7 @@ def test_isolated_row_output_limit_resets_per_row(streaming):
     source = "+" * 48 + "."
     evaluate = _iter_evaluate if streaming else _evaluate
     assert (
-        "".join(evaluate("brainfuck", source, inputs=1, isolated=True, max_output=1))
+        "".join(evaluate(REFERENCE, source, inputs=1, isolated=True, max_output=1))
         == "00"
     )
 
@@ -75,7 +76,7 @@ def test_isolated_row_output_limit_resets_per_row(streaming):
 @pytest.mark.medium
 def test_evaluation_output_overflow_retains_partial_output_and_row():
     with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
-        _evaluate("brainfuck", "+" * 48 + "..", inputs=1, isolated=True, max_output=1)
+        _evaluate(REFERENCE, "+" * 48 + "..", inputs=1, isolated=True, max_output=1)
     assert caught.value.partial_output == "0"
     assert any("row 0" in note for note in caught.value.__notes__)
     assert any("answered (none)" in note for note in caught.value.__notes__)
@@ -104,13 +105,13 @@ def test_termination_output_limit_is_not_a_divergence_verdict():
 def test_evaluation_rejects_invalid_output_limit_before_loading(limit, tmp_path):
     with pytest.raises(esolangs.ArgumentError, match="max_output"):
         _evaluate(
-            "brainfuck", tmp_path / "missing", inputs=1, isolated=True, max_output=limit
+            REFERENCE, tmp_path / "missing", inputs=1, isolated=True, max_output=limit
         )
 
 
 def test_evaluation_output_limit_requires_isolation():
     with pytest.raises(esolangs.ArgumentError, match="isolated=True"):
-        _evaluate("brainfuck", "", inputs=1, max_output=1)
+        _evaluate(REFERENCE, "", inputs=1, max_output=1)
 
 
 @pytest.mark.medium
@@ -126,21 +127,21 @@ def test_row_budget_refuses_before_loading():
             pytest.fail("source must not load when the table exceeds its budget")
 
     with pytest.raises(esolangs.InterpreterLimitError, match="max_rows"):
-        _evaluate("brainfuck", Unreadable(), inputs=64)
+        _evaluate(REFERENCE, Unreadable(), inputs=64)
 
 
 @pytest.mark.parametrize("max_rows", [-1, True, 1.5])
 def test_invalid_row_budgets(max_rows):
     with pytest.raises(esolangs.ArgumentError, match="max_rows"):
-        _evaluate("brainfuck", ",.", inputs=1, max_rows=max_rows)
+        _evaluate(REFERENCE, ",.", inputs=1, max_rows=max_rows)
 
 
 @pytest.mark.medium
 def test_row_budget_can_be_raised_or_disabled():
     for limit in (2, None):
-        assert _evaluate("brainfuck", ",.", inputs=1, max_rows=limit) == "01"
+        assert _evaluate(REFERENCE, ",.", inputs=1, max_rows=limit) == "01"
     with pytest.raises(esolangs.InterpreterLimitError):
-        _evaluate("brainfuck", ",.", inputs=1, max_rows=1)
+        _evaluate(REFERENCE, ",.", inputs=1, max_rows=1)
 
 
 @pytest.mark.medium
@@ -160,7 +161,7 @@ def test_total_deadline_interrupts_source_acquisition(isolated):
     try:
         with pytest.raises(esolangs.ExecutionTimeoutError):
             _evaluate(
-                "brainfuck", Blocked(), inputs=1, isolated=isolated, total_timeout=0.05
+                REFERENCE, Blocked(), inputs=1, isolated=isolated, total_timeout=0.05
             )
     finally:
         release.set()
@@ -171,7 +172,7 @@ def test_total_deadline_interrupts_source_acquisition(isolated):
 def test_deadline_includes_iterator_pauses(monkeypatch):
     clock = [0.0]
     monkeypatch.setattr(evaluator, "monotonic", lambda: clock[0])
-    answers = _iter_evaluate("brainfuck", ",.", inputs=1, total_timeout=5)
+    answers = _iter_evaluate(REFERENCE, ",.", inputs=1, total_timeout=5)
     assert next(answers) == "0"
     clock[0] = 6
     with pytest.raises(
@@ -194,7 +195,7 @@ def test_deadline_clamps_each_row_and_expires_after_work(monkeypatch):
 
     monkeypatch.setattr(esolangs, "run", run)
     with pytest.raises(esolangs.ExecutionTimeoutError):
-        _evaluate("brainfuck", ",.", inputs=1, timeout=None, total_timeout=5)
+        _evaluate(REFERENCE, ",.", inputs=1, timeout=None, total_timeout=5)
     assert bounds == [5, 2]
 
 
@@ -203,7 +204,7 @@ def test_deadline_clamps_each_row_and_expires_after_work(monkeypatch):
 def test_total_deadline_bounds_a_growing_machine(isolated):
     with pytest.raises(esolangs.ExecutionTimeoutError):
         _evaluate(
-            "brainfuck",
+            REFERENCE,
             "+[>+]",
             inputs=1,
             timeout=None,
@@ -216,15 +217,15 @@ def test_total_deadline_bounds_a_growing_machine(isolated):
 @pytest.mark.parametrize("isolated", [False, True])
 def test_loading_errors_keep_their_public_type_under_a_deadline(isolated):
     with pytest.raises(esolangs.ProgramError):
-        _evaluate("brainfuck", b"\xff", inputs=1, isolated=isolated, total_timeout=5)
+        _evaluate(REFERENCE, b"\xff", inputs=1, isolated=isolated, total_timeout=5)
 
 
 @pytest.mark.parametrize("budget", [0, True, float("inf"), 0.00001])
 def test_invalid_total_deadlines(budget):
     with pytest.raises(esolangs.ArgumentError):
-        _evaluate("brainfuck", ",.", inputs=1, total_timeout=budget)
+        _evaluate(REFERENCE, ",.", inputs=1, total_timeout=budget)
 
 
 def test_isolated_evaluation_requires_at_least_one_finite_budget():
     with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
-        _evaluate("brainfuck", ",.", inputs=1, timeout=None, isolated=True)
+        _evaluate(REFERENCE, ",.", inputs=1, timeout=None, isolated=True)

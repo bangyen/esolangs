@@ -10,7 +10,7 @@ import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.cli_hints import _template_hint
 from esolangs.exceptions import ProgramError, TemplateError
-from tests.api.test_language_coupling import REFERENCE
+from tests.reference import REFERENCE
 from tests.support.pick import languages
 from tests.support.witness_tables import row_bits
 
@@ -90,7 +90,7 @@ class TestRemainingGuards:
     def test_the_cli_hint_passes_through_an_unrelated_message(self) -> None:
         """Only the slot refusal names a Python call worth rewriting."""
         other = TemplateError("brainfuck reads its inputs rather than embedding them")
-        assert _template_hint(other, "brainfuck") == str(other)
+        assert _template_hint(other, REFERENCE) == str(other)
 
 
 class TestEveryDeliberateErrorHasTheBase:
@@ -99,10 +99,10 @@ class TestEveryDeliberateErrorHasTheBase:
     @pytest.mark.parametrize(
         "call",
         [
-            lambda: esolangs.generate("brainfuck", XOR, width=0),
-            lambda: esolangs.generate("brainfuck", XOR, width="20"),
-            lambda: esolangs.run("brainfuck", "+.", timeout=0),
-            lambda: esolangs.encode_inputs("brainfuck", [2, 0]),
+            lambda: esolangs.generate(REFERENCE, XOR, width=0),
+            lambda: esolangs.generate(REFERENCE, XOR, width="20"),
+            lambda: esolangs.run(REFERENCE, "+.", timeout=0),
+            lambda: esolangs.encode_inputs(REFERENCE, [2, 0]),
         ],
     )
     def test_an_invalid_option_is_an_esolangerror(self, call: object) -> None:
@@ -115,4 +115,4 @@ class TestEveryDeliberateErrorHasTheBase:
     def test_encode_inputs_refuses_a_non_bit(self) -> None:
         """A 2 encoded as a 1 and answered a different row, in silence."""
         with pytest.raises(esolangs.ArgumentError, match="must each be 0 or 1"):
-            esolangs.encode_inputs("brainfuck", [2, 0])
+            esolangs.encode_inputs(REFERENCE, [2, 0])

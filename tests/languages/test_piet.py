@@ -13,6 +13,7 @@ from esolangs.exceptions import TemplateError
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.api.test_api_contracts import XOR
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
+from tests.reference import REFERENCE
 from tests.support.pick import languages
 
 
@@ -59,14 +60,14 @@ class TestSpecAbortsRatherThanReturningNothing:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Simulated by emptying one, since the test run is not under -OO."""
-        module = interpreter_module("brainfuck")
+        module = interpreter_module(REFERENCE)
         monkeypatch.setattr(module, "__doc__", None)
         with pytest.raises(esolangs.ProgramError, match="-OO"):
-            esolangs.describe("brainfuck")["spec"]
+            esolangs.describe(REFERENCE)["spec"]
 
     def test_it_still_returns_the_text_normally(self) -> None:
         """The abort must not have eaten the ordinary path."""
-        assert esolangs.describe("brainfuck")["spec"].startswith("Interpreter for")
+        assert esolangs.describe(REFERENCE)["spec"].startswith("Interpreter for")
 
     def test_a_raster_language_returns_its_own_module_docstring(self) -> None:
         """Piet describes its own interpreter rather than another raster's."""
@@ -81,16 +82,16 @@ class TestSpecAbortsRatherThanReturningNothing:
 @pytest.mark.parametrize(
     "operation",
     [
-        lambda huge: esolangs.run("brainfuck", "", timeout=huge),
-        lambda huge: esolangs.run("brainfuck", "", timeout=-huge),
-        lambda huge: esolangs.run("brainfuck", "", isolated=True, max_output=-huge),
-        lambda huge: esolangs.generate("brainfuck", "01", width=-huge),
-        lambda huge: esolangs.encode_inputs("brainfuck", [huge]),
-        lambda huge: esolangs.encode_inputs("brainfuck", [True, huge]),
+        lambda huge: esolangs.run(REFERENCE, "", timeout=huge),
+        lambda huge: esolangs.run(REFERENCE, "", timeout=-huge),
+        lambda huge: esolangs.run(REFERENCE, "", isolated=True, max_output=-huge),
+        lambda huge: esolangs.generate(REFERENCE, "01", width=-huge),
+        lambda huge: esolangs.encode_inputs(REFERENCE, [huge]),
+        lambda huge: esolangs.encode_inputs(REFERENCE, [True, huge]),
         lambda huge: esolangs.run(
             "Piet", esolangs.Raster((((0, 0, 0),),)), scale=-huge
         ),
-        lambda huge: esolangs.run("brainfuck", "", timeout={"value": huge}),
+        lambda huge: esolangs.run(REFERENCE, "", timeout={"value": huge}),
     ],
 )
 def test_oversized_integer_arguments_keep_public_errors(operation):

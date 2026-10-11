@@ -4,6 +4,8 @@ import random
 
 import pytest
 
+from tests.reference import REFERENCE
+
 
 def _bank_tables():
     rng = random.Random(99107)
@@ -52,7 +54,7 @@ def test_banked_residuals_execute_and_match_command_price(kind, case, table):
                 table, shared_blocks=blocks, flag_levels=levels
             )
         else:
-            language = "brainfuck"
+            language = REFERENCE
             header = ">>".join("," + "-" * 48 for _ in range(n))
             result = 2 * perm[-1] + 1 if kind == "binary" else 2 * n
             body, cost = flag_tree_body(

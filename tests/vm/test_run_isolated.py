@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs._isolated import _decode, _worker
+from tests.reference import REFERENCE
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import one
 
@@ -26,15 +27,15 @@ def test_generated_xor_runs_every_row_in_a_worker(language):
 @pytest.mark.medium
 def test_timeout_retains_streamed_output():
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run("brainfuck", "+.[]", timeout=1, isolated=True)
+        esolangs.run(REFERENCE, "+.[]", timeout=1, isolated=True)
     assert caught.value.partial_output == "\x01"
-    assert esolangs.run("brainfuck", "++.", isolated=True) == "\x02"
+    assert esolangs.run(REFERENCE, "++.", isolated=True) == "\x02"
 
 
 @pytest.mark.medium
 def test_input_error_retains_counts_and_output():
     with pytest.raises(esolangs.InputExhaustedError) as caught:
-        esolangs.run("brainfuck", "+.,", isolated=True)
+        esolangs.run(REFERENCE, "+.,", isolated=True)
     assert caught.value.reads == 0
     assert caught.value.supplied == 0
     assert caught.value.partial_output == "\x01"
@@ -43,7 +44,7 @@ def test_input_error_retains_counts_and_output():
 @pytest.mark.parametrize("timeout", [0, float("inf")])
 def test_refuses_an_invalid_deadline(timeout):
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run("brainfuck", "", timeout=timeout, isolated=True)
+        esolangs.run(REFERENCE, "", timeout=timeout, isolated=True)
 
 
 def test_decode_missing_result_and_notes():
@@ -87,23 +88,23 @@ def test_cancellation_kills_and_reaps_child(monkeypatch):
         _isolated.subprocess, "Popen", lambda *_args, **_kwargs: Child()
     )
     with pytest.raises(KeyboardInterrupt):
-        _isolated.run_isolated("brainfuck", "")
+        _isolated.run_isolated(REFERENCE, "")
     assert calls == ["communicate", "kill", "communicate"]
 
 
 def test_unknown_error_reconstructs_suggestions():
-    payload = {"error": "UnknownLanguageError", "args": ["brainfuk", ["brainfuck"]]}
+    payload = {"error": "UnknownLanguageError", "args": ["brainfuk", [REFERENCE]]}
     with pytest.raises(esolangs.UnknownLanguageError) as caught:
         _decode(json.dumps(payload), expired=False)
     assert caught.value.language == "brainfuk"
-    assert caught.value.suggestions == ("brainfuck",)
+    assert caught.value.suggestions == (REFERENCE,)
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("limit", [0, 1, 4097])
 def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned):
     with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
-        esolangs.run("brainfuck", "+[.]", isolated=True, max_output=limit)
+        esolangs.run(REFERENCE, "+[.]", isolated=True, max_output=limit)
     assert caught.value.partial_output == "\x01" * limit
     assert len(spawned) == 1
     assert spawned[0].poll() is not None
@@ -111,15 +112,13 @@ def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned):
 
 @pytest.mark.medium
 def test_output_limit_beyond_the_decimal_rendering_limit_accepts_small_output():
-    assert (
-        esolangs.run("brainfuck", "++.", isolated=True, max_output=10**5000) == "\x02"
-    )
+    assert esolangs.run(REFERENCE, "++.", isolated=True, max_output=10**5000) == "\x02"
 
 
 @pytest.mark.medium
 def test_capped_timeout_retains_output_and_reaps(spawned):
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run("brainfuck", "+.[]", timeout=1, isolated=True, max_output=10)
+        esolangs.run(REFERENCE, "+.[]", timeout=1, isolated=True, max_output=10)
     assert caught.value.partial_output == "\x01"
     assert spawned[0].poll() is not None
 
@@ -127,12 +126,12 @@ def test_capped_timeout_retains_output_and_reaps(spawned):
 @pytest.mark.parametrize("limit", [-1, True, 1.5, "1"])
 def test_refuses_invalid_output_limits(limit):
     with pytest.raises(esolangs.ArgumentError, match="max_output"):
-        esolangs.run("brainfuck", "", isolated=True, max_output=limit)
+        esolangs.run(REFERENCE, "", isolated=True, max_output=limit)
 
 
 def test_output_limit_requires_isolation():
     with pytest.raises(esolangs.ArgumentError, match="isolated"):
-        esolangs.run("brainfuck", "", max_output=1)
+        esolangs.run(REFERENCE, "", max_output=1)
 
 
 def test_capped_worker_splits_and_truncates_a_single_large_write(monkeypatch, capsys):
@@ -145,7 +144,7 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(monkeypatch, ca
         return output.getvalue()
 
     payload = {
-        "language": "brainfuck",
+        "language": REFERENCE,
         "program": "",
         "raster": False,
         "stdin": "",
@@ -165,7 +164,7 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(monkeypatch, ca
 @pytest.mark.medium
 def test_capped_input_error_retains_public_class_and_prefix():
     with pytest.raises(esolangs.InputExhaustedError) as caught:
-        esolangs.run("brainfuck", "+.,", isolated=True, max_output=2)
+        esolangs.run(REFERENCE, "+.,", isolated=True, max_output=2)
     assert caught.value.partial_output == "\x01"
     assert caught.value.reads == 0
     assert caught.value.supplied == 0

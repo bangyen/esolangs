@@ -8,6 +8,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.exceptions import ArgumentError
+from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
 from tests.support.stdin_check import _check_stdin
 
@@ -126,7 +127,7 @@ class TestEncodeInputsCanCheckItsArity:
     def test_a_malformed_table_is_named_as_one(self) -> None:
         """Not reported as a bit-count mismatch against a nonsense arity."""
         with pytest.raises(esolangs.TruthTableError):
-            esolangs.encode_inputs("brainfuck", [1, 0], truth_table="011")
+            esolangs.encode_inputs(REFERENCE, [1, 0], truth_table="011")
 
 
 def test_the_input_is_a_row_index() -> None:

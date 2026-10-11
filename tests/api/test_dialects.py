@@ -12,7 +12,7 @@ from esolangs import DialectSettings, Raster
 from esolangs.registry import LANGUAGES
 from esolangs.tagged import _Tagged
 from esolangs.vm import make_vm
-from tests.api.test_language_coupling import REFERENCE
+from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
 from tests.support.pick import languages
 
@@ -136,7 +136,7 @@ def test_raster_scaling_retains_settings(balance):
 
 
 def test_inherited_choices_are_checked_before_input():
-    source = _Tagged("+.", "brainfuck", DialectSettings(cell_modulus=255))
+    source = _Tagged("+.", REFERENCE, DialectSettings(cell_modulus=255))
     with pytest.raises(esolangs.ArgumentError, match="dialect settings"):
         esolangs.run(REFERENCE, source, stdin=Unreadable())
 

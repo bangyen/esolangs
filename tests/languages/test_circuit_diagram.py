@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from tests.reference import REFERENCE
 from tests.support.generator_support import evaluate_generated
 from tests.support.samples import CIRCUIT_PRIME_TESTER, bits_of
 from tests.vm.test_vm import _run_all
@@ -66,7 +67,7 @@ class TestAFailedRowSaysWhichRow:
 
         monkeypatch.setattr(esolangs, "run", fail_on_the_sixth)
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            evaluate_generated("brainfuck", "01101001", timeout=10)
+            evaluate_generated(REFERENCE, "01101001", timeout=10)
         note = "\n".join(getattr(caught.value, "__notes__", []))
         assert "row 5 of 8" in note
         assert "inputs 101" in note

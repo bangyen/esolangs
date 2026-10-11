@@ -7,6 +7,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.vm import VM
+from tests.reference import REFERENCE
 from tests.support.pick import languages
 
 
@@ -70,7 +71,7 @@ class TestProtocol:
 
 class TestBrainfuck:
     def test_tape_and_cursor_evolve(self) -> None:
-        vm = debugger_api.make_vm("brainfuck", "++.")
+        vm = debugger_api.make_vm(REFERENCE, "++.")
         assert (vm.ip, vm.memory, vm.output) == (0, [0], "")
         vm.step()
         assert (vm.ip, vm.memory) == (1, [1])

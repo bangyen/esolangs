@@ -5,6 +5,7 @@ import contextlib
 import pytest
 
 import esolangs.debugger as debugger_api
+from tests.reference import REFERENCE
 from tests.support.duration_policy import limits
 from tests.support.samples import SAMPLES
 
@@ -23,7 +24,7 @@ def test_memory_and_stack_are_copies_not_the_live_store() -> None:
     ``_DelegatingVM`` makes the copy once for every interpreter, so a tape
     language and FALSE (non-empty memory and stack) cover it.
     """
-    for name in ("brainfuck", "FALSE"):
+    for name in (REFERENCE, "FALSE"):
         program, stdin = SAMPLES[name]
         vm = debugger_api.make_vm(name, program, stdin=stdin)
         with contextlib.suppress(Exception):

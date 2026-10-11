@@ -10,6 +10,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.vm import machine_traits, run_until_halt
+from tests.reference import REFERENCE
 from tests.support.pick import first
 
 #: Enough for every generated boolean program in the suite to finish; the
@@ -143,17 +144,17 @@ class TestTheConstructorsTakeWhatRunTakes:
     ) -> None:
         """It validated the file's contents, then passed the Path itself on."""
         example = pathlib.Path(
-            str(files("esolangs") / esolangs.describe("brainfuck")["examples"][0])
+            str(files("esolangs") / esolangs.describe(REFERENCE)["examples"][0])
         )
-        machine = build("brainfuck", example, stdin="1\n0\n")  # type: ignore[operator]
+        machine = build(REFERENCE, example, stdin="1\n0\n")  # type: ignore[operator]
         assert machine.halted is False
 
     def test_the_path_and_the_source_build_the_same_machine(self) -> None:
         """Reading it here must match what a caller reading it gets."""
         example = pathlib.Path(
-            str(files("esolangs") / esolangs.describe("brainfuck")["examples"][0])
+            str(files("esolangs") / esolangs.describe(REFERENCE)["examples"][0])
         )
         source = example.read_text().rstrip("\n")
-        from_path = _drive(debugger_api.make_vm("brainfuck", example, stdin="1\n0\n"))
-        from_text = _drive(debugger_api.make_vm("brainfuck", source, stdin="1\n0\n"))
+        from_path = _drive(debugger_api.make_vm(REFERENCE, example, stdin="1\n0\n"))
+        from_text = _drive(debugger_api.make_vm(REFERENCE, source, stdin="1\n0\n"))
         assert from_path == from_text

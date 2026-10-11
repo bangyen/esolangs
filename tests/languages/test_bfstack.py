@@ -6,6 +6,7 @@ import pytest
 
 import esolangs.debugger as debugger_api
 from tests.interpreters.test_input_convention import assert_echoes_a_newline
+from tests.reference import REFERENCE
 
 
 class TestEdges:
@@ -13,16 +14,16 @@ class TestEdges:
 
     def test_bounds_around_the_first_cell(self) -> None:
         """``stdin`` defaults to nothing; the cell past the end is absent."""
-        dbg = debugger_api.make_debugger("brainfuck", ",")
+        dbg = debugger_api.make_debugger(REFERENCE, ",")
         with pytest.raises(EOFError):
             dbg.step()
         # One past the end, where a widened bound indexes out of range
         # instead of reporting the cell does not exist yet.
-        dbg = debugger_api.make_debugger("brainfuck", "+")
+        dbg = debugger_api.make_debugger(REFERENCE, "+")
         history = dbg.watch_cell(1)
         dbg.step()
         assert history == [None]
-        dbg = debugger_api.make_debugger("brainfuck", "+")
+        dbg = debugger_api.make_debugger(REFERENCE, "+")
         dbg.break_on_cell(1, 0)
         dbg.run()
         assert dbg.halted

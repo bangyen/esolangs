@@ -9,6 +9,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from tests.reference import REFERENCE
 from tests.support.generator_support import evaluate_generated
 from tests.support.pick import first, languages
 
@@ -86,7 +87,7 @@ class TestATemplateCarriesItsSetters:
             assert all(len(zero) == len(one) for zero, one in pairs), name
 
     def test_a_reading_language_has_no_setters(self) -> None:
-        assert getattr(esolangs.generate("brainfuck", "0110"), "setters", None) is None
+        assert getattr(esolangs.generate(REFERENCE, "0110"), "setters", None) is None
 
     def test_unequal_widths_are_refused(self) -> None:
         from esolangs.tagged import _Template
@@ -176,12 +177,12 @@ class TestAProgramKnowsWhoseItIs:
     """A generated program run under another language is refused at the door."""
 
     def test_a_foreign_program_is_refused_by_run(self) -> None:
-        program = esolangs.generate("brainfuck", "0110")
+        program = esolangs.generate(REFERENCE, "0110")
         with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
             esolangs.run(TEMPLATED, program)
 
     def test_a_foreign_program_is_refused_by_make_vm(self) -> None:
-        program = esolangs.generate("brainfuck", "0110")
+        program = esolangs.generate(REFERENCE, "0110")
         with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
             debugger_api.make_vm(TEMPLATED, program, stdin="")
 
@@ -190,24 +191,24 @@ class TestAProgramKnowsWhoseItIs:
         program = esolangs.instantiate(TEMPLATED, template, [0, 1])
         assert getattr(program, "language", None) == TEMPLATED
         with pytest.raises(esolangs.ProgramError, match=f"generated for {TEMPLATED}"):
-            esolangs.run("brainfuck", program)
+            esolangs.run(REFERENCE, program)
 
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
         program = esolangs.generate("BRAINFUCK", "0110")
         assert esolangs.run(
-            "brainfuck", program, stdin=esolangs.encode_inputs("brainfuck", [0, 1])
+            REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, [0, 1])
         )
 
     def test_a_plain_string_is_accepted_unchecked(self) -> None:
-        program = str(esolangs.generate("brainfuck", "0110"))
+        program = str(esolangs.generate(REFERENCE, "0110"))
         assert getattr(program, "language", None) is None
         assert esolangs.run(
-            "brainfuck", program, stdin=esolangs.encode_inputs("brainfuck", [0, 1])
+            REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, [0, 1])
         )
 
     def test_a_width_keeps_the_tag(self) -> None:
-        program = esolangs.generate("brainfuck", "0110", width=20)
-        assert getattr(program, "language", None) == "brainfuck"
+        program = esolangs.generate(REFERENCE, "0110", width=20)
+        assert getattr(program, "language", None) == REFERENCE
 
 
 class TestExamplePathsWorkFromAnywhere:
@@ -223,9 +224,9 @@ class TestExamplePathsWorkFromAnywhere:
         self, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A chdir away it was ``cannot read examples/brainfuck.txt``."""
-        example = files("esolangs") / esolangs.describe("brainfuck")["examples"][0]
+        example = files("esolangs") / esolangs.describe(REFERENCE)["examples"][0]
         monkeypatch.chdir(tmp_path)
-        assert esolangs.run("brainfuck", example, stdin="1\n0\n", timeout=20)
+        assert esolangs.run(REFERENCE, example, stdin="1\n0\n", timeout=20)
 
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
@@ -337,9 +338,9 @@ class TestTheDebuggerMirrorsSnapshot:
 
     def test_it_matches_the_wrapped_machine(self) -> None:
         """And is the thing a caller most wants: a repeated state."""
-        program = esolangs.generate("brainfuck", "0110")
-        stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
-        debugger = debugger_api.make_debugger("brainfuck", program, stdin=stdin)
+        program = esolangs.generate(REFERENCE, "0110")
+        stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
+        debugger = debugger_api.make_debugger(REFERENCE, program, stdin=stdin)
         assert debugger.snapshot() == debugger.vm.snapshot()
         before = debugger.snapshot()
         debugger.step()
@@ -375,9 +376,9 @@ class TestEvaluateTakesAWidth:
 
     def test_the_width_actually_reaches_the_program(self) -> None:
         """Otherwise this would pass with the argument thrown away."""
-        wide = esolangs.generate("brainfuck", "10010110")
-        narrow = esolangs.generate("brainfuck", "10010110", width=30)
+        wide = esolangs.generate(REFERENCE, "10010110")
+        narrow = esolangs.generate(REFERENCE, "10010110", width=30)
         assert "\n" not in wide  # the unwrapped default is one line
         assert "\n" in narrow
         assert max(len(line) for line in narrow.splitlines()) <= 30
-        assert evaluate_generated("brainfuck", "10010110", width=30) == "10010110"
+        assert evaluate_generated(REFERENCE, "10010110", width=30) == "10010110"

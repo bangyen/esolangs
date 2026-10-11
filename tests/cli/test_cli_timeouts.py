@@ -9,6 +9,7 @@ import esolangs
 from esolangs import cli
 from esolangs.cli import HELP
 from tests.cli.test_cli import _program, call_main
+from tests.reference import REFERENCE
 from tests.support.cli_support import _LOOPS, _refused, call_both
 from tests.support.generator_support import evaluate_generated
 from tests.support.pick import languages
@@ -40,9 +41,9 @@ class TestTimeoutValuesAreCheckedOnce:
     ) -> None:
         """Between the floor and the ceiling, nothing changes."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
+        path.write_text(esolangs.generate(REFERENCE, "0110"))
         out = call_main(
-            ["run", "--timeout", "100000", "brainfuck", str(path)],
+            ["run", "--timeout", "100000", REFERENCE, str(path)],
             capsys,
             stdin="10",
         )
@@ -58,7 +59,7 @@ class TestRunCanBeBounded:
     ) -> None:
         with pytest.raises(SystemExit) as exc:
             call_main(
-                ["run", "--timeout", _LOOPS, "brainfuck", _program(tmp_path, "+[]")],
+                ["run", "--timeout", _LOOPS, REFERENCE, _program(tmp_path, "+[]")],
                 capsys,
             )
         # 124, after timeout(1).  This was 1 -- the same code a program's
@@ -124,7 +125,7 @@ class TestTheDocumentedExitCodesAreTheRealOnes:
         """Measured through ``main``, which is what a script sees."""
         path = tmp_path / "p.bf"
         path.write_text(source)
-        args = ["run", "--timeout", "5", "brainfuck", str(path)]
+        args = ["run", "--timeout", "5", REFERENCE, str(path)]
         if expected == 0:
             call_both(args, capsys, stdin=stdin)
             return
@@ -148,9 +149,9 @@ class TestDebugMirrorsRunsExitCodes:
     ) -> None:
         """The program failed, which is `run`'s exit 1."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
+        path.write_text(esolangs.generate(REFERENCE, "0110"))
         with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "brainfuck", str(path)], capsys, stdin="")
+            call_main(["debug", REFERENCE, str(path)], capsys, stdin="")
         assert exc.value.code == 1
 
     @pytest.mark.medium
@@ -161,7 +162,7 @@ class TestDebugMirrorsRunsExitCodes:
         path = tmp_path / "p.txt"
         path.write_text("+[]")
         with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "--timeout", _LOOPS, "brainfuck", str(path)], capsys)
+            call_main(["debug", "--timeout", _LOOPS, REFERENCE, str(path)], capsys)
         assert exc.value.code == 124
 
 
@@ -188,7 +189,7 @@ def test_isolated_cli_retains_output_and_verdict(
 ) -> None:
     path = tmp_path / "program.txt"
     path.write_text(source)
-    args = ["run", "--isolated", *options, "brainfuck", str(path)]
+    args = ["run", "--isolated", *options, REFERENCE, str(path)]
     stdin = "1" if output == "1" else "A"
     if code:
         with pytest.raises(SystemExit, match=f"^{code}$"):
@@ -217,5 +218,5 @@ def test_isolated_options_fail_before_file_or_stdin_reads(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     with pytest.raises(SystemExit, match=r"^2$"):
-        call_both(["run", *options, "brainfuck", "missing"], capsys)
+        call_both(["run", *options, REFERENCE, "missing"], capsys)
     assert "cannot read" not in capsys.readouterr().err

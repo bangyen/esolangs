@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 
 
@@ -14,12 +15,12 @@ class TestPrivateStdinCheckSaysWhatItCanActuallyCheck:
     def test_a_line_per_bit_language_accepts_any_count(self) -> None:
         """Not a bug -- a count needs an arity, and only a table has one."""
         for stdin in ("", "1", "101"):
-            _check_stdin("brainfuck", stdin)
+            _check_stdin(REFERENCE, stdin)
 
     def test_the_table_is_what_catches_the_count(self) -> None:
         """The other half of the claim: with one, the count is checked."""
         with pytest.raises(esolangs.ArgumentError):
-            _check_stdin("brainfuck", "1\n0\n1\n", "0110")
+            _check_stdin(REFERENCE, "1\n0\n1\n", "0110")
 
     def test_a_one_line_language_does_catch_a_stray_line(self) -> None:
         """Which is why the help can still claim a shape check at all."""

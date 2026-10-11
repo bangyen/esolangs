@@ -13,6 +13,7 @@ from esolangs.vm import (
     run_until_halt_or_growth,
     run_until_halt_or_value_growth,
 )
+from tests.reference import REFERENCE
 
 
 def _bf(code: str, stdin: str = "") -> Brainfuck:
@@ -22,7 +23,7 @@ def _bf(code: str, stdin: str = "") -> Brainfuck:
 class TestRunUntilHaltOrCycle:
     def test_a_machine_already_halted_is_reported_as_halting(self) -> None:
         """The loop is never entered, and the answer is still ``True``."""
-        vm = make_vm("brainfuck", "++")
+        vm = make_vm(REFERENCE, "++")
         run_until_halt(vm)
         assert vm.halted
         assert run_until_halt_or_cycle(vm) is True
@@ -33,13 +34,13 @@ class TestTheDetectorsTakeAVM:
 
     def test_the_growth_detector_takes_a_vm(self) -> None:
         """``+[>]`` walks off onto a zero; ``+[>+]`` grows a cell a lap."""
-        assert run_until_halt_or_growth(make_vm("brainfuck", "+[>]")) is True
-        assert run_until_halt_or_growth(make_vm("brainfuck", "+[>+]")) is False
+        assert run_until_halt_or_growth(make_vm(REFERENCE, "+[>]")) is True
+        assert run_until_halt_or_growth(make_vm(REFERENCE, "+[>+]")) is False
 
     def test_the_value_growth_detector_refuses_a_bounded_language(self) -> None:
         """Brainfuck's cells wrap, so a climb there is a cycle, not a proof."""
         with pytest.raises(TypeError, match="affine machine"):
-            run_until_halt_or_value_growth(make_vm("brainfuck", "+[>+]"))
+            run_until_halt_or_value_growth(make_vm(REFERENCE, "+[>+]"))
 
     def test_an_object_that_is_neither_raises_type_error(self) -> None:
         """The unwrap looks one level deep, and no further."""

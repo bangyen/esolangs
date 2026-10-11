@@ -10,6 +10,7 @@ import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
 from tests.api.test_dialects import Unreadable
+from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
 from tests.vm.test_debug import _step_to_halt
 from tests.vm.test_vm_protocol import assert_one_row_moves_along_it
@@ -113,10 +114,10 @@ def test_short_settings_and_portable_flags(capsys, tmp_path):
     assert json.loads(output)["language"] == "Alight"
     path = tmp_path / "program.json"
     path.write_text(output, encoding="utf-8")
-    output, error = call_both(["generate", "-p", "brainfuck", "0110"], capsys)
+    output, error = call_both(["generate", "-p", REFERENCE, "0110"], capsys)
     assert error == ""
     path.write_text(output, encoding="utf-8")
-    stdin = esolangs.encode_inputs("brainfuck", [1, 0], truth_table="0110")
+    stdin = esolangs.encode_inputs(REFERENCE, [1, 0], truth_table="0110")
     output, error = call_both(["run", "-p", str(path)], capsys, stdin)
     assert output.strip() == "1"
     assert error == ""
@@ -127,8 +128,8 @@ class TestBreakAtChecksTheKindOfPosition:
 
     def test_a_tuple_is_refused_where_the_ip_is_an_index(self) -> None:
         """brainfuck's ip is an int."""
-        program = esolangs.generate("brainfuck", "0110")
-        debugger = debugger_api.make_debugger("brainfuck", program, stdin="0\n1\n")
+        program = esolangs.generate(REFERENCE, "0110")
+        debugger = debugger_api.make_debugger(REFERENCE, program, stdin="0\n1\n")
         # The message names the kind ("an index"), not the value at hand.
         with pytest.raises(esolangs.ArgumentError, match=r"is an index.*never fire"):
             debugger.break_at((1, 2))
@@ -142,8 +143,8 @@ class TestBreakAtChecksTheKindOfPosition:
 
     def test_the_right_kind_is_accepted(self) -> None:
         """And still fires, which is the point of checking the other."""
-        program = esolangs.generate("brainfuck", "0110")
-        debugger = debugger_api.make_debugger("brainfuck", program, stdin="0\n1\n")
+        program = esolangs.generate(REFERENCE, "0110")
+        debugger = debugger_api.make_debugger(REFERENCE, program, stdin="0\n1\n")
         debugger.break_at(0)
         assert debugger.run(max_steps=100) == "breakpoint"
 

@@ -10,6 +10,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs._evaluate import _evaluate
 from tests.cli.test_cli import call_main
+from tests.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 from tests.vm.test_stepping_parity import _STEP_BUDGET, _row
 
@@ -52,9 +53,9 @@ class TestStdinCannotHangTheCommandForever:
     def test_a_timeout_bounds_the_read(self, tmp_path: Path) -> None:
         """It bounded execution only, and the block happens before that."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
+        path.write_text(esolangs.generate(REFERENCE, "0110"))
         code, err = self._run_with_open_stdin(
-            ["run", "--timeout", "2", "brainfuck", str(path)], 20
+            ["run", "--timeout", "2", REFERENCE, str(path)], 20
         )
         assert code == 124
         assert "no input arrived on stdin" in err
@@ -94,13 +95,13 @@ def test_execution_does_not_require_examples_or_docstrings(monkeypatch) -> None:
     def refuse_documentation(_language):
         raise AssertionError("execution requested documentation")
 
-    program = esolangs.generate("brainfuck", "0110")
+    program = esolangs.generate(REFERENCE, "0110")
     monkeypatch.setattr(_describe, "_spec", refuse_documentation)
     monkeypatch.setattr(examples, "BOOLEAN_EXAMPLES", {})
-    assert esolangs.encode_inputs("brainfuck", [0, 1]) == "01"
-    _check_stdin("brainfuck", "01", "0110")
+    assert esolangs.encode_inputs(REFERENCE, [0, 1]) == "01"
+    _check_stdin(REFERENCE, "01", "0110")
     assert esolangs.read_answer("RAM0", "z: 1\nn: 0") == "1"
-    assert _evaluate("brainfuck", program, inputs=2) == "0110"
+    assert _evaluate(REFERENCE, program, inputs=2) == "0110"
 
 
 def test_the_debugger_mirrors_them_too() -> None:

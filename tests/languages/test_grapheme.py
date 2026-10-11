@@ -11,6 +11,7 @@ from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
 from tests.api.test_api_contracts import XOR
 from tests.cli.test_cli import call_main
+from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
 from tests.support.stdin_check import _check_stdin
 from tests.support.witness_tables import witnesses
@@ -157,8 +158,8 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
     ) -> None:
         """Doing it right must stay quiet, or the check is noise."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0101"))
-        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="01")
+        path.write_text(esolangs.generate(REFERENCE, "0101"))
+        out, err = call_both(["run", REFERENCE, str(path)], capsys, stdin="01")
         assert out.strip() == "1"
         assert err == ""
 
@@ -192,7 +193,7 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
 def test_grapheme_names_its_input_alphabet() -> None:
     """Digits are read as truthy, so 0/1 lines answer the wrong row."""
     assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
-    assert esolangs.describe("brainfuck")["input_encoding"] == ("0", "1")
+    assert esolangs.describe(REFERENCE)["input_encoding"] == ("0", "1")
 
 
 def test_the_named_alphabet_is_the_one_that_works() -> None:

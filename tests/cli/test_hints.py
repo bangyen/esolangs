@@ -9,7 +9,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.source_hints import keyword_hint
 from esolangs.raster import Raster
 from esolangs.vm import make_vm
-from tests.api.test_language_coupling import REFERENCE
+from tests.reference import REFERENCE
 
 
 @pytest.mark.medium
@@ -23,7 +23,7 @@ def test_vm_load_retains_the_delimiter_and_position():
 @pytest.mark.medium
 def test_isolated_error_keeps_the_hint():
     with pytest.raises(esolangs.ProgramError, match="unmatched") as caught:
-        esolangs.run("brainfuck", "[", isolated=True)
+        esolangs.run(REFERENCE, "[", isolated=True)
     assert caught.value.__notes__ == ["hint: close this '[' with ']'"]
 
 
@@ -57,7 +57,7 @@ def test_bad_png_hint_survives_exception_translation():
 @pytest.mark.medium
 def test_text_encoding_hint_is_available_before_interpreter_loading():
     with pytest.raises(esolangs.ProgramError, match="invalid UTF-8") as caught:
-        esolangs.run("brainfuck", b"\xff", timeout=1)
+        esolangs.run(REFERENCE, b"\xff", timeout=1)
     assert caught.value.__notes__ == [
         "hint: save the text program as UTF-8 before running it"
     ]
@@ -93,7 +93,7 @@ def test_truncated_png_header_has_a_recovery_hint():
 def test_input_exhaustion_keeps_counts_and_one_hint(isolated):
     with pytest.raises(esolangs.InputExhaustedError) as caught:
         # 10s: an isolated spawn under a loaded full run took over 2s.
-        esolangs.run("brainfuck", "+.,", timeout=10, isolated=isolated)
+        esolangs.run(REFERENCE, "+.,", timeout=10, isolated=isolated)
     assert caught.value.partial_output == "\x01"
     assert caught.value.reads == caught.value.supplied == 0
     hints = [note for note in caught.value.__notes__ if note.startswith("hint:")]
@@ -104,7 +104,7 @@ def test_input_exhaustion_keeps_counts_and_one_hint(isolated):
 @pytest.mark.medium
 def test_timeout_hint_preserves_the_timeout_class():
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run("brainfuck", "+[]", max_steps=3)
+        esolangs.run(REFERENCE, "+[]", max_steps=3)
     assert "check loop termination" in caught.value.__notes__[0]
     assert "before increasing" in caught.value.__notes__[0]
 
@@ -138,14 +138,14 @@ def test_missing_dependency_hint_names_the_environment(monkeypatch):
     [
         (
             "run_until_halt_or_cycle",
-            "brainfuck",
+            REFERENCE,
             "+[]",
             "undecided after 0 steps: neither halted nor repeated a state",
             "supported growth detector",
         ),
         (
             "run_until_halt_or_growth",
-            "brainfuck",
+            REFERENCE,
             "+[]",
             (
                 "undecided after 0 steps: neither halted nor grew "

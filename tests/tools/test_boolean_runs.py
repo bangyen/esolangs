@@ -6,6 +6,7 @@ import esolangs
 from esolangs.exceptions import TemplateError
 from esolangs.registry import recover_setters, render_template
 from esolangs.tools.helpers import runs
+from tests.reference import REFERENCE
 from tests.support.pick import languages
 from tests.support.witness_tables import row_bits
 
@@ -45,6 +46,6 @@ def test_the_template_is_every_programs_length(language: str, table: str) -> Non
 def test_a_language_that_reads_its_inputs_has_no_runs() -> None:
     """Rendering or recovering for a stdin language refuses, not asserts."""
     with pytest.raises(TemplateError, match="reads its inputs"):
-        render_template("brainfuck", "$", 1)
+        render_template(REFERENCE, "$", 1)
     with pytest.raises(TemplateError, match="reads its inputs"):
-        recover_setters("brainfuck", "$")
+        recover_setters(REFERENCE, "$")

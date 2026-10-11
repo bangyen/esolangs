@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 import esolangs
+from tests.reference import REFERENCE
 from tests.support.divergence import terminates
 from tests.support.pick import first, languages
 from tests.support.witness_tables import row_bits
@@ -98,6 +99,6 @@ class TestTheFactsThatMakeItPossible:
     def test_a_timeout_is_distinguishable_from_a_faulting_halt(self) -> None:
         """``except HaltError`` would score an invalid-op halt as a 1."""
         with pytest.raises(esolangs.ExecutionTimeoutError) as exc:
-            esolangs.run("brainfuck", "+[]", timeout=0.01)
+            esolangs.run(REFERENCE, "+[]", timeout=0.01)
         assert isinstance(exc.value, esolangs.HaltError)
         assert isinstance(exc.value, TimeoutError)

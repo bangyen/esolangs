@@ -9,6 +9,7 @@ from esolangs import vm
 from esolangs.exceptions import HaltError
 from esolangs.vm import make_vm
 from tests.cli.test_cli import call_main
+from tests.reference import REFERENCE
 from tests.support.cli_support import _failure, call_both
 from tests.vm.test_vm import assert_random_steps_reproduce
 
@@ -141,12 +142,12 @@ class TestOutputSurvivesAFailure:
             esolangs.run("nosuchlang", "+", stdin="")
         assert unknown.value.partial_output == ""
         with pytest.raises(esolangs.ProgramError) as bad:
-            esolangs.run("brainfuck", "[[[", stdin="")
+            esolangs.run(REFERENCE, "[[[", stdin="")
         assert bad.value.partial_output == ""
 
     def test_a_successful_run_is_unchanged(self) -> None:
         """The attribute is for failures; success returns as it always did."""
-        assert esolangs.run("brainfuck", "+++.", stdin="") == "\x03"
+        assert esolangs.run(REFERENCE, "+++.", stdin="") == "\x03"
 
     def test_the_cli_prints_it_before_the_error(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
@@ -176,9 +177,9 @@ class TestOutputSurvivesAFailure:
 @pytest.mark.parametrize(
     ("language", "source", "hint", "code", "output"),
     [
-        ("brainfuck", "[", "close this '[' with ']'", 2, ""),
+        (REFERENCE, "[", "close this '[' with ']'", 2, ""),
         ("Modulous", "[PSH INT 65][PRT][SWP]", "push two values before SWP", 1, "A\n"),
-        ("brainfuck", "+.,", "at least 1 input character", 1, "\x01\n"),
+        (REFERENCE, "+.,", "at least 1 input character", 1, "\x01\n"),
     ],
 )
 def test_isolated_cli_preserves_error_hint_and_partial_output(
@@ -196,11 +197,10 @@ def test_isolated_cli_preserves_error_hint_and_partial_output(
 
 @pytest.mark.medium
 def test_halt_and_cycle_verdicts_are_unchanged():
-    assert vm.run_until_halt_or_cycle(vm.make_vm("brainfuck", "+."), limit=10) is True
-    assert vm.run_until_halt_or_cycle(vm.make_vm("brainfuck", "+[]"), limit=10) is False
+    assert vm.run_until_halt_or_cycle(vm.make_vm(REFERENCE, "+."), limit=10) is True
+    assert vm.run_until_halt_or_cycle(vm.make_vm(REFERENCE, "+[]"), limit=10) is False
     assert (
-        vm.run_until_halt_or_growth(vm.make_vm("brainfuck", "+[>+]"), limit=100)
-        is False
+        vm.run_until_halt_or_growth(vm.make_vm(REFERENCE, "+[>+]"), limit=100) is False
     )
     assert (
         vm.run_until_halt_or_all_branches_cycle(vm.make_vm("Modulous", "[END]")) is True

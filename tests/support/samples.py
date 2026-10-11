@@ -12,6 +12,7 @@ from esolangs.tools.piet_plus_plus import piet_plus_plus as _pp_sample
 # importing the program from here would fail collection there before any
 # mutant ran.  Defined there, imported here.
 from tests.interpreters.test_inject import INJECT_TRUTH_MACHINE
+from tests.reference import REFERENCE
 
 # The wiki's street shape: a two-wide road with the instructions in the
 # southern lane, walled all round.  ``C`` starts the car, ``^`` increments
@@ -169,7 +170,7 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "Bitdeque": ("PUSH INVERT", ""),
     "Bitwise Cyclic Tag": ("1101000,101", ""),
     "BrainIf": ("if 0 output", ""),
-    "brainfuck": ("+++[>+++<-]>.", ""),
+    REFERENCE: ("+++[>+++<-]>.", ""),
     "Circlefuck": ("+.@", ""),
     "Circuit Diagram": (CIRCUIT_PRIME_TESTER, bits_of(7)),
     "Clockwise": ("+;S;S;S;S;S;+;R\nR             R", ""),

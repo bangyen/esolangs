@@ -13,6 +13,7 @@ from esolangs import _check_program
 from esolangs.exceptions import TemplateError
 from tests.api.test_api_contracts import PUBLIC_MEMBERS, ROOT, SIGNATURES, XOR
 from tests.cli.test_cli import call_main
+from tests.reference import REFERENCE
 from tests.support.cli_support import _failure, call_both
 
 
@@ -121,7 +122,7 @@ class TestCapabilityListing:
             (*re.split(r"\s{2,}", line.strip(), maxsplit=1), "")[:2]
             for line in call_main(["list", "--details"], capsys).splitlines()
         )
-        assert rows["brainfuck"] == "gen ex"
+        assert rows[REFERENCE] == "gen ex"
         assert rows["Minifuck"] == "gen tmpl ex"
 
     def test_the_plain_listing_is_unchanged(
@@ -129,7 +130,7 @@ class TestCapabilityListing:
     ) -> None:
         """Scripts parse it, so the default output stays bare names."""
         names = call_main(["list"], capsys).split()
-        assert "brainfuck" in names
+        assert REFERENCE in names
 
 
 class TestTemplatesAreReachableFromTheCli:
@@ -160,7 +161,7 @@ class TestTemplatesAreReachableFromTheCli:
 
     def test_bits_on_a_reader_says_so(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "--bits", "01", "brainfuck", "0110"], capsys)
+            call_main(["generate", "--bits", "01", REFERENCE, "0110"], capsys)
         assert exc.value.code == 2
         assert "reads its inputs" in capsys.readouterr().err
 
@@ -313,7 +314,7 @@ class TestPackageSurface:
         policy = usage[usage.index("## Compatibility") :]
         assert documented(policy.replace("exit statuses:", "exit codes:")) == raised
 
-    @pytest.mark.parametrize("language", ["Minifuck", "brainfuck"])
+    @pytest.mark.parametrize("language", ["Minifuck", REFERENCE])
     def test_check_runnable_refuses_a_non_source(self, language: str) -> None:
         """An int leaked a TypeError for a template language and passed elsewhere."""
         with pytest.raises(esolangs.ProgramError, match="string of source"):
@@ -334,7 +335,7 @@ class TestTheSignaturesAgreeWithThemselves:
     @pytest.mark.parametrize(
         "call",
         [
-            lambda bits: esolangs.encode_inputs("brainfuck", bits),
+            lambda bits: esolangs.encode_inputs(REFERENCE, bits),
             lambda bits: esolangs.instantiate(
                 "Minifuck", esolangs.generate("Minifuck", "0110"), bits
             ),
@@ -360,7 +361,7 @@ class TestWidthIsCheckedWhereverItIsTaken:
     @pytest.mark.parametrize("width", [0, "8", 2.5])
     def test_generate_still_refuses_them(self, width: object) -> None:
         with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.generate("brainfuck", "0110", width=width)  # type: ignore[arg-type]
+            esolangs.generate(REFERENCE, "0110", width=width)  # type: ignore[arg-type]
 
 
 class TestBitsAreBits:
@@ -370,7 +371,7 @@ class TestBitsAreBits:
     def test_both_encoders_refuse_the_same_bits(self, bits: object) -> None:
         """A dict was iterated as its *keys*, answering a different row."""
         with pytest.raises(esolangs.ArgumentError, match="bits"):
-            esolangs.encode_inputs("brainfuck", bits)  # type: ignore[arg-type]
+            esolangs.encode_inputs(REFERENCE, bits)  # type: ignore[arg-type]
         template = esolangs.generate("Minifuck", "0110")
         with pytest.raises(esolangs.ArgumentError, match="bits"):
             esolangs.instantiate("Minifuck", template, bits)  # type: ignore[arg-type]

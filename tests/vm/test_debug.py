@@ -5,23 +5,24 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.registry import LANGUAGES
+from tests.reference import REFERENCE
 from tests.support.pick import one
 
 
 class TestRun:
     def test_run_to_completion_matches_interpreter(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", "+++[>+++<-]>.")
+        dbg = debugger_api.make_debugger(REFERENCE, "+++[>+++<-]>.")
         dbg.run()
         assert dbg.halted
-        assert dbg.output == esolangs.run("brainfuck", "+++[>+++<-]>.")
+        assert dbg.output == esolangs.run(REFERENCE, "+++[>+++<-]>.")
 
     def test_max_steps_bounds_runaway(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", "+[]")
+        dbg = debugger_api.make_debugger(REFERENCE, "+[]")
         dbg.run(max_steps=10)
         assert not dbg.halted
 
     def test_step_guards_on_halt(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", "+")
+        dbg = debugger_api.make_debugger(REFERENCE, "+")
         dbg.run()
         dbg.step()  # must not raise
         assert dbg.halted
@@ -51,7 +52,7 @@ class TestABreakpointAtTheHaltIsReported:
     def test_an_output_watch_on_the_last_step_fires(self) -> None:
         """The case it was reported for, on the flagship language."""
         dbg = debugger_api.make_debugger(
-            "brainfuck", esolangs.generate("brainfuck", "0110"), stdin="10"
+            REFERENCE, esolangs.generate(REFERENCE, "0110"), stdin="10"
         )
         dbg.break_on_output("1")
         assert dbg.run(max_steps=100_000) == "breakpoint"

@@ -5,6 +5,7 @@ import pytest
 import esolangs
 from esolangs import vm
 from esolangs.interpreters.io import ScriptedIO
+from tests.reference import REFERENCE
 
 IGNORING = ["0101", "01100110", "0011", "00111100", "".join(c * 2 for c in "0110" * 8)]
 INFOS = {n: esolangs.describe(n) for n in esolangs.list_languages()}
@@ -36,7 +37,7 @@ GENERATED = [
 
 @pytest.mark.medium
 def test_the_audit_sees_unread_input(monkeypatch):
-    assert _audit("brainfuck", ",.", 2, monkeypatch) == (4, 4, 0)
+    assert _audit(REFERENCE, ",.", 2, monkeypatch) == (4, 4, 0)
 
 
 # One case per language and path: the whole sweep in one test overran its band.

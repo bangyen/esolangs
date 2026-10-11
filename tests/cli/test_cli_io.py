@@ -14,6 +14,7 @@ from esolangs.cli_io import (
     _bounded_read,
 )
 from tests.cli.test_cli import call_main, run_cli
+from tests.reference import REFERENCE
 from tests.support.cli_support import EXAMPLES
 from tests.support.pick import languages, one_where
 
@@ -61,7 +62,7 @@ class TestNonTextInputIsRefusedNotCrashed:
         """Reachable by a newcomer pointing `run` at the wrong file."""
         path = tmp_path / "binary.txt"
         path.write_bytes(bytes(range(256)))
-        result = run_cli("run", "brainfuck", str(path))
+        result = run_cli("run", REFERENCE, str(path))
         assert result.returncode == 2
         assert "not text" in result.stderr
         assert "Traceback" not in result.stderr
@@ -70,14 +71,14 @@ class TestNonTextInputIsRefusedNotCrashed:
         """The same reader serves both commands."""
         path = tmp_path / "binary.txt"
         path.write_bytes(bytes(range(256)))
-        result = run_cli("debug", "--steps", "5", "brainfuck", str(path))
+        result = run_cli("debug", "--steps", "5", REFERENCE, str(path))
         assert result.returncode == 2
         assert "not text" in result.stderr
 
     def test_binary_stdin_is_refused(self) -> None:
         """A program's binary output piped into `read-answer`."""
         result = subprocess.run(
-            [sys.executable, "-m", "esolangs", "read-answer", "brainfuck"],
+            [sys.executable, "-m", "esolangs", "read-answer", REFERENCE],
             input=b"\x80\x81",
             capture_output=True,
             timeout=60,
@@ -91,7 +92,7 @@ class TestNonTextInputIsRefusedNotCrashed:
         """The same pipe on a runner whose locale is ``C``."""
         env = {**os.environ, "PYTHONUTF8": "1"}
         result = subprocess.run(
-            [sys.executable, "-m", "esolangs", "read-answer", "brainfuck"],
+            [sys.executable, "-m", "esolangs", "read-answer", REFERENCE],
             input=b"\x80\x81",
             capture_output=True,
             timeout=60,
@@ -107,7 +108,7 @@ class TestNonTextInputIsRefusedNotCrashed:
         path = tmp_path / "binary.txt"
         path.write_bytes(bytes(range(256)))
         with pytest.raises(esolangs.ProgramError, match="not text"):
-            esolangs.run("brainfuck", path)
+            esolangs.run(REFERENCE, path)
 
 
 # 8.5s over 9 tests: drives the CLI as a subprocess.
@@ -117,7 +118,7 @@ class TestReadingTheProgramFileIsBounded:
 
     def test_a_character_device_is_refused_by_size(self) -> None:
         """`/dev/zero` reached 3.9 GB of resident memory and never returned."""
-        result = run_cli("run", "--timeout", "2", "brainfuck", "/dev/zero")
+        result = run_cli("run", "--timeout", "2", REFERENCE, "/dev/zero")
         assert result.returncode == 2
         assert "larger than" in result.stderr
 
@@ -128,15 +129,15 @@ class TestReadingTheProgramFileIsBounded:
 
         fifo = tmp_path / "fifo"
         os.mkfifo(fifo)
-        result = run_cli("run", "--timeout", "2", "brainfuck", str(fifo))
+        result = run_cli("run", "--timeout", "2", REFERENCE, str(fifo))
         assert result.returncode == 124
         assert "not delivering data" in result.stderr
 
     def test_an_ordinary_program_still_reads(self, tmp_path: Path) -> None:
         """The guard is worth nothing if it costs the normal path."""
         path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        result = run_cli("run", "brainfuck", str(path), stdin="10")
+        path.write_text(esolangs.generate(REFERENCE, "0110"))
+        result = run_cli("run", REFERENCE, str(path), stdin="10")
         assert result.returncode == 0
         assert result.stdout.strip() == "1"
 
@@ -194,7 +195,7 @@ class TestAClosedPipeIsNotAnError:
         import subprocess
 
         first = subprocess.Popen(
-            [sys.executable, "-m", "esolangs", "generate", "brainfuck", "0110"],
+            [sys.executable, "-m", "esolangs", "generate", REFERENCE, "0110"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -248,7 +249,7 @@ def test_run_flag_filename_after_separator(
     """A positional filename must survive every option parser."""
     monkeypatch.chdir(tmp_path)
     Path(filename).write_text("+.")
-    assert call_main(["run", "brainfuck", "--", filename], capsys) == "\x01"
+    assert call_main(["run", REFERENCE, "--", filename], capsys) == "\x01"
 
 
 def test_debug_tui_filename_after_separator(
@@ -259,7 +260,7 @@ def test_debug_tui_filename_after_separator(
     """The debugger's bare flag is positional after the separator."""
     monkeypatch.chdir(tmp_path)
     Path("--tui").write_text("+.")
-    assert "\\x01" in call_main(["debug", "brainfuck", "--", "--tui"], capsys)
+    assert "\\x01" in call_main(["debug", REFERENCE, "--", "--tui"], capsys)
 
 
 @pytest.mark.parametrize(

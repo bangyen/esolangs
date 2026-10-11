@@ -11,6 +11,7 @@ from esolangs._execution import interpreter_module
 from esolangs.cli import HELP
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
 from tests.cli.test_cli import call_main
+from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
 from tests.support.generator_support import evaluate_generated, overruns
 from tests.vm.test_vm import _run_all, assert_random_steps_reproduce
@@ -104,7 +105,7 @@ class TestASeedMakesARunRepeat:
     def test_a_seed_for_a_language_that_draws_nothing_is_refused(self) -> None:
         """Ignoring it would be right by accident and hide the likelier fault."""
         with pytest.raises(esolangs.ArgumentError, match="draws no random values"):
-            esolangs.run("brainfuck", "+++.", stdin="", timeout=5, seed=1)
+            esolangs.run(REFERENCE, "+++.", stdin="", timeout=5, seed=1)
 
     @pytest.mark.parametrize("seed", ["x", "\ud800", 1.5, True, object()])
     def test_a_seed_that_is_not_an_integer_is_an_argument_error(
@@ -123,7 +124,7 @@ class TestASeedMakesARunRepeat:
         ]
         assert drawing
         with pytest.raises(esolangs.ArgumentError) as caught:
-            esolangs.run("brainfuck", "+++.", stdin="", timeout=5, seed=1)
+            esolangs.run(REFERENCE, "+++.", stdin="", timeout=5, seed=1)
         seed_help = " ".join(HELP["run"].split("\n  --seed N", 1)[1].split())
         for name in drawing:
             assert name in str(caught.value)

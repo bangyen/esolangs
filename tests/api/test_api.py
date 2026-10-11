@@ -12,6 +12,7 @@ from esolangs.exceptions import EsolangError, UnknownLanguageError
 from esolangs.interpreters.source_hints import error_text
 from esolangs.registry import LANGUAGES
 from esolangs.vm import machine_traits
+from tests.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 
 
@@ -62,7 +63,7 @@ def test_deliberate_error_keeps_partial_output(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr(esolangs, "_run", stop)
     with pytest.raises(EsolangError) as caught:
-        esolangs.run("brainfuck", "+")
+        esolangs.run(REFERENCE, "+")
     assert caught.value is error
     assert caught.value.partial_output == "before"
     assert caught.value.__notes__ == ["the program printed 'before' before this"]
@@ -73,13 +74,13 @@ def test_run_timeout_halts_runaway_program() -> None:
     from esolangs.exceptions import HaltError
 
     with pytest.raises(HaltError, match="timeout"):
-        esolangs.run("brainfuck", "+[]", timeout=0.1)
+        esolangs.run(REFERENCE, "+[]", timeout=0.1)
 
 
 def test_run_timeout_halts_a_growing_program() -> None:
     """The signal interrupts a loop whose state never repeats."""
     with pytest.raises(esolangs.ExecutionTimeoutError, match="timeout"):
-        esolangs.run("brainfuck", "+[>+]", timeout=0.01)
+        esolangs.run(REFERENCE, "+[>+]", timeout=0.01)
 
 
 def test_run_timeout_requires_main_thread() -> None:
@@ -90,7 +91,7 @@ def test_run_timeout_requires_main_thread() -> None:
 
     def runner() -> None:
         try:
-            esolangs.run("brainfuck", "+", timeout=1)
+            esolangs.run(REFERENCE, "+", timeout=1)
         except BaseException as exc:
             out[0] = exc
 
@@ -102,8 +103,8 @@ def test_run_timeout_requires_main_thread() -> None:
 
 
 def test_describe_structured_summary() -> None:
-    info = esolangs.describe("brainfuck")
-    assert info["name"] == "brainfuck"
+    info = esolangs.describe(REFERENCE)
+    assert info["name"] == REFERENCE
     assert info["state_model"] == "tape"
     assert info["shape"] == "tree"
     assert info["boolean_generator"] is True
@@ -134,21 +135,21 @@ def test_shape_is_the_generator_axis() -> None:
 @pytest.mark.parametrize("table", ["", "0120", "010", "1"])
 def test_truth_table_hint(table: str) -> None:
     with pytest.raises(esolangs.TruthTableError) as caught:
-        esolangs.generate("brainfuck", table)
+        esolangs.generate(REFERENCE, table)
     assert caught.value.__notes__[0].startswith("hint:")
     assert error_text(caught.value).startswith(str(caught.value) + "\nhint:")
 
 
 @pytest.mark.parametrize("table", ["00", "11"])
 def test_truth_table_examples_execute(table: str) -> None:
-    program = esolangs.generate("brainfuck", table)
+    program = esolangs.generate(REFERENCE, table)
     inputs = len(table).bit_length() - 1
     for row, expected in enumerate(table):
         bits = [(row >> shift) & 1 for shift in reversed(range(inputs))]
         output = esolangs.run(
-            "brainfuck", program, stdin=esolangs.encode_inputs("brainfuck", bits)
+            REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, bits)
         )
-        assert esolangs.read_answer("brainfuck", output) == expected
+        assert esolangs.read_answer(REFERENCE, output) == expected
 
 
 def test_option_hints_preserve_messages() -> None:
@@ -173,8 +174,8 @@ def test_option_hints_preserve_messages() -> None:
 def test_debugger_exports_are_available():
     for name in debugger.__all__:
         assert hasattr(debugger, name)
-    assert debugger.make_vm("brainfuck", "+.").ip == 0
-    assert debugger.make_debugger("brainfuck", "+.").run() == "halted"
+    assert debugger.make_vm(REFERENCE, "+.").ip == 0
+    assert debugger.make_debugger(REFERENCE, "+.").run() == "halted"
 
 
 @pytest.mark.medium  # spawns a worker, like test_run_isolated
@@ -182,7 +183,7 @@ def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path):
     path = tmp_path / "program.bf"
     path.write_text("++.")
     with ThreadPoolExecutor(max_workers=1) as pool:
-        result = pool.submit(esolangs.run, "brainfuck", path, isolated=True)
+        result = pool.submit(esolangs.run, REFERENCE, path, isolated=True)
         assert result.result(timeout=5) == "\x02"
 
 
@@ -195,7 +196,7 @@ def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path):
 )
 def test_unsupported_execution_options_are_refused(options):
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run("brainfuck", "+.", **options)
+        esolangs.run(REFERENCE, "+.", **options)
 
 
 def test_isolated_seed_is_forwarded(monkeypatch):
@@ -206,31 +207,31 @@ def test_isolated_seed_is_forwarded(monkeypatch):
         return "result"
 
     monkeypatch.setattr(esolangs, "_run_isolated", execute)
-    assert esolangs.run("brainfuck", "+.", isolated=True, seed=7) == "result"
-    assert seen == [("brainfuck", "+.", "", 30.0, 7)]
+    assert esolangs.run(REFERENCE, "+.", isolated=True, seed=7) == "result"
+    assert seen == [(REFERENCE, "+.", "", 30.0, 7)]
 
 
 def test_runnable_guard_refuses_non_source_values():
     from esolangs import _check_runnable
 
     with pytest.raises(esolangs.ProgramError, match="got int"):
-        _check_runnable("brainfuck", 7)
+        _check_runnable(REFERENCE, 7)
 
 
 def test_default_answer_contract_reads_the_final_bit():
-    assert esolangs.read_answer("brainfuck", "answer: 1\n") == "1"
+    assert esolangs.read_answer(REFERENCE, "answer: 1\n") == "1"
 
 
 def test_isolated_worker_requires_a_deadline():
     from esolangs import _isolated
 
     with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
-        _isolated.run_isolated("brainfuck", "+.", timeout=None)
+        _isolated.run_isolated(REFERENCE, "+.", timeout=None)
 
 
 def test_bound_language_runs_a_boolean_workflow():
     language = esolangs.Language(" BRAINFUCK ")
-    assert language.name == "brainfuck"
+    assert language.name == REFERENCE
     assert language.describe()["name"] == language.name
     program = language.generate("0110", balance=True)
     stdin = language.encode_inputs([0, 1], truth_table="0110")
@@ -242,7 +243,7 @@ def test_bound_language_runs_a_boolean_workflow():
 
 @pytest.mark.medium
 def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path):
-    language = esolangs.Language("brainfuck")
+    language = esolangs.Language(REFERENCE)
     path = tmp_path / "program.bf"
     path.write_text("++.")
     with ThreadPoolExecutor(max_workers=1) as pool:
@@ -256,7 +257,7 @@ def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path):
 
 
 def test_bound_execution_keeps_partial_output_on_step_exhaustion():
-    language = esolangs.Language("brainfuck")
+    language = esolangs.Language(REFERENCE)
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         language.run("+.[]", max_steps=10, timeout=1)
     assert caught.value.partial_output == "\x01"

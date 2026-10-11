@@ -2,6 +2,7 @@
 
 import esolangs
 import esolangs.debugger as debugger_api
+from tests.reference import REFERENCE
 from tests.support.samples import SAMPLES
 
 
@@ -60,7 +61,7 @@ class TestARunFinishesTheDump:
 
     def test_an_ordinary_language_takes_no_extra_step(self) -> None:
         """The step is a no-op elsewhere, but it would land in every watch."""
-        debugger = debugger_api.make_debugger("brainfuck", "+++.", stdin="")
+        debugger = debugger_api.make_debugger(REFERENCE, "+++.", stdin="")
         history = debugger.watch_cell(0)
         debugger.run(timeout=10)
         assert len(history) == 4  # three increments and the print, no more

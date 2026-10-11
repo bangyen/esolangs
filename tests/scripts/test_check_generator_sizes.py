@@ -17,9 +17,10 @@ from checks.check_generator_sizes import (
     differences,
 )
 from scripts import benchmark as b
+from tests.reference import REFERENCE
 
 RECORD = {
-    "language": "brainfuck",
+    "language": REFERENCE,
     "truth_table": TABLES[0],
     "source_units": 205,
     "commands": 179,
@@ -36,7 +37,7 @@ class TestProjection:
     """A sweep is reduced to exactly the fields that repeat run to run."""
 
     def test_timings_are_dropped(self) -> None:
-        rows = _measured()["records"]["brainfuck"][TABLES[0]]
+        rows = _measured()["records"][REFERENCE][TABLES[0]]
         assert rows == {"source_units": 205, "commands": 179}
 
     def test_the_header_carries_the_corpus(self) -> None:
@@ -113,7 +114,7 @@ def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:
 
     from checks import check_generator_sizes as sizes
 
-    monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: ["brainfuck"])
+    monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: [REFERENCE])
     monkeypatch.setattr(sizes, "BOUNDARIES", {})
     for matches in (False, None):
         monkeypatch.setattr(
@@ -155,10 +156,10 @@ def test_boundary_rows_are_pinned_and_corpus_drift_fails():
 def test_sweep_checks_and_pins_every_small_table_row(monkeypatch):
     from checks import check_generator_sizes as sizes
 
-    monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: ["brainfuck"])
+    monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: [REFERENCE])
     monkeypatch.setattr(sizes, "BOUNDARIES", {})
     records = sizes.sweep()
-    pinned = sizes.baseline(records)["records"]["brainfuck"]
+    pinned = sizes.baseline(records)["records"][REFERENCE]
     assert len(records) == 8
     for record in records:
         table = record["truth_table"]

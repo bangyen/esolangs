@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES
-from tests.api.test_language_coupling import REFERENCE
+from tests.reference import REFERENCE
 from tests.support.pick import first, languages, one, one_where
 from tests.support.stdin_check import _check_stdin
 

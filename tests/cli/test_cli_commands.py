@@ -8,6 +8,7 @@ import pytest
 
 import esolangs
 from tests.cli.test_cli import _program, call_main
+from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
 from tests.support.generator_support import evaluate_generated
 from tests.support.pick import languages
@@ -26,14 +27,14 @@ class TestJsonOutput:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Not "close to" -- the same keys and the same values."""
-        out, _err = call_both(["describe", "--json", "brainfuck"], capsys)
-        assert json.loads(out) == json.loads(json.dumps(esolangs.describe("brainfuck")))
+        out, _err = call_both(["describe", "--json", REFERENCE], capsys)
+        assert json.loads(out) == json.loads(json.dumps(esolangs.describe(REFERENCE)))
 
     def test_describe_json_keeps_what_the_layout_drops(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The empty and the paired fields, which the columns cannot carry."""
-        payload = json.loads(call_both(["describe", "--json", "brainfuck"], capsys)[0])
+        payload = json.loads(call_both(["describe", "--json", REFERENCE], capsys)[0])
         assert payload["answer_pattern"] is None  # dropped by the reading layout
         assert payload["answer_convention"] is None  # dropped as well
         assert payload["input_encoding"] == ["0", "1"]  # not the string "0 1"
@@ -95,7 +96,7 @@ class TestJsonOutput:
         with pytest.raises(SystemExit):
             call_main(["list", "--json", "extra"], capsys)
         with pytest.raises(SystemExit):
-            call_main(["describe", "--json", "brainfuck", "extra"], capsys)
+            call_main(["describe", "--json", REFERENCE, "extra"], capsys)
 
 
 class TestDebugMakesTheSameRefusals:
@@ -110,7 +111,7 @@ class TestDebugMakesTheSameRefusals:
             raise RuntimeError("planted")
 
         with patch("esolangs.cli.describe", boom), pytest.raises(SystemExit) as exc:
-            call_main(["describe", "brainfuck"], capsys)
+            call_main(["describe", REFERENCE], capsys)
         assert exc.value.code == 70
         err = capsys.readouterr().err
         assert "internal error: RuntimeError: planted" in err
@@ -136,7 +137,7 @@ class TestTheWidthFlagDoesNotEatTheTable:
 
     def test_a_real_width_still_works(self, capsys: pytest.CaptureFixture[str]) -> None:
         """The hint must not fire where the width is a width."""
-        out = call_main(["generate", "--width", "20", "brainfuck", "0110"], capsys)
+        out = call_main(["generate", "--width", "20", REFERENCE, "0110"], capsys)
         assert out.strip()
 
 
@@ -147,11 +148,11 @@ class TestDebugReportsALoadFailure:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`run` has refused this for rounds; `debug` shares the check."""
-        example = esolangs.describe("brainfuck")["examples"][0]  # type: ignore[index]
+        example = esolangs.describe(REFERENCE)["examples"][0]  # type: ignore[index]
         path = tmp_path / "p.txt"
         path.write_text(str(example))
         with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "brainfuck", str(path)], capsys, stdin="1\n0\n")
+            call_main(["debug", REFERENCE, str(path)], capsys, stdin="1\n0\n")
         assert exc.value.code == 2
         assert "looks like a path" in capsys.readouterr().err
 
@@ -167,13 +168,13 @@ def test_run_reports_an_interpreter_warning_once(
 
     monkeypatch.setattr("esolangs.cli_run.run", run)
     out, err = call_both(
-        ["run", "--timeout", "1", "brainfuck", _program(tmp_path, ".")], capsys
+        ["run", "--timeout", "1", REFERENCE, _program(tmp_path, ".")], capsys
     )
     assert out == "result"
     assert err.count("interpreter notice") == 1
 
 
-def _portable(tmp_path, language="brainfuck", table="0110", settings=None):
+def _portable(tmp_path, language=REFERENCE, table="0110", settings=None):
     program = esolangs.generate(language, table, settings=settings)
     path = tmp_path / "program.json"
     path.write_text(
@@ -185,7 +186,7 @@ def _portable(tmp_path, language="brainfuck", table="0110", settings=None):
 @pytest.mark.parametrize("command", ["run", "debug"])
 def test_portable_language_can_be_omitted(command, capsys, tmp_path):
     path = _portable(tmp_path)
-    stdin = esolangs.encode_inputs("brainfuck", [1, 0], truth_table="0110")
+    stdin = esolangs.encode_inputs(REFERENCE, [1, 0], truth_table="0110")
     if command == "run":
         args = ["run", "--portable", str(path)]
         expected = "1"

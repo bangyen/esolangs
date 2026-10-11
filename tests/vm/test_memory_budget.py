@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs import _isolated
 from esolangs._isolated import _decode, _worker
+from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
 
 _LINUX = sys.platform == "linux"
@@ -20,7 +21,7 @@ def test_cli_budget_runs(tmp_path, capsys) -> None:
     path = tmp_path / "source.bf"
     path.write_text("+.")
     output, _ = call_both(
-        ["run", "--isolated", "--max-memory", str(_BUDGET), "brainfuck", str(path)],
+        ["run", "--isolated", "--max-memory", str(_BUDGET), REFERENCE, str(path)],
         capsys,
     )
     assert output == "\x01"
@@ -45,7 +46,7 @@ def test_cli_invalid_budget_precedes_path_reads(capsys) -> None:
     options = ["--isolated"]
     with pytest.raises(SystemExit, match=r"^2$"):
         call_both(
-            [command, *options, "--max-memory", "0", "brainfuck", "missing"], capsys
+            [command, *options, "--max-memory", "0", REFERENCE, "missing"], capsys
         )
     assert "cannot read" not in capsys.readouterr().err
 
@@ -123,7 +124,7 @@ def test_successful_worker_budget_retains_output_protocol(monkeypatch, capsys) -
     request = {
         "program": "+.",
         "raster": False,
-        "language": "brainfuck",
+        "language": REFERENCE,
         "stdin": "",
         "seed": None,
         "max_memory": _BUDGET,

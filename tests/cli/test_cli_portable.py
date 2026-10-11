@@ -11,6 +11,7 @@ from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
 from esolangs.tagged import _Tagged
 from tests.api.test_dialects import CASES
+from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
 
 
@@ -116,7 +117,7 @@ def test_portable_isolated_cli(tmp_path, capsys, language):
     ],
 )
 def test_invalid_overrides_fail_before_stdin(tmp_path, capsys, command, choices):
-    source = _Tagged("+.", "brainfuck", DialectSettings())
+    source = _Tagged("+.", REFERENCE, DialectSettings())
     path = tmp_path / "program.json"
     path.write_text(esolangs.dump_program("Brainfuck", source), encoding="utf-8")
     with (
@@ -187,11 +188,11 @@ def test_unknown_portable_language_fails_before_file_read(command, capsys):
 @pytest.mark.parametrize("command", ["run", "debug"])
 @pytest.mark.parametrize("explicit", [False, True])
 def test_portable_source_acquired_once(command, explicit, capsys):
-    payload = esolangs.dump_program("brainfuck", "+.").encode()
+    payload = esolangs.dump_program(REFERENCE, "+.").encode()
     with patch("esolangs.cli_io._bounded_read", side_effect=[payload]) as read:
         args = [command, "--portable", "--timeout", "0.5"]
         if explicit:
-            args.append("brainfuck")
+            args.append(REFERENCE)
         output, error = call_both([*args, "one-shot.json"], capsys)
     read.assert_called_once_with("one-shot.json", 0.5)
     assert error == ""

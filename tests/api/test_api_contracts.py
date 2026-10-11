@@ -24,7 +24,7 @@ from esolangs.exceptions import (
 )
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import takes_width
-from tests.api.test_language_coupling import REFERENCE
+from tests.reference import REFERENCE
 from tests.support.generator_support import CHECK, evaluate_generated
 from tests.support.pick import languages
 
@@ -52,7 +52,7 @@ class TestParameterizedTemplates:
 
     def test_a_reader_has_nothing_to_instantiate(self) -> None:
         with pytest.raises(TemplateError, match="reads its inputs"):
-            esolangs.instantiate("brainfuck", esolangs.generate("brainfuck", XOR), [0])
+            esolangs.instantiate(REFERENCE, esolangs.generate(REFERENCE, XOR), [0])
 
 
 class TestErrorsAreCatchable:
@@ -61,13 +61,13 @@ class TestErrorsAreCatchable:
     @pytest.mark.parametrize(
         ("call", "expected"),
         [
-            (lambda: esolangs.run("brainfuck", ",.", stdin=""), InputExhaustedError),
-            (lambda: esolangs.generate("brainfuck", "0121"), TruthTableError),
-            (lambda: esolangs.run("brainfuck", 42), ProgramError),
+            (lambda: esolangs.run(REFERENCE, ",.", stdin=""), InputExhaustedError),
+            (lambda: esolangs.generate(REFERENCE, "0121"), TruthTableError),
+            (lambda: esolangs.run(REFERENCE, 42), ProgramError),
             # A bad stdin is an ArgumentError, not a ProgramError: the stdin
             # is not the program.  Either way it is an EsolangError, which is
             # what this class is about.
-            (lambda: esolangs.run("brainfuck", ",.", stdin=["0"]), ArgumentError),
+            (lambda: esolangs.run(REFERENCE, ",.", stdin=["0"]), ArgumentError),
             (lambda: esolangs.run("zzzz", "+"), UnknownLanguageError),
         ],
     )
@@ -80,12 +80,12 @@ class TestErrorsAreCatchable:
     def test_exhausted_input_says_how_much_there_was(self) -> None:
         """A bare ``EOFError()`` reached the caller as the empty string."""
         with pytest.raises(InputExhaustedError, match="1 character supplied"):
-            esolangs.run("brainfuck", ",,.", stdin="0")
+            esolangs.run(REFERENCE, ",,.", stdin="0")
 
     def test_it_is_still_an_eoferror(self) -> None:
         """The repo-wide convention every interpreter documents is unchanged."""
         with pytest.raises(EOFError):
-            esolangs.run("brainfuck", ",.", stdin="")
+            esolangs.run(REFERENCE, ",.", stdin="")
 
 
 class TestDebuggerResume:
@@ -93,7 +93,7 @@ class TestDebuggerResume:
 
     def _debugger(self) -> debugger_api.Debugger:
         return debugger_api.make_debugger(
-            "brainfuck", esolangs.generate("brainfuck", XOR), stdin="10"
+            REFERENCE, esolangs.generate(REFERENCE, XOR), stdin="10"
         )
 
     def test_output_breakpoint_does_not_deadlock(self) -> None:
@@ -105,20 +105,20 @@ class TestDebuggerResume:
         assert dbg.halted
 
     def test_the_stop_reason_separates_all_three(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", "++>+<.", stdin="")
+        dbg = debugger_api.make_debugger(REFERENCE, "++>+<.", stdin="")
         assert dbg.run(max_steps=2) == "max_steps"
         assert dbg.run() == "halted"
 
     def test_a_position_breakpoint_still_fires_before_its_step(self) -> None:
         """The documented contract: ``break_at`` does not execute that ip."""
-        dbg = debugger_api.make_debugger("brainfuck", "++>+<.", stdin="")
+        dbg = debugger_api.make_debugger(REFERENCE, "++>+<.", stdin="")
         dbg.break_at(0)
         assert dbg.run() == "breakpoint"
         assert dbg.ip == 0
         assert dbg.output == ""
 
     def test_clear_breakpoints_releases_the_run(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", "++>+<.", stdin="")
+        dbg = debugger_api.make_debugger(REFERENCE, "++>+<.", stdin="")
         dbg.break_at(0)
         dbg.run()
         dbg.clear_breakpoints()
@@ -126,7 +126,7 @@ class TestDebuggerResume:
 
     def test_timeout_bounds_an_unbounded_run(self) -> None:
         """``run()`` with no budget hangs on a program that never halts."""
-        dbg = debugger_api.make_debugger("brainfuck", "+[]", stdin="")
+        dbg = debugger_api.make_debugger(REFERENCE, "+[]", stdin="")
         assert dbg.run(timeout=0.01) == "timeout"
         assert not dbg.halted
 
@@ -267,7 +267,7 @@ class TestConventionsAreDiscoverable:
         assert esolangs.describe(name)["answer_convention"]
 
     def test_a_plain_printer_needs_no_note(self) -> None:
-        assert esolangs.describe("brainfuck")["answer_convention"] is None
+        assert esolangs.describe(REFERENCE)["answer_convention"] is None
 
 
 class TestEveryDeliberateErrorIsCatchable:
@@ -314,11 +314,11 @@ class TestAMissingFileIsAFileNotFoundError:
         """Ours for callers who catch ours, the stdlib's for the rest."""
         missing = tmp_path / "absent.bf"
         with pytest.raises(FileNotFoundError):
-            esolangs.run("brainfuck", missing, stdin="", timeout=5)
+            esolangs.run(REFERENCE, missing, stdin="", timeout=5)
         with pytest.raises(esolangs.EsolangError):
-            esolangs.run("brainfuck", missing, stdin="", timeout=5)
+            esolangs.run(REFERENCE, missing, stdin="", timeout=5)
         with pytest.raises(esolangs.ProgramError):
-            esolangs.run("brainfuck", missing, stdin="", timeout=5)
+            esolangs.run(REFERENCE, missing, stdin="", timeout=5)
 
     def test_an_unreadable_file_is_still_a_plain_program_error(
         self, tmp_path: Path
@@ -327,7 +327,7 @@ class TestAMissingFileIsAFileNotFoundError:
         blocked = tmp_path / "blocked.bf"
         blocked.write_bytes(b"\xff\xfe\x00")
         with pytest.raises(esolangs.ProgramError) as caught:
-            esolangs.run("brainfuck", blocked, stdin="", timeout=5)
+            esolangs.run(REFERENCE, blocked, stdin="", timeout=5)
         assert not isinstance(caught.value, FileNotFoundError)
 
     def test_a_directory_is_an_os_error_not_a_decode_error(
@@ -335,7 +335,7 @@ class TestAMissingFileIsAFileNotFoundError:
     ) -> None:
         """The third clause: an ``OSError`` that is not ``FileNotFoundError``."""
         with pytest.raises(esolangs.ProgramError) as caught:
-            esolangs.run("brainfuck", tmp_path, stdin="", timeout=5)
+            esolangs.run(REFERENCE, tmp_path, stdin="", timeout=5)
         assert not isinstance(caught.value, FileNotFoundError)
         assert "cannot read" in str(caught.value)
 
@@ -347,7 +347,7 @@ class TestAMissingFileIsAFileNotFoundError:
                 return 5
 
         with pytest.raises(esolangs.ProgramError) as caught:
-            _check_program("brainfuck", Bad())
+            _check_program(REFERENCE, Bad())
         assert "cannot read" in str(caught.value)
 
 
@@ -364,7 +364,7 @@ class TestAMistypedPathIsNotRunAsAProgram:
         """Existence is exactly what it must not depend on."""
         assert not pathlib.Path(argument).exists()
         with pytest.raises(esolangs.ProgramError, match="looks like a path"):
-            esolangs.run("brainfuck", argument, stdin="", timeout=5)
+            esolangs.run(REFERENCE, argument, stdin="", timeout=5)
 
     def test_a_path_that_does_exist_is_still_refused(
         self, tmp_path: pathlib.Path
@@ -373,22 +373,22 @@ class TestAMistypedPathIsNotRunAsAProgram:
         path = tmp_path / "p.txt"
         path.write_text("+++.")
         with pytest.raises(esolangs.ProgramError, match="looks like a path"):
-            esolangs.run("brainfuck", str(path), stdin="", timeout=5)
+            esolangs.run(REFERENCE, str(path), stdin="", timeout=5)
 
     def test_every_entry_point_agrees(self) -> None:
         """All four take a program, so all four have to refuse the same thing."""
         for call in (
-            lambda: esolangs.run("brainfuck", "nope.txt", stdin="", timeout=5),
-            lambda: _check_program("brainfuck", "nope.txt", ""),
-            lambda: debugger_api.make_vm("brainfuck", "nope.txt", stdin=""),
-            lambda: debugger_api.make_debugger("brainfuck", "nope.txt", stdin=""),
+            lambda: esolangs.run(REFERENCE, "nope.txt", stdin="", timeout=5),
+            lambda: _check_program(REFERENCE, "nope.txt", ""),
+            lambda: debugger_api.make_vm(REFERENCE, "nope.txt", stdin=""),
+            lambda: debugger_api.make_debugger(REFERENCE, "nope.txt", stdin=""),
         ):
             with pytest.raises(esolangs.ProgramError, match="looks like a path"):
                 call()
 
     def test_a_real_program_is_untouched(self) -> None:
         """A guard that refuses real programs is worse than the bug."""
-        assert esolangs.run("brainfuck", "+++.", stdin="", timeout=5) == "\x03"
+        assert esolangs.run(REFERENCE, "+++.", stdin="", timeout=5) == "\x03"
 
     def test_no_committed_example_looks_like_a_path(self) -> None:
         """The claim the widened rule rests on, checked rather than asserted."""
@@ -402,9 +402,9 @@ class TestAMistypedPathIsNotRunAsAProgram:
         """A Path was always correct, and stays the way to say "this file"."""
         path = tmp_path / "p.txt"
         path.write_text("+++.")
-        assert esolangs.run("brainfuck", path, stdin="", timeout=5) == "\x03"
+        assert esolangs.run(REFERENCE, path, stdin="", timeout=5) == "\x03"
         with pytest.raises(FileNotFoundError):
-            esolangs.run("brainfuck", tmp_path / "absent.txt", stdin="", timeout=5)
+            esolangs.run(REFERENCE, tmp_path / "absent.txt", stdin="", timeout=5)
 
 
 # 2.2s over 12 tests: runs a diverging program to its bound.
@@ -432,7 +432,7 @@ class TestTheThreadRefusalNamesAWayThrough:
     def test_the_message_names_the_debugger_route(self) -> None:
         """Naming a route is a claim; the test below runs it."""
         outcome = self._off_thread(
-            lambda: esolangs.run("brainfuck", "+++.", stdin="", timeout=5)
+            lambda: esolangs.run(REFERENCE, "+++.", stdin="", timeout=5)
         )
         assert isinstance(outcome, esolangs.ArgumentError)
         message = str(outcome)
@@ -502,12 +502,12 @@ class TestThePathGuardKnowsMoreThanTxt:
     def test_a_path_shaped_string_is_refused(self, argument: str) -> None:
         """Rooted, or ending in a short extension, and only path characters."""
         with pytest.raises(esolangs.ProgramError, match="looks like a path"):
-            esolangs.run("brainfuck", argument, stdin="", timeout=5)
+            esolangs.run(REFERENCE, argument, stdin="", timeout=5)
 
     @pytest.mark.parametrize("program", [".", ".."])
     def test_a_real_program_still_runs(self, program: str) -> None:
         """``.`` and ``..`` are legal brainfuck and must not be mistaken."""
-        esolangs.run("brainfuck", program, stdin="", timeout=5)
+        esolangs.run(REFERENCE, program, stdin="", timeout=5)
 
     @pytest.mark.parametrize("program", ["~~", "-", "a/b/c"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
