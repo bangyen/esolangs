@@ -543,6 +543,7 @@ INTERPRETER_CONTRACT_TESTS = (
 def _generator_test_scope(module: str) -> list[str] | None:
     """Keep shared tests and dependent language suites for a leaf generator."""
     from esolangs.registry import LANGUAGES
+
     owners: dict[str, str] = {}
     for language in LANGUAGES.values():
         if language.boolean is not None:
