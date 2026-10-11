@@ -59,7 +59,7 @@ def test_eight_input_streams_execute_all_rows(kind, streaming_check, tmp_path):
     )
     area, commands = streaming_check(table, tmp_path)
     assert (
-        area == {"dense": 48_768_000, "parity": 1_892_800, "majority": 4_924_800}[kind]
+        area == {"dense": 42_265_600, "parity": 1_534_400, "majority": 3_952_000}[kind]
     )
     assert commands == {"dense": 23, "parity": 27, "majority": 23}[kind]
     public = line(table)
@@ -86,3 +86,19 @@ def test_scaled_streaming_crossings(streaming_check, tmp_path):
 def test_constant_and_single_input_tables_keep_existing_layout():
     for table in ("00000000", "11111111", "01", "10"):
         assert streaming_canvas(table, 10**9) is None
+
+
+@pytest.mark.medium
+def test_adjacent_constant_and_test_free_reader_profiles(streaming_check, tmp_path):
+    profiles = [
+        a + b for a in ("0000", "1111", "0110") for b in ("0000", "1111", "0110")
+    ]
+    admitted = 0
+    for a in profiles:
+        for b in profiles:
+            table = a + b
+            if streaming_canvas(table, 10**9) is None:
+                continue
+            streaming_check(table, tmp_path)
+            admitted += 1
+    assert admitted > 0

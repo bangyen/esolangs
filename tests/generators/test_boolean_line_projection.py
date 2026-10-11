@@ -148,7 +148,7 @@ def test_public_multiple_returns_reduce_mixed_residual_area():
             return returns(node.zero) + returns(node.nonzero)
         return returns(node.next)
 
-    assert returns(image._payload) == 2  # noqa: SLF001 - generator-owned graph
-    assert len(image.rows) * len(image.rows[0]) == 28420000 < 39884000
+    assert returns(image._payload) == 35  # noqa: SLF001 - generator-owned graph
+    assert len(image.rows) * len(image.rows[0]) == 23496000 < 28420000
     rows = [row | fill for row in range(512) for fill in (0, 127 << 9)]
-    assert _execute(table, image, rows) == 58
+    assert _execute(table, image, rows) == 32

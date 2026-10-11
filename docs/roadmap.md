@@ -15,8 +15,8 @@ exemption supported by a structural proof or the measured criterion in
 - **Line:** forward residual stems now share same-level duplicates within
   the existing 5n command and workspace bounds. Streaming reads overwrite
   cell zero in input order; constant tails drain the remaining reads. Parity
-  at n=8 occupies 1,892,800 pixels at scale 1 against the tree's 17,472,000;
-  all 256 rows execute natively. Majority at n=8 occupies 4,924,800 pixels,
+  at n=8 occupies 1,534,400 pixels at scale 1 against the tree's 17,472,000;
+  all 256 rows execute natively. Majority at n=8 occupies 3,952,000 pixels,
   with all 256 rows checked. Descending tests also save the loader rewind,
   paying for joins.
   Majority at n=9 shares in 13,438,400 pixels against 28,492,800; all 512

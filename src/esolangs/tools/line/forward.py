@@ -201,7 +201,9 @@ def _forward_canvas(
             join[edge] = base + 8 + 2 * arrival_count + 2 * lanes[edge], entry[dest][1]
         # The last leaf ends 15 units below its fork; the next entry starts
         # 16 below, retaining a full 20px gap for the 15px extraction probe.
-        base = forks[depth, level[-1]][0] + 12
+        # Streaming has no inline leaves: the next arrival is eight units
+        # below the prior fork, and its reader starts at least fourteen below.
+        base = forks[depth, level[-1]][0] + (4 if streaming else 12)
 
     if streaming:
         start = forks[root][0] - 10, forks[root][1]

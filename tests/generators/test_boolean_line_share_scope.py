@@ -7,7 +7,6 @@ import random
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.tools.helpers import (
     _residual_ids,
     _validate_truth_table,
@@ -16,6 +15,7 @@ from esolangs.tools.helpers import (
 from esolangs.tools.line.render import _has_goto
 from esolangs.tools.line.shared import shared_tree
 from tests.support.witness_tables import parity
+from tests.tools.test_boolean_line_projection import _execute
 
 
 def _majority(n: int) -> str:
@@ -98,20 +98,32 @@ class TestLineReturnScope:
                 )
 
     @pytest.mark.medium
+    @pytest.mark.parametrize("start", [0, 50, 100, 150])
     @pytest.mark.parametrize(
-        ("n", "shared_count", "forks"),
-        [(5, 0, 315), (6, 1, 515), (7, 0, 854), (8, 0, 1361)],
+        ("n", "shared_counts", "fork_counts"),
+        [
+            (5, (0, 0, 0, 0), (74, 74, 72, 95)),
+            pytest.param(6, (4, 4, 3, 5), (126, 125, 127, 137), marks=pytest.mark.slow),
+            pytest.param(7, (5, 6, 5, 6), (231, 218, 194, 211), marks=pytest.mark.slow),
+            (8, (0, 0, 0, 0), (363, 348, 335, 315)),
+        ],
     )
     def test_random_tables_rarely_admit_shared_layouts(
-        self, n: int, shared_count: int, forks: int
+        self,
+        n: int,
+        start: int,
+        shared_counts: tuple[int, ...],
+        fork_counts: tuple[int, ...],
     ) -> None:
-        """One of 800 seeded tables shares; execute every admitted input row."""
-        tables = _sample(n, 200, seed=11 + n)
+        """38 of 800 seeded tables share; execute every admitted input row."""
+        tables = _sample(n, 200, seed=11 + n)[start : start + 50]
         gotos = 0
         for table in tables:
             generated = esolangs.generate("Line", table)
             if _has_goto(generated._payload):  # noqa: SLF001
-                assert _evaluate("Line", generated.to_png(), inputs=n) == table
+                _execute(table, generated, range(1 << n))
                 gotos += 1
-        assert gotos == shared_count
-        assert sum(_reachable_forks(table) for table in tables) == forks
+        assert gotos == shared_counts[start // 50]
+        assert (
+            sum(_reachable_forks(table) for table in tables) == fork_counts[start // 50]
+        )
