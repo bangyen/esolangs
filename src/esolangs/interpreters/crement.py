@@ -1,255 +1,28 @@
-"""Pure-core interpreter for Crement.
+"""Compatibility import for the language implementation."""
 
-Each instruction stores an opcode, polarity, address, and data. ``ADDRESS``
-and ``DATA`` copy their own data plus or minus one into another instruction;
-``JUMP`` branches when its data has the selected sign. Execution past the
-program halts. Negative instruction addresses are undefined and raise
-:class:`~esolangs.exceptions.HaltError`.
+import importlib
+import sys
+from typing import TYPE_CHECKING
 
-Syntax follows the prose: a label is "a colon and then the name", and a
-term is a sign and a name, a natural number or ``@``.  The page's Minsky
-translation templates write ``label:`` and ``@next+0``, which this parser
-rejects.  Rewritten in the prose syntax they do not run as their comments
-say: DEC1's ``+J @label+4 1`` never disables itself, so a decrement loops,
-and INC1/SWAP's ``+J @next 0`` never jumps ("the condition is if the data
-field ... is positive"), so control falls into whatever follows.  With
-``+J @label+3 1`` and data ``1`` they compute; the page states no outputs.
+if TYPE_CHECKING:
+    from esolangs.languages.crement.interpreter import _NAME as _NAME
+    from esolangs.languages.crement.interpreter import _OPERATOR as _OPERATOR
+    from esolangs.languages.crement.interpreter import _TERM as _TERM
+    from esolangs.languages.crement.interpreter import _advance as _advance
+    from esolangs.languages.crement.interpreter import _decimal as _decimal
+    from esolangs.languages.crement.interpreter import _decimal_text as _decimal_text
+    from esolangs.languages.crement.interpreter import _Instruction as _Instruction
+    from esolangs.languages.crement.interpreter import _Machine as _Machine
+    from esolangs.languages.crement.interpreter import _number as _number
+    from esolangs.languages.crement.interpreter import _parse as _parse
+    from esolangs.languages.crement.interpreter import _source_lines as _source_lines
+    from esolangs.languages.crement.interpreter import _State as _State
+    from esolangs.languages.crement.interpreter import run as run
 
-The execution model is :func:`_advance`, a pure function over an immutable
-program and instruction pointer. The mutable VM shell only replaces that
-state once per step.
-"""
-
-from __future__ import annotations
-
-import re
-from dataclasses import dataclass, replace
-
-from esolangs._drive import drive
-from esolangs.exceptions import HaltError, ProgramError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
-
-_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-_OPERATOR = re.compile(r"([+-])([ADJ])")
-_TERM = re.compile(r"([+-]?)(@|[0-9]+|[A-Za-z_][A-Za-z0-9_]*)")
-
-
-@dataclass(frozen=True)
-class _Instruction:
-    """One resolved Crement instruction."""
-
-    opcode: str
-    polarity: int
-    address: int
-    data: int
-
-
-@dataclass(frozen=True)
-class _State:
-    """Crement's immutable instruction pointer and self-modifying program."""
-
-    ip: int
-    program: tuple[_Instruction, ...]
-
-
-def _decimal(source: str) -> int:
-    """Parse ASCII digits without CPython's decimal conversion cap."""
-    value = 0
-    for start in range(0, len(source), 9):
-        block = source[start : start + 9]
-        value = value * 10 ** len(block) + int(block)
-    return value
-
-
-def _decimal_text(value: int) -> str:
-    """Format an address without CPython's decimal conversion cap."""
-    sign = "-" if value < 0 else ""
-    value = abs(value)
-    blocks = []
-    while value >= 1_000_000_000:
-        value, remainder = divmod(value, 1_000_000_000)
-        blocks.append(f"{remainder:09d}")
-    return sign + str(value) + "".join(reversed(blocks))
-
-
-def _number(source: str, labels: dict[str, int], here: int) -> int:
-    """Resolve one signed sum of literals, labels, and ``@``."""
-    position = 0
-    value = 0
-    terms = 0
-    while position < len(source):
-        match = _TERM.match(source, position)
-        if match is None or (position and not match.group(1)):
-            raise syntax_error(
-                f"invalid number: {source}",
-                "write signed sums of integers, labels or @, for example label+1",
-                error_type=ProgramError,
-            )
-        sign, atom = match.groups()
-        if atom == "@":
-            term = here
-        elif atom.isdigit():
-            term = _decimal(atom)
-        else:
-            try:
-                term = labels[atom]
-            except KeyError:
-                raise syntax_error(
-                    f"undefined label: {atom}",
-                    "define the label with :name before referencing it",
-                    error_type=ProgramError,
-                ) from None
-        value += -term if sign == "-" else term
-        position = match.end()
-        terms += 1
-    if not terms:
-        raise syntax_error(
-            "a number must contain at least one term",
-            "supply an integer, label or @ as the numeric term",
-            error_type=ProgramError,
-        )
-    return value
-
-
-def _source_lines(code: str) -> list[list[str]]:
-    """Group whitespace-separated fields; comments end at LF (wiki Syntax)."""
-    tokens = re.sub(r"\*[^\n]*", " ", code).split()
-    lines = []
-    position = 0
-    while position < len(tokens):
-        count = 4 if tokens[position].startswith(":") else 3
-        lines.append(tokens[position : position + count])
-        position += count
-    return lines
-
-
-def _parse(code: str) -> tuple[_Instruction, ...]:
-    """Parse standard non-macro Crement source."""
-    lines = _source_lines(code)
-    labels: dict[str, int] = {}
-    for address, tokens in enumerate(lines):
-        if tokens[0].startswith(":"):
-            label = tokens[0][1:]
-            if not _NAME.fullmatch(label):
-                raise syntax_error(
-                    f"invalid label: {label}",
-                    "use an identifier starting with a letter or underscore after :",
-                    error_type=ProgramError,
-                )
-            if label in labels:
-                raise syntax_error(
-                    f"duplicate label: {label}",
-                    "give each label a unique name",
-                    error_type=ProgramError,
-                )
-            labels[label] = address
-
-    program = []
-    for address, tokens in enumerate(lines):
-        fields = tokens[1:] if tokens[0].startswith(":") else tokens
-        if len(fields) != 3:
-            raise syntax_error(
-                f"instruction {address} must have three fields",
-                "write an opcode, address and data, for example +J 1 0",
-                error_type=ProgramError,
-            )
-        operator, address_source, data_source = fields
-        match = _OPERATOR.fullmatch(operator)
-        if match is None:
-            raise syntax_error(
-                f"invalid opcode: {operator}",
-                "use +A, -A, +D, -D, +J or -J as the opcode",
-                error_type=ProgramError,
-            )
-        sign, opcode = match.groups()
-        program.append(
-            _Instruction(
-                opcode,
-                1 if sign == "+" else -1,
-                _number(address_source, labels, address),
-                _number(data_source, labels, address),
-            )
-        )
-    return tuple(program)
-
-
-def _advance(state: _State) -> _State:
-    """Return the next state without mutating ``state``."""
-    if state.ip >= len(state.program):
-        return state
-    if state.ip < 0:
-        raise HaltError(
-            f"Crement executed negative address {_decimal_text(state.ip)}",
-            hint="keep executed, jump and write addresses nonnegative",
-        )
-
-    instruction = state.program[state.ip]
-    if instruction.opcode == "J":
-        condition = instruction.data * instruction.polarity > 0
-        target = instruction.address if condition else state.ip + 1
-        if target < 0:
-            raise HaltError(
-                f"Crement jumped to negative address {_decimal_text(target)}",
-                hint="keep executed, jump and write addresses nonnegative",
-            )
-        return _State(target, state.program)
-
-    target = instruction.address
-    program = state.program
-    if target < 0:
-        raise HaltError(
-            f"Crement wrote to negative address {_decimal_text(target)}",
-            hint="keep executed, jump and write addresses nonnegative",
-        )
-    if target < len(program):
-        value = instruction.data + instruction.polarity
-        changed = replace(
-            program[target],
-            address=value if instruction.opcode == "A" else program[target].address,
-            data=value if instruction.opcode == "D" else program[target].data,
-        )
-        program = (*program[:target], changed, *program[target + 1 :])
-    return _State(state.ip + 1, program)
-
-
-class _Machine:
-    """Mutable VM shell around Crement's pure transition."""
-
-    def __init__(self, code: str, io: IO | None = None) -> None:
-        self.io = io if io is not None else IO()
-        self.state = _State(0, _parse(code))
-
-    @property
-    def halted(self) -> bool:
-        """Whether execution has passed the final instruction."""
-        return self.state.ip >= len(self.state.program)
-
-    @property
-    def ip(self) -> int:
-        """Return the current instruction address."""
-        return self.state.ip
-
-    @property
-    def memory(self) -> list[object]:
-        """Return the self-modifying instruction store."""
-        return list(self.state.program)
-
-    def snapshot(self) -> _State:
-        """Return the complete immutable execution state."""
-        return self.state
-
-    def step(self) -> None:
-        """Advance one instruction."""
-        self.state = _advance(self.state)
-
-
-def run(code: str, io: IO) -> None:
-    """Run a Crement program until it executes past its final instruction."""
-    machine = _Machine(code, io)
-    drive(machine)
-
+_implementation = importlib.import_module("esolangs.languages.crement.interpreter")
+sys.modules[__name__] = _implementation
 
 if __name__ == "__main__":
-    script_main(run)
+    from esolangs.interpreters._entry import script_main
+
+    script_main(_implementation.run)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-import symtable
+import ast
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,6 +55,28 @@ def plan(lang: Language, root: Path = ROOT) -> tuple[str, list[Move]]:
     return ("flat", moves) if moves else ("no implementation", [])
 
 
+def _exports(source: str) -> tuple[str, ...]:
+    """Collect module definitions without inlined comprehension temporaries."""
+    names = set()
+    pending: list[ast.AST] = list(ast.parse(source).body)
+    while pending:
+        node = pending.pop()
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            names.add(node.name)
+        elif isinstance(node, ast.TypeAlias):
+            names.add(node.name.id)
+        elif isinstance(
+            node,
+            ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp | ast.Lambda,
+        ):
+            continue
+        else:
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                names.add(node.id)
+            pending.extend(ast.iter_child_nodes(node))
+    return tuple(sorted(name for name in names if not name.startswith("__")))
+
+
 def apply(moves: list[Move]) -> None:
     """Preflight every write before preserving sources and installing aliases."""
     writes: dict[Path, str] = {}
@@ -66,14 +88,7 @@ def apply(moves: list[Move]) -> None:
                 f"shared implementation requires manual migration: {move.source}"
             )
         source = move.source.read_text(encoding="utf-8")
-        symbols = symtable.symtable(source, str(move.source), "exec")
-        names = tuple(
-            sorted(
-                symbol.get_name()
-                for symbol in symbols.get_symbols()
-                if symbol.is_assigned() and not symbol.get_name().startswith("__")
-            )
-        )
+        names = _exports(source)
         if not names:
             raise ValueError(f"no static exports in {move.source}")
         writes[move.target] = source

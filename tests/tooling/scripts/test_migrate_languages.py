@@ -1,5 +1,6 @@
 """Migration safety and compatibility across generated aliases."""
 
+import ast
 import importlib
 import sys
 from pathlib import Path
@@ -164,3 +165,40 @@ def test_builtin_export_keeps_its_legacy_name():
     source = migrate._compatibility_module("fixture.generator", ("eval",))  # noqa: SLF001
     assert "import eval as eval  # noqa: A004" in source
     compile(source, "compatibility.py", "exec")
+
+
+def test_comprehension_temporaries_are_not_static_exports():
+    source = "values = [name for name in range(3)]\n"
+    assert migrate._exports(source) == ("values",)  # noqa: SLF001
+
+
+def test_colocated_aliases_share_runtime_state(monkeypatch):
+    root = Path(__file__).parents[3] / "src"
+    marker = object()
+    checked = 0
+    for folder in ("interpreters", "tools"):
+        for path in (root / "esolangs" / folder).rglob("*.py"):
+            for node in ast.walk(ast.parse(path.read_text())):
+                if not (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "import_module"
+                    and node.args
+                    and isinstance(node.args[0], ast.Constant)
+                    and isinstance(node.args[0].value, str)
+                ):
+                    continue
+                canonical = node.args[0].value
+                if not canonical.startswith(
+                    "esolangs.languages."
+                ) or not canonical.endswith((".interpreter", ".generator")):
+                    continue
+                parts = path.relative_to(root).with_suffix("").parts
+                legacy = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
+                old = importlib.import_module(legacy)
+                new = importlib.import_module(canonical)
+                assert old is new
+                monkeypatch.setattr(old, "migration_probe", marker, raising=False)
+                assert new.migration_probe is marker
+                checked += 1
+    assert checked > 0

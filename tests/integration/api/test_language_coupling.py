@@ -223,6 +223,7 @@ def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
         m.rsplit(".", 1)[-1] for m in modules if not m.startswith("esolangs.languages.")
     } | {lang.id}
     prefixes = [f"src/{m.replace('.', '/')}" for m in modules]
+    prefixes.append(f"src/esolangs/languages/{lang.id}/")
     prefixes += [f"src/{m.split('.generator')[0].replace('.', '/')}" for m in canonical]
     for stem in stems:
         prefixes += [

@@ -309,8 +309,11 @@ class TestGeneratorScope:
         assert "tests/generators/test_boolean_line.py" in scope
 
 
-def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch) -> None:
-    from types import SimpleNamespace
+@pytest.mark.parametrize("colocated", [False, True])
+def test_generator_scope_keeps_transitive_dependents(
+    tmp_path, monkeypatch, *, colocated
+) -> None:
+    from types import ModuleType, SimpleNamespace
 
     from esolangs import registry
 
@@ -329,6 +332,17 @@ def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch) -> N
         build.__module__ = "esolangs.tools." + module
         build.__name__ = name
         languages[name] = SimpleNamespace(id=name, name=name, aliases=(), boolean=build)
+    if colocated:
+        for name, language in languages.items():
+            legacy = language.boolean.__module__
+            canonical = f"esolangs.languages.{name}.generator"
+            module = ModuleType(canonical)
+            monkeypatch.setitem(sys.modules, legacy, module)
+            monkeypatch.setitem(sys.modules, canonical, module)
+            language.boolean.__module__ = canonical
+        source = tmp_path / "src/esolangs/languages/consumer/generator.py"
+        source.parent.mkdir(parents=True)
+        source.write_text("from esolangs.tools.package import dependency\n")
     monkeypatch.setattr(registry, "LANGUAGES", languages)
     for path, text in {
         "src/esolangs/tools/target.py": "",

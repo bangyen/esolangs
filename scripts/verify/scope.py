@@ -547,9 +547,22 @@ def _generator_test_scope(module: str) -> list[str] | None:
     from esolangs.registry import LANGUAGES
 
     owners: dict[str, str] = {}
+    aliases: dict[str, str] = {}
     for language in LANGUAGES.values():
         if language.boolean is not None:
-            owner = language.boolean.__module__.removeprefix("esolangs.tools.")
+            defining = language.boolean.__module__
+            implementation = sys.modules.get(defining)
+            owner = next(
+                (
+                    name.removeprefix("esolangs.tools.")
+                    for name, candidate in sorted(sys.modules.items())
+                    if implementation is not None
+                    and candidate is implementation
+                    and name.startswith("esolangs.tools.")
+                ),
+                defining.removeprefix("esolangs.tools."),
+            )
+            aliases[defining] = owner
             for name in (
                 language.id,
                 language.name,
@@ -558,6 +571,14 @@ def _generator_test_scope(module: str) -> list[str] | None:
                 owner,
             ):
                 owners[name] = owner
+
+    def normalise(reference: str) -> str:
+        for canonical, legacy in aliases.items():
+            if reference == canonical or reference.startswith(canonical + "."):
+                return legacy + reference[len(canonical) :]
+        return reference.removeprefix("esolangs.tools.")
+
+    module = normalise(module)
     if module not in owners.values():
         return None
     needles = {name for name, owner in owners.items() if owner == module}
@@ -566,7 +587,14 @@ def _generator_test_scope(module: str) -> list[str] | None:
     tools_root = ROOT / "src/esolangs/tools"
     sources = {
         source: source.read_text(encoding="utf-8")
-        for source in tools_root.rglob("*.py")
+        for source in (
+            *tools_root.rglob("*.py"),
+            *(
+                path
+                for path in (ROOT / "src/esolangs/languages").rglob("*.py")
+                if "generator" in path.parts or path.stem == "generator"
+            ),
+        )
     }
     imports: dict[Path, set[str]] = {}
     while True:
@@ -576,7 +604,7 @@ def _generator_test_scope(module: str) -> list[str] | None:
                 continue
             if source not in imports:
                 references = set()
-                package = list(source.parent.relative_to(tools_root).parts)
+                package = list(source.parent.relative_to(ROOT / "src").parts)
                 for node in ast.walk(ast.parse(text)):
                     if isinstance(node, ast.ImportFrom):
                         prefix = node.module or ""
@@ -587,20 +615,16 @@ def _generator_test_scope(module: str) -> list[str] | None:
                                     *(prefix.split(".") if prefix else []),
                                 ]
                             )
-                        prefix = prefix.removeprefix("esolangs.tools.")
-                        references.add(prefix)
+                        references.add(normalise(prefix))
                         for alias in node.names:
-                            references.add(prefix + "." + alias.name)
+                            references.add(normalise(prefix + "." + alias.name))
                             references.add(owners.get(alias.name, alias.name))
                     elif isinstance(node, ast.Import):
-                        references.update(
-                            alias.name.removeprefix("esolangs.tools.")
-                            for alias in node.names
-                        )
+                        references.update(normalise(alias.name) for alias in node.names)
                 imports[source] = references
             if imports[source] & dependents:
-                owner = (
-                    source.relative_to(tools_root)
+                owner = normalise(
+                    source.relative_to(ROOT / "src")
                     .with_suffix("")
                     .as_posix()
                     .replace("/", ".")

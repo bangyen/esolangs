@@ -1,49 +1,19 @@
-"""Interpreter for Nope.
+"""Compatibility import for the language implementation."""
 
-Every source, including empty source, prints exactly "Nope." and halts.
-No parsing or input is performed; no newline is appended. No ValueError,
-EOFError or HaltError arises under the constant-language semantics.
-"""
+import importlib
+import sys
+from typing import TYPE_CHECKING
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+if TYPE_CHECKING:
+    from esolangs.languages.nope.interpreter import _advance as _advance
+    from esolangs.languages.nope.interpreter import _Machine as _Machine
+    from esolangs.languages.nope.interpreter import _State as _State
+    from esolangs.languages.nope.interpreter import run as run
 
-type _State = bool
-
-
-def _advance(state: _State) -> tuple[_State, str | None]:
-    return True, None if state else "Nope."
-
-
-class _Machine:
-    """One constant-output transition, independent of source."""
-
-    def __init__(self, code: str, io: IO) -> None:  # noqa: ARG002 - source is ignored
-        self.io = io
-        self.state: _State = False
-
-    @property
-    def halted(self) -> bool:
-        return self.state
-
-    @property
-    def ip(self) -> int:
-        return int(self.state)
-
-    def snapshot(self) -> tuple[object, ...]:
-        return (self.state, self.io.progress())
-
-    def step(self) -> None:
-        self.state, output = _advance(self.state)
-        if output is not None:
-            self.io.print_str(output)
-
-
-def run(code: str, io: IO) -> None:
-    """Print the constant answer once."""
-    drive(_Machine(code, io))
-
+_implementation = importlib.import_module("esolangs.languages.nope.interpreter")
+sys.modules[__name__] = _implementation
 
 if __name__ == "__main__":
-    script_main(run)
+    from esolangs.interpreters._entry import script_main
+
+    script_main(_implementation.run)
