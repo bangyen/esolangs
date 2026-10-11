@@ -82,14 +82,18 @@ class TestCiRedoesEveryLocalStep:
 
     def test_every_step_is_also_run_by_ci(self) -> None:
         verify = load_script()
-        workflow = CI.read_text(encoding="utf-8")
+        workflow = CI.read_text(encoding="utf-8") + (
+            CI.with_name("weekly.yml").read_text(encoding="utf-8")
+        )
         missing = [
             name for name, cmd in verify.STEPS if _signature(cmd) not in workflow
         ]
         assert not missing, f"steps CI does not run: {missing}"
 
     def test_a_step_ci_does_not_run_is_reported(self) -> None:
-        workflow = CI.read_text(encoding="utf-8")
+        workflow = CI.read_text(encoding="utf-8") + (
+            CI.with_name("weekly.yml").read_text(encoding="utf-8")
+        )
         bogus = _signature(["uv", "run", "python", "scripts/no_such_check.py"])
         assert bogus not in workflow
 
