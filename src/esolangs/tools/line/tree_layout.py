@@ -15,7 +15,9 @@ from .render import (
 Extent = tuple[int, int, int, int]
 
 
-def tree_extents(root: Node, *, compact: bool = True) -> dict[int, Extent]:
+def tree_extents(
+    root: Node, *, compact: bool = True, tight: bool = True
+) -> dict[int, Extent]:
     """Return every subtree's exact bounding box in one postorder pass."""
     extents: dict[int, Extent] = {}
     runs: dict[int, tuple[Node, int]] = {}
@@ -41,7 +43,10 @@ def tree_extents(root: Node, *, compact: bool = True) -> dict[int, Extent]:
                 (node.nonzero, _turn_left(_FORWARD)),
             ):
                 box = visit(arm)
-                spacing = gap + max(-box[0], 0)
+                margin = (
+                    1 if compact and tight and arm is not None and box[0] == 0 else gap
+                )
+                spacing = margin + max(-box[0], 0)
                 start_y = stem + heading[0] * spacing
                 start_x = heading[1] * spacing
                 points.extend(

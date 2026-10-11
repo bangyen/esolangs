@@ -207,6 +207,8 @@ def chain(*ops: str) -> Node:
 _CLEARANCE = 1
 
 # Goto-free trees need one empty cell between subtree boxes, not return bays.
+# At 20px units, seed 20261011, 200 n=8 tables: area 4255246000 -> 3806855600
+# pixels (-10.54%); balanced 4189127200 -> 3597260000 (-14.13%).
 _TREE_GAP = _CLEARANCE + 1
 
 
@@ -283,6 +285,7 @@ class _Plan:
     return_indices: dict[int, dict[tuple[int, int], int]] = field(default_factory=dict)
     stem: int = _TREE_GAP
     arm: int = _TREE_GAP
+    tight: bool = False
 
 
 def _has_goto(node: Node | None, seen: set[int] | None = None) -> bool:
@@ -353,6 +356,10 @@ def _arm_spacing(arm: Node | None, plan: _Plan, *, tree: bool = False) -> int:
     # In the arm's frame, negative forward-extent is content behind the
     # entry point, toward the trunk.
     min_forward, _, _, _ = _subtree_extent(arm, plan)
+    # A forward-only subtree stays away from its entry arm. Uniform one-cell
+    # gaps join corners in 1101110110001001; backward reach keeps two cells.
+    if tree and plan.tight and min_forward == 0:
+        margin = 1
     corridors = _GOTO_CORRIDOR if id(arm) not in plan.tree and _has_goto(arm) else 0
     return margin + max(-min_forward, 0) + corridors
 
@@ -759,11 +766,17 @@ class Canvas:
         png.write_grey_file(path, self.pixels)
 
 
-def _arrowhead(draw: Canvas, y: float, x: float, heading: tuple[int, int]) -> None:
+def _arrowhead(
+    draw: Canvas,
+    y: float,
+    x: float,
+    heading: tuple[int, int],
+    unit: int = _UNIT,
+) -> None:
     """Draw the filled triangular cursor marker at (y, x), pointing ``heading``."""
     hy, hx = heading
     ly, lx = _turn_left(heading)
-    size = _UNIT * 0.35
+    size = unit * 0.35
     back = size * 0.6
     tip = (x + hx * size, y + hy * size)
     base_l = (x - hx * back + lx * back, y - hy * back + ly * back)
@@ -778,6 +791,8 @@ def render(
     *,
     acyclic: bool = False,
     compact: bool = True,
+    tight: bool = True,
+    unit: int = _UNIT,
 ) -> Canvas:
     """Lay out and rasterize a Line program, returning a :class:`Canvas`.
 
@@ -790,13 +805,15 @@ def render(
     ``compact=False`` retains the previous acyclic spacing for balancing's
     no-growth fallback.
     """
+    _check_unit(unit)
     plan = _Plan()
     if acyclic:
         from .tree_layout import tree_extents
 
         plan.stem = _TREE_GAP if compact else _STEM_LEN
         plan.arm = _TREE_GAP if compact else _BRANCH_SPACING
-        plan.extents = tree_extents(root, compact=compact)
+        plan.tight = compact and tight
+        plan.extents = tree_extents(root, compact=compact, tight=tight)
         plan.tree = set(plan.extents)
     occupied: set[tuple[int, int]] = set()
     cursor = _Cursor(0, 0, start_heading, occupied=occupied)
@@ -810,18 +827,24 @@ def render(
     min_y, max_y = min(ys), max(ys)
     min_x, max_x = min(xs), max(xs)
 
-    margin = _UNIT
-    width = (max_x - min_x) * _UNIT + margin * 2
-    height = (max_y - min_y) * _UNIT + margin * 2
+    margin = unit
+    width = (max_x - min_x) * unit + margin * 2
+    height = (max_y - min_y) * unit + margin * 2
 
     def to_px(pt: tuple[int, int]) -> tuple[float, float]:
         y, x = pt
-        return (x - min_x) * _UNIT + margin, (y - min_y) * _UNIT + margin
+        return (x - min_x) * unit + margin, (y - min_y) * unit + margin
 
     canvas = Canvas(width, height)
     for stroke in cursor.strokes:
         canvas.line([to_px(p) for p in stroke])
 
     start_px, start_py = to_px((0, 0))
-    _arrowhead(canvas, start_py, start_px, start_heading)
+    _arrowhead(canvas, start_py, start_px, start_heading, unit)
     return canvas.upscale(scale)
+
+
+def _check_unit(unit: int) -> None:
+    """Require integer half-units and a cursor large enough for extraction."""
+    if isinstance(unit, bool) or not isinstance(unit, int) or unit < 8 or unit % 2:
+        raise ValueError("Line unit must be an even integer of at least 8 pixels")

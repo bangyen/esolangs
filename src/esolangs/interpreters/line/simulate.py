@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING
 
 from esolangs.interpreters.source_hints import syntax_error
 
-from .extract import DEFAULT_UNIT, OpCall, Stroke, Vertex, classify_ops
+from .extract import OpCall, Stroke, Vertex, classify_ops
 
 if TYPE_CHECKING:
     from esolangs.tools.line.render import Node
@@ -169,9 +169,9 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
     return root
 
 
-def compile_program(stroke: Stroke, unit: int = DEFAULT_UNIT) -> _Compiled:
+def compile_program(stroke: Stroke, unit: int | None = None) -> _Compiled:
     """Compile ``stroke`` once for repeated :func:`run_compiled` calls."""
-    return _compile(stroke, unit)
+    return _compile(stroke, stroke.unit if unit is None else unit)
 
 
 type _Tape = tuple[tuple[int, int], ...]
@@ -304,7 +304,7 @@ def run_node(root: Node, io: IO) -> None:
 def run(
     stroke: Stroke,
     io: IO | None = None,
-    unit: int = DEFAULT_UNIT,
+    unit: int | None = None,
 ) -> dict[int, int]:
     """Execute ``stroke``'s full walked tree, returning the final tape.
 

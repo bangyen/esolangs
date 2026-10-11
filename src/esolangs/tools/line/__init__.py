@@ -8,9 +8,10 @@ halves agree is skipped, so a constant is one leaf and an ignored input
 is read but never tested.  A leaf prints the cell it just tested, after
 one ``+`` or ``-`` when the entry differs from that bit; a constant has no
 test and prints the unread cell ``n``.  ``truth_table`` is a binary string of
-length ``2**n``, MSB first.  Arms use measured subtree extents with a
-two-cell gap. A bounded ancestor return shares a repeated nonconstant
-residual when it saves area within 5n commands: clear a consumed input
+length ``2**n``, MSB first. Arms use measured subtree extents with one cell
+of clearance for forward-only subtrees, two otherwise. A bounded ancestor
+return shares a repeated nonconstant residual when it saves area within
+5n commands: clear a consumed input
 and re-enter its zero arm. Reads and the tape footprint stay unchanged.
 Projected loaders store only essential inputs: ignored reads overwrite the
 next kept slot, or one spare slot after the last kept input. Projected trees
@@ -37,7 +38,7 @@ from esolangs.tools.helpers import (
     permute_truth_table,
     read_at,
 )
-from esolangs.tools.line.render import _UNIT, Canvas, Node, chain
+from esolangs.tools.line.render import Canvas, Node, _check_unit, chain
 from esolangs.tools.line.small_tree import small_tree_canvas
 from esolangs.tools.line.tree_layout import tree_extents
 
@@ -122,18 +123,31 @@ def _project_loader(n: int, kept: list[int], node: Node) -> Node:
 
 
 _SMALL_MAX = 5  # tight tree layout through n=5 (see small_tree)
+_BOOLEAN_UNIT = 20
 _GREY_RUN = re.compile(rb"(.)\1*", re.DOTALL)
 
 
 def _render_node(
-    node: Node, heading: tuple[int, int] = (-1, 0), *, compact: bool = True
+    node: Node,
+    heading: tuple[int, int] = (-1, 0),
+    *,
+    compact: bool = True,
+    tight: bool = True,
+    unit: int = _BOOLEAN_UNIT,
 ) -> Rows:
     """Render a generated Line graph into shared RGB rows."""
     # Local: a top-level `render` would shadow the submodule on the package.
     from esolangs.tools.line.render import render
 
     return _grey_rows(
-        render(node, start_heading=heading, acyclic=True, compact=compact)
+        render(
+            node,
+            start_heading=heading,
+            acyclic=True,
+            compact=compact,
+            tight=tight,
+            unit=unit,
+        )
     )
 
 
@@ -157,7 +171,7 @@ def _grey_rows(canvas: Canvas) -> Rows:
 
 
 @lru_cache(maxsize=8)
-def _generate(truth_table: str) -> Raster:
+def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Return a Line raster computing ``truth_table``."""
     from .forward import (
         centered_streaming_canvas,
@@ -169,20 +183,21 @@ def _generate(truth_table: str) -> Raster:
     )
     from .shared import shared_canvas, shared_tree
 
+    _check_unit(unit)
     node = line_boolean(truth_table)
     n = _validate_truth_table(truth_table)
-    canvas = small_tree_canvas(node) if n <= _SMALL_MAX else None
+    canvas = small_tree_canvas(node, unit=unit) if n <= _SMALL_MAX else None
 
     def area(tree: Node, drawn: Canvas | None) -> int:
         if drawn is not None:
             return drawn.width * drawn.height
         top, bottom, left, right = tree_extents(tree)[id(tree)]
-        return (bottom - top + 2) * (right - left + 2) * _UNIT**2
+        return (bottom - top + 2) * (right - left + 2) * unit**2
 
     smallest = area(node, canvas)
     projected = projected_boolean(truth_table)
     if projected is not None:
-        drawn = small_tree_canvas(projected) if n <= _SMALL_MAX else None
+        drawn = small_tree_canvas(projected, unit=unit) if n <= _SMALL_MAX else None
         projected_area = area(projected, drawn)
         if projected_area < smallest:
             node, canvas, smallest = projected, drawn, projected_area
@@ -205,7 +220,7 @@ def _generate(truth_table: str) -> Raster:
                 shared_nodes.append(_project_loader(n, kept, compact_shared[0]))
     selected_draw = None
     for graph in shared_nodes:
-        draw = shared_canvas(graph, smallest)
+        draw = shared_canvas(graph, smallest, unit=unit)
         if draw is not None:
             smallest = draw.area
             selected_draw = draw
@@ -218,7 +233,7 @@ def _generate(truth_table: str) -> Raster:
         median_streaming_canvas,
         packed_streaming_canvas,
     ):
-        forward = build(truth_table, smallest)
+        forward = build(truth_table, smallest, unit=unit)
         if forward is not None:
             node, selected_draw = forward
             smallest = selected_draw.area
@@ -227,21 +242,22 @@ def _generate(truth_table: str) -> Raster:
     if canvas is not None:
         return lazy_raster(lambda: _grey_rows(canvas), node)
     if n <= _SMALL_MAX:
-        return lazy_raster(lambda: _grey_rows(small_tree_canvas(node)), node)
-    return lazy_raster(lambda: _render_node(node), node)
+        return lazy_raster(lambda: _grey_rows(small_tree_canvas(node, unit=unit)), node)
+    return lazy_raster(lambda: _render_node(node, unit=unit), node)
 
 
-def line(truth_table: str, *, scale: int = 1) -> Raster:
+def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Return a Line raster enlarged by an integer pixel factor."""
-    return _generate(truth_table).upscaled(scale)
+    return _generate(truth_table, unit).upscaled(scale)
 
 
-def balance(truth_table: str, default: Raster) -> Raster:
+def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Choose the most balanced compact or previous forward/reverse tree."""
+    _check_unit(unit)
 
-    def score(node: Node, *, compact: bool) -> tuple[int, int, int]:
-        y0, y1, x0, x1 = tree_extents(node, compact=compact)[id(node)]
-        width, height = (x1 - x0 + 2) * _UNIT, (y1 - y0 + 2) * _UNIT
+    def score(node: Node, *, compact: bool, tight: bool = True) -> tuple[int, int, int]:
+        y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[id(node)]
+        width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
         return abs(width - height), width * height, width
 
     def retain_shared(score: tuple[int, int, int]) -> bool:
@@ -264,16 +280,26 @@ def balance(truth_table: str, default: Raster) -> Raster:
         if (projected := projected_boolean(truth_table, reverse=reverse)) is not None
     ]
     if _validate_truth_table(truth_table) <= _SMALL_MAX:
-        drawn = [(small_tree_canvas(node), node) for node in nodes]
+        drawn = [(small_tree_canvas(node, unit=unit), node) for node in nodes]
 
         def canvas_score(pair: tuple[Canvas, Node]) -> tuple[int, int]:
             canvas, _ = pair
             return abs(canvas.width - canvas.height), canvas.width * canvas.height
 
         previous = [
-            (small_tree_canvas(node, compact=False), node) for node in previous_nodes
+            (small_tree_canvas(node, compact=False, unit=unit), node)
+            for node in previous_nodes
         ]
         old = min(previous, key=canvas_score)
+        preceding = min(
+            [(small_tree_canvas(node, tight=False, unit=unit), node) for node in nodes],
+            key=canvas_score,
+        )
+        if not (
+            canvas_score(preceding) <= canvas_score(old)
+            and canvas_score(preceding)[1] <= canvas_score(old)[1]
+        ):
+            preceding = old
         candidate = min(drawn, key=canvas_score)
         # Shorter stems can select a wider orientation: 00010101 grows
         # 209277 -> 248087 pixels. Preserve the preceding area ceiling.
@@ -285,6 +311,8 @@ def balance(truth_table: str, default: Raster) -> Raster:
             )
             else old
         )
+        if canvas_score(chosen)[1] > canvas_score(preceding)[1]:
+            chosen = preceding
         canvas, node = chosen
         if retain_shared(
             (
@@ -302,13 +330,28 @@ def balance(truth_table: str, default: Raster) -> Raster:
         ((score(node, compact=False), node) for node in previous_nodes),
         key=lambda p: p[0],
     )
+    preceding_score, preceding_selected = min(
+        ((score(node, compact=True, tight=False), node) for node in nodes),
+        key=lambda p: p[0],
+    )
+    preceding_compact = preceding_score <= old_score
+    if not preceding_compact:
+        preceding_score, preceding_selected = old_score, old_selected
     # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
     compact = compact_score <= old_score
+    tight = True
     if not compact:
         selected = old_selected
-    if retain_shared(min(compact_score, old_score)):
+    chosen_score = compact_score if compact else old_score
+    if chosen_score[1] > preceding_score[1]:
+        selected, compact, tight = preceding_selected, preceding_compact, False
+        chosen_score = preceding_score
+    if retain_shared(chosen_score):
         return default
-    return lazy_raster(lambda: _render_node(selected, compact=compact), selected)
+    return lazy_raster(
+        lambda: _render_node(selected, compact=compact, tight=tight, unit=unit),
+        selected,
+    )
 
 
 LANGUAGE = Language(

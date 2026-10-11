@@ -16,6 +16,7 @@ from .render import (
     Canvas,
     Node,
     _arrowhead,
+    _check_unit,
     _Cursor,
     _layout,
     _Plan,
@@ -127,8 +128,9 @@ class CanvasPlan:
         return self.draw()
 
 
-def shared_canvas(root: Node, old_area: int) -> CanvasPlan | None:
+def shared_canvas(root: Node, old_area: int, *, unit: int = _UNIT) -> CanvasPlan | None:
     """Return a lazy rasterizer only for a smaller, separated ancestor return."""
+    _check_unit(unit)
     contains_return: dict[int, bool] = {}
 
     def classify(node: Node | None) -> bool:
@@ -151,7 +153,8 @@ def shared_canvas(root: Node, old_area: int) -> CanvasPlan | None:
         if node is None:
             return
         if not contains_return[id(node)]:
-            plan.extents.update(tree_extents(node))
+            # Return corridors retain their verified subtree clearances.
+            plan.extents.update(tree_extents(node, tight=False))
         elif node.op == "?":
             seed(node.zero)
             seed(node.nonzero)
@@ -170,7 +173,7 @@ def shared_canvas(root: Node, old_area: int) -> CanvasPlan | None:
     ys = [y for stroke in cursor.strokes for y, _ in stroke]
     xs = [x for stroke in cursor.strokes for _, x in stroke]
     top, bottom, left, right = min(ys), max(ys), min(xs), max(xs)
-    width, height = (right - left + 2) * _UNIT, (bottom - top + 2) * _UNIT
+    width, height = (right - left + 2) * unit, (bottom - top + 2) * unit
     if width * height >= old_area:
         return None
 
@@ -178,9 +181,9 @@ def shared_canvas(root: Node, old_area: int) -> CanvasPlan | None:
         canvas = Canvas(width, height)
         for stroke in cursor.strokes:
             canvas.line(
-                [((x - left + 1) * _UNIT, (y - top + 1) * _UNIT) for y, x in stroke]
+                [((x - left + 1) * unit, (y - top + 1) * unit) for y, x in stroke]
             )
-        _arrowhead(canvas, (1 - top) * _UNIT, (1 - left) * _UNIT, (-1, 0))
+        _arrowhead(canvas, (1 - top) * unit, (1 - left) * unit, (-1, 0), unit)
         return canvas
 
     return CanvasPlan(rasterize, width * height)

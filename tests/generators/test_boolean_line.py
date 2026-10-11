@@ -198,6 +198,11 @@ def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
     leaf = Node("+", next=Node("+", next=Node("o")))
     for root in (leaf, Node("?", zero=leaf, nonzero=leaf), Node("?", zero=leaf)):
         compact = render(root, acyclic=True)
+        top, bottom, left, right = tree_extents(root)[id(root)]
+        assert (compact.width, compact.height) == (
+            (right - left + 2) * 20,
+            (bottom - top + 2) * 20,
+        )
         legacy = render(root)
         assert render(root, acyclic=True, compact=False).pixels == legacy.pixels
         assert compact.width * compact.height <= legacy.width * legacy.height
@@ -223,7 +228,7 @@ def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
 
 
 @pytest.mark.medium
-def test_shorter_stems_execute_every_small_function(tmp_path: Path) -> None:
+def test_tighter_spacing_executes_every_small_function(tmp_path: Path) -> None:
     from esolangs.tools.line.small_tree import small_tree_canvas
 
     total = 0
@@ -232,7 +237,7 @@ def test_shorter_stems_execute_every_small_function(tmp_path: Path) -> None:
         for encoded in range(2 ** (2**inputs)):
             table = f"{encoded:0{2**inputs}b}"
             node = line_boolean(table)
-            previous = small_tree_canvas(node, compact=False)
+            previous = small_tree_canvas(node, tight=False)
             canvas = small_tree_canvas(node)
             assert canvas.width * canvas.height <= previous.width * previous.height
             canvas.save(path)
@@ -243,7 +248,32 @@ def test_shorter_stems_execute_every_small_function(tmp_path: Path) -> None:
                 assert output == [int(table[row])]
             if inputs == 3:
                 total += canvas.width * canvas.height
-    assert total == 68_929_572
+    assert total == 56_395_972
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "table",
+    [
+        "10",
+        "1101110110001001",
+        "0011011110011000101000011000100001011000011001001001011001111110",
+    ],
+)
+def test_tighter_spacing_preserves_path_clearance(table: str, tmp_path: Path) -> None:
+    """Uniform one-cell gaps joined separate corners in these trees."""
+    inputs = len(table).bit_length() - 1
+    node = line_boolean(table)
+    previous = render(node, acyclic=True, tight=False)
+    canvas = render(node, acyclic=True)
+    assert canvas.width * canvas.height <= previous.width * previous.height
+    path = str(tmp_path / "clearance.png")
+    canvas.save(path)
+    program = compile_program(extract(path))
+    for row in range(len(table)):
+        io, output = _io(list(map(int, f"{row:0{inputs}b}")))
+        run_compiled(program, io=io)
+        assert output == [int(table[row])]
 
 
 @pytest.mark.medium
@@ -259,6 +289,54 @@ def test_shorter_stems_balance_keeps_the_area_ceiling(table: str) -> None:
     image = esolangs.generate("Line", table, balance=True)
     assert len(image.rows[0]) * len(image.rows) <= old.width * old.height
     assert _evaluate("Line", image.to_png(), inputs=3) == table
+
+
+@pytest.mark.medium
+def test_tighter_lattice_balance_keeps_the_area_ceiling() -> None:
+    table = "1000111001101001101110010100100000111010110111001001011010001001"
+    previous = [
+        render(
+            line_boolean(table, reverse=reverse),
+            acyclic=True,
+            compact=compact,
+            tight=False,
+            unit=20,
+        )
+        for reverse in (False, True)
+        for compact in (False, True)
+    ]
+    ceiling = min(
+        previous,
+        key=lambda canvas: (
+            abs(canvas.width - canvas.height),
+            canvas.width * canvas.height,
+            canvas.width,
+        ),
+    )
+    assert ceiling.width * ceiling.height == 5_116_800
+    image = esolangs.generate("Line", table, balance=True)
+    assert len(image.rows) * len(image.rows[0]) <= ceiling.width * ceiling.height
+    assert _evaluate("Line", image.to_png(), inputs=6) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("unit", [8, 12, 16, 20])
+@pytest.mark.parametrize("scale", [1, 2, 3])
+def test_generated_unit_survives_plain_png(unit: int, scale: int) -> None:
+    from esolangs.interpreters.line.extract import extract_mask
+    from esolangs.interpreters.line.mask import from_grey
+    from esolangs.raster.png import read_grey
+    from esolangs.tools.line import balance, line
+
+    table = "01000110"
+    default = line(table, unit=unit)
+    for image in (default, balance(table, default, unit=unit)):
+        source = image.upscaled(scale).to_png()
+        program = compile_program(extract_mask(from_grey(read_grey(source)), unit=unit))
+        for row in range(len(table)):
+            io, output = _io(list(map(int, f"{row:03b}")))
+            run_compiled(program, io=io)
+            assert output == [int(table[row])]
 
 
 def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -82,7 +82,9 @@ def star(mask: Mask, y: int, x: int, length: int = _PROBE_LENGTH) -> set[int]:
 _SNAP_CONFIRM = 6
 
 
-def _snap(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]:
+def _snap(
+    mask: Mask, y: int, x: int, direction: int, unit: int = UNIT
+) -> tuple[int, int]:
     """Find which of ``(y, x)``'s band offsets is the true centerline for ``direction``.
 
     A recorded vertex can be a pixel off the true corner of the leg leaving
@@ -96,7 +98,8 @@ def _snap(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]:
     for k in (0, 1, -1):
         cy, cx = y + pdy * k, x + pdx * k
         if all(
-            _ink(mask, cy + dy * i, cx + dx * i) for i in range(1, _SNAP_CONFIRM + 1)
+            _ink(mask, cy + dy * i, cx + dx * i)
+            for i in range(1, max(1, _SNAP_CONFIRM * unit // UNIT) + 1)
         ):
             return cy, cx
     return y, x
@@ -159,6 +162,7 @@ class Stroke:
     vertices: list[Vertex]
     zero: Stroke | None = None
     nonzero: Stroke | None = None
+    unit: int = UNIT
 
     @property
     def end(self) -> tuple[int, int]:
@@ -198,7 +202,9 @@ def _classify(lit: set[int], back: int) -> tuple[str, list[int]]:
     return "merge", []
 
 
-def _resnap_dead_end(mask: Mask, y: int, x: int, heading: int) -> tuple[int, int]:
+def _resnap_dead_end(
+    mask: Mask, y: int, x: int, heading: int, unit: int = UNIT
+) -> tuple[int, int]:
     """Recover a vertex :func:`_walk_segment` stopped a column short of.
 
     The walk advances in one direction, so a corner one pixel over on the
@@ -213,7 +219,7 @@ def _resnap_dead_end(mask: Mask, y: int, x: int, heading: int) -> tuple[int, int
     pdy, pdx = _DIRS[(heading + 2) % 8]
     for k in (-1, 1):
         cy, cx = y + pdy * k, x + pdx * k
-        if star(mask, cy, cx) - {back}:
+        if star(mask, cy, cx, max(1, unit * 3 // 4)) - {back}:
             return cy, cx
     return y, x
 
@@ -223,6 +229,8 @@ def walk_tree(
     start: tuple[int, int],
     heading: int,
     visited: set[tuple[int, int]] | None = None,
+    *,
+    unit: int = UNIT,
 ) -> Stroke:
     """Walk a Line image's full path tree via star-probing from ``start``.
 
@@ -243,40 +251,44 @@ def walk_tree(
 
         if (y, x) in visited:
             vertices.append(Vertex(y, x, None))
-            return Stroke(vertices)
+            return Stroke(vertices, unit=unit)
 
         back = _opposite(heading)
-        lit = star(mask, y, x)
+        lit = star(mask, y, x, max(1, unit * 3 // 4))
         if not lit - {back}:
-            y, x = _resnap_dead_end(mask, y, x, heading)
-            lit = star(mask, y, x)
+            y, x = _resnap_dead_end(mask, y, x, heading, unit)
+            lit = star(mask, y, x, max(1, unit * 3 // 4))
         visited.add((y, x))
         kind, options = _classify(lit, back)
 
         if kind == "fork":
             vertices.append(Vertex(y, x, None))
-            stroke = Stroke(vertices)
+            stroke = Stroke(vertices, unit=unit)
             right, left = options
-            right_y, right_x = _snap(mask, y, x, right)
-            left_y, left_x = _snap(mask, y, x, left)
+            right_y, right_x = _snap(mask, y, x, right, unit)
+            left_y, left_x = _snap(mask, y, x, left, unit)
             right_end = _walk_segment(mask, right_y, right_x, right)
             left_end = _walk_segment(mask, left_y, left_x, left)
             if right_end not in visited:
-                stroke.zero = walk_tree(mask, (right_y, right_x), right, visited)
+                stroke.zero = walk_tree(
+                    mask, (right_y, right_x), right, visited, unit=unit
+                )
             if left_end not in visited:
-                stroke.nonzero = walk_tree(mask, (left_y, left_x), left, visited)
+                stroke.nonzero = walk_tree(
+                    mask, (left_y, left_x), left, visited, unit=unit
+                )
             return stroke
 
         if kind in ("end", "merge"):
             vertices.append(Vertex(y, x, None))
-            return Stroke(vertices)
+            return Stroke(vertices, unit=unit)
 
         # "straight" or "crossing": continue the same stroke through this
         # vertex, adopting its one forward option as the new heading, and
         # snapping onto that leg's true centerline first (see _snap) since
         # the current (y, x) may be a pixel off it.
         heading = options[0]
-        y, x = _snap(mask, y, x, heading)
+        y, x = _snap(mask, y, x, heading, unit)
 
 
 def flatten(stroke: Stroke) -> list[list[Vertex]]:

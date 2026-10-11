@@ -329,7 +329,11 @@ Vertex = lattice.Vertex
 
 
 def extract_tree(
-    mask: Mask, cursor: Cursor, start_heading: int | None = None
+    mask: Mask,
+    cursor: Cursor,
+    start_heading: int | None = None,
+    *,
+    unit: int = lattice.UNIT,
 ) -> Stroke:
     """Walk a Line image's full path tree from the cursor.
 
@@ -381,7 +385,7 @@ def extract_tree(
             ),
         )
     start = lattice.find_start(stripped, *nearest, start_heading)
-    return lattice.walk_tree(stripped, start, start_heading)
+    return lattice.walk_tree(stripped, start, start_heading, unit=unit)
 
 
 def _direction_runs(vertices: list[Vertex]) -> list[tuple[int, int]]:
@@ -620,12 +624,16 @@ def coverage_gap(mask: Mask, cursor: Cursor, stroke: Stroke) -> int:
     return (redrawn ^ reference).sum()
 
 
-def extract_mask(mask: Mask, *, scale: int | None = None) -> Stroke:
-    """Extract a walked program from an in-memory greyscale-derived mask."""
+def extract_mask(
+    mask: Mask, *, scale: int | None = None, unit: int = DEFAULT_UNIT
+) -> Stroke:
+    """Extract a program using an explicit instruction unit (default 20px)."""
+    if isinstance(unit, bool) or not isinstance(unit, int) or unit < 1:
+        raise ValueError("Line unit must be a positive integer")
     mask = crop_to_content(mask)
     mask = normalize_scale(mask, scale)
     cursor = find_cursor(mask)
-    stroke = extract_tree(mask, cursor)
+    stroke = extract_tree(mask, cursor, unit=unit)
     gap = coverage_gap(mask, cursor, stroke)
     if gap > _ARROWHEAD_TIP_GAP:
         raise syntax_error(
@@ -641,7 +649,7 @@ def extract_mask(mask: Mask, *, scale: int | None = None) -> Stroke:
     return stroke
 
 
-def extract(path: str) -> Stroke:
+def extract(path: str, *, unit: int = DEFAULT_UNIT) -> Stroke:
     """Load a Line image and walk its full path tree, cursor auto-detected.
 
     :func:`crop_to_content` and :func:`normalize_scale` run first: at 2x and
@@ -651,7 +659,7 @@ def extract(path: str) -> Stroke:
     JPEG-recompressed wiki image otherwise walks to completion with 85% of
     the drawing unreached.  :func:`extract_tree` gives the best-effort tree.
     """
-    return extract_mask(load_binary(path))
+    return extract_mask(load_binary(path), unit=unit)
 
 
 if __name__ == "__main__":

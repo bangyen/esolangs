@@ -82,37 +82,51 @@ def _packed_join_lanes(
     return lanes, len(occupied)
 
 
-def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
+def forward_canvas(
+    table: str, old_area: int, *, unit: int = _UNIT
+) -> tuple[Node, CanvasPlan] | None:
     """Return a smaller descending residual DAG with at most 5n commands."""
-    return _forward_canvas(table, old_area, destination_moves=False)
+    return _forward_canvas(table, old_area, unit=unit, destination_moves=False)
 
 
-def destination_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
+def destination_canvas(
+    table: str, old_area: int, *, unit: int = _UNIT
+) -> tuple[Node, CanvasPlan] | None:
     """Share pointer moves on destination stems with separated narrow forks."""
-    return _forward_canvas(table, old_area, destination_moves=True)
+    return _forward_canvas(table, old_area, unit=unit, destination_moves=True)
 
 
-def streaming_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
+def streaming_canvas(
+    table: str, old_area: int, *, unit: int = _UNIT
+) -> tuple[Node, CanvasPlan] | None:
     """Read in input order on shared stems, overwriting cell zero."""
-    return _forward_canvas(table, old_area, destination_moves=True, streaming=True)
+    return _forward_canvas(
+        table, old_area, unit=unit, destination_moves=True, streaming=True
+    )
 
 
 def centered_streaming_canvas(
-    table: str, old_area: int
+    table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Center streamed layers on eight-unit columns to shorten arrivals."""
     return _forward_canvas(
-        table, old_area, destination_moves=True, streaming=True, centered=True
+        table,
+        old_area,
+        unit=unit,
+        destination_moves=True,
+        streaming=True,
+        centered=True,
     )
 
 
 def median_streaming_canvas(
-    table: str, old_area: int
+    table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Order centered streamed layers by the lower median incoming rail."""
     return _forward_canvas(
         table,
         old_area,
+        unit=unit,
         destination_moves=True,
         streaming=True,
         centered=True,
@@ -121,12 +135,13 @@ def median_streaming_canvas(
 
 
 def packed_streaming_canvas(
-    table: str, old_area: int
+    table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Pack median-ordered arrivals and joins with per-stem precedence."""
     return _forward_canvas(
         table,
         old_area,
+        unit=unit,
         destination_moves=True,
         streaming=True,
         centered=True,
@@ -140,6 +155,7 @@ def _forward_canvas(
     old_area: int,
     *,
     destination_moves: bool,
+    unit: int = _UNIT,
     streaming: bool = False,
     centered: bool = False,
     median_order: bool = False,
@@ -434,7 +450,7 @@ def _forward_canvas(
     points = [point for stroke in strokes for point in stroke]
     top, bottom = min(y for y, _ in points), max(y for y, _ in points)
     left, right = min(x for _, x in points), max(x for _, x in points)
-    width, height = (right - left + 2) * _UNIT, (bottom - top + 2) * _UNIT
+    width, height = (right - left + 2) * unit, (bottom - top + 2) * unit
     if width * height >= old_area:
         return None
 
@@ -442,13 +458,14 @@ def _forward_canvas(
         canvas = Canvas(width, height)
         for stroke in strokes:
             canvas.line(
-                [((x - left + 1) * _UNIT, (y - top + 1) * _UNIT) for y, x in stroke]
+                [((x - left + 1) * unit, (y - top + 1) * unit) for y, x in stroke]
             )
         _arrowhead(
             canvas,
-            (start[0] - top + 1) * _UNIT,
-            (start[1] - left + 1) * _UNIT,
+            (start[0] - top + 1) * unit,
+            (start[1] - left + 1) * unit,
             (1, 0),
+            unit=unit,
         )
         return canvas
 

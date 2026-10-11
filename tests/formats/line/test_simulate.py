@@ -56,6 +56,58 @@ def test_lattice_probe_length_is_derived_from_unit() -> None:
     assert default == max(1, lattice.UNIT * 3 // 4)
 
 
+@pytest.mark.parametrize("unit", [8, 12, 16, 20])
+def test_explicit_unit_preserves_input_arithmetic(unit: int, tmp_path: Path) -> None:
+    from esolangs.interpreters.line.simulate import compile_program, run_compiled
+
+    path = str(tmp_path / "unit.png")
+    render(chain("i", "+", "+", "o"), unit=unit).save(path)
+    stroke = extract(path, unit=unit)
+    assert stroke.unit == unit
+    io, outputs = _io([3])
+    run_compiled(compile_program(stroke), io=io)
+    assert outputs == [5]
+
+
+def test_noninput_small_unit_uses_the_explicit_unit(tmp_path: Path) -> None:
+    path = str(tmp_path / "arithmetic.png")
+    render(chain("+", "o"), unit=8).save(path)
+    io, outputs = _io([])
+    run(extract(path, unit=8), io=io)
+    assert outputs == [1]
+
+
+def test_input_glyph_does_not_change_the_default_unit(tmp_path: Path) -> None:
+    path = str(tmp_path / "small-input.png")
+    render(chain("i", "+", "o"), unit=8).save(path)
+    with pytest.raises(ValueError, match="unaccounted"):
+        extract(path)
+    io, outputs = _io([3])
+    run(extract(path, unit=8), io=io)
+    assert outputs == [4]
+
+
+def test_explicit_grid_unit_controls_arithmetic_repeats(tmp_path: Path) -> None:
+    path = str(tmp_path / "repeats.png")
+    render(chain("+", "+"), unit=20).save(path)
+    assert run(extract(path))[0] == 2
+    assert run(extract(path, unit=40))[0] == 1
+
+
+@pytest.mark.parametrize("unit", [6, 9, True, 8.0])
+def test_render_rejects_unextractable_units(unit: int) -> None:
+    with pytest.raises(ValueError, match="Line unit"):
+        render(chain("i", "o"), unit=unit)
+
+
+@pytest.mark.parametrize("unit", [0, True, 8.0])
+def test_extract_rejects_invalid_units(unit: int) -> None:
+    from esolangs.interpreters.line.extract import extract_mask
+
+    with pytest.raises(ValueError, match="Line unit"):
+        extract_mask(Mask(1, 1), unit=unit)
+
+
 def test_a_straight_run_is_walked_to_its_end_however_long() -> None:
     """`_walk_segment` has no fixed ceiling: stopping short invents a vertex."""
     height, width = 640, 3
