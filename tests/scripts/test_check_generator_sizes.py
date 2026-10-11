@@ -241,7 +241,11 @@ def hang(*args, **kwargs):
             timeout=1,
             generation_timeout=1,
         )
-    assert time.monotonic() - start < 4
+    # The worker sleeps 30s, so the 1s deadline ending the call well before
+    # that is the fact under test.  The bound stays loose because an xdist
+    # sibling or a shared CI runner can deschedule this process for seconds;
+    # at 4s it failed a clean run under load.
+    assert time.monotonic() - start < 15
     before = marker.read_text()
     time.sleep(0.1)
     assert marker.read_text() == before
