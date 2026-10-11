@@ -1,10 +1,15 @@
 """Distribution batches retain all rows and a bounded isolated process."""
 
+import io
+import os
 import subprocess
 import sys
+import tarfile
+from pathlib import Path
 
 import pytest
 
+import esolangs
 from scripts.ci import release as smoke
 
 
@@ -13,7 +18,9 @@ def test_generator_batch_executes_all_rows() -> None:
 
 
 def test_generator_batch_rejects_a_wrong_table(monkeypatch) -> None:
-    monkeypatch.setattr(smoke, "_evaluate", lambda *_args, **_kwargs: "0000")
+    monkeypatch.setattr(
+        "esolangs._evaluate._evaluate", lambda *_args, **_kwargs: "0000"
+    )
     with pytest.raises(AssertionError, match="Brainfuck"):
         smoke._generator("Brainfuck", math_extra=False, image_extra=False)  # noqa: SLF001
 
@@ -23,9 +30,9 @@ def test_missing_math_is_only_allowed_without_the_extra(
     monkeypatch, math_extra
 ) -> None:
     def missing(*_args, **_kwargs):
-        raise smoke.esolangs.MissingDependencyError("math extra missing")
+        raise esolangs.MissingDependencyError("math extra missing")
 
-    monkeypatch.setattr(smoke, "_evaluate", missing)
+    monkeypatch.setattr("esolangs._evaluate._evaluate", missing)
     if math_extra:
         with pytest.raises(AssertionError):
             smoke._generator("Brainfuck", math_extra=True, image_extra=False)  # noqa: SLF001
@@ -68,3 +75,37 @@ def test_the_generator_self_invocation_is_accepted_by_the_dispatcher(monkeypatch
     with pytest.raises(subprocess.CalledProcessError):
         smoke._generator_process("Brainfuck", math_extra=False, image_extra=False)  # noqa: SLF001
     assert smoke.main(captured["args"][3:]) == 0
+
+
+def test_normalize_without_an_installed_package(tmp_path):
+    archive = tmp_path / "source.tar.gz"
+    payload = b"source payload\n"
+    member = tarfile.TarInfo("package/source.py")
+    member.size = len(payload)
+    member.mtime = 123456
+    member.uid, member.gid = 42, 43
+    member.uname, member.gname = "builder", "builders"
+    member.pax_headers = {"mtime": "123456.5", "atime": "123457", "ctime": "123458"}
+    with tarfile.open(archive, "w:gz", format=tarfile.PAX_FORMAT) as source:
+        source.addfile(member, io.BytesIO(payload))
+    script = Path(smoke.__file__).resolve()
+    # -I -S excludes both the checkout and installed site packages.
+    result = subprocess.run(
+        [sys.executable, "-I", "-S", str(script), "normalize", str(archive)],
+        env={**os.environ, "SOURCE_DATE_EPOCH": "1700000000"},
+        capture_output=True,
+        text=True,
+        timeout=5,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert int.from_bytes(archive.read_bytes()[4:8], "little") == 1700000000
+    with tarfile.open(archive) as source:
+        normalized = source.getmember(member.name)
+        assert normalized.mtime == 1700000000
+        assert (normalized.uid, normalized.gid) == (0, 0)
+        assert (normalized.uname, normalized.gname) == ("", "")
+        assert not {"mtime", "atime", "ctime"} & normalized.pax_headers.keys()
+        stream = source.extractfile(normalized)
+        assert stream is not None
+        assert stream.read() == payload

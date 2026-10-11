@@ -15,10 +15,6 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import esolangs
-from esolangs._evaluate import _evaluate
-from esolangs.registry import LANGUAGES
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -71,6 +67,8 @@ def _cli(args: list[str], stdin: str = "") -> str:
 
 
 def _refuses_timeout() -> None:
+    import esolangs
+
     try:
         esolangs.run("brainfuck", "+.", timeout=0.1)
     except esolangs.ArgumentError as exc:
@@ -82,6 +80,9 @@ def _refuses_timeout() -> None:
 
 def _generator(name: str, *, math_extra: bool, image_extra: bool) -> None:
     """Execute all rows in one process; its parent supplies the deadline."""
+    import esolangs
+    from esolangs._evaluate import _evaluate
+
     generated = esolangs.generate(name, "0110")
     if image_extra and isinstance(generated, esolangs.Raster):
         generated = esolangs.Raster.from_png(generated.to_png())
@@ -110,6 +111,10 @@ def _generator_process(name: str, *, math_extra: bool, image_extra: bool) -> Non
 
 def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     """Check installed resources and behaviour outside the source checkout."""
+    import esolangs
+    from esolangs._evaluate import _evaluate
+    from esolangs.registry import LANGUAGES
+
     package = Path(esolangs.__file__).resolve().parent
     assert package.parent.name in {"site-packages", "dist-packages"}, package
     assert (package / "py.typed").is_file()
