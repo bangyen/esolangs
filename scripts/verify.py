@@ -53,7 +53,6 @@ from __future__ import annotations
 import argparse
 import ast
 import atexit
-import contextlib
 import functools
 import os
 import shlex
@@ -70,8 +69,6 @@ ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _scope import (  # noqa: E402  # noqa: E402
-    CACHED_STEPS,
-    VerifiedCache,
     local_tooling_deselections,
     run_bounded,
     start_logged,
@@ -269,8 +266,6 @@ def _rerun_hint(name: str) -> list[str]:
     The coverage gate is not a ``STEPS`` entry, so ``--only`` cannot name it;
     it runs after pytest, which is what reproduces it.
     """
-    if name == "verification inputs":
-        return ["  rerun: uv run python scripts/verify.py"]
     step = "pytest" if name in (DIFF_COVERAGE_STEP, COVERAGE_TEST_STEP) else name
     rerun = f"  rerun: uv run python scripts/verify.py --only {shlex.quote(step)}"
     return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
@@ -807,8 +802,6 @@ def _run_steps(
     failed: list[str] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.monotonic()
-    clean_cache: VerifiedCache | None = None
-    cache_keys: dict[str, str | None] = {}
 
     def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
         timings.append((name, elapsed))
@@ -819,58 +812,16 @@ def _run_steps(
         start = time.monotonic()
         # Only the captured branch has output to replay; the streaming one
         # already wrote it straight to the terminal.
-        captured: str | None = None
-        key = None
-        if clean_cache is not None and name in CACHED_STEPS:
-            key = cache_keys.get(name)
-            if key is not None:
-                cached = clean_cache.load(key)
-                if cached is not None:
-                    print(f"[cache] {name}: identical verified inputs")
-                    record(name, time.monotonic() - start, 0, cached)
-                    return
         captured, returncode = _wait_with_heartbeat(
             start_logged(cmd, name, step_env, ROOT, stream=stream),
             name,
             start,
         )
         record(name, time.monotonic() - start, returncode, captured)
-        if key is not None and returncode == 0 and captured is not None:
-            assert clean_cache is not None
-            clean_cache.remember(key, captured, returncode)
 
-    # Companion checks wait for formatting; runtime probes may overlap it.
-    # The cache's initial snapshot rejects entries if formatting changed inputs.
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = []
-        if not stream and any(
-            name in CACHED_STEPS and env.get("VERIFY_CLEAN_CACHE", "1") != "0"
-            for name, _, env in runnable
-        ):
-            with contextlib.suppress(OSError, subprocess.SubprocessError):
-                clean_cache = VerifiedCache(ROOT)
-
-                def prepare(steps: list[tuple[str, list[str], dict[str, str]]]) -> None:
-                    assert clean_cache is not None
-                    for name, cmd, step_env in steps:
-                        cache_keys[name] = clean_cache.key(name, cmd, step_env)
-
-                eligible = [step for step in runnable if step[0] in CACHED_STEPS]
-                futures = [
-                    pool.submit(
-                        prepare,
-                        [step for step in eligible if (step[0] == "bandit") == bandit],
-                    )
-                    for bandit in (False, True)
-                ]
-        for name, cmd, step_env in runnable:
-            if name == MUTATES_TREE:
-                run_serial(name, cmd, step_env)
-        for future in futures:
-            future.result()
-    if MUTATES_TREE in failed:
-        clean_cache = None
-        cache_keys.clear()
+    for name, cmd, step_env in runnable:
+        if name == MUTATES_TREE:
+            run_serial(name, cmd, step_env)
 
     # Phase 2: launch the long step, then run the cheap ones in its shadow.
     rest = [s for s in runnable if s[0] != MUTATES_TREE]
@@ -942,9 +893,6 @@ def _run_steps(
     for name, cmd, step_env in heavy:
         run_serial(name, cmd, step_env)
 
-    if clean_cache is not None and not clean_cache.finish():
-        record("verification inputs", 0.0, 1, "Inputs changed during verification")
-
     for name in failed:
         print(f"[FAIL] {name}", *_rerun_hint(name), sep="\n")
     return len(failed), timings, time.monotonic() - wall_start
@@ -971,8 +919,6 @@ def main() -> int:
         print(f"scope: {len(STEPS) - len(unaffected)}/{len(STEPS)} steps ({why})")
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
-    if only is not None or full or os.environ.get("VERIFY_FULL", "0") not in ("", "0"):
-        env["VERIFY_CLEAN_CACHE"] = "0"
     # Probe PY rather than the running interpreter: verify.py may be launched
     # by a different python than the one it runs the steps with (e.g.
     # `uv run --with pylint python scripts/verify.py`, which leaves PY pointing
