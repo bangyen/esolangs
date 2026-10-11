@@ -805,7 +805,6 @@ _EDITED = (
     "tests/proofs/test_execution_formulas.py",
     "tests/proofs/test_workspace_formulas.py",
     "tests/proofs/test_schemes.py",
-    "tests/tools/mutate_generator.py",
     "tests/test_interpreter_only_admissions.py",
     "tests/proofs/test_bands.py",
     "tests/scripts/test_bundle_one.py",
@@ -833,12 +832,7 @@ def remove(name: str) -> list[str]:
         own_modules.add(declaring)
     module_paths = {p for m in own_modules if (p := _module_path(m))}
     files = _python_files()
-    # The differential harnesses are per-language tables like the managed
-    # files: a spec is cut, never a reason to keep the language's modules.
-    differential = sorted(
-        str(p.relative_to(ROOT)) for p in (ROOT / "scripts").glob("differential*.py")
-    )
-    users = _imported([f for f in files if f not in _EDITED and f not in differential])
+    users = _imported([f for f in files if f not in _EDITED])
     ids = {other.id for other in LANGUAGES.values()}
     # Every wiki fixture whose name begins with this id and no longer one:
     # ``slashes_*.txt`` go with ``///``, not ``piet_plus_plus.toml`` with Piet.
@@ -918,7 +912,7 @@ def remove(name: str) -> list[str]:
     # A deleted test module too: ``tests/samples.py`` borrows Inject's program.
     gone_modules = _gone_modules(doomed)
     modules = {m for m in own_modules if _module_path(m) is None} | gone_modules
-    edited = [*_EDITED, *differential]
+    edited = [*_EDITED]
     # Names each surviving file reads.  A helper another file still names is
     # kept even when it reads a name this removal deletes: ``sbleq_variant``
     # serves every S*bleq variant, not just the one going.
@@ -987,7 +981,7 @@ def remove(name: str) -> list[str]:
         encoding="utf-8",
     )
     # A cut entry can leave its import unused; the linter knows which.
-    shared = [*differential, "src/esolangs/tools/wrap.py"]
+    shared = ["src/esolangs/tools/wrap.py"]
     touched = [
         *[str(p.relative_to(ROOT)) for p in module_paths - doomed],
         *edited,
@@ -1001,8 +995,8 @@ def remove(name: str) -> list[str]:
         capture_output=True,
     )
     # Dead code the language left in the shared modules: its wrapper in
-    # ``wrap.py`` and its generators in the differential harnesses.  The
-    # unused imports are gone, so a top-level name nothing reads is dead.
+    # ``wrap.py``.  The unused imports are gone, so a top-level name nothing
+    # reads is dead.
     wrapper = getattr(lang.wrap, "__name__", None) if lang.wrap else None
     exclusive = False
     if wrapper is not None and not any(
