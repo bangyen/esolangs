@@ -229,9 +229,10 @@ def test_entry_point_shares_the_run() -> None:
 
 
 @pytest.mark.parametrize("scale", [1, 2, 3])
-def test_enlarged_generated_programs_detect_their_scale(scale: int) -> None:
+@pytest.mark.parametrize("bit", [0, 1])
+def test_enlarged_generated_programs_detect_their_scale(scale: int, bit: int) -> None:
     import esolangs
     from esolangs.tools.piet_plus_plus import LANGUAGE
 
     source = esolangs.generate(LANGUAGE.name, "01", scale=scale)
-    assert esolangs.run(LANGUAGE.name, source) == "1"
+    assert esolangs.run(LANGUAGE.name, source, stdin=f"{bit}\n") == str(bit)
