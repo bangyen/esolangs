@@ -63,7 +63,7 @@ def test_shared_forest_reduces_distinct_root_gate_count_and_area():
     assert shared is not None
     old_height, old_width = separate.bounds()
     height, width = shared.bounds()
-    assert height * width == 1_251_332 < old_height * old_width
+    assert height * width == 1_160_811 < old_height * old_width
     assert sum(char in "ao~xX" for char in shared.glyphs.values()) == 874
     assert sum(char in "ao~xX" for char in separate.glyphs.values()) == 1064
     rows = sorted({0, len(table) - 1, *range(0, len(table), len(table) // 32)})

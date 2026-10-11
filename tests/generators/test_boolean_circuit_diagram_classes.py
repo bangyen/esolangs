@@ -39,7 +39,7 @@ def test_repeated_classes_execute_every_row(n):
     table = _three_classes(n)
     model = _residual_class_bank_candidate(table)
     assert model is not None
-    assert len(model.render()) == {9: 122_190, 10: 251_574}[n]
+    assert len(model.render()) == {9: 123_502, 10: 253_082}[n]
     _execute(table, model.render())
 
 
@@ -49,7 +49,7 @@ def test_public_abba_class_bank_executes_every_row():
     table = a + b + b + a
     code = circuit_diagram(table)
     lines = code.splitlines()
-    assert len(lines) * max(map(len, lines)) == 389_994
+    assert len(lines) * max(map(len, lines)) == 387_711
     _execute(table, code)
 
 
@@ -63,7 +63,7 @@ def test_classes_cross_distinct_banks_beyond_all_fold_orders():
     code = circuit_diagram(table)
     assert code == _residual_class_bank_candidate(table).render()
     lines = code.splitlines()
-    assert len(lines) * max(map(len, lines)) == 1_251_332
+    assert len(lines) * max(map(len, lines)) == 1_160_811
     rows = sorted({0, len(table) - 1, *range(0, len(table), 256)})
     _execute(table, code, rows)
 
@@ -85,9 +85,9 @@ def test_unrepeated_and_excess_classes_reject_before_routing(monkeypatch):
 
     monkeypatch.setattr(module, "_large_pool_layout", unexpected)
     assert _residual_class_bank_candidate(dense(10)) is None
-    atoms = [dense(7, f"too-many:{i}".encode()) for i in range(129)]
+    atoms = [dense(7, f"too-many:{i}".encode()) for i in range(257)]
     assert (
-        _residual_class_bank_candidate("".join(atoms[row % 129] for row in range(256)))
+        _residual_class_bank_candidate("".join(atoms[row % 257] for row in range(1024)))
         is None
     )
     assert _residual_class_bank_candidate("0" * 512) is None

@@ -34,14 +34,16 @@ exemption supported by a structural proof or the measured criterion in
   1,946,024 / 1,780,773; every row executes natively. Three- and four-input
   pools and larger atoms keep both arity parities inside the measured growth gate. Global
   complete cofactors share through four/eight predicate-and-function banks:
-  the n=10 ABBA control occupies 389,994 cells against 492,826; all 1,024
+  the n=10 ABBA control occupies 387,711 cells against 492,826; all 1,024
   native rows pass. Repeated seven/eight-input classes now share across all
   prefixes through H masks, admitted by a conservative workspace gate bound.
-  The n=13 sixteen-class witness occupies 3,386,744 cells against 35,581,224;
+  The n=13 sixteen-class witness occupies 2,453,905 cells against 35,581,224;
   both execute 33 native rows. The n=13 eight-class witness drops
-  from 1,530,528 to 1,251,332 cells and 1,064 to 874 gates; both execute 33 native rows, with
+  from 1,530,528 to 1,160,811 cells and 1,064 to 874 gates; both execute 33 native rows, with
   all three global fold orders rejected and all eight top-level banks distinct.
   A bounded multi-output forest now shares internal residuals between class roots.
+  Atom mask bounds admit 129 classes at n=15 in 21,209,025 cells; 130 native
+  rows include every class. Binary-carry OR returns retain one root per level.
   Repeats beyond the class-bank gate budget remain open when all three fixed
   fold orders exceed the node-count budget. Moving three/four tail inputs first avoids the
   expander control's original graph: n=12 drops from 221 to 60 fold nodes

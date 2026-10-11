@@ -13,8 +13,10 @@ from collections.abc import Callable
 from esolangs.tools.helpers import _validate_truth_table
 
 from .forest import _Forest, _suffix_forest
-from .hpool import _h_pool_layout, _h_pool_size, _large_pool_layout
+from .hpool import _atom_gate_bound, _h_pool_layout, _h_pool_size, _large_pool_layout
 from .layout import _Layout, _RoutingLayout
+
+type _Output = tuple[tuple[int, int], int]
 
 
 class _BankLayout(_RoutingLayout):
@@ -118,6 +120,7 @@ def _assemble_banks(
     *,
     share_prefix_complements: bool,
     shared_suffix: _Forest | None = None,
+    online_returns: bool = False,
 ) -> _Layout:
     prefix_order = list(range(prefix_inputs))
     widths = [model.bounds()[1] for models in parts for model, _ in models]
@@ -160,6 +163,24 @@ def _assemble_banks(
     results: list[tuple[tuple[int, int], int]] = []
     y = 2 * n + 8 + 4 * prefix_inputs
     held: list[tuple[tuple[int, int], int] | None] = [None] * len(parts)
+    carry_levels = (len(parts) - 1).bit_length() + 1
+    carry: list[_Output | None] = [None] * carry_levels
+    temporary = right + 22 + 2 * carry_levels
+
+    def join_carry(older: _Output, newer: _Output) -> _Output:
+        nonlocal y
+        gx, gy = temporary + 4, y + 4
+        value = fresh()
+        layout.glyph(gx, gy, "o")
+        layout.junction(gx + 1, gy, value)
+        for index, (point, signal) in enumerate((older, newer)):
+            layout.route(point, (gx - 1, gy - 1 if index == 0 else gy + 1), signal)
+        # The 16-class probe's two-row return hit lower-port clearance; use four.
+        layout.route((gx + 1, gy), (gx + 1, gy + 4), value)
+        layout.route((gx + 1, gy + 4), (temporary, gy + 4), value)
+        y = gy + 8
+        return (temporary, gy + 4), value
+
     groups = list(enumerate(parts))
     if shared_suffix is not None:
         groups.insert(0, (-1, [(shared_suffix[0], list(range(prefix_inputs, n)))]))
@@ -224,8 +245,8 @@ def _assemble_banks(
                         continue
                     source = body_x + point[0], y + point[1]
                     signal = owner(model.junctions[point])
-                    # Hold roots beyond every term-result rail. They end
-                    # above the OR bank, whose existing width contains them.
+                    # Hold roots beyond term-result rails; each ends at its
+                    # consuming AND, which may follow earlier carry ORs.
                     column = right + 25 + 2 * len(parts) + 2 * index
                     layout.route(source, (column, source[1]), signal, "across")
                     held[index] = ((column, source[1]), signal)
@@ -263,14 +284,39 @@ def _assemble_banks(
         source, signal = output
         # A sole suffix class has no mask: its held root is already farther
         # right. Keep that endpoint so the output glyphs follow its wire.
-        column = max(right + 22 + 2 * group, source[0])
-        if source != (column, source[1]):
-            layout.route(source, (column, source[1]), signal)
-        results.append(((column, source[1]), signal))
+        if online_returns and len(parts) > 1:
+            layout.route(source, (temporary, source[1]), signal)
+            current = (temporary, source[1]), signal
+            depth = 0
+            while (pending := carry[depth]) is not None:
+                current = join_carry(pending, current)
+                carry[depth] = None
+                depth += 1
+            point, signal = current
+            slot = right + 22 + 2 * depth, point[1]
+            layout.route(point, slot, signal)
+            carry[depth] = slot, signal
+        else:
+            column = max(right + 22 + 2 * group, source[0])
+            if source != (column, source[1]):
+                layout.route(source, (column, source[1]), signal)
+            results.append(((column, source[1]), signal))
         y += 8
     for i, target in feeds:
         layout.route(reached[i], target, i)
         reached[i] = reached[i][0], target[1]
+    if online_returns and len(parts) > 1:
+        pending_roots = [pending for pending in carry if pending is not None]
+        result = pending_roots[0]
+        # Fold small rightmost blocks first: OR depth stays ceil(log2 q).
+        for pending in pending_roots[1:]:
+            result = join_carry(pending, result)
+        point, signal = result
+        endpoint = point[0], y + 4
+        layout.route(point, endpoint, signal)
+        layout.glyph(endpoint[0] + 1, endpoint[1], "-")
+        layout.glyph(endpoint[0] + 2, endpoint[1], ":")
+        return layout
     # Each term arrives once; OR depth is bounded by the prefix arity.
     row = y + 8
     column = right + 22 + 2 * len(parts) + 4
@@ -317,7 +363,7 @@ def _class_bank_layout(
 ) -> _Layout | None:
     """Share workspace-admitted seven/eight-input classes across all prefixes.
 
-    The gate budget bounds class count below the fixed suffix-row capacity;
+    The gate budget bounds class count below twice the suffix-row capacity;
     bounded H masks then give O(T) work and area.
     """
     from . import _essential_table
@@ -330,10 +376,15 @@ def _class_bank_layout(
     size = 1 << tail
     chunks = [table[start : start + size] for start in range(0, len(table), size)]
     classes = [chunk for chunk in dict.fromkeys(chunks) if "1" in chunk]
-    body_bound = 114 if tail == 7 else 211
-    # Masks use <=2L+p gates. One suffix and two term/OR gates per class
-    # give this bound; rejecting by it keeps q<2**tail without a fixed cap.
-    gate_bound = len(classes) * (2 * len(chunks) + prefix + body_bound + 2) - 1
+    body_bound = _atom_gate_bound(tail)
+    mask_bound = (
+        min(2 * len(chunks) + prefix, _atom_gate_bound(prefix))
+        if prefix <= 8
+        else len(chunks) + prefix
+    )
+    # Mask atoms use their fold cap; larger H masks use L+p. The aggregate
+    # gate budget keeps q<2**(tail+1), preserving bounded mask-copy work.
+    gate_bound = len(classes) * (mask_bound + body_bound + 2) - 1
     if gate_bound > 2 * len(table) + 8 * n + 111 or not any(
         "0" in chunk and chunks.count(chunk) > 1 for chunk in classes
     ):
@@ -360,7 +411,12 @@ def _class_bank_layout(
     # retains its original driver and coordinate-bucket copying stays linear.
     forest = _suffix_forest(classes, tail) if shared else None
     model = _assemble_banks(
-        parts, n, prefix, share_prefix_complements=False, shared_suffix=forest
+        parts,
+        n,
+        prefix,
+        share_prefix_complements=False,
+        shared_suffix=forest,
+        online_returns=True,
     )
     height, width = model.bounds()
     return model if ceiling is None or height * width <= ceiling else None

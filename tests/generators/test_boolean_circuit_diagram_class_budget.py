@@ -55,7 +55,7 @@ def test_sixteen_classes_share_beyond_the_old_cap_and_execute():
     model = _residual_class_bank_candidate(table)
     assert model is not None
     height, width = model.bounds()
-    assert height * width == 3_386_744
+    assert height * width == 2_453_905
     code = circuit_diagram(table)
     assert code == model.render()
     rows = sorted({0, len(table) - 1, *range(0, len(table), 256)})
@@ -71,12 +71,34 @@ def test_sixteen_eight_input_roots_keep_the_smaller_separate_layout():
     assert shared is not None
     height, width = separate.bounds()
     old_height, old_width = shared.bounds()
-    assert height * width == 6_224_502 < old_height * old_width
+    assert height * width == 4_703_203 < old_height * old_width
     assert sum(char in "ao~xX" for char in shared.glyphs.values()) == 2389
     assert sum(char in "ao~xX" for char in separate.glyphs.values()) == 3362
     rows = sorted({0, len(table) - 1, *range(0, len(table), 512)})
     _execute(table, separate.render(), rows)
     _execute(table, shared.render(), rows)
+
+
+@pytest.mark.slow
+def test_atom_mask_bound_admits_129_classes_across_carry_boundaries():
+    atoms = [dense(7, f"too-many:{i}".encode()) for i in range(129)]
+    table = "".join(atoms[row % 129] for row in range(256))
+    old_gate_bound = 129 * (512 + 8 + 114 + 2) - 1
+    assert old_gate_bound > 2 * len(table) + 8 * 15 + 111
+    model = _residual_class_bank_candidate(table)
+    assert model is not None
+    height, width = model.bounds()
+    assert height * width == 21_209_025
+    rows = sorted(
+        {
+            0,
+            len(table) - 1,
+            *range(0, len(table), 1024),
+            (127 << 7) + atoms[127].index("1"),
+            (128 << 7) + atoms[128].index("1"),
+        }
+    )
+    _execute(table, model.render(), rows)
 
 
 @pytest.mark.slow
