@@ -461,14 +461,14 @@ jobs:
     - name: Exercise paths, deadlines, output limits and worker cleanup
       run: >
         uv run pytest -q -o addopts=""
-        tests/test_run_bounded.py tests/test_memory_budget.py
+        tests/vm/test_run_bounded.py tests/vm/test_memory_budget.py
         tests/scripts/test_engineering_followups.py
         tests/scripts/test_benchmark_protocol.py
         tests/scripts/test_bounded_logs.py
         tests/scripts/test_check_generator_sizes.py::test_benchmark_deadline_reaps_workers_with_positive_control
-        tests/test_run_isolated.py::test_output_limit_stops_an_infinite_writer_and_reaps
-        tests/test_run_isolated.py::test_capped_timeout_retains_output_and_reaps
-        tests/test_run_isolated.py::test_input_error_retains_counts_and_output
+        tests/vm/test_run_isolated.py::test_output_limit_stops_an_infinite_writer_and_reaps
+        tests/vm/test_run_isolated.py::test_capped_timeout_retains_output_and_reaps
+        tests/vm/test_run_isolated.py::test_input_error_retains_counts_and_output
 
     - name: Retain worker and verification logs
       if: always()
