@@ -37,13 +37,7 @@ from verify.process import (  # noqa: E402
 )
 from verify.scope import (  # noqa: E402
     CACHED_STEPS,
-    COLLECTED_PATTERNS,  # noqa: F401  (re-exported for the scoping tests)
-    INTERPRETER_CONTRACT_TESTS,  # noqa: F401 (re-exported for the scoping tests)
-    STEP_SCOPE,  # noqa: F401  (re-exported for the scoping tests)
-    WHOLE_SUITE,  # noqa: F401 (re-exported for the scoping tests)
     VerifiedCache,
-    _generator_test_scope,  # noqa: F401  (re-exported for the scoping tests)
-    _pytest_scope,  # noqa: F401 (re-exported for the scoping tests)
     _scope_changed_files,
     _scope_plan,
     _scoped_cmd,

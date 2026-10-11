@@ -41,10 +41,7 @@ ROOT = Path(__file__).parents[1]
 # this runs as a script or is imported as ``scripts.new_language``.
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
-from remove_language import (  # noqa: E402
-    _tests_attr,
-    remove,
-)
+import remove_language as removal  # noqa: E402
 
 CATEGORIES = (
     "grid_based",
@@ -215,7 +212,7 @@ class Gap:
 
 
 def _tests_module(module: str, attr: str) -> Container[str]:
-    value: Container[str] = _tests_attr(module, attr)
+    value: Container[str] = removal.tests_attr(module, attr)
     return value
 
 
@@ -391,8 +388,10 @@ def _ledger_gaps(name: str) -> list[Gap]:
                 'each cell is "<class>: <clause>", e.g. "linear: ..." or '
                 '"poly n: worst 7n + 3 commands ..."; '
                 "a clause after `worst`/`at most` takes at most "
-                f"{_tests_attr('proofs._ledger', 'FORMULA_CLAUSE_WORDS')} words, "
-                f"any other {_tests_attr('proofs._ledger', 'LINEAR_CLAUSE_WORDS')}; "
+                f"{removal.tests_attr('proofs._ledger', 'FORMULA_CLAUSE_WORDS')}"
+                " words, "
+                "any other "
+                f"{removal.tests_attr('proofs._ledger', 'LINEAR_CLAUSE_WORDS')}; "
                 f"`python scripts/new_language.py bounds {name!r}` measures the "
                 "worst steps and bits to state",
             )
@@ -474,7 +473,9 @@ def quick_tests(name: str) -> list[str]:
         )
     if (
         stem
-        in _tests_attr("interpreters.test_input_convention", "_reading_languages")()
+        in removal.tests_attr(
+            "interpreters.test_input_convention", "_reading_languages"
+        )()
     ):
         nodes.append(
             "tests/interpreters/test_input_convention.py"
@@ -483,7 +484,9 @@ def quick_tests(name: str) -> list[str]:
     arities = [
         min(formulas[name][2])
         for table in ("execution", "workspace")
-        for formulas in (_tests_attr(f"proofs.test_{table}_formulas", "FORMULAS"),)
+        for formulas in (
+            removal.tests_attr(f"proofs.test_{table}_formulas", "FORMULAS"),
+        )
         if name in formulas
     ]
     if arities:
@@ -533,8 +536,8 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     """
     import esolangs
 
-    tables = _tests_attr("proofs.test_execution_formulas", "_tables")
-    measure = _tests_attr("proofs.test_execution_formulas", "_measure")
+    tables = removal.tests_attr("proofs.test_execution_formulas", "_tables")
+    measure = removal.tests_attr("proofs.test_execution_formulas", "_measure")
     rows = []
     for n in arities:
         worst = {t: measure(name, t, written=True) for t in tables(name, n)}
@@ -700,7 +703,7 @@ def main(argv: list[str] | None = None) -> int:
         return finish(args.name)
     if args.command == "remove":
         try:
-            leftover = remove(args.name)
+            leftover = removal.remove(args.name)
         except ValueError as exc:
             parser.error(str(exc))
         print(f"removed {args.name}; {len(leftover)} mention(s) left to edit by hand")

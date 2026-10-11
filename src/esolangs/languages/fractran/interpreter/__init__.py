@@ -137,7 +137,7 @@ class _Machine:
             and len(self._index.rules) <= 16 * max(1, len(self._index.initial))
             else None
         )
-        self._legacy_factors = () if self._index is None else self._index.initial
+        self._scan_factors = () if self._index is None else self._index.initial
         self._fractions: tuple[_Fraction, ...] | None = None
         self._integer = 1
         if self._index is None:
@@ -155,7 +155,7 @@ class _Machine:
     def _factors(self) -> Factors:
         """Return the canonical debug view without copying during transitions."""
         return (
-            self._legacy_factors
+            self._scan_factors
             if self._cursor is None
             else tuple(sorted(self._cursor.value.items()))
         )
@@ -166,7 +166,7 @@ class _Machine:
         if self._index is None:
             return self._integer
         return integer(
-            self._legacy_factors
+            self._scan_factors
             if self._cursor is None
             else tuple(self._cursor.value.items())
         )
@@ -188,12 +188,12 @@ class _Machine:
                 self.inspections += probes
                 self._selected_revision = self._cursor.version
             return self._selected
-        state = self._integer if self._index is None else self._legacy_factors
+        state = self._integer if self._index is None else self._scan_factors
         if state != self._selected_for:
             if self._index is None:
                 self._selected = _choose(self._integer, self.fractions)
             else:
-                self._selected, probes = self._index.choose(self._legacy_factors)
+                self._selected, probes = self._index.choose(self._scan_factors)
                 self.inspections += probes
             self._selected_for = state
         return self._selected
@@ -246,8 +246,8 @@ class _Machine:
             out = None if self.printed else self.value
             self.printed = True
         elif self._cursor is None:
-            self._legacy_factors = advance(
-                self._legacy_factors, self._index.rules[index][1]
+            self._scan_factors = advance(
+                self._scan_factors, self._index.rules[index][1]
             )
             out = None
         else:

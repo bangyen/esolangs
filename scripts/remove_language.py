@@ -1,7 +1,6 @@
 """``new_language.py remove``: delete a language and every entry naming it.
 
-Split from ``new_language.py``, which re-exports what its callers use.  The
-inverse of ``start``/``check``/``finish``: it deletes what ``check`` asks
+The inverse of ``start``/``check``/``finish``: it deletes what ``check`` asks
 for, cuts the language's entries out of the shared tables it knows, keeps a
 module the remaining source still imports (minus its ``LANGUAGE``),
 regenerates, and lists the mentions left in prose.
@@ -28,7 +27,7 @@ ROOT = Path(__file__).parents[1]
 _TREES = ("tests", "scripts")
 
 
-def _tests_attr(module: str, attr: str) -> Any:
+def tests_attr(module: str, attr: str) -> Any:
     """Read ``attr`` from ``tests.<module>``, which needs the repo on the path."""
     sys.path.insert(0, str(ROOT))
     try:
@@ -371,7 +370,7 @@ def _owned_test_files(lang: Language) -> list[Path]:
     """
     from esolangs.registry import LANGUAGES
 
-    own = _tests_attr("integration.api.test_language_coupling", "_own")
+    own = tests_attr("integration.api.test_language_coupling", "_own")
     files = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", *_TREES],
         cwd=ROOT,
@@ -852,7 +851,7 @@ def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
 
-    reference = _tests_attr("integration.api.test_language_coupling", "REFERENCE")
+    reference = tests_attr("integration.api.test_language_coupling", "REFERENCE")
     if name == reference:
         raise ValueError(
             f"{reference} is the reference language: shared tests, the example "

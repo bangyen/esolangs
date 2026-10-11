@@ -55,12 +55,11 @@ class TestPytestScopeCollects:
         assert all((REPO_ROOT / path).is_file() for path in scope)
 
     def test_the_patterns_match_pyproject(self) -> None:
-        verify = load_script()
         config = tomllib.loads(
             (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
         )
         patterns = config["tool"]["pytest"]["ini_options"]["python_files"]
-        assert list(verify.COLLECTED_PATTERNS) == patterns
+        assert list(load_scope().COLLECTED_PATTERNS) == patterns
 
 
 CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
@@ -368,7 +367,7 @@ def test_generator_scope_keeps_transitive_dependents(
 
 
 def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
-    verify = load_script()
+    verify = load_scope()
     assert any(
         "src/esolangs/_traits.py".startswith(prefix)
         for prefix in verify.STEP_SCOPE["exception leaks"]
