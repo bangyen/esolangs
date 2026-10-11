@@ -366,7 +366,7 @@
  "tests/generators/test_boolean_contract.py::test_the_expensive_generators_grow_as_documented[Circuit Diagram]": 0.41382921999996825,
  "tests/generators/test_boolean_contract.py::test_the_expensive_generators_grow_as_documented[Factor]": 0.1681595340000115,
  "tests/generators/test_boolean_contract.py::test_the_expensive_generators_grow_as_documented[Polynomial]": 2.3311721989999796,
- "tests/generators/test_boolean_fractran.py::test_fractran_answers_every_table_to_three_inputs": 3.376647602999988,
+ "src/esolangs/languages/fractran/tests/test_boolean_fractran.py::test_fractran_answers_every_table_to_three_inputs": 3.376647602999988,
  "tests/generators/test_boolean_line.py::TestLineBoolean::test_every_pruned_shape_survives": 2.1957207810000057,
  "tests/generators/test_boolean_line.py::TestLineBoolean::test_parity_n5": 0.25100234100000307,
  "tests/generators/test_boolean_line.py::TestLineBoolean::test_parity_n8": 2.55862809500001,

@@ -876,6 +876,7 @@ def remove(name: str) -> list[str]:
     ]
     doomed: set[Path] = {
         *module_paths,
+        ROOT / "src/esolangs/languages" / lang.id / "tests",
         ROOT / f"tests/interpreters/test_{lang.id}.py",
         ROOT / f"tests/generators/test_boolean_{gen}.py",
         *wiki,

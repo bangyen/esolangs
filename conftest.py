@@ -23,7 +23,7 @@ def _reject_stale_install() -> None:
             "esolangs is not importable: run via `just test-py` "
             "(or with PYTHONPATH=$PWD/src)."
         ) from exc
-    here = Path(__file__).resolve().parents[1] / "src" / "esolangs"
+    here = Path(__file__).resolve().parent / "src" / "esolangs"
     location = esolangs.__file__
     got = Path(location).resolve().parent if location is not None else None
     if got != here:

@@ -72,3 +72,22 @@ def test_a_forward_reference_counts_as_a_read(tmp_path: Path) -> None:
     )
     found = checker.dead_definitions(root)  # type: ignore[attr-defined]
     assert [n for _, n, _ in found] == []
+
+
+def test_colocated_tests_do_not_keep_dead_runtime_code_alive(tmp_path: Path) -> None:
+    checker = load_script()
+    root = _tree(
+        tmp_path,
+        {
+            "src/esolangs/languages/tiny/interpreter.py": (
+                "def _retired():\n    return 1\n"
+            ),
+            "src/esolangs/languages/tiny/tests/test_tiny.py": (
+                "from esolangs.languages.tiny.interpreter import _retired\n"
+                "def test_old():\n    assert _retired() == 1\n"
+            ),
+        },
+    )
+    assert [(p.name, name) for p, name, _ in checker.dead_definitions(root)] == [
+        ("interpreter.py", "_retired")
+    ]

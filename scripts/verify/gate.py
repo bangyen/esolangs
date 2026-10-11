@@ -113,7 +113,19 @@ STEPS = [
     ("pytest", [*PY, "-m", "pytest", "-q"]),
     (
         "bandit",
-        ["uv", "run", "--no-sync", "--with", "bandit", "bandit", "-r", "src", "-q"],
+        [
+            "uv",
+            "run",
+            "--no-sync",
+            "--with",
+            "bandit",
+            "bandit",
+            "-r",
+            "src",
+            "--exclude",
+            "*/tests/*",
+            "-q",
+        ],
     ),
     # A generator route that was replaced keeps its own tests green, so it
     # never fails; three sat that way.  <1s.
@@ -140,6 +152,7 @@ STEPS = [
             "--enable=duplicate-code",
             "--min-similarity-lines=10",
             "--ignore-imports=yes",
+            "--ignore=tests",
             "src/esolangs",
             "scripts",
             "checks",

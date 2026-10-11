@@ -99,6 +99,7 @@ def dead_definitions(root: pathlib.Path) -> list[tuple[pathlib.Path, str, int]]:
         p: ast.parse(p.read_text(), filename=str(p))
         for d in ("src", "scripts", "checks")
         for p in sorted((root / d).rglob("*.py"))
+        if "tests" not in p.relative_to(root).parts
     }
     total: Counter[str] = Counter()
     for tree in trees.values():

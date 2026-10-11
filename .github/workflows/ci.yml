@@ -343,7 +343,7 @@ jobs:
       run: uv sync --group dev --python 3.12
 
     - name: Run bandit security check
-      run: uv run --with bandit bandit -r src -f json -o bandit-report.json
+      run: uv run --with bandit bandit -r src --exclude '*/tests/*' -f json -o bandit-report.json
 
   distribution:
     runs-on: ${{ matrix.os }}

@@ -519,3 +519,89 @@ assert Path({str(marker)!r}).exists(), 'stream withheld a flushed short line'
         )[0]
         == 0
     )
+
+
+@pytest.fixture
+def colocated_scope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
+    from types import SimpleNamespace
+
+    from esolangs import registry
+
+    verify = load_scope()
+    monkeypatch.setattr(verify, "ROOT", tmp_path)
+    languages = {}
+    for slug in ("target", "unrelated"):
+
+        def generate(table: str) -> str:
+            return table
+
+        generate.__module__ = f"esolangs.languages.{slug}.generator"
+        languages[slug] = SimpleNamespace(
+            id=slug, name=slug, aliases=(), boolean=generate
+        )
+        for relative in (
+            f"src/esolangs/languages/{slug}/generator.py",
+            f"src/esolangs/languages/{slug}/tests/test_{slug}.py",
+            f"src/esolangs/languages/{slug}/tests/test_boolean_{slug}.py",
+        ):
+            path = tmp_path / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("")
+    monkeypatch.setattr(registry, "LANGUAGES", languages)
+    (tmp_path / "tests/generators").mkdir(parents=True)
+    (tmp_path / "tests/generators/test_contracts.py").write_text("")
+    return verify
+
+
+@pytest.mark.parametrize(
+    "implementation",
+    ["interpreter.py", "interpreter/__init__.py", "interpreter/index.py"],
+)
+def test_colocated_interpreter_scope_keeps_language_and_shared_tests(
+    colocated_scope: Any, implementation: str
+) -> None:
+    verify = colocated_scope
+    scope = verify._pytest_scope(  # noqa: SLF001
+        [f"src/esolangs/languages/target/{implementation}"]
+    )
+    assert isinstance(scope, list)
+    assert "src/esolangs/languages/target/tests/test_target.py" in scope
+    assert "src/esolangs/languages/target/tests/test_boolean_target.py" in scope
+    assert set(verify.INTERPRETER_CONTRACT_TESTS) <= set(scope)
+
+
+@pytest.mark.parametrize("slug", ["target", "unrelated"])
+def test_colocated_generator_scope_keeps_its_tests(
+    colocated_scope: Any, slug: str
+) -> None:
+    verify = colocated_scope
+    scope = verify._pytest_scope(  # noqa: SLF001
+        [f"src/esolangs/languages/{slug}/generator.py"]
+    )
+    assert isinstance(scope, list)
+    assert f"src/esolangs/languages/{slug}/tests/test_boolean_{slug}.py" in scope
+    other = "unrelated" if slug == "target" else "target"
+    assert f"src/esolangs/languages/{other}/tests/test_boolean_{other}.py" not in scope
+
+
+def test_colocated_test_changes_run_directly_and_helpers_widen(
+    colocated_scope: Any,
+) -> None:
+    verify = colocated_scope
+    test = "src/esolangs/languages/target/tests/test_target.py"
+    assert verify._pytest_scope([test]) == [test]  # noqa: SLF001
+    assert (
+        verify._pytest_scope(  # noqa: SLF001
+            ["src/esolangs/languages/target/tests/__init__.py"]
+        )
+        == verify.WHOLE_SUITE
+    )
+    assert verify._pytest_scope(["conftest.py"]) == verify.WHOLE_SUITE  # noqa: SLF001
+
+
+def test_colocated_tests_are_not_scoped_coverage_targets() -> None:
+    verify = load_scope()
+    command = ["python", "-m", "pytest", "--cov", "--cov-branch", "--cov-report="]
+    assert verify._scoped_coverage(  # noqa: SLF001
+        command, ["src/esolangs/languages/target/tests/test_target.py"]
+    ) == ["python", "-m", "pytest"]

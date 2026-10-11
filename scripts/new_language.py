@@ -137,7 +137,7 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     package = ROOT / "src/esolangs/languages" / slug
     files = {
         package / "interpreter.py": _interpreter_stub(name),
-        ROOT / "tests" / "interpreters" / f"test_{slug}.py": (
+        package / "tests" / f"test_{slug}.py": (
             f'"""Tests for the {name} interpreter."""\n\n'
             "import pytest\n\n"
             f"from esolangs.languages.{slug}.interpreter import run\n"
@@ -152,9 +152,10 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     if generator:
         fields = {"name": name, "slug": slug, "category": category}
         files[package / "generator.py"] = _GENERATOR.format(**fields)
-        files[ROOT / "tests" / "generators" / f"test_boolean_{slug}.py"] = (
-            _GENERATOR_TEST.format(**fields)
+        files[package / "tests" / f"test_boolean_{slug}.py"] = _GENERATOR_TEST.format(
+            **fields
         )
+    files[package / "tests/__init__.py"] = '"""Language-specific execution tests."""\n'
     files[package / "__init__.py"] = '"""Language implementation modules."""\n'
     namespace = package.parent / "__init__.py"
     if not namespace.exists():
@@ -281,11 +282,19 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
     needle = f"esolangs.languages.{module}.interpreter"
     tests = [
         path
-        for path in (ROOT / "tests").rglob("*.py")
+        for path in (
+            *((ROOT / "tests").rglob("*.py")),
+            *((base.parent / "tests").rglob("*.py")),
+        )
         if needle in path.read_text(encoding="utf-8")
     ]
     if not tests:
-        gaps.append(Gap("tests/interpreters/", f"add tests importing {needle}"))
+        gaps.append(
+            Gap(
+                f"src/esolangs/languages/{module}/tests/",
+                f"add tests importing {needle}",
+            )
+        )
     gaps.extend(
         Gap(str(path.relative_to(ROOT)), "replace the placeholder test")
         for path in tests
@@ -450,6 +459,12 @@ def quick_tests(name: str) -> list[str]:
             f"tests/integration/languages/test_{lang.id}.py",
         )
         if (ROOT / path).exists()
+    ]
+    nodes += [
+        path.relative_to(ROOT).as_posix()
+        for path in sorted(
+            (ROOT / "src/esolangs/languages" / lang.id / "tests").glob("test_*.py")
+        )
     ]
     nodes += [
         "tests/generators/test_interpreter_conventions.py"

@@ -52,6 +52,7 @@ SHARED_TOOLING = (
     "pyproject.toml",
     ".pre-commit-config.yaml",
     "justfile",
+    "conftest.py",
 )
 
 
@@ -145,7 +146,7 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
         in {
             "uv.lock",
             ".coveragerc",
-            "tests/conftest.py",
+            "conftest.py",
             "tests/__init__.py",
             "tests/tooling/scripts/script_support.py",
             "setup.cfg",
@@ -625,7 +626,10 @@ def _generator_test_scope(module: str) -> list[str] | None:
             break
         dependents.update(found)
     selected = []
-    for test in (ROOT / "tests").rglob("*.py"):
+    for test in (
+        *((ROOT / "tests").rglob("*.py")),
+        *((ROOT / "src/esolangs/languages").glob("*/tests/**/*.py")),
+    ):
         path = test.relative_to(ROOT).as_posix()
         if not _is_collected(path):
             continue
@@ -643,6 +647,10 @@ def _generator_test_scope(module: str) -> list[str] | None:
                     break
         # Only language-local directories follow this naming convention.
         local = test.parent.name in {"generators", "interpreters", "languages"}
+        relative = test.relative_to(ROOT).parts
+        if relative[:3] == ("src", "esolangs", "languages") and "tests" in relative:
+            local = True
+            test_owner = relative[3]
         if local and test_owner is not None and test_owner not in dependents:
             text = test.read_text(encoding="utf-8").lower()
             if not any(needle.lower() in text for needle in needles):
@@ -663,7 +671,11 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
     """
     paths: set[str] = set()
     for f in changed:
-        if f.startswith("tests/"):
+        if (
+            f == "conftest.py"
+            or f.startswith("tests/")
+            or (f.startswith("src/esolangs/languages/") and "/tests/" in f)
+        ):
             # A conftest configures every test beneath it, a non-.py file is
             # fixture data some unknown test reads, and a module pytest does
             # not collect is a helper imported from tests that live elsewhere.
@@ -674,6 +686,19 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             if (ROOT / f).exists():
                 paths.add(f)
             continue
+        if f.startswith("src/esolangs/languages/"):
+            relative = Path(f).relative_to("src/esolangs/languages")
+            local_tests = ROOT / "src/esolangs/languages" / relative.parts[0] / "tests"
+            if local_tests.is_dir() and (
+                relative.parts[1:2] == ("interpreter",)
+                or relative.parts[1:] == ("interpreter.py",)
+            ):
+                suites = sorted(local_tests.rglob("test_*.py"))
+                if not suites:
+                    return WHOLE_SUITE
+                paths.update(test.relative_to(ROOT).as_posix() for test in suites)
+                paths.update(INTERPRETER_CONTRACT_TESTS)
+                continue
         if f.startswith("src/esolangs/languages/") and f.endswith("/interpreter.py"):
             relative = Path(f).relative_to("src/esolangs/languages")
             # Package helpers can share a filename with another interpreter.

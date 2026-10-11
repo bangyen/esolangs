@@ -30,6 +30,7 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
         == new_language.ROOT / "src/esolangs/languages/tiny_lang"
     )
     assert {path.name for path in packages} == {"__init__.py"}
+    assert test.parent == generator_test.parent == source.parent / "tests"
     assert (test.name, generator_test.name) == (
         "test_tiny_lang.py",
         "test_boolean_tiny_lang.py",
@@ -42,6 +43,7 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
 def test_an_interpreter_only_language_gets_no_generator() -> None:
     paths = new_language.scaffold("Tiny", "other", generator=False)
     assert [path.name for path in paths[:2]] == ["interpreter.py", "test_tiny.py"]
+    assert paths[1].parent == paths[0].parent / "tests"
     assert not any(path.name == "generator.py" for path in paths)
     assert not (new_language.ROOT / "src/esolangs/tools/tiny.py").exists()
 
@@ -148,9 +150,10 @@ def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
     fixtures.mkdir(parents=True)
     (fixtures / "curation.toml").write_text("[languages]\n")
     gaps = new_language._common_gaps("Tiny", "tiny")  # noqa: SLF001
-    assert ("tests/interpreters/test_tiny.py", "replace the placeholder test") in {
-        (gap.where, gap.fix) for gap in gaps
-    }
+    assert (
+        "src/esolangs/languages/tiny/tests/test_tiny.py",
+        "replace the placeholder test",
+    ) in {(gap.where, gap.fix) for gap in gaps}
 
 
 def test_finish_still_runs_the_gate_past_open_steps(

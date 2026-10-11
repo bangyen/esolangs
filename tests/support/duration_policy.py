@@ -14,7 +14,7 @@ MEDIUM_LIMIT = 5.0
 # does not pay for a moving ceiling that no one can predict from a local run.
 CI_SCALE = 3.0
 
-# The hard stop per band, in seconds, applied by `tests/conftest.py` through
+# The hard stop per band, in seconds, applied by `conftest.py` through
 # pytest-timeout.  Not a ceiling to calibrate against -- the band limits
 # above are -- but the point past which a test is a hang: an order of
 # magnitude over the band's own limit at CI scale, so it never trips on an
