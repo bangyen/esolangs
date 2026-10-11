@@ -121,6 +121,7 @@ def _assemble_banks(
     share_prefix_complements: bool,
     shared_suffix: _Forest | None = None,
     online_returns: bool = False,
+    left_returns: bool = False,
 ) -> _Layout:
     prefix_order = list(range(prefix_inputs))
     widths = [model.bounds()[1] for models in parts for model, _ in models]
@@ -293,8 +294,15 @@ def _assemble_banks(
                 carry[depth] = None
                 depth += 1
             point, signal = current
-            slot = right + 22 + 2 * depth, point[1]
-            layout.route(point, slot, signal)
+            if left_returns:
+                # Four rows clear the producing gate's lower input port.
+                landing = point[0], point[1] + 4
+                layout.route(point, landing, signal, "down")
+                slot = 2 * depth + 1, landing[1]
+                layout.route(landing, slot, signal, "across")
+            else:
+                slot = right + 22 + 2 * depth, point[1]
+                layout.route(point, slot, signal)
             carry[depth] = slot, signal
         else:
             column = max(right + 22 + 2 * group, source[0])

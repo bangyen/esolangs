@@ -15,6 +15,24 @@ from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import _validate_truth_table
 
 
+def _folded_class_masks(
+    chunks: list[str], classes: list[str], prefix: int, table_size: int
+) -> list[tuple[list[int], str]] | None:
+    """Return essential class masks within the aggregate quadratic fold budget."""
+    masks = []
+    work = 0
+    for word in classes:
+        used, reduced = _essential_table(
+            "".join(str(int(chunk == word)) for chunk in chunks), prefix
+        )
+        # Include original ports in the quadratic fold-work bound.
+        work += (len(_dag(reduced, len(used))[0]) + prefix) ** 2
+        if work > 4 * table_size:
+            return None
+        masks.append((used, reduced))
+    return masks
+
+
 def folded_class_bank_candidate(
     table: str, ceiling: int | None = None
 ) -> _Layout | None:
@@ -41,17 +59,9 @@ def folded_class_bank_candidate(
         budget = min(budget, ceiling)
     if budget <= 0:
         return None
-    masks = []
-    work = 0
-    for word in classes:
-        used, reduced = _essential_table(
-            "".join(str(int(chunk == word)) for chunk in chunks), prefix
-        )
-        # Include original ports in the quadratic fold-work bound.
-        work += (len(_dag(reduced, len(used))[0]) + prefix) ** 2
-        if work > 4 * len(table):
-            return None
-        masks.append((used, reduced))
+    masks = _folded_class_masks(chunks, classes, prefix, len(table))
+    if masks is None:
+        return None
     parts = []
     for word, (used, reduced) in zip(classes, masks, strict=True):
         models = [

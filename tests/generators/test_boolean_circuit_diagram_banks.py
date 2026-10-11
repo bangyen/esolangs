@@ -163,7 +163,7 @@ def test_repeats_below_distinct_four_bank_cofactors_share(n):
     lines = code.splitlines()
     height, width = model.bounds()
     assert len(lines) * max(map(len, lines)) <= height * width
-    assert len(code) == {9: 125_374, 10: 1_928_450}[n]
+    assert len(code) == {9: 125_374, 10: 278_281}[n]
     rows = None if n == 9 else sorted({0, len(table) - 1, *range(0, len(table), 32)})
     _execute(table, code, rows)
     _execute(table, model.render(), rows)
