@@ -3,7 +3,7 @@
 One program per language whose generator can be verified end to end;
 :class:`BooleanExample` records generator, table, inputs and invocation,
 deriving Boolean I/O fields from the registry.
-``scripts/generate.py examples`` and ``tests/scripts/test_examples.py``
+``scripts/docs/generate.py examples`` and ``tests/scripts/test_examples.py``
 both derive from :data:`BOOLEAN_EXAMPLES`.  Parameterized generators carry
 a ``fill``.  A language qualifies when its answer is recoverable from what
 it prints -- including a fixed position in a state dump -- or by

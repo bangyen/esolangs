@@ -65,7 +65,7 @@ exemption supported by a structural proof or the measured criterion in
   loading; runs under 10 ms do not establish an exponent. An axis closes
   only with a language-wide lower bound; `Measured` keeps the empirical
   regression gate without asserting a proof. To update the table, edit
-  `src/esolangs/proof_status.toml` and run `python scripts/generate.py docs`. Current
+  `src/esolangs/proof_status.toml` and run `python scripts/docs/generate.py docs`. Current
   status:
 
   <!-- SCALING-STATUS:START -->
