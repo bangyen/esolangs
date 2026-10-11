@@ -77,13 +77,13 @@ class TestWikiUrlsAreUsable:
             assert re.fullmatch(r"[^%]*(%[0-9A-Fa-f]{2}[^%]*)*", slug), (name, slug)
             assert slug.isascii(), name
 
-    def test_the_readme_uses_the_same_builder(self) -> None:
+    def test_the_catalog_uses_the_same_builder(self) -> None:
         """The second copy of the slug logic is what made this ship twice."""
-        readme = (Path(__file__).parents[3] / "README.md").read_text()
+        catalog = (Path(__file__).parents[3] / "docs" / "languages.md").read_text()
         for name in esolangs.list_languages():
-            assert f"({wiki_url(name)})" in readme, name
+            assert f"({wiki_url(name)})" in catalog, name
             raw = f"https://esolangs.org/wiki/{name.replace(' ', '_')}"
-            assert raw == wiki_url(name) or f"({raw})" not in readme, name
+            assert raw == wiki_url(name) or f"({raw})" not in catalog, name
 
 
 class TestTheTopLevelUsageKeepsUp:
