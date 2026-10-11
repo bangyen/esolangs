@@ -46,9 +46,10 @@ exemption supported by a structural proof or the measured criterion in
   from 1,530,528 to 1,160,811 cells and 1,064 to 874 gates; both execute 33 native rows, with
   all three global fold orders rejected and all eight top-level banks distinct.
   A bounded multi-output forest now shares internal residuals between class roots.
-  Atom mask bounds admit 129 classes at n=15 in 21,209,025 cells; 130 native
-  rows include every class. Binary-carry OR returns retain one root per level.
-  Repeats beyond the class-bank gate budget remain open when all three fixed
+  Counted mask/body gates admit 202 sparse classes at n=15 in 8,749,827 cells;
+  607 native rows cover every class within 20 commands. Forest area floors
+  skip oversized assembly. Binary-carry OR returns retain one root per level.
+  Repeats beyond the fixed class cap or gate budget remain open when all three fixed
   fold orders exceed the node-count budget. Moving three/four tail inputs first avoids the
   expander control's original graph: n=12 drops from 221 to 60 fold nodes
   and executes in 138,953 cells. Controls in

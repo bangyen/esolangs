@@ -13,7 +13,7 @@ from collections.abc import Callable
 from esolangs.tools.helpers import _validate_truth_table
 
 from .forest import _Forest, _suffix_forest
-from .hpool import _atom_gate_bound, _h_pool_layout, _h_pool_size, _large_pool_layout
+from .hpool import _h_pool_layout, _h_pool_size, _large_pool_layout
 from .layout import _Layout, _RoutingLayout
 
 type _Output = tuple[tuple[int, int], int]
@@ -348,7 +348,13 @@ def _residual_class_bank_candidate(
 ) -> _Layout | None:
     """Choose separate or shared suffix roots by exact area, preserving ties."""
     separate = _class_bank_layout(table, ceiling, shared=False)
-    forest = _class_bank_layout(table, ceiling, shared=True)
+    shared_ceiling = ceiling
+    if separate is not None:
+        height, width = separate.bounds()
+        shared_ceiling = (
+            height * width if ceiling is None else min(ceiling, height * width)
+        )
+    forest = _class_bank_layout(table, shared_ceiling, shared=True)
     if forest is None:
         return separate
     if separate is None:
@@ -363,8 +369,7 @@ def _class_bank_layout(
 ) -> _Layout | None:
     """Share workspace-admitted seven/eight-input classes across all prefixes.
 
-    The gate budget bounds class count below twice the suffix-row capacity;
-    bounded H masks then give O(T) work and area.
+    A fixed class cap bounds H-mask copying; counted gates enforce workspace.
     """
     from . import _essential_table
 
@@ -376,19 +381,19 @@ def _class_bank_layout(
     size = 1 << tail
     chunks = [table[start : start + size] for start in range(0, len(table), size)]
     classes = [chunk for chunk in dict.fromkeys(chunks) if "1" in chunk]
-    body_bound = _atom_gate_bound(tail)
-    mask_bound = (
-        min(2 * len(chunks) + prefix, _atom_gate_bound(prefix))
-        if prefix <= 8
-        else len(chunks) + prefix
-    )
-    # Mask atoms use their fold cap; larger H masks use L+p. The aggregate
-    # gate budget keeps q<2**(tail+1), preserving bounded mask-copy work.
-    gate_bound = len(classes) * (mask_bound + body_bound + 2) - 1
-    if gate_bound > 2 * len(table) + 8 * n + 111 or not any(
+    # Keep the former implied class cap independently of the gate count:
+    # sparse masks can fit the workspace even when their worst-case bound cannot.
+    if len(classes) >= 1 << (tail + 1) or not any(
         "0" in chunk and chunks.count(chunk) > 1 for chunk in classes
     ):
         return None
+    forest = _suffix_forest(classes, tail) if shared else None
+    if forest is not None and ceiling is not None:
+        height, width = forest[0].bounds()
+        # Copying removes two output cells but adds a larger positive offset;
+        # retained endpoint rows therefore bound the assembled area below.
+        if height * width > ceiling:
+            return None
     parts: list[list[tuple[_Layout, list[int]]]] = []
     for chunk in classes:
         mask = "".join("1" if word == chunk else "0" for word in chunks)
@@ -409,7 +414,16 @@ def _class_bank_layout(
         parts.append(models)
     # Keep H-mask complements inside their copied blocks so each local wire
     # retains its original driver and coordinate-bucket copying stays linear.
-    forest = _suffix_forest(classes, tail) if shared else None
+    gates = sum(
+        sum(char in "ao~xX" for char in model.glyphs.values())
+        for models in parts
+        for model, _ in models
+    )
+    if forest is not None:
+        gates += sum(char in "ao~xX" for char in forest[0].glyphs.values())
+    # At most one AND per class and q-1 ORs; constants only reduce this count.
+    if gates + 2 * len(classes) - 1 > 2 * len(table) + 8 * n + 111:
+        return None
     model = _assemble_banks(
         parts,
         n,
