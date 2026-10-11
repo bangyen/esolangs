@@ -43,8 +43,7 @@ class TestShardIds:
         shard = load_script()
         monkeypatch.setattr(shard, "collect_ids", lambda _marker: [])  # type: ignore[attr-defined]
         assert (
-            shard.shard_main(["--marker", "slow", "--shard", "3", "--shards", "4"])
-            == 0
+            shard.shard_main(["--marker", "slow", "--shard", "3", "--shards", "4"]) == 0
         )  # type: ignore[attr-defined]
 
 
