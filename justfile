@@ -5,6 +5,9 @@
 # need permission outside the repository.  An explicit UV_CACHE_DIR still wins.
 export UV_CACHE_DIR := env_var_or_default("UV_CACHE_DIR", justfile_directory() + "/.cache/uv")
 
+# Keep Pylint's statistics writable in sandboxed worktrees too.
+export PYLINTHOME := env_var_or_default("PYLINTHOME", justfile_directory() + "/.cache/pylint")
+
 # Auto-detect uv - falls back to plain python if not available
 PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python"`
 
