@@ -15,7 +15,7 @@ Sharing costs no execution. The diagram gives every distinct subtable one
 state, so it names `O(T / log T)` primes, and a run still fires at most a
 fraction a level, one for the leaf, and a clear a set input left unread:
 `n + 1` fractions on `O(n log n)`-bit values. Both constructions are executed
-in `tests/proofs/deep/fractran.py`.
+in `src/esolangs/languages/fractran/tests/proofs/deep/fractran.py`.
 
 ## Setup
 
@@ -268,8 +268,8 @@ continuation, agree. The clears come after every state fraction, so they
 fire only once the leaf has spent the last state. It is checked by
 execution: every row of every table at every arity from one to nine, over
 random, constant, parity and half-split tables, in
-`tests/proofs/deep/fractran.py` (10,220 rows at the pinned seed) and
-in `tests/proofs/test_fractran_bound.py`.
+`src/esolangs/languages/fractran/tests/proofs/deep/fractran.py` (10,220 rows at the pinned seed) and
+in `src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py`.
 
 *Cost.* Depth `d` holds at most `2**d` prefixes and at most `2**2**(n-d)`
 distinct subtables, so the states number at most `C`. The two terms cross
@@ -374,7 +374,7 @@ worst-case bound, not a claim about every table or every evaluator. An
 indexed or factorized implementation has a different cost model; the
 unit-cost fraction-firing model already has the shared construction above.
 
-`tests/proofs/test_fractran_bound.py` executes small total programs against
+`src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py` executes small total programs against
 the compacting lemma, checks their answers with the real chooser before and
 after deletion, and requires an oversized-guard positive control. A second
 finite check includes the zero-fraction projection and the ordered numeric
@@ -471,7 +471,7 @@ with the four rows carrying one guard of each sign. All 24 orders of the
 same four fractions execute on all rows. Exactly 14 of 16 tables occur;
 XOR and XNOR are missing because the four feature rows are dependent.
 The eight-fraction independent-pair control realizes all sixteen tables.
-Both controls live in `tests/proofs/test_fractran_routing.py`.
+Both controls live in `src/esolangs/languages/fractran/tests/proofs/test_fractran_routing.py`.
 
 ### Order-only decoding with two priority consultations
 
@@ -1091,7 +1091,7 @@ primes still need accounting. The next construction question is whether
 rank selection can use this bit-local representation without reintroducing
 the logarithmic factor elsewhere.
 
-**Packed-counter selector control.** `tests/proofs/_fractran_bit_order.py`
+**Packed-counter selector control.** `src/esolangs/languages/fractran/tests/proofs/_fractran_bit_order.py`
 implements this local arithmetic with packed counter bits and active-width
 metadata. Cell `j` begins at bit offset
 `2*(j-1)-popcount(j-1)`, because
@@ -1145,7 +1145,7 @@ bound follows from the arithmetic and rough-number estimates above.
 ### Direct chunks with exact cleanup
 
 Rank selection is unnecessary if table data may appear in the starting
-exponents and cleanup guards. `tests/proofs/_fractran_chunks.py` gives a
+exponents and cleanup guards. `src/esolangs/languages/fractran/tests/proofs/_fractran_chunks.py` gives a
 named construction under the normal sparse-factor execution contract.
 Let `b=max(1,n-bit_length(n))` and `k=ceil(T/b)`. Each consecutive block
 of at most `b` table entries gives a little-endian binary value `a_i`.
@@ -1227,7 +1227,7 @@ construction controls, not a claim that it is the practical generator.
 
 The feature primes are unnecessary when each mapping numerator carries its
 own chunk value. `mapped_chunk_template` in
-`tests/proofs/_fractran_chunks.py` starts with mapping flag `29`, decoder
+`src/esolangs/languages/fractran/tests/proofs/_fractran_chunks.py` starts with mapping flag `29`, decoder
 constant `103**2` and the same input primes. Here `b` is the largest power
 of ten at most `max(1,n-bit_length(n))`; thus `b=Theta(n)` and
 `2**b=O(k)` still hold. The input loaders still put

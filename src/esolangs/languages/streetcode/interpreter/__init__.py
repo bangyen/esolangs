@@ -411,7 +411,7 @@ class _Machine:
         must match ``_WALL_FORMS`` up to rotation.  The forms let a wall
         simply stop and admit any wall character at a corner -- whether a
         divider must end in ``+`` is unsettled, and
-        ``tests/support/fixtures/streetcode_hello.txt`` leaves its ends bare.
+        the hello fixture leaves its ends bare.
         Must run after :meth:`_validate_enclosed`: :meth:`_block` does not
         bounds-check.
         """

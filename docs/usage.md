@@ -175,7 +175,7 @@ Use `encode_inputs` to build stdin; it and this table use `describe`.
 
 <!-- INPUT-SHAPES:END -->
 
-[`MANIFEST.md`](../src/esolangs/examples/MANIFEST.md) lists each example’s
+[`MANIFEST.md`](../src/esolangs/languages/EXAMPLES.md) lists each example’s
 input row and encoding.
 
 `esolangs run` warns about invalid stdin through the interpreter; pipe its

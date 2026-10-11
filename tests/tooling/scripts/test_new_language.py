@@ -365,7 +365,7 @@ def test_scaffold_collision_is_atomic(root: Path) -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("generator", [False, True])
-def test_remove_cleans_both_layouts(
+def test_remove_cleans_language_package(
     root: Path, monkeypatch: pytest.MonkeyPatch, *, generator: bool
 ) -> None:
     import subprocess
@@ -395,7 +395,15 @@ def test_remove_cleans_both_layouts(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("")
     (root / "tests/support/fixtures/generator_sizes.json").write_text("{\n}\n")
-    (root / "tests/support/fixtures/wiki_examples").mkdir()
+    for relative in (
+        "src/esolangs/languages/tiny/tests/fixtures/wiki_examples/tiny.toml",
+        "src/esolangs/languages/tiny/tests/proofs/helper.py",
+        "src/esolangs/languages/tiny/examples/tiny.txt",
+    ):
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("")
+        owned.add(path)
 
     def tiny(truth_table: str) -> str:
         return truth_table

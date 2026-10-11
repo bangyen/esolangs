@@ -69,7 +69,7 @@ REGENERATE = "`uv run python scripts/docs/generate.py examples`"
 def test_boolean_example_matches_generator(name: str) -> None:
     """Each committed boolean program is what its generator produces today."""
     example = BOOLEAN_GENERATED[name]
-    path = BASE_DIR / "examples" / example.filename
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
     program = example.build(balance=True)
     stale = f"{path.relative_to(BASE_DIR)} is stale; run {REGENERATE}"
     if isinstance(program, Raster):
@@ -102,20 +102,23 @@ def test_the_manifest_matches_what_the_script_would_write() -> None:
     sys.path.insert(0, str(BASE_DIR / "scripts"))
     from scripts.docs.examples import boolean_manifest_text
 
-    path = BASE_DIR / "examples" / "MANIFEST.md"
+    path = BASE_DIR / "src/esolangs/languages/EXAMPLES.md"
     assert path.read_text(encoding="utf-8") == boolean_manifest_text(), (
-        f"examples/MANIFEST.md is stale; run {REGENERATE}"
+        f"languages/EXAMPLES.md is stale; run {REGENERATE}"
     )
 
 
 def test_boolean_examples_cover_every_committed_file() -> None:
     """Every file in examples is accounted for, and vice versa."""
     on_disk = {
-        p.name
-        for p in (BASE_DIR / "examples").iterdir()
+        p.relative_to(BASE_DIR / "src/esolangs/languages").as_posix()
+        for p in (BASE_DIR / "src/esolangs/languages").glob("*/examples/*")
         if p.suffix in (".txt", ".png")
     }
-    expected = {example.filename for example in BOOLEAN_GENERATED.values()}
+    expected = {
+        f"{canonical_id(stem.replace('-', ' '))}/examples/{example.filename}"
+        for stem, example in BOOLEAN_GENERATED.items()
+    }
     unregistered = sorted(on_disk - expected)
     assert not unregistered, (
         f"examples/ holds {unregistered} with no BooleanExample; delete them "
@@ -129,7 +132,9 @@ def test_boolean_examples_cover_every_committed_file() -> None:
 def test_halt_convention_examples_halt(name: str) -> None:
     """The committed program of a halt-convention language terminates."""
     program = (
-        (BASE_DIR / "examples" / f"{name}.txt").read_text(encoding="utf-8").rstrip("\n")
+        (BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0])
+        .read_text(encoding="utf-8")
+        .rstrip("\n")
     )
     assert _halts(name, program, list(BOOLEAN_GENERATED[name].inputs)), (
         f"examples/{name}.txt holds the looping branch; the committed "
@@ -187,7 +192,7 @@ def _prove_halt(vm: object) -> bool:
 @pytest.mark.medium
 def test_boolean_example(name: str) -> None:
     _module, _inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
-    path = BASE_DIR / "examples" / BOOLEAN_GENERATED[name].filename
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
     stdin = BOOLEAN_GENERATED[name].stdin
     program = (
         Raster.from_png(path.read_bytes())
@@ -241,7 +246,7 @@ class TestTheWritersWriteWhatTheBuildersBuild:
     def _redirect(monkeypatch: pytest.MonkeyPatch, target: Path) -> object:
         from scripts.docs import examples as generate
 
-        monkeypatch.setattr(generate, "EXAMPLES", target)
+        monkeypatch.setattr(generate, "LANGUAGES_DIR", target)
         return generate
 
     def test_a_second_write_reports_unchanged(
@@ -276,7 +281,7 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         raster = Raster.from_png(BOOLEAN_GENERATED[stem].build(balance=True).to_png())
         monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", raster)]))  # type: ignore[attr-defined]
         module.write_set("boolean")  # type: ignore[attr-defined]
-        path = tmp_path / "examples" / "img.png"
+        path = tmp_path / "examples" / "img/examples/img.png"
         Image.open(path).save(path, compress_level=1)
         recompressed = path.read_bytes()
         module.write_set("boolean")  # type: ignore[attr-defined]

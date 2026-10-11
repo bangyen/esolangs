@@ -28,7 +28,6 @@ from typing import Any, TypedDict, cast
 
 from esolangs._answers import encode_inputs, read_answer
 from esolangs._describe import (
-    _EXAMPLES,
     LanguageInfo,
     describe,
     list_languages,

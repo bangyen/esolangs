@@ -30,7 +30,7 @@ def _manifest_is_stale() -> bool:
     Only the manifest: regenerating every example program would make this
     check as slow as ``tests/tooling/scripts/test_examples.py``, which covers them.
     """
-    manifest = examples.EXAMPLES / "MANIFEST.md"
+    manifest = examples.LANGUAGES_DIR / "EXAMPLES.md"
     return manifest.read_text(encoding="utf-8") != (examples.boolean_manifest_text())
 
 
@@ -58,7 +58,7 @@ def main() -> int:
         return 1
     if _manifest_is_stale():
         print(
-            "examples/MANIFEST.md is stale; run python "
+            "languages/EXAMPLES.md is stale; run python "
             "scripts/docs/generate.py examples",
             file=sys.stderr,
         )

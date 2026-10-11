@@ -30,19 +30,19 @@ from tests.support.fixtures import grid
 # OR gates have an input no gate ever drives, so it prints nothing; see
 # ``PRIME_TESTER`` for the repaired circuit and the module docstring for
 # how the repair is derived.
-PRIME_TESTER_AS_DRAWN = grid("circuit_diagram/prime_tester_as_drawn.txt")
+PRIME_TESTER_AS_DRAWN = grid("circuit_diagram", "prime_tester_as_drawn.txt")
 
 # The same circuit with the two omissions repaired: four ``-`` closing the
 # gap on the third line, and the ``/`` whose two ``=`` crossings the page
 # already draws.  This computes primality of a 4-bit input, MSB first.
-PRIME_TESTER = grid("circuit_diagram/prime_tester.txt")
+PRIME_TESTER = grid("circuit_diagram", "prime_tester.txt")
 
 # The wiki's flip-flop: two NOTs wired into each other through a crossover.
 # The page states its output as ``1N1N1N...``.
-FLIP_FLOP = grid("circuit_diagram/flip_flop.txt")
+FLIP_FLOP = grid("circuit_diagram", "flip_flop.txt")
 
 # The wiki's "it is possible to produce a constant output" circuit.
-CONSTANT = grid("circuit_diagram/constant.txt")
+CONSTANT = grid("circuit_diagram", "constant.txt")
 
 PRIMES = frozenset({2, 3, 5, 7, 11, 13})
 

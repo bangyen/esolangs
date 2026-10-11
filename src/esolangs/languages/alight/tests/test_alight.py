@@ -23,9 +23,9 @@ from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hi
 # spaces matter (each vertical ``turn right`` sits at a fixed column, and a
 # blank row is a legal in-command space), so tests/support/fixtures is exempt from
 # the whitespace hooks.
-CAT_TURN = grid("alight/cat_turn.txt")
-CAT_SKIP = grid("alight/cat_skip.txt")
-REVERSED_CAT = grid("alight/reversed_cat.txt")
+CAT_TURN = grid("alight", "cat_turn.txt")
+CAT_SKIP = grid("alight", "cat_skip.txt")
+REVERSED_CAT = grid("alight", "reversed_cat.txt")
 
 
 def _run(code: list[str], stdin: str = "", list_update: str = "in_place") -> str:

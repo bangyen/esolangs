@@ -171,9 +171,9 @@ class TestStreetcodeAmbiguousTurns:
         """A junction never offers a road the car cannot step onto."""
         root = ROOT
         for path in (
-            "tests/support/fixtures/streetcode_hello.txt",
-            "tests/support/fixtures/streetcode_and2_wide.txt",
-            "examples/streetcode.txt",
+            "src/esolangs/languages/streetcode/tests/fixtures/streetcode_hello.txt",
+            "src/esolangs/languages/streetcode/tests/fixtures/streetcode_and2_wide.txt",
+            "src/esolangs/languages/streetcode/examples/streetcode.txt",
         ):
             code = (root / path).read_text().split("\n")
             if code and code[-1] == "":

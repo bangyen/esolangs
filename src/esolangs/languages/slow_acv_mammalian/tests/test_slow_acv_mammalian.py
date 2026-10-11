@@ -39,7 +39,10 @@ class TestMammalian:
 
     def test_hello_world(self) -> None:
         """Hello World program from the language docs."""
-        program = ROOT / "tests/support/fixtures/mammalian.txt"
+        program = (
+            ROOT
+            / "src/esolangs/languages/slow_acv_mammalian/tests/fixtures/mammalian.txt"
+        )
         assert run_and_capture(program.read_text()) == "Hello, world!\n"
 
     def test_accept_appends_a_newline(self) -> None:

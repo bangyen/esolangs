@@ -91,7 +91,7 @@ class TestStreetcodeStreetWidth:
             # With no walls there is no street network to measure.
             pytest.param(["CU"], id="grid_without_walls_is_exempt"),
             # Whether a divider must end in a '+' the wiki does not settle; the
-            # ring in tests/support/fixtures/streetcode_hello.txt draws bare ends.
+            # ring in the hello fixture draws bare ends.
             pytest.param(
                 [
                     "+------+",
@@ -250,7 +250,10 @@ class TestStreetcodeStreetWidth:
 
     @pytest.mark.parametrize(
         "path",
-        ["tests/support/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
+        [
+            "src/esolangs/languages/streetcode/tests/fixtures/streetcode_hello.txt",
+            "src/esolangs/languages/streetcode/examples/streetcode.txt",
+        ],
     )
     def test_shipped_examples_are_accepted(self, path: str) -> None:
         """The repo's own programs must survive the check."""

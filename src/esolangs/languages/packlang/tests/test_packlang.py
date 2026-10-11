@@ -24,7 +24,7 @@ from tests.support.raises import assert_rejected_with_hint
 
 # The wiki's five example programs, verbatim.
 HELLO, TRUTH_MACHINE, CAT, PLUS_OR_MINUS, DEPENDENCY = (
-    text(f"packlang/{name}.txt")
+    text("packlang", f"{name}.txt")
     for name in ("hello", "truth_machine", "cat", "plus_or_minus", "dependency")
 )
 

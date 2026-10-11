@@ -53,7 +53,7 @@ class TestBitdeque:
 
 
 #: The wiki's Hello, world!, its ``[c] bits:`` labels dropped.
-_WIKI_HELLO = text("bitdeque/wiki_hello.txt")
+_WIKI_HELLO = text("bitdeque", "wiki_hello.txt")
 
 
 class TestTheWikiExample:

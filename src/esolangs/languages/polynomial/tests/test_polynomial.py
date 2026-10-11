@@ -38,7 +38,10 @@ from tests.support.paths import ROOT
 # cases where a float64 solver rounds a root and drops or corrupts a
 # character.  Kept as data because only the decode is under test.
 _PRECISION_PROGRAMS: dict[str, str] = json.loads(
-    (ROOT / "tests/support/fixtures/polynomial_precision.json").read_text()
+    (
+        ROOT
+        / "src/esolangs/languages/polynomial/tests/fixtures/polynomial_precision.json"
+    ).read_text()
 )
 
 
@@ -144,7 +147,11 @@ class TestPolynomialExecution:
 
     def test_wiki_hello_world(self) -> None:
         """Enedil's degree-50 program: 25 instructions, alternating += and print."""
-        path = (ROOT / "tests") / "support/fixtures" / "polynomial_hello.txt"
+        path = (
+            ROOT
+            / "src/esolangs/languages/polynomial/tests/fixtures"
+            / "polynomial_hello.txt"
+        )
         assert esolangs.run("Polynomial", path.read_text()) == "Hello World!\n"
 
     def test_while_loop(self) -> None:

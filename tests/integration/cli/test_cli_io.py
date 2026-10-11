@@ -15,7 +15,7 @@ from esolangs.cli.io import (
 )
 from tests.integration.cli.test_cli import call_main, run_cli
 from tests.reference import REFERENCE
-from tests.support.cli_support import EXAMPLES
+from tests.support.cli_support import PACKAGE
 from tests.support.pick import languages, one_where
 
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
@@ -234,7 +234,7 @@ class TestProgramFilesLoad:
         self, name: str, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Three once failed on the newline their own file ends with."""
-        path = EXAMPLES.parent / esolangs.describe(name)["examples"][0]
+        path = PACKAGE / esolangs.describe(name)["examples"][0]
         stdin = esolangs.encode_inputs(name, [0, 1])
         assert call_main(["run", name, str(path)], capsys, stdin=stdin)
 

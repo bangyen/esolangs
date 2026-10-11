@@ -450,11 +450,7 @@ def quick_tests(name: str) -> list[str]:
     from esolangs.registry._language import Shape
 
     lang = LANGUAGES[name]
-    nodes = [
-        path
-        for path in (f"tests/integration/languages/test_{lang.id}.py",)
-        if (ROOT / path).exists()
-    ]
+    nodes: list[str] = []
     nodes += [
         path.relative_to(ROOT).as_posix()
         for path in sorted(

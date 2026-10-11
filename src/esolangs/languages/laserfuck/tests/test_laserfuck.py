@@ -282,7 +282,7 @@ class TestContract(SnapshotContract):
 
 
 #: The wiki's Hello world rows are wider than a source line.
-FIXTURES = (ROOT / "tests") / "support/fixtures"
+FIXTURES = ROOT / "src/esolangs/languages/laserfuck/tests/fixtures"
 
 
 def _wiki_run(code: str, stdin: str, heading: int) -> str:

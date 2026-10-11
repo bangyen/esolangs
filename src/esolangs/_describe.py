@@ -20,7 +20,7 @@ from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import machine_traits
 
 #: The committed examples, inside the package so the wheel ships them.
-_EXAMPLES = pathlib.Path(__file__).resolve().parent / "examples"
+_LANGUAGES = pathlib.Path(__file__).resolve().parent / "languages"
 
 # Registry category -> state model name.
 _STATE_MODELS = {
@@ -108,7 +108,7 @@ def describe(language: str) -> LanguageInfo:
     ``examples`` lists the committed programs as POSIX paths relative to
     the package
     (``importlib.resources.files("esolangs") / path``);
-    ``examples/MANIFEST.md`` says what each computes.
+    ``languages/EXAMPLES.md`` says what each computes.
     """
     name = resolve(language)
     lang = LANGUAGES[name]
@@ -118,7 +118,10 @@ def describe(language: str) -> LanguageInfo:
     # under any install, and absolute ones froze the install location into
     # the public output.  ``importlib.resources.files("esolangs")`` resolves.
     suffix = ".png" if lang.source_kind.value == "raster" else ".txt"
-    examples = sorted(f"examples/{p.name}" for p in _EXAMPLES.glob(f"{stem}{suffix}"))
+    examples = sorted(
+        f"languages/{lang.id}/examples/{p.name}"
+        for p in (_LANGUAGES / lang.id / "examples").glob(f"{stem}{suffix}")
+    )
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
     contract = lang.contract

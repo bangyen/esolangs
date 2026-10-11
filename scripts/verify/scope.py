@@ -474,6 +474,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "src/esolangs/languages/arrowqueue/generator.py",
         "src/esolangs/tools/examples.py",
         "tests/proofs/deep/",
+        "src/esolangs/languages/",
     ),
     # Helpers outside interpreters can introduce leaks too. The sweep's
     # dependency graph narrows this to the languages that import them.

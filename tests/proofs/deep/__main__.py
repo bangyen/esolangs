@@ -48,22 +48,33 @@ def discover() -> list[Proof]:
     """Every deep proof, in band order then by cost."""
     package = importlib.import_module("tests.proofs.deep")
     found = []
-    for info in pkgutil.iter_modules(package.__path__):
-        if _is_helper(info.name) or info.name.startswith("test_"):
-            continue
-        module = importlib.import_module(f"tests.proofs.deep.{info.name}")
+    modules = [
+        (info.name, f"tests.proofs.deep.{info.name}")
+        for info in pkgutil.iter_modules(package.__path__)
+        if not _is_helper(info.name) and not info.name.startswith("test_")
+    ]
+    source = Path(__file__).resolve().parents[3] / "src"
+    modules += [
+        (path.stem, ".".join(path.relative_to(source).with_suffix("").parts))
+        for path in sorted(
+            (source / "esolangs/languages").glob("*/tests/proofs/deep/*.py")
+        )
+        if not _is_helper(path.stem) and not path.stem.startswith("test_")
+    ]
+    for name, reference in modules:
+        module = importlib.import_module(reference)
         band = getattr(module, "BAND", None)
         cost = getattr(module, "COST", None)
         assert band is not None, (
-            f"{info.name} declares no BAND -- a proof with no band runs nowhere, "
+            f"{name} declares no BAND -- a proof with no band runs nowhere, "
             "which is exactly the silent skip this runner exists to prevent"
         )
-        assert band in BANDS, f"{info.name}: unknown band {band!r}, expected {BANDS}"
-        assert isinstance(cost, int | float), f"{info.name} declares no COST"
+        assert band in BANDS, f"{name}: unknown band {band!r}, expected {BANDS}"
+        assert isinstance(cost, int | float), f"{name} declares no COST"
         assert callable(getattr(module, "main", None)), (
-            f"{info.name} has no main() -- every deep proof returns an exit code"
+            f"{name} has no main() -- every deep proof returns an exit code"
         )
-        found.append(Proof(info.name, band, float(cost), module))
+        found.append(Proof(name, band, float(cost), module))
     return sorted(found, key=lambda p: (BANDS.index(p.band), p.cost))
 
 

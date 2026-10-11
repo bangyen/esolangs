@@ -227,7 +227,7 @@ _LINK = re.compile(r"(?<!!)\[[^]]*\]\(([^ )]+)(?:\s+[^)]*)?\)")
 _DOCUMENTS = (
     ROOT / "README.md",
     *sorted((ROOT / "docs").rglob("*.md")),
-    *sorted((ROOT / "src" / "esolangs" / "examples").glob("*.md")),
+    ROOT / "src/esolangs/languages/EXAMPLES.md",
 )
 
 

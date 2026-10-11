@@ -507,7 +507,7 @@ def test_c_intercal_test2_multiplies_with_its_library_copy() -> None:
 
     Its library copy splits ``#`` from ``0`` across a line; test2.chk is XXXV.
     """
-    path = (ROOT / "tests") / "support/fixtures" / "intercal_test2.i"
+    path = ROOT / "src/esolangs/languages/intercal/tests/fixtures" / "intercal_test2.i"
     assert _run(path.read_text(encoding="utf-8"), "FIVE\nSEVEN\n") == "XXXV\n"
 
 

@@ -225,22 +225,7 @@ def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
     prefixes.append(f"src/esolangs/languages/{lang.id}/")
     prefixes += [f"src/{m.split('.generator')[0].replace('.', '/')}" for m in canonical]
     for stem in stems:
-        prefixes += [
-            f"tests/formats/{stem}/",
-            f"tests/generators/{stem}/",
-            f"tests/support/fixtures/{stem}",
-            f"tests/interpreters/test_{stem}",
-            f"tests/integration/languages/test_{stem}.py",
-            f"tests/generators/test_boolean_{stem}",
-            f"tests/generators/test_{stem}_",
-            f"tests/proofs/deep/{stem}",
-            f"tests/proofs/test_{stem}_",
-            f"tests/proofs/_{stem}_",
-            f"tests/generators/{stem}_",
-            f"tests/interpreters/{stem}_support.py",
-            f"scripts/profile_{stem}",
-            f"scripts/verify_{stem}_",
-        ]
+        prefixes += [f"scripts/profile_{stem}", f"scripts/verify_{stem}_"]
     spellings = {lang.name, *lang.aliases, *stems} | {"." + stem for stem in stems}
     return spellings, tuple(prefixes)
 

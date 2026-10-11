@@ -14,7 +14,7 @@ from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
-EXAMPLES = ROOT / "src" / "esolangs" / "examples"
+LANGUAGES_DIR = ROOT / "src" / "esolangs" / "languages"
 
 
 def boolean_programs() -> Iterator[tuple[str, Program]]:
@@ -100,7 +100,8 @@ def boolean_manifest_text() -> str:
         else:
             expected = repr(example.expected) if example.expected else "(nothing)"
         rows.append(
-            f"| `{example.filename}` | {_display_name(stem)} | `{example.table}` | "
+            f"| `{canonical_id(stem.replace('-', ' '))}/examples/{example.filename}` | "
+            f"{_display_name(stem)} | `{example.table}` | "
             f"`{row}` | {given} | {expected} |"
         )
     if any(e.note for e in BOOLEAN_EXAMPLES.values()):
@@ -119,13 +120,14 @@ def write_boolean_manifest() -> None:
     out.  Nothing checked the manifest at all until then, so a note added
     to a language left the committed table describing the one before it.
     """
-    path = EXAMPLES / "MANIFEST.md"
+    path = LANGUAGES_DIR / "EXAMPLES.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
     text = boolean_manifest_text()
     if path.exists() and path.read_text(encoding="utf-8") == text:
-        print(f"unchanged examples/{path.name}")
+        print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
         return
     path.write_text(text, encoding="utf-8")
-    print(f"wrote     examples/{path.name}")
+    print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
 
 
 SETS = {
@@ -150,9 +152,9 @@ def _same_program(existing: bytes | None, encoded: bytes, generated: Program) ->
 
 def write_set(name: str) -> None:
     """Write one example directory from its generators, reporting each file."""
-    directory = EXAMPLES
-    directory.mkdir(parents=True, exist_ok=True)
     for stem, generated in SETS[name]():
+        directory = LANGUAGES_DIR / canonical_id(stem.replace("-", " ")) / "examples"
+        directory.mkdir(parents=True, exist_ok=True)
         suffix = ".png" if isinstance(generated, Raster) else ".txt"
         path = directory / f"{stem}{suffix}"
         # Text files retain a final POSIX newline; PNGs retain their bytes.
@@ -164,9 +166,9 @@ def write_set(name: str) -> None:
         existing = path.read_bytes() if path.exists() else None
         if not _same_program(existing, program, generated):
             path.write_bytes(program)
-            print(f"wrote     examples/{path.name}")
+            print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
         else:
-            print(f"unchanged examples/{path.name}")
+            print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
     if name == "boolean":
         write_boolean_manifest()
 

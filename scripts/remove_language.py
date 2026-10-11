@@ -359,46 +359,17 @@ def _drop_bullets(path: Path, name: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def _owned_test_files(lang: Language) -> list[Path]:
-    """Return the test files the coupling guard counts as ``lang``'s own.
-
-    One rule for both: a file the guard lets name the language goes with it.
-    A prefix that does not end a path segment must be followed by ``.``,
-    ``/`` or ``_``, so stem ``line`` does not take ``lines.toml``.  A file
-    another language claims by a longer prefix is that one's: Piet does not
-    take ``test_boolean_piet_plus_plus.py``.
-    """
+def _owned_scripts(lang: Language) -> list[Path]:
+    """Return profiling and verification scripts owned by a canonical ID."""
     from esolangs.registry import LANGUAGES
 
-    own = tests_attr("integration.api.test_language_coupling", "_own")
-    files = subprocess.run(
-        ["git", "ls-files", "--cached", "--others", "--exclude-standard", *_TREES],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.split()
-
-    def claim(prefixes: tuple[str, ...], path: str) -> int:
-        """Return the length of the longest prefix claiming ``path``, or 0."""
-        return max(
-            (
-                len(prefix)
-                for prefix in prefixes
-                if prefix.startswith(("tests/", "scripts/"))
-                and path.startswith(prefix)
-                and (prefix.endswith(("/", "_", ".py")) or path[len(prefix)] in "./_")
-            ),
-            default=0,
-        )
-
-    mine = own(lang)[1]
-    others = [own(other)[1] for other in LANGUAGES.values() if other is not lang]
+    ids = {other.id for other in LANGUAGES.values()}
     return [
-        ROOT / path
-        for path in files
-        if (length := claim(mine, path))
-        and all(claim(prefixes, path) <= length for prefixes in others)
+        path
+        for path in (ROOT / "scripts").rglob("*.py")
+        for prefix in ("profile_", "verify_")
+        if path.stem.startswith(prefix)
+        and _owner_id(path.stem.removeprefix(prefix), ids) == lang.id
     ]
 
 
@@ -861,25 +832,16 @@ def remove(name: str) -> list[str]:
     lang = LANGUAGES[name]
     module = lang.interpreter or ""
     gen = lang.boolean.__name__ if lang.boolean else lang.id
-    declaring = _declaring_module(lang)
     stem = example_stems().get(lang.id, "")
+    declaring = _declaring_module(lang)
     own_modules, module_paths = _owned_module_paths(lang)
     files = _python_files()
     users = _imported([f for f in files if f not in _EDITED])
-    ids = {other.id for other in LANGUAGES.values()}
-    # Every wiki fixture whose name begins with this id and no longer one:
-    # ``slashes_*.txt`` go with ``///``, not ``piet_plus_plus.toml`` with Piet.
-    wiki = [
-        path
-        for path in (ROOT / "tests/support/fixtures/wiki_examples").iterdir()
-        if path.is_file() and _owner_id(path.name, ids) == lang.id
-    ]
     doomed: set[Path] = {
         *module_paths,
         ROOT / "src/esolangs/languages" / lang.id / "tests",
-        *wiki,
-        *(ROOT / "src/esolangs/examples").glob(f"{stem}.*" if stem else "-"),
-        *_owned_test_files(lang),
+        ROOT / "src/esolangs/languages" / lang.id / "examples",
+        *_owned_scripts(lang),
     }
     doomed |= _dead_test_files(doomed, _gone_modules(doomed), users)
     doomed |= _orphans(doomed, users)

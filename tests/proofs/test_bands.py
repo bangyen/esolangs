@@ -39,6 +39,12 @@ def test_the_directory_has_no_unregistered_proof(proofs: list[Proof]) -> None:
         for path in Path(package.__path__[0]).glob("*.py")
         if not path.stem.startswith("_")
     }
+    source = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
+    on_disk |= {
+        path.stem
+        for path in source.glob("*/tests/proofs/deep/*.py")
+        if not path.stem.startswith("_")
+    }
     assert on_disk == {proof.name for proof in proofs}
 
 

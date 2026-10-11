@@ -146,7 +146,10 @@ def test_missing_imported_module_fails_closed(source_tree) -> None:
 def test_shipped_example_selects_its_language(source_tree, extension, exists):
     from types import SimpleNamespace
 
-    path = source_tree / f"src/esolangs/examples/fixture-name.{extension}"
+    path = (
+        source_tree
+        / f"src/esolangs/languages/fixture/examples/fixture-name.{extension}"
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     if exists:
         path.write_bytes(b"changed")

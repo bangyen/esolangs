@@ -43,10 +43,10 @@ class TestExamplesShipWithThePackage:
         declared = re.search(r"^esolangs = \[(.+?)\]", config, re.M)
         assert declared, "no package-data entry for esolangs"
         patterns = declared.group(1)
-        directory = pathlib.Path(esolangs.__file__).resolve().parent / "examples"
-        for suffix in {path.suffix for path in directory.iterdir()}:
-            assert f"examples/*{suffix}" in patterns
-        assert "examples/*/*.txt" not in patterns
+        directory = pathlib.Path(esolangs.__file__).resolve().parent / "languages"
+        for suffix in {path.suffix for path in directory.glob("*/examples/*")}:
+            assert f"languages/*/examples/*{suffix}" in patterns
+        assert "languages/EXAMPLES.md" in patterns
 
 
 class TestWikiUrlsAreUsable:

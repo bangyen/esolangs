@@ -14,19 +14,19 @@ from tests.support.paths import ROOT
 # The wiki's truth machine: read a bit, and on 0 print it once and halt, on
 # 1 print it forever.  The switch is entered travelling downward, so its
 # heading-relative left (grid-east) is the looping branch.
-TRUTH_MACHINE = grid("flowchart/truth_machine.txt")
+TRUTH_MACHINE = grid("flowchart", "truth_machine.txt")
 
 # The wiki's cat: the upper loop reads bits onto a deque until the input
 # runs out, and the lower loop pops them back off and prints them.
-CAT = grid("flowchart/cat.txt")
+CAT = grid("flowchart", "cat.txt")
 
 # The wiki's Kolakoski-sequence generator.  Its opening ``( )`` has both an
 # east and a south path, so it is the one example that forks.
-KOLAKOSKI = grid("flowchart/kolakoski.txt")
+KOLAKOSKI = grid("flowchart", "kolakoski.txt")
 
 # The Kolakoski program on the current wiki page.  Bits 0 and 1 stand for 1
 # and 2, so its output is the Kolakoski sequence, which the page names.
-WIKI_KOLAKOSKI = grid("flowchart/wiki_kolakoski.txt")
+WIKI_KOLAKOSKI = grid("flowchart", "wiki_kolakoski.txt")
 
 
 run_program = partial(_run_program, run, suppress_eof=False)
@@ -165,7 +165,11 @@ class TestParsing:
         The eight-pointer version also needs the spec's pointer order and
         its left-most start, and paths that take no time.
         """
-        path = (ROOT / "tests") / "support/fixtures" / f"flowchart_hello_{name}.txt"
+        path = (
+            ROOT
+            / "src/esolangs/languages/flowchart/tests/fixtures"
+            / f"flowchart_hello_{name}.txt"
+        )
         program = path.read_text(encoding="utf-8").splitlines()
         assert run_program(program) == "Hello, world!"
 

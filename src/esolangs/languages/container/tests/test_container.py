@@ -12,7 +12,7 @@ from tests.interpreters.contract import SnapshotContract, StateViewContract
 from tests.support.fixtures import grid
 from tests.support.raises import raises_message
 
-HELLO_WORLD = grid("container/hello_world.txt")
+HELLO_WORLD = grid("container", "hello_world.txt")
 
 
 class TestContainer:

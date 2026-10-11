@@ -1,15 +1,20 @@
-"""Shared fixtures for the test suite, and readers for its data files."""
+"""Readers for language-owned test fixtures."""
 
 from pathlib import Path
 
-_DIR = Path(__file__).parent
+from tests.support.paths import ROOT
 
 
-def text(name: str) -> str:
-    """Return ``tests/support/fixtures/<name>`` exactly as stored."""
-    return (_DIR / name).read_text(encoding="utf-8")
+def path(language: str, name: str) -> Path:
+    """Return a fixture path under a canonical language ID."""
+    return ROOT / "src/esolangs/languages" / language / "tests/fixtures" / name
 
 
-def grid(name: str) -> list[str]:
-    """Return a fixture's lines, trailing spaces and blank rows kept."""
-    return text(name).splitlines()
+def text(language: str, name: str) -> str:
+    """Return a language fixture exactly as stored."""
+    return path(language, name).read_text(encoding="utf-8")
+
+
+def grid(language: str, name: str) -> list[str]:
+    """Return fixture lines, retaining trailing spaces and blank rows."""
+    return text(language, name).splitlines()

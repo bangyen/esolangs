@@ -218,12 +218,14 @@ class TestExamplePathsWorkFromAnywhere:
         """Absolute paths froze the install location into ``describe()``."""
         for name in esolangs.list_languages():
             for example in esolangs.describe(name)["examples"]:  # type: ignore[union-attr]
-                assert example.startswith("examples/"), (name, example)
+                assert example.startswith(
+                    f"languages/{esolangs.describe(name)['id']}/examples/"
+                ), (name, example)
 
     def test_the_advertised_recipe_runs_from_another_directory(
         self, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A chdir away it was ``cannot read examples/brainfuck.txt``."""
+        """The advertised package resource executes after changing directory."""
         example = files("esolangs") / esolangs.describe(REFERENCE)["examples"][0]
         monkeypatch.chdir(tmp_path)
         assert esolangs.run(REFERENCE, example, stdin="1\n0\n", timeout=20)

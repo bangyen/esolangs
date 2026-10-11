@@ -169,7 +169,7 @@ language floor. The shipped generator gives equal subtables one state, so
 it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
 most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
 versus 23.6 for the tree. The construction and the counting floor are in
-[fractran](proofs/fractran.md) and `tests/proofs/deep/fractran.py`.
+[fractran](proofs/fractran.md) and `src/esolangs/languages/fractran/tests/proofs/deep/fractran.py`.
 
 The canonical sharing piece is applied or exempt by measurement. The
 per-generator potential, before a generator's own share, is bounded per

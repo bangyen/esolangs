@@ -132,7 +132,10 @@ class TestStreetcodeDriveStates:
 
     @pytest.mark.parametrize(
         "path",
-        ["tests/support/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
+        [
+            "src/esolangs/languages/streetcode/tests/fixtures/streetcode_hello.txt",
+            "src/esolangs/languages/streetcode/examples/streetcode.txt",
+        ],
     )
     def test_mouth_depth_bound_does_not_change_the_driving(self, path: str) -> None:
         """``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans."""
@@ -227,7 +230,9 @@ class TestStreetcodeDriveInvariants:
     def test_every_shipped_program_satisfies_them(self) -> None:
         """The invariants hold over every program the repo ships."""
         root = ROOT
-        paths = sorted((root / "examples").glob("**/streetcode.txt"))
+        paths = sorted(
+            (root / "src/esolangs/languages/streetcode/examples").glob("streetcode.txt")
+        )
         # A relative glob silently matches nothing from another working
         # directory, which would leave this passing over no programs at all.
         assert paths
@@ -283,7 +288,10 @@ class TestStreetcodeGraphBackedStepping:
 
     @pytest.mark.parametrize(
         "path",
-        ["tests/support/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
+        [
+            "src/esolangs/languages/streetcode/tests/fixtures/streetcode_hello.txt",
+            "src/esolangs/languages/streetcode/examples/streetcode.txt",
+        ],
     )
     def test_the_shipped_examples_agree(self, path: str) -> None:
         root = ROOT
