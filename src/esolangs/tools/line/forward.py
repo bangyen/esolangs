@@ -56,6 +56,32 @@ def _join_lanes(spans: list[tuple[Edge, int, int]]) -> tuple[dict[Edge, int], in
     return lanes, count
 
 
+def _packed_join_lanes(
+    arrivals: list[tuple[Edge, int, int]],
+    joins: list[tuple[Edge, int, int]],
+    arrival_lanes: dict[Edge, int],
+    arrival_count: int,
+    minimums: dict[Edge, int],
+) -> tuple[dict[Edge, int], int]:
+    """First-fit padded joins below their own arrival in shared lanes."""
+    occupied: list[list[tuple[int, int]]] = [[] for _ in range(arrival_count)]
+    for edge, a, b in arrivals:
+        occupied[arrival_lanes[edge]].append((min(a, b) - 1, max(a, b) + 1))
+    spans = sorted((min(a, b) - 1, max(a, b) + 1, edge) for edge, a, b in joins)
+    lanes = {}
+    for lo, hi, edge in spans:
+        lane = minimums[edge]
+        while lane < len(occupied) and any(
+            not (hi < a or lo > b) for a, b in occupied[lane]
+        ):
+            lane += 1
+        while lane >= len(occupied):
+            occupied.append([])
+        occupied[lane].append((lo, hi))
+        lanes[edge] = lane
+    return lanes, len(occupied)
+
+
 def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
     """Return a smaller descending residual DAG with at most 5n commands."""
     return _forward_canvas(table, old_area, destination_moves=False)
@@ -94,6 +120,21 @@ def median_streaming_canvas(
     )
 
 
+def packed_streaming_canvas(
+    table: str, old_area: int
+) -> tuple[Node, CanvasPlan] | None:
+    """Pack median-ordered arrivals and joins with per-stem precedence."""
+    return _forward_canvas(
+        table,
+        old_area,
+        destination_moves=True,
+        streaming=True,
+        centered=True,
+        median_order=True,
+        packed=True,
+    )
+
+
 def _forward_canvas(
     table: str,
     old_area: int,
@@ -102,6 +143,7 @@ def _forward_canvas(
     streaming: bool = False,
     centered: bool = False,
     median_order: bool = False,
+    packed: bool = False,
 ) -> tuple[Node, CanvasPlan] | None:
     original_n = _validate_truth_table(table)
     kept = list(range(original_n)) if streaming else essential_inputs(table, original_n)
@@ -140,6 +182,10 @@ def _forward_canvas(
     visit(root)
     joins = sum(len(edges) for edges in incoming) - len(first)
     if not joins:
+        return None
+    # First-fit interval comparisons are quadratic within a layer; reject
+    # before routing unless aggregate work is linear in the table.
+    if packed and sum(len(edges) ** 2 for edges in incoming) > 32 * len(table):
         return None
     members = [
         [residual for residual in level if (depth, residual) in seen]
@@ -196,17 +242,16 @@ def _forward_canvas(
             # Eight-unit translation preserves node/rail residue separation.
             offset = -8 * (column // 16)
             columns = {residual: x + offset for residual, x in columns.items()}
-        lanes, lane_count = _join_lanes(
-            [
-                (
-                    edge,
-                    forks[edge[0], edge[1]][1]
-                    + (-gaps[edge[:2]] if edge[2] == 0 else gaps[edge[:2]]),
-                    columns[dest[1]],
-                )
-                for edge, dest in extras
-            ]
-        )
+        join_spans = [
+            (
+                edge,
+                forks[edge[0], edge[1]][1]
+                + (-gaps[edge[:2]] if edge[2] == 0 else gaps[edge[:2]]),
+                columns[dest[1]],
+            )
+            for edge, dest in extras
+        ]
+        lanes, lane_count = _join_lanes(join_spans)
         arrivals = (
             [
                 (
@@ -227,6 +272,17 @@ def _forward_canvas(
         arrival_lanes, arrival_count = _join_lanes(arrivals)
         if depth == 0:
             arrival_count = 1
+        if packed:
+            # A join lands four units below its own arrival; unrelated
+            # arrivals may reuse its row. Native dense8 saves 812,800 pixels.
+            lanes, total = _packed_join_lanes(
+                arrivals,
+                join_spans,
+                arrival_lanes,
+                arrival_count,
+                {edge: arrival_lanes[first[dest]] + 2 for edge, dest in extras},
+            )
+            lane_count = total - arrival_count
         # Disjoint arrival/join spans reuse rows. At n=22 majority, scale 1,
         # this emits 87,270,400 pixels versus 123,110,400 (29.1%); both native
         # programs pass 37 rows with the same 98-command maximum.
@@ -247,7 +303,10 @@ def _forward_canvas(
                 columns[residual],
             )
         for edge, dest in extras:
-            join[edge] = base + 8 + 2 * arrival_count + 2 * lanes[edge], entry[dest][1]
+            join[edge] = (
+                base + (4 if packed else 8 + 2 * arrival_count) + 2 * lanes[edge],
+                entry[dest][1],
+            )
         # The last leaf ends 15 units below its fork; the next entry starts
         # 16 below, retaining a full 20px gap for the 15px extraction probe.
         # Streaming has no inline leaves: the next arrival is eight units
