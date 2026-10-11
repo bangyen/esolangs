@@ -36,7 +36,7 @@ from esolangs.registry import LANGUAGES
 from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _verify_process import (
+from _scope import (
     EXCERPT_BYTES,
     MAX_LOG_BYTES,
     run_bounded,
