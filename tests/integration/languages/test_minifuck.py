@@ -277,7 +277,7 @@ class TestPackageSurface:
         from esolangs.cli import HELP, USAGE
 
         raised: set[int] = set()
-        for path in (ROOT / "src" / "esolangs").glob("cli*.py"):
+        for path in (ROOT / "src" / "esolangs" / "cli").glob("*.py"):
             for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
                 values: list[ast.expr] = []
                 if isinstance(node, ast.Call) and ast.unparse(node.func) in {

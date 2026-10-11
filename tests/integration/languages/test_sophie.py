@@ -9,7 +9,7 @@ import pytest
 
 import esolangs
 from esolangs import vm
-from esolangs.cli_hints import _did_you_mean
+from esolangs.cli.hints import _did_you_mean
 from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
 
 

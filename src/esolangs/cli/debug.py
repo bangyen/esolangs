@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 
 from esolangs import _check_runnable, describe
-from esolangs.cli_args import (
+from esolangs.cli.args import (
     _check_count,
     _errors,
     _fail,
@@ -19,13 +19,13 @@ from esolangs.cli_args import (
     _split_positional,
     _timeout_of,
 )
-from esolangs.cli_hints import (
+from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _abridge,
     _stdin_hint,
     _template_hint,
 )
-from esolangs.cli_io import (
+from esolangs.cli.io import (
     _null_context,
     _portable_language,
     _read_program,

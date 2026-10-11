@@ -122,7 +122,7 @@ def test_invalid_overrides_fail_before_stdin(tmp_path, capsys, command, choices)
     path.write_text(esolangs.dump_program("Brainfuck", source), encoding="utf-8")
     with (
         patch(
-            f"esolangs.cli_{'run' if command == 'run' else 'debug'}._read_stdin",
+            f"esolangs.cli.{'run' if command == 'run' else 'debug'}._read_stdin",
             side_effect=AssertionError("read stdin"),
         ),
         pytest.raises(SystemExit) as caught,
@@ -175,7 +175,7 @@ def test_raw_file_named_portable_flag(tmp_path, capsys, monkeypatch):
 
 @pytest.mark.parametrize("command", ["run", "debug"])
 def test_unknown_portable_language_fails_before_file_read(command, capsys):
-    module = f"cli_{command}"
+    module = f"cli.{command}"
     with (
         patch(f"esolangs.{module}._read_program", side_effect=AssertionError("read")),
         pytest.raises(SystemExit) as caught,
@@ -189,7 +189,7 @@ def test_unknown_portable_language_fails_before_file_read(command, capsys):
 @pytest.mark.parametrize("explicit", [False, True])
 def test_portable_source_acquired_once(command, explicit, capsys):
     payload = esolangs.dump_program(REFERENCE, "+.").encode()
-    with patch("esolangs.cli_io._bounded_read", side_effect=[payload]) as read:
+    with patch("esolangs.cli.io._bounded_read", side_effect=[payload]) as read:
         args = [command, "--portable", "--timeout", "0.5"]
         if explicit:
             args.append(REFERENCE)

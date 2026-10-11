@@ -166,7 +166,7 @@ def test_run_reports_an_interpreter_warning_once(
         warnings.warn("interpreter notice", UserWarning, stacklevel=1)
         return "result"
 
-    monkeypatch.setattr("esolangs.cli_run.run", run)
+    monkeypatch.setattr("esolangs.cli.run.run", run)
     out, err = call_both(
         ["run", "--timeout", "1", REFERENCE, _program(tmp_path, ".")], capsys
     )

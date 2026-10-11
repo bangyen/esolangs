@@ -14,10 +14,10 @@ from contextlib import AbstractContextManager, nullcontext
 from esolangs import _read_source, load_program
 from esolangs._program import Program
 from esolangs._source import _FileSource
-from esolangs.cli_args import (
+from esolangs.cli.args import (
     _fail,
 )
-from esolangs.cli_hints import (
+from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _decode_note,
 )

@@ -9,7 +9,7 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
-from esolangs.cli_io import _write_output
+from esolangs.cli.io import _write_output
 from tests.integration.cli.test_cli import _FakeStdin, _program, call_main
 from tests.reference import REFERENCE
 from tests.support.cli_support import _failure, _refused, call_both
@@ -247,7 +247,7 @@ def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys):
 
 
 def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes():
-    from esolangs.cli_hints import _cli_error_text
+    from esolangs.cli.hints import _cli_error_text
 
     error = esolangs.ArgumentError("bad timeout=5.0\nscale=1")
     error.add_note("hint: set timeout=5.0 or scale=1")

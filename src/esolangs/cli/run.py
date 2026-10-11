@@ -6,7 +6,7 @@ import sys
 import warnings
 
 from esolangs import describe, run
-from esolangs.cli_args import (
+from esolangs.cli.args import (
     _check_count,
     _errors,
     _fail,
@@ -22,13 +22,13 @@ from esolangs.cli_args import (
     _split_positional,
     _timeout_of,
 )
-from esolangs.cli_hints import (
+from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _exit_code,
     _stdin_hint,
     _template_hint,
 )
-from esolangs.cli_io import (
+from esolangs.cli.io import (
     _emit_partial,
     _note,
     _null_context,

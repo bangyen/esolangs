@@ -53,7 +53,7 @@ from esolangs import (
     read_answer,
 )
 from esolangs._describe import SHAPES, STATE_MODELS
-from esolangs.cli_args import (
+from esolangs.cli.args import (
     _check_count,
     _expand_short_options,
     _fail,
@@ -67,12 +67,12 @@ from esolangs.cli_args import (
     _settings_of,
     _split_positional,
 )
-from esolangs.cli_debug import _debug
-from esolangs.cli_help import (
+from esolangs.cli.debug import _debug
+from esolangs.cli.help import (
     HELP,
     USAGE,
 )
-from esolangs.cli_hints import (
+from esolangs.cli.hints import (
     _as_argument,
     _cli_error_text,
     _did_you_mean,
@@ -81,10 +81,10 @@ from esolangs.cli_hints import (
     _looks_like_a_table,
     _shell_hint,
 )
-from esolangs.cli_io import (
+from esolangs.cli.io import (
     _read_stdin,
 )
-from esolangs.cli_run import _run
+from esolangs.cli.run import _run
 from esolangs.exceptions import (
     EsolangError,
 )
@@ -539,7 +539,3 @@ def _dispatch() -> None:
         "read-answer": _read_answer,
         "debug": _debug,
     }[cmd](rest)
-
-
-if __name__ == "__main__":
-    main()

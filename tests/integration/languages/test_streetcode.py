@@ -79,7 +79,7 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         assert out == "1"
         assert "read 3 of the 6 lines" not in err
         assert "UserWarning" not in err
-        assert "cli.py" not in err
+        assert "Traceback" not in err
 
     def test_an_empty_program_file_is_noted(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

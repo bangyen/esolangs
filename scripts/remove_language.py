@@ -819,7 +819,7 @@ def _mention_edit(mention: str) -> str:
     and a comment or prose line needs a sentence a human stands behind.
     """
     path = mention.split(":", 1)[0]
-    if path == "src/esolangs/cli_help.py":
+    if path == "src/esolangs/cli/help.py":
         return "example: choose a replacement language"
     if path.startswith("docs/") or path.endswith(".md"):
         return "prose: reword or drop the mention"

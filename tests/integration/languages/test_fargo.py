@@ -81,7 +81,7 @@ class TestAHugeRowIndexIsRefusedNotCrashed:
 @pytest.mark.parametrize("choices", ["[]", "no json", '{"eof":true}'])
 def test_cli_invalid_settings_precede_io(choices, capsys):
     with (
-        patch("esolangs.cli_run._read_program", side_effect=AssertionError("read")),
+        patch("esolangs.cli.run._read_program", side_effect=AssertionError("read")),
         pytest.raises(SystemExit) as caught,
     ):
         call_both(["run", "--settings", choices, "Fargo", "missing"], capsys)

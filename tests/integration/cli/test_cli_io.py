@@ -10,7 +10,7 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
-from esolangs.cli_io import (
+from esolangs.cli.io import (
     _bounded_read,
 )
 from tests.integration.cli.test_cli import call_main, run_cli
@@ -161,7 +161,7 @@ class TestTheBoundedReaderInProcess:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The image branch must obey the same byte cap as text."""
-        from esolangs.cli_io import _MAX_PROGRAM_BYTES
+        from esolangs.cli.io import _MAX_PROGRAM_BYTES
         from esolangs.raster import Raster
 
         path = tmp_path / "large.png"
@@ -177,7 +177,7 @@ class TestTheBoundedReaderInProcess:
 
     def test_exact_byte_cap_is_accepted(self, tmp_path: Path) -> None:
         """The sentinel byte distinguishes an oversized file from a full one."""
-        from esolangs.cli_io import _MAX_PROGRAM_BYTES
+        from esolangs.cli.io import _MAX_PROGRAM_BYTES
 
         text = "é" * (_MAX_PROGRAM_BYTES // 2)
         path = tmp_path / "full.txt"
@@ -282,6 +282,6 @@ def test_bare_flags_after_separator_are_positional(
 
 
 def test_width_after_separator_is_positional() -> None:
-    from esolangs.cli_args import _pop_width
+    from esolangs.cli.args import _pop_width
 
     assert _pop_width(["--", "--width", "80"]) == (["--", "--width", "80"], None, False)

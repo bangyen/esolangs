@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.cli_hints import _template_hint
+from esolangs.cli.hints import _template_hint
 from esolangs.exceptions import ProgramError, TemplateError
 from tests.reference import REFERENCE
 from tests.support.pick import languages

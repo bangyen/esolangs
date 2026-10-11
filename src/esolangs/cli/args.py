@@ -13,10 +13,10 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 from esolangs._validate import check_timeout
-from esolangs.cli_help import (
+from esolangs.cli.help import (
     HELP,
 )
-from esolangs.cli_hints import (
+from esolangs.cli.hints import (
     _cli_error_text,
     _did_you_mean,
 )
