@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 import generate
 
+import examples
+
 ROOT = Path(__file__).parents[1]
 GENERATED = (
     "README.md",
@@ -29,8 +31,8 @@ def _manifest_is_stale() -> bool:
     Only the manifest: regenerating every example program would make this
     check as slow as ``tests/scripts/test_examples.py``, which covers them.
     """
-    manifest = generate.EXAMPLES / "MANIFEST.md"
-    return manifest.read_text(encoding="utf-8") != (generate.boolean_manifest_text())
+    manifest = examples.EXAMPLES / "MANIFEST.md"
+    return manifest.read_text(encoding="utf-8") != (examples.boolean_manifest_text())
 
 
 def main() -> int:

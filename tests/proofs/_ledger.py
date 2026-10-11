@@ -155,7 +155,7 @@ def load(path: Path | None = None) -> Ledger:
     """Read and parse the ledger."""
     text = (path or DOC).read_text(encoding="utf-8")
 
-    from scripts.generate import load as load_status
+    from scripts.proof_status import load as load_status
 
     proofs, _ = load_status()
     rows = [

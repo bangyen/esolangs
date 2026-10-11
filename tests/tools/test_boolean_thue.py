@@ -121,7 +121,7 @@ def test_short_tree_executes_one_and_two_input_tables() -> None:
 
 def test_thue_proof_text_counts_the_emitted_rules() -> None:
     """The ledger says at most 23 fixed rules: 19, or 23 with a round queue."""
-    from scripts.generate import load
+    from scripts.proof_status import load
 
     for table, count in (("0110", 19), ("0110" * 32, 23)):
         lines = boolean.thue(table).splitlines()

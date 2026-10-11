@@ -819,7 +819,7 @@ def remove(name: str) -> list[str]:
     if name == reference:
         raise ValueError(
             f"{reference} is the reference language: shared tests, the example "
-            "commands and scripts/generate_docs.py spell it out, so it is not "
+            "commands and scripts/generate.py spell it out, so it is not "
             "removable"
         )
     lang = LANGUAGES[name]
