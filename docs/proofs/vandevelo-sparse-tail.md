@@ -116,3 +116,19 @@ read. The n = 8 table had five ones, cube dimensions 2 and 0, and 204
 source characters; n = 9 had nine ones, dimensions 3 and 0, and 221
 characters. Together these checks executed 768 rows. These small cases
 check the route and execution, not the asymptotic lower bound.
+
+## Replacement status
+
+The math-proof siege attempt did not establish a universal O(T)-character,
+O(T)-generation replacement or disprove the existence of one. Its conditional
+affine-cover compilers and special-case constructions are research leads,
+not implemented or execution-verified replacements. The unresolved route
+requires both a universally small cover and a deterministic discovery rule
+whose coefficient, identifier and data-routing costs are charged.
+
+Restrictions on read-first affine guards, fixed direction libraries, local
+merges or specific routing models do not prove a lower bound for every legal
+Vandevelo program. Conditional input consumption remains a separate route.
+The interpreter and generator were left unchanged. The lower bound above
+is the established result for the shipped construction; universal linearity
+remains open.

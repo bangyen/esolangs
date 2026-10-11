@@ -97,6 +97,12 @@ a deficit for that construction, not an impossibility bound. See
 [the latest controls](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09).
 The shipped cap remains sixteen.
 
+Vandevelo's fixed sparse-candidate cap forces Ω(T log n) emitted characters
+on an explicit odd-prefix family, where T = 2ⁿ. Character-level generation
+time is therefore superlinear for the shipped construction. A replacement
+with universal O(T) size and generation time remains open; no language-wide
+impossibility was proved. See [the proof](proofs/vandevelo-sparse-tail.md).
+
 Counting bounds each family independently of mixer quality:
 
 - stubs need three gap-3 cells per row: `3 * 2**n <= 59049`, hence `n <= 14`;

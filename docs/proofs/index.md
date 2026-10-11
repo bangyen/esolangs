@@ -6,7 +6,9 @@ and counterexamples. [Factor](factor.md) proves `Theta(T log T)` text;
 [FRACTRAN](fractran.md) proves a super-linear address budget but linear
 language complexity through packing, trading characters for steps.
 [brainfuck-count](brainfuck-count.md) bounds distinct behaviours of
-`C`-character programs. Polynomial's lower bound imports
+`C`-character programs. [Vandevelo](vandevelo-sparse-tail.md) proves
+Ω(T log n) characters for the shipped bounded-sparse-cube construction;
+universal linear size and generation time remain open. Polynomial's lower bound imports
 Corollary 3.4 of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex), the companion
 manuscript bounding the coefficient mass of a polynomial multiple.
 `tests/proofs/test_citations.py` holds the numbered cross-references
