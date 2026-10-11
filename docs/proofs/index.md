@@ -502,8 +502,9 @@ frequent identifiers, replacing tokens simultaneously. On `Random(0)`'s
 12-input dense table, source shrinks from 32,269 to 31,942 characters
 (1.01%); its 4,414 identifier occurrences occupy 5,273 characters before
 renaming. Sixteen evenly spaced input rows, including both endpoints,
-execute under both spellings and match the table. Reproduce with
-`--min-inputs 12 --max-inputs 12 --random-cases 1 --sample-rows 16`.
+execute under both spellings and match the table. The Vandevelo profiler that
+measured it was removed; it ran with `--min-inputs 12 --max-inputs 12
+--random-cases 1 --sample-rows 16`.
 The rule misses the 5% shipping threshold and retains growing identifier
 lengths, so it remains an experiment. Neither gap is closed by this audit.
 

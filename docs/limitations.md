@@ -3,6 +3,10 @@
 Interpreter conventions, generator constraints, and proved limits.
 See [Polynomial](proofs/polynomial.md) for its size lower bound.
 
+The measurement screens and the Vandevelo profiler were removed once their
+findings were recorded here; numbers attributed to them are evidence, not a
+command to rerun.
+
 ## Interpreter conventions
 
 - Empty input is a no-op unless a language requires a seed or grid.
@@ -62,10 +66,10 @@ A space option has no remaining use. Input reordering counts toward generation
 cost: at most four named candidates, with the generic greedy scorer stopping
 at n=10. Generators may not use BFS or DFS; test-only oracles may.
 
-The screen script measures permuted tables, not admissible reorders under a
-fixed template and fill mapping. Dig, Flowchart, BrainIf, Sophie, and SLOW ACV
-MAMMALIAN must read in order; BF-PDA uses fixed stack order. No instruction-only
-wire is derived for 123 or Minifuck.
+The removed screen script recorded permuted tables, not admissible reorders
+under a fixed template and fill mapping. Dig, Flowchart, BrainIf, Sophie, and
+SLOW ACV MAMMALIAN must read in order; BF-PDA uses fixed stack order. No
+instruction-only wire is derived for 123 or Minifuck.
 
 - ArrowQueue's rotations cost 19, 39, and 63 characters at k=1, 2, 3. Their
   2.1% gain misses the 10% bar, so plain order ships (d5bac32).
@@ -221,7 +225,7 @@ of data, control, cursor and machine flags. Separate peaks need not coincide.
 Python overhead, static parser indexes and I/O state are excluded. At eight
 inputs the sampled peak machine payloads are 18, 756 and 3,066 bits respectively;
 these are measurements, not language-wide space bounds. Construction bounds
-are asserted in the screen and controlled by executed checks in each
+are asserted by the removed screen and controlled by executed checks in each
 language's own tests.
 
 ### Malbolge sampling

@@ -13,9 +13,9 @@ exemption supported by a structural proof or the measured criterion in
 [Contributing](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
 - **Line:** exempt (measured). The canonical share is present (`shared_tree`),
-  but the screen's 40.3% is same-level duplication an ancestor return cannot
+  but the measured 40.3% is same-level duplication an ancestor return cannot
   express: every share must re-descend a *test-free* arm. The structured
-  cases that dominate the screen carry no reachable fork at all -- parity
+  cases that dominate that measure carry no reachable fork at all -- parity
   repeats 240 of 255 nodes at n=8, majority 105, and neither has a fork whose
   test-free arm reaches a recurring residual. On random n=5..8 no generated
   program emits a loop-back, though reachable fork candidates exist (854 over
