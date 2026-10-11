@@ -10,10 +10,10 @@ from esolangs import generate
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages import generators as boolean
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
-from esolangs.tools.helpers import best_input_order
-from tests.generators.boolean_runners import (
+from esolangs.languages.algebraic_programming_language.tests.runners import (
     run_algebraic_programming_language,
 )
+from esolangs.tools.helpers import best_input_order
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import (
     assert_parity_at_most_doubles,

@@ -14,6 +14,7 @@ from esolangs.tagged import _Tagged
 from esolangs.vm import make_vm
 from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
+from tests.support.dialect_support import foreign_settings, integer_setting
 from tests.support.pick import languages
 
 
@@ -69,8 +70,8 @@ class Unreadable(StringIO):
 @pytest.mark.parametrize(
     ("language", "settings", "options"),
     [
-        (REFERENCE, DialectSettings(cell_modulus=256), {}),
-        (REFERENCE, DialectSettings(cell_modulus=256), {"isolated": True}),
+        (REFERENCE, foreign_settings(), {}),
+        (REFERENCE, foreign_settings(), {"isolated": True}),
         *[(name, settings, {}) for name, settings in _invalid()],
     ],
 )
@@ -86,7 +87,7 @@ def test_invalid_settings_fail_before_reading(language, settings, options):
 
 
 def test_settings_are_immutable():
-    settings = DialectSettings(cell_modulus=255)
+    settings = foreign_settings()
     with pytest.raises(FrozenInstanceError):
         settings._items = ()  # noqa: SLF001 - test frozen storage
     assert DialectSettings().options(REFERENCE) == {}
@@ -94,7 +95,7 @@ def test_settings_are_immutable():
 
 def test_constructor_refuses_a_bool_integer():
     with pytest.raises(esolangs.ArgumentError):
-        DialectSettings(cell_modulus=True)
+        DialectSettings(**{integer_setting(): True})
 
 
 def test_settings_require_the_public_object():
@@ -136,7 +137,7 @@ def test_raster_scaling_retains_settings(balance):
 
 
 def test_inherited_choices_are_checked_before_input():
-    source = _Tagged("+.", REFERENCE, DialectSettings(cell_modulus=255))
+    source = _Tagged("+.", REFERENCE, foreign_settings())
     with pytest.raises(esolangs.ArgumentError, match="dialect settings"):
         esolangs.run(REFERENCE, source, stdin=Unreadable())
 

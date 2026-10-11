@@ -7,11 +7,9 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages import generators as boolean
 from esolangs.languages.dimensional.generator import dimensional
 from esolangs.languages.dimensional.interpreter import _Machine
+from esolangs.languages.dimensional.tests.runners import run_dimensional
 from esolangs.tools.wrap import (
     wrap_program,
-)
-from tests.generators.boolean_runners import (
-    run_dimensional,
 )
 from tests.support.witness_tables import witnesses
 

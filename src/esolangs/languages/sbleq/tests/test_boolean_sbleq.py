@@ -10,8 +10,8 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages import generators as boolean
 from esolangs.languages.sbleq.generator import _sbleq_hoisted
 from esolangs.languages.sbleq.interpreter import _Machine
+from esolangs.languages.sbleq.tests.runners import run_sbleq
 from esolangs.tools.packed_decoder import packed_decoder
-from tests.generators.boolean_runners import run_sbleq
 from tests.support.generator_support import assert_parity_at_most_doubles
 
 

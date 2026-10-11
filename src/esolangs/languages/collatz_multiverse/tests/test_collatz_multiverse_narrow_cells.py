@@ -9,7 +9,7 @@ from esolangs.languages.collatz_multiverse.generator import (
     _cm_layout,
     collatz_multiverse,
 )
-from tests.generators.boolean_runners import run_collatz_multiverse
+from esolangs.languages.collatz_multiverse.tests.runners import run_collatz_multiverse
 from tests.support.generator_support import evaluate_generated
 
 

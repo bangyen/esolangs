@@ -6,8 +6,8 @@ import pytest
 
 from esolangs.languages.one_two_three.generator import ONE, ZERO
 from esolangs.languages.one_two_three.generator.construction import _RING
+from esolangs.languages.one_two_three.tests.runners import one_two_three_result
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs, runs
-from tests.generators.boolean_runners import one_two_three_result
 from tests.support.witness_tables import row_bits, witnesses
 
 

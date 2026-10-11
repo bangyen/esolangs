@@ -460,6 +460,13 @@ def _within(path: str, doomed: set[Path]) -> bool:
     return any(full == d or d in full.parents for d in doomed)
 
 
+def _is_test(path: str) -> bool:
+    """Whether a repo-relative file belongs to either test tree."""
+    return path.startswith("tests/") or (
+        path.startswith("src/esolangs/languages/") and "/tests/" in path
+    )
+
+
 def _orphans(doomed: set[Path], users: dict[str, set[str]]) -> set[Path]:
     """Return the helper modules only ``doomed`` files import.
 
@@ -475,6 +482,7 @@ def _orphans(doomed: set[Path], users: dict[str, set[str]]) -> set[Path]:
         path
         for path in (ROOT / "src/esolangs").rglob("*.py")
         if not path.name.startswith("__")
+        and not _is_test(path.relative_to(ROOT).as_posix())
         and not any(path == d or d in path.parents for d in doomed)
         and users.get(_module_of(path))
     }
@@ -547,7 +555,7 @@ def _dead_test_files(
         for gone in gone_modules
         if imported == gone or imported.startswith(gone + ".")
         for user in importers
-        if user.startswith("tests/") and not _within(user, doomed)
+        if _is_test(user) and not _within(user, doomed)
     }
     dead: set[Path] = set()
     for path in candidates:
@@ -792,7 +800,6 @@ _EDITED = (
     "src/esolangs/registry/_table.py",
     "src/esolangs/languages/generators.py",
     "tests/support/samples.py",
-    "tests/generators/boolean_runners.py",
     "tests/generators/test_wrap.py",
     "tests/proofs/test_execution_formulas.py",
     "tests/proofs/test_workspace_formulas.py",
@@ -855,7 +862,9 @@ def remove(name: str) -> list[str]:
             if path.is_relative_to(ROOT / "src")
             and path.suffix != ".txt"
             and any(
-                user.startswith("src/") and not _within(user, doomed)
+                user.startswith("src/")
+                and not _is_test(user)
+                and not _within(user, doomed)
                 for imported, importers in users.items()
                 if imported == _module_of(path)
                 or imported.startswith(_module_of(path) + ".")
@@ -873,7 +882,9 @@ def remove(name: str) -> list[str]:
                     if imported == _module_of(path)
                     or imported.startswith(_module_of(path) + ".")
                     for user in found
-                    if user.startswith("src/") and not _within(user, doomed | {path})
+                    if user.startswith("src/")
+                    and not _is_test(user)
+                    and not _within(user, doomed | {path})
                 }
             )
             shown = path.relative_to(ROOT)

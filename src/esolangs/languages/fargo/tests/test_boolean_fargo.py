@@ -6,9 +6,7 @@ import random
 import pytest
 
 from esolangs.languages import generators as boolean
-from tests.generators.boolean_runners import (
-    run_fargo,
-)
+from esolangs.languages.fargo.tests.runners import run_fargo
 
 
 class TestFargo:

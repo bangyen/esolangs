@@ -6,9 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from tests.generators.boolean_runners import (
-    run_qoibl,
-)
+from esolangs.languages.qoibl.tests.runners import run_qoibl
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,

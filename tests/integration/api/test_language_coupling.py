@@ -36,7 +36,6 @@ MANAGED = frozenset(
         "src/esolangs/registry/_table.py",
         "src/esolangs/languages/generators.py",
         "tests/support/samples.py",
-        "tests/generators/boolean_runners.py",
         "tests/generators/test_wrap.py",
         "tests/proofs/test_execution_formulas.py",
         "tests/proofs/test_workspace_formulas.py",

@@ -3,9 +3,7 @@
 import pytest
 
 from esolangs.languages import generators as boolean
-from tests.generators.boolean_runners import (
-    run_unsquare,
-)
+from esolangs.languages.unsquare.tests.runners import run_unsquare
 from tests.support.witness_tables import witnesses
 
 

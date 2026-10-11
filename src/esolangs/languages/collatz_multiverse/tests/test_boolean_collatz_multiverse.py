@@ -6,9 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from tests.generators.boolean_runners import (
-    run_collatz_multiverse,
-)
+from esolangs.languages.collatz_multiverse.tests.runners import run_collatz_multiverse
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits, witnesses
 

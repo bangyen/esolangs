@@ -3,9 +3,7 @@
 import pytest
 
 from esolangs.languages import generators as boolean
-from tests.generators.boolean_runners import (
-    run_clockwise,
-)
+from esolangs.languages.clockwise.tests.runners import run_clockwise
 from tests.support.witness_tables import parity, row_bits, witnesses
 
 

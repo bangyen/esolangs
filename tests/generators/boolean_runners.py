@@ -6,7 +6,6 @@ from collections.abc import Callable, Iterator
 from contextlib import redirect_stdout
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import FirstDraw
 from tests.interpreters.runner import run_program
 
 Runner = Callable[[str, list[str]], str]
@@ -18,7 +17,7 @@ def _stdin(inputs: list[str]) -> str:
 
 
 def _runner(module: str, *, lines: bool = False, newline: bool = False) -> Runner:
-    """Build ``run_X(program, inputs)`` for ``esolangs.interpreters.<module>``.
+    """Build ``run_X(program, inputs)`` for ``esolangs.languages.<id>.interpreter``.
 
     ``lines`` hands the program over as rows; ``newline`` feeds one input per
     line instead of joining them.  The module is imported on first run.
@@ -32,44 +31,7 @@ def _runner(module: str, *, lines: bool = False, newline: bool = False) -> Runne
     return run_language
 
 
-run_dig = _runner("dig", lines=True, newline=True)
-run_six_five = _runner("six_five")
-run_algebraic_programming_language = _runner(
-    "algebraic_programming_language", newline=True
-)
-run_inject = _runner("inject", newline=True)
-run_dimensional = _runner("dimensional", newline=True)
 run_bf = _runner("brainfuck")
-run_factor = _runner("factor")
-run_suffolk = _runner("suffolk")
-run_rotfuck = _runner("rotfuck")
-
-
-def run_rotfuck_forward(program: str, inputs: list[str]) -> str:
-    """Run a ROTfuck program under the forward rotation."""
-    from esolangs.languages.rotfuck.interpreter import run as _run
-
-    return run_program(_run, program, "".join(inputs), rotation="forward")
-
-
-run_circlefuck = _runner("circlefuck")
-run_collatz_multiverse = _runner("collatz_multiverse", newline=True)
-run_decleq = _runner("decleq")
-run_cvnc = _runner("cvnc", newline=True)
-run_forbin_boolean = _runner("forbin")
-run_addsubjump = _runner("addsubjump")
-run_qoibl = _runner("qoibl", lines=True)
-run_polynomial = _runner("polynomial")
-run_bfstack = _runner("bfstack")
-run_sstack = _runner("sstack")
-run_unsquare = _runner("unsquare")
-run_streetcode = _runner("streetcode", lines=True)
-run_flowchart = _runner("flowchart", lines=True)
-run_sophie = _runner("sophie")
-run_sbleq = _runner("sbleq")
-run_modulous = _runner("modulous", newline=True)
-run_brainif = _runner("brainif", lines=True)
-run_container = _runner("container", lines=True)
 
 
 def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
@@ -84,102 +46,3 @@ def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
     with redirect_stdout(buffer):
         run(program, io=CharacterFeed())
     return buffer.getvalue()
-
-
-def run_six_five_from(program: str, feed: Iterator[str]) -> str:
-    """Run a 6-5 program against an iterator; see :func:`_run_from`."""
-    return _run_from("esolangs.languages.six_five.interpreter", program, feed)
-
-
-def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
-    """Run an AddSubJump program against an iterator; see :func:`_run_from`."""
-    return _run_from("esolangs.languages.addsubjump.interpreter", program, feed)
-
-
-def run_sophie_from(program: str, feed: Iterator[str]) -> str:
-    """Run a Sophie program against an iterator; see :func:`_run_from`."""
-    return _run_from("esolangs.languages.sophie.interpreter", program, feed)
-
-
-def run_jaune(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.languages.jaune.interpreter import run
-
-    io = ScriptedIO("\n".join(inputs) + "\n")
-    run(program, io)
-    return io.getvalue()
-
-
-def run_fargo(program: str, inputs: list[str]) -> str:
-    """Run a Fargo program, packing ``inputs`` into its one input number."""
-    from esolangs.languages.fargo.interpreter import run
-
-    number = int("".join(inputs), 2) if inputs else 0
-    return run_program(run, program, f"{number}\n")
-
-
-def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
-    """Run a Polynomial program against an iterator; see :func:`_run_from`."""
-    return _run_from("esolangs.languages.polynomial.interpreter", program, feed)
-
-
-def run_grapheme(program: str, inputs: list[str]) -> str:
-    """Run a Grapheme boolean program on the ``%``/``A`` input alphabet."""
-    from esolangs.languages.grapheme.interpreter import run
-
-    alphabet = {"0": "%", "1": "A"}
-    return run_program(run, program, _stdin([alphabet[i] for i in inputs]))
-
-
-def run_taglate(program: str, inputs: list[str]) -> str:
-    import esolangs
-
-    return esolangs.run("Taglate", program, stdin="".join(inputs))
-
-
-def run_clockwise(program: str, inputs: list[str] | list[int]) -> str:
-    import esolangs
-
-    # Clockwise loads the complete character stream (7 bits per char).
-    return esolangs.run("Clockwise", program, stdin="".join(map(str, inputs)))
-
-
-def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
-
-    from esolangs.interpreters.io import IO
-    from esolangs.languages.laserfuck.interpreter import run
-
-    buffer = io.StringIO()
-
-    class FakeIO(IO):
-        def __init__(self, ins: list[str]) -> None:
-            self._ins = list(ins)
-
-        def input_char(self, _prompt: str = "Input: ") -> int:
-            return ord(self._ins.pop(0))
-
-        def print_char(self, char: str) -> None:
-            buffer.write(char)
-
-        def print_str(self, text: str) -> None:
-            buffer.write(text)
-
-        def print_num(self, num: int) -> None:
-            buffer.write(str(num))
-
-    with redirect_stdout(buffer):
-        run(program.splitlines(), FakeIO(inputs), rng=FirstDraw(heading))
-    # The generator runs in decimal output mode and drives the input cells
-    # negative, which dump() skips, so the tape prints as exactly the answer
-    # -- no filtering needed, and asserting on the raw output is stricter.
-    return buffer.getvalue()
-
-
-def one_two_three_result(program: str) -> str:
-    """Run a 123 program; return "0" if it halts and "1" if it loops."""
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.languages.one_two_three.interpreter import _Machine
-    from esolangs.vm import run_until_halt_or_cycle
-
-    machine = _Machine(program, ScriptedIO(""))
-    return "0" if run_until_halt_or_cycle(machine) else "1"

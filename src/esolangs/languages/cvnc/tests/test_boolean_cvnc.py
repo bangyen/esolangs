@@ -11,10 +11,8 @@ from esolangs.languages.cvnc.generator import (
     _direct,
     _halt,
 )
+from esolangs.languages.cvnc.tests.runners import run_cvnc
 from esolangs.tools.helpers import in_input_order
-from tests.generators.boolean_runners import (
-    run_cvnc,
-)
 from tests.generators.sample_tables import five_input_sample
 from tests.support.witness_tables import witnesses
 

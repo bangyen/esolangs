@@ -5,10 +5,8 @@ from importlib import import_module
 import pytest
 
 from esolangs.languages import generators as boolean
+from esolangs.languages.streetcode.tests.runners import run_streetcode
 from esolangs.tools.wrap import shortest
-from tests.generators.boolean_runners import (
-    run_streetcode,
-)
 from tests.support.witness_tables import row_bits
 
 

@@ -11,6 +11,7 @@ from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster, lazy_raster
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.reference import REFERENCE
+from tests.support.dialect_support import integer_setting
 
 RASTER_LANGUAGES = [
     name
@@ -241,7 +242,7 @@ def test_scaling_composes_retained_factors():
 
 
 def test_png_settings_retain_large_integer_choices():
-    settings = esolangs.DialectSettings(cell_modulus=1 << 20_000)
+    settings = esolangs.DialectSettings(**{integer_setting(): 1 << 20_000})
     source = Raster((((1, 2, 3),),), settings=settings)
     assert Raster.from_png(source.to_png()).settings == settings
 

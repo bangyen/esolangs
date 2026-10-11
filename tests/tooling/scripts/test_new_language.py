@@ -262,14 +262,17 @@ def test_stale_timing_matches_any_parametrize_component() -> None:
     assert not stale("x.py::t", names, gone)
 
 
+@pytest.mark.parametrize(
+    "test_root", ["tests/generators", "src/esolangs/languages/tiny/tests"]
+)
 def test_dead_test_files_catch_a_submodule_import(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, test_root: str
 ) -> None:
     pkg = tmp_path / "src/esolangs/tools/pkg"
     pkg.mkdir(parents=True)
     (pkg / "__init__.py").write_text("")
     (pkg / "sub.py").write_text("thing = 1\n")
-    tests = tmp_path / "tests/generators"
+    tests = tmp_path / test_root
     tests.mkdir(parents=True)
     (tests / "test_sub.py").write_text("from esolangs.tools.pkg.sub import thing\n")
     (tests / "test_shared.py").write_text(
@@ -280,12 +283,12 @@ def test_dead_test_files_catch_a_submodule_import(
     gone = remove_language._gone_modules(doomed)  # noqa: SLF001
     users = {
         "esolangs.tools.pkg.sub": {
-            "tests/generators/test_sub.py",
-            "tests/generators/test_shared.py",
+            f"{test_root}/test_sub.py",
+            f"{test_root}/test_shared.py",
         }
     }
     assert remove_language._dead_test_files(doomed, gone, users) == {  # noqa: SLF001
-        tmp_path / "tests/generators/test_sub.py"
+        tests / "test_sub.py"
     }
 
 

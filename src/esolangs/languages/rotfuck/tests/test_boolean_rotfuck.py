@@ -3,10 +3,7 @@
 import pytest
 
 from esolangs.languages import generators as boolean
-from tests.generators.boolean_runners import (
-    run_rotfuck,
-    run_rotfuck_forward,
-)
+from esolangs.languages.rotfuck.tests.runners import run_rotfuck, run_rotfuck_forward
 from tests.support.witness_tables import row_bits
 
 

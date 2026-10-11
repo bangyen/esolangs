@@ -7,9 +7,7 @@ import pytest
 
 from esolangs.languages import generators as boolean
 from esolangs.languages.laserfuck.generator import MARGIN
-from tests.generators.boolean_runners import (
-    run_laserfuck,
-)
+from esolangs.languages.laserfuck.tests.runners import run_laserfuck
 from tests.support.witness_tables import row_bits, witnesses
 
 

@@ -12,11 +12,11 @@ from esolangs.languages.addsubjump.generator import (
     _addsubjump_packed,
     addsubjump,
 )
-from esolangs.tools.helpers import in_input_order
-from tests.generators.boolean_runners import (
+from esolangs.languages.addsubjump.tests.runners import (
     run_addsubjump,
     run_addsubjump_from,
 )
+from esolangs.tools.helpers import in_input_order
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits, witnesses
 

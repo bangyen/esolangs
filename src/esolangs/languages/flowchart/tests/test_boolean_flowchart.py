@@ -13,9 +13,7 @@ from esolangs.languages.flowchart.generator import (
     _flowchart_render,
     _flowchart_stacked,
 )
-from tests.generators.boolean_runners import (
-    run_flowchart,
-)
+from esolangs.languages.flowchart.tests.runners import run_flowchart
 from tests.support.witness_tables import row_bits
 
 

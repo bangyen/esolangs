@@ -8,9 +8,7 @@ import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.languages import generators as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
-from tests.generators.boolean_runners import (
-    run_dig,
-)
+from esolangs.languages.dig.tests.runners import run_dig
 from tests.support.witness_tables import row_bits
 
 

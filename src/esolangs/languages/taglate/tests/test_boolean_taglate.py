@@ -4,11 +4,9 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
+from esolangs.languages.taglate.tests.runners import run_taglate
 from esolangs.tools.wrap import (
     _taglate,
-)
-from tests.generators.boolean_runners import (
-    run_taglate,
 )
 from tests.support.witness_tables import row_bits, witnesses
 

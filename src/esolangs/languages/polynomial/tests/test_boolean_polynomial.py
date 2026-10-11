@@ -12,15 +12,15 @@ from esolangs.languages.polynomial.generator import _polynomial_dag, _polynomial
 from esolangs.languages.polynomial.tests.polynomial_support import (
     _polynomial_tree,
 )
+from esolangs.languages.polynomial.tests.runners import (
+    run_polynomial,
+    run_polynomial_from,
+)
 from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
     _polynomial,
     balance_score,
     wrap_program,
-)
-from tests.generators.boolean_runners import (
-    run_polynomial,
-    run_polynomial_from,
 )
 from tests.support.witness_tables import row_bits
 
