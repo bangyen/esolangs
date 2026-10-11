@@ -16,13 +16,15 @@ exemption supported by a structural proof or the measured criterion in
   the existing 5n command and workspace bounds. Descending tests save the
   loader rewind, paying for joins. Parity at n=8 occupies 6,750,000 pixels
   at scale 1 against the tree's 17,472,000; all 256 rows execute natively.
-  Majority at n=9 shares in 16,723,200 pixels against 28,492,800; all 512
-  rows execute. Disjoint forward arrivals/joins reuse channel rows; the n=22
-  majority control drops 123,110,400 to 87,270,400 pixels at scale 1,
-  with 37 native rows checked. Dense tables still keep the smaller tree: the layered bus
+  Majority at n=9 shares in 13,438,400 pixels against 28,492,800; all 512
+  rows execute. Disjoint arrivals/joins reuse channel rows; shared destination
+  moves narrow nonterminal forks. The n=22 majority control occupies
+  53,875,200 pixels at scale 1 against 87,270,400, with 36 native rows checked.
+  Dense tables still keep the smaller tree: the layered bus
   is area-admitted, not a linear-area sharing construction. The measured
   40.3% repeated-subtree upside remains open. Controls in
   `tests/tools/test_boolean_line_forward.py`,
+  `tests/tools/test_boolean_line_destination.py`,
   `tests/tools/test_boolean_line_join_lanes.py` and
   `tests/tools/test_boolean_line_share_scope.py`.
 - **Circuit Diagram:** fixed-size cofactor pools share locally inside

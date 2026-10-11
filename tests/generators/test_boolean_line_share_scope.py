@@ -87,11 +87,11 @@ class TestLineReturnScope:
                 assert shared_tree(table, multiple=True) is None, (build.__name__, n)
 
     def test_forward_joins_admit_parity_beyond_ancestor_return_scope(self) -> None:
-        """Compact stems admit parity at n=6 and majority at n=8."""
+        """Compact stems admit parity at n=6 and majority at n=7."""
         for build in (parity, _majority):
             for n in range(5, 9):
                 payload = esolangs.generate("Line", build(n))._payload  # noqa: SLF001
-                assert _has_goto(payload) == (n >= (6 if build is parity else 8)), (
+                assert _has_goto(payload) == (n >= (6 if build is parity else 7)), (
                     build.__name__,
                     n,
                 )

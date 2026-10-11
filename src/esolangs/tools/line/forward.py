@@ -58,6 +58,17 @@ def _join_lanes(spans: list[tuple[Edge, int, int]]) -> tuple[dict[Edge, int], in
 
 def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
     """Return a smaller descending residual DAG with at most 5n commands."""
+    return _forward_canvas(table, old_area, destination_moves=False)
+
+
+def destination_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
+    """Share pointer moves on destination stems with separated narrow forks."""
+    return _forward_canvas(table, old_area, destination_moves=True)
+
+
+def _forward_canvas(
+    table: str, old_area: int, *, destination_moves: bool
+) -> tuple[Node, CanvasPlan] | None:
     original_n = _validate_truth_table(table)
     kept = essential_inputs(table, original_n)
     n = len(kept)
@@ -95,18 +106,42 @@ def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
         [residual for residual in level if (depth, residual) in seen]
         for depth, level in enumerate(levels[:-1])
     ]
+    gaps = {
+        (depth, residual): (
+            2
+            if all(constants[children[residual][bit]] is None for bit in (0, 1))
+            else 10
+        )
+        if destination_moves
+        else 8
+        for depth, level in enumerate(members)
+        for residual in level
+    }
+    # Destination-mode columns are multiples of eight; outgoing rails are
+    # 2 or 6 mod 8. This separates rails from nodes and the +/-1 opcode ink.
+    # Gaps 2/8 with variable pitch failed native dense n=8 extraction;
+    # 2/10 preserves the residue separation and executes every row.
     forks: dict[State, tuple[int, int]] = {}
     entry: dict[State, tuple[int, int]] = {}
     join: dict[Edge, tuple[int, int]] = {}
     base = 0
     for depth, level in enumerate(members):
         extras = [(edge, dest) for edge, dest in incoming[depth] if first[dest] != edge]
-        columns = {residual: 20 * index for index, residual in enumerate(level)}
+        columns = {}
+        column = 0
+        previous_gap = gaps[depth, level[0]]
+        for index, residual in enumerate(level):
+            gap = gaps[depth, residual]
+            if index:
+                column += previous_gap + gap + 4 if destination_moves else 20
+            columns[residual] = column
+            previous_gap = gap
         lanes, lane_count = _join_lanes(
             [
                 (
                     edge,
-                    forks[edge[0], edge[1]][1] + (-8 if edge[2] == 0 else 8),
+                    forks[edge[0], edge[1]][1]
+                    + (-gaps[edge[:2]] if edge[2] == 0 else gaps[edge[:2]]),
                     columns[dest[1]],
                 )
                 for edge, dest in extras
@@ -117,7 +152,11 @@ def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
                 (
                     first[depth, residual],
                     forks[first[depth, residual][0], first[depth, residual][1]][1]
-                    + (-8 if first[depth, residual][2] == 0 else 8),
+                    + (
+                        -gaps[first[depth, residual][:2]]
+                        if first[depth, residual][2] == 0
+                        else gaps[first[depth, residual][:2]]
+                    ),
                     columns[residual],
                 )
                 for residual in level
@@ -131,18 +170,21 @@ def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
         # Disjoint arrival/join spans reuse rows. At n=22 majority, scale 1,
         # this emits 87,270,400 pixels versus 123,110,400 (29.1%); both native
         # programs pass 37 rows with the same 98-command maximum.
-        # Across all 81 adjacent arm-shape pairs, a 20-unit pitch keeps
+        # In the original mode, all 81 adjacent arm-shape pairs at pitch 20 keep
         # opcode ink at least one unit apart (20px > the 15px star probe).
         # Entry/join lanes contain no opcodes and use two-unit spacing.
-        for index, residual in enumerate(level):
+        for residual in level:
             state = depth, residual
             entry[state] = (
                 base + 4 + 2 * (arrival_lanes[first[state]] if depth else 0),
-                20 * index,
+                columns[residual],
             )
             forks[state] = (
-                base + 16 + 2 * arrival_count + 2 * lane_count,
-                20 * index,
+                base
+                + (20 if destination_moves else 16)
+                + 2 * arrival_count
+                + 2 * lane_count,
+                columns[residual],
             )
         for edge, dest in extras:
             join[edge] = base + 8 + 2 * arrival_count + 2 * lanes[edge], entry[dest][1]
@@ -174,16 +216,22 @@ def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
         depth, residual = state
         is_fork = children[residual][0] != children[residual][1]
         node = Node("?" if is_fork else "<")
-        graph[state] = node
+        graph[state] = Node("<", next=node) if destination_moves and depth else node
         y, x = forks[state]
+        if destination_moves and depth:
+            pre = _StemCursor(y - 9, x, (1, 0))
+            pre.emit_op("<")
+            pre.advance((1, 0), 4)
+            pre.finish()
+            strokes.extend(pre.strokes)
         for bit in (0, 1) if is_fork else (0,):
             direction = (0, -1) if bit == 0 else (0, 1)
             cursor = _StemCursor(y, x, direction if is_fork else (1, 0))
             if is_fork:
-                cursor.advance(direction, 8)
+                cursor.advance(direction, gaps[state])
             else:
                 cursor.advance((1, 0), 4)
-                cursor.advance((0, -1), 8)
+                cursor.advance((0, -1), gaps[state])
             cursor.advance((1, 0), 4)
             target = children[residual][bit]
             value = constants[target]
@@ -193,20 +241,24 @@ def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
                 for op in correction + "o":
                     cursor.emit_op(op)
             else:
-                cursor.emit_op("<")
+                if not destination_moves:
+                    cursor.emit_op("<")
                 edge = depth, residual, bit
                 dest = depth + 1, target
                 tail = build(dest)
                 if edge in join:
                     tail = Node("", goto=tail)
-                arm = Node("<", next=tail)
+                arm = tail if destination_moves else Node("<", next=tail)
                 ey, ex = join.get(edge, entry[dest])
                 cursor.advance((1, 0), ey - cursor.y)
                 dx = ex - cursor.x
                 sign = 1 if dx > 0 else -1
                 if edge not in join:
                     cursor.advance((0, sign), abs(dx))
-                    cursor.advance((1, 0), forks[dest][0] - cursor.y)
+                    cursor.advance(
+                        (1, 0),
+                        forks[dest][0] - (9 if destination_moves else 0) - cursor.y,
+                    )
                 else:
                     cursor.advance((0, sign), abs(dx) - 1)
                     cursor.advance((1, sign), 1)
@@ -218,8 +270,12 @@ def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
                 else:
                     node.nonzero = arm
             else:
-                node.next = arm.next
-        return node
+                if destination_moves:
+                    node.op = ""
+                    node.next = arm
+                else:
+                    node.next = arm.next
+        return graph[state]
 
     decision = build(root)
     head = chain(*reads)
@@ -252,4 +308,5 @@ def forward_canvas(table: str, old_area: int) -> tuple[Node, CanvasPlan] | None:
     # replace those moves: 2n-1 loads, n tests, n-1 moves, n-1 joins, two
     # output ops and one halt tick give 5n. Projection adds fewer than
     # 5(original_n-n) commands and never enlarges the original tape.
+    # Moving an arm's '<' onto its destination changes no path's command count.
     return head, CanvasPlan(rasterize, width * height)
