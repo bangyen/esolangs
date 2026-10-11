@@ -187,8 +187,7 @@ emitted size at n=5, below the gate, pinned in
 `tests/generators/test_boolean_boolfuck.py`. Home
 Row, ROTfuck and Dimensional are lookups that name no decision-tree node, and
 LaserFuck's path-dependent leaf code makes equal subtables unequal text.
-No decision-diagram generator leaves its repeats unshared, and the presence
-proxy is now enforced for the 48 tree-shaped generators by
+The sharing-helper presence proxy is enforced for the 48 tree-shaped generators by
 `tests/generators/test_boolean_sharing_catalogue.py`: 44 reference a canonical
 helper (`subtree_ids`, `SubtreeDiagram` -- Underload and Unlambda included),
 Circuit Diagram (`_dag`), Line (`shared_tree`) and Polynomial
@@ -201,6 +200,26 @@ path meets the first's cells, and admission is bounded to 6..12 essential
 inputs without a width (16 of 96 controls improved on the admitting run).
 Dig's shared pool is 2..10 unique 64-row classes indexed by a single decimal
 digit over 2..6 prefix bits, so a larger pool needs a multi-digit index.
+
+Circuit Diagram and Line still have a general sharing/routing gap; helper
+presence does not establish complete sharing. Circuit Diagram's bundled
+suffix forests pass native dense controls through fifteen inputs. Line's
+partial-prefix cloning saves only 2.19% of aggregate planned area on 200
+seeded eight-input tables, below the bespoke gate; its native positive
+control passes all 256 rows, saving 33,700,800 to 32,865,600 scale-one pixels
+with the same 23-command maximum, so it remains unshipped.
+
+The Margulis cofactor witness establishes an expander minor in the
+original-order residual graph, not a language-wide area floor. At twelve
+inputs, Line's reverse-order destination layout passes all 4,096 rows in
+34,750,000 scale-one pixels with at most 50 commands. Reversal reduces the
+witness's nonconstant residual states from 18,437 to 548 at nineteen inputs
+(graph counts only). A routing exemption still needs a physical embedding
+proof and a witness covering alternative input orders and encodings.
+[VLSI layout bounds](https://publications.csail.mit.edu/lcs/pubs/pdf/MIT-LCS-TR-305.pdf)
+require an applicable embedding model;
+[universal-circuit size bounds](https://encrypto.de/papers/KS16.pdf) count
+logical gates, not rendered area.
 
 The ignored-input and constant-folding pieces are held to
 `test_generator_shape_is_what_the_catalogue_says` (a tree row folds on a
