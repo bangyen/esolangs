@@ -15,7 +15,7 @@ import pytest
 from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "verify.py"
+SCRIPT = REPO_ROOT / "scripts" / "verify" / "verify.py"
 
 
 def load_script() -> Any:

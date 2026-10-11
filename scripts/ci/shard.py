@@ -21,8 +21,8 @@ from pathlib import Path
 from typing import Protocol
 
 import pytest
-from _lib.process import write_text
 from _pytest.reports import TestReport
+from verify.process import write_text
 
 ROOT = Path(__file__).resolve().parents[2]
 

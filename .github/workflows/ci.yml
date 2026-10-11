@@ -66,7 +66,7 @@ jobs:
     - name: Check generator sizes against the baseline
       run: uv run python checks/check_generator_sizes.py
 
-    # Same scope as the local gate in scripts/verify.py: tests/ is left
+    # Same scope as the local gate in scripts/verify/verify.py: tests/ is left
     # out because shared test scaffolding is not what this check is for,
     # and including it roughly quadrupled the file pairs the O(files^2)
     # comparison walks (141s of this job's 218s in run 37334678602).

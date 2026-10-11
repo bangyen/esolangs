@@ -33,7 +33,7 @@ construction-specific proofs.
 `python -m tests.proofs.deep <band>` selects declared cost bands: `verify`
 for the local gate, `ci` for the registry battery, `by-hand` for expensive
 checks, and `all` for everything, as with `just proofs`. The justfile,
-workflow and `scripts/verify.py` select bands; `test_bands.py` requires each
+workflow and `scripts/verify/verify.py` select bands; `test_bands.py` requires each
 file's declaration and enforces its stated budget, not a measured runtime.
 
 Coverage does not bound source size: the schemes count nodes and entries,

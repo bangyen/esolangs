@@ -543,10 +543,10 @@ def _gate() -> int:
         print("+", " ".join(cmd[1:]), flush=True)
         if subprocess.run(cmd, cwd=ROOT, check=False).returncode:
             return 1
-    print("+ scripts/verify.py --quiet", flush=True)
+    print("+ scripts/verify/verify.py --quiet", flush=True)
     failed = []
     with subprocess.Popen(
-        [*python, "scripts/verify.py", "--quiet"],
+        [*python, "scripts/verify/verify.py", "--quiet"],
         cwd=ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

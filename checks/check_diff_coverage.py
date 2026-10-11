@@ -17,7 +17,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from _lib.scope import diff_paths  # noqa: E402
+from verify.scope import diff_paths  # noqa: E402
 
 # The gate only speaks for the package coverage is configured to measure
 # (`source = ["src/esolangs"]`).  A touched file in tests/ or scripts/ has no

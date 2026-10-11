@@ -66,7 +66,7 @@ jobs:
     # the cheap part of the bill.
     #
     # Bare `pytest` is also what makes this the *only* runner that sees the
-    # `weekly` marker.  `scripts/verify.py` appends `-m "not weekly"` on a
+    # `weekly` marker.  `scripts/verify/verify.py` appends `-m "not weekly"` on a
     # --full run and `-m "not slow"` otherwise, so the `weekly` probes run
     # here and nowhere else.
     #

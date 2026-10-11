@@ -8,8 +8,8 @@ import time
 import pytest
 
 from scripts import benchmark as client
-from scripts._lib import process as processes
-from scripts._lib.process import MARKER, spool
+from scripts.verify import process as processes
+from scripts.verify.process import MARKER, spool
 
 
 def test_spool_keeps_complete_small_logs_and_bounded_overflow(tmp_path):

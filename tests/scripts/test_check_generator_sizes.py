@@ -213,7 +213,7 @@ while True:
 import sys, subprocess, time
 sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / "scripts")!r})
 import benchmark
-import _lib.worker as worker
+import _benchmark_worker as worker
 def hang(*args, **kwargs):
     subprocess.Popen([sys.executable, '-c', {child!r}])
     time.sleep(30)

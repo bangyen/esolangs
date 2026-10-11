@@ -25,6 +25,8 @@ EXCERPT_BYTES = 32 * 1024
 
 @dataclass
 class Log:
+    """One logged subprocess: its spool file and overflow flag."""
+
     path: Path
     reader: threading.Thread | None = None
     overflow: bool = False
@@ -35,6 +37,8 @@ _LOGS: WeakKeyDictionary[subprocess.Popen[str], Log] = WeakKeyDictionary()
 
 @dataclass
 class Cleanup:
+    """Tracks whether a process tree has been reaped."""
+
     lock: threading.Lock = field(default_factory=threading.Lock)
     complete: bool = False
 

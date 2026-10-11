@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pre-push hook: run scripts/verify.py before allowing a push.  Enabled
+# Pre-push hook: run scripts/verify/verify.py before allowing a push.  Enabled
 # automatically by `just install-dev` (git config core.hooksPath .githooks),
 # or manually with:
 #
@@ -74,11 +74,11 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || ROOT=""
 # verify.py prints one line per step and replays the output of the ones that
 # failed.  `just test --verbose` streams every step's output live instead; it
 # is a wall of text, which is why the hook does not ask for it.
-echo "pre-push: running scripts/verify.py (about a minute; --no-verify skips it)"
+echo "pre-push: running scripts/verify/verify.py (about a minute; --no-verify skips it)"
 
 # verify.py picks the project interpreter itself (.venv, then uv run), so
 # the hook can hand it any python that can execute the file.
 if [ -n "$VERIFY_FULL" ] && [ "$VERIFY_FULL" != "0" ]; then
-    exec "${PY:-python3}" "$ROOT/scripts/verify.py" --full
+    exec "${PY:-python3}" "$ROOT/scripts/verify/verify.py" --full
 fi
-exec "${PY:-python3}" "$ROOT/scripts/verify.py"
+exec "${PY:-python3}" "$ROOT/scripts/verify/verify.py"

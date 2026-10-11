@@ -1,9 +1,0 @@
-decnz(2);
-inc();
-inc();
-decnz(9);
-decnz(9);
-decnz(9);
-decnz(8);
-swap();
-inc();
