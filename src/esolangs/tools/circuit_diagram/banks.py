@@ -12,6 +12,7 @@ from collections.abc import Callable
 
 from esolangs.tools.helpers import _validate_truth_table
 
+from .forest import _Forest, _suffix_forest
 from .hpool import _h_pool_layout, _h_pool_size, _large_pool_layout
 from .layout import _Layout, _RoutingLayout
 
@@ -116,11 +117,13 @@ def _assemble_banks(
     prefix_inputs: int,
     *,
     share_prefix_complements: bool,
+    shared_suffix: _Forest | None = None,
 ) -> _Layout:
     prefix_order = list(range(prefix_inputs))
-    right = (
-        max(model.bounds()[1] for models in parts for model, _ in models) + 2 * n + 12
-    )
+    widths = [model.bounds()[1] for models in parts for model, _ in models]
+    if shared_suffix is not None:
+        widths.append(shared_suffix[0].bounds()[1])
+    right = max(widths) + 2 * n + 12
     body_x = 2 * n + 8
     layout = _BankLayout()
     serial = n
@@ -156,8 +159,15 @@ def _assemble_banks(
         negative[i] = ((column, row), signal)
     results: list[tuple[tuple[int, int], int]] = []
     y = 2 * n + 8 + 4 * prefix_inputs
-    for group, models in enumerate(parts):
-        outputs: list[tuple[tuple[int, int], int]] = []
+    held: list[tuple[tuple[int, int], int] | None] = [None] * len(parts)
+    groups = list(enumerate(parts))
+    if shared_suffix is not None:
+        groups.insert(0, (-1, [(shared_suffix[0], list(range(prefix_inputs, n)))]))
+    for group, models in groups:
+        held_root = held[group] if group >= 0 else None
+        outputs: list[tuple[tuple[int, int], int]] = (
+            [] if held_root is None else [held_root]
+        )
         for model, port_order in models:
             owners: dict[int, int] = {}
             rows = sorted(
@@ -193,22 +203,42 @@ def _assemble_banks(
                     target = body_x + x + 1, y + row
                     negative_feeds.append((i, target))
                     removed.add((x, row))
-            out = next(point for point, char in model.glyphs.items() if char == ":")
+            outpoints = [point for point, char in model.glyphs.items() if char == ":"]
+            out = outpoints[0]
             endpoint = out[0] - 2, out[1]
-            layout.copy_block(
-                model, body_x, y, owner, removed | {out, (out[0] - 1, out[1])}
-            )
+            omitted = {
+                cell
+                for point in outpoints
+                for cell in (point, (point[0] - 1, point[1]))
+            }
+            layout.copy_block(model, body_x, y, owner, removed | omitted)
             for i, target in negative_feeds:
                 source, signal = negative[i]
                 layout.route(source, target, signal)
                 negative[i] = ((source[0], target[1]), signal)
-            outputs.append(
-                (
-                    (body_x + endpoint[0], y + endpoint[1]),
-                    owner(model.junctions[endpoint]),
+            if group == -1:
+                if shared_suffix is None:
+                    raise AssertionError("missing suffix forest")
+                for index, point in enumerate(shared_suffix[1]):
+                    if point is None:
+                        continue
+                    source = body_x + point[0], y + point[1]
+                    signal = owner(model.junctions[point])
+                    # Hold roots beyond every term-result rail. They end
+                    # above the OR bank, whose existing width contains them.
+                    column = right + 25 + 2 * len(parts) + 2 * index
+                    layout.route(source, (column, source[1]), signal, "across")
+                    held[index] = ((column, source[1]), signal)
+            else:
+                outputs.append(
+                    (
+                        (body_x + endpoint[0], y + endpoint[1]),
+                        owner(model.junctions[endpoint]),
+                    )
                 )
-            )
             y += model.bounds()[0] + 8
+        if group == -1:
+            continue
         if len(outputs) == 2:
             gx, gy = right + 8, y + 4
             value = fresh()
@@ -217,15 +247,25 @@ def _assemble_banks(
             for j, (source, signal) in enumerate(outputs):
                 target = gx - 1, gy - 1 if j == 0 else gy + 1
                 via = right + 2 + 2 * j, target[1]
-                layout.route(source, via, signal, "across")
+                if shared_suffix is not None and j == 0:
+                    # A held root must descend before returning left;
+                    # returning on its footer row crosses other exports.
+                    above = via[0], gy - 4
+                    layout.route(source, above, signal, "down")
+                    layout.route(above, via, signal)
+                else:
+                    layout.route(source, via, signal, "across")
                 layout.route(via, target, signal)
             output = (gx + 1, gy), value
             y = gy + 8
         else:
             [output] = outputs
         source, signal = output
-        column = right + 22 + 2 * group
-        layout.route(source, (column, source[1]), signal)
+        # A sole suffix class has no mask: its held root is already farther
+        # right. Keep that endpoint so the output glyphs follow its wire.
+        column = max(right + 22 + 2 * group, source[0])
+        if source != (column, source[1]):
+            layout.route(source, (column, source[1]), signal)
         results.append(((column, source[1]), signal))
         y += 8
     for i, target in feeds:
@@ -260,6 +300,21 @@ def _assemble_banks(
 def _residual_class_bank_candidate(
     table: str, ceiling: int | None = None
 ) -> _Layout | None:
+    """Choose separate or shared suffix roots by exact area, preserving ties."""
+    separate = _class_bank_layout(table, ceiling, shared=False)
+    forest = _class_bank_layout(table, ceiling, shared=True)
+    if forest is None:
+        return separate
+    if separate is None:
+        return forest
+    height, width = forest.bounds()
+    old_height, old_width = separate.bounds()
+    return forest if height * width < old_height * old_width else separate
+
+
+def _class_bank_layout(
+    table: str, ceiling: int | None = None, *, shared: bool
+) -> _Layout | None:
     """Share up to eight repeated seven/eight-input classes across all prefixes.
 
     Fixed class count and bounded H masks give O(T) work and area.
@@ -287,7 +342,7 @@ def _residual_class_bank_candidate(
             (mask, prefix, list(range(prefix))),
             (chunk, tail, list(range(prefix, n))),
         ):
-            if "0" not in word:
+            if "0" not in word or (shared and order[0] != 0):
                 continue
             used, reduced = _essential_table(word, ports)
             model = _large_pool_layout(
@@ -299,7 +354,10 @@ def _residual_class_bank_candidate(
         parts.append(models)
     # Keep H-mask complements inside their copied blocks so each local wire
     # retains its original driver and coordinate-bucket copying stays linear.
-    model = _assemble_banks(parts, n, prefix, share_prefix_complements=False)
+    forest = _suffix_forest(classes, tail) if shared else None
+    model = _assemble_banks(
+        parts, n, prefix, share_prefix_complements=False, shared_suffix=forest
+    )
     height, width = model.bounds()
     return model if ceiling is None or height * width <= ceiling else None
 

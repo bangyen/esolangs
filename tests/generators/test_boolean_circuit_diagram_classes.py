@@ -39,7 +39,7 @@ def test_repeated_classes_execute_every_row(n):
     table = _three_classes(n)
     model = _residual_class_bank_candidate(table)
     assert model is not None
-    assert len(model.render()) == {9: 220_729, 10: 445_905}[n]
+    assert len(model.render()) == {9: 122_190, 10: 251_574}[n]
     _execute(table, model.render())
 
 
@@ -49,7 +49,7 @@ def test_public_abba_class_bank_executes_every_row():
     table = a + b + b + a
     code = circuit_diagram(table)
     lines = code.splitlines()
-    assert len(lines) * max(map(len, lines)) == 492_826
+    assert len(lines) * max(map(len, lines)) == 389_994
     _execute(table, code)
 
 
@@ -63,7 +63,7 @@ def test_classes_cross_distinct_banks_beyond_all_fold_orders():
     code = circuit_diagram(table)
     assert code == _residual_class_bank_candidate(table).render()
     lines = code.splitlines()
-    assert len(lines) * max(map(len, lines)) == 1_530_528
+    assert len(lines) * max(map(len, lines)) == 1_251_332
     rows = sorted({0, len(table) - 1, *range(0, len(table), 256)})
     _execute(table, code, rows)
 
