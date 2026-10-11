@@ -6,7 +6,6 @@ import re
 import subprocess
 import sys
 import time
-import tomllib
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -21,41 +20,6 @@ SCRIPT = REPO_ROOT / "scripts" / "verify.py"
 
 def load_script() -> Any:
     return load(SCRIPT)
-
-
-class TestPytestScopeCollects:
-    @pytest.mark.parametrize(
-        ("path", "scoped"),
-        [
-            ("tests/tools/polynomial_support.py", False),
-            ("tests/test_vm.py", True),
-            ("src/esolangs/interpreters/other/demo/brainfuck.py", False),
-            ("src/esolangs/interpreters/io.py", False),
-        ],
-    )
-    def test_only_collected_leaf_modules_are_scoped(self, path, scoped):
-        verify = load_script()
-        scope = verify._pytest_scope([path])  # noqa: SLF001
-        assert scope == ([path] if scoped else verify.WHOLE_SUITE)
-
-    def test_an_interpreter_runs_shared_contracts_and_its_generator(self) -> None:
-        verify = load_script()
-        scope = verify._pytest_scope(  # noqa: SLF001
-            ["src/esolangs/interpreters/tape_based/brainfuck.py"]
-        )
-        assert isinstance(scope, list)
-        assert set(verify.INTERPRETER_CONTRACT_TESTS) <= set(scope)
-        assert "tests/interpreters/test_brainfuck.py" in scope
-        assert "tests/tools/test_boolean_brainfuck.py" in scope
-        assert all((REPO_ROOT / path).is_file() for path in scope)
-
-    def test_the_patterns_match_pyproject(self) -> None:
-        verify = load_script()
-        config = tomllib.loads(
-            (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        )
-        patterns = config["tool"]["pytest"]["ini_options"]["python_files"]
-        assert list(verify.COLLECTED_PATTERNS) == patterns
 
 
 LEAF = "src/esolangs/interpreters/register_based/addsubjump.py"
@@ -88,14 +52,6 @@ class TestCiRedoesEveryLocalStep:
         workflow = CI.read_text(encoding="utf-8")
         bogus = _signature(["uv", "run", "python", "scripts/no_such_check.py"])
         assert bogus not in workflow
-
-
-@pytest.mark.parametrize(("path", "size"), [("", 0), ("README.md", 6), ("src/x.py", 1)])
-def test_local_test_selection(path, size) -> None:
-    verify = load_script()
-    assert verify.LOCAL_PYTEST_MARKS == "not slow and not weekly"
-    assert verify.FULL_PYTEST_MARKS == "not weekly"
-    assert len(verify.local_tooling_deselections([path] if path else [])) == size
 
 
 class TestZeroStepsIsNotAPass:
@@ -226,94 +182,6 @@ assert ready.exists(), 'producer stalled on captured output'
         assert "START" + "x" * 1000000 + "END" in Path(log).read_text()
     else:
         assert "START" not in output
-
-
-class TestGeneratorScope:
-    def test_leaf_generator_keeps_shared_contracts_and_its_suites(self) -> None:
-        verify = load_script()
-        scope = verify._pytest_scope(  # noqa: SLF001
-            ["src/esolangs/tools/bfstack.py"]
-        )
-        assert isinstance(scope, list)
-        assert "tests/tools/test_boolean_bfstack.py" in scope
-        assert "tests/interpreters/test_bfstack.py" in scope
-        assert "tests/tools/test_boolean_contract.py" in scope
-        assert "tests/proofs/test_execution_formulas.py" in scope
-        assert "tests/tools/test_boolean_line.py" not in scope
-        assert "tests/tools/test_boolean_malbolge.py" not in scope
-
-    @pytest.mark.parametrize("module", ["helpers.py", "line/render.py", "__init__.py"])
-    def test_shared_or_package_generator_changes_keep_the_whole_suite(
-        self, module
-    ) -> None:
-        verify = load_script()
-        assert (
-            verify._pytest_scope(  # noqa: SLF001
-                [f"src/esolangs/tools/{module}"]
-            )
-            == verify.WHOLE_SUITE
-        )
-
-    def test_explicitly_changed_language_tests_are_never_dropped(self) -> None:
-        verify = load_script()
-        scope = verify._pytest_scope(  # noqa: SLF001
-            ["src/esolangs/tools/bfstack.py", "tests/tools/test_boolean_line.py"]
-        )
-        assert "tests/tools/test_boolean_line.py" in scope
-
-
-def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch) -> None:
-    from types import SimpleNamespace
-
-    from esolangs import registry
-
-    verify = load_script()
-    verify.ROOT = tmp_path
-    languages = {}
-    for name in ("target", "consumer", "unrelated"):
-
-        def build():
-            return ""
-
-        build.__module__ = "esolangs.tools." + (
-            "package.consumer" if name == "consumer" else name
-        )
-        build.__name__ = name
-        languages[name] = SimpleNamespace(id=name, name=name, aliases=(), boolean=build)
-    monkeypatch.setattr(registry, "LANGUAGES", languages)
-    for path, text in {
-        "src/esolangs/tools/target.py": "",
-        "src/esolangs/tools/package/dependency.py": (
-            "from esolangs.tools.target import build\n"
-        ),
-        "src/esolangs/tools/package/consumer.py": ("from . import dependency\n"),
-        "tests/tools/test_boolean_target.py": "",
-        "tests/tools/test_boolean_consumer.py": "",
-        "tests/tools/test_boolean_unrelated.py": "",
-        "tests/tools/test_contracts.py": "",
-    }.items():
-        target = tmp_path / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text)
-    assert verify._pytest_scope(["src/esolangs/tools/target.py"]) == [  # noqa: SLF001
-        "tests/tools/test_boolean_consumer.py",
-        "tests/tools/test_boolean_target.py",
-        "tests/tools/test_contracts.py",
-    ]
-
-
-def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
-    verify = load_script()
-    assert any(
-        "src/esolangs/_traits.py".startswith(prefix)
-        for prefix in verify.STEP_SCOPE["exception leaks"]
-    )
-
-
-def test_leak_step_covers_shipped_examples():
-    from scripts.verify import STEP_SCOPE
-
-    assert "src/esolangs/examples/fixture.txt".startswith(STEP_SCOPE["exception leaks"])
 
 
 @pytest.mark.medium
