@@ -87,7 +87,7 @@ def _judged(path: pathlib.Path, root: pathlib.Path, name: str) -> bool:
         return False
     if root / "src" / "esolangs" / "tools" in path.parents or (
         root / "src" / "esolangs" / "languages" in path.parents
-        and "generator" in path.parts
+        and ("generator" in path.parts or path.stem == "generator")
     ):
         return True
     return name.startswith("_")

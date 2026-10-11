@@ -226,6 +226,7 @@ def render_contributor_tools_section() -> str:
         if not (
             source.is_relative_to(generator_dir.resolve())
             or source.is_relative_to(colocated.resolve())
+            or source == colocated.with_suffix(".py").resolve()
         ):
             raise ValueError(f"{language.name}'s generator is outside {generator_dir}")
     return "| `src/esolangs/tools/` | generators |"

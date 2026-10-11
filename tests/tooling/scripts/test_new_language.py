@@ -20,10 +20,16 @@ def root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 @pytest.mark.usefixtures("root")
 def test_scaffold_creates_source_generator_and_tests() -> None:
-    source, test, generator, generator_test = new_language.scaffold(
+    source, test, generator, generator_test, *compatibility = new_language.scaffold(
         "Tiny Lang", "other"
     )
-    assert source.name == generator.name == "tiny_lang.py"
+    assert (source.name, generator.name) == ("interpreter.py", "generator.py")
+    assert (
+        source.parent
+        == generator.parent
+        == new_language.ROOT / "src/esolangs/languages/tiny_lang"
+    )
+    assert {path.name for path in compatibility} == {"__init__.py", "tiny_lang.py"}
     assert (test.name, generator_test.name) == (
         "test_tiny_lang.py",
         "test_boolean_tiny_lang.py",
@@ -35,7 +41,9 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
 @pytest.mark.usefixtures("root")
 def test_an_interpreter_only_language_gets_no_generator() -> None:
     paths = new_language.scaffold("Tiny", "other", generator=False)
-    assert [path.name for path in paths] == ["tiny.py", "test_tiny.py"]
+    assert [path.name for path in paths[:2]] == ["interpreter.py", "test_tiny.py"]
+    assert not any(path.name == "generator.py" for path in paths)
+    assert not (new_language.ROOT / "src/esolangs/tools/tiny.py").exists()
 
 
 def test_scaffold_records_the_language_as_unassessed(root: Path) -> None:
@@ -304,3 +312,113 @@ def test_drop_name_items_cuts_set_and_dict_keys(tmp_path: Path) -> None:
     text = path.read_text()
     assert "frozenset({b})" in text
     assert "{b: 2}" in text
+
+
+@pytest.mark.usefixtures("root")
+def test_scaffold_reports_the_canonical_generator() -> None:
+    new_language.scaffold("Tiny", "other")
+    (gap,) = new_language._unregistered("Tiny", "tiny")  # noqa: SLF001
+    assert gap.where == "src/esolangs/languages/tiny/generator.py"
+
+
+def test_scaffold_collision_is_atomic(root: Path) -> None:
+    package = root / "src/esolangs/languages/tiny"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("owned")
+    with pytest.raises(FileExistsError, match="refusing to overwrite"):
+        new_language.scaffold("Tiny", "other")
+    assert not (package / "interpreter.py").exists()
+    assert not (root / "src/esolangs/interpreters/tiny.py").exists()
+    assert (package / "__init__.py").read_text() == "owned"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("generator", [False, True])
+def test_remove_cleans_both_layouts(
+    root: Path, monkeypatch: pytest.MonkeyPatch, *, generator: bool
+) -> None:
+    import subprocess
+    import types
+
+    from esolangs import registry
+    from esolangs.registry import Language
+
+    created = new_language.scaffold("Tiny", "other", generator=generator)
+    namespace = root / "src/esolangs/languages/__init__.py"
+    owned = set(created) - {namespace}
+    for relative in remove_language._EDITED:  # noqa: SLF001
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("")
+    for relative in (
+        "tests/support/fixtures/curation.toml",
+        "src/esolangs/proof_status.toml",
+        "tests/support/fixtures/sharing_catalogue.toml",
+        "tests/support/fixtures/canonical_folding_catalogue.toml",
+        "tests/support/fixtures/deep_arities.toml",
+        "docs/limitations.md",
+        "docs/proofs/index.md",
+        "src/esolangs/tools/wrap.py",
+    ):
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("")
+    (root / "tests/support/fixtures/generator_sizes.json").write_text("{\n}\n")
+    (root / "tests/support/fixtures/wiki_examples").mkdir()
+
+    def tiny(truth_table: str) -> str:
+        return truth_table
+
+    tiny.__module__ = "esolangs.languages.tiny.generator"
+    lang = Language(
+        "Tiny", "tiny", category="other", boolean=tiny if generator else None
+    )
+    monkeypatch.setitem(registry.LANGUAGES, "Tiny", lang)
+    if generator:
+        module = types.ModuleType(tiny.__module__)
+        module.LANGUAGE = lang
+        monkeypatch.setitem(sys.modules, tiny.__module__, module)
+    monkeypatch.setattr(remove_language, "ROOT", root)
+    real_run = subprocess.run
+    for command in (
+        ["git", "init", "-q"],
+        ["git", "add", "."],
+        [
+            "git",
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-qm",
+            "seed fixture",
+        ],
+    ):
+        real_run(command, cwd=root, check=True, capture_output=True)
+
+    def run(command, **kwargs):
+        if command[0] == "git":
+            return real_run(command, **kwargs)
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    remove_language.remove("Tiny")
+    assert not any(path.exists() for path in owned)
+    assert namespace.exists()
+    assert not (root / "src/esolangs/languages/tiny").exists()
+
+
+def test_retained_generator_alias_drops_registration_only(tmp_path: Path) -> None:
+    path = tmp_path / "alias.py"
+    path.write_text(
+        "if TYPE_CHECKING:\n"
+        "    from esolangs.languages.tiny.generator import LANGUAGE as LANGUAGE\n"
+        "    from esolangs.languages.tiny.generator import helper as helper\n"
+    )
+    remove_language._drop_registration_export(  # noqa: SLF001
+        path, "esolangs.languages.tiny.generator"
+    )
+    source = path.read_text()
+    assert "LANGUAGE" not in source
+    assert "helper as helper" in source
+    compile(source, str(path), "exec")

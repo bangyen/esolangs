@@ -1,6 +1,7 @@
 """Sophie through the shared API, CLI and machinery."""
 
 import difflib
+import importlib
 import sys
 from typing import Any
 from unittest.mock import patch
@@ -128,3 +129,19 @@ def test_resource_bounds() -> None:
 
     result = audit("Sophie", 3, corpus(3)["parity"], _bounds)
     assert result["source_utf8_bits"] == 8 * result["source_units"]
+
+
+@pytest.mark.parametrize(
+    ("legacy", "canonical"),
+    [
+        ("esolangs.interpreters.sophie", "esolangs.languages.sophie.interpreter"),
+        ("esolangs.tools.sophie", "esolangs.languages.sophie.generator"),
+    ],
+)
+def test_compatibility_imports_share_module_state(legacy, canonical, monkeypatch):
+    old = importlib.import_module(legacy)
+    new = importlib.import_module(canonical)
+    assert old is new
+    marker = object()
+    monkeypatch.setattr(old, "compatibility_probe", marker, raising=False)
+    assert new.compatibility_probe is marker

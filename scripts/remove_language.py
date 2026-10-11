@@ -420,7 +420,11 @@ def _module_of(path: Path) -> str:
 
 
 def _declaring_module(lang: Language) -> str | None:
-    """Return the ``esolangs.tools`` module whose ``LANGUAGE`` is ``lang``."""
+    """Return the implementation module declaring ``lang``."""
+    if lang.boolean is not None:
+        name = lang.boolean.__module__
+        if getattr(sys.modules.get(name), "LANGUAGE", None) is lang:
+            return name
     for module_name, module in sorted(sys.modules.items()):
         if (
             module_name.startswith("esolangs.tools.")
@@ -428,6 +432,26 @@ def _declaring_module(lang: Language) -> str | None:
         ):
             return module_name
     return None
+
+
+def _owned_module_paths(lang: Language) -> tuple[set[str], set[Path]]:
+    """Return implementation and compatibility modules, keeping leaves separate."""
+    modules = (
+        {f"esolangs.interpreters.{lang.interpreter}"} if lang.interpreter else set()
+    )
+    declaring = _declaring_module(lang)
+    if declaring:
+        modules.add(declaring)
+    package = ROOT / "src/esolangs/languages" / lang.id
+    if package.is_dir():
+        modules.add(f"esolangs.languages.{lang.id}.interpreter")
+        if lang.boolean is not None:
+            modules.add(f"esolangs.tools.{lang.id}")
+    paths = {path for module in modules if (path := _module_path(module))}
+    init = package / "__init__.py"
+    if init.is_file():
+        paths.add(init)
+    return modules, paths
 
 
 def _python_files() -> list[str]:
@@ -510,6 +534,29 @@ def _drop_language_statement(path: Path) -> None:
             del lines[node.lineno - 1 : node.end_lineno]
             break
     path.write_text("".join(lines).rstrip("\n") + "\n", encoding="utf-8")
+
+
+def _drop_registration_export(path: Path, module: str) -> None:
+    """Remove a retained compatibility module's registration re-export."""
+    source = path.read_text(encoding="utf-8")
+    lines = source.splitlines(keepends=True)
+    nodes = [
+        node
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.ImportFrom)
+        and node.module == module
+        and any(name.name == "LANGUAGE" for name in node.names)
+    ]
+    for node in sorted(nodes, key=lambda item: item.lineno, reverse=True):
+        names = [name for name in node.names if name.name != "LANGUAGE"]
+        indent = " " * node.col_offset
+        replacement = (
+            indent + ast.unparse(ast.ImportFrom(module=module, names=names, level=0))
+            if names
+            else indent + "pass"
+        )
+        lines[node.lineno - 1 : node.end_lineno] = [replacement + "\n"]
+    path.write_text("".join(lines), encoding="utf-8")
 
 
 def _owner_id(filename: str, ids: set[str]) -> str | None:
@@ -842,12 +889,7 @@ def remove(name: str) -> list[str]:
     gen = lang.boolean.__name__ if lang.boolean else lang.id
     declaring = _declaring_module(lang)
     stem = example_stems().get(lang.id, "")
-    own_modules = {f"esolangs.interpreters.{module}"} if module else set()
-    if declaring:
-        own_modules.add(declaring)
-    if lang.boolean and lang.boolean.__module__.startswith("esolangs.languages."):
-        own_modules.add(lang.boolean.__module__.split(".generator")[0])
-    module_paths = {p for m in own_modules if (p := _module_path(m))}
+    own_modules, module_paths = _owned_module_paths(lang)
     files = _python_files()
     users = _imported([f for f in files if f not in _EDITED])
     ids = {other.id for other in LANGUAGES.values()}
@@ -923,6 +965,10 @@ def remove(name: str) -> list[str]:
     for path in module_paths - doomed:
         if declaring and path == _module_path(declaring):
             _drop_language_statement(path / "__init__.py" if path.is_dir() else path)
+        elif declaring:
+            _drop_registration_export(
+                path / "__init__.py" if path.is_dir() else path, declaring
+            )
     keys = {name, module, lang.id, gen, stem} - {""}
     # ``Path("tests/interpreters/test_inject.py")`` in a support list.
     paths = {str(p.relative_to(ROOT)) for p in doomed}

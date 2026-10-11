@@ -136,11 +136,33 @@ def test_every_row_prints_its_answer(table: str) -> None:
 '''
 
 
+def _compatibility_module(
+    module: str, names: tuple[str, ...], *, interpreter: bool = False
+) -> str:
+    """Alias the implementation at runtime and expose its static exports."""
+    imports = "".join(f"    from {module} import {name} as {name}\n" for name in names)
+    entry = (
+        '\nif __name__ == "__main__":\n'
+        "    from esolangs.interpreters._entry import script_main\n\n"
+        "    script_main(_implementation.run)\n"
+        if interpreter
+        else ""
+    )
+    return (
+        '"""Compatibility import for the language implementation."""\n\n'
+        "import importlib\nimport sys\nfrom typing import TYPE_CHECKING\n\n"
+        "if TYPE_CHECKING:\n" + imports + "\n"
+        f'_implementation = importlib.import_module("{module}")\n'
+        "sys.modules[__name__] = _implementation\n" + entry
+    )
+
+
 def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     """Create and return the interpreter, generator and test stubs."""
     slug = _slug(name)
+    package = ROOT / "src/esolangs/languages" / slug
     files = {
-        ROOT / "src/esolangs/interpreters" / f"{slug}.py": (_interpreter_stub(name)),
+        package / "interpreter.py": _interpreter_stub(name),
         ROOT / "tests" / "interpreters" / f"test_{slug}.py": (
             f'"""Tests for the {name} interpreter."""\n\n'
             "import pytest\n\n"
@@ -155,13 +177,34 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     }
     if generator:
         fields = {"name": name, "slug": slug, "category": category}
-        files[ROOT / "src" / "esolangs" / "tools" / f"{slug}.py"] = _GENERATOR.format(
-            **fields
-        )
+        files[package / "generator.py"] = _GENERATOR.format(**fields)
         files[ROOT / "tests" / "generators" / f"test_boolean_{slug}.py"] = (
             _GENERATOR_TEST.format(**fields)
         )
+    files[package / "__init__.py"] = '"""Language implementation modules."""\n'
+    files[ROOT / "src/esolangs/interpreters" / f"{slug}.py"] = _compatibility_module(
+        f"esolangs.languages.{slug}.interpreter",
+        ("_Machine", "_State", "_advance", "run"),
+        interpreter=True,
+    )
+    if generator:
+        files[ROOT / "src/esolangs/tools" / f"{slug}.py"] = _compatibility_module(
+            f"esolangs.languages.{slug}.generator",
+            ("LANGUAGE", slug),
+        )
+    namespace = package.parent / "__init__.py"
+    if not namespace.exists():
+        files[namespace] = '"""Language-owned interpreters and generators."""\n'
     collisions = [path for path in files if path.exists()]
+    collisions += [
+        path
+        for path in (
+            ROOT / "src/esolangs/interpreters" / slug,
+            ROOT / "src/esolangs/tools" / slug,
+        )
+        if path.exists()
+    ]
+
     if collisions:
         joined = ", ".join(str(path.relative_to(ROOT)) for path in collisions)
         raise FileExistsError(f"refusing to overwrite {joined}")
@@ -210,8 +253,20 @@ def _tests_module(module: str, attr: str) -> Container[str]:
 
 def _unregistered(name: str, slug: str) -> list[Gap]:
     module = slug
-    generator = ROOT / "src/esolangs/tools" / f"{slug}.py"
-    if not generator.exists():
+    package = ROOT / "src/esolangs/languages" / slug / "generator"
+    generator = next(
+        (
+            path
+            for path in (
+                package.with_suffix(".py"),
+                package / "__init__.py",
+                ROOT / "src/esolangs/tools" / f"{slug}.py",
+            )
+            if path.exists()
+        ),
+        None,
+    )
+    if generator is None:
         return [
             Gap(
                 "src/esolangs/registry/_table.py",
@@ -495,12 +550,14 @@ def sources(name: str) -> list[str]:
     modules = [f"esolangs.interpreters.{lang.interpreter}"] if lang.interpreter else []
     if lang.boolean is not None:
         modules.append(lang.boolean.__module__)
-        if lang.boolean.__module__.startswith("esolangs.languages."):
-            package = lang.boolean.__module__.split(".generator")[0]
-            modules.extend((f"{package}.interpreter", f"esolangs.tools.{lang.id}"))
+    package = ROOT / "src/esolangs/languages" / lang.id
+    if package.exists():
+        modules.append(f"esolangs.languages.{lang.id}.interpreter")
+        if lang.boolean is not None:
+            modules.append(f"esolangs.tools.{lang.id}")
     return [
         str(path.relative_to(ROOT))
-        for module in modules
+        for module in dict.fromkeys(modules)
         for base in (ROOT / "src" / module.replace(".", "/"),)
         for path in (base.with_suffix(".py"), base)
         if path.exists()

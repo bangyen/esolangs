@@ -1,6 +1,6 @@
 """Template for a new esolang interpreter.
 
-Copy to ``src/esolangs/interpreters/<category>/<name>.py`` and fill in the
+Copy to ``src/esolangs/languages/<name>/interpreter.py`` and fill in the
 dispatch.  The conventions every interpreter follows -- ``run(code, io)``,
 :class:`ValueError` for a malformed program, :class:`~esolangs.exceptions.HaltError`
 for an invalid operation, ``EOFError`` on exhausted input (unless the spec

@@ -35,10 +35,13 @@ def _source(name: str) -> str:
     fn = LANGUAGES[name].boolean
     assert fn is not None
     path = Path(inspect.getsourcefile(fn))
+    directory = path.parent
+    if path.name == "generator.py":
+        directory = Path(__file__).parents[2] / "src/esolangs/tools"
     parts = [path.read_text(encoding="utf-8")]
     parts.extend(
         sibling.read_text(encoding="utf-8")
-        for sibling in sorted(path.parent.glob("*.py"))
+        for sibling in sorted(directory.glob("*.py"))
         if sibling != path and not sibling.name.startswith("__")
     )
     return "\n".join(parts)

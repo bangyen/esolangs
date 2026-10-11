@@ -44,6 +44,8 @@ def _source(name: str) -> str:
     directories = (
         [path.parent] if path.name == "__init__.py" else [path.parent, path.parents[1]]
     )
+    if path.name == "generator.py":
+        directories.append(Path(__file__).parents[2] / "src/esolangs/tools")
     siblings = {
         sibling for directory in directories for sibling in directory.glob("*.py")
     }
