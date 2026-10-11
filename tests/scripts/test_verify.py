@@ -17,10 +17,15 @@ from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "verify" / "gate.py"
+SCOPE_SCRIPT = REPO_ROOT / "scripts" / "verify" / "scope.py"
 
 
 def load_script() -> Any:
     return load(SCRIPT)
+
+
+def load_scope() -> Any:
+    return load(SCOPE_SCRIPT)
 
 
 class TestPytestScopeCollects:
@@ -404,7 +409,7 @@ def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch) -> N
 
     from esolangs import registry
 
-    verify = load_script()
+    verify = load_scope()
     verify.ROOT = tmp_path
     languages = {}
     for name in ("target", "consumer", "unrelated"):
@@ -448,7 +453,7 @@ def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
 
 
 def test_leak_step_covers_shipped_examples():
-    from scripts.verify.gate import STEP_SCOPE
+    from scripts.verify.scope import STEP_SCOPE
 
     assert "src/esolangs/examples/fixture.txt".startswith(STEP_SCOPE["exception leaks"])
 
