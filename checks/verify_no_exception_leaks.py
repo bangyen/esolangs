@@ -55,7 +55,7 @@ _HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
-from _scope import write_text
+from _process import write_text
 
 from esolangs._program import Program
 from esolangs.exceptions import EsolangError

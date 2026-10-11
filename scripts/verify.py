@@ -51,7 +51,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _scope import (  # noqa: E402  # noqa: E402
+from _process import (  # noqa: E402  # noqa: E402
     run_bounded,
     start_logged,
     wait_with_heartbeat,

@@ -35,7 +35,7 @@ from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _scope import write_text
+from _process import write_text
 
 ROOT = Path(__file__).resolve().parents[1]
 
