@@ -123,6 +123,11 @@ def _source_link(name: str) -> str:
     """Return the GitHub URL of the language's Python interpreter."""
     module = cast(str, LANGUAGES[name].interpreter)
     path = module.replace(".", "/")
+    canonical = ROOT / "src/esolangs/languages" / module / "interpreter"
+    for source in (canonical.with_suffix(".py"), canonical / "__init__.py"):
+        if source.is_file():
+            relative = source.relative_to(ROOT).as_posix()
+            return f"https://github.com/bangyen/esolangs/blob/main/{relative}"
     if not (_INTERPRETERS / f"{path}.py").is_file():
         path += "/__init__"
     return (
@@ -217,7 +222,11 @@ def render_contributor_tools_section() -> str:
         if language.boolean is None:
             continue
         source = pathlib.Path(language.boolean.__code__.co_filename).resolve()
-        if not source.is_relative_to(generator_dir.resolve()):
+        colocated = root / "languages" / language.id / "generator"
+        if not (
+            source.is_relative_to(generator_dir.resolve())
+            or source.is_relative_to(colocated.resolve())
+        ):
             raise ValueError(f"{language.name}'s generator is outside {generator_dir}")
     return "| `src/esolangs/tools/` | generators |"
 
@@ -499,7 +508,8 @@ def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
     """Return ``(module, generator)`` for every module declaring a ``LANGUAGE``."""
     tools = root / "src/esolangs/tools"
     found = []
-    for path in sorted(tools.rglob("*.py")):
+    paths = [*tools.rglob("*.py"), *(root / "src/esolangs/languages").rglob("*.py")]
+    for path in sorted(paths):
         if "__pycache__" in path.parts:
             continue
         text = path.read_text(encoding="utf-8")
@@ -515,8 +525,11 @@ def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
             if kw.arg == "boolean" and isinstance(kw.value, ast.Name)
         )
         # ``tools/<name>[.py|/__init__.py]`` -> ``<name>``.
-        parts = path.relative_to(tools).with_suffix("").parts
-        module = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
+        if path.is_relative_to(tools):
+            parts = path.relative_to(tools).with_suffix("").parts
+            module = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
+        else:
+            module = path.relative_to(root / "src/esolangs/languages").parts[0]
         found.append((module, generator))
     return sorted(found)
 

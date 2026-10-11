@@ -457,6 +457,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # Only a generator, an interpreter (the step counts are executed), or the
     # baseline itself can move these numbers.
     "generator size baseline": (
+        "src/esolangs/languages/",
         "src/esolangs/tools/",
         "src/esolangs/interpreters/",
         "checks/check_generator_sizes.py",

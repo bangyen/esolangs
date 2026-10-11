@@ -50,6 +50,7 @@ axes never remove a language; a stalled row moves to the
 | --- | --- |
 | `src/esolangs/interpreters/` | interpreter modules and `run(code, io)` |
 | `src/esolangs/tools/` | generators |
+| `src/esolangs/languages/` | colocated language implementations; legacy imports remain supported |
 | `src/esolangs/registry/` | the source of truth for public integration |
 | `tests/` | interpreter and generator coverage |
 

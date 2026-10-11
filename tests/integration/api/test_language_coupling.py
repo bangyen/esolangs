@@ -217,8 +217,13 @@ def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
     modules = [f"esolangs.interpreters.{lang.interpreter}"] if lang.interpreter else []
     if lang.boolean is not None:
         modules.append(lang.boolean.__module__.removesuffix(".__init__"))
-    stems = {m.rsplit(".", 1)[-1] for m in modules} | {lang.id}
+    canonical = [m for m in modules if m.startswith("esolangs.languages.")]
+    modules += [f"esolangs.tools.{lang.id}"] if canonical else []
+    stems = {
+        m.rsplit(".", 1)[-1] for m in modules if not m.startswith("esolangs.languages.")
+    } | {lang.id}
     prefixes = [f"src/{m.replace('.', '/')}" for m in modules]
+    prefixes += [f"src/{m.split('.generator')[0].replace('.', '/')}" for m in canonical]
     for stem in stems:
         prefixes += [
             f"tests/formats/{stem}/",

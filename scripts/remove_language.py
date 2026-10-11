@@ -845,6 +845,8 @@ def remove(name: str) -> list[str]:
     own_modules = {f"esolangs.interpreters.{module}"} if module else set()
     if declaring:
         own_modules.add(declaring)
+    if lang.boolean and lang.boolean.__module__.startswith("esolangs.languages."):
+        own_modules.add(lang.boolean.__module__.split(".generator")[0])
     module_paths = {p for m in own_modules if (p := _module_path(m))}
     files = _python_files()
     users = _imported([f for f in files if f not in _EDITED])

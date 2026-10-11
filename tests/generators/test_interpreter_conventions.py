@@ -1,6 +1,7 @@
 """Source-shape conventions the interpreters share, swept over the tree."""
 
 import ast
+import importlib
 import inspect
 import pathlib
 import re
@@ -14,9 +15,7 @@ from esolangs.registry import LANGUAGES
 # The interpreter tree, anchored to this file rather than the working
 # directory, so the sweep finds the same modules wherever pytest was
 # started from.
-_INTERPRETERS = pathlib.Path(__file__).resolve().parents[2] / (
-    "src/esolangs/interpreters"
-)
+_INTERPRETERS = pathlib.Path(__file__).resolve().parents[2] / ("src/esolangs")
 
 # ``run`` is the entry point the template puts the IO on -- it builds the
 # machine, drives it, and is handed the ``IO`` to do it with.  It is the
@@ -66,8 +65,10 @@ def _module_files() -> list[pathlib.Path]:
     for language in LANGUAGES.values():
         if language.interpreter is None:
             continue
-        path = _INTERPRETERS / language.interpreter
-        paths.append(path / "__init__.py" if path.is_dir() else path.with_suffix(".py"))
+        module = importlib.import_module(
+            f"esolangs.interpreters.{language.interpreter}"
+        )
+        paths.append(pathlib.Path(inspect.getfile(module)))
     return sorted(paths)
 
 
@@ -132,7 +133,15 @@ class TestTheSweepCanSee:
             for path in _module_files()
         }
         registered = {
-            lang.interpreter.replace(".", "/")
+            pathlib.Path(
+                inspect.getfile(
+                    importlib.import_module(f"esolangs.interpreters.{lang.interpreter}")
+                )
+            )
+            .relative_to(_INTERPRETERS)
+            .as_posix()
+            .removesuffix("/__init__.py")
+            .removesuffix(".py")
             for lang in LANGUAGES.values()
             if lang.interpreter
         }
@@ -177,7 +186,9 @@ _BARE_RAISE = re.compile(
 def _wordless_halts() -> dict[str, int]:
     """Count the bare raises in every interpreter, keyed by relative path."""
     found: dict[str, int] = {}
-    for path in sorted(_INTERPRETERS.rglob("*.py")):
+    for path in sorted(
+        set((_INTERPRETERS / "interpreters").rglob("*.py")) | set(_module_files())
+    ):
         hits = sum(
             bool(_BARE_RAISE.match(line))
             for line in path.read_text(encoding="utf-8").splitlines()
@@ -237,10 +248,9 @@ def test_interpreter_docstrings_follow_the_template() -> None:
     }
     named_paths = {}
     for module, name in names.items():
-        relative = pathlib.Path(*module.split("."))
-        path = _INTERPRETERS / relative.with_suffix(".py")
-        if not path.exists():
-            path = _INTERPRETERS / relative / "__init__.py"
+        path = pathlib.Path(
+            inspect.getfile(importlib.import_module(f"esolangs.interpreters.{module}"))
+        )
         assert path.is_file(), module
         named_paths[path] = name
     paths = sorted(set(_module_files()) | set(named_paths))

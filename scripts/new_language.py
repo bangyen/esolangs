@@ -244,8 +244,18 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
     """List the steps every language needs, generator or not."""
     gaps = []
     base = ROOT / "src/esolangs/interpreters" / module.replace(".", "/")
+    canonical = ROOT / "src/esolangs/languages" / module / "interpreter"
     source = next(
-        (p for p in (base.with_suffix(".py"), base / "__init__.py") if p.exists()),
+        (
+            p
+            for p in (
+                canonical.with_suffix(".py"),
+                canonical / "__init__.py",
+                base.with_suffix(".py"),
+                base / "__init__.py",
+            )
+            if p.exists()
+        ),
         None,
     )
     if source is None:
@@ -485,6 +495,9 @@ def sources(name: str) -> list[str]:
     modules = [f"esolangs.interpreters.{lang.interpreter}"] if lang.interpreter else []
     if lang.boolean is not None:
         modules.append(lang.boolean.__module__)
+        if lang.boolean.__module__.startswith("esolangs.languages."):
+            package = lang.boolean.__module__.split(".generator")[0]
+            modules.extend((f"{package}.interpreter", f"esolangs.tools.{lang.id}"))
     return [
         str(path.relative_to(ROOT))
         for module in modules

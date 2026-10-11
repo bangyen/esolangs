@@ -142,3 +142,20 @@ def test_piet_detects_its_scale(scale: int) -> None:
 
 def test_it_reads_numeric_tokens_on_the_same_line() -> None:
     assert_reads_tokens_on_one_line("Piet")
+
+
+@pytest.mark.parametrize(
+    ("legacy", "canonical"),
+    [
+        ("esolangs.interpreters.piet", "esolangs.languages.piet.interpreter"),
+        ("esolangs.tools.piet", "esolangs.languages.piet.generator"),
+        ("esolangs.tools.piet.balance", "esolangs.languages.piet.generator.balance"),
+    ],
+)
+def test_compatibility_imports_share_module_state(legacy, canonical, monkeypatch):
+    old = importlib.import_module(legacy)
+    new = importlib.import_module(canonical)
+    assert old is new
+    marker = object()
+    monkeypatch.setattr(old, "compatibility_probe", marker, raising=False)
+    assert new.compatibility_probe is marker
