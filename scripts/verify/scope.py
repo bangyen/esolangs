@@ -750,3 +750,7 @@ def _scoped_coverage(cmd: list[str], changed: list[str]) -> list[str]:
         f.writelines(f"    {path}\n" for path in touched)
     atexit.register(os.unlink, rc)
     return [*without, "--cov", f"--cov-config={rc}", "--cov-report="]
+
+
+if __name__ == "__main__":
+    print(runtime_digest(sys.argv[1]))
