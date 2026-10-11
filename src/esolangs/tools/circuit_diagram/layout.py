@@ -83,14 +83,29 @@ class _Layout:
     @staticmethod
     def _record(runs: list[tuple[int, int, int]], run: tuple[int, int, int]) -> None:
         """Insert an interval, taking O(1) for the builder's ordered runs."""
-        if runs and runs[-1][2] == run[2] and run[0] <= runs[-1][1]:
+        if runs and runs[-1][2] == run[2] and runs[-1][0] <= run[0] <= runs[-1][1]:
             a, b, signal = runs[-1]
             runs[-1] = (min(a, run[0]), max(b, run[1]), signal)
             return
         if not runs or runs[-1] <= run:
             runs.append(run)
-        else:  # layout-guard tests may deliberately insert out of order
-            insort(runs, run)
+        else:
+            # Shared returns can arrive before earlier segments. Coalesce
+            # only touching intervals: a disjoint return must leave its gap.
+            start, end, signal = run
+            index = bisect_left(runs, run)
+            if index and runs[index - 1][2] == signal and runs[index - 1][1] >= start:
+                index -= 1
+                start = runs[index][0]
+                end = max(end, runs[index][1])
+            stop = index
+            while stop < len(runs):
+                left, right, owner = runs[stop]
+                if left > end or owner != signal:
+                    break
+                end = max(end, right)
+                stop += 1
+            runs[index:stop] = [(start, end, signal)]
 
     @staticmethod
     def _clash(

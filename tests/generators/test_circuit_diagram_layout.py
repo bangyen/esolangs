@@ -5,7 +5,39 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs.tools.circuit_diagram.layout import _RoutingLayout
+from esolangs.tools.circuit_diagram.layout import _Layout, _RoutingLayout
+
+
+@pytest.mark.parametrize("layout_type", [_Layout, _RoutingLayout])
+@pytest.mark.parametrize("vertical", [False, True])
+def test_disjoint_reverse_segments_leave_room_for_another_signal(
+    layout_type: type[_Layout], *, vertical: bool
+) -> None:
+    """A return segment must not connect across an unclaimed gap."""
+    layout = layout_type()
+    if vertical:
+        layout.run_vertical(0, 15, 20, 1)
+        layout.run_vertical(0, 0, 5, 1)
+        layout.run_vertical(0, 7, 12, 2)
+        runs = layout.vertical[0]
+    else:
+        layout.run_horizontal(15, 20, 0, 1)
+        layout.run_horizontal(0, 5, 0, 1)
+        layout.run_horizontal(7, 12, 0, 2)
+        runs = layout.horizontal[0]
+    assert runs == [(1, 5, 1), (8, 12, 2), (16, 20, 1)]
+    assert not layout._covered(runs, 6)
+    assert not layout._covered(runs, 13)
+
+
+def test_reverse_overlapping_segments_keep_coverage_after_the_shorter_run() -> None:
+    """Unsorted same-signal overlaps form one interval for binary lookup."""
+    layout = _RoutingLayout()
+    layout.run_horizontal(10, 20, 0, 1)
+    layout.run_horizontal(0, 15, 0, 1)
+    layout.run_horizontal(5, 12, 0, 1)
+    assert layout.horizontal[0] == [(1, 20, 1)]
+    assert layout._covered(layout.horizontal[0], 18)
 
 
 def test_reserve_replaces_the_owner_and_its_index_entries() -> None:
