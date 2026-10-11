@@ -609,7 +609,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     inside the width if that came out too wide.
 
     From eight inputs an unconstrained nonconstant build tries a shared fold
-    within linear work and area budgets, then the projected H-layout.
+    within linear work and area budgets, then a projected prefix H-layout
+    with fixed-size cofactor pools when it beats the minterm lattice.
 
     What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
     floor is what a band cannot reclaim -- the rails and complements, live
@@ -625,11 +626,16 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
         if shared is not None:
             return shared.render()
         used, projected = _essential_table(truth_table, inputs)
-        if len(used) < inputs:
-            return _h_term_layout(
-                projected, input_order=used, port_inputs=inputs
-            ).render()
-        return _h_term_layout(truth_table).render()
+        lattice = _h_term_layout(projected, input_order=used, port_inputs=inputs)
+        if len(used) >= 6:
+            from .hpool import _h_pool_layout
+
+            pooled = _h_pool_layout(projected, input_order=used, port_inputs=inputs)
+            height, columns = lattice.bounds()
+            pool_height, pool_columns = pooled.bounds()
+            if pool_height * pool_columns < height * columns:
+                return pooled.render()
+        return lattice.render()
     flat = _circuit_diagram_at(truth_table, None)
     if width is None or grid_width(flat) <= width:
         return flat
@@ -663,7 +669,7 @@ LANGUAGE = Language(
     # invariants.
     scaling_rungs=(8, 9),
     boolean=circuit_diagram,
-    documented_sizes=(1_780_773, 2_505_897, 1.4),
+    documented_sizes=(1_176_281, 2_308_769, 2.0),
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

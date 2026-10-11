@@ -21,18 +21,15 @@ exemption supported by a structural proof or the measured criterion in
   40.3% repeated-subtree upside remains open. Controls in
   `tests/tools/test_boolean_line_forward.py` and
   `tests/tools/test_boolean_line_share_scope.py`.
-- **Circuit Diagram:** wall (measured). The cofactor-sharing bus fold is
-  area-smaller than the H-layout but not linear-area. Its node-count cutoff
-  (`nodes**2 <= 4*T`) rejects the dense n=8 fold (75 nodes) although the
-  shared model is 194,775 cells against the H-layout's 1,946,024, so the
-  public build emits the unshared lattice and jumps x26.4 in area from n=7
-  (73,809) to n=8. Removing the cutoff admits folds whose same-parity growth
-  n=8->10 is x4.93, over the x4.4 contract; banding lowers the constant but
-  not the exponent (x4.79), and the H-layout's own is x4.37. Sharing would
-  have to be grafted onto the H-recursion -- one lattice site per distinct
-  residual, parents' buses routed to it -- a new construction, not a parameter
-  change. Controls in
-  `tests/generators/test_boolean_circuit_diagram_share.py`.
+- **Circuit Diagram:** fixed-size cofactor pools now share locally inside
+  a prefix H recursion with linear work and area. Dense n=8 occupies
+  1,290,226 cells / 1,176,281 characters against the minterm lattice's
+  1,946,024 / 1,780,773; every row executes natively. Three- and four-input
+  pools keep both arity parities inside the measured growth gate. Global
+  repeats across pools remain open: the full bus fold still exceeds its
+  node-count budget. Controls in
+  `tests/tools/test_boolean_circuit_diagram_pool.py` and
+  `tests/tools/test_boolean_circuit_diagram_share.py`.
 
 ## Generator linearity
 

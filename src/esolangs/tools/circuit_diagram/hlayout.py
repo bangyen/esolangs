@@ -7,9 +7,8 @@ Eight is where the registry's linearity contract starts measuring.
 
 The public path first tries the shared fold at up to twice sqrt(T) distinct
 nodes, admitting its drawing inside the H-layout's unavoidable minterm box.
-Larger folds use this lattice over essential inputs; ignored inputs keep
-their original ports and drive no gates. The remaining minterm lattice is
-unshared.
+Larger folds compare fixed-size cofactor pools against this lattice over
+essential inputs; ignored inputs keep their original ports and drive no gates.
 """
 
 from dataclasses import dataclass
@@ -357,7 +356,12 @@ def _h_route_literals(
                 frontier = following
 
 
-def _h_route_results(layout: _RoutingLayout, plan: _HTermPlan) -> None:
+def _h_route_results(
+    layout: _RoutingLayout,
+    plan: _HTermPlan,
+    *,
+    leaf_points: dict[int, tuple[int, int]] | None = None,
+) -> None:
     """Release result holds and join the selected minterms at the output."""
     inputs, sites, results = plan.inputs, plan.sites, plan.results
     result_gates, result_signal = plan.result_gates, plan.result_signal
@@ -369,7 +373,9 @@ def _h_route_results(layout: _RoutingLayout, plan: _HTermPlan) -> None:
             continue
         if _depth(prefix) == inputs:
             x, y = sites[prefix]
-            result_points[prefix] = (x + 1, y)
+            result_points[prefix] = (
+                (x + 1, y) if leaf_points is None else leaf_points[prefix]
+            )
         else:
             x, y = result_anchor(prefix)
             if prefix in result_gates:

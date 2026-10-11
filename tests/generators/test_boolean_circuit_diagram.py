@@ -658,13 +658,14 @@ def test_wide_projection_retains_nonadjacent_ports_outside_the_shared_budget():
     from esolangs._evaluate import _evaluate
     from esolangs.tools.circuit_diagram import _linear_shared_layout
     from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+    from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
 
     rng = random.Random(841)
     residual = "".join(rng.choice("01") for _ in range(128))
     # Input six is ignored; the last input keeps its original eighth port.
     table = "".join(residual[((row >> 2) << 1) | (row & 1)] for row in range(256))
     assert _linear_shared_layout(table, 8) is None
-    model = _h_term_layout(residual, input_order=[0, 1, 2, 3, 4, 5, 7], port_inputs=8)
+    model = _h_pool_layout(residual, input_order=[0, 1, 2, 3, 4, 5, 7], port_inputs=8)
     program = boolean.circuit_diagram(table)
     assert program == model.render()
     legacy = _h_term_layout(table)

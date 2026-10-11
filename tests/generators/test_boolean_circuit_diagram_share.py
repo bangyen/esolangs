@@ -1,13 +1,4 @@
-"""Circuit Diagram's shared fold is area-smaller but not linear-area.
-
-``circuit_diagram`` admits the cofactor-sharing bus fold only while its
-distinct node count keeps the layout within ``nodes**2 <= 4*T``.  Past that it
-falls back to the H-layout, a minterm lattice that is Theta(T) area but never
-shares the repeated cofactors.  The gap is a layout, not a better fold: the
-shared model is several times smaller for these tables, yet grows faster than
-the linearity contract (x4.4, same-parity) allows.  These controls pin the
-rejection, the growth, and the fallback that loses the sharing.
-"""
+"""Global fold admission and the linear-area local cofactor alternative."""
 
 from __future__ import annotations
 
@@ -20,6 +11,7 @@ from esolangs.tools.circuit_diagram import (
     circuit_diagram,
 )
 from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
 
 
 def _dense(n: int) -> str:
@@ -49,9 +41,10 @@ class TestCircuitDiagramShareScope:
         assert _area(_circuit_diagram_model(table, None)) < _area(_h_term_layout(table))
         assert _linear_shared_layout(table, 8) is None
 
-    def test_the_public_build_falls_back_to_the_unshared_h_layout(self) -> None:
+    def test_the_public_build_uses_linear_area_local_cofactor_pools(self) -> None:
         table = _dense(8)
-        assert circuit_diagram(table) == _h_term_layout(table).render()
+        assert circuit_diagram(table) == _h_pool_layout(table).render()
+        assert _area(_h_pool_layout(table)) < _area(_h_term_layout(table))
 
     def test_shared_fold_growth_exceeds_the_linear_contract(self) -> None:
         """Same-parity size difference n=8->10 against the x4.4 contract."""
