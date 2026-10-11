@@ -263,7 +263,7 @@ class _Machine:
         bindings: the same program run twice does different things if the
         values beneath it differ, and only the stacks say so.
 
-        The input cursor joins them for the reason Fargo and Forbin include
+        The input cursor joins them for the reason other languages include
         it, though Eval never reads input at all, so it never varies.
 
         See :func:`esolangs.vm.run_until_halt_or_ancestor`.

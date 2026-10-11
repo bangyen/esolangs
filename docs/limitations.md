@@ -3,6 +3,10 @@
 Interpreter conventions, generator constraints, and proved limits.
 See [Polynomial](proofs/polynomial.md) for its size lower bound.
 
+The measurement screens and the Vandevelo profiler were removed once their
+findings were recorded here; numbers attributed to them are evidence, not a
+command to rerun.
+
 ## Interpreter conventions
 
 - Empty input is a no-op unless a language requires a seed or grid.
@@ -62,10 +66,10 @@ A space option has no remaining use. Input reordering counts toward generation
 cost: at most four named candidates, with the generic greedy scorer stopping
 at n=10. Generators may not use BFS or DFS; test-only oracles may.
 
-The screen script measures permuted tables, not admissible reorders under a
-fixed template and fill mapping. Dig, Flowchart, BrainIf, Sophie, and SLOW ACV
-MAMMALIAN must read in order; BF-PDA uses fixed stack order. No instruction-only
-wire is derived for 123 or Minifuck.
+The removed screen script recorded permuted tables, not admissible reorders
+under a fixed template and fill mapping. Dig, Flowchart, BrainIf, Sophie, and
+SLOW ACV MAMMALIAN must read in order; BF-PDA uses fixed stack order. No
+instruction-only wire is derived for 123 or Minifuck.
 
 - ArrowQueue's rotations cost 19, 39, and 63 characters at k=1, 2, 3. Their
   2.1% gain misses the 10% bar, so plain order ships (d5bac32).
@@ -161,20 +165,67 @@ most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
 versus 23.6 for the tree. The construction and the counting floor are in
 [fractran](proofs/fractran.md) and `tests/proofs/deep/fractran.py`.
 
+The canonical sharing piece is applied or exempt by measurement. The
+per-generator potential, before a generator's own share, is bounded per
+piece: the repeated-node upside, the constant-folding upside and the
+ignored-input growth. The n=5 repeated-node upside is 24.6% for SStack,
+34.1% for BF-PDA, 26.4% for thisthat, 18.3% for Back and 10.9% for Dig --
+all above the gate -- so those
+exemptions rest on the construction that cannot take the repeat, not a
+sub-gate bound. SStack's 24.6% is 82% subtables of size 2, below the
+two-unread-input depth a deferral needs, so its constructs reach the size >= 4
+repeats and save 4.8% of the plain tree
+(`tests/tools/test_boolean_sstack.py`); thisthat, Back, Dig and BF-PDA rest on
+their own admission tests. Boolfuck's is a sub-gate potential -- 2.3% of
+emitted size at n=5, below the gate, pinned in
+`tests/tools/test_boolean_boolfuck.py`. Home
+Row, ROTfuck and Dimensional are lookups that name no decision-tree node, and
+LaserFuck's path-dependent leaf code makes equal subtables unequal text.
+No decision-diagram generator leaves its repeats unshared, and the presence
+proxy is now enforced for the 48 tree-shaped generators by
+`tests/tools/test_boolean_sharing_catalogue.py`: 44 reference a canonical
+helper (`subtree_ids`, `SubtreeDiagram` -- Underload and Unlambda included),
+Circuit Diagram (`_dag`), Line (`shared_tree`) and Polynomial
+(`_polynomial_states`) a declared language-local one, and Piet is exempt (a
+strip has no jump, so a repeated subtable cannot be shared). thisthat's
+residual-duplicating fallbacks (`_strip_tree`, `_stream_tree`) are
+gated to at most three essential inputs (seven nodes) or two inputs, where a
+fold cannot pay. Back admits one bend: every route runs through column 1, so a second
+path meets the first's cells, and admission is bounded to 6..12 essential
+inputs without a width (16 of 96 controls improved on the admitting run).
+Dig's shared pool is 2..10 unique 64-row classes indexed by a single decimal
+digit over 2..6 prefix bits, so a larger pool needs a multi-digit index.
+
+The ignored-input and constant-folding pieces are held to
+`test_generator_shape_is_what_the_catalogue_says` (a tree row folds on a
+one-dependency table, a reducing row drops its ignored inputs) and to the
+presence proxy in `tests/tools/test_boolean_canonical_catalogue.py`, whose
+declared exceptions carry the piece natively (three rows for ignored inputs,
+eleven for constants).
+
+The suffix bank defers each word's greatest repeat inside its own body, so a
+nested definition shares like a top-level one: the n=16 five-input fixture
+falls 4% (8485 -> 8131 characters) for one dispatch test.
+
+Factor, Painfuck, brainfuck and Boolfuck admit a bank at several depths: each
+block defers through a distinct unused flag at a level no shallower than its
+own (a shallower ancestor would rewrite the flag before dispatch), so one cell
+per input level is the whole pool.
+
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
 Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
 Those choices prevent repeated scans, but command cost and source size remain
 separate axes.
 
-`scripts/screens/resources.py` checks Sophie, BFStack and Subleq on 96 tables
-and all 6,120 rows through eight inputs. The benchmark reports UTF-8 source
+Sophie, BFStack and Subleq are checked on 96 tables and all 6,120 rows
+through eight inputs. The benchmark reports UTF-8 source
 bits, hidden control stacks, signed integer widths and the simultaneous peak
 of data, control, cursor and machine flags. Separate peaks need not coincide.
 Python overhead, static parser indexes and I/O state are excluded. At eight
 inputs the sampled peak machine payloads are 18, 756 and 3,066 bits respectively;
 these are measurements, not language-wide space bounds. Construction bounds
-are asserted in the screen and controlled by executed checks in each
+are asserted by the removed screen and controlled by executed checks in each
 language's own tests.
 
 ### Malbolge sampling
@@ -281,7 +332,8 @@ Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis. Deadfish (315)
 is interpreter-only because it has no input vocabulary.
 
 [Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
-(94) clears the fame gate despite duplicating Bitwise Cyclic Tag's axis.
+(94) clears the fame gate despite duplicating an earlier queue language's
+consume-one-bit axis.
 The 2026-10-01 audit pins consume-one-bit semantics: append the current
 production iff the bit is one, then advance cyclically; empty data halts.
 With no specified I/O, the package adopts BCT's initial-queue embed and
@@ -359,7 +411,8 @@ and 4.000 (///). The constructions supply the bounds; these ratios are measureme
 The 2026-09-27 audit closed these candidates:
 
 - Self-replicating marbles leaves section order and collision timing undefined.
-- Wirefunge leaves initialization open and duplicates thisthat's gates.
+- Wirefunge leaves initialization open and duplicates an earlier grid
+  language's gates.
 - Bytemap leaves byte order, division faults, and optional 8bpp undefined.
 - Gifunk defines motion through APNG/GIF frames but no instructions.
 - Turing Paint and Befunk are obscure but already implemented.
@@ -455,9 +508,9 @@ languages remain rejected from the same image-source screen.
   `-`), under which the cat fires an unmatched `]`. A jump seeks its partner
   before the rotation ("after the instruction is executed"). The wiki Hello
   World prints no greeting under any direction or seek timing. The generator
-  targets the default only.
+  targets either direction.
 - Smu reads an unset variable as empty, as the wiki cat needs at EOF.
-  Bits ride bytes low bit first, as in Boolfuck, so the cat copies bytes;
+  Bits ride bytes low bit first, so the cat copies bytes;
   output `=` prints nothing, `(` or `)` halts, and an unbalanced program
   popped to run halts. The page's expanded cat drops the `=` after `(+=)`
   and forces a leading 1; the compact source fixes the repair.

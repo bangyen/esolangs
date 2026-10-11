@@ -144,7 +144,7 @@ class _Machine:
     def step(self) -> None:
         """Execute one grid cell, or dump the queue on the post-halt step.
 
-        ``dumped`` keeps it to one dump, as Minsky Swap and Bitdeque do.
+        ``dumped`` keeps it to one dump, as other dumps do.
         """
         if self.state[4]:
             if not self.dumped:

@@ -6,7 +6,7 @@ run state between commands; ``ip``/``memory``/``stack`` are language-shaped.
 Three conventions defeat ``while not vm.halted: vm.step()``, so the VM
 reports them: ``self_halts`` (``halted`` never becomes true),
 ``dumps_on_the_post_halt_step`` (output lands one step after the halt),
-and ``steppable_to_answer`` (A Painter Ant alone; use :func:`esolangs.run`).
+and ``steppable_to_answer`` (use :func:`esolangs.run` where it is false).
 
 The five hang detectors -- :func:`run_until_halt_or_cycle`,
 :func:`run_until_halt_or_all_branches_cycle`,
@@ -134,7 +134,7 @@ def run_until_halt_or_cycle(
     )
     underlying = getattr(machine, "vm", machine)
     underlying = getattr(underlying, "_machine", underlying)
-    # Befunge's seeded `v \n?@` repeats its visible state, then halts.
+    # A seeded random program can repeat its visible state, then halt.
     # Random choices are absent from snapshots; only branching proves a cycle.
     if not machine.halted and isinstance(underlying, _BranchingStepMachine):
         raise with_hint(
@@ -268,7 +268,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     would otherwise be called a hang).  Misses bindings that differ every
     lap (``f(x - 1)`` over unbounded ints); O(depth) per push.  ``limit``
     bounds pushes examined -- a repeat shows within a few frames (three
-    across the Forbin suite) -- and exhausting it raises
+    across the suite) -- and exhausting it raises
     :class:`TimeoutError`.  No call stack raises :class:`TypeError`.
     """
     check_whole(limit, "limit")
@@ -324,10 +324,10 @@ class _TapeMachine(Protocol):
     Opting in claims the language reads and writes only the cell under
     the pointer, is translation-invariant for ``ptr >= 1``, and grows
     rightward by fresh zeros (growing leftward only from ``ptr == 0``,
-    which the certificate's ``m >= 1`` excludes).  Brainfuck, BrainIf,
-    Back, 6-5 and Factor qualify; absolute addresses (Suffolk,
-    Minifuck), wrapping or fixed tapes (Circlefuck, NoComment, Home Row)
-    and leftward growth away from ``ptr == 0`` (Jaune) must not declare it.
+    which the certificate's ``m >= 1`` excludes).  The adapters that
+    implement this protocol are the carriers; absolute addresses,
+    wrapping or fixed tapes, and leftward growth away from ``ptr == 0``
+    must not declare it.
     """
 
     def step(self) -> None:
@@ -478,12 +478,12 @@ def _grows_forever(
 class _AffineMachine(Protocol):
     """A machine whose cells grow in *value* on a tape that does not grow.
 
-    Suffolk's ``>>!`` loops stay one to five cells wide while a cell climbs
-    by a constant each lap (4501, 9001, 13501), unbounded Python ints.
-    ``values`` may grow (compared by subtraction); ``key`` is everything
-    else (equality); ``clamp_slack`` is the one place a value changes
-    behaviour.  Opting in claims control flow is independent of
-    ``values`` (Suffolk has no branch), every operation is affine
+    A loop may stay one to five cells wide while a cell climbs by a
+    constant each lap, on unbounded Python ints.  ``values`` may grow
+    (compared by subtraction); ``key`` is everything else (equality);
+    ``clamp_slack`` is the one place a value changes behaviour.  Opting
+    in claims control flow is independent of ``values`` (no branch),
+    every operation is affine
     (``acc += tape[ptr]``, ``tape[ptr] + 1 - acc``, resets to 0), and
     every departure is a ``max(0, ...)`` reported by ``clamp_slack``
     *before* the clamping step.  The clamp claim is load-bearing: a slack
@@ -708,16 +708,14 @@ class VM(Protocol):
         """The current code/instruction position, language-shaped.
 
         An index, a coordinate tuple, or ``None`` once the agent is
-        consumed.  The tuple's arity is not stable within a run: five
-        languages change shape (Flowchart and Super SNUSP to ``None``,
-        ``function x(y)`` to ``()``, APL and Forþ growing and
+        consumed.  The tuple's arity is not stable within a run: a
+        language may change shape (to ``None``, to ``()``, growing and
         shrinking), so size nothing to
         the initial arity; :meth:`~esolangs.debugger.Debugger.break_at`
-        checks kind, not arity.  For the ten grid languages the leading
-        components are row then column, never x then y; seven more report
-        a tuple without being grids (Back, Eval, Forþ, Grapheme, APL,
-        Forbin, ``function x(y)``) and
-        ``describe(...)["state_model"]`` separates them.
+        checks kind, not arity.  For the grid languages the leading
+        components are row then column, never x then y; others report a
+        tuple without being grids, and ``describe(...)["state_model"]``
+        separates them.
         """
 
     @property
@@ -746,9 +744,8 @@ class VM(Protocol):
         then heading; ``"line"`` starts with a line number; ``"opaque"`` is
         a real position that is not a place in the source.  Every tuple
         ``ip`` declares one of the last three
-        (``test_a_positional_ip_says_what_it_counts``): a frame stack
-        (Forth, Grapheme, Forbin) or a depth and cursor (Eval) all look like
-        ``(row, col)``.
+        (``test_a_positional_ip_says_what_it_counts``): a frame stack or
+        a depth and cursor all look like ``(row, col)``.
         """
 
     @property
@@ -763,9 +760,9 @@ class VM(Protocol):
         """Whether the program can reach a halt of its own.
 
         ``False`` where the *language* has no halt: bound the run.  It
-        does not promise a program runs forever -- Suffolk ends when a read runs out of
-        input (757 steps on a generated table program), A Painter Ant does
-        run forever.  No tally of carriers here; ``[n for n in
+        does not promise a program runs forever -- a read can run out of
+        input and end the program, and another language runs forever.
+        No tally of carriers here; ``[n for n in
         list_languages() if describe(n)["self_halts"]]`` cannot drift.
         """
 
@@ -783,20 +780,21 @@ class VM(Protocol):
 
         The norm raises :class:`~esolangs.exceptions.InputExhaustedError`;
         ``True`` marks the languages that take a value instead, so an
-        underfed program answers a different row.  Two are neither: Alight
-        is ``True`` but halts on ``cannot apply '+' to 2.0 and 'eof'``;
-        Suffolk is ``False`` but the read *ends* the program.  Every other
-        language reading stdin, swept one line short, matches its flag.
+        underfed program answers a different row.  Some are neither: a
+        flag may be ``True`` yet the run halts on the read; another may be
+        ``False`` yet the read *ends* the program.  Every other language
+        reading stdin, swept one line short, matches its flag.
         """
 
     @property
     def steppable_to_answer(self) -> bool:
         """Whether stepping this language ever reaches the answer.
 
-        ``False`` for A Painter Ant alone: the answer is the render after
-        the walk is proven periodic (three million steps leave ``output``
-        empty).  Distinct from ``self_halts``, which Suffolk carries while
-        still writing its answer.  Use :func:`esolangs.run`.
+        ``False`` where ``describe(n)["steppable_to_answer"]`` is false:
+        the answer is the render after the walk is proven periodic (three
+        million steps leave ``output`` empty).  Distinct from
+        ``self_halts``, which a language carries while still writing its
+        answer.  Use :func:`esolangs.run`.
         """
 
 

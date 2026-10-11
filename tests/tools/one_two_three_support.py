@@ -107,7 +107,7 @@ def _replay_verdict(code: str) -> str:
                 ip += 1  # below location 0 a 3 is a NOP
                 continue
             if not tape >> (pos + _RING) & 1:
-                ip = fwd[ip]  # FALSE skips forward; ip still increases
+                ip = fwd[ip]  # false skips forward; ip still increases
                 continue
             ip = back[ip]
         else:

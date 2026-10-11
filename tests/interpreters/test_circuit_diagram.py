@@ -6,20 +6,20 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.grid_based import _circuit_functions
-from esolangs.interpreters.grid_based._circuit_functions import _remember_width
-from esolangs.interpreters.grid_based._circuit_parse import (
-    _OUTPUT,
-    _Connections,
-    _Grid,
-    _Parser,
-)
 from esolangs.interpreters.grid_based.circuit_diagram import (
     _compile,
+    _functions,
     _Machine,
     _merge,
     _seconds_since_2000,
     run,
+)
+from esolangs.interpreters.grid_based.circuit_diagram._functions import _remember_width
+from esolangs.interpreters.grid_based.circuit_diagram._parse import (
+    _OUTPUT,
+    _Connections,
+    _Grid,
+    _Parser,
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -372,7 +372,7 @@ class TestSpecRepairs:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         widths = OrderedDict((((), str(i), None, ()), 1) for i in range(256))
-        monkeypatch.setattr(_circuit_functions, "_FUNCTION_WIDTHS", widths)
+        monkeypatch.setattr(_functions, "_FUNCTION_WIDTHS", widths)
         _remember_width(((), "new", None, ()), 2)
         assert len(widths) == 256
         assert ((), "0", None, ()) not in widths

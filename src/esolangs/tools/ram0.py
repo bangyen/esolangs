@@ -119,7 +119,7 @@ def _ram0_nand(truth_table: str) -> str:
         inverted = nand(bit, bit)
         return nand(nand(inverted, zero), nand(bit, one))
 
-    # Unary addresses would cost O(T squared) at unrestricted arity;
+    # A unary address would cost O(T squared) at unrestricted arity;
     # the three-input cap keeps this fallback uniformly O(T).
     load(tree(truth_table, 0))
     return " ".join(tokens)

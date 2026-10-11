@@ -1,9 +1,13 @@
 """Tests for the emitted-size and step-count baseline gate."""
 
+import hashlib
 import json
 from typing import Any
 
-from scripts.check_generator_sizes import (
+import pytest
+
+import esolangs
+from checks.check_generator_sizes import (
     BASELINE,
     BOUNDARIES,
     SCHEMA,
@@ -12,9 +16,11 @@ from scripts.check_generator_sizes import (
     boundary_tables,
     differences,
 )
+from scripts import benchmark as b
+from tests.reference import REFERENCE
 
 RECORD = {
-    "language": "brainfuck",
+    "language": REFERENCE,
     "truth_table": TABLES[0],
     "source_units": 205,
     "commands": 179,
@@ -31,7 +37,7 @@ class TestProjection:
     """A sweep is reduced to exactly the fields that repeat run to run."""
 
     def test_timings_are_dropped(self) -> None:
-        rows = _measured()["records"]["brainfuck"][TABLES[0]]
+        rows = _measured()["records"][REFERENCE][TABLES[0]]
         assert rows == {"source_units": 205, "commands": 179}
 
     def test_the_header_carries_the_corpus(self) -> None:
@@ -106,9 +112,9 @@ class TestCommittedBaseline:
 def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:
     import pytest
 
-    from scripts import check_generator_sizes as sizes
+    from checks import check_generator_sizes as sizes
 
-    monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: ["brainfuck"])
+    monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: [REFERENCE])
     monkeypatch.setattr(sizes, "BOUNDARIES", {})
     for matches in (False, None):
         monkeypatch.setattr(
@@ -148,12 +154,12 @@ def test_boundary_rows_are_pinned_and_corpus_drift_fails():
 
 
 def test_sweep_checks_and_pins_every_small_table_row(monkeypatch):
-    from scripts import check_generator_sizes as sizes
+    from checks import check_generator_sizes as sizes
 
-    monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: ["brainfuck"])
+    monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: [REFERENCE])
     monkeypatch.setattr(sizes, "BOUNDARIES", {})
     records = sizes.sweep()
-    pinned = sizes.baseline(records)["records"]["brainfuck"]
+    pinned = sizes.baseline(records)["records"][REFERENCE]
     assert len(records) == 8
     for record in records:
         table = record["truth_table"]
@@ -161,3 +167,91 @@ def test_sweep_checks_and_pins_every_small_table_row(monkeypatch):
         assert [row["row"] for row in executions] == list(range(len(table)))
         assert all(row["matches"] is True for row in executions)
         assert len(pinned[table]["commands_by_row"]) == len(table)
+
+
+def test_executed_artifact_and_provenance():
+    r = b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=10000, all_rows=True)
+    p = esolangs.generate("Brainfuck", "01")
+    assert all(row["matches"] for row in r["executions"])
+    assert r["schema"] == 6
+    assert r["provenance"]["generated_artifact_sha256"] == b.artifact_hash(p)
+    assert all(row["artifact_sha256"] == b.artifact_hash(p) for row in r["executions"])
+    assert len(r["provenance"]["commit"]) == 40
+    assert isinstance(r["provenance"]["dirty"], bool)
+    assert b.artifact_hash("é") == hashlib.sha256(b"text\0" + "é".encode()).hexdigest()
+    pixel = (0, 0, 0)
+    assert b.artifact_hash(esolangs.Raster(((pixel, pixel),))) != b.artifact_hash(
+        esolangs.Raster(((pixel,), (pixel,)))
+    )
+
+
+def test_checkout_change_invalidates_benchmark(monkeypatch):
+    identities = iter([{"commit": "before"}, {"commit": "after"}])
+    monkeypatch.setattr(b, "source_identity", lambda: next(identities))
+    with pytest.raises(RuntimeError, match="checkout changed"):
+        b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=100)
+
+
+@pytest.mark.parametrize("phase", ["generation", "execution", "startup"])
+def test_benchmark_deadline_reaps_workers_with_positive_control(
+    tmp_path, monkeypatch, phase
+):
+    import sys
+    import time
+    from pathlib import Path
+
+    factory = b.Worker
+    marker = tmp_path / "worker"
+    child = f"""
+import time
+from pathlib import Path
+p = Path({str(marker)!r})
+while True:
+    p.write_text(str(time.monotonic()))
+    time.sleep(0.01)
+"""
+    setup = f"""
+import sys, subprocess, time
+sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / "scripts")!r})
+import benchmark
+import _benchmark_worker as worker
+def hang(*args, **kwargs):
+    subprocess.Popen([sys.executable, '-c', {child!r}])
+    time.sleep(30)
+"""
+    setup += (
+        "benchmark.esolangs.generate = hang\n"
+        if phase == "generation"
+        else "benchmark._execute = hang\n"
+    )
+    setup += (
+        f"subprocess.Popen([sys.executable, '-c', {child!r}]); time.sleep(30)"
+        if phase == "startup"
+        else "worker._worker_main()"
+    )
+    monkeypatch.setattr(b, "Worker", lambda: factory([sys.executable, "-c", setup]))
+    start = time.monotonic()
+    expected = "execution" if phase == "execution" else "generation"
+    with pytest.raises(esolangs.ExecutionTimeoutError, match=f"{expected} deadline"):
+        b.measure(
+            "Brainfuck",
+            "0" * 131072 if phase == "startup" else "01",
+            repeat=1,
+            row=1,
+            step_cap=10000,
+            timeout=1,
+            generation_timeout=1,
+        )
+    # The worker sleeps 30s, so the 1s deadline ending the call well before
+    # that is the fact under test.  The bound stays loose because an xdist
+    # sibling or a shared CI runner can deschedule this process for seconds;
+    # at 4s it failed a clean run under load.
+    assert time.monotonic() - start < 15
+    before = marker.read_text()
+    time.sleep(0.1)
+    assert marker.read_text() == before
+    monkeypatch.setattr(b, "Worker", factory)
+    record = b.measure(
+        "Brainfuck", "01", repeat=1, row=1, step_cap=10000, all_rows=True
+    )
+    assert all(row["matches"] for row in record["executions"])

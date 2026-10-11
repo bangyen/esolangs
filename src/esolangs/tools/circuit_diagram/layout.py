@@ -166,6 +166,24 @@ class _Layout:
                             f"({x}, {y}) and ({x + dx}, {y + dy})",
                         )
 
+    def bounds(self) -> tuple[int, int]:
+        """Return occupied height and width without painting the grid."""
+        height = max(
+            [y + 1 for y in self.horizontal]
+            + [b for runs in self.vertical.values() for _, b, _ in runs]
+            + [y + 1 for _, y in self.junctions]
+            + [y + 1 for _, y in self.glyphs],
+            default=0,
+        )
+        width = max(
+            [x + 1 for x in self.vertical]
+            + [b for runs in self.horizontal.values() for _, b, _ in runs]
+            + [x + 1 for x, _ in self.junctions]
+            + [x + 1 for x, _ in self.glyphs],
+            default=0,
+        )
+        return height, width
+
     def render(self) -> str:
         """Return the layout as text, deriving each cell from its coverage.
 
@@ -179,13 +197,7 @@ class _Layout:
         """
         self._check_junction_spacing()
 
-        height = max(
-            [y + 1 for y in self.horizontal]
-            + [b for runs in self.vertical.values() for _, b, _ in runs]
-            + [y + 1 for _, y in self.junctions]
-            + [y + 1 for _, y in self.glyphs],
-            default=0,
-        )
+        height, _ = self.bounds()
         if height == 0:
             return ""  # pragma: no cover - every table lays a wire
 

@@ -13,11 +13,11 @@ import esolangs
 from esolangs.interpreters.stack_based.sstack import _parse
 from esolangs.tools.three_x import _level
 from scripts.benchmark import state_bits
-from tests.generator_support import CHECK
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
 from tests.proofs.test_execution_formulas import _measure, _tables
+from tests.support.generator_support import CHECK
 
 bl = int.bit_length
 
@@ -97,20 +97,24 @@ def _inject(n: int, _: str) -> int:
 
 
 def _subleq(n: int, _: str) -> int:
-    """I instructions over operands up to B + 17, C chunks, the registers."""
-    i, chunks = 8 * n + 45, -(-(2**n) // n)
+    """Payload bits, signed references, two patched operands and registers."""
+    i, chunks = 8 * n + 47, -(-(2**n) // n)
     b = 3 * i
     registers = (
         bl(3 * i - 3) + 5 * bl(n) + 2 * n + 33 + max(n, bl(n) + 1) + max(1, n - 1)
     )
-    return (
+    packed = (
         2**n
-        + chunks
+        + 2 * chunks
+        + (chunks + 2) * bl(b + 17 + 2 * chunks)
         + i * bl(b)
         + (2 * i - 1) * bl(b + 17)
-        + bl(b + 17 + chunks)
         + registers
     )
+
+    residuals = sum(min(1 << k, (1 << (1 << (n - k))) - 2) for k in range(n))
+    memory = 19 + 10 * n + 6 * residuals
+    return max(packed, memory * max(7, bl(memory)) + bl(memory) + bl(n))
 
 
 def _key(i: int) -> int:
@@ -136,15 +140,6 @@ def _forbin(n: int, _: str) -> int:
     h = max(n - 7, 0)
     loop = [bl(j + 1) + max(1, bl(h - 1 - j)) + 10 for j in range(h)]
     return 32 * n + 71 + 2 * bl(n) + max([bl(h + 1) + 4, *loop])
-
-
-def _apl(n: int, _: str) -> int:
-    """Frame work stacks at the leaf; V and W the serials' widths, n >= 2."""
-    f = 2 * n + 7
-    v = sum(bl(s) + bl(s + 1) + bl(s + 5) for s in range(2 * n + 15, 9 * n - 5, 7))
-    w = bl(2 * n - 1) + bl(2 * n + 3) + bl(2 * n + 13)
-    w += bl(f) + 2 * bl(f + 1) + bl(f + 2) + bl(f + 4)
-    return 179 * n + 400 + v + w
 
 
 def _add_sub_jump(n: int, _: str) -> int:
@@ -332,7 +327,6 @@ _HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Subleq": (_subleq, False, (3, 5)),
     "3x": (_three_x, False, (3, 5)),
     "Forbin": (_forbin, True, (3, 8)),
-    "Algebraic Programming Language": (_apl, True, (3, 5)),
     "Decleq": (_decleq, True, (3, 4)),
     # Code, stack and store each near E, the expanded program, at most 95T - 80.
     "Smu": (
@@ -411,6 +405,7 @@ FORMULAS = ledger_formulas(
     lambda row: row.workspace_clause if " bits" in row.workspace_clause else "",
     _HAND,
     _ARITIES,
+    column="workspace",
 )
 
 

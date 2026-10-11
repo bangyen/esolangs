@@ -5,6 +5,7 @@ from esolangs.tools.circuit_diagram import (
     _circuit_diagram_at,
     _narrowest_present,
 )
+from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
 from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import _validate_truth_table, grid_width
 
@@ -75,6 +76,10 @@ def balance_circuit_diagram(table: str, default: str) -> str:
     flat = _circuit_diagram_at(table, None)
     floor = grid_width(flat)
     candidates = [default, flat]
+    # Folding can shrink a wide default while increasing its imbalance.
+    # Retain the former H candidate until a folded layout beats its score.
+    if len(table) >= 256 and "1" in table:
+        candidates.append(_h_term_layout(table).render())
     width = 1
     while width < floor:
         events = [floor]

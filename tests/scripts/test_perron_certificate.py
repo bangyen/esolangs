@@ -2,7 +2,7 @@
 
 import pytest
 
-from scripts.perron_certificate import check_certificate
+from tests.proofs.perron_certificate import check_certificate
 
 
 @pytest.mark.parametrize(
@@ -49,14 +49,24 @@ def test_cli_checks_grammar_and_rejects_a_spectrally_valid_mismatch(tmp_path) ->
         "factors": ["ab"],
         "regexes": [],
     }
-    script = Path(__file__).resolve().parents[2] / "scripts/perron_certificate.py"
-    command = [sys.executable, str(script), str(certificate), "--check-grammar"]
+    root = Path(__file__).resolve().parents[2]
+    command = [
+        sys.executable,
+        "-m",
+        "tests.proofs.perron_certificate",
+        str(certificate),
+        "--check-grammar",
+    ]
     certificate.write_text(json.dumps(data))
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        command, capture_output=True, text=True, check=False, cwd=root
+    )
     assert result.returncode == 0, result.stderr
     assert "forbidden-factor grammar verified" in result.stdout
     data["rows"][1][1] = 0
     certificate.write_text(json.dumps(data))
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        command, capture_output=True, text=True, check=False, cwd=root
+    )
     assert result.returncode == 1
     assert "grammar mismatch on 'ab'" in result.stderr

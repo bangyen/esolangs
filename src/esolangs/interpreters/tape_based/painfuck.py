@@ -583,7 +583,7 @@ class _Machine:
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:
     """Run a Painfuck program, flipping ``y``'s coin with ``rng``.
 
-    ``None`` draws for real.  Same signature as LaserFuck.
+    ``None`` draws for real.  Same signature as the other random-drawing runs.
     """
     machine = _Machine(code, io, rng)
     drive(machine)

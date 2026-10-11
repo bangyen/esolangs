@@ -13,7 +13,7 @@ from esolangs.interpreters.tape_based.slow_acv_mammalian import run
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_printing
-from tests.raises import assert_rejected_with_hint, raises_message
+from tests.support.raises import assert_rejected_with_hint, raises_message
 
 run_and_capture = partial(run_printing, run)
 

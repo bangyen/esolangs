@@ -19,7 +19,7 @@ from tests.interpreters.streetcode_support import (
     run_and_capture,
     run_street,
 )
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 
 class TestStreetcodeSingleCommands:

@@ -3,10 +3,10 @@
 import pytest
 
 from esolangs import tools as boolean
+from tests.support.witness_tables import witnesses
 from tests.tools.boolean_runners import (
     run_unsquare,
 )
-from tests.witness_tables import witnesses
 
 
 class TestUnsquare:
@@ -63,3 +63,44 @@ class TestUnsquare:
         table = "01101001100101101001011001101001" + tail
         assert "OA+" in boolean.unsquare(table)
         assert self._rows(table) == list(table)
+
+
+@pytest.mark.medium
+def test_shared_push_body_executes_within_ledger() -> None:
+    from esolangs.tools.helpers import essential_inputs, read_at
+    from esolangs.tools.unsquare import _runs, _shared_pushes, unsquare
+    from tests.support.generator_support import assert_shared_program
+
+    first = "0001011101101001" * 4
+    second = "0110100100010111" * 4
+    third = "0011010101010011" * 4
+    table = first + first + second + third
+    used = essential_inputs(table, 8) or [0]
+    bits = read_at(table, used, 8)[::-1]
+    shared = _shared_pushes(bits, 8, len(used))
+    assert shared is not None
+    program = unsquare(table)
+    assert program.startswith(shared)
+    plain = _runs(bits)[0] + program[len(shared) :]
+    assert_shared_program(
+        "Unsquare",
+        table,
+        plain,
+        4 * 256 + 79 * 8 + 22,
+        lambda p: 256 + 12 + len(p).bit_length() + (len(p) - 33).bit_length() + 8,
+    )
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
+@pytest.mark.parametrize("bit", "01")
+def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
+    from esolangs.tools.unsquare import _program
+    from tests.support.generator_support import assert_constant_balanced_shape
+
+    table = bit * (1 << n)
+    assert_constant_balanced_shape(
+        "Unsquare",
+        "unsquare",
+        table,
+        _program(table, share=True, keep_constant_input=True),
+    )

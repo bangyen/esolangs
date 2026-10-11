@@ -4,7 +4,7 @@ Piet's lookup recoloured: Piet++ keeps Piet's traversal, push-int, roll,
 not, arithmetic and numeric I/O, so each Piet command maps to its Piet++
 colour delta. Compact turns and bounded pushes replace the strip only
 when they reduce raster area.
-A constant half is folded as in Piet; a strip has no subtrees to share.
+A constant half is folded; a strip has no subtrees to share.
 """
 
 from __future__ import annotations

@@ -2,7 +2,8 @@
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.samples import SAMPLES
+from tests.reference import REFERENCE
+from tests.support.samples import SAMPLES
 
 
 class TestARunFinishesTheDump:
@@ -40,8 +41,8 @@ class TestARunFinishesTheDump:
         assert "Minsky Swap" in mode
         assert mode != set(self._dumping())
 
-    def test_run_leaves_the_output_in_place(self) -> None:
-        """Every dumping language, since the bug was invisible on the rest."""
+    def test_run_leaves_the_output_and_agrees_with_run(self) -> None:
+        """The bug was invisible on the non-dumping languages; compare."""
         empty = []
         for name in self._dumping():
             program = esolangs.generate(name, "0110")
@@ -51,27 +52,16 @@ class TestARunFinishesTheDump:
                 stdin = esolangs.encode_inputs(name, [0, 0], truth_table="0110")
             debugger = debugger_api.make_debugger(name, program, stdin=stdin)
             assert debugger.run(timeout=30) == "halted"
+            assert debugger.output == esolangs.run(
+                name, program, stdin=stdin, timeout=30
+            ), name
             if not debugger.output:
                 empty.append(name)
         assert not empty
 
-    def test_it_agrees_with_run(self) -> None:
-        """The comparison that makes it a bug rather than a convention."""
-        for name in self._dumping():
-            program = esolangs.generate(name, "0110")
-            if esolangs.describe(name)["parameterized"]:
-                program, stdin = esolangs.instantiate(name, program, [0, 0]), ""
-            else:
-                stdin = esolangs.encode_inputs(name, [0, 0], truth_table="0110")
-            debugger = debugger_api.make_debugger(name, program, stdin=stdin)
-            debugger.run(timeout=30)
-            assert debugger.output == esolangs.run(
-                name, program, stdin=stdin, timeout=30
-            ), name
-
     def test_an_ordinary_language_takes_no_extra_step(self) -> None:
         """The step is a no-op elsewhere, but it would land in every watch."""
-        debugger = debugger_api.make_debugger("brainfuck", "+++.", stdin="")
+        debugger = debugger_api.make_debugger(REFERENCE, "+++.", stdin="")
         history = debugger.watch_cell(0)
         debugger.run(timeout=10)
         assert len(history) == 4  # three increments and the print, no more

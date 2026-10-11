@@ -9,8 +9,8 @@ from esolangs._evaluate import _evaluate
 from esolangs.interpreters.grid_based.fish import run
 from esolangs.tools.fish import balance_fish, fish
 from esolangs.tools.wrap import balance_score
-from tests.generator_support import run_lines
-from tests.witness_tables import witnesses
+from tests.support.generator_support import run_lines
+from tests.support.witness_tables import witnesses
 
 
 def _fish_tables():

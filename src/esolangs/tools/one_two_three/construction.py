@@ -269,7 +269,7 @@ class _Builder:
     def fixpoint(self, row: _Row, extra: str = "") -> str:
         """Re-run the pending segment (+ ``extra``) until the row escapes.
 
-        ``"skip"`` on a FALSE cell or below 0, ``"loop"`` on a proven revisit.
+        ``"skip"`` on a false cell or below 0, ``"loop"`` on a proven revisit.
         """
         tail: list[_Token] = list(_run_parts(extra))
         runs = _row_runs(row, list(self.seg) + tail)

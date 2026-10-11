@@ -209,7 +209,7 @@ def _number(code: str, ind: int, default: int | None) -> tuple[int | None, int]:
 #:
 #: The tape is *not* here.  It is a chain of lazily grown levels holding
 #: sparse maps, so freezing one per step would rebuild the whole structure
-#: for every command -- the cost that made A Painter Ant's tests 1300x
+#: for every command -- the cost that once made a test 1300x
 #: slower.  Nothing shares a level, so there is no aliasing to preserve
 #: either: the transition names what it wants done to the tape and the
 #: shell does it.
@@ -217,8 +217,8 @@ type _State = tuple[int, bool, int]
 
 
 #: What a command wants done to the tape.  Every Dimensional command makes
-#: at most one such change, so this is Minifuck's single-effect shape
-#: rather than the list Eval and Painfuck need.
+#: at most one such change, so this is the single-effect shape
+#: rather than the list other languages need.
 @dataclass(frozen=True)
 class _Move:
     """Step one place along ``dim``; ``None`` means the current value."""

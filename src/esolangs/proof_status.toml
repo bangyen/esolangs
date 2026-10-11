@@ -30,14 +30,19 @@ definitions = [
 
 [[ledger]]
 generator = "Algebraic Programming Language"
-labels = ["minterms"]
-qualification = "base-26 names are unbounded"
+labels = ["tree"]
+qualification = "bounded shared frames; base-26 names are unbounded"
 scaling = "linear: bounded dependency scan and canonical residual IDs"
-execution = "poly n: worst ceil(65n / 2) - 21 commands, one guarded path"
+execution = "linear: at most max(21,ceil(65n/2)-21)+K+2min(K,3n+1) commands: definitions initialize once and execute at most once"
 workspace = """\
-    poly n: worst 179n + 400 + V + W bits for n ≥ 2: frame work stacks, globals"""
+    poly n: at most 179n+400+V+W if K=0, else A(198+8d+3b)+Q(b+114)+65n+d+bl(2n-1) bits: frame/global state"""
 evidence = "docs/proofs/index.md#generator-ledger"
 definitions = [
+    "K = shared uppercase definitions, excluding NOT",
+    "A = 4n+3, active split and NOT frames",
+    "Q = 6n+5, pending nodes across frames",
+    "b = bl(2L+2), serial widths for AST nodes and functions",
+    "d = bl(L), bounding function-name length and the line cursor",
     "V = Σ_{1≤j≤n-2} (bl(s) + bl(s+1) + bl(s+5)), s = 2n+8+7j, three serials per level",
     "W = bl(2n-1) + bl(2n+3) + bl(2n+13) + bl(F) + 2bl(F+1) + bl(F+2) + bl(F+4), F = 2n+7",
 ]
@@ -118,7 +123,7 @@ evidence = "docs/proofs/index.md#generator-ledger"
 [[ledger]]
 generator = "BF-PDA"
 labels = ["parameterized tree"]
-qualification = "—"
+qualification = "folded tree; residuals share through flags or priced binary stack words"
 scaling = "linear: span walk, leaf drains sum geometrically"
 execution = "poly n: worst 10n + 2 commands, one path of n tests"
 workspace = "poly n: worst 3n + 4 bits: 2n stack bits and an (n+4)-bit cursor"
@@ -173,7 +178,7 @@ evidence = "docs/proofs/index.md#generator-ledger"
 [[ledger]]
 generator = "brainfuck"
 labels = ["tree"]
-qualification = "`decision_tree_program`"
+qualification = "folded decision tree; residuals defer through level flags or binary words; affine tables stream"
 scaling = "linear: decision_tree_program, span walk, leaf moves geometric"
 execution = "poly n: worst 69n + 44 commands, the AND table's all-ones row"
 workspace = "poly n: worst 2n + 6 + bl(2n) + bl(n) + bl(L) bits"
@@ -185,8 +190,9 @@ labels = ["tree"]
 qualification = """\
     each input byte's low bit is read onto its own cell and tested in place by a \
     flip-only decision tree, one flag interleaved beside each bit, consuming and \
-    emitting complete bytes"""
-scaling = "linear: constant cost per node, difference ratio ~3.9 at n=8..12"
+    emitting complete bytes; repeated residuals use level flags or normalized \
+    AND/XOR bodies, and affine tables stream through one accumulator"""
+scaling = "linear: geometric tree walk; affine tables use O(n) characters"
 execution = "poly n: worst 2n^2 + 27n + 8 commands; reads shuttle to scratch"
 workspace = """\
     poly n: at most bl(L-1) + max(12, bl(2n-2)+10) + n + Σ_{i<n} bl(i) + bl(2n) + \
@@ -221,16 +227,18 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Subleq"
 labels = ["finite lookup"]
 qualification = """\
-    direct-jump packed decoder with byte reads and self-modifying chunk selection"""
-scaling = "linear: T/n packed chunks of n bits, O(n) decoder"
+    shared direct-jump residual DAG or packed decoder with interned chunk payloads"""
+scaling = "linear: O(T/n) residuals or packed chunks, O(n)-digit addresses or payloads"
 execution = """\
-    linear: worst 8T + (7n+5)(⌊T/n⌋-1) + 23n - 8 steps: the last full chunk, all ones"""
+    linear: at most 8T + (7n+5)(⌊T/n⌋-1) + 23n - 6 steps: bank selection adds two"""
 workspace = """\
-    linear: at most T + C + I·bl(B) + (2I-1)bl(B+17) + bl(B+17+C) + R bits: each \
-    chunk plus sign"""
+    linear: at most max(T+2C+(C+2)bl(B+17+2C)+I·bl(B)+(2I-1)bl(B+17)+R, \
+    M·max(7,bl(M))+bl(M)+bl(n)) bits: decoder or tree, M=19+10n+6D"""
 evidence = "docs/proofs/index.md#generator-ledger"
 definitions = [
-    "I = 8n + 45, B = 3I, C = ⌈T/n⌉",
+    "D = Σ[k=0..n-1] min(2^k, 2^(2^(n-k))-2), the nonconstant residual cap",
+    "M = 19 + 10n + 6D, the shared-tree memory-cell cap",
+    "I = 8n + 47, B = 3I, C = ⌈T/n⌉",
     "R = bl(3I-3) + 5bl(n) + 2n + 33 + max(n, bl(n)+1) + max(1, n-1), the registers",
 ]
 
@@ -412,8 +420,7 @@ qualification = """\
     cell"""
 scaling = "linear: T painted cells, guard weights sum to T - 1"
 execution = """\
-    linear: worst 3T + 52n + 4 commands: paint the table, 50 per input, weights \
-    summing to T - 1"""
+    linear: worst 3T + 52n + 3 commands: paint at most T-1 ones; weights sum to T-1"""
 workspace = """\
     linear: worst 2T + 2n + 7 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of \
     T"""
@@ -436,10 +443,10 @@ labels = ["tree"]
 qualification = """\
     Brainfuck tree over the essential inputs followed by a total arbitrary-precision \
     segmented-sieve encoding; fixed-modulus short intervals bound its adaptive \
-    residue sequence"""
+    residue sequence; unused level flags defer repeated residuals in depth order"""
 scaling = """\
     lower bound: tight language and generated Theta(T log T) ([factor](factor.md))"""
-execution = "poly n: worst 265n + 231 commands, after a 247n + 240 prelude"
+execution = "poly n: worst 265n + 231 commands; the prelude is at most 247n + 240 past n=1"
 workspace = "poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(51·2^(n-2)+16n+14) bits"
 evidence = "docs/proofs/index.md#generator-ledger"
 
@@ -618,10 +625,10 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Line"
 labels = ["tree"]
 qualification = """\
-    finite decision trees read inputs and choose a Boolean leaf; separated strokes \
-    preserve every branch"""
+    finite decision trees can store only essential inputs; guarded ancestor \
+    returns share a residual through a consumed input"""
 scaling = "linear: alternating subtree extents bound rectangular area by O(T)"
-execution = "poly n: worst 5n commands, one fork per level"
+execution = "poly n: worst 5n commands; shared returns retain this bound"
 workspace = """\
     poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) \
     bits past n = 4"""
@@ -652,8 +659,9 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Minifuck"
 labels = ["parameterized construction"]
 qualification = """\
-    `_mux` is the total fallback; its six failure sites close uniformly in `n`"""
-scaling = "linear: mux lookup, constant strings times O(T) counts"
+    affine or two-residual byte accumulator; budgeted stored residuals; total \
+    positional `_mux` fallback"""
+scaling = "linear: shared tape text admitted within the positional mux budget"
 execution = "linear: at most L commands: straight-line, the cursor never moves back"
 workspace = """\
     linear: worst 6T + 30 + bl(6T+28) + bl(6T+30) + bl(L) bits past n = 4: a tape \
@@ -906,11 +914,11 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "SStack"
 labels = ["tree"]
 qualification = """\
-    each input byte is stacked and compared with stacked '1' and '0' by two loops \
-    whose bodies lift it off the matched value, so each runs at most once; a constant \
-    subtree reads its remaining inputs and prints"""
-scaling = "linear: 28 characters an internal node, three a leaf"
-execution = "poly n: worst 7n + 3 commands, one path of n one-shot ifs"
+    each input byte is compared with stacked '1' and '0', then popped before \
+    descent; the empty test stack ends both one-shot loops; a constant subtree \
+    reads its remaining inputs and prints; repeated residuals use guarded labels"""
+scaling = "linear: 21 characters an internal node, three a leaf"
+execution = "poly n: at most 7n + 3 commands, six a tree node plus guarded dispatch"
 workspace = """\
     poly n: worst 6n + 12 + bl(K) + bl(n) bits, K commands: n stacked input bytes"""
 evidence = "docs/proofs/index.md#generator-ledger"
@@ -932,16 +940,13 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Suffolk"
 labels = ["linear lookup"]
 qualification = """\
-    a countdown built from the row index reads zero exactly on the rows below it, so \
-    counting the table's rising and falling steps against it telescopes to the \
-    indexed entry"""
-scaling = "linear: bounded dependency scan and canonical residual IDs"
+    workspace-limited NOR cofactors share computed values; otherwise a countdown \
+    counts rising and falling steps to recover the indexed entry"""
+scaling = "linear: residual interning, bounded NOR circuit, countdown fallback"
 execution = """\
-    linear: worst L + 151 commands: one straight pass, then the wrap to the first \
-    read"""
+    linear: worst L + R commands, R the prefix through the first read: one pass, then EOF"""
 workspace = """\
-    poly n: worst bl(L-1) + max(6,n-1) + max(19,4n-1) + bl(n) + 4 bits: eight cells, \
-    four counters"""
+    poly n: worst bl(L-1) + max(6,n-1) + max(19,4n-1) + bl(n) + 4 bits: bounded NOR cells or eight countdown cells"""
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
@@ -978,7 +983,7 @@ qualification = """\
     essential input and the last character is the answer; an ignored input's round \
     reads its line and deletes it; the rules never overlap, so the language's random \
     rule choice has nothing to choose"""
-scaling = "linear: T state characters, at most 23 fixed rules"
+scaling = "linear: T state characters, at most 23 fixed rules plus expansions"
 execution = """\
     linear: worst 2T + 3n - 2 rewrites: n rounds, each a marker sweep out and back"""
 workspace = "linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state string"
@@ -1051,7 +1056,7 @@ qualification = """\
 scaling = "linear: `2**n` cells and `2**n - 1` pops, two bytes a row"
 execution = "linear: worst 4T + 79n + 22 commands past n=5: 12- or 14-cell loops, 76 per read, weight pops"
 workspace = """\
-    linear: worst T + 12 + bl(L) + bl(L-33) + 2bl(n) bits: T + 1 table cells on the \
+    linear: worst T + 12 + bl(L) + bl(max(0,L-33)) + 2bl(n) bits: T + 1 table cells on the \
     stack"""
 evidence = "docs/proofs/index.md#generator-ledger"
 

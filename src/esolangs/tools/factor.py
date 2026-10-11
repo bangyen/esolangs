@@ -4,7 +4,13 @@ Ascending primes encode Brainfuck instructions by residue modulo eleven
 and run length by exponent. A compact tree tests inputs in stream order
 and puts the answer in the final input's unused flag. Multiplication loops
 build and subtract the ASCII offsets; only this tree is encoded.  Equal
-sibling halves merge; the code has no call, so other repeats are copied.
+sibling halves merge; repeated residuals emit in depth order after the prefix,
+using one unused flag per level when the encoded integer is shorter and
+the unchanged command bound admits it.
+Same-level banks use unused descendant flags, and the mixed-depth bank unions
+those with the one-per-depth picks so a block at any depth can defer; each
+admitted bank is encoded separately so decimal size, rather than decoded text
+length, selects it.
 An ignored cell is read but not dedented.
 """
 
@@ -16,6 +22,7 @@ from esolangs._digits import digit_limit_for
 from esolangs.factor_primes import prime_segments
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.tools.constant_projection import balanced_projection
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -23,7 +30,8 @@ from esolangs.tools.helpers import (
     input_weights,
     move_text,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.tools.shared_flag import shared_flag_tree
+from esolangs.tools.wrap import balance_program, wrap_chars
 
 __all__ = ["factor"]
 
@@ -84,7 +92,16 @@ def _encode(code: str) -> int:
     return heap[0][2] if heap else 1
 
 
-def _program(truth_table: str) -> str:
+def _program(
+    truth_table: str,
+    *,
+    shared: bool = False,
+    keep_constant_input: bool = False,
+    multiple: bool = True,
+    bank: bool = True,
+    bank_only: bool = False,
+    bank_ranked: bool = True,
+) -> str:
     """Build the compact tree in input order, using the final input's flag.
 
     The tree tests the essential inputs only, so its last level is the last
@@ -96,8 +113,9 @@ def _program(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
     perm = tuple(i for i, weight in enumerate(weights) if weight)
+    normalized = bool(perm) or keep_constant_input
     if len(table) == 1:
-        # A constant already folds to one leaf; it keeps every input.
+        # Keep the tree arity, but a constant never needs ASCII normalization.
         table, perm = truth_table, tuple(range(n))
     result = 2 * n - 1
     scratch, multiplier = result + 1, result + 2
@@ -136,7 +154,38 @@ def _program(truth_table: str) -> str:
         binary_leaves=True,
         result=result,
     )
-    return build + reads + dedent + body + move_text(pos, result, ">", "<") + "."
+    if truth_table == "10":
+        # NOT at one input exceeded its 496-command bound by two moves.
+        # Set the answer's extra one while already passing its cell.
+        build = ">+" + build[1:]
+        body, pos = "[->-<]", 0
+    prefix = build + reads + (dedent if normalized else "")
+    plain = prefix + body + move_text(pos, result, ">", "<") + "."
+    if not shared:
+        return plain
+    # Six offset-building trips and 48 dedent trips, with no opener retest.
+    prelude = 199 * n + 48 * len(perm) + 240
+    candidate = shared_flag_tree(
+        table,
+        perm,
+        after_reads,
+        result,
+        binary_leaves=True,
+        command_budget=265 * n + 230 - prelude,
+        multiple=multiple,
+        bank=bank,
+        bank_only=bank_only,
+        bank_ranked=bank_ranked,
+    )
+    if candidate is None:
+        return plain
+    body, commands = candidate
+    program = prefix + body + "."
+    return (
+        program
+        if prelude + commands + 1 <= 265 * n + 231 and len(program) <= len(plain)
+        else plain
+    )
 
 
 def factor(truth_table: str) -> str:
@@ -147,9 +196,56 @@ def factor(truth_table: str) -> str:
     digit cap is raised to a bit-length estimate (``log10(2) < 0.30103``,
     never under-counting) and put back.
     """
-    number = _encode(_program(truth_table))
-    with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
-        return str(number)
+    return _factor(truth_table)
+
+
+def _factor(truth_table: str, *, keep_constant_input: bool = False) -> str:
+    """Encode the tree, optionally retaining constant-input normalization."""
+    plain = _program(truth_table, keep_constant_input=keep_constant_input)
+    candidate = _program(
+        truth_table,
+        shared=True,
+        bank_only=True,
+        keep_constant_input=keep_constant_input,
+    )
+    layered = _program(
+        truth_table, shared=True, bank=False, keep_constant_input=keep_constant_input
+    )
+    first = _program(
+        truth_table,
+        shared=True,
+        bank_only=True,
+        bank_ranked=False,
+        keep_constant_input=keep_constant_input,
+    )
+    single = _program(
+        truth_table,
+        shared=True,
+        multiple=False,
+        keep_constant_input=keep_constant_input,
+    )
+
+    def encoded(code: str) -> str:
+        number = _encode(code)
+        with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
+            return str(number)
+
+    return min(
+        (
+            encoded(code)
+            for code in dict.fromkeys((plain, single, layered, first, candidate))
+        ),
+        key=len,
+    )
+
+
+def balance_factor(truth_table: str, default: str) -> str:
+    """Keep the legacy constant encoding when its wrapped shape is better."""
+    if len(set(truth_table)) > 1:
+        return balance_program(default, "factor")
+    return balanced_projection(
+        default, _factor(truth_table, keep_constant_input=True), "factor"
+    )
 
 
 LANGUAGE = Language(
@@ -161,9 +257,10 @@ LANGUAGE = Language(
     # and are the measured safe bound.
     fuzz_max_digits=12,
     boolean=factor,
-    documented_sizes=(12_592, 24_463, 2.1),
+    documented_sizes=(11_232, 22_500, 2.0),
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    balance=balance_factor,
 )

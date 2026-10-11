@@ -24,7 +24,7 @@ from esolangs.settings import DialectSettings, dialect_options, effective_settin
 type _RasterRuns = tuple[tuple[int, tuple[tuple[int, Pixel], ...]], ...]
 
 
-# Scale-3 Line JSON: 13,759,407 -> 18,621 bytes; four rows 5.71s -> 0.62s.
+# Scale-3 raster JSON: 13,759,407 -> 18,621 bytes; four rows 5.71s -> 0.62s.
 def _raster_runs(rows: Rows) -> _RasterRuns:
     """Encode repeated rows and pixels without transmitting renderer payloads."""
     return tuple(

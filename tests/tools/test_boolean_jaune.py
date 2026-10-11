@@ -8,7 +8,7 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
 from esolangs.tools.jaune import _jaune_ordered
-from tests.generator_support import assert_parity_at_most_doubles
+from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import run_jaune
 from tests.tools.plain_oracles import _jaune_linear
 from tests.tools.sample_tables import five_input_sample

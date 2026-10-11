@@ -54,7 +54,7 @@ def test_text_pickle_retains_settings(template):
     assert esolangs.run("Bitdeque", restored) == "1"
 
 
-def test_plain_text_needs_explicit_settings():
+def test_settings_through_plain_text_and_template_override():
     settings = DialectSettings()
     template = esolangs.generate("Bitdeque", "0110", settings=settings)
     assert not hasattr(str(template), "settings")
@@ -62,15 +62,11 @@ def test_plain_text_needs_explicit_settings():
     assert filled.settings is settings
     assert esolangs.run("Bitdeque", filled) == "1"
 
-
-def test_empty_tag_metadata_and_template_override():
     source = esolangs.generate("Brainfuck", "01")
     assert source.settings is None
     assert (
         esolangs.run("Brainfuck", source, stdin="1", settings=DialectSettings()) == "1"
     )
-    settings = DialectSettings()
-    template = esolangs.generate("Bitdeque", "0110", settings=settings)
     filled = esolangs.instantiate(
         "Bitdeque", template, [1, 0], settings=DialectSettings()
     )

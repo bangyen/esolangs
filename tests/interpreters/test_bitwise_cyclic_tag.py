@@ -11,39 +11,20 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.runner import run_program
 
-#: The wiki's example: program ``00111`` on data ``101``, as
-#: ``(command, data-string before it)`` pairs, read off the published table.
-#: The system never halts, so the trace is a prefix and the test steps
-#: exactly as far as it goes.
-_WIKI_TRACE = [
-    ("0", "101"),
-    ("0", "01"),
-    ("11", "1"),
-    ("10", "11"),
-    ("0", "110"),
-    ("11", "10"),
-    ("10", "101"),
-    ("0", "1010"),
-    ("11", "010"),
-    ("10", "010"),
-    ("0", "010"),
-    ("11", "10"),
-]
+#: The wiki's example: program ``00111`` on data ``101``, read off the
+#: published table as the data-string before each command.  The system never
+#: halts, so the trace is a prefix and the test steps exactly as far as it goes.
+_WIKI_DATA = "101 01 1 11 110 10 101 1010 010 010 010 10"
+_WIKI_TRACE = _WIKI_DATA.split()
 
 
 class TestTheWikiExample:
-    def test_the_published_trace_is_reproduced(self) -> None:
-        """Every data-string in the wiki's table, in order."""
-        machine = _Machine("00111,101", ScriptedIO())
-        for command, data in _WIKI_TRACE:
-            assert machine.live == data, (command, data)
-            machine.step()
-
-    def test_the_command_sequence_is_the_published_cycle(self) -> None:
-        """``0 (0 11 10)(0 11 10)...``, which is where the operand wraps."""
+    def test_the_published_trace_and_cycle_are_reproduced(self) -> None:
+        """Every data-string and operand head, in the published order."""
         machine = _Machine("00111,101", ScriptedIO())
         heads = []
-        for _ in _WIKI_TRACE:
+        for data in _WIKI_TRACE:
+            assert machine.live == data, data
             heads.append(machine.head)
             machine.step()
         assert heads == [0, 1, 2, 4, 1, 2, 4, 1, 2, 4, 1, 2]
@@ -90,12 +71,10 @@ class TestTheOtherWikiExamples:
 
 
 class TestBitwiseCyclicTag:
-    def test_a_lone_delete_answers_the_bit_it_took(self) -> None:
+    def test_the_answer_is_the_last_deletion(self) -> None:
         assert run_program(run, "0,1") == "1"
         assert run_program(run, "0,0") == "0"
-
-    def test_the_answer_is_the_last_deletion_not_the_first(self) -> None:
-        """Two deletions, and the second one is what is reported."""
+        # Two deletions, and the second one is what is reported.
         assert run_program(run, "00,10") == "0"
         assert run_program(run, "00,01") == "1"
 
@@ -109,11 +88,9 @@ class TestBitwiseCyclicTag:
         assert run_program(run, "0011,") == ""
         assert run_program(run, "0011") == ""
 
-    def test_a_second_comma_is_refused(self) -> None:
+    def test_bad_programs_are_refused(self) -> None:
         with pytest.raises(ValueError, match="one ',' at most"):
             run_program(run, "0,1,1")
-
-    def test_a_non_bit_is_refused(self) -> None:
         with pytest.raises(ValueError, match="not a Bitwise Cyclic Tag bit"):
             run_program(run, "0012,1")
 

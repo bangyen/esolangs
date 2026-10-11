@@ -12,7 +12,7 @@ from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs import _fractran_order
 from tests.proofs._fractran_bit_order import BitAvailable
 from tests.proofs._fractran_order import _Available, capacity, stream_template
-from tests.witness_tables import row_bits
+from tests.support.witness_tables import row_bits
 
 
 def test_packed_selector_realizes_every_small_permutation() -> None:

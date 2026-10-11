@@ -10,7 +10,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import _choose, _Machine, _parse, run
 from esolangs.interpreters.other.fractran import index as fractran_index
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 #: Conway's PRIMEGAME.  The powers of two it passes through are the primes.
 PRIMEGAME = (

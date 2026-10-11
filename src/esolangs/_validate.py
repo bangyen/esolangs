@@ -191,7 +191,7 @@ _MAX_CELLS = 1 << 24
 def check_address(addr: int, language: str) -> int:
     """Return ``addr``, refusing one no store should be grown to.
 
-    ``run("S*bleq", "100000000000000000000 0 0")`` came back as
+    A store to an address far past the limit came back as
     ``OverflowError`` (and ``MemoryError`` one magnitude down), escaping
     the ``EsolangError`` promise and unstoppable by ``timeout``.  Refused
     before allocating, since a roomier machine thrashes instead.

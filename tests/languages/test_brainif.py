@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.cli_support import call_both
+from tests.support.cli_support import call_both
 
 
 @pytest.mark.medium

@@ -1200,7 +1200,9 @@ once; successful guards repeat until exhausted, without minimum-tree
 updates. At ten inputs, three seeded queries retain exactly the same
 firing sequences and answers while reducing tree updates by 538, 527 and
 528 respectively. This removes cleanup tree overhead; the generation sieve
-remains super-linear in bit work.
+remains super-linear in bit work. Measured, it is 0.003s of a 0.035s build
+at n=16 and 0.024s of 0.284s at n=19, ~8% throughout, while the build
+doubles per input: the gap is bit work, not wall clock.
 Generation, loading and execution still fit `O(T log T)` bit work in the
 materialized-word model. The retained generation sieve supplies the same
 matching lower bound. Removing rank selection therefore removes one

@@ -9,8 +9,8 @@ from esolangs.tools.helpers import essential_inputs
 from esolangs.tools.minifuck import _solve
 from esolangs.tools.minifuck.mux import _MUX_MIN_ARITY, _mux, _mux_lookup
 from esolangs.tools.minifuck.sim import _MINIFUCK_INPUT, PAIR
+from tests.support.witness_tables import row_bits
 from tests.tools.minifuck_support import _MinifuckCase, _mux_separate, run_count
-from tests.witness_tables import row_bits
 
 
 class TestParameterizedMinifuck(_MinifuckCase):

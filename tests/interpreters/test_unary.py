@@ -5,7 +5,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.unary import _Machine, decode, run
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 
 def _source(brainfuck: str) -> str:

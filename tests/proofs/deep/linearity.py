@@ -21,9 +21,9 @@ from tests.proofs.deep import deep_arities
 #: Cost band; see ``__main__.py``.  It passes now that Forþ is linear, so the
 #: band is a cost call rather than a triage one: it builds every generator at
 #: rising arity, and 30s is too slow for CI to spend on every push.
-from tests.source_support import source_units
-from tests.witness_tables import nested_dense as _nested_dense
-from tests.witness_tables import parity as _parity
+from tests.support.source_support import source_units
+from tests.support.witness_tables import nested_dense as _nested_dense
+from tests.support.witness_tables import parity as _parity
 
 BAND = "by-hand"
 COST = 30.0
@@ -61,7 +61,7 @@ REGIME_BAND = (0.5, 4.0)
 MIN_RUNGS = 3
 
 #: Arity ceilings.  Deliberately fixed rather than a time budget -- a
-#: wall-clock cutoff would climb further on a fast machine than in CI (~2.3x
+#: wall-clock cutoff would climb further on a fast machine than in CI (~2.3 times
 #: slower here) and quietly change the verdict.  The default reaches n=12; the
 #: overrides are the generators whose builds are measured in seconds, each set
 #: to the lowest arity that still clears MIN_RUNGS past its last route change.

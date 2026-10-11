@@ -1,10 +1,5 @@
 # Per file: code mentions of languages the file does not belong to.
-# tests/test_language_coupling.py holds each count to this ceiling and asks
+# tests/api/test_language_coupling.py holds each count to this ceiling and asks
 # for it to be lowered as mentions go; a language is removable when no file
 # names it.
 
-"src/esolangs/interpreters/grid_based/_circuit_functions.py" = 2
-"tests/duration_policy.py" = 1
-"tests/proofs/test_bands.py" = 2
-"tests/scripts/test_bundle_one.py" = 1
-"tests/test_interpreter_only_admissions.py" = 6

@@ -47,9 +47,14 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 
 from collections.abc import Sequence
 
-from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
+from esolangs.interpreters.tape_based.slow_acv_mammalian._dialect import (
+    DEFAULT_MODULI,
+    MODULI,
+    MammalianModuli,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.tools.constant_projection import balanced_projection
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, essential_inputs
 from esolangs.tools.wrap import _mammalian
 
@@ -936,32 +941,60 @@ def slow_acv_mammalian(
 ) -> str:
     """Build a SLOW ACV MAMMALIAN program evaluating ``truth_table``.
 
-    One read node per input (``ACCEPT``), one dispatch jump, one
+    Constants read into array zero and print from a separate coprime array.
+    Otherwise, one read node per input (``ACCEPT``), one dispatch jump, one
     leaf slot per entry: O(T) text. Above five inputs, modulo-255 I/O
     packs 32 seven-token leaves into each 255-token block.
     Cell modulus 255 uses coprime-array chains above two inputs with
     I/O modulus 255, or above one with 256; smaller tables use a tree.
+    Essential-input chains compete with the original layout by text length.
     """
+    return _program(truth_table, cell_modulus=cell_modulus, io_modulus=io_modulus)
+
+
+def _program(
+    truth_table: str,
+    *,
+    cell_modulus: int = DEFAULT_MODULI.cell_modulus,
+    io_modulus: int = DEFAULT_MODULI.io_modulus,
+    keep_constant_input: bool = False,
+    keep_ignored_inputs: bool = False,
+) -> str:
+    """Build the dispatch, optionally retaining constant-input weights."""
     moduli = MammalianModuli(cell_modulus, io_modulus)
     n = _validate_truth_table(truth_table)
+    if not keep_constant_input and len(set(truth_table)) == 1:
+        return _constant_read(truth_table[0], n, moduli.cell_modulus)
     if moduli.cell_modulus == 255:
+        from esolangs.tools._mammalian_compact import compact_chain
+
         # Chain/tree characters: 64835/95678 at n=3 with I/O 255;
         # 83404/83749 at n=2 with I/O 256. Smaller trees win below these.
         if n >= (3 if moduli.io_modulus == 255 else 2):
-            from esolangs.tools._mammalian_compact import compact_chain
-
-            return compact_chain(
+            legacy = compact_chain(
                 truth_table,
                 n,
                 modulus=moduli.cell_modulus,
                 io_modulus=moduli.io_modulus,
             )
-        from esolangs.tools._mammalian255 import decision_tree
+        else:
+            from esolangs.tools._mammalian255 import decision_tree
 
-        return decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
+            legacy = decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
+        used = essential_inputs(truth_table, n)
+        if keep_ignored_inputs or not used or len(used) == n:
+            return legacy
+        projected = compact_chain(
+            truth_table,
+            n,
+            modulus=moduli.cell_modulus,
+            io_modulus=moduli.io_modulus,
+            project_inputs=True,
+        )
+        return min(legacy, projected, key=len)
     # The weights and pools are laid out over the essential inputs; an
     # ignored one's node banks 0 with no pool, so it reads and the leaf rows
-    # it would split coincide, holding equal entries.  A constant keeps all.
+    # it would split coincide, holding equal entries.
     essential = essential_inputs(truth_table, n) or list(range(n))
     m = len(essential)
     unit, stride = _LEAF_UNIT, _MODULUS
@@ -1034,11 +1067,66 @@ def _with_leaves(
     return out
 
 
+def _constant_read(bit: str, inputs: int, modulus: int) -> str:
+    """Read into array zero and print the constant from a coprime array."""
+    # Array one's step is coprime to 255; array two's is coprime to 256.
+    # ACCEPT only appends to array zero, leaving the print head intact.
+    array = 1 + int(modulus % 2 == 0)
+    seeds = ((_ASCII_ZERO + int(bit)) * pow(array + 1, -1, modulus) - array) % modulus
+    return " ".join(
+        [
+            *["SEED"] * array,
+            "SPRINT",
+            *["SEED"] * seeds,
+            *["ACCEPT"] * inputs,
+            "DIGEST",
+            "PRONOUNCE",
+        ]
+    )
+
+
+def balance_slow_acv_mammalian(
+    truth_table: str,
+    default: str,
+    *,
+    cell_modulus: int = DEFAULT_MODULI.cell_modulus,
+    io_modulus: int = DEFAULT_MODULI.io_modulus,
+) -> str:
+    """Retain the legacy weighted dispatch when its layout balances better."""
+    from esolangs.tools.wrap import balance_program
+
+    if len(set(truth_table)) > 1:
+        if cell_modulus == 255:
+            return balanced_projection(
+                default,
+                _program(
+                    truth_table,
+                    cell_modulus=cell_modulus,
+                    io_modulus=io_modulus,
+                    keep_ignored_inputs=True,
+                ),
+                "slow_acv_mammalian",
+            )
+        return balance_program(default, "slow_acv_mammalian")
+    return balanced_projection(
+        default,
+        _program(
+            truth_table,
+            cell_modulus=cell_modulus,
+            io_modulus=io_modulus,
+            keep_constant_input=True,
+        ),
+        "slow_acv_mammalian",
+    )
+
+
 LANGUAGE = Language(
     "SLOW ACV MAMMALIAN",
     "tape_based.slow_acv_mammalian",
     boolean=slow_acv_mammalian,
+    balance=balance_slow_acv_mammalian,
     dialect=MammalianModuli,
+    dialect_values={"cell_modulus": MODULI, "io_modulus": MODULI},
     # Not a tree: a branch-free chain into a flat leaf table.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.exceptions import TemplateError
-from tests.pick import languages
+from tests.support.pick import languages
 
 
 @pytest.mark.medium

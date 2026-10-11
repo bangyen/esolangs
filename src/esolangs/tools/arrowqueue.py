@@ -5,6 +5,8 @@ A cascade: each stage doubles the queued markers then crosses the cell
 replaced (``n <= 4``) was at most 3.9% smaller at n=4 and kept ignored inputs.
 Rows are reached by a Horner count, so no subtree is drawn to share.
 Narrow paths drop ignored inputs too (area -46.8% / -70.5% at n=8, 1 / 2 ignored).
+Constant roots halt on an empty pop or circulate one right heading; input
+setters remain off those paths, as they do for ignored cascade inputs.
 """
 
 from esolangs.registry._contracts import BooleanContract
@@ -41,7 +43,28 @@ _DRAINED_RING = ["*+ +~+", "** ~ ~", "   +~+"]
 
 def arrowqueue(truth_table: str, width: int | None = None) -> str:
     """Build an ArrowQueue template that halts iff the table entry is ``0``."""
+    return _program(truth_table, width)
+
+
+def _program(
+    truth_table: str, width: int | None = None, *, keep_constant_cascade: bool = False
+) -> str:
+    """Build the marker cascade, or a direct constant halt/ring."""
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1 and not keep_constant_cascade:
+        if truth_table[0] == "0":
+            return "+" + ("\n" + TEMPLATE_CHAR) * n
+        # The initial ~ supplies R to the top-left +. The ring's top ~
+        # replenishes it before three clockwise corners return to that +.
+        # Column zero below the entry is never visited, so either setter
+        # leaves the ring's one-heading queue and path alone.
+        rows = [
+            "~*",
+            TEMPLATE_CHAR + "+~*",
+            (TEMPLATE_CHAR if n > 1 else " ") + "* *",
+            *([TEMPLATE_CHAR] * max(n - 2, 0)),
+        ]
+        return "\n".join(rows)
     width = max(width or 0, 0)  # 0, None and negative all mean unbounded
     weights, table = input_weights(truth_table, n)
     if 0 < width < 5:
@@ -85,6 +108,15 @@ def _cascade(truth_table: str) -> list[str]:
 
 def _balance(table: str, default: str) -> str:
     """Compare the tree and cascades with one, five and six columns."""
+    if len(set(table)) == 1:
+        return min(
+            default,
+            *(
+                _program(table, width, keep_constant_cascade=True)
+                for width in (None, 1, 5, 6)
+            ),
+            key=balance_score,
+        )
     return min(
         default,
         arrowqueue(table, 1),

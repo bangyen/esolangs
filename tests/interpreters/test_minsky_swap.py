@@ -6,14 +6,20 @@ from contextlib import redirect_stdout
 import pytest
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based.minsky_swap import run
+from esolangs.interpreters.register_based.minsky_swap import _Machine, run
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
     StateViewContract,
 )
 from tests.interpreters.runner import run_printing
-from tests.raises import raises_message
+from tests.support.raises import raises_message
+
+
+def _capture(code: str) -> str:
+    with redirect_stdout(io.StringIO()) as f:
+        run(code, io=IO())
+    return f.getvalue().strip()
 
 
 class TestMinskySwapBasicCommands:
@@ -26,33 +32,19 @@ class TestMinskySwapBasicCommands:
             pytest.param("+~\n1", "0 0", "~+\n2", "1 0", id="decrement_jump_command"),
         ],
     )
-    def test_command_pairs(
-        self, code: str, expected: str, code2: str, expected2: str
-    ) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, io=IO())
-        assert f.getvalue().strip() == expected
+    def test_command_pairs(self, code, expected, code2, expected2) -> None:
+        assert _capture(code) == expected
+        assert _capture(code2) == expected2
 
-        with redirect_stdout(io.StringIO()) as f:
-            run(code2, io=IO())
-        assert f.getvalue().strip() == expected2
-
-    def test_jump_targets(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("~+~\n2 1", io=IO())
-        assert f.getvalue().strip() == "0 0"
-
-    def test_stripped_characters_do_not_shift_the_jump_targets(self) -> None:
-        """Padding is removed, rather than replaced with something inert."""
-        with redirect_stdout(io.StringIO()) as f:
-            run(" ~++\n3", io=IO())
-        assert f.getvalue().strip() == "1 0"
+    def test_jump_targets_and_padding(self) -> None:
+        assert _capture("~+~\n2 1") == "0 0"
+        # Padding is removed, rather than replaced with something inert.
+        assert _capture(" ~++\n3") == "1 0"
 
 
 class TestMinskySwapReadableNotation:
     def test_swap_command_readable(self) -> None:
-        f = run_printing(run, "swap();\ninc();")
-        assert f.strip() == "0 1"
+        assert run_printing(run, "swap();\ninc();").strip() == "0 1"
 
     @pytest.mark.parametrize(
         "code",
@@ -68,50 +60,30 @@ class TestMinskySwapReadableNotation:
         with raises_message(ValueError, "RMSN requires one command per line"):
             run(code, io=IO())
 
-    def test_a_readable_command_contributes_exactly_one_symbol(self) -> None:
-        """Each ``inc()``/``swap()`` becomes one command, not a run of them."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("decnz(5);\ninc();\nswap();\ninc();\ninc();", io=IO())
-        assert f.getvalue().strip() == "1 0"
-
-    def test_blank_lines_between_readable_commands_are_skipped(self) -> None:
-        outputs = []
-        for code in ("inc();\ninc();", "inc();\n\n  \ninc();"):
-            f = run_printing(run, code)
-            outputs.append(f)
-        assert outputs[0] == outputs[1]
+    def test_readable_commands_and_blank_lines(self) -> None:
+        # Each ``inc()``/``swap()`` becomes one command, not a run of them.
+        assert _capture("decnz(5);\ninc();\nswap();\ninc();\ninc();") == "1 0"
+        # Blank lines between readable commands are skipped.
+        assert run_printing(run, "inc();\ninc();") == run_printing(
+            run, "inc();\n\n  \ninc();"
+        )
 
     def test_a_bare_decnz_jumps_to_the_first_line(self) -> None:
         """``decnz();`` with no argument targets line 1."""
-        from esolangs.interpreters.register_based.minsky_swap import _Machine
-
         machine = _Machine("decnz();", IO())
         machine.step()  # zero register, so the tilde jumps
         assert machine.ind == 0, "the jump returned to the first command"
         assert not machine.halted
 
 
-class TestMinskySwapProgramFlow:
-    def test_simple_loop(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("+++~\n1", io=IO())
-        assert f.getvalue().strip() == "2 0"
+class TestMinskySwapProgramFlowAndEdges:
+    def test_simple_loop_and_conditional_jump(self) -> None:
+        assert _capture("+++~\n1") == "2 0"
+        assert _capture("++~+~\n2 1") == "1 0"
 
-    def test_conditional_jump(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("++~+~\n2 1", io=IO())
-        assert f.getvalue().strip() == "1 0"
-
-
-class TestMinskySwapEdgeCases:
-    def test_empty_jump_line(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("+\n", io=IO())
-        assert f.getvalue().strip() == "1 0"
-
-    def test_invalid_jump_target(self) -> None:
-        f = run_printing(run, "~\n999")
-        assert f.strip() == "0 0"
+    def test_empty_line_and_out_of_range_jump(self) -> None:
+        assert _capture("+\n") == "1 0"
+        assert run_printing(run, "~\n999").strip() == "0 0"
 
     def test_tilde_without_target_rejected(self) -> None:
         """A ~ with no matching jump-line number is malformed."""
@@ -122,11 +94,6 @@ class TestMinskySwapEdgeCases:
 class TestStepMachine:
     def test_the_register_dump_happens_once(self) -> None:
         """Stepping a halted machine again does not re-print the registers."""
-        import io
-        from contextlib import redirect_stdout
-
-        from esolangs.interpreters.register_based.minsky_swap import _Machine
-
         machine = _Machine("+", IO())
         buffer = io.StringIO()
         with redirect_stdout(buffer):
@@ -138,8 +105,6 @@ class TestStepMachine:
 
     def test_a_decrement_targeting_line_zero_falls_through(self) -> None:
         """A jump target of ``0`` is falsy, so ``~`` advances instead."""
-        from esolangs.interpreters.register_based.minsky_swap import _Machine
-
         machine = _Machine("~\n0", IO())  # zero register, target line 0
         machine.step()
         assert machine.reg == (0, 0), "nothing to decrement"
@@ -147,9 +112,6 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
-    from esolangs.interpreters.register_based.minsky_swap import _Machine
-
     return _Machine(code, IO())
 
 

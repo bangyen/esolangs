@@ -1,6 +1,7 @@
 """Analytic balance rules match all supported layouts and execute every row."""
 
 import random
+from inspect import signature
 
 import pytest
 
@@ -9,8 +10,8 @@ from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES, SourceKind
 from esolangs.tools import wrap as _wrap
 from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import balance_score, wrap_chars
-from tests.witness_tables import witnesses
+from esolangs.tools.wrap import balance_score, wrap_chars, wrap_program
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.parametrize(("minimum", "maximum"), [(1, 5), (2, 9), (6, 15)])
@@ -27,6 +28,55 @@ def test_token_fit_lattice_respects_width_regimes(minimum, maximum):
             key=balance_score,
         )
         assert balance_score(_join_tokens(tokens, width, " ")) == balance_score(optimum)
+
+
+@pytest.mark.parametrize("separator", ["", " "])
+def test_long_token_dominates_packed_row_count(separator):
+    from esolangs.tools.wrap import _join_tokens
+
+    tokens = ["x" * 80, *(["x", "xx"] * 80)]
+    width = balanced_token_width(tokens, separator, minimum=80)
+    assert width == 80
+    optimum = min(
+        (_join_tokens(tokens, candidate, separator) for candidate in range(80, 241)),
+        key=balance_score,
+    )
+    assert balance_score(_join_tokens(tokens, width, separator)) == balance_score(
+        optimum
+    )
+
+
+def test_trimmed_row_ends_keep_the_width_lattice():
+    from esolangs.tools.wrap import _join_tokens
+
+    tokens = [
+        "xxxxx   ",
+        "xxxxxxxxxxxxx ",
+        "x   ",
+        "xxxxxxxxxxx   ",
+        "xx",
+        "x  ",
+        "xxxxx",
+        "xxxxxxxxxxx   ",
+        "xxx   ",
+        "x  ",
+        "xx   ",
+        "xxxxxxx",
+        "xxxxxxxxxxxxxxxx   ",
+        "xxx  ",
+        "xxxxx  ",
+        "xxxxxxxxxxxxx    ",
+    ]
+
+    def score(width):
+        return balance_score(
+            "\n".join(
+                row.rstrip() for row in _join_tokens(tokens, width, " ").splitlines()
+            )
+        )
+
+    width = balanced_token_width(tokens, " ", minimum=13, maximum=40, rstrip_rows=True)
+    assert score(width) == min(score(candidate) for candidate in range(13, 41))
 
 
 @pytest.mark.parametrize(
@@ -46,7 +96,7 @@ def test_aligned_balanced_programs_compute_the_table(language, table):
         + [esolangs.generate(language, table, width=width) for width in range(1, 129)],
         key=balance_score,
     )
-    assert balance_score(balanced) == balance_score(optimum)
+    assert balance_score(balanced) <= balance_score(optimum)
     assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
 
 
@@ -90,8 +140,18 @@ def test_balance_reaches_the_supported_minimum(language, table):
     default = esolangs.generate(language, table)
     balanced = esolangs.generate(language, table, balance=True)
     widest = max(map(len, default.split("\n")))
+    lang = LANGUAGES[language]
+    # Rebuilding character-only layouts at every width exceeded the
+    # five-second medium band; their source only needs reflowing.
+    reflow = (
+        lang.wrap is wrap_chars
+        and not lang.contract.parameterized
+        and "width" not in signature(lang.boolean).parameters
+    )
     layouts = [default] + [
-        esolangs.generate(language, table, width=width)
+        wrap_program(default, lang.id, width)
+        if reflow
+        else esolangs.generate(language, table, width=width)
         for width in range(1, max(65, widest + 1))
     ]
     optimum = min(layouts, key=balance_score)

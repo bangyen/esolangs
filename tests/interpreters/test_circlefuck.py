@@ -5,7 +5,7 @@ import pytest
 from esolangs.interpreters.tape_based.circlefuck import parse, run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_lines
-from tests.raises import assert_rejected_with_hint, raises_message
+from tests.support.raises import assert_rejected_with_hint, raises_message
 
 run_and_capture = run_lines(run)
 

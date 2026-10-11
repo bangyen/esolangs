@@ -6,9 +6,9 @@ forward when the current bit is 0, and * halts, printing the tape.
 
 The wiki says only "Halt the program" of ``*`` and defines no output at all,
 so the dump follows the repo convention for interpreter-only languages
-(Minsky Swap prints its registers): the cells space-separated on one line,
+(a sibling interpreter prints its registers): the cells space-separated on one line,
 with no trailing newline.  Both the choice to print and the separator are
-this interpreter's.  (LaserFuck uses line breaks between values instead, but
+this interpreter's.  (another dump uses line breaks between values instead, but
 that is not a divergence from this convention -- its spec asks for them by
 name.)
 
@@ -217,8 +217,8 @@ class _Machine:
         character that caused it does not have to be read back off the
         grid.
 
-        It fires on the step *after* the halt, as Minsky Swap, Bitdeque,
-        RAM0, ArrowQueue and LaserFuck all do: a caller who drives the
+        It fires on the step *after* the halt, as several other languages do:
+        a caller who drives the
         machine itself then sees the same output from all six, rather than
         holding Back's tape and none of the others'.  ``dumped`` keeps it
         to one dump however many times a halted machine is stepped.

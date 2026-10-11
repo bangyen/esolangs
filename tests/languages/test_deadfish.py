@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
+from tests.reference import REFERENCE
 
 
 def test_generate_refuses_a_language_with_no_generator() -> None:
@@ -21,5 +22,5 @@ def test_supplied_program_never_generates(monkeypatch: pytest.MonkeyPatch) -> No
         raise AssertionError("evaluation called a generator")
 
     monkeypatch.setattr(esolangs, "generate", refuse)
-    assert _evaluate("brainfuck", ",>,<.", inputs=2) == "0011"
+    assert _evaluate(REFERENCE, ",>,<.", inputs=2) == "0011"
     assert _evaluate("Deadfish", "o", inputs=1) == "00"

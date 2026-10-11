@@ -9,7 +9,7 @@ from esolangs.interpreters.other import thue
 from esolangs.interpreters.other.thue import _advance, _Machine, _matches, _parse, run
 from esolangs.interpreters.randomness import FirstDraw, Seeded
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 #: Two print rules over ``ab``.  Both match the starting state, so which
 #: half prints first is a *draw* -- the pair below pins both orders.

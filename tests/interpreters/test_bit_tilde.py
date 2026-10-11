@@ -14,7 +14,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import raises_message
+from tests.support.raises import raises_message
 
 
 def run_and_capture(code: str) -> str:

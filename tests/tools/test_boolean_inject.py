@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from tests.generator_support import (
+from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,
 )

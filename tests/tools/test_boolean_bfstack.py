@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from tests.generator_support import assert_an_ignored_input_costs
+from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.tools.boolean_runners import (
     run_bfstack,
 )
@@ -20,23 +20,12 @@ class TestBfstack:
         rng = random.Random(n)
         table = "".join(rng.choice("01") for _ in range(1 << n))
         program = boolean.bfstack(table)
-        rows = (
-            range(1 << n)
-            if n <= 9
-            else sorted(
-                {
-                    0,
-                    127,
-                    128,
-                    255,
-                    256,
-                    2047,
-                    2048,
-                    4095,
-                    *rng.sample(range(1 << n), 32),
-                }
-            )
-        )
+        if n <= 9:
+            rows = range(1 << n)
+        else:
+            special = {0, 127, 128, 255, 256, 2047, 2048, 4095}
+            special |= set(rng.sample(range(1 << n), 32))
+            rows = sorted(special)
         for row in rows:
             bits = [str((row >> i) & 1) for i in range(n - 1, -1, -1)]
             assert run_bfstack(program, bits) == table[row], (n, row)
@@ -88,14 +77,11 @@ class TestBfstack:
         assert run_bfstack(boolean.bfstack(table), ["1"] * 8) == "1"
 
     def test_encode_decode_structure(self) -> None:
-        """The program encodes the inputs then tests the zero rows."""
+        """The program encodes the inputs, tests the zero rows, and prints."""
         program = boolean.bfstack("0110")
         assert program.startswith(">>+,")  # result cell, accumulator, first input
         assert program.count(",") == 2  # one read per input
         assert program.endswith("+" * 48 + ".")  # print 48 + result
-
-    def test_the_program_is_only_bfstack_commands(self) -> None:
-        """No character outside the eight commands is emitted."""
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.bfstack(table)) <= set("+,-.<>[]"), table
 

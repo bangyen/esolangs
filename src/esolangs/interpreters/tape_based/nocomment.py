@@ -41,8 +41,8 @@ _TAPE = 4096
 #: state has one spelling for the cycle detector.
 #: The buffer is what makes a static 4096-cell immutable tape affordable: the
 #: text corpus writes one cell 111 times before moving, so 111 rebuilds
-#: become one (brainfuck's buffer; RAM0 writes distinct addresses, so it
-#: would absorb nothing there).
+#: become one (a buffer helps a tape written in place; an interpreter
+#: writing distinct addresses would absorb nothing there).
 #: ``bytes``, not a tuple: the boolean corpus has no runs (write, then move;
 #: ~66% of steps commit), and a ``bytes`` rebuild is one memcpy vs 4096
 #: pointer copies -- 32x over the 2637 commits of an 11-input decode

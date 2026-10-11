@@ -46,13 +46,90 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     ``!x`` and ``x``; the harness feeds 0 or 1, so every value stays 0 or 1.
     A zero-valued prefix names every input first, preserving binding under
     folds; O(T) size.  With ``width``, the tree splits into definitions,
-    since APL cannot continue an expression across lines.
+    since APL cannot continue an expression across lines. Default compares
+    profitable repeated expressions and bounded shared frames with inline text.
     """
     if width is not None:
         return in_input_order(
             truth_table, lambda table, perm: _apl_narrow_layout(table, perm, width)[0]
         )
-    return in_input_order(truth_table, _apl_reduced_ordered)
+    return in_input_order(truth_table, _apl_shared_ordered)
+
+
+def _apl_shared_ordered(table: str, perm: tuple[int, ...]) -> str:
+    """Compare inline text, repeated expressions and bounded shared frames."""
+    plain = _apl_reduced_ordered(table, perm)
+    shared, _ = _apl_split(table, perm, 40, _apl_reduced_ordered, require_share=True)
+    return min(plain, shared, _apl_repeated_expressions(plain), key=len)
+
+
+def _apl_repeated_expressions(program: str) -> str:
+    """Name profitable repeated groups, with one linear scan of the expression DAG."""
+    source = program.removeprefix(_NOT + "\n").replace(" ", "")
+    prefix, source = source.split(")|", 1)
+    prefix += ")|"
+    nodes: list[tuple[str | int, ...]] = []
+    sizes: list[int] = []
+    made: dict[tuple[str | int, ...], int] = {}
+    frames: list[list[str | int]] = [[]]
+    for char in source:
+        if char == "(":
+            frames.append([char])
+        elif char == ")":
+            parts = (*frames.pop(), char)
+            if parts not in made:
+                made[parts] = len(nodes)
+                nodes.append(parts)
+                sizes.append(sum(sizes[p] if isinstance(p, int) else 1 for p in parts))
+            frames[-1].append(made[parts])
+        else:
+            frames[-1].append(char)
+    nodes.append(tuple(frames[0]))
+    # Equal-width names make every substitution's cost exact before rendering.
+    # Start at the first bijective-base name of that width, avoiding padding aliases.
+    capacity, offset = 26, 0
+    while capacity < len(nodes):
+        offset += capacity
+        capacity *= 26
+    name_width = len(short_name(offset, ascii_uppercase))
+    call_width = name_width + 2
+    copies = [0] * len(nodes)
+    copies[-1] = 1
+    names: dict[int, str] = {}
+    for index in range(len(nodes) - 1, -1, -1):
+        count = copies[index]
+        if index < len(sizes) and (count - 1) * sizes[index] > (
+            count * call_width + name_width + 2
+        ):
+            names[index] = short_name(offset + len(names), ascii_uppercase)
+            count = 1
+        # A definition writes its body once. An inline group keeps every copy.
+        # Descendants have not been named yet, so each accepted gain is exact.
+        for part in nodes[index]:
+            if isinstance(part, int):
+                copies[part] += count
+    if not names:
+        return program
+
+    def render(index: int) -> str:
+        out: list[str] = []
+        pending = list(reversed(nodes[index]))
+        while pending:
+            part = pending.pop()
+            if isinstance(part, str):
+                out.append(part)
+            elif part in names:
+                out.append(f"{names[part]}()")
+            else:
+                pending.extend(reversed(nodes[part]))
+        return "".join(out)
+
+    definitions = [
+        f"{names[index]}={render(index)}"
+        for index in range(len(nodes))
+        if index in names
+    ]
+    return "\n".join([_NOT_TIGHT, *definitions, prefix + render(len(nodes) - 1)])
 
 
 def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -206,6 +283,9 @@ def _apl_tree_layout(
         _apl_split(table, perm, width, build)
         for build in (_apl_reduced_ordered, _apl_tree_ordered)
     ]
+    shared = _apl_repeated_expressions(_apl_reduced_ordered(table, perm))
+    span = _span(shared)
+    laid.append((shared, span if span > width else None))
     events = [point for _, point in laid if point is not None]
     best = min(
         (program for program, _ in laid), key=lambda x: (max(_span(x), width), len(x))
@@ -218,6 +298,8 @@ def _apl_split(
     perm: tuple[int, ...],
     width: int,
     build: Callable[[str, tuple[int, ...]], str],
+    *,
+    require_share: bool = False,
 ) -> tuple[str, int | None]:
     """Split ``build``'s tree into definitions under the frame budget."""
     n = _validate_truth_table(table)
@@ -229,6 +311,8 @@ def _apl_split(
     call_width = name_width + 2
     limit = max(width, 4 * call_width + 6, 2 * n + call_width + 4)
     definitions: list[str] = []
+    made: dict[str, str] = {}
+    reused = False
     events: set[int] = set()
     # A frame's pieces carry their fresh source-character count; references
     # carry zero. Every definition consumes at least one call-width of fresh
@@ -247,9 +331,15 @@ def _apl_split(
         return "".join(pieces)
 
     def define(part: tuple[_Rope, int, int]) -> tuple[_Rope, int, int]:
-        name = short_name(len(definitions), ascii_uppercase)
-        definitions.append(f"{name}={render(part[0])}")
-        call = f"{name}()"
+        nonlocal reused
+        body = render(part[0])
+        if body in made:
+            reused = True
+            call = made[body]
+        else:
+            name = short_name(len(definitions), ascii_uppercase)
+            definitions.append(f"{name}={body}")
+            call = made[body] = f"{name}()"
         return call, len(call), 0
 
     def trim(parts: list[tuple[_Rope, int, int]], budget: int) -> None:
@@ -283,6 +373,8 @@ def _apl_split(
     program = "\n".join(
         [_NOT_TIGHT, *definitions, prefix + render(tuple(node for node, _, _ in parts))]
     )
+    if require_share and not reused:
+        return build(table, perm), None
     return program, min(events, default=None)
 
 

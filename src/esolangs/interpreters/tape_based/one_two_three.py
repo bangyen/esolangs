@@ -3,8 +3,8 @@
 An unbounded bit tape from location 0.  ``1`` flips the bit and moves
 left, wrapping -4 to 0.  ``2`` reads a character into locations 0-7 at
 -3, writes them at -2 (both reset the pointer to 0), and otherwise moves
-right.  ``3`` is a NOP below 0; on TRUE it jumps back to the previous
-``3`` (or the start), on FALSE forward to the next (or the end).  The
+right.  ``3`` is a NOP below 0; on true it jumps back to the previous
+``3`` (or the start), on false forward to the next (or the end).  The
 program halts only at the end with the pointer below 0, else loops.
 Locations 0-7 are LSB-first (location 0 is bit 0).
 ``2`` reads the next character and raises :class:`EOFError` when
@@ -26,7 +26,7 @@ _READ = -3
 _WRITE = -2
 _START = 0
 
-#: The TRUE locations of an unbounded all-FALSE tape.  A frozenset: order
+#: The true locations of an unbounded all-false tape.  A frozenset: order
 #: is never read, and ``snapshot`` sorts on the way out.
 type _Bits = frozenset[int]
 

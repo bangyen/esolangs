@@ -10,7 +10,7 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
 )
 from tests.interpreters.oisc import memory, run_program
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 
 def _run(code, stdin=""):

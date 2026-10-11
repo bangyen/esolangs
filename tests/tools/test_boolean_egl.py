@@ -7,7 +7,7 @@ import pytest
 from esolangs import tools
 from esolangs.interpreters.grid_based.egl import run
 from esolangs.interpreters.io import ScriptedIO
-from tests.generator_support import assert_an_ignored_input_costs
+from tests.support.generator_support import assert_an_ignored_input_costs
 
 
 def execute(program: str, bits: tuple[int, ...]) -> tuple[str, int]:
@@ -20,6 +20,23 @@ def test_the_walk_is_branch_free() -> None:
     """One guard an input, and no other loop: the table is not a tree."""
     program = tools.egl("01101001")
     assert program.count("(") == 3
+
+
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_reads_into_scratch_and_prints_a_literal(n: int, bit: str) -> None:
+    from esolangs.tools.egl import _balance
+
+    table = bit * (1 << n)
+    default = tools.egl(table)
+    programs = [tools.egl(table, width) for width in (None, 1, 20)]
+    programs.append(_balance(table, default))
+    for program in programs:
+        assert program.startswith("2,1:")
+        assert program.count("x") == n
+        assert "(" not in program
+        for bits in itertools.product((0, 1), repeat=n):
+            assert execute(program, bits) == (bit, n)
 
 
 def test_size_is_table_content_only() -> None:

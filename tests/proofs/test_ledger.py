@@ -145,7 +145,7 @@ def test_every_row_carries_a_measured_cell(
 
 def test_every_definition_names_a_symbol_its_cells_use() -> None:
     """A row's ``S = ...`` definition defines S for its own cells, briefly."""
-    from scripts.proof_status import load as load_status
+    from scripts.docs.proof_status import load as load_status
 
     for row in load_status()[0]:
         cells = f"{row.execution} {row.workspace}"

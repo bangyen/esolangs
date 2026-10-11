@@ -11,18 +11,26 @@ state reached has one rule at one position), so the answer is reproducible
 unpinned, as the classics tests assert to ``n = 3`` under several draws.
 
 A constant half is stored once (:func:`_fold`, shorter from nine inputs) on
-every path; balanced n=9/10 -24%/-35%.  A repeated block is not shared: the
-rules rewrite every pair of the one string, and none can name a block to reuse.
+every path; balanced n=9/10 -24%/-35%. One repeated aligned block has a named
+expansion when the reduced table leaves command and state headroom. A single
+frontier expands it before lookup, preserving the unique enabled rewrite.
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from math import isqrt
 from string import ascii_letters
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.tools.helpers import (
+    _residual_ids,
+    _validate_truth_table,
+    essential_inputs,
+    read_at,
+    subtree_ids,
+)
 from esolangs.tools.wrap import balance_score
 
 #: Entries are ``a``/``b`` so a ``0``/``1`` input line is never mistaken for
@@ -106,7 +114,14 @@ def thue(truth_table: str, width: int | None = None) -> str:
     out at the rest; the queue's five rules lose below that saving.  Plain
     and queued layouts compete on every path, nearest the width first.
     """
-    layouts = [_thue_layout(*layout, width) for layout in _tables(truth_table)]
+    n = _validate_truth_table(truth_table)
+    tables = _tables(truth_table)
+    layouts = [_thue_layout(*layout, width) for layout in tables]
+    layouts.extend(
+        shared
+        for layout in tables
+        if (shared := _shared_layout(*layout, n)) is not None
+    )
     limit = width if width and width > 0 else None
 
     def overshoot(layout: str) -> int:
@@ -239,6 +254,56 @@ def _alphabet(rounds: str | None, extra: tuple[str, ...]) -> str:
     return _NAME_ALPHABET if rounds is None else _QUEUED_NAME_ALPHABET
 
 
+def _shared_layout(
+    table: str, rounds: str | None, extra: tuple[str, ...], n: int
+) -> str | None:
+    """Expand one named aligned block through a unique frontier before lookup."""
+    entries = _thue_entries(table)
+    if len(entries) < 2:
+        return None
+    ids = subtree_ids(entries.translate(str.maketrans("ab", "01")))
+    best: tuple[int, int, int] | None = None
+    saved = 0
+    for depth, layer in enumerate(ids[:-1]):
+        span = 1 << (len(ids) - 1 - depth)
+        counts = Counter(layer)
+        for index, state in enumerate(layer):
+            copies = counts[state]
+            saving = (copies - 1) * span - copies - 31
+            if state >= 2 and copies > 1 and saving > saved:
+                best, saved = (index * span, span, copies), saving
+    if best is None:
+        return None
+    row, span, copies = best
+    length = len(entries)
+    # Expand, then return R across the expanded table. Lookup itself costs
+    # at most 2L+8n+32, including queued reads and the constant-half rules.
+    startup = length + (length - copies * span) + copies + 1
+    if (
+        2 * length + 8 * n + 32 + startup > 2 * (1 << n) + 2 * n - 1
+        or length + n + 8 > 1 << n
+    ):
+        return None
+    alphabet = _alphabet(rounds, extra)
+    front, name = alphabet[0], alphabet[1]
+    body = entries[row : row + span]
+    encoded = "".join(
+        name if entries[i : i + span] == body else entries[i : i + span]
+        for i in range(0, length, span)
+    )
+    base = _QUEUED_RULES if rounds is not None else _RULES
+    rules = [
+        *base.splitlines()[:-1],
+        *extra,
+        f"{front}a::=a{front}",
+        f"{front}b::=b{front}",
+        f"{front}{name}::={body}{front}",
+        f"{front}E::=RE",
+        "::=",
+    ]
+    return "\n".join([*rules, "L" + (rounds or "") + front + encoded + "E"])
+
+
 def _thue_entries(truth_table: str) -> str:
     """Return the table as ``a``/``b`` entries in bit-reversed row order."""
     length = len(truth_table)
@@ -256,25 +321,26 @@ def _thue_entries(truth_table: str) -> str:
 
 
 def _thue_short_tree(truth_table: str) -> str:
-    """Return a seven-column decision tree for at most three inputs."""
-    size = len(truth_table)
+    """Return seven-column interned residuals, consuming every input."""
+    n = _validate_truth_table(truth_table)
+    levels, children, _ = _residual_ids(truth_table, n)
+    nodes = [state for level in levels[:-1] for state in level]
     names = ascii_letters.replace("I", "")
-    ready = names[: size - 1]
-    waiting = names[size - 1 : 2 * (size - 1)]
-    leaves = names[2 * (size - 1) : 2 * size]
-    rules = ["I::=:::", *(f"{name}::=~{bit}" for bit, name in enumerate(leaves))]
-    for node in range(size - 1):
+    count = len(nodes)
+    ready = dict(zip(nodes, names[:count], strict=True))
+    waiting = dict(zip(nodes, names[count : 2 * count], strict=True))
+    leaves = dict(
+        zip(levels[-1], names[2 * count : 2 * count + len(levels[-1])], strict=True)
+    )
+    rules = ["I::=:::", *(f"{name}::=~{bit}" for bit, name in leaves.items())]
+    for node in nodes:
         # Ready and waiting symbols differ: a read can never expand twice.
         rules.append(f"{ready[node]}::={waiting[node]}I")
         for bit in range(2):
-            child = 2 * node + 1 + bit
-            target = (
-                ready[child]
-                if child < size - 1
-                else leaves[int(truth_table[child - size + 1])]
-            )
+            child = children[node][bit]
+            target = ready[child] if child in ready else leaves[child]
             rules.append(f"{waiting[node]}{bit}::={target}")
-    return "\n".join([*rules, "::=", ready[0]])
+    return "\n".join([*rules, "::=", ready[levels[0][0]]])
 
 
 def _marker_digits(length: int, base: int = len(_NAME_ALPHABET)) -> int:
@@ -293,8 +359,11 @@ def balance_thue(truth_table: str, default: str) -> str:
     The ceiling and extra cell put the crossing within one payload of the root.
     Each layout (see :func:`_tables`) is tuned at its own rule count.
     """
-    candidates = [default, thue(truth_table, 1)]
-    cap = max(map(len, default.split("\n")))
+    plain = min(
+        (_thue_layout(*layout, None) for layout in _tables(truth_table)), key=len
+    )
+    candidates = [default, plain, thue(truth_table, 1)]
+    cap = max(_widest(default), _widest(plain))
     for table, rounds, extra in _tables(truth_table):
         size = len(table)
         digits = _marker_digits(size, len(_alphabet(rounds, extra)))

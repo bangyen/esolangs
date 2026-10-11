@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 
 # The suite's own shapes, not a local stand-in: ``_dense`` is the worst case to
 # fold and ``_parity`` the table with no constant subtree above a single row.
-from tests.witness_tables import dense as _dense
-from tests.witness_tables import parity as _parity
+from tests.support.witness_tables import dense as _dense
+from tests.support.witness_tables import parity as _parity
 
 
 class UnprovenError(Exception):
@@ -135,7 +135,7 @@ def check_ladder(
             if program is None:
                 refused += 1
                 continue
-            from tests.source_support import source_units
+            from tests.support.source_support import source_units
 
             built.setdefault(name, []).append((n, source_units(program)))
     if not built:

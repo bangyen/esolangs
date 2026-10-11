@@ -9,7 +9,7 @@ from esolangs.interpreters.tape_based.dimensional import _Machine as Dimensional
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_lines
-from tests.raises import assert_rejected_with_hint, raises_message
+from tests.support.raises import assert_rejected_with_hint, raises_message
 
 dim = importlib.import_module("esolangs.interpreters.tape_based.dimensional")
 

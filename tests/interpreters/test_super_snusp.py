@@ -12,7 +12,7 @@ from esolangs.interpreters.randomness import FirstDraw
 from esolangs.tools.super_snusp import super_snusp
 from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
-from tests.raises import assert_halts_with_hint
+from tests.support.raises import assert_halts_with_hint
 
 
 def run_super(program: str, stdin: str = "") -> str:

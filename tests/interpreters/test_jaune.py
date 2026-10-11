@@ -11,7 +11,7 @@ from esolangs.interpreters.tape_based.jaune import run
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters import runner
 from tests.interpreters.contract import SnapshotContract
-from tests.raises import assert_halts_with_hint
+from tests.support.raises import assert_halts_with_hint
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
 

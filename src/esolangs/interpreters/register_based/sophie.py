@@ -11,7 +11,7 @@ invalid operation and halts the program with
 
 Exhausted input reads as 0, for ``;`` and ``:`` alike.  A judgment call:
 the page names no EOF value, but its Cat ``[;@$0{&}{,}]`` halts cleanly
-only if ``;`` yields 0 at EOF, and examples outrank prose (as for Inject).
+only if ``;`` yields 0 at EOF, and examples outrank prose.
 ``:`` mirrors it.  ``#$n``/``@$n`` take unsigned decimals; ``#$`` before
 anything else is ``#c`` with c ``$``.  Gaps decided: other characters are
 NOPs, an else block must touch its ``}`` (after a space it is a comment),

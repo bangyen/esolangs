@@ -3,8 +3,8 @@
 import pytest
 
 import esolangs
-from tests.stdin_check import _check_stdin
-from tests.test_input_encoding import XOR
+from tests.io.test_input_encoding import XOR
+from tests.support.stdin_check import _check_stdin
 
 
 class TestAnswerMode:

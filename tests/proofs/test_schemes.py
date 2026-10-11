@@ -8,7 +8,7 @@ import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
 from esolangs.tools.helpers import runs
 from tests.proofs._ledger import Ledger, Row, load
-from tests.source_support import source_units
+from tests.support.source_support import source_units
 
 #: Every table at ``n == 3`` that depends on exactly one input, both
 #: polarities, all at ones-count 4 -- the same ones-count as parity, so the
@@ -35,8 +35,7 @@ _FOLD = 0.05
 #: Lookup rows with no tree route that the fold discriminator cannot see:
 #: their *lookup* route is what shrinks a degenerate table, so they fold like a
 #: tree would.  Eval is one linear lookup at every arity, NoComment switches
-#: between two lookups at four inputs, Suffolk's sweep shortens with every
-#: input ``essential_inputs`` drops, and Collatz Multiverse spends a constant
+#: between two lookups at four inputs, and Collatz Multiverse spends a constant
 #: and a decoder group on each distinct nibble its table holds,
 #: bit~ indexes the projected table it is handed, Circlefuck tabulates its
 #: essential inputs alone, Dimensional paints only as far as its last one, so
@@ -80,7 +79,6 @@ _FOLDS_WITHOUT_TREE = frozenset(
         "Qoibl",
         "SLOW ACV MAMMALIAN",
         "Subleq",
-        "Suffolk",
         "Unsquare",
     }
 )

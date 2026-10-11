@@ -25,7 +25,7 @@ from tests.proofs._fractran_order import (
     reader,
     stream_template,
 )
-from tests.witness_tables import row_bits
+from tests.support.witness_tables import row_bits
 
 
 @pytest.mark.medium

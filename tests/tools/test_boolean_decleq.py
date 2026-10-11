@@ -4,11 +4,11 @@ import random
 
 from esolangs import tools as boolean
 from esolangs.tools.wrap import balance_program, balance_score, wrap_program
+from tests.support.witness_tables import parity as _parity
+from tests.support.witness_tables import row_bits
 from tests.tools.boolean_runners import (
     run_decleq,
 )
-from tests.witness_tables import parity as _parity
-from tests.witness_tables import row_bits
 
 
 class TestDecleq:

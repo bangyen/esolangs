@@ -57,7 +57,7 @@ class _Template(_Tagged):
     of the wrong length, a run left over, or the character in the program
     text proper all refuse.  The language tag lets
     :func:`esolangs.instantiate` refuse a template under another name --
-    filling Minifuck's XOR as RAM0 used to run and answer 0.  A ``str``
+    filling an XOR as another language used to run and answer 0.  A ``str``
     subclass, so the pairs do not survive disk; a plain string is filled
     by :func:`esolangs.registry.recover_setters`.  A width wraps with
     every run kept whole.

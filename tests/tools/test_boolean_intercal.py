@@ -13,7 +13,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
 )
 from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, intercal
-from tests.generator_support import run_filled
+from tests.support.generator_support import run_filled
 
 
 def _run(table: str, row: int) -> str:
@@ -47,7 +47,7 @@ def test_levels_select_inputs_in_the_shorter_order() -> None:
 
 
 def _five_input_sample() -> list[str]:
-    """Return ``scripts/screens/sharing.py``'s 200 five-input tables, seed 0."""
+    """Return the sharing catalogue's 200 five-input tables, seed 0."""
     rng, found = random.Random(0), set[str]()
     while len(found) < 200:
         found.add(format(rng.getrandbits(32), "032b"))

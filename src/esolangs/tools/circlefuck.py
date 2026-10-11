@@ -4,13 +4,14 @@ from itertools import pairwise
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.tools.constant_projection import balanced_projection
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.tools.wrap import balance_program, wrap_chars
 
 #: Bits an index digit carries: seven is the widest power of two a byte can
 #: also count out (:func:`_deleter` plants that many in the digit below).
@@ -34,9 +35,19 @@ def circlefuck(truth_table: str) -> str:
     tape is a ring).  Only the table grows.  A literal deleted into by index:
     no entry can drop without clamping the index, and it has no subtrees to
     share.
+    Constants read into an already executed cell, then print the literal tail.
     """
+    return _program(truth_table)
+
+
+def _program(truth_table: str, *, keep_constant_index: bool = False) -> str:
+    """Build the deleting index or a read-and-print literal constant."""
     _validate_truth_table(truth_table)
     n = len(truth_table).bit_length() - 1
+    if len(set(truth_table)) == 1 and not keep_constant_index:
+        # Reads rewrite cell zero after its instruction has run. The final
+        # < wraps to the literal after @, clear of every rewritten cell.
+        return "," * n + "<.@" + truth_table[0]
     essential = essential_inputs(truth_table, n)
     width = len(essential)
     cells = max(1, -(-width // _DIGIT_BITS))
@@ -64,6 +75,15 @@ def circlefuck(truth_table: str) -> str:
     return "".join(prog)
 
 
+def balance_circlefuck(table: str, default: str) -> str:
+    """Keep the former constant index when it gives a better wrapped shape."""
+    if len(set(table)) > 1:
+        return balance_program(default, "circlefuck")
+    return balanced_projection(
+        default, _program(table, keep_constant_index=True), "circlefuck"
+    )
+
+
 def _deleter(digit: int) -> str:
     """Spend digit ``digit``, deleting ``128**digit`` entries per unit.
 
@@ -80,6 +100,7 @@ LANGUAGE = Language(
     "Circlefuck",
     "tape_based.circlefuck",
     boolean=circlefuck,
+    balance=balance_circlefuck,
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,
     contract=BooleanContract(

@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.tools.collatz_multiverse import _cm_layout, collatz_multiverse
-from tests.generator_support import evaluate_generated
+from tests.support.generator_support import evaluate_generated
 from tests.tools.boolean_runners import run_collatz_multiverse
 
 

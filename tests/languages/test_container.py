@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 import esolangs
+from tests.reference import REFERENCE
 
 
 @pytest.mark.parametrize("container", ["bytes", "stream"])
@@ -18,4 +19,4 @@ def test_invalid_utf8_input_is_an_argument_error(container: str, mode: str) -> N
     elif mode == "isolated":
         bounds["isolated"] = True
     with pytest.raises(esolangs.ArgumentError, match="cannot read stdin"):
-        esolangs.run("brainfuck", ",.", stdin=argument, **bounds)
+        esolangs.run(REFERENCE, ",.", stdin=argument, **bounds)

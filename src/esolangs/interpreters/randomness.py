@@ -1,7 +1,7 @@
 """Shared randomness hook for the interpreters that need one.
 
-Painfuck's ``y``, Modulous's ``RND`` and
-LaserFuck's splitter draw at random; a bare ``secrets`` call makes the
+Some languages draw at random (a command or a splitter);
+a bare ``secrets`` call makes the
 public API non-deterministic and breaks the cycle detector's premise.
 ``None`` keeps the spec's real draw; a caller needing reproducibility
 hands in a source.
@@ -58,7 +58,7 @@ class Seeded:
 class FirstDraw:
     """A :class:`Randomness` whose *first* answer is chosen, the rest seeded.
 
-    A one-off draw can decide a run (LaserFuck's initial heading), so a test
+    A one-off draw can decide a run (an initial heading), so a test
     or example pins it here rather than through a per-language argument.
     Later draws are seeded so branches stay exercised; ``rest`` pins them too.
     """

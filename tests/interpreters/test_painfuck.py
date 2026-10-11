@@ -18,7 +18,7 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
     SnapshotContract,
 )
-from tests.raises import assert_halts_with_hint
+from tests.support.raises import assert_halts_with_hint
 
 run = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
 

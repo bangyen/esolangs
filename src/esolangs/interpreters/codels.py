@@ -1,4 +1,4 @@
-"""Codel traversal shared by the Piet family: blocks, exits and white slides."""
+"""Codel traversal shared by raster interpreters: blocks, exits and white slides."""
 
 from __future__ import annotations
 

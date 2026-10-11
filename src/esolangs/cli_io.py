@@ -269,7 +269,7 @@ class _WaitingNotice:
 def _write_output(text: str) -> None:
     """Write program output to stdout, whatever bytes it turned out to be.
 
-    A program can legitimately print a lone surrogate (Sophie's `,` prints
+    A program can legitimately print a lone surrogate (a print command emits
     the accumulator as a character with no bound), on which
     ``sys.stdout.write`` raised a nineteen-line traceback.  Written through
     the byte stream with ``surrogatepass`` when the text stream refuses,
@@ -291,7 +291,7 @@ def _write_output(text: str) -> None:
 def _emit_partial(exc: EsolangError) -> None:
     """Write whatever the program printed before ``exc`` to stdout.
 
-    A Modulous program printing ``Hi`` then underflowing gave empty stdout
+    A program printing ``Hi`` then underflowing gave empty stdout
     where ``debug`` showed ``output: 'Hi'``.  On stdout so a pipe sees the
     same prefix either way.
     """

@@ -8,7 +8,7 @@ import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster
 from esolangs.tools.piet_plus_plus import piet_plus_plus as generate
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.parametrize("inputs", [1, 2, 3])

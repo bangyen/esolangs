@@ -1,7 +1,7 @@
 """Boolean-function generator for B-tapemark.
 
-One copied cell a row is the walk's target, so a constant run is not folded
-or a repeated one shared.
+One copied cell a row is the indexed walk's target. Constant roots read all
+inputs into disposable marks and print a literal answer without that walk.
 """
 
 from __future__ import annotations
@@ -180,6 +180,22 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     layouts have O(T) source and construction; narrow XOR2 needs nine columns.
     """
     depth = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        answer = truth_table[0]
+        horizontal = ">" + "-|" * depth + answer + "!"
+        if width is None or len(horizontal) <= width:
+            return horizontal
+        # Each vertical | moves to a fresh mark; the final mirror turns right
+        # so the literal digit prints rather than comparing the data mark.
+        return "v\n" + "-\n|\n" * depth + "\\" + answer + "!"
+    return _b_tapemark_program(truth_table, width)
+
+
+def _b_tapemark_program(
+    truth_table: str, width: int | None = None, *, keep_full_narrow: bool = False
+) -> str:
+    """Build the copied-table walk, retaining the former constant layout."""
+    depth = _validate_truth_table(truth_table)
     # The table is copied at its essential inputs, and an ignored input's
     # stage crosses no ``|``: it still reads and still steps the pointer once,
     # so the climb and tail stay a stage per input.  A constant keeps all.
@@ -221,18 +237,43 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     # The climb of 2*depth rows must end below the connector at row -1, which
     # a painted table of depth entries or fewer cannot house.
     if len(painted) <= depth:
-        painted, weights = truth_table, [1 << (depth - 1 - i) for i in range(depth)]
+        if keep_full_narrow:
+            painted, weights = truth_table, [1 << (depth - 1 - i) for i in range(depth)]
+        else:
+            # The zero-side weights count back from the final copied cell.
+            # Unaddressed cells before the projected table house the climb
+            # without restoring ignored selectors or their exponentially
+            # larger table; padding after it shifts every addressed answer.
+            painted = "0" * (depth + 1 - len(painted)) + painted
     return _b_tapemark_narrow(painted, depth, weights)
 
 
 def _balance(table: str, default: str) -> str:
     """Compare the original grid, its reflection and the narrow staircase."""
-    return min(
+    if len(set(table)) == 1:
+        legacy = _b_tapemark_program(table, keep_full_narrow=True)
+        return min(
+            default,
+            b_tapemark(table, 1),
+            legacy,
+            _b_tapemark_program(table, grid_width(legacy), keep_full_narrow=True),
+            _b_tapemark_program(table, 1, keep_full_narrow=True),
+            key=balance_score,
+        )
+    candidates = [
         default,
         b_tapemark(table, grid_width(default)),
         b_tapemark(table, 1),
-        key=balance_score,
-    )
+    ]
+    depth = len(table).bit_length() - 1
+    if len(input_weights(table, depth)[1]) <= depth:
+        candidates.extend(
+            [
+                _b_tapemark_program(table, grid_width(default), keep_full_narrow=True),
+                _b_tapemark_program(table, 1, keep_full_narrow=True),
+            ]
+        )
+    return min(candidates, key=balance_score)
 
 
 LANGUAGE = Language(

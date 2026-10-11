@@ -7,10 +7,10 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.laserfuck import MARGIN
+from tests.support.witness_tables import row_bits, witnesses
 from tests.tools.boolean_runners import (
     run_laserfuck,
 )
-from tests.witness_tables import row_bits, witnesses
 
 
 class TestLaserFuck:

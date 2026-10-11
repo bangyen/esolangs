@@ -90,11 +90,18 @@ def _whole_statement(
     )
 
 
-def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
+def _drop_entries(
+    path: Path,
+    keys: set[str],
+    modules: set[str],
+    external: set[str] | frozenset[str] = frozenset(),
+) -> int:
     """Delete every dict entry, list item or ``X[key] = ...`` keyed by ``keys``.
 
     Located by AST and cut by line, so an entry must own its lines; one
-    sharing a line with another is left for the leftover report.
+    sharing a line with another is left for the leftover report.  A helper
+    ``external`` still names (``sbleq_variant``, shared by the S*bleq
+    variants) is kept even when it reads a name the removal deletes.
     """
     source = path.read_text(encoding="utf-8")
     lines = source.splitlines(keepends=True)
@@ -140,6 +147,12 @@ def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
         elif (
             isinstance(node, ast.stmt)
             and not (isinstance(node, ast.If) and id(node) in lonely)
+            # A function another file still names stays, even if it lazily
+            # imports the module going (``sbleq_variant``).
+            and not (
+                isinstance(node, ast.FunctionDef | ast.ClassDef)
+                and node.name in external
+            )
             and _whole_statement(node, named, modules)
         ):
             decorators = getattr(node, "decorator_list", [])
@@ -177,6 +190,7 @@ def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
             for node in tree.body
             if isinstance(node, ast.FunctionDef | ast.ClassDef)
             and node.name not in dead
+            and node.name not in external
             and any(
                 isinstance(inner, ast.Name)
                 and inner.id in dead
@@ -328,13 +342,13 @@ def _drop_toml(path: Path, name: str) -> None:
 
 
 def _drop_bullets(path: Path, name: str) -> None:
-    """Drop each ``- name ...`` bullet, with its indented lines, from ``path``.
+    """Drop each ``- name ...`` or ``- [name](...) ...`` bullet from ``path``.
 
-    ``- **name:**`` counts too, and a blank line that only separated the
-    bullet from the next goes with it.
+    Its indented lines go with it, ``- **name:**`` counts too, and a blank
+    line that only separated the bullet from the next goes as well.
     """
     text = path.read_text(encoding="utf-8")
-    bullet = rf"(?m)^- (?:\*\*)?{re.escape(name)}(?!\w).*\n(?:  .*\n)*"
+    bullet = rf"(?m)^- \[?(?:\*\*)?{re.escape(name)}(?:\*\*)?\]?(?!\w).*\n(?:  .*\n)*"
 
     def cut(match: re.Match[str]) -> str:
         before = text[: match.start()]
@@ -357,7 +371,7 @@ def _owned_test_files(lang: Language) -> list[Path]:
     """
     from esolangs.registry import LANGUAGES
 
-    own = _tests_attr("test_language_coupling", "_own")
+    own = _tests_attr("api.test_language_coupling", "_own")
     files = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", *_TREES],
         cwd=ROOT,
@@ -455,17 +469,19 @@ def _within(path: str, doomed: set[Path]) -> bool:
 
 
 def _orphans(doomed: set[Path], users: dict[str, set[str]]) -> set[Path]:
-    """Return the private helper modules only ``doomed`` files import.
+    """Return the helper modules only ``doomed`` files import.
 
-    ``_circuit_parse`` serves Circuit Diagram alone; with it gone the helper
-    is dead code that nothing names.  A helper no file imports at all is
-    left alone: it was not the language's to begin with.
+    A helper module the removal's own files alone import is dead code that
+    nothing names once they are gone.  Public-named helpers count too (a
+    helper named without the underscore), so a language whose helpers lack
+    the underscore still leaves no dead module.  A helper no file imports at
+    all is left alone: it was not the language's to begin with.
     """
     # The largest set whose every member only the doomed or each other
-    # import: ``_circuit_parse`` and ``_circuit_functions`` import each other.
+    # import: two helpers that import each other are dead together.
     found = {
         path
-        for path in (ROOT / "src/esolangs").rglob("_*.py")
+        for path in (ROOT / "src/esolangs").rglob("*.py")
         if not path.name.startswith("__")
         and not any(path == d or d in path.parents for d in doomed)
         and users.get(_module_of(path))
@@ -494,6 +510,249 @@ def _drop_language_statement(path: Path) -> None:
             del lines[node.lineno - 1 : node.end_lineno]
             break
     path.write_text("".join(lines).rstrip("\n") + "\n", encoding="utf-8")
+
+
+def _owner_id(filename: str, ids: set[str]) -> str | None:
+    """Return the longest language id owning ``filename`` at a name boundary.
+
+    ``piet_plus_plus.toml`` is Piet++'s, not Piet's: the id must end the name
+    or leave ``.``, ``_`` or ``-`` after it.
+    """
+    best: str | None = None
+    for ident in ids:
+        rest = filename[len(ident) :] if filename.startswith(ident) else None
+        if rest is None or (rest and rest[0] not in "._-"):
+            continue
+        if best is None or len(ident) > len(best):
+            best = ident
+    return best
+
+
+def _gone_modules(doomed: set[Path]) -> set[str]:
+    """Return the importable names of the modules ``doomed`` would delete."""
+    modules = {_module_of(p) for p in doomed if p.is_relative_to(ROOT / "src")}
+    modules |= {
+        ".".join(p.relative_to(ROOT).with_suffix("").parts)
+        for p in doomed
+        if p.is_relative_to(ROOT / "tests") and p.suffix == ".py"
+    }
+    return modules
+
+
+def _dead_test_files(
+    doomed: set[Path], gone_modules: set[str], users: dict[str, set[str]]
+) -> set[Path]:
+    """Return test files that import a gone module and nothing that survives.
+
+    The owned prefixes name a language's module stems, not its submodules, so
+    ``tests/tools/test_circuit_free_columns.py`` (importing
+    ``esolangs.tools.circuit_diagram.free_columns``) is caught here instead;
+    it cannot run once the module is gone.
+    """
+    candidates = {
+        user
+        for imported, importers in users.items()
+        for gone in gone_modules
+        if imported == gone or imported.startswith(gone + ".")
+        for user in importers
+        if user.startswith("tests/") and not _within(user, doomed)
+    }
+    dead: set[Path] = set()
+    for path in candidates:
+        if path in _EDITED:
+            continue
+        full = ROOT / path
+        try:
+            tree = ast.parse(full.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        imports: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module and not node.level:
+                imports.add(node.module)
+                imports.update(f"{node.module}.{alias.name}" for alias in node.names)
+            elif isinstance(node, ast.Import):
+                imports.update(alias.name for alias in node.names)
+        found = {
+            m
+            for m in imports
+            if m in {"esolangs", "tests"} or m.startswith(("esolangs.", "tests."))
+        }
+        if found and all(_gone(m, gone_modules) for m in found):
+            dead.add(full)
+    return dead
+
+
+def _stale_timing(key: str, names: set[str], gone_paths: set[str]) -> bool:
+    """Whether a recorded pytest node ID names a deleted test or language.
+
+    A shared test carries the language as one of its parametrize ids
+    (``...[Suffolk-one_hot]``, ``...[1-Line]``); a language's own test carries
+    its file path.  ``Piet`` must not take ``Piet++``'s rows: only a whole
+    ``-``-delimited component counts.
+    """
+    if key.split("::", 1)[0] in gone_paths:
+        return True
+    match = re.search(r"\[([^\]]*)\]", key)
+    if match is None:
+        return False
+    param = match.group(1)
+    return any(
+        param == n
+        or param.startswith(n + "-")
+        or param.endswith("-" + n)
+        or f"-{n}-" in param
+        for n in names
+    )
+
+
+def _top_level_name(node: ast.stmt) -> str | None:
+    """Return the name a top-level statement binds, if it binds one."""
+    if isinstance(node, ast.FunctionDef | ast.ClassDef):
+        return node.name
+    if (
+        isinstance(node, ast.Assign)
+        and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+    ):
+        return node.targets[0].id
+    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+        return node.target.id
+    return None
+
+
+def _names_used(tree: ast.AST) -> set[str]:
+    """Return the names a module reads, and the attributes it reaches.
+
+    Store targets count too: ``X |= ...`` reads ``X``, and keeping a name that
+    appears anywhere is safe where cutting a live definition is not.
+    """
+    used: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            used.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            used.add(node.attr)
+    return used
+
+
+def _drop_name_items(path: Path, names: set[str]) -> int:
+    """Cut each ``ast.Name`` element named in ``names`` from a container.
+
+    ``_MULTILINE_WRAPPERS = frozenset({_taglate, ...})`` and the
+    ``_token_patterns`` dict name wrappers directly, so the membership must go
+    before the definition reads as dead.
+    """
+    cuts = 0
+    while True:
+        source = path.read_bytes()
+        starts = [0]
+        for line in source.splitlines(keepends=True):
+            starts.append(starts[-1] + len(line))
+
+        def at(line: int, col: int, starts: list[int] = starts) -> int:
+            return starts[line - 1] + col
+
+        def span(node: ast.AST) -> tuple[int, int]:
+            return (
+                at(node.lineno, node.col_offset),  # type: ignore[attr-defined]
+                at(node.end_lineno, node.end_col_offset),  # type: ignore[attr-defined]
+            )
+
+        cut: tuple[int, int, bytes] | None = None
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Dict):
+                if None in node.keys:
+                    continue
+                items = [
+                    (
+                        span(key)[0],
+                        span(value)[1],
+                        key.id if isinstance(key, ast.Name) else None,
+                    )
+                    for key, value in zip(node.keys, node.values, strict=True)
+                    if key is not None
+                ]
+                empty = b"{}"
+            elif isinstance(node, ast.List | ast.Set):
+                items = [
+                    (
+                        *span(element),
+                        element.id if isinstance(element, ast.Name) else None,
+                    )
+                    for element in node.elts
+                ]
+                empty = {ast.List: b"[]", ast.Set: b"set()"}[type(node)]
+            else:
+                continue
+            for index, (lo, hi, value) in enumerate(items):
+                if value not in names:
+                    continue
+                if len(items) == 1:
+                    cut = (*span(node), empty)
+                elif index + 1 < len(items):
+                    cut = (lo, items[index + 1][0], b"")
+                else:
+                    cut = (items[index - 1][1], hi, b"")
+                break
+            if cut:
+                break
+        if cut is None:
+            return cuts
+        lo, hi, text = cut
+        path.write_bytes(source[:lo] + text + source[hi:])
+        cuts += 1
+
+
+def _drop_dead_code(path: Path, external: set[str]) -> int:
+    """Cut top-level definitions and constants no surviving code names.
+
+    After the language's ``SPECS[...]`` entry and ``LANGUAGE`` are gone, its
+    generator functions and wrapper are dead.  ``external`` is every name the
+    rest of the tree reads; a helper another entry or language still names
+    stays reachable, and so does anything an uncut top-level statement reads.
+    """
+    source = path.read_text(encoding="utf-8")
+    lines = source.splitlines(keepends=True)
+    tree = ast.parse(source)
+    nodes = {
+        name: node
+        for node in tree.body
+        if (name := _top_level_name(node)) is not None and not name.startswith("__")
+    }
+    roots = set(external)
+    for node in tree.body:
+        if _top_level_name(node) is None:
+            roots |= _names_used(node)
+    live: set[str] = set()
+    pending = [name for name in nodes if name in roots]
+    while pending:
+        name = pending.pop()
+        if name in live:
+            continue
+        live.add(name)
+        pending += [
+            ref for ref in _names_used(nodes[name]) if ref in nodes and ref not in live
+        ]
+    dead = [nodes[n] for n in nodes if n not in live]
+    if not dead:
+        return 0
+    spans: list[tuple[int, int]] = []
+    for node in dead:
+        lo, hi = node.lineno, node.end_lineno or node.lineno
+        # A ``# --- Name ---`` section head goes with its definition.
+        while lo > 1 and lines[lo - 2].strip().startswith("#"):
+            lo -= 1
+        spans.append((lo, hi))
+    spans = [
+        span
+        for span in set(spans)
+        if not any(o != span and o[0] <= span[0] and span[1] <= o[1] for o in spans)
+    ]
+    for lo, hi in sorted(spans, reverse=True):
+        del lines[lo - 1 : hi]
+    path.write_text("".join(lines), encoding="utf-8")
+    return len(spans)
 
 
 def _drop_from_series(path: Path, name: str, tail: str) -> None:
@@ -540,20 +799,44 @@ def _drop_from_series(path: Path, name: str, tail: str) -> None:
 _EDITED = (
     "src/esolangs/registry/_table.py",
     "src/esolangs/tools/__init__.py",
-    "tests/samples.py",
+    "tests/support/samples.py",
     "tests/tools/boolean_runners.py",
     "tests/tools/test_wrap.py",
     "tests/proofs/test_execution_formulas.py",
     "tests/proofs/test_workspace_formulas.py",
     "tests/proofs/test_schemes.py",
-    "tests/tools/mutate_generator.py",
+    "tests/api/test_interpreter_only_admissions.py",
+    "tests/proofs/test_bands.py",
 )
+
+
+def _mention_edit(mention: str) -> str:
+    """Label a leftover mention by the edit it needs.
+
+    ``git grep -n`` prints ``path:line:text`` and the path decides the kind.
+    The tool never rewrites these itself: a runnable example needs a
+    replacement language (Alight's ``expression_syntax`` has no successor),
+    and a comment or prose line needs a sentence a human stands behind.
+    """
+    path = mention.split(":", 1)[0]
+    if path == "src/esolangs/cli_help.py":
+        return "example: choose a replacement language"
+    if path.startswith("docs/") or path.endswith(".md"):
+        return "prose: reword or drop the mention"
+    return "comment: reword or drop the mention"
 
 
 def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
 
+    reference = _tests_attr("api.test_language_coupling", "REFERENCE")
+    if name == reference:
+        raise ValueError(
+            f"{reference} is the reference language: shared tests, the example "
+            "commands and scripts/docs/generate.py spell it out, so it is not "
+            "removable"
+        )
     lang = LANGUAGES[name]
     module = lang.interpreter or ""
     gen = lang.boolean.__name__ if lang.boolean else lang.id
@@ -564,20 +847,24 @@ def remove(name: str) -> list[str]:
         own_modules.add(declaring)
     module_paths = {p for m in own_modules if (p := _module_path(m))}
     files = _python_files()
-    # The differential harnesses are per-language tables like the managed
-    # files: a spec is cut, never a reason to keep the language's modules.
-    differential = sorted(
-        str(p.relative_to(ROOT)) for p in (ROOT / "scripts").glob("differential*.py")
-    )
-    users = _imported([f for f in files if f not in _EDITED and f not in differential])
+    users = _imported([f for f in files if f not in _EDITED])
+    ids = {other.id for other in LANGUAGES.values()}
+    # Every wiki fixture whose name begins with this id and no longer one:
+    # ``slashes_*.txt`` go with ``///``, not ``piet_plus_plus.toml`` with Piet.
+    wiki = [
+        path
+        for path in (ROOT / "tests/fixtures/wiki_examples").iterdir()
+        if path.is_file() and _owner_id(path.name, ids) == lang.id
+    ]
     doomed: set[Path] = {
         *module_paths,
         ROOT / f"tests/interpreters/test_{lang.id}.py",
         ROOT / f"tests/tools/test_boolean_{gen}.py",
-        ROOT / f"tests/fixtures/wiki_examples/{lang.id}.toml",
+        *wiki,
         *(ROOT / "src/esolangs/examples").glob(f"{stem}.*" if stem else "-"),
         *_owned_test_files(lang),
     }
+    doomed |= _dead_test_files(doomed, _gone_modules(doomed), users)
     doomed |= _orphans(doomed, users)
     # A ``src`` module the remaining code imports stays, minus its
     # ``LANGUAGE``: the shared helper outlives the language that defined it.
@@ -637,18 +924,29 @@ def remove(name: str) -> list[str]:
     keys = {name, module, lang.id, gen, stem} - {""}
     # ``Path("tests/interpreters/test_inject.py")`` in a support list.
     paths = {str(p.relative_to(ROOT)) for p in doomed}
-    gone_modules = {_module_of(p) for p in doomed if p.is_relative_to(ROOT / "src")}
-    # A deleted test module too: ``tests/samples.py`` borrows Inject's program.
-    gone_modules |= {
-        ".".join(p.relative_to(ROOT).with_suffix("").parts)
-        for p in doomed
-        if p.is_relative_to(ROOT / "tests") and p.suffix == ".py"
-    }
+    # A deleted test module too: ``tests/support/samples.py`` borrows Inject's program.
+    gone_modules = _gone_modules(doomed)
     modules = {m for m in own_modules if _module_path(m) is None} | gone_modules
-    edited = [*_EDITED, *differential]
+    edited = [*_EDITED]
+    # Names each surviving file reads.  A helper another file still names is
+    # kept even when it reads a name this removal deletes: ``sbleq_variant``
+    # serves every S*bleq variant, not just the one going.
+    surviving = [f for f in files if not _within(f, doomed) and (ROOT / f).is_file()]
+    used_by_file = {
+        f: _names_used(ast.parse((ROOT / f).read_text(encoding="utf-8")))
+        for f in surviving
+    }
+
+    def external_for(relative: str) -> set[str]:
+        names: set[str] = set()
+        for other, used in used_by_file.items():
+            if other != relative:
+                names |= used
+        return names
+
     for relative in edited:
-        _drop_entries(ROOT / relative, keys | paths, modules)
-        _drop_inline_items(ROOT / relative, {name})
+        _drop_entries(ROOT / relative, keys | paths, modules, external_for(relative))
+        _drop_inline_items(ROOT / relative, keys)
 
     def prune(node: object) -> object:
         if isinstance(node, dict):
@@ -662,7 +960,28 @@ def remove(name: str) -> list[str]:
         return node
 
     _drop_json(ROOT / "tests/fixtures/generator_sizes.json", prune)
-    for relative in ("tests/fixtures/curation.toml", "src/esolangs/proof_status.toml"):
+    # Timing snapshots keep one entry per pytest node ID; drop the removed
+    # language's parametrized rows and its own deleted test files.
+    timings = ROOT / "tests/fixtures/slow_durations.json"
+
+    def drop_timings(node: object) -> object:
+        if not isinstance(node, dict):
+            return node
+        names = {name, lang.id, *lang.aliases}
+        return {
+            key: value
+            for key, value in node.items()
+            if not _stale_timing(str(key), names, paths)
+        }
+
+    if timings.is_file():
+        _drop_json(timings, drop_timings)
+    for relative in (
+        "tests/fixtures/curation.toml",
+        "src/esolangs/proof_status.toml",
+        "tests/fixtures/sharing_catalogue.toml",
+        "tests/fixtures/canonical_folding_catalogue.toml",
+    ):
         _drop_toml(ROOT / relative, name)
     for relative in ("docs/limitations.md", "docs/proofs/index.md"):
         _drop_bullets(ROOT / relative, name)
@@ -677,18 +996,40 @@ def remove(name: str) -> list[str]:
         encoding="utf-8",
     )
     # A cut entry can leave its import unused; the linter knows which.
-    touched = [str(p.relative_to(ROOT)) for p in module_paths - doomed] + edited
+    shared = ["src/esolangs/tools/wrap.py"]
+    touched = [
+        *[str(p.relative_to(ROOT)) for p in module_paths - doomed],
+        *edited,
+        *shared,
+    ]
     ruff = Path(sys.executable).parent / "ruff"
-    for command in (["check", "--fix", "--select", "F401,I"], ["format"]):
-        subprocess.run(
-            [str(ruff), *command, "-q", *touched],
-            cwd=ROOT,
-            check=False,
-            capture_output=True,
-        )
+    subprocess.run(
+        [str(ruff), "check", "--fix", "--select", "F401,I", "-q", *touched],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+    )
+    # Dead code the language left in the shared modules: its wrapper in
+    # ``wrap.py``.  The unused imports are gone, so a top-level name nothing
+    # reads is dead.
+    wrapper = getattr(lang.wrap, "__name__", None) if lang.wrap else None
+    exclusive = False
+    if wrapper is not None and not any(
+        other is not lang and other.wrap is lang.wrap for other in LANGUAGES.values()
+    ):
+        exclusive = True
+        _drop_name_items(ROOT / "src/esolangs/tools/wrap.py", {wrapper})
+    for relative in shared:
+        _drop_dead_code(ROOT / relative, external_for(relative))
+    subprocess.run(
+        [str(ruff), "format", "-q", *touched],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+    )
     for target in ("docs", "examples"):
         subprocess.run(
-            [sys.executable, "scripts/generate.py", target],
+            [sys.executable, "scripts/docs/generate.py", target],
             cwd=ROOT,
             check=True,
             stdout=subprocess.DEVNULL,
@@ -699,7 +1040,8 @@ def remove(name: str) -> list[str]:
         [
             sys.executable,
             "-c",
-            "from tests.test_language_coupling import lower_recorded; lower_recorded()",
+            "from tests.api.test_language_coupling import lower_recorded; "
+            "lower_recorded()",
         ],
         cwd=ROOT,
         check=True,
@@ -713,11 +1055,51 @@ def remove(name: str) -> list[str]:
         for user in importers
         if not _within(user, doomed)
     )
+    survived = sorted(
+        f"{path}: still present after its language went"
+        for path in paths
+        if (ROOT / path).exists()
+    )
+    # Prose and comments name a language by its display name and aliases; the
+    # id and module are ordinary words (``line``, ``back``) far too often to
+    # grep bare, so they count only inside quotes or a dotted module path.
+    shadowed = any(other != name and other.startswith(name) for other in LANGUAGES)
+    tokens = {name, *lang.aliases}
+    if name.isdigit() or shadowed:
+        tokens.discard(name)
+    if exclusive and wrapper is not None:
+        # The wrapper's own name is not the language's; surface the tests that
+        # still name it (``WRAPPERS[...] is _bio``) so the hand edit is found.
+        tokens.add(wrapper)
+    patterns = list(tokens)
+    patterns += [
+        f"{quote}{token}{quote}"
+        for token in {name, lang.id, *lang.aliases}
+        for quote in ('"', "'", "`")
+    ]
+    if module:
+        patterns.append(f"esolangs.interpreters.{module}")
+    if declaring:
+        patterns.append(declaring)
+    patterns = list(dict.fromkeys(patterns))
+    args: list[str] = []
+    for pattern in patterns:
+        args += ["-e", pattern]
     grep = subprocess.run(
-        ["git", "grep", "-n", "-I", "-w", "-e", name, "-e", lang.id, "-e", module],
+        ["git", "grep", "-n", "-I", "-F", "-w", *args],
         cwd=ROOT,
         capture_output=True,
         text=True,
         check=False,
     )
-    return kept + broken + grep.stdout.splitlines()
+    # The tool's own examples name languages (``Piet++``, ``[1-Line]``), and
+    # the changelog records that they existed; neither is coupling to edit,
+    # so leave both out of the report.  Label what each remaining mention
+    # needs: the tool cannot rewrite prose or a runnable example without
+    # inventing a claim, so the edit stays with the caller.
+    mentions = [
+        f"[{_mention_edit(line)}] {line}"
+        for line in grep.stdout.splitlines()
+        if not line.startswith(("scripts/remove_language.py:", "CHANGELOG.md:"))
+    ]
+    return kept + survived + broken + mentions

@@ -8,11 +8,11 @@ from collections.abc import Callable
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
+from esolangs.tools.constant_projection import balanced_projection, projected_inputs
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     TEMPLATE_CHAR,
     _validate_truth_table,
-    essential_inputs,
     move_text,
     read_at,
 )
@@ -44,9 +44,11 @@ _NOCOMMENT_GROUP = 6
 _NOCOMMENT_STAGE = 32
 
 
-def _projected(truth_table: str, n: int) -> tuple[str, int, dict[int, int]]:
+def _projected(
+    truth_table: str, n: int, *, keep_constant_input: bool = False
+) -> tuple[str, int, dict[int, int]]:
     """Return the essential-input table, its width, and weight by input."""
-    used = essential_inputs(truth_table, n) or [0]
+    used = projected_inputs(truth_table, n, keep_constant_input=keep_constant_input)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)
     return table, width, {i: 1 << (width - 1 - s) for s, i in enumerate(used)}
@@ -72,7 +74,9 @@ def _group(delta: int) -> str:
     return "fsf" + {1: "ii", -1: "dd", 0: "id"}[delta] + "s"
 
 
-def _nocomment_chain(truth_table: str, n: int) -> str:
+def _nocomment_chain(
+    truth_table: str, n: int, *, keep_constant_input: bool = False
+) -> str:
     """Build a NoComment template that needs six tape cells at any arity.
 
     The one-``s`` narrow decode caps at ``n == 8`` and the wide one's
@@ -89,7 +93,9 @@ def _nocomment_chain(truth_table: str, n: int) -> str:
     epilogue maps ``{6, 8}`` to ``{48, 49}``.  Size ``6`` per row plus
     ``T / 32`` pushes; execution ``O(T)``; stack depth ``T / 32 + n + 3``.
     """
-    table, width, weights = _projected(truth_table, n)
+    table, width, weights = _projected(
+        truth_table, n, keep_constant_input=keep_constant_input
+    )
     rows = 1 << width
     out: list[str] = []
     move = _mover(out, 0)
@@ -170,13 +176,20 @@ def nocomment(truth_table: str) -> str:
     one-skip form needs the index to fit a byte and is used below
     ``_NOCOMMENT_CHAIN_MIN``; :func:`_nocomment_chain` takes over from four inputs.
     """
+    return _program(truth_table)
+
+
+def _program(truth_table: str, *, keep_constant_input: bool = False) -> str:
+    """Build the indexed template, including a one-entry constant table."""
     n = _validate_truth_table(truth_table)
     if n >= _NOCOMMENT_CHAIN_MIN:
-        return _nocomment_chain(truth_table, n)
+        return _nocomment_chain(truth_table, n, keep_constant_input=keep_constant_input)
 
     # Sized by the essential inputs (one ``l`` and one output cell per row).
     # An ignored input keeps its setter and prologue but takes no weight.
-    table, width, weights = _projected(truth_table, n)
+    table, width, weights = _projected(
+        truth_table, n, keep_constant_input=keep_constant_input
+    )
 
     k = 2**width
     index = 2 * n
@@ -247,6 +260,13 @@ def nocomment(truth_table: str) -> str:
     return "".join(setup + commands)
 
 
+def balance_nocomment(truth_table: str, default: str) -> str:
+    """Retain the legacy constant layout when it balances better."""
+    return balanced_projection(
+        default, _program(truth_table, keep_constant_input=True), "nocomment"
+    )
+
+
 LANGUAGE = Language(
     "NoComment",
     "tape_based.nocomment",
@@ -256,5 +276,6 @@ LANGUAGE = Language(
     shape=Shape.REDUCING,
     contract=BooleanContract(),
     wrap=wrap_chars,
+    balance=balance_nocomment,
     example=Example(pair=PAIR),
 )

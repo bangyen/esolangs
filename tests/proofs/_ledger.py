@@ -155,7 +155,7 @@ def load(path: Path | None = None) -> Ledger:
     """Read and parse the ledger."""
     text = (path or DOC).read_text(encoding="utf-8")
 
-    from scripts.proof_status import load as load_status
+    from scripts.docs.proof_status import load as load_status
 
     proofs, _ = load_status()
     rows = [
@@ -176,7 +176,7 @@ def load(path: Path | None = None) -> Ledger:
         for match in re.finditer(r"^\*\*(.+?)\.\*\*", schemes, re.MULTILINE)
     }
 
-    # ``scripts/proof_status.py`` renders this sentence; reading it back
+    # ``scripts/docs/proof_status.py`` renders this sentence; reading it back
     # catches a committed copy left behind by an edit to the ledger rows.
     count = re.search(
         r"records (\d+) theoretical totality arguments and (\w+) exceptions?",

@@ -14,7 +14,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.cursorless_io import PositionlessIO
-from tests.raises import raises_message
+from tests.support.raises import raises_message
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
 

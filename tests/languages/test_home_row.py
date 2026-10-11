@@ -1,7 +1,7 @@
 """Home Row through the shared API, CLI and machinery."""
 
 import esolangs
-from tests.test_input_encoding import XOR
+from tests.io.test_input_encoding import XOR
 
 
 def test_the_width_applies_once_the_bits_are_in() -> None:

@@ -14,7 +14,7 @@ from esolangs.interpreters.other.unlambda import (
     run,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 #: The wiki's Hello world: a left-nested chain of prints, newline first.
 #: Spelled from its atoms rather than by hand, because ``n`` atoms need

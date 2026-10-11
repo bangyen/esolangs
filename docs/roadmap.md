@@ -3,6 +3,38 @@
 This page lists work that is still open. Finished work lives in the git
 history; standing rules and proved limits are in [limitations](limitations.md).
 
+## Canonical generator gaps
+
+Ignored inputs must be dropped, constant subtrees folded, and repeated
+subtrees shared under the existing execution and workspace contracts.
+Current sharing helpers and selected controls do not establish completeness.
+Close each gap with a named construction and native execution, or an
+exemption supported by a structural proof or the measured criterion in
+[Contributing](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
+
+- **Line:** exempt (measured). The canonical share is present (`shared_tree`),
+  but the measured 40.3% is same-level duplication an ancestor return cannot
+  express: every share must re-descend a *test-free* arm. The structured
+  cases that dominate that measure carry no reachable fork at all -- parity
+  repeats 240 of 255 nodes at n=8, majority 105, and neither has a fork whose
+  test-free arm reaches a recurring residual. On random n=5..8 no generated
+  program emits a loop-back, though reachable fork candidates exist (854 over
+  200 n=7 tables), so the wall is return overhead and layout: a second return
+  target needs bus routing Line's crossing-free strokes forbid. Controls in
+  `tests/tools/test_boolean_line_share_scope.py`.
+- **Circuit Diagram:** wall (measured). The cofactor-sharing bus fold is
+  area-smaller than the H-layout but not linear-area. Its node-count cutoff
+  (`nodes**2 <= 4*T`) rejects the dense n=8 fold (75 nodes) although the
+  shared model is 194,775 cells against the H-layout's 1,946,024, so the
+  public build emits the unshared lattice and jumps x26.4 in area from n=7
+  (73,809) to n=8. Removing the cutoff admits folds whose same-parity growth
+  n=8->10 is x4.93, over the x4.4 contract; banding lowers the constant but
+  not the exponent (x4.79), and the H-layout's own is x4.37. Sharing would
+  have to be grafted onto the H-recursion -- one lattice site per distinct
+  residual, parents' buses routed to it -- a new construction, not a parameter
+  change. Controls in
+  `tests/tools/test_boolean_circuit_diagram_share.py`.
+
 ## Research follow-up
 
 - **Linear Boolean generators: make generation and output grow only with
@@ -33,7 +65,7 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   loading; runs under 10 ms do not establish an exponent. An axis closes
   only with a language-wide lower bound; `Measured` keeps the empirical
   regression gate without asserting a proof. To update the table, edit
-  `src/esolangs/proof_status.toml` and run `python scripts/generate.py docs`. Current
+  `src/esolangs/proof_status.toml` and run `python scripts/docs/generate.py docs`. Current
   status:
 
   <!-- SCALING-STATUS:START -->
@@ -85,8 +117,9 @@ Stalled problems, one line each; detail lives in the linked proof page. A
 line changes only when its next step does.
 
 - **FRACTRAN bit-linear pipeline.** Forward cleanup now executes without
-  minimum-tree updates. Next: remove the materialized prime sieve's
-  `Theta(T log T)` generation cost; literal conversion remains too
+  minimum-tree updates. The sieve measures ~8% of a build that doubles per
+  input through n=19, so the `Theta(T log T)` is bit work, not wall clock.
+  Next: a bit-linear construction, sieve and literal conversion together
   ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
 - **Brainfuck behaviour count.** Cancelling tested-cell updates with balance
   confined to `{-1,0,1}` are certified. Next: cover larger excursions or
@@ -105,8 +138,8 @@ line changes only when its next step does.
   8,432 cells short before the full query and relocation selector. Next:
   share initialization and query control, then relocate records before capture
   ([malbolge-scaling](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09)).
-- **Vandevelo structural scaling.** Next: settle Cohen and Shinkar's
-  `O(log n)` DNF-of-parities gap, which bounds output and so generation
-  time; on the build side, a `certify` that rebuilds a level only when its
-  direction drops below half the average
+- **Vandevelo structural scaling.** The build-side `certify` fix measures
+  under 3% of generation time at n=16, so it moves no gate and the axis is
+  proof-shaped. Next: settle Cohen and Shinkar's `O(log n)` DNF-of-parities
+  gap, which bounds output and so generation time
   ([index](proofs/index.md#vandevelo-identifier-and-fallback-audit)).

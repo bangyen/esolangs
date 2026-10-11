@@ -17,7 +17,7 @@ Judgment calls:
 - An unset variable reads as the empty string.  The wiki cat needs it: at
   EOF it looks up ``==``, never set, and runs the result as an empty
   program, which ends the run with nothing left to execute.
-- Bits ride bytes little-endian, as in Boolfuck: each input byte supplies
+- Bits ride bytes little-endian: each input byte supplies
   eight runs' bits, low bit first, and output bits pack low bit first into
   bytes, a partial byte padded with zeros at halt.  So the wiki cat copies
   bytes.  Input is reduced modulo 256.  EOF is a value, ``=``, never an

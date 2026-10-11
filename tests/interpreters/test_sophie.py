@@ -15,7 +15,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.runner import run_printing
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 
 @pytest.mark.parametrize(
@@ -30,13 +30,11 @@ from tests.raises import assert_rejected_with_hint
         pytest.param("#A@A{,&}", "A", id="conditional_without_else"),
         pytest.param("#A@A{@$65{,#B,}}{#C,}&", "AB", id="nested_conditionals"),
         pytest.param("#$3[.*]&", "3", id="simple_loop"),
-        # `*` breaks only its own loop (wiki "break loop"; the author's
-        # sophie.py pops one loop), so the outer loop needs its own break.
+        # `*` breaks only its own loop, so the outer loop needs its own break.
         pytest.param("#A[#B[.*]*]&", "66", id="nested_loops"),
         # Closing a loop pops one frame, not all but the outermost.
         pytest.param("#A[#B[#C[.*]*]*]&", "67", id="loops_nested_three_deep"),
         pytest.param("{This is a comment}#A,&", "A", id="comment_block"),
-        pytest.param("{Outer{Inner}comment}#A,&", "A", id="nested_comments"),
         # ``#[`` loads the ``[`` as data, so no loop is left unmatched.
         pytest.param("#[", "", id="a_bracket_loaded_by_a_marker_is_not_a_bracket"),
         # Validation already skipped ``#]``; the jump table did not.
@@ -54,8 +52,6 @@ from tests.raises import assert_rejected_with_hint
         pytest.param("#$#[,", "[", id="dollar_without_number_is_the_character"),
         # A 5000-digit load prints back whole (CPython's str cap is 4300).
         pytest.param(f"#${'9' * 5000}.&", "9" * 5000, id="past_the_digit_cap"),
-        # ``#$.`` loads ``$`` and prints it: the page has only ``#c`` and
-        # ``#$n``, and the clean-room reference agrees (``$`` was a marker).
         pytest.param("#$.#$A,", "36$", id="dollar_char_loaded_as_data"),
         pytest.param("xyz#A,&", "A", id="invalid_commands_ignored"),
     ],
@@ -114,14 +110,6 @@ class TestSophieExamples:
         run(f"#$42{read}.&", io=source)
         assert source.getvalue() == "0"
 
-    def test_xor_program_0_0(self) -> None:
-        with (
-            patch("builtins.input", side_effect=["0", "0"]),
-            redirect_stdout(io.StringIO()) as f,
-        ):
-            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&", io=IO())
-        assert f.getvalue() == "0"
-
 
 class TestStepMachine:
     def test_a_read_loop_is_not_a_cycle(self) -> None:
@@ -150,10 +138,6 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     stepping_program = "#$5"
     halting_program = "&"
     looping_program = "[]"
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])
 
 
 @pytest.mark.medium

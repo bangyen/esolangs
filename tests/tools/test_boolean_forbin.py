@@ -7,10 +7,10 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from tests.support.witness_tables import witnesses
 from tests.tools.boolean_runners import (
     run_forbin_boolean,
 )
-from tests.witness_tables import witnesses
 
 
 class TestForbinBoolean:

@@ -13,7 +13,7 @@ The API handles language I/O conventions using [`describe`](#describe) metadata.
 | `debug` | run under the breakpoint/watch VM |
 | `encode` | print the stdin that feeds a bit string |
 | `read-answer` | print the answer bit a program's output carries |
-| `list` | list the languages; `--details` adds the generator, template and example markers |
+| `list` | list the languages; `--details` adds the generator, template and example markers; `--state-model` and `--shape` filter by category and construction shape |
 | `describe` | how one language reads input and where its answer lands |
 
 `encode` and `read-answer` wrap `run` for one input row:
@@ -281,7 +281,10 @@ assert len(debug.output) > 2
 ## describe
 
 `describe(language)` returns the language’s API metadata:
-`source_kind`, `input_shape`, `input_encoding`, `answer_mode`, `answer_encoding`,
+`source_kind`, `state_model` (its category: register, tape, stack, grid,
+queue or other), `shape` (its generator’s construction growth: tree,
+reducing or lookup; None without a generator), `input_shape`,
+`input_encoding`, `answer_mode`, `answer_encoding`,
 `width_effect`, `parameterized`, `reads_input`, `random` (the interpreter draws
 at random, so `run(seed=...)` applies) and the rest.
 `esolangs describe --json <language>` prints it; `esolangs list --details`

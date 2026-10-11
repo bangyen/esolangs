@@ -1,9 +1,16 @@
-"""Boolean-function generator for ROTfuck, at the default ``rotation="backward"``.
+"""Boolean-function generator for ROTfuck, in either rotation direction.
 
 ROTfuck turns every command one step around its cycle after each executed
 command, so what a character *means* depends on how many commands have run.
 The generator writes a brainfuck program and :class:`_Builder` spells each
-command backwards by the rotation it will execute at.
+command against the cycle in force -- backward by default, forward when asked.
+
+``rotation`` selects the cycle, and that is the builder's only parameter: the
+two cycles are the eight commands read in opposite directions, so each holds
+``[`` and ``]`` adjacent and the phase arithmetic below is the same for both.  A
+command that reads as a bracket to a seek depends on the cycle, which
+:func:`_shows` resolves, and the builder spells the intended command through
+the same cycle it will execute under.
 
 Loops are where that bites.  A bracket seeks its partner before rotating, so
 a loop is sound when its ``[`` and ``]`` execute at the same rotation modulo
@@ -18,21 +25,26 @@ import heapq
 from collections.abc import Callable
 from itertools import product
 
-from esolangs._dialects import ROTFUCK_CYCLES
-from esolangs._dialects import rotation as validate_rotation
+from esolangs.interpreters.tape_based.rotfuck._dialect import (
+    ROTATIONS,
+    ROTFUCK_CYCLES,
+)
+from esolangs.interpreters.tape_based.rotfuck._dialect import (
+    rotation as validate_rotation,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
+from esolangs.tools.constant_projection import balanced_projection, projected_inputs
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    essential_inputs,
     read_at,
 )
 from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["rotfuck"]
 
-#: The default direction's cycle: ``+ -> ] -> [ -> . -> , -> < -> > -> - -> +``.
+#: The default (backward) cycle: ``+ -> ] -> [ -> . -> , -> < -> > -> - -> +``.
 _ROTFUCK_CHAIN = ROTFUCK_CYCLES["backward"]
 
 # Pads are even-length; an 8-run is a full-cycle rotation no-op, so 6 is the cap.
@@ -46,19 +58,19 @@ _RADIX_BITS = 6
 type _Tree = list[str | _Tree]
 
 
-def _rotfuck_rot(char: str, steps: int) -> str:
+def _rotfuck_rot(char: str, steps: int, cycle: str = _ROTFUCK_CHAIN) -> str:
     """Advance ``char`` ``steps`` steps along the ROTfuck rotation cycle."""
-    index = _ROTFUCK_CHAIN.index(char)
-    return _ROTFUCK_CHAIN[(index + steps) % 8]
+    index = cycle.index(char)
+    return cycle[(index + steps) % 8]
 
 
-def _shows(cmd: str, seek: int, rot: int) -> bool:
+def _shows(cmd: str, seek: int, rot: int, cycle: str = _ROTFUCK_CHAIN) -> bool:
     """Whether ``cmd``, executing at ``rot``, reads as a bracket at ``seek``.
 
     A seek reads the whole program at one rotation, so a command that
     executes ``d`` steps after it shows there as ``rot^-d`` of itself.
     """
-    return _rotfuck_rot(cmd, seek - rot) in "[]"
+    return _rotfuck_rot(cmd, seek - rot, cycle) in "[]"
 
 
 def _pads() -> tuple[str, ...]:
@@ -104,19 +116,20 @@ def _parse(text: str) -> _Tree:
 class _Builder:
     """Emitted source, the rotation it has reached, and the open seeks' phases."""
 
-    def __init__(self) -> None:
-        """Start empty, at rotation zero, inside no loop."""
+    def __init__(self, cycle: str = _ROTFUCK_CHAIN) -> None:
+        """Start empty, at rotation zero, inside no loop, against ``cycle``."""
         self.src: list[str] = []
         self.rot = 0
         self._seeks: list[int] = []
+        self.cycle = cycle
 
     def _hidden(self, cmd: str, rot: int) -> bool:
         """Whether ``cmd``, executing at ``rot``, shows as no bracket."""
-        return not any(_shows(cmd, seek, rot) for seek in self._seeks)
+        return not any(_shows(cmd, seek, rot, self.cycle) for seek in self._seeks)
 
     def _put(self, cmd: str) -> None:
         """Append the character that reads as ``cmd`` at the current rotation."""
-        self.src.append(_rotfuck_rot(cmd, -self.rot))
+        self.src.append(_rotfuck_rot(cmd, -self.rot, self.cycle))
         self.rot = (self.rot + 1) % 8
 
     def _pad_until(self, done: Callable[[int], bool]) -> None:
@@ -140,7 +153,9 @@ class _Builder:
                     heapq.heappush(
                         queue, (cost + len(run), (rot + len(run)) % 8, path + run)
                     )
-        raise _UnplaceableError("no neutral pad is hidden from every open seek")
+        raise _UnplaceableError(  # pragma: no cover - a pad always fits
+            "no neutral pad is hidden from every open seek"
+        )
 
     def _command(self, cmd: str) -> None:
         """Emit ``cmd``, padded past rotations at which it shows as a bracket."""
@@ -154,10 +169,11 @@ class _Builder:
         (the same phase) or as nothing (two to six apart); one apart, one of
         them reads as the other bracket.  Two apart is out too: two seeks
         that far apart ban all of ``+-><`` at one rotation, which no pad
-        crosses.  The body pads to seven modulo eight, so its parity has to
-        be odd: a body with an even item count opens with a ``[`` that
-        cannot fire, because the cell that entered the loop is nonzero and
-        the pads before it preserve that cell.
+        crosses.  Both cycles keep ``[`` and ``]`` adjacent, so this set of
+        phases does not depend on the direction.  The body pads to seven
+        modulo eight, so its parity has to be odd: a body with an even item
+        count opens with a ``[`` that cannot fire, because the cell that
+        entered the loop is nonzero and the pads before it preserve that cell.
         """
         self._pad_until(
             lambda rot: all((seek - rot) % 8 in (0, 3, 4, 5) for seek in self._seeks)
@@ -292,8 +308,8 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
     """Build a ROTfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.  Only
-    the default ``rotation`` is targeted.
+    inputs (most significant first); the table length implies ``n``.  The
+    program targets the chosen ``rotation``.
 
     A tape lookup: entry ``e`` sits at cell ``2 * (size - 1 - e)``, each
     with a zero carrier above it, and the pointer starts on entry 0's
@@ -305,12 +321,18 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
     shared: a brainfuck copy is at least 19 commands a cell against 2.5 for
     an entry.
     """
-    if validate_rotation(rotation) != "backward":
-        raise ValueError("the ROTfuck generator targets rotation='backward' only")
+    return _program(truth_table, rotation=rotation)
+
+
+def _program(
+    truth_table: str, *, rotation: str = "backward", keep_constant_input: bool = False
+) -> str:
+    """Build the rotated lookup, including a one-entry constant table."""
+    cycle = ROTFUCK_CYCLES[validate_rotation(rotation)]
     n = _validate_truth_table(truth_table)
 
     # Ignored inputs are still read but do not enter the index.
-    used = essential_inputs(truth_table, n) or [0]
+    used = projected_inputs(truth_table, n, keep_constant_input=keep_constant_input)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     strips = [_strip(table, skips=False)]
     if (skipped := _strip(table, skips=True)) != strips[0]:
@@ -320,10 +342,21 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
         bf = (
             strip + _select(n, used, _groups(len(used))) + "<" + "+" * _ASCII_ZERO + "."
         )
-        out = _Builder()
+        out = _Builder(cycle)
         out.emit(_parse(bf))
         texts.append(out.text())
     return min(texts, key=len)
+
+
+def balance_rotfuck(
+    truth_table: str, default: str, *, rotation: str = "backward"
+) -> str:
+    """Retain the legacy constant layout when it balances better."""
+    return balanced_projection(
+        default,
+        _program(truth_table, rotation=rotation, keep_constant_input=True),
+        "rotfuck",
+    )
 
 
 def _dialect(rotation: str = "backward") -> None:
@@ -336,10 +369,12 @@ LANGUAGE = Language(
     "tape_based.rotfuck",
     boolean=rotfuck,
     dialect=_dialect,
+    dialect_values={"rotation": ROTATIONS},
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    balance=balance_rotfuck,
 )

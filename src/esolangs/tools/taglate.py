@@ -112,7 +112,7 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     return "e" * rot + zero + swap + bring + er
 
 
-def _taglate_raw(truth_table: str) -> str:
+def _taglate_raw(truth_table: str, *, keep_constant_layout: bool = False) -> str:
     r"""Build a Taglate program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -164,6 +164,8 @@ def _taglate_raw(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
 
     ghost = n % 2 == 1 and n > 1
+    if len(set(truth_table)) == 1 and not keep_constant_layout:
+        return truth_table[0] + "\n" + "h" * (n + ghost) + "i"
     used = essential_inputs(truth_table, n)
     # A constant table depends on nothing, so it reduces to the smallest
     # valid table there is -- a one-input constant, never the length-1
@@ -181,7 +183,9 @@ def _taglate_raw(truth_table: str) -> str:
     # A single input needs no ghost, so odd size is fine there.
     if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
         reduced = read_at(truth_table, used, n)
-        seed, commands = _taglate_raw(reduced).split("\n", 1)
+        seed, commands = _taglate_raw(
+            reduced, keep_constant_layout=keep_constant_layout
+        ).split("\n", 1)
         discard = "h" + "e" * len(seed) + "f"
         # Odd ``n`` above 1 is called with a leading ghost digit, which is
         # one more input to read and throw away before the real ones.
@@ -305,8 +309,21 @@ def taglate(truth_table: str, width: int | None = None) -> str:
     return wrap_program(program, "taglate", width)
 
 
-def balance_taglate(_table: str, default: str) -> str:
+def balance_taglate(table: str, default: str) -> str:
     """Compare the square crossing for literal and bootstrapped queues."""
+    from esolangs.tools.wrap import balance_score
+
+    if len(set(table)) == 1:
+        return min(
+            _balanced(default),
+            _balanced(_taglate_raw(table, keep_constant_layout=True)),
+            key=balance_score,
+        )
+    return _balanced(default)
+
+
+def _balanced(default: str) -> str:
+    """Compare literal and bootstrapped folds of one queue construction."""
     from esolangs.tools.wrap import balance_score, wrap_program
 
     seed, _, commands = default.partition("\n")

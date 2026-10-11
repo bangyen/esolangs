@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.generator_support import evaluate_generated
+from tests.support.generator_support import evaluate_generated
 
 
 @pytest.mark.parametrize("program", ["++4:", "--4?", "-4?", "+12+", "v:", "v$"])
