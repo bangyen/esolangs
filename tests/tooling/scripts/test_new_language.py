@@ -247,13 +247,15 @@ def test_owner_id_prefers_the_longest_id() -> None:
 
 def test_stale_timing_matches_any_parametrize_component() -> None:
     names = {"Line", "line", "Piet"}
-    gone = {"tests/generators/test_boolean_line.py"}
+    gone = {"src/esolangs/languages/line/tests/test_boolean_line.py"}
     stale = remove_language._stale_timing  # noqa: SLF001
     assert stale("x.py::t[1-Line]", names, gone)
     assert stale("x.py::t[Line-2]", names, gone)
     assert stale("x.py::t[a-Line-b]", names, gone)
     assert stale("x.py::t[Line]", names, gone)
-    assert stale("tests/generators/test_boolean_line.py::t", names, gone)
+    assert stale(
+        "src/esolangs/languages/line/tests/test_boolean_line.py::t", names, gone
+    )
     # ``Piet++`` is another language: only a whole ``-``-delimited part counts.
     assert not stale("x.py::t[Piet++-5]", names, gone)
     assert not stale("x.py::t[Piet++]", names, gone)

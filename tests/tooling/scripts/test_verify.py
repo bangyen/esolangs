@@ -32,7 +32,7 @@ class TestPytestScopeCollects:
     @pytest.mark.parametrize(
         ("path", "scoped"),
         [
-            ("tests/generators/polynomial_support.py", False),
+            ("src/esolangs/languages/polynomial/tests/polynomial_support.py", False),
             ("tests/runtime/vm/test_vm.py", True),
             ("src/esolangs/interpreters/demo/brainfuck.py", False),
             ("src/esolangs/interpreters/io.py", False),
@@ -50,8 +50,10 @@ class TestPytestScopeCollects:
         )
         assert isinstance(scope, list)
         assert set(verify.INTERPRETER_CONTRACT_TESTS) <= set(scope)
-        assert "tests/interpreters/test_brainfuck.py" in scope
-        assert "tests/generators/test_boolean_brainfuck.py" in scope
+        assert "src/esolangs/languages/brainfuck/tests/test_brainfuck.py" in scope
+        assert (
+            "src/esolangs/languages/brainfuck/tests/test_boolean_brainfuck.py" in scope
+        )
         assert all((REPO_ROOT / path).is_file() for path in scope)
 
     def test_the_patterns_match_pyproject(self) -> None:
@@ -278,12 +280,15 @@ class TestGeneratorScope:
             ["src/esolangs/tools/bfstack.py"]
         )
         assert isinstance(scope, list)
-        assert "tests/generators/test_boolean_bfstack.py" in scope
-        assert "tests/interpreters/test_bfstack.py" in scope
+        assert "src/esolangs/languages/bfstack/tests/test_boolean_bfstack.py" in scope
+        assert "src/esolangs/languages/bfstack/tests/test_bfstack.py" in scope
         assert "tests/generators/test_boolean_contract.py" in scope
         assert "tests/proofs/test_execution_formulas.py" in scope
-        assert "tests/generators/test_boolean_line.py" not in scope
-        assert "tests/generators/test_boolean_malbolge.py" not in scope
+        assert "src/esolangs/languages/line/tests/test_boolean_line.py" not in scope
+        assert (
+            "src/esolangs/languages/malbolge/tests/test_boolean_malbolge.py"
+            not in scope
+        )
 
     @pytest.mark.parametrize("module", ["helpers.py", "line/render.py", "__init__.py"])
     def test_shared_or_package_generator_changes_keep_the_whole_suite(
@@ -305,7 +310,7 @@ class TestGeneratorScope:
                 "tests/generators/test_boolean_line.py",
             ]
         )
-        assert "tests/generators/test_boolean_line.py" in scope
+        assert "src/esolangs/languages/line/tests/test_boolean_line.py" in scope
 
 
 @pytest.mark.parametrize("colocated", [False, True])
@@ -360,8 +365,8 @@ def test_generator_scope_keeps_transitive_dependents(
     assert verify._pytest_scope(  # noqa: SLF001
         ["src/esolangs/tools/target.py"]
     ) == [
-        "tests/generators/test_boolean_consumer.py",
-        "tests/generators/test_boolean_target.py",
+        "src/esolangs/languages/consumer/tests/test_boolean_consumer.py",
+        "src/esolangs/languages/target/tests/test_boolean_target.py",
         "tests/generators/test_contracts.py",
     ]
 

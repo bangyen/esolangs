@@ -6,9 +6,13 @@ import re
 import pytest
 
 from esolangs.languages import generators as boolean
+from esolangs.languages.sophie.tests.sophie_support import (
+    _residual_levels,
+    _sophie_dag,
+    _sophie_tree,
+)
 from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO
 from tests.generators.boolean_runners import run_sophie, run_sophie_from
-from tests.generators.sophie_support import _residual_levels, _sophie_dag, _sophie_tree
 from tests.support.witness_tables import row_bits
 
 

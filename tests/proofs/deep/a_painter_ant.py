@@ -10,8 +10,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.languages.a_painter_ant.generator import a_painter_ant
+from esolangs.languages.a_painter_ant.tests.a_painter_ant_trace import run
 from esolangs.tools.helpers import TEMPLATE_CHAR, input_weights
-from tests.generators.a_painter_ant_trace import run
 from tests.generators.fills import fill
 from tests.support.witness_tables import row_bits
 

@@ -45,7 +45,7 @@ Choices checked against the page's 4-bit prime tester over all sixteen inputs:
   both slots of a gate (the constant-output circuit), so ports count per cell.
 
 The page's prime tester omits five characters: two OR inputs are undriven.
-``tests/interpreters/test_circuit_diagram.py`` carries ``PRIME_TESTER``
+``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER``
 (repaired, replayed over sixteen inputs) and ``PRIME_TESTER_AS_DRAWN``
 (silence pinned).  The repair is derived and unique: the circuit is a
 product of sums ``(? | c)``, ``(? | ~a | ~b)``, ``(d | ~a)``,

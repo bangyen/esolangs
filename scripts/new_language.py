@@ -450,20 +450,15 @@ def quick_tests(name: str) -> list[str]:
     from esolangs.registry._language import Shape
 
     lang = LANGUAGES[name]
-    gen = lang.boolean.__name__ if lang.boolean else lang.id
     nodes = [
         path
-        for path in (
-            f"tests/interpreters/test_{lang.id}.py",
-            f"tests/generators/test_boolean_{gen}.py",
-            f"tests/integration/languages/test_{lang.id}.py",
-        )
+        for path in (f"tests/integration/languages/test_{lang.id}.py",)
         if (ROOT / path).exists()
     ]
     nodes += [
         path.relative_to(ROOT).as_posix()
         for path in sorted(
-            (ROOT / "src/esolangs/languages" / lang.id / "tests").glob("test_*.py")
+            (ROOT / "src/esolangs/languages" / lang.id / "tests").rglob("test_*.py")
         )
     ]
     nodes += [

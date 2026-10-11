@@ -172,7 +172,10 @@ def test_every_test_a_docstring_names_still_exists() -> None:
             cited.setdefault(name, []).append(str(path.relative_to(_ROOT)))
     defined = {
         name
-        for path in (_ROOT / "tests").rglob("*.py")
+        for path in (
+            *((_ROOT / "tests").rglob("*.py")),
+            *((_ROOT / "src/esolangs/languages").glob("*/tests/**/*.py")),
+        )
         for name in _DEFINITION.findall(path.read_text())
     }
     missing = {name: where for name, where in cited.items() if name not in defined}

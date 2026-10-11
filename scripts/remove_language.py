@@ -877,8 +877,6 @@ def remove(name: str) -> list[str]:
     doomed: set[Path] = {
         *module_paths,
         ROOT / "src/esolangs/languages" / lang.id / "tests",
-        ROOT / f"tests/interpreters/test_{lang.id}.py",
-        ROOT / f"tests/generators/test_boolean_{gen}.py",
         *wiki,
         *(ROOT / "src/esolangs/examples").glob(f"{stem}.*" if stem else "-"),
         *_owned_test_files(lang),
@@ -941,7 +939,7 @@ def remove(name: str) -> list[str]:
         if declaring and path == _module_path(declaring):
             _drop_language_statement(path / "__init__.py" if path.is_dir() else path)
     keys = {name, module, lang.id, gen, stem} - {""}
-    # ``Path("tests/interpreters/test_inject.py")`` in a support list.
+    # ``Path("src/esolangs/languages/inject/tests/test_inject.py")`` in a support list.
     paths = {str(p.relative_to(ROOT)) for p in doomed}
     # A deleted test module too: ``tests/support/samples.py`` borrows Inject's program.
     gone_modules = _gone_modules(doomed)

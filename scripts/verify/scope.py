@@ -699,28 +699,6 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
                 paths.update(test.relative_to(ROOT).as_posix() for test in suites)
                 paths.update(INTERPRETER_CONTRACT_TESTS)
                 continue
-        if f.startswith("src/esolangs/languages/") and f.endswith("/interpreter.py"):
-            relative = Path(f).relative_to("src/esolangs/languages")
-            # Package helpers can share a filename with another interpreter.
-            if len(relative.parts) != 2:
-                return WHOLE_SUITE
-            from esolangs.registry import LANGUAGES
-
-            stem = relative.parts[0]
-            if stem not in {lang.id for lang in LANGUAGES.values()}:
-                return WHOLE_SUITE
-            candidate = f"tests/interpreters/test_{stem}.py"
-            if not (ROOT / candidate).exists():
-                return WHOLE_SUITE
-            paths.add(candidate)
-            for suite in (ROOT / "tests/interpreters").glob(f"test_{stem}_*.py"):
-                paths.add(suite.relative_to(ROOT).as_posix())
-            # Language-local tests cannot detect broken VM or public I/O contracts.
-            paths.update(INTERPRETER_CONTRACT_TESTS)
-            generator_tests = f"tests/generators/test_boolean_{stem}.py"
-            if (ROOT / generator_tests).exists():
-                paths.add(generator_tests)
-            continue
         if f.startswith("src/esolangs/languages/") and f.endswith("/generator.py"):
             relative = Path(f).relative_to("src/esolangs/languages")
             parts = relative.with_suffix("").parts

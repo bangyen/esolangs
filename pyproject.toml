@@ -127,7 +127,7 @@ ignore = [
 # holds one CV(N)(C) program in its per-language table.
 "src/esolangs/languages/cvnc/interpreter.py" = ["RUF001", "RUF002", "RUF003"]
 "src/esolangs/languages/cvnc/generator.py" = ["RUF001", "RUF002", "RUF003"]
-"tests/interpreters/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
+"src/esolangs/languages/cvnc/tests/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 "tests/support/samples.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
