@@ -5,7 +5,7 @@ import json
 import pytest
 
 from checks.check_shard_manifests import check
-from scripts.pytest_durations import Recorder
+from scripts.ci import Recorder
 
 
 def evidence(tmp_path):
@@ -125,7 +125,7 @@ def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch):
                     "--",
                     "-q",
                     "-p",
-                    "scripts.pytest_durations",
+                    "scripts.ci",
                     "--duration-output",
                     str(directory / "durations.json"),
                 ]

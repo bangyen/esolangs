@@ -610,7 +610,7 @@ def _split_coverage(
                 "loadfile",
                 "--no-loadscope-reorder",
                 "-p",
-                "scripts.pytest_durations",
+                "scripts.ci",
                 "--duration-order",
                 "--duration-output=.cache/pytest/durations.json",
             ]

@@ -150,7 +150,7 @@ jobs:
       run: uv sync --group dev --python ${{ matrix.python-version }}
 
     - name: Test with pytest (shard ${{ matrix.shard }} of 2)
-      run: uv run python scripts/ci.py shard --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 --manifest test.shard.json -- -n auto -p scripts.pytest_durations --duration-output test-durations.json
+      run: uv run python scripts/ci.py shard --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 --manifest test.shard.json -- -n auto -p scripts.ci --duration-output test-durations.json
 
     - name: Retain shard selection and completion evidence
       if: always()
@@ -199,7 +199,7 @@ jobs:
       run: >
         uv run python scripts/ci.py shard --marker "not slow and not weekly"
         --shard ${{ matrix.shard }} --shards 2 --manifest coverage.shard.json --
-        -n auto -p scripts.pytest_durations --duration-output test-durations.json --cov --cov-branch --cov-report=
+        -n auto -p scripts.ci --duration-output test-durations.json --cov --cov-branch --cov-report=
     - uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.shard }}
@@ -309,10 +309,10 @@ jobs:
     # took 78s. Put the serial step on the lighter shard.
     - name: Check the preserving certificate without competing workers
       if: matrix.shard == 2
-      run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.pytest_durations --duration-output certificate-durations.json
+      run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci --duration-output certificate-durations.json
 
     - name: Test one slow shard
-      run: uv run python scripts/ci.py shard --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 --manifest slow.shard.json --exclude-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -- -n auto -p scripts.pytest_durations --duration-output test-durations.json
+      run: uv run python scripts/ci.py shard --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 --manifest slow.shard.json --exclude-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -- -n auto -p scripts.ci --duration-output test-durations.json
 
     - name: Retain measured slow-test durations
       if: always()
