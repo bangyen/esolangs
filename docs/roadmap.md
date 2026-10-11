@@ -34,13 +34,18 @@ exemption supported by a structural proof or the measured criterion in
   1,946,024 / 1,780,773; every row executes natively. Three- and four-input
   pools and larger atoms keep both arity parities inside the measured growth gate. Global
   complete cofactors share through four/eight predicate-and-function banks:
-  the n=10 ABBA control occupies 2,684,592 cells against 5,935,410; 62
-  native rows pass. Internal residual repeats across banks/pools remain
-  open when all three fixed fold orders exceed
+  the n=10 ABBA control occupies 492,826 cells against 2,684,592; all 1,024
+  native rows pass. Up to eight repeated seven/eight-input classes now share
+  across all prefixes through H masks. The n=13 eight-class witness drops
+  from 35,581,224 to 1,530,528 cells; both execute 33 native rows, with
+  all three global fold orders rejected and all eight top-level banks distinct.
+  Residuals shared between distinct class roots, and repeats beyond the
+  class cap, remain open when all three fixed fold orders exceed
   the node-count budget. Moving three/four tail inputs first avoids the
   expander control's original graph: n=12 drops from 221 to 60 fold nodes
   and executes in 138,953 cells. Controls in
   `tests/tools/test_boolean_circuit_diagram_banks.py`,
+  `tests/tools/test_boolean_circuit_diagram_classes.py`,
   `tests/tools/test_boolean_circuit_diagram_hcells.py`,
   `tests/tools/test_boolean_circuit_diagram_order.py`,
   `tests/tools/test_boolean_circuit_diagram_pool.py` and

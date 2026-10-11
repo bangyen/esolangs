@@ -12,7 +12,7 @@ from collections.abc import Callable
 
 from esolangs.tools.helpers import _validate_truth_table
 
-from .hpool import _h_pool_layout, _h_pool_size
+from .hpool import _h_pool_layout, _h_pool_size, _large_pool_layout
 from .layout import _Layout, _RoutingLayout
 
 
@@ -107,6 +107,17 @@ def _cofactor_bank_layout(table: str, prefix_inputs: int = 2) -> _Layout:
             )
             models.append((model, list(range(prefix_inputs, n))))
         parts.append(models)
+    return _assemble_banks(parts, n, prefix_inputs, share_prefix_complements=True)
+
+
+def _assemble_banks(
+    parts: list[list[tuple[_Layout, list[int]]]],
+    n: int,
+    prefix_inputs: int,
+    *,
+    share_prefix_complements: bool,
+) -> _Layout:
+    prefix_order = list(range(prefix_inputs))
     right = (
         max(model.bounds()[1] for models in parts for model, _ in models) + 2 * n + 12
     )
@@ -131,7 +142,7 @@ def _cofactor_bank_layout(table: str, prefix_inputs: int = 2) -> _Layout:
     required = set()
     for models in parts:
         for model, ports in models:
-            if ports == prefix_order:
+            if share_prefix_complements and ports == prefix_order:
                 for (x, row), char in model.glyphs.items():
                     if char == "~":
                         required.add(model.junctions[x - 1, row])
@@ -172,7 +183,7 @@ def _cofactor_bank_layout(table: str, prefix_inputs: int = 2) -> _Layout:
 
             removed = set()
             negative_feeds: list[tuple[int, tuple[int, int]]] = []
-            if port_order == prefix_order:
+            if share_prefix_complements and port_order == prefix_order:
                 for (x, row), char in model.glyphs.items():
                     if char != "~":
                         continue
@@ -244,6 +255,53 @@ def _cofactor_bank_layout(table: str, prefix_inputs: int = 2) -> _Layout:
     layout.glyph(point[0] + 1, point[1], "-")
     layout.glyph(point[0] + 2, point[1], ":")
     return layout
+
+
+def _residual_class_bank_candidate(
+    table: str, ceiling: int | None = None
+) -> _Layout | None:
+    """Share up to eight repeated seven/eight-input classes across all prefixes.
+
+    Fixed class count and bounded H masks give O(T) work and area.
+    Predicate depth, suffix depth and three OR levels stay within 2n+2 ticks.
+    """
+    from . import _essential_table
+
+    n = _validate_truth_table(table)
+    tail = 7 if n % 2 else 8
+    prefix = n - tail
+    if prefix < 2 or len(set(table)) == 1:
+        return None
+    size = 1 << tail
+    chunks = [table[start : start + size] for start in range(0, len(table), size)]
+    classes = [chunk for chunk in dict.fromkeys(chunks) if "1" in chunk]
+    if len(classes) > 8 or not any(
+        "0" in chunk and chunks.count(chunk) > 1 for chunk in classes
+    ):
+        return None
+    parts: list[list[tuple[_Layout, list[int]]]] = []
+    for chunk in classes:
+        mask = "".join("1" if word == chunk else "0" for word in chunks)
+        models: list[tuple[_Layout, list[int]]] = []
+        for word, ports, order in (
+            (mask, prefix, list(range(prefix))),
+            (chunk, tail, list(range(prefix, n))),
+        ):
+            if "0" not in word:
+                continue
+            used, reduced = _essential_table(word, ports)
+            model = _large_pool_layout(
+                reduced, input_order=used, port_inputs=ports, ceiling=ceiling
+            )
+            if model is None:
+                return None
+            models.append((model, order))
+        parts.append(models)
+    # Keep H-mask complements inside their copied blocks so each local wire
+    # retains its original driver and coordinate-bucket copying stays linear.
+    model = _assemble_banks(parts, n, prefix, share_prefix_complements=False)
+    height, width = model.bounds()
+    return model if ceiling is None or height * width <= ceiling else None
 
 
 def _repeated_cofactor_bank(table: str) -> _Layout | None:

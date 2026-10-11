@@ -640,7 +640,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     with fixed-size cofactor pools when it beats the minterm lattice. Repeated
     complete cofactors and five-input residuals also compete through fixed
     four/eight predicate-and-function banks. Seven/eight-input H atoms
-    share larger residual classes under the same area ceiling.
+    share larger residual classes under the same area ceiling. Up to eight
+    repeated suffix classes share across every prefix through bounded H masks.
 
     What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
     floor is what a band cannot reclaim -- the rails and complements, live
@@ -652,7 +653,7 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     inputs = len(truth_table).bit_length() - 1
     # Constants need only the scalar clock gate, not a minterm lattice.
     if width is None and inputs >= 8 and "1" in truth_table and "0" in truth_table:
-        from .banks import _cofactor_bank_candidate
+        from .banks import _cofactor_bank_candidate, _residual_class_bank_candidate
         from .hpool import _h_pool_area_floor, _h_pool_layout, _large_pool_layout
 
         selected = _linear_shared_layout(truth_table, inputs)
@@ -689,22 +690,30 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
                     height, columns = selected.bounds()
                     if pool_height * pool_columns < height * columns:
                         selected = pooled
-        is_large = selected is None
+        prefer_old_bank = selected is None
         if large is not None:
             if selected is None:
                 selected = large
             else:
                 height, columns = selected.bounds()
                 if large_area is not None and large_area < height * columns:
-                    selected, is_large = large, True
+                    selected, prefer_old_bank = large, True
         if selected is None:  # both fallbacks above are construction invariants
             raise AssertionError("missing Circuit Diagram layout")
+        height, columns = selected.bounds()
+        classes = _residual_class_bank_candidate(truth_table, height * columns)
+        if classes is not None:
+            class_height, class_columns = classes.bounds()
+            if class_height * class_columns < height * columns:
+                selected, prefer_old_bank = classes, True
         height, columns = selected.bounds()
         bank = _cofactor_bank_candidate(truth_table, height * columns)
         if bank is not None:
             bank_height, bank_columns = bank.bounds()
             area = bank_height * bank_columns
-            if area < height * columns or (is_large and area == height * columns):
+            if area < height * columns or (
+                prefer_old_bank and area == height * columns
+            ):
                 selected = bank
         return selected.render()
     flat = _circuit_diagram_at(truth_table, None)
