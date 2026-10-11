@@ -58,8 +58,8 @@ most significant first, matching the other generators in this package.
   tables 0.95 / 0.94 / 0.88;
 * at most one unfinished signal per input level is live; the fold is one
   pass over the table and emits fewer than three gates per entry.
-* levels select rails in input order; a search over selector orders saved
-  7.95-9.86% of area at n=7 (200 tables, widths 40..200) and was retired.
+* wide unconstrained builds compare natural order and two fixed transposes
+  moving the last three/four inputs first; physical ports retain read order.
 
 **Constant tables need no muxes.**  Both are a single self-fed ``x`` or ``X``
 gate, the shape the wiki's own constant-output circuit uses.
@@ -508,6 +508,8 @@ def _circuit_diagram_model(
     limit: int | None,
     *,
     _events: list[int] | None = None,
+    input_order: list[int] | None = None,
+    port_inputs: int | None = None,
 ) -> _Layout:
     """Build a Circuit Diagram program computing the given truth table.
 
@@ -530,15 +532,22 @@ def _circuit_diagram_model(
 
     builder = _Builder(narrow=limit is not None)
     n = len(truth_table).bit_length() - 1
+    order = list(range(n)) if input_order is None else input_order
+    port_inputs = n if port_inputs is None else port_inputs
+    if (
+        len(order) != n
+        or len(set(order)) != n
+        or any(index < 0 or index >= port_inputs for index in order)
+    ):
+        raise ValueError("fold input order must name distinct original ports")
     # Every input keeps its ``-`` row (the read order), but the fold uses
     # only the essential inputs' rails; an ignored rail drives nothing, as
     # every rail but the first does for a constant table.
     used, table = _essential_table(truth_table, n)
-    rails = [builder.input_bus() for _ in range(n)]
-    if len(used) < n:
-        rails = [rails[i] for i in used]
-        truth_table = table
-        n = len(used)
+    ports = [builder.input_bus() for _ in range(port_inputs)]
+    rails = [ports[order[i]] for i in used]
+    truth_table = table
+    n = len(used)
 
     dag = _dag(truth_table, n)
     complemented = dag[2]
@@ -561,13 +570,21 @@ def _circuit_diagram_model(
 
 
 def _linear_shared_layout(table: str, inputs: int) -> _Layout | None:
-    """Admit the folded model only within the H-layout's linear work and area."""
+    """Admit three fixed fold orders within linear work and H-layout area."""
     used, projected = _essential_table(table, inputs)
-    ops = _dag(projected, len(used))[0]
-    # At most three gates per node; the coarse O(nodes**2) model-work
-    # bound stays O(T) at twice sqrt(T). Area admission alone also admits
-    # the nested dense fold's measured 9.455 size-difference ratio.
-    if len(ops) ** 2 > 4 * len(table):
+    candidates = [(projected, used)]
+    for tail in (3, 4):
+        if len(used) > tail:
+            # A fixed block transpose moves the last inputs first in O(T),
+            # without changing port reads or searching selector orders.
+            rotated = "".join(projected[i :: 1 << tail] for i in range(1 << tail))
+            candidates.append((rotated, used[-tail:] + used[:-tail]))
+    eligible = [
+        (candidate, order)
+        for candidate, order in candidates
+        if len(_dag(candidate, len(used))[0]) ** 2 <= 4 * len(table)
+    ]
+    if not eligible:
         return None
     sites = [
         point
@@ -579,9 +596,19 @@ def _linear_shared_layout(table: str, inputs: int) -> _Layout | None:
     )
     # Every H build contains these minterm sites, so their box is an O(T)
     # area budget independent of density and the chosen candidate.
-    model = _circuit_diagram_model(table, None)
-    height, width = model.bounds()
-    return model if height * width <= floor else None
+    # The O(nodes**2) work ceiling applies to every candidate. Exact area
+    # alone admits the nested dense fold's forbidden 9.455 growth ratio.
+    selected = None
+    for candidate, order in eligible:
+        model = _circuit_diagram_model(
+            candidate, None, input_order=order, port_inputs=inputs
+        )
+        height, width = model.bounds()
+        area = height * width
+        if area <= floor and (selected is None or area < floor):
+            floor = area
+            selected = model
+    return selected
 
 
 def _affine_circuit(
@@ -604,8 +631,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
 
-    From eight inputs an unconstrained nonconstant build tries a shared fold
-    within linear work and area budgets, then a projected prefix H-layout
+    From eight inputs an unconstrained nonconstant build tries three fixed
+    shared-fold orders within linear work and area budgets, then a prefix H-layout
     with fixed-size cofactor pools when it beats the minterm lattice.
 
     What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
