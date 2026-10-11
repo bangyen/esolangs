@@ -9,7 +9,7 @@ from esolangs.tools.circuit_diagram.hcells import _HCellLayout
 from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
 from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
 from esolangs.tools.circuit_diagram.layout import _HOLD, _RoutingLayout
-from tests.tools.test_boolean_circuit_diagram_pool import _execute
+from tests.generators.test_boolean_circuit_diagram_pool import _execute
 
 
 class _IntervalBaseline(_RoutingLayout):

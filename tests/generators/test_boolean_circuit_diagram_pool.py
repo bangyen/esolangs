@@ -5,7 +5,7 @@ import random
 
 import pytest
 
-from esolangs.interpreters.grid_based.circuit_diagram import _Machine
+from esolangs.interpreters.circuit_diagram import _Machine
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.circuit_diagram.hlayout import _h_term_layout

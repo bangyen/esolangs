@@ -9,7 +9,7 @@ from esolangs.tools.circuit_diagram import (
     circuit_diagram,
 )
 from esolangs.tools.helpers import permute_truth_table
-from tests.tools.test_boolean_circuit_diagram_pool import _execute
+from tests.generators.test_boolean_circuit_diagram_pool import _execute
 
 
 def _margulis_cofactors(log_side):

@@ -5,8 +5,8 @@ import random
 import pytest
 
 from esolangs._evaluate import _evaluate
-from esolangs.interpreters.tape_based.line.extract import extract
-from esolangs.interpreters.tape_based.line.simulate import (
+from esolangs.interpreters.line.extract import extract
+from esolangs.interpreters.line.simulate import (
     IO,
     _advance,
     _freeze_program,

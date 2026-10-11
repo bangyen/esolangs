@@ -10,8 +10,8 @@ from esolangs.tools.circuit_diagram.banks import (
     _cofactor_bank_layout,
     _repeated_cofactor_bank,
 )
+from tests.generators.test_boolean_circuit_diagram_pool import _execute
 from tests.support.witness_tables import dense
-from tests.tools.test_boolean_circuit_diagram_pool import _execute
 
 
 @pytest.mark.medium

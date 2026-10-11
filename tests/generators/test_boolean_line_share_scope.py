@@ -14,8 +14,8 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.line.render import _has_goto
 from esolangs.tools.line.shared import shared_tree
+from tests.generators.test_boolean_line_projection import _execute
 from tests.support.witness_tables import parity
-from tests.tools.test_boolean_line_projection import _execute
 
 
 def _majority(n: int) -> str:

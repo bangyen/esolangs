@@ -6,7 +6,7 @@ import pytest
 
 from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.circuit_diagram.banks import _residual_class_bank_candidate
-from tests.tools.test_boolean_circuit_diagram_pool import _execute
+from tests.generators.test_boolean_circuit_diagram_pool import _execute
 
 
 def _sparse_classes():

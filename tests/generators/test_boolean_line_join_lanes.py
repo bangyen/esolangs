@@ -7,7 +7,7 @@ from itertools import combinations
 import pytest
 
 from esolangs.tools.line.forward import _join_lanes, forward_canvas
-from tests.tools.test_boolean_line_forward import _check
+from tests.generators.test_boolean_line_forward import _check
 
 
 def test_disjoint_spans_reuse_rows_with_a_three_unit_gap():

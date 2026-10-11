@@ -9,8 +9,8 @@ from esolangs.tools.circuit_diagram.banks import (
     _repeated_cofactor_bank,
     _residual_class_bank_candidate,
 )
+from tests.generators.test_boolean_circuit_diagram_pool import _execute
 from tests.support.witness_tables import dense
-from tests.tools.test_boolean_circuit_diagram_pool import _execute
 
 
 def _three_classes(n):

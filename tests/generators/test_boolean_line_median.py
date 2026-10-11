@@ -4,11 +4,11 @@ import pytest
 
 from esolangs.tools.line import line
 from esolangs.tools.line.forward import median_streaming_canvas
+from tests.generators import test_boolean_line_forward as controls
+from tests.generators.test_boolean_line_forward import _check
+from tests.generators.test_boolean_line_projection import _execute
+from tests.generators.test_boolean_line_share_scope import _sample
 from tests.support.witness_tables import dense, parity
-from tests.tools import test_boolean_line_forward as controls
-from tests.tools.test_boolean_line_forward import _check
-from tests.tools.test_boolean_line_projection import _execute
-from tests.tools.test_boolean_line_share_scope import _sample
 
 
 @pytest.fixture

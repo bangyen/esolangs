@@ -5,9 +5,9 @@ import pytest
 from esolangs.tools.helpers import permute_truth_table
 from esolangs.tools.line import line
 from esolangs.tools.line.forward import destination_canvas, forward_canvas
+from tests.generators import test_boolean_line_forward as controls
+from tests.generators.test_boolean_line_forward import _check
 from tests.support.witness_tables import dense, parity
-from tests.tools import test_boolean_line_forward as controls
-from tests.tools.test_boolean_line_forward import _check
 
 
 @pytest.fixture

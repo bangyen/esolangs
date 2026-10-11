@@ -26,11 +26,11 @@ exemption supported by a structural proof or the measured criterion in
   Dense tables still keep the smaller tree: the layered bus
   is area-admitted, not a linear-area sharing construction. The measured
   40.3% repeated-subtree upside remains open. Controls in
-  `tests/tools/test_boolean_line_forward.py`,
-  `tests/tools/test_boolean_line_destination.py`,
-  `tests/tools/test_boolean_line_streaming.py`,
-  `tests/tools/test_boolean_line_join_lanes.py` and
-  `tests/tools/test_boolean_line_share_scope.py`.
+  `tests/generators/test_boolean_line_forward.py`,
+  `tests/generators/test_boolean_line_destination.py`,
+  `tests/generators/test_boolean_line_streaming.py`,
+  `tests/generators/test_boolean_line_join_lanes.py` and
+  `tests/generators/test_boolean_line_share_scope.py`.
 - **Circuit Diagram:** fixed-size cofactor pools share locally inside
   a prefix H recursion; cell guards and coordinate buckets give linear
   expected work and area. Seven/eight-input atoms use fixed footer routing;
@@ -53,14 +53,14 @@ exemption supported by a structural proof or the measured criterion in
   fold orders exceed the node-count budget. Moving three/four tail inputs first avoids the
   expander control's original graph: n=12 drops from 221 to 60 fold nodes
   and executes in 138,953 cells. Controls in
-  `tests/tools/test_boolean_circuit_diagram_banks.py`,
-  `tests/tools/test_boolean_circuit_diagram_classes.py`,
-  `tests/tools/test_boolean_circuit_diagram_class_budget.py`,
-  `tests/tools/test_boolean_circuit_diagram_forest.py`,
-  `tests/tools/test_boolean_circuit_diagram_hcells.py`,
-  `tests/tools/test_boolean_circuit_diagram_order.py`,
-  `tests/tools/test_boolean_circuit_diagram_pool.py` and
-  `tests/tools/test_boolean_circuit_diagram_share.py`.
+  `tests/generators/test_boolean_circuit_diagram_banks.py`,
+  `tests/generators/test_boolean_circuit_diagram_classes.py`,
+  `tests/generators/test_boolean_circuit_diagram_class_budget.py`,
+  `tests/generators/test_boolean_circuit_diagram_forest.py`,
+  `tests/generators/test_boolean_circuit_diagram_hcells.py`,
+  `tests/generators/test_boolean_circuit_diagram_order.py`,
+  `tests/generators/test_boolean_circuit_diagram_pool.py` and
+  `tests/generators/test_boolean_circuit_diagram_share.py`.
 
 ## Generator linearity
 

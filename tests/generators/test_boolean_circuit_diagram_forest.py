@@ -9,12 +9,12 @@ from esolangs.tools.circuit_diagram.banks import (
     _residual_class_bank_candidate,
 )
 from esolangs.tools.circuit_diagram.forest import _suffix_forest
-from tests.support.witness_tables import dense
-from tests.tools.test_boolean_circuit_diagram_classes import (
+from tests.generators.test_boolean_circuit_diagram_classes import (
     _eight_classes,
     _three_classes,
 )
-from tests.tools.test_boolean_circuit_diagram_pool import _execute
+from tests.generators.test_boolean_circuit_diagram_pool import _execute
+from tests.support.witness_tables import dense
 
 
 @pytest.mark.medium

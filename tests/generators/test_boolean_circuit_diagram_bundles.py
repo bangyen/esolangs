@@ -7,8 +7,8 @@ import pytest
 from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.circuit_diagram.bundled_banks import bundled_class_bank_candidate
 from esolangs.tools.circuit_diagram.forest import _suffix_forest
+from tests.generators.test_boolean_circuit_diagram_pool import _execute
 from tests.support.witness_tables import dense, nested_dense, parity
-from tests.tools.test_boolean_circuit_diagram_pool import _execute
 
 
 @pytest.mark.medium

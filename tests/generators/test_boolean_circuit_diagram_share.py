@@ -6,7 +6,7 @@ import hashlib
 
 import pytest
 
-from esolangs.interpreters.grid_based.circuit_diagram import _Machine
+from esolangs.interpreters.circuit_diagram import _Machine
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.circuit_diagram import (
     _circuit_diagram_model,
@@ -16,8 +16,8 @@ from esolangs.tools.circuit_diagram import (
 )
 from esolangs.tools.circuit_diagram.hlayout import _h_minterm_sites, _h_term_layout
 from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
+from tests.generators.test_boolean_circuit_diagram_pool import _execute
 from tests.support.witness_tables import nested_dense
-from tests.tools.test_boolean_circuit_diagram_pool import _execute
 
 
 def _dense(n: int) -> str:

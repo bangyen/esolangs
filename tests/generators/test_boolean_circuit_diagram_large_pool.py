@@ -12,8 +12,8 @@ from esolangs.tools.circuit_diagram.hpool import (
     _h_pool_layout,
     _large_pool_layout,
 )
+from tests.generators.test_boolean_circuit_diagram_pool import _execute
 from tests.support.witness_tables import dense, parity
-from tests.tools.test_boolean_circuit_diagram_pool import _execute
 
 
 @pytest.mark.medium
