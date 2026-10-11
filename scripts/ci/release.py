@@ -93,7 +93,14 @@ def _generator(name: str, *, math_extra: bool, image_extra: bool) -> None:
 
 def _generator_process(name: str, *, math_extra: bool, image_extra: bool) -> None:
     """Bound one language's four rows together, retaining process isolation."""
-    args = [sys.executable, "-I", str(Path(__file__).resolve()), "--language", name]
+    args = [
+        sys.executable,
+        "-I",
+        str(Path(__file__).resolve()),
+        "smoke",
+        "--language",
+        name,
+    ]
     if math_extra:
         args.append("--math")
     if image_extra:

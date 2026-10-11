@@ -1,6 +1,7 @@
 """Distribution batches retain all rows and a bounded isolated process."""
 
 import subprocess
+import sys
 
 import pytest
 
@@ -47,3 +48,23 @@ def test_generator_process_keeps_the_deadline_and_propagates_failure(
     monkeypatch.setattr(smoke.subprocess, "run", run)
     with pytest.raises(subprocess.CalledProcessError):
         smoke._generator_process("Brainfuck", math_extra=extra, image_extra=extra)  # noqa: SLF001
+
+
+def test_the_generator_self_invocation_is_accepted_by_the_dispatcher(monkeypatch):
+    """The batch child must name the ``smoke`` subcommand.
+
+    ``main`` dispatches on the first argument, so a bare ``--language`` reads
+    as an unknown subcommand and the whole distribution smoke test fails.
+    """
+    captured: dict[str, list[str]] = {}
+
+    def run(args, **_kwargs):
+        captured["args"] = list(args)
+        raise subprocess.CalledProcessError(1, args)
+
+    monkeypatch.setattr(smoke.subprocess, "run", run)
+    monkeypatch.setattr(smoke, "_generator", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(sys, "argv", ["release.py"])
+    with pytest.raises(subprocess.CalledProcessError):
+        smoke._generator_process("Brainfuck", math_extra=False, image_extra=False)  # noqa: SLF001
+    assert smoke.main(captured["args"][3:]) == 0
