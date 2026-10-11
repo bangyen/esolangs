@@ -13,6 +13,7 @@ from docs import examples, generate
 ROOT = Path(__file__).parents[1]
 GENERATED = (
     "README.md",
+    "docs/languages.md",
     "docs/proofs/index.md",
     "docs/roadmap.md",
     "docs/usage.md",

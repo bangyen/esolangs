@@ -452,13 +452,18 @@ def update_readme(root: pathlib.Path = ROOT) -> None:
             _PACKAGE_COUNT_END,
             render_package_count_section,
         ),
-        (_README_START, _README_END, render_languages_section),
         (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
         (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),
         (_XOR_START, _XOR_END, render_xor_section),
     ):
         text = _splice(text, start, end, render())
     path.write_text(text)
+    catalog = root / "docs" / "languages.md"
+    catalog.write_text(
+        _splice(
+            catalog.read_text(), _README_START, _README_END, render_languages_section()
+        )
+    )
 
 
 def docs_main(*, output_root: pathlib.Path = ROOT) -> int:

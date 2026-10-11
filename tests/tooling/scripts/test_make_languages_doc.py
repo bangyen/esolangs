@@ -141,7 +141,10 @@ def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
     (tmp_path / "README.md").write_text(readme)
     (tmp_path / "docs" / "usage.md").write_text(usage)
     (tmp_path / "docs" / "limitations.md").write_text(limitations)
+    catalog = REPO_ROOT / "docs" / "languages.md"
+    (tmp_path / "docs" / "languages.md").write_text(catalog.read_text())
     module.update_readme(tmp_path)
+    assert (tmp_path / "docs" / "languages.md").read_text() == catalog.read_text()
     module.update_usage(tmp_path)
     module.update_limitations(tmp_path)
     assert (tmp_path / "README.md").read_text() == readme
