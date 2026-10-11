@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs.tools.collatz_multiverse import (
+from esolangs.languages.collatz_multiverse.generator import (
     _cm_layout,
     collatz_multiverse,
 )

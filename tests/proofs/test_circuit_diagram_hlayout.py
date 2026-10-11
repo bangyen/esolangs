@@ -1,6 +1,6 @@
 """Circuit Diagram's H-tree layout: the side length in closed form."""
 
-from esolangs.tools.circuit_diagram.hlayout import _LATTICE, _h_size
+from esolangs.languages.circuit_diagram.generator.hlayout import _LATTICE, _h_size
 
 
 def test_h_side_closed_form() -> None:

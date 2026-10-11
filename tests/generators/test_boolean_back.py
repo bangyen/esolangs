@@ -1,10 +1,10 @@
-"""Covers :mod:`esolangs.tools.back`."""
+"""Covers :mod:`esolangs.languages.back.generator`."""
 
 from itertools import pairwise
 
 import pytest
 
-from esolangs.tools.back import _back_ordered
+from esolangs.languages.back.generator import _back_ordered
 from esolangs.tools.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from tests.generators.test_boolean_parameterized_contract import _drawing
 from tests.support.generator_support import assert_an_ignored_input_costs
@@ -19,8 +19,8 @@ class TestParameterizedBack:
         # The generator puts the answer in cell n, so the dump's (n+1)th
         # field is the result -- no need to track the head, which the dump
         # does not report.
-        from esolangs.interpreters.back import run
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.languages.back.interpreter import run
 
         io = ScriptedIO()
         run(prog.splitlines(), io)
@@ -36,7 +36,7 @@ class TestParameterizedBack:
 
     def test_program_length_is_the_same_for_every_input(self) -> None:
         """Both bits cost one command, so the size reveals nothing."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
         from tests.generators.fills import fill
 
         _fill_back = fill("Back")
@@ -50,7 +50,7 @@ class TestParameterizedBack:
         """A one-edge onto an equal zero side draws no rows, and still answers."""
         import random
 
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         rng = random.Random(5)
         table = "".join(rng.choice("01") for _ in range(128))
@@ -64,7 +64,7 @@ class TestParameterizedBack:
         """A last node equal to the first is drawn once, and still answers."""
         import random
 
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         rng = random.Random(1)
         blocks = ["".join(rng.choice("01") for _ in range(8)) for _ in range(3)]
@@ -78,8 +78,8 @@ class TestParameterizedBack:
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs import tools as generators
-        from esolangs.tools.back import PAIR
+        from esolangs.languages import generators
+        from esolangs.languages.back.generator import PAIR
 
         template = generators.back("0110")
         assert "{X" not in template
@@ -88,7 +88,7 @@ class TestParameterizedBack:
     def test_each_input_is_stored_once(self) -> None:
         """Each input is embedded once in the tape load, not re-embedded."""
 
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         for n in (1, 2, 3):
             table = format(0, f"0{2**n}b")
@@ -97,7 +97,7 @@ class TestParameterizedBack:
 
     def test_tree_uses_tape_decision_nodes(self) -> None:
         """The reflected decision tree retains its skip and both mirrors."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         template = generators.back("0110")
         assert "+" in template
@@ -107,7 +107,7 @@ class TestParameterizedBack:
 
     def test_the_natural_order_folds_its_aligned_dependency(self) -> None:
         """A one-input dependency folds wherever the input sits."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         scattered = len(generators.back("10101010"))
         aligned = len(generators.back("11110000"))
@@ -117,7 +117,7 @@ class TestParameterizedBack:
 
     def test_the_identity_template_is_emitted(self) -> None:
         """Back no longer contests input orders."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         # Every input matters in each; an ignored one is indexed past.
         for table in ("01101001", "00010111", "01111110", "00011110", "10010110"):
@@ -144,7 +144,7 @@ class TestParameterizedBack:
     def test_placeholders_run_in_name_order_while_still_reordering(self) -> None:
         """Back reorders through the *walk*, not through its input order."""
 
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         walked = 0
         for table in ("11110000", "10101010", "01101001", "00111100"):
@@ -161,7 +161,7 @@ class TestParameterizedBack:
 
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
         """Reordered loads still cost the same for either bit."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
         from tests.generators.fills import fill
 
         _fill_back = fill("Back")
@@ -199,7 +199,7 @@ def test_descending_loader_preserves_inputs_and_answers(width: int) -> None:
 
 
 def test_descending_loader_rendered_size_stays_linear() -> None:
-    from esolangs.tools.back import back
+    from esolangs.languages.back.generator import back
 
     sizes = []
     for n in range(6, 11):
@@ -213,7 +213,7 @@ def test_descending_loader_rendered_size_stays_linear() -> None:
 
 
 def test_descending_loader_walks_permuted_cells_in_name_order() -> None:
-    from esolangs.tools.back import _back_ordered
+    from esolangs.languages.back.generator import _back_ordered
     from esolangs.tools.helpers import permute_truth_table
 
     table = "00010011"
@@ -326,9 +326,9 @@ def test_selective_bend_preserves_the_command_bound(n: int, seed: int) -> None:
     """Every input executes; admission compares with both original layouts."""
     import random
 
-    from esolangs.interpreters.back import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.tools.back import back
+    from esolangs.languages.back.generator import back
+    from esolangs.languages.back.interpreter import _Machine
     from tests.generators.fills import fill
 
     _fill_back = fill("Back")
@@ -370,7 +370,7 @@ def test_selective_bend_preserves_the_command_bound(n: int, seed: int) -> None:
 
 
 def test_bend_walk_rejects_cycles_and_counts_both_skip_outcomes() -> None:
-    from esolangs.tools.back._routes import _back_walk
+    from esolangs.languages.back.generator._routes import _back_walk
 
     assert _back_walk({(0, 1): "*"}, 1, 3) == 1
     assert _back_walk({(0, 1): "+", (0, 3): "*"}, 1, 4) == 3
@@ -379,7 +379,7 @@ def test_bend_walk_rejects_cycles_and_counts_both_skip_outcomes() -> None:
 
 @pytest.mark.parametrize("obstruction", ["owner", "distance", "occupied"])
 def test_bend_refuses_a_missing_owner_or_blocked_corridor(obstruction: str) -> None:
-    from esolangs.tools.back._routes import _back_bend
+    from esolangs.languages.back.generator._routes import _back_bend
 
     positions = {(1, 0): (1, 5), (1, 1): (4, 5), (1, 2): (10, 5)}
     grid = dict.fromkeys(positions.values(), "\\")

@@ -25,7 +25,7 @@ def _runner(module: str, *, lines: bool = False, newline: bool = False) -> Runne
     """
 
     def run_language(program: str, inputs: list[str]) -> str:
-        run = importlib.import_module(f"esolangs.interpreters.{module}").run
+        run = importlib.import_module(f"esolangs.languages.{module}.interpreter").run
         code = program.splitlines() if lines else program
         return run_program(run, code, _stdin(inputs) if newline else "".join(inputs))
 
@@ -47,7 +47,7 @@ run_rotfuck = _runner("rotfuck")
 
 def run_rotfuck_forward(program: str, inputs: list[str]) -> str:
     """Run a ROTfuck program under the forward rotation."""
-    from esolangs.interpreters.rotfuck import run as _run
+    from esolangs.languages.rotfuck.interpreter import run as _run
 
     return run_program(_run, program, "".join(inputs), rotation="forward")
 
@@ -88,22 +88,22 @@ def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
 
 def run_six_five_from(program: str, feed: Iterator[str]) -> str:
     """Run a 6-5 program against an iterator; see :func:`_run_from`."""
-    return _run_from("esolangs.interpreters.six_five", program, feed)
+    return _run_from("esolangs.languages.six_five.interpreter", program, feed)
 
 
 def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
     """Run an AddSubJump program against an iterator; see :func:`_run_from`."""
-    return _run_from("esolangs.interpreters.addsubjump", program, feed)
+    return _run_from("esolangs.languages.addsubjump.interpreter", program, feed)
 
 
 def run_sophie_from(program: str, feed: Iterator[str]) -> str:
     """Run a Sophie program against an iterator; see :func:`_run_from`."""
-    return _run_from("esolangs.interpreters.sophie", program, feed)
+    return _run_from("esolangs.languages.sophie.interpreter", program, feed)
 
 
 def run_jaune(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.jaune import run
+    from esolangs.languages.jaune.interpreter import run
 
     io = ScriptedIO("\n".join(inputs) + "\n")
     run(program, io)
@@ -112,7 +112,7 @@ def run_jaune(program: str, inputs: list[str]) -> str:
 
 def run_fargo(program: str, inputs: list[str]) -> str:
     """Run a Fargo program, packing ``inputs`` into its one input number."""
-    from esolangs.interpreters.fargo import run
+    from esolangs.languages.fargo.interpreter import run
 
     number = int("".join(inputs), 2) if inputs else 0
     return run_program(run, program, f"{number}\n")
@@ -120,12 +120,12 @@ def run_fargo(program: str, inputs: list[str]) -> str:
 
 def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
     """Run a Polynomial program against an iterator; see :func:`_run_from`."""
-    return _run_from("esolangs.interpreters.polynomial", program, feed)
+    return _run_from("esolangs.languages.polynomial.interpreter", program, feed)
 
 
 def run_grapheme(program: str, inputs: list[str]) -> str:
     """Run a Grapheme boolean program on the ``%``/``A`` input alphabet."""
-    from esolangs.interpreters.grapheme import run
+    from esolangs.languages.grapheme.interpreter import run
 
     alphabet = {"0": "%", "1": "A"}
     return run_program(run, program, _stdin([alphabet[i] for i in inputs]))
@@ -147,7 +147,7 @@ def run_clockwise(program: str, inputs: list[str] | list[int]) -> str:
 def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
 
     from esolangs.interpreters.io import IO
-    from esolangs.interpreters.laserfuck import run
+    from esolangs.languages.laserfuck.interpreter import run
 
     buffer = io.StringIO()
 
@@ -178,7 +178,7 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
 def one_two_three_result(program: str) -> str:
     """Run a 123 program; return "0" if it halts and "1" if it loops."""
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.one_two_three import _Machine
+    from esolangs.languages.one_two_three.interpreter import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
     machine = _Machine(program, ScriptedIO(""))

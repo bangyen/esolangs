@@ -19,7 +19,7 @@ from esolangs.tools.wrap import (
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_root_keeps_setters_without_index_save_loops(bit):
     from esolangs.debugger import make_vm
-    from esolangs.tools.bio import BIO_PAIR, _bio
+    from esolangs.languages.bio.generator import BIO_PAIR, _bio
     from esolangs.tools.helpers import input_weights, mark_runs, unmark
 
     table = bit * 256
@@ -51,8 +51,8 @@ class TestParameterizedBIO:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
-        from esolangs import tools as generators
-        from esolangs.tools.bio import BIO_PAIR
+        from esolangs.languages import generators
+        from esolangs.languages.bio.generator import BIO_PAIR
         from esolangs.tools.helpers import runs
 
         template = generators.bio("0110")
@@ -64,7 +64,7 @@ class TestParameterizedBIO:
 
     def test_padding_never_touches_a_read_register(self) -> None:
         """``z`` is inert: the generator emits no command that reads it."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         for n in (1, 2, 3):
             template = generators.bio(format(0, f"0{2**n}b"))

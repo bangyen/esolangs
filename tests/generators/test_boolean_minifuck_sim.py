@@ -1,9 +1,9 @@
-"""Covers :mod:`esolangs.tools.minifuck.sim` against the interpreter."""
+"""Covers :mod:`esolangs.languages.minifuck.generator.sim` against the interpreter."""
 
 
 def test_settled_embed_matches_the_interpreter() -> None:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.minifuck import _Machine
+    from esolangs.languages.minifuck.interpreter import _Machine
     from tests.generators.fills import fill
 
     _fill_minifuck = fill("Minifuck")
@@ -23,7 +23,7 @@ def test_settled_embed_matches_the_interpreter() -> None:
 
 def test_law_guard_skip_and_single_cross_arms() -> None:
     """The guard, skip and single-cross arms the lockstep builds never reach."""
-    from esolangs.tools.minifuck.sim import _Joint, _Sim
+    from esolangs.languages.minifuck.generator.sim import _Joint, _Sim
 
     # A dead row: every law returns without moving.
     for arm in ("run_left", "run_comment", "run_walk", "run_brackets"):

@@ -1,12 +1,12 @@
-"""Covers :mod:`esolangs.tools.one_two_three.construction`."""
+"""Covers :mod:`esolangs.languages.one_two_three.generator.construction`."""
 
 from collections.abc import Iterable
 
 import pytest
 
+from esolangs.languages.one_two_three.generator import ONE, ZERO
+from esolangs.languages.one_two_three.generator.construction import _RING
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs, runs
-from esolangs.tools.one_two_three import ONE, ZERO
-from esolangs.tools.one_two_three.construction import _RING
 from tests.generators.boolean_runners import one_two_three_result
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -38,7 +38,7 @@ class TestParameterizedOneTwoThree:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every one-, two- and three-input table halts or loops per its entry."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         for table in witnesses(n):
             template = generators.one_two_three(table)
@@ -49,7 +49,7 @@ class TestParameterizedOneTwoThree:
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """A zero and a one embed at equal width, so length leaks nothing."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         for table in witnesses(2):
             template = generators.one_two_three(table)
@@ -60,7 +60,7 @@ class TestParameterizedOneTwoThree:
 
     def test_a_wider_table_is_constructed(self) -> None:
         """A four-input table builds through the constructed route."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         table = "0000000000000000"
         template = generators.one_two_three(table)
@@ -86,12 +86,12 @@ class TestParameterizedOneTwoThree:
         self, table: str, length: int, route: str
     ) -> None:
         """``n == 3`` builds both routes and keeps the shorter program."""
-        from esolangs import tools as generators
-        from esolangs.tools.one_two_three import (
+        from esolangs.languages import generators
+        from esolangs.languages.one_two_three.generator import (
             _construct_small,
             _in_name_order,
         )
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             _construct_linear,
         )
 
@@ -102,7 +102,7 @@ class TestParameterizedOneTwoThree:
 
     def test_a_seed_with_even_positions_is_refused(self) -> None:
         """The junky verdict rejects a seed whose rows are not distinct odd."""
-        from esolangs.tools.one_two_three import (
+        from esolangs.languages.one_two_three.generator import (
             _WORK_BUDGET,
             ConstructError,
             _separated,
@@ -121,7 +121,7 @@ class TestParameterizedOneTwoThree:
 
     def test_normalize_reports_a_live_locked_ring(self) -> None:
         """Four distinct rows pinned to all four ring cells cannot escape."""
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             ConstructError,
             _Builder,
             _normalize,
@@ -145,7 +145,7 @@ class TestParameterizedOneTwoThree:
 
     def test_fixpoint_reports_a_non_converging_rerun(self) -> None:
         """A segment that never revisits a state within the cap gives up."""
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             ConstructError,
             _Builder,
             _Row,
@@ -166,7 +166,7 @@ class TestParameterizedOneTwoThree:
 
     def test_test_reports_a_kill_that_escapes(self) -> None:
         """``test(kills=...)`` requires every named victim to provably loop."""
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             ConstructError,
             _Builder,
             _Row,
@@ -187,7 +187,7 @@ class TestParameterizedOneTwoThree:
 
     def test_test_reports_a_kill_that_never_fires(self) -> None:
         """``test(kills=...)`` refuses a close where a victim tested false."""
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             ConstructError,
             _Builder,
             _Row,
@@ -208,7 +208,7 @@ class TestParameterizedOneTwoThree:
 
     def test_test_reports_an_unintended_loop(self) -> None:
         """A plain ``test()`` requires every TRUE row to escape, not loop."""
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             ConstructError,
             _Builder,
             _Row,
@@ -232,7 +232,7 @@ class TestParameterizedOneTwoThree:
 
     def test_an_empty_table_is_declined(self) -> None:
         """A table implying zero inputs raises rather than building nothing."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         # ``match`` is a substring search, so the equality below is what
         # actually pins the message.
@@ -246,7 +246,7 @@ class TestParameterizedOneTwoThree:
     def test_each_input_is_embedded_once(self) -> None:
         """Each input's run appears exactly once, and nothing else is a run."""
 
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         for n in (1, 2, 3):
             for table in witnesses(n):
@@ -257,7 +257,7 @@ class TestParameterizedOneTwoThree:
 
     def test_every_batched_run_charges_the_work_budget(self) -> None:
         """Each closed form in ``_exec_run`` has to stop on a drained budget."""
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             _exec_char,
             _exec_run,
             _Row,
@@ -290,7 +290,7 @@ class TestParameterizedOneTwoThree:
 
     def test_the_endgame_reports_a_state_it_cannot_park(self) -> None:
         """Parking is what makes a template halt, so failing it must raise."""
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             _WORK_BUDGET,
             ConstructError,
             _Builder,
@@ -313,7 +313,7 @@ class TestParameterizedOneTwoThree:
 
     def test_a_looping_row_reads_as_a_one(self) -> None:
         """A 1-row is decided by cycle detection, not by halting."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
         from tests.generators.one_two_three_support import _replay_verdict
 
         template = generators.one_two_three("01")
@@ -324,7 +324,7 @@ class TestParameterizedOneTwoThree:
 
     def test_a_two_at_minus_three_is_refused_rather_than_reading_stdin(self) -> None:
         """``2`` at -3 would read real input, so the move is rejected."""
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             _WORK_BUDGET,
             ConstructError,
             _exec_char,
@@ -351,7 +351,7 @@ class TestParameterizedOneTwoThree:
 
 def test_a_malformed_template_is_refused() -> None:
     """The one-run-per-input invariant is asserted, not assumed."""
-    from esolangs.tools.one_two_three import _in_name_order
+    from esolangs.languages.one_two_three.generator import _in_name_order
 
     assert _in_name_order(_X * 2, 2) == _X * 2
 
@@ -363,8 +363,8 @@ def test_a_malformed_template_is_refused() -> None:
 
 def test_ignored_trailing_inputs_idle_past_the_end() -> None:
     """Each input past the last essential one appends a run that keeps rows below 0."""
-    from esolangs.interpreters.one_two_three import _advance, _landings
-    from esolangs.tools.one_two_three import _IDLE, one_two_three
+    from esolangs.languages.one_two_three.generator import _IDLE, one_two_three
+    from esolangs.languages.one_two_three.interpreter import _advance, _landings
 
     for fill in (ZERO, ONE):
         code = _IDLE.replace(_X, fill)

@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs.tools.intercal import intercal
+from esolangs.languages.intercal.generator import intercal
 
 
 def test_intercal_token_floor_and_wrapped_corpus_size() -> None:

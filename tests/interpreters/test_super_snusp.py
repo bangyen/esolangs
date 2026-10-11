@@ -7,9 +7,9 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
-from esolangs.interpreters.super_snusp import _advance, _floor_root, run
-from esolangs.interpreters.super_snusp import _Machine as SuperSnusp
-from esolangs.tools.super_snusp import super_snusp
+from esolangs.languages.super_snusp.generator import super_snusp
+from esolangs.languages.super_snusp.interpreter import _advance, _floor_root, run
+from esolangs.languages.super_snusp.interpreter import _Machine as SuperSnusp
 from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_halts_with_hint

@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.nope import _Machine, run
+from esolangs.languages.nope.interpreter import _Machine, run
 
 
 @pytest.mark.parametrize("code", ["", "Nope.", "[,☃\x00"])

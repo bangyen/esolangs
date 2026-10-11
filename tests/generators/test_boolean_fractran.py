@@ -3,12 +3,12 @@
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
-from esolangs.interpreters.fractran import run as run_fractran
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
-from esolangs.tools.fractran import fractran
+from esolangs.languages import generators as boolean
+from esolangs.languages.fractran.generator import PAIR as FRACTRAN_PAIR
+from esolangs.languages.fractran.generator import fractran
+from esolangs.languages.fractran.interpreter import run as run_fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.wrap import balance_program, balance_score
 from tests.generators.reader_support import _TABLES
@@ -58,7 +58,7 @@ def test_fractran_shares_equal_subtables() -> None:
 
 def _fractran_steps(template: str, n: int) -> int:
     """Return the steps every row of ``template`` runs to its halt, summed."""
-    from esolangs.interpreters.fractran import _Machine
+    from esolangs.languages.fractran.interpreter import _Machine
 
     steps = 0
     for row in range(2**n):
@@ -86,7 +86,7 @@ def test_fractran_runs_a_step_a_level() -> None:
 
 def test_fractran_programs_are_indexed() -> None:
     """Every base is a prime the interpreter sieves, so no run scans the list."""
-    from esolangs.interpreters.fractran.index import compile_index
+    from esolangs.languages.fractran.interpreter.index import compile_index
 
     for n in range(1, 11):
         table = "".join(str((row * 2654435761 >> 7) & 1) for row in range(2**n))
@@ -109,7 +109,7 @@ def test_fractran_phase_parity_witness_tables(width: int) -> None:
 def test_fractran_phase_parity_public_uniform_setters(
     width: int, *, as_string: bool
 ) -> None:
-    from esolangs.tools.fractran import fractran_setters
+    from esolangs.languages.fractran.generator import fractran_setters
 
     template = esolangs.generate("FRACTRAN", "0110", width=width)
     if as_string:
@@ -131,7 +131,7 @@ def test_fractran_phase_parity_public_uniform_setters(
 
 
 def test_fractran_phase_parity_exact_resolver_and_size() -> None:
-    from esolangs.tools.fractran import fractran, fractran_setters
+    from esolangs.languages.fractran.generator import fractran, fractran_setters
 
     template = fractran("0110", 1)
     assert max(map(len, template.splitlines())) == 3
@@ -164,7 +164,7 @@ def test_nonuniform_cells_retain_tokens(program: str) -> None:
 
 
 def test_fractran_parity_representation_omits_empty_width_regimes():
-    from esolangs.tools.fractran import _balance as _fractran
+    from esolangs.languages.fractran.generator import _balance as _fractran
 
     parity = esolangs.generate("FRACTRAN", "0110", width=4)
     balanced = _fractran("0110", parity)

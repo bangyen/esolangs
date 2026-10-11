@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.taglate import run
+from esolangs.languages.taglate.interpreter import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_lines
 from tests.support.raises import raises_message
@@ -40,8 +40,8 @@ def test_consecutive_rotations_compose(count):
 )
 def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch):
     from esolangs._drive import drive
-    from esolangs.interpreters import taglate
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.taglate import interpreter as taglate
 
     original = taglate._Machine  # noqa: SLF001
     machines = []
@@ -74,7 +74,7 @@ def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch):
 @pytest.mark.parametrize("command", ["a", "b", "c", "d"])
 def test_binary_underflow_retains_consumed_pops(seed, command):
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.taglate import _Machine
+    from esolangs.languages.taglate.interpreter import _Machine
 
     machine = _Machine([seed, command], ScriptedIO(""))
     with pytest.raises(HaltError, match="queue is empty"):
@@ -85,7 +85,7 @@ def test_binary_underflow_retains_consumed_pops(seed, command):
 
 def test_repeated_programs_keep_parser_state_private():
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.taglate import _Machine
+    from esolangs.languages.taglate.interpreter import _Machine
 
     code = ["ABC", "gyeigz"]
     first = _Machine(code, ScriptedIO(""))
@@ -194,7 +194,7 @@ class TestTaglate:
 class TestStepMachine:
     def test_step_tracks_queue_and_cursor(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.taglate import _Machine
+        from esolangs.languages.taglate.interpreter import _Machine
 
         machine = _Machine(["abc", "i"], ScriptedIO())
         assert (machine.ind, list(machine.queue)) == (0, [97, 98, 99])
@@ -207,7 +207,7 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.taglate import _Machine
+    from esolangs.languages.taglate.interpreter import _Machine
 
     return _Machine(code, ScriptedIO())
 
@@ -231,7 +231,7 @@ class TestTheTwoQueueLanguagesDifferOnPurpose:
 
     def test_taglate_says_it_skips(self) -> None:
         """A surprising choice is only defensible while it is documented."""
-        module = importlib.import_module("esolangs.interpreters.taglate")
+        module = importlib.import_module("esolangs.languages.taglate.interpreter")
         doc = module.__doc__ or ""
         assert "is **skipped**" in doc
         assert "word-command queue language" in doc

@@ -2,8 +2,8 @@
 
 import pytest
 
+from esolangs.languages.piet.generator.balance import _bounded_operations, _emit, _plan
 from esolangs.raster import Raster
-from esolangs.tools.piet.balance import _bounded_operations, _emit, _plan
 from tests.support.witness_tables import witnesses
 
 pytestmark = pytest.mark.medium

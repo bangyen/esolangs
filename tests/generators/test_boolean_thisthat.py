@@ -9,8 +9,8 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.thisthat import run
-from esolangs.tools.thisthat import _Builder, _deque_plan, _tree, thisthat
+from esolangs.languages.thisthat.generator import _Builder, _deque_plan, _tree, thisthat
+from esolangs.languages.thisthat.interpreter import run
 from tests.support.generator_support import (
     evaluate_generated,
     run_lines,
@@ -167,7 +167,7 @@ def test_narrow_strip_executes_every_small_table() -> None:
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])
 def test_strip_preserves_fitting_layouts_and_public_answers(width: int) -> None:
-    from esolangs.tools.thisthat import _rotate_tree
+    from esolangs.languages.thisthat.generator import _rotate_tree
 
     for table in ("00", "11", "01", "10", "0110", "0001", "10010110"):
         plain = thisthat(table)
@@ -184,7 +184,7 @@ def test_strip_preserves_fitting_layouts_and_public_answers(width: int) -> None:
 
 @pytest.mark.parametrize("n", [4, 6, 8])
 def test_larger_narrow_layout_retains_linear_area_construction(n: int) -> None:
-    from esolangs.tools.thisthat import _rotate_tree
+    from esolangs.languages.thisthat.generator import _rotate_tree
 
     rng = random.Random(946 + n)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
@@ -216,7 +216,7 @@ def test_xor_has_one_column() -> None:
 
 @pytest.mark.medium
 def test_shared_residual_buses_execute_within_ledger() -> None:
-    from esolangs.tools.thisthat._shared import shared_tree
+    from esolangs.languages.thisthat.generator._shared import shared_tree
     from tests.support.generator_support import assert_shared_program
 
     a, b = "0001011101101001" * 4, "0110100100010111" * 4
@@ -248,8 +248,8 @@ def test_shared_residual_buses_execute_within_ledger() -> None:
 
 @pytest.mark.medium
 def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:
-    from esolangs.tools.thisthat import _rotate_tree
-    from esolangs.tools.thisthat._shared import shared_tree
+    from esolangs.languages.thisthat.generator import _rotate_tree
+    from esolangs.languages.thisthat.generator._shared import shared_tree
 
     exercised = 0
     for table in witnesses(3):
@@ -268,8 +268,8 @@ def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:
 
 @pytest.mark.medium
 def test_shared_area_envelope_admits_more_than_old_node_cap() -> None:
+    from esolangs.languages.thisthat.generator._shared import shared_tree
     from esolangs.tools.helpers import subtree_ids
-    from esolangs.tools.thisthat._shared import shared_tree
 
     rng = random.Random(15)
     table = "".join(rng.choice("01") for _ in range(64))

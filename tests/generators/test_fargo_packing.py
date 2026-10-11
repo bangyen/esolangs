@@ -6,9 +6,9 @@ from types import FrameType
 
 import pytest
 
-from esolangs.interpreters.fargo import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.fargo import _arm_expression, anf_coefficients, fargo
+from esolangs.languages.fargo.generator import _arm_expression, anf_coefficients, fargo
+from esolangs.languages.fargo.interpreter import run
 from tests.support.witness_tables import nested_dense
 
 

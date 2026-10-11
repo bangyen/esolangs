@@ -8,14 +8,14 @@ from collections.abc import Sequence
 import pytest
 
 from esolangs import generate
-from esolangs import tools as boolean
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.malbolge import _XLAT1, _load, run
-from esolangs.tools.malbolge.core import _cascade
+from esolangs.languages import generators as boolean
+from esolangs.languages.malbolge.generator.core import _cascade
+from esolangs.languages.malbolge.interpreter import _XLAT1, _load, run
 from tests.support.witness_tables import dense, parity, row_bits
 
-_module = importlib.import_module("esolangs.tools.malbolge")
+_module = importlib.import_module("esolangs.languages.malbolge.generator")
 
 
 def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
@@ -204,7 +204,7 @@ def test_fourteen_inputs_sampled(shape: object) -> None:
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
-_digits = importlib.import_module("esolangs.tools.malbolge.digits")
+_digits = importlib.import_module("esolangs.languages.malbolge.generator.digits")
 
 
 def test_digit_readouts_are_distinct_and_clear_of_the_code() -> None:

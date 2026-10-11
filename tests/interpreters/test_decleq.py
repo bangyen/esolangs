@@ -6,8 +6,8 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.decleq import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.decleq.interpreter import run
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -60,7 +60,7 @@ class TestHaltAndErrors:
 
     def test_a_self_decrementing_loop_never_revisits_a_snapshot(self) -> None:
         """The growth claim the module docstring makes, executed."""
-        from esolangs.interpreters.decleq import _Machine
+        from esolangs.languages.decleq.interpreter import _Machine
 
         # a == b == 10 -- the operand cells ARE the instruction, so each
         # pass decrements what it just read and jumps back to itself.
@@ -145,7 +145,7 @@ class TestOperandRange:
         # memory[7 - 1] -- itself absent, so 0 -- minus one into memory[0]
         # and jumps to 0.  Reading either operand off the end instead of
         # defaulting raises IndexError, which is what this pins.
-        from esolangs.interpreters.decleq import _Machine
+        from esolangs.languages.decleq.interpreter import _Machine
 
         machine = _Machine("5 5 6 0 0 0 7", ScriptedIO(""))
         machine.pc = 6
@@ -155,8 +155,8 @@ class TestOperandRange:
 
 class TestStepMachine:
     def test_step_tracks_memory_and_pointer(self) -> None:
-        from esolangs.interpreters.decleq import _Machine
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.languages.decleq.interpreter import _Machine
 
         machine = _Machine("-2 5 9 9 9 65 0 0", ScriptedIO())
         assert (machine.pc, list(machine.memory)) == (0, [-2, 5, 9, 9, 9, 65, 0, 0])
@@ -170,8 +170,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.decleq import _Machine
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.decleq.interpreter import _Machine
 
     return _Machine(code, ScriptedIO())
 
@@ -190,13 +190,13 @@ class TestNegativeWriteIndex:
     """``_written`` indexes a negative ``b`` from the right, or raises."""
 
     def test_negative_addr_writes_from_the_right(self) -> None:
-        from esolangs.interpreters.decleq import _written
+        from esolangs.languages.decleq.interpreter import _written
 
         assert _written((1, 2, 3), -1, 9) == (1, 2, 9)
         assert _written((1, 2, 3), -3, 9) == (9, 2, 3)
 
     def test_negative_addr_past_the_left_end_raises(self) -> None:
-        from esolangs.interpreters.decleq import _written
+        from esolangs.languages.decleq.interpreter import _written
 
         with pytest.raises(HaltError, match="past the left end"):
             _written((1, 2, 3), -4, 9)

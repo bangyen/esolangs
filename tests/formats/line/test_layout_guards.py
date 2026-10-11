@@ -2,9 +2,9 @@
 
 import pytest
 
-from esolangs.interpreters.line import extract
-from esolangs.interpreters.line.mask import Mask
-from esolangs.tools.line import render
+from esolangs.languages.line.generator import render
+from esolangs.languages.line.interpreter import extract
+from esolangs.languages.line.interpreter.mask import Mask
 from tests.formats.line.bf_to_line import bf_to_line
 
 

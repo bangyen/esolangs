@@ -11,7 +11,7 @@ from collections.abc import Callable
 
 import esolangs
 from esolangs.debugger import make_vm
-from esolangs.tools.one_two_three.construction import _leftover
+from esolangs.languages.one_two_three.generator.construction import _leftover
 from scripts.benchmark import WrittenState
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger

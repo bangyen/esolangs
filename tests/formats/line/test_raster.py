@@ -6,10 +6,10 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.line import run as run_line
+from esolangs.languages.line.generator import line_boolean
+from esolangs.languages.line.generator.render import render
+from esolangs.languages.line.interpreter import run as run_line
 from esolangs.raster import Raster
-from esolangs.tools.line import line_boolean
-from esolangs.tools.line.render import render
 
 
 def test_png_round_trip_preserves_rgb() -> None:
@@ -29,14 +29,14 @@ def test_raster_rejects_an_invalid_channel() -> None:
 
 def test_raster_converts_to_greyscale() -> None:
     raster = Raster((((255, 0, 0), (0, 255, 0), (0, 0, 255)),))
-    from esolangs.interpreters.line import _grey_rows
+    from esolangs.languages.line.interpreter import _grey_rows
 
     assert _grey_rows(raster.rows) == [bytearray([76, 150, 29])]
 
 
 def test_greyscale_stays_correct_past_the_row_cache_limit() -> None:
     """Rows past the 1024-entry cache are converted uncached, not dropped."""
-    from esolangs.interpreters.line import _grey_rows
+    from esolangs.languages.line.interpreter import _grey_rows
 
     rows = [((255, 0, 0), ((i + 3) % 256, 0, 0)) for i in range(1100)]
     grey = _grey_rows(rows)
@@ -76,7 +76,7 @@ def test_public_run_loads_line_png(tmp_path: Path) -> None:
 
 def test_a_corrupt_png_is_a_value_error(tmp_path: Path) -> None:
     """The decoder's raw zlib/struct errors used to escape ``load_binary``."""
-    from esolangs.interpreters.line import extract
+    from esolangs.languages.line.interpreter import extract
 
     path = tmp_path / "corrupt.png"
     path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
@@ -95,7 +95,7 @@ def _fixture_images(directory: Path) -> list[Path]:
     "image", _fixture_images(Path(__file__).parents[2] / "support/fixtures" / "line")
 )
 def test_every_wiki_fixture_extracts(image: Path) -> None:
-    from esolangs.interpreters.line.extract import extract
+    from esolangs.languages.line.interpreter.extract import extract
 
     extract(str(image))
 
@@ -107,7 +107,7 @@ def test_empty_fixture_sweep_is_rejected(tmp_path: Path) -> None:
 
 def test_a_generated_raster_runs_from_its_retained_graph() -> None:
     """``run`` short-circuits to the graph when the raster carries one."""
-    from esolangs.tools.line import line as generate
+    from esolangs.languages.line.generator import line as generate
 
     program = generate("0110")
     assert program._payload is not None  # noqa: SLF001
@@ -119,7 +119,7 @@ def test_a_generated_raster_runs_from_its_retained_graph() -> None:
 @pytest.mark.medium  # 0.97s alone: renders and walks the pixels
 def test_the_graph_walker_matches_the_pixels() -> None:
     """Both routes answer the same, which is what makes the shortcut safe."""
-    from esolangs.tools.line import line as generate
+    from esolangs.languages.line.generator import line as generate
 
     program = generate("0110")
     through_graph = ScriptedIO("1\n1\n")
@@ -133,8 +133,8 @@ def test_the_graph_walker_matches_the_pixels() -> None:
 
 def test_the_graph_walker_decrements() -> None:
     """``-`` is the one opcode no generated Line program emits."""
-    from esolangs.interpreters.line import _Machine
-    from esolangs.tools.line.render import Node
+    from esolangs.languages.line.generator.render import Node
+    from esolangs.languages.line.interpreter import _Machine
 
     minus = Node("-")
     minus.next = Node("o")
@@ -148,8 +148,8 @@ def test_the_graph_walker_decrements() -> None:
 
 def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
     """Characterizing the fall-through: an unknown op advances, silently."""
-    from esolangs.interpreters.line import _Machine
-    from esolangs.tools.line.render import Node
+    from esolangs.languages.line.generator.render import Node
+    from esolangs.languages.line.interpreter import _Machine
 
     start = Node("!")
     start.next = Node("o")
@@ -173,7 +173,7 @@ def test_line_infers_the_entry_heading_from_the_arrow() -> None:
 
 def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
     """A JPEG names itself and the fix, rather than failing on the signature."""
-    from esolangs.interpreters.line import extract
+    from esolangs.languages.line.interpreter import extract
 
     path = tmp_path / "drawing.jpg"
     # A JPEG start-of-image plus APP0, which is all the sniff looks at.

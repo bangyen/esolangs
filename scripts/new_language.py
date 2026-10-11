@@ -21,7 +21,6 @@ form still means ``start``.
 from __future__ import annotations
 
 import argparse
-import builtins
 import itertools
 import json
 import keyword
@@ -44,7 +43,6 @@ ROOT = Path(__file__).parents[1]
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
 from remove_language import (  # noqa: E402
-    _legacy_generator_module,
     _tests_attr,
     remove,
 )
@@ -138,36 +136,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 '''
 
 
-def _compatibility_module(
-    module: str,
-    names: tuple[str, ...],
-    *,
-    interpreter: bool = False,
-    entry_keywords: str = "",
-) -> str:
-    """Alias the implementation at runtime and expose its static exports."""
-    imports = "".join(
-        f"    from {module} import {name} as {name}"
-        + ("  # noqa: A004" if hasattr(builtins, name) else "")
-        + "\n"
-        for name in names
-    )
-    entry = (
-        '\nif __name__ == "__main__":\n'
-        "    from esolangs.interpreters._entry import script_main\n\n"
-        f"    script_main(_implementation.run{entry_keywords})\n"
-        if interpreter
-        else ""
-    )
-    return (
-        '"""Compatibility import for the language implementation."""\n\n'
-        "import importlib\nimport sys\nfrom typing import TYPE_CHECKING\n\n"
-        "if TYPE_CHECKING:\n" + imports + "\n"
-        f'_implementation = importlib.import_module("{module}")\n'
-        "sys.modules[__name__] = _implementation\n" + entry
-    )
-
-
 def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     """Create and return the interpreter, generator and test stubs."""
     slug = _slug(name)
@@ -177,7 +145,7 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
         ROOT / "tests" / "interpreters" / f"test_{slug}.py": (
             f'"""Tests for the {name} interpreter."""\n\n'
             "import pytest\n\n"
-            f"from esolangs.interpreters.{slug} import run\n"
+            f"from esolangs.languages.{slug}.interpreter import run\n"
             "from esolangs.interpreters.io import ScriptedIO\n\n\n"
             '@pytest.mark.xfail(reason="placeholder: replace with the spec")\n'
             "def test_placeholder_increment_and_write() -> None:\n"
@@ -193,16 +161,6 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
             _GENERATOR_TEST.format(**fields)
         )
     files[package / "__init__.py"] = '"""Language implementation modules."""\n'
-    files[ROOT / "src/esolangs/interpreters" / f"{slug}.py"] = _compatibility_module(
-        f"esolangs.languages.{slug}.interpreter",
-        ("_Machine", "_State", "_advance", "run"),
-        interpreter=True,
-    )
-    if generator:
-        files[ROOT / "src/esolangs/tools" / f"{slug}.py"] = _compatibility_module(
-            f"esolangs.languages.{slug}.generator",
-            ("LANGUAGE", slug),
-        )
     namespace = package.parent / "__init__.py"
     if not namespace.exists():
         files[namespace] = '"""Language-owned interpreters and generators."""\n'
@@ -309,14 +267,11 @@ def _registered_generator(name: str) -> bool:
 def _common_gaps(name: str, module: str) -> list[Gap]:
     """List the steps every language needs, generator or not."""
     gaps = []
-    base = ROOT / "src/esolangs/interpreters" / module.replace(".", "/")
-    canonical = ROOT / "src/esolangs/languages" / module / "interpreter"
+    base = ROOT / "src/esolangs/languages" / module / "interpreter"
     source = next(
         (
             p
             for p in (
-                canonical.with_suffix(".py"),
-                canonical / "__init__.py",
                 base.with_suffix(".py"),
                 base / "__init__.py",
             )
@@ -328,7 +283,7 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
         gaps.append(Gap(f"{base.relative_to(ROOT)}.py", "write the interpreter"))
     elif PLACEHOLDER in source.read_text(encoding="utf-8"):
         gaps.append(Gap(str(source.relative_to(ROOT)), "write the docstring"))
-    needle = f"esolangs.interpreters.{module}"
+    needle = f"esolangs.languages.{module}.interpreter"
     tests = [
         path
         for path in (ROOT / "tests").rglob("*.py")
@@ -369,7 +324,7 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
 
 def _generator_gaps(lang: Language) -> list[Gap]:
     """List the steps a language with a Boolean generator needs."""
-    from esolangs import tools
+    from esolangs.languages import generators
     from esolangs.tools.wrap import takes_width
 
     assert lang.boolean is not None
@@ -392,10 +347,10 @@ def _generator_gaps(lang: Language) -> list[Gap]:
                 "language's VM sample from its one-input program",
             )
         )
-    if gen not in tools.__all__:
+    if gen not in generators.__all__:
         gaps.append(
             Gap(
-                "src/esolangs/tools/__init__.py",
+                "src/esolangs/languages/generators.py",
                 "declare the generator's LANGUAGE and run "
                 "`python scripts/docs/generate.py docs` to regenerate the exports",
             )
@@ -558,14 +513,9 @@ def sources(name: str) -> list[str]:
     from esolangs.registry import LANGUAGES
 
     lang = LANGUAGES[name]
-    modules = [f"esolangs.interpreters.{lang.interpreter}"] if lang.interpreter else []
+    modules = [f"esolangs.languages.{lang.id}.interpreter"] if lang.interpreter else []
     if lang.boolean is not None:
         modules.append(lang.boolean.__module__)
-    package = ROOT / "src/esolangs/languages" / lang.id
-    if package.exists():
-        modules.append(f"esolangs.languages.{lang.id}.interpreter")
-        if lang.boolean is not None:
-            modules.append(_legacy_generator_module(lang))
     return [
         str(path.relative_to(ROOT))
         for module in dict.fromkeys(modules)

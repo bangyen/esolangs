@@ -66,7 +66,7 @@ def _module_files() -> list[pathlib.Path]:
         if language.interpreter is None:
             continue
         module = importlib.import_module(
-            f"esolangs.interpreters.{language.interpreter}"
+            f"esolangs.languages.{language.id}.interpreter"
         )
         paths.append(pathlib.Path(inspect.getfile(module)))
     return sorted(paths)
@@ -135,7 +135,7 @@ class TestTheSweepCanSee:
         registered = {
             pathlib.Path(
                 inspect.getfile(
-                    importlib.import_module(f"esolangs.interpreters.{lang.interpreter}")
+                    importlib.import_module(f"esolangs.languages.{lang.id}.interpreter")
                 )
             )
             .relative_to(_INTERPRETERS)
@@ -249,7 +249,9 @@ def test_interpreter_docstrings_follow_the_template() -> None:
     named_paths = {}
     for module, name in names.items():
         path = pathlib.Path(
-            inspect.getfile(importlib.import_module(f"esolangs.interpreters.{module}"))
+            inspect.getfile(
+                importlib.import_module(f"esolangs.languages.{module}.interpreter")
+            )
         )
         assert path.is_file(), module
         named_paths[path] = name

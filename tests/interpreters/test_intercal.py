@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.intercal import _expression, _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
+from esolangs.languages.intercal.interpreter import _expression, _Machine, run
 from esolangs.vm import run_until_halt_or_all_branches_cycle
 from tests.interpreters.runner import run_program
 

@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.nocomment`."""
+"""Covers :mod:`esolangs.languages.nocomment.generator`."""
 
 import importlib
 import io
@@ -9,8 +9,8 @@ from itertools import pairwise
 import pytest
 
 from esolangs.interpreters.io import IO
+from esolangs.languages.nocomment.generator import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR
-from esolangs.tools.nocomment import PAIR
 from tests.support.witness_tables import row_bits
 
 
@@ -18,7 +18,7 @@ class TestParameterizedNoComment:
     """Input-by-substitution boolean generator for the no-input language NoComment."""
 
     def run_nocomment(self, prog: str, tape: int | None = None) -> str:
-        from esolangs.interpreters.nocomment import _TAPE, run
+        from esolangs.languages.nocomment.interpreter import _TAPE, run
 
         buffer = io.StringIO()
         with redirect_stdout(buffer):
@@ -35,7 +35,7 @@ class TestParameterizedNoComment:
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         template = generators.nocomment("0110")
         assert "{X" not in template
@@ -43,7 +43,7 @@ class TestParameterizedNoComment:
 
     def test_four_input_works(self) -> None:
         """A dense four-input table assembles and runs correctly."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
@@ -87,7 +87,7 @@ class TestParameterizedNoComment:
 
     def test_the_chain_needs_six_cells_at_any_arity(self) -> None:
         """The chain's tape is six cells at any arity, and it runs on one that size."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         n = 13
         table = "".join(str((r * r + r // 3) % 2) for r in range(2**n))
@@ -100,8 +100,8 @@ class TestParameterizedNoComment:
 
     def test_the_chain_takes_over_where_it_is_smaller(self) -> None:
         """The dispatch is the measured crossover: the chain from four inputs."""
-        from esolangs import tools as generators
-        from esolangs.tools.nocomment import (
+        from esolangs.languages import generators
+        from esolangs.languages.nocomment.generator import (
             _NOCOMMENT_CHAIN_MIN,
             _nocomment_chain,
         )
@@ -114,7 +114,7 @@ class TestParameterizedNoComment:
         assert len(narrow) < len(chained)
         chain = generators.nocomment(four)
         assert chain == _nocomment_chain(four, 4)
-        module = importlib.import_module("esolangs.tools.nocomment")
+        module = importlib.import_module("esolangs.languages.nocomment.generator")
         module._NOCOMMENT_CHAIN_MIN = 99  # noqa: SLF001
         try:
             assert len(generators.nocomment(four)) > len(chain)
@@ -123,7 +123,7 @@ class TestParameterizedNoComment:
 
     def test_the_chain_drops_ignored_inputs(self) -> None:
         """A table that ignores inputs is the smaller table's chain, and still right."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         n = 6
         table = "".join(str((r >> 4) & 1 ^ (r & 1)) for r in range(2**n))
@@ -139,7 +139,7 @@ class TestParameterizedNoComment:
 
     def test_the_chain_is_linear_in_the_table(self) -> None:
         """Six commands per row and a stage per 32: the size doubles with the table."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         sizes = [
             len(generators.nocomment("01" * 2 ** (n - 1))) for n in (9, 10, 11, 12)
@@ -150,7 +150,7 @@ class TestParameterizedNoComment:
 
     def _check_wide_arity(self, n: int, rows: Iterable[int]) -> None:
         """Run the four probe tables at arity ``n`` over ``rows``."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         tables = {
             "alternating": "01" * (2 ** (n - 1)),
@@ -170,7 +170,7 @@ class TestParameterizedNoComment:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
-    from esolangs.tools.nocomment import _program
+    from esolangs.languages.nocomment.generator import _program
     from tests.support.generator_support import assert_shared_program
 
     language = "NoComment"
@@ -187,7 +187,7 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
-    from esolangs.tools.nocomment import _program
+    from esolangs.languages.nocomment.generator import _program
     from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)

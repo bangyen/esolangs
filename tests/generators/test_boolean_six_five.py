@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.six_five`."""
+"""Covers :mod:`esolangs.languages.six_five.generator`."""
 
 import importlib
 from itertools import permutations
@@ -7,10 +7,8 @@ import pytest
 
 import esolangs
 from esolangs import run
-from esolangs import tools as boolean
-from esolangs.tools.examples import BOOLEAN_EXAMPLES
-from esolangs.tools.helpers import permute_truth_table
-from esolangs.tools.six_five import (
+from esolangs.languages import generators as boolean
+from esolangs.languages.six_five.generator import (
     _SIX_FIVE_TEST,
     _SIX_FIVE_TREE_NORMALIZE,
     _six_five_chosen,
@@ -23,6 +21,8 @@ from esolangs.tools.six_five import (
     _six_five_stream_ordered,
     _six_five_walk,
 )
+from esolangs.tools.examples import BOOLEAN_EXAMPLES
+from esolangs.tools.helpers import permute_truth_table
 from esolangs.tools.wrap import (
     _six_five,
 )
@@ -45,7 +45,7 @@ def _leaves(table: str) -> int:
 
 def _markers(program: str) -> int:
     """How many ``4`` markers a 6-5 program really has."""
-    from esolangs.interpreters.six_five import _tokens
+    from esolangs.languages.six_five.interpreter import _tokens
 
     return sum(1 for token in _tokens(program) if token == "4")
 
@@ -331,7 +331,7 @@ class TestSixFive:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Lower the unreachable 35-input limit and execute its replacement."""
-        module = importlib.import_module("esolangs.tools.six_five")
+        module = importlib.import_module("esolangs.languages.six_five.generator")
         table = _dense(5)
         monkeypatch.setattr(module, "_SIX_FIVE_MAX_LABEL", 4)
         program = _six_five_walk(table)
@@ -376,7 +376,7 @@ def test_retired_orders_remain_available_when_routine_orders_fail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Retirement preserves the alternative-order label-budget fallback."""
-    module = importlib.import_module("esolangs.tools.six_five")
+    module = importlib.import_module("esolangs.languages.six_five.generator")
     table = "00000101"
     routine = _six_five_orders(table, compact=True)
 
@@ -400,7 +400,7 @@ class TestGeneratorEdgePaths:
 
     def test_six_five_label_rejects_an_unspellable_operand(self) -> None:
         """Operands are one character, so the alphabet runs out at 35."""
-        from esolangs.tools.six_five import (
+        from esolangs.languages.six_five.generator import (
             _SIX_FIVE_MAX_LABEL,
             _six_five_label,
         )
@@ -418,7 +418,7 @@ class TestGeneratorEdgePaths:
 
     def test_six_five_move_spells_a_distance_in_pairs(self) -> None:
         """Rightward moves go two cells at a time, with a ``3`` for the odd one."""
-        from esolangs.tools.six_five import _six_five_move
+        from esolangs.languages.six_five.generator import _six_five_move
 
         assert _six_five_move(2, 2) == ""
         assert _six_five_move(0, 1) == "13"
@@ -430,7 +430,7 @@ class TestGeneratorEdgePaths:
 
     def test_six_five_refuses_at_more_than_thirty_five_labels(self) -> None:
         """The capacity test is ``> 35``, not ``>= 35``."""
-        from esolangs.tools.six_five import (
+        from esolangs.languages.six_five.generator import (
             _SIX_FIVE_MAX_LABEL,
             _six_five_label,
         )

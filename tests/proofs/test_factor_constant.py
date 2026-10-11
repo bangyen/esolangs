@@ -5,10 +5,10 @@ import random
 
 import pytest
 
-from esolangs.interpreters.brainfuck import run as run_brainfuck
-from esolangs.interpreters.factor import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.factor import _program, factor
+from esolangs.languages.brainfuck.interpreter import run as run_brainfuck
+from esolangs.languages.factor.generator import _program, factor
+from esolangs.languages.factor.interpreter import run
 from tests.proofs._factor_counter import counter_program
 from tests.proofs._factor_normal import FORBIDDEN, prefix_normalize
 from tests.proofs._factor_semantic import (

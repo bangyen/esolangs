@@ -15,7 +15,7 @@ def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]
     lang = next(lang for lang in LANGUAGES.values() if lang.id == language_id)
     assert lang.boolean is not None
     assert lang.interpreter is not None
-    module = importlib.import_module(f"esolangs.interpreters.{lang.interpreter}")
+    module = importlib.import_module(f"esolangs.languages.{lang.id}.interpreter")
     return lang.boolean, module.run
 
 

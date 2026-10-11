@@ -58,9 +58,9 @@ class TestLaserFuck:
 
     def test_dump_output_matches_interpreter(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.laserfuck import _Machine as _LFMachine
-        from esolangs.interpreters.laserfuck import run as lf_run
         from esolangs.interpreters.randomness import Seeded
+        from esolangs.languages.laserfuck.interpreter import _Machine as _LFMachine
+        from esolangs.languages.laserfuck.interpreter import run as lf_run
 
         program = "\u00ff   x\n    +\n    o"
         io_obj = ScriptedIO()

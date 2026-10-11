@@ -9,7 +9,7 @@ import pytest
 def test_dispatch_accounts_for_a_single_reachable_path_class(table, shared) -> None:
     import esolangs
     from esolangs.debugger import make_vm
-    from esolangs.tools.boolfuck import _boolfuck_tree
+    from esolangs.languages.boolfuck.generator import _boolfuck_tree
 
     program, bound = _boolfuck_tree(table, shared)
     for row, expected in enumerate(table):
@@ -25,7 +25,7 @@ def test_dispatch_accounts_for_a_single_reachable_path_class(table, shared) -> N
 
 @pytest.mark.medium
 def test_multiple_residuals_reduce_guarded_parity_within_ledger():
-    from esolangs.tools.boolfuck import _boolfuck_tree
+    from esolangs.languages.boolfuck.generator import _boolfuck_tree
     from esolangs.tools.shared_block import repeated_block
     from tests.support.generator_support import assert_shared_program
 

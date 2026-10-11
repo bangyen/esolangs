@@ -9,8 +9,8 @@ from math import gcd
 
 import pytest
 
-from esolangs.interpreters.fractran import _choose, _parse
-from esolangs.tools.fractran import PAIR, fractran
+from esolangs.languages.fractran.generator import PAIR, fractran
+from esolangs.languages.fractran.interpreter import _choose, _parse
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs.deep.fractran import row_addressed, rows, spelled
 from tests.support.witness_tables import row_bits

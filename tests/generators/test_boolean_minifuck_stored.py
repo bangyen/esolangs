@@ -7,11 +7,15 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.minifuck import _Machine
+from esolangs.languages.minifuck.generator import (
+    _lookup_balance,
+    _lookup_layout,
+    _solve,
+)
+from esolangs.languages.minifuck.generator.sim import PAIR
+from esolangs.languages.minifuck.generator.stored import _Plan, plan
+from esolangs.languages.minifuck.interpreter import _Machine
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.minifuck import _lookup_balance, _lookup_layout, _solve
-from esolangs.tools.minifuck.sim import PAIR
-from esolangs.tools.minifuck.stored import _Plan, plan
 
 
 @pytest.mark.medium

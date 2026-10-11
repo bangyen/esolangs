@@ -10,9 +10,9 @@ from pathlib import Path
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from esolangs.interpreters.container import _Machine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.container import _container_threshold
+from esolangs.languages.container.generator import _container_threshold
+from esolangs.languages.container.interpreter import _Machine
 
 #: Cost band; see ``__main__.py``. L1 enumerates every row of twelve arities
 #: and L4 executes every row of six wide tables; 3.1s measured.  Weakening a

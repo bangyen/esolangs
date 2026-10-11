@@ -6,16 +6,16 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, runs
-from esolangs.tools.minifuck.mux import (
+from esolangs.languages.minifuck.generator.mux import (
     _MUX_MIN_ARITY,
     _MUX_PRESERVE_RIGHT,
     _SCULPT_POOL_CODE,
     _mux,
     _probe_frame,
 )
-from esolangs.tools.minifuck.pool import _POOL_MASK
-from esolangs.tools.minifuck.sim import PAIR, _runs, _Sim
+from esolangs.languages.minifuck.generator.pool import _POOL_MASK
+from esolangs.languages.minifuck.generator.sim import PAIR, _runs, _Sim
+from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, runs
 from tests.generators.minifuck_support import _FLIP, _embed, _mux_separate, run_count
 
 
@@ -34,9 +34,9 @@ def _slot_order(gen: object, table: str) -> list[int] | None:
 @pytest.mark.slow  # two closed-form builds plus eight interpreter runs each
 def test_minifuck_ignored_leading_inputs_compute_their_function() -> None:
     """A table that ignores its leading inputs computes, not merely emits in order."""
-    from esolangs import tools as generators
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.minifuck import run
+    from esolangs.languages import generators
+    from esolangs.languages.minifuck.interpreter import run
     from tests.generators.fills import fill
 
     _fill_minifuck = fill("Minifuck")
@@ -62,12 +62,12 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
     """One essential input does not guarantee the cell lookup resolves it."""
 
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.minifuck import run
+    from esolangs.languages.minifuck.interpreter import run
     from tests.generators.fills import fill
 
     _fill_minifuck = fill("Minifuck")
 
-    module = importlib.import_module("esolangs.tools.minifuck")
+    module = importlib.import_module("esolangs.languages.minifuck.generator")
 
     for table in ("01010101", "10101010"):
         assert essential_inputs(table, 3) == [2]
@@ -87,9 +87,9 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
 @pytest.mark.slow
 def test_minifuck_builds_five_input_xor() -> None:
     """Five-input XOR builds and prints all 32 rows."""
-    from esolangs import tools as generators
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.minifuck import run
+    from esolangs.languages import generators
+    from esolangs.languages.minifuck.interpreter import run
     from tests.generators.fills import fill
 
     _fill_minifuck = fill("Minifuck")
@@ -177,8 +177,8 @@ def test_ten_input_builds_print_on_the_interpreter() -> None:
     import random
 
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.minifuck import run
-    from esolangs.tools import minifuck
+    from esolangs.languages.minifuck.generator import minifuck
+    from esolangs.languages.minifuck.interpreter import run
     from tests.generators.fills import fill
 
     _fill_minifuck = fill("Minifuck")

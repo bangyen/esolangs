@@ -3,8 +3,8 @@
 from pathlib import Path
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.streetcode import _Machine
-from esolangs.interpreters.streetcode.geometry import (
+from esolangs.languages.streetcode.interpreter import _Machine
+from esolangs.languages.streetcode.interpreter.geometry import (
     _NO_LATCHES,
     _Car,
     _choose_heading,

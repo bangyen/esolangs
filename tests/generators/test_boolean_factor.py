@@ -4,7 +4,7 @@ import sys
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_factor,
 )
@@ -28,9 +28,9 @@ class TestFactor:
         """The integer's factorization is a brainfuck program for the table."""
         import sympy
 
-        from esolangs.interpreters.brainfuck import run as run_bf
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.factor import _BF_RESIDUE
+        from esolangs.languages.brainfuck.interpreter import run as run_bf
+        from esolangs.languages.factor.generator import _BF_RESIDUE
 
         table = "0110"
         n = 2
@@ -74,7 +74,7 @@ class TestFactor:
 
 @pytest.mark.medium
 def test_shared_residual_measures_encoded_size_and_executes_within_ledger() -> None:
-    from esolangs.tools.factor import _encode, _program
+    from esolangs.languages.factor.generator import _encode, _program
     from tests.support.generator_support import assert_shared_program
 
     zero = "0001011101101001" * 4
@@ -99,7 +99,7 @@ def test_shared_residual_measures_encoded_size_and_executes_within_ledger() -> N
 @pytest.mark.parametrize(("bit", "expected"), [(0, "1"), (1, "0")])
 def test_one_input_not_stays_within_the_command_ledger(bit, expected) -> None:
     from esolangs.debugger import make_vm
-    from esolangs.tools.factor import factor
+    from esolangs.languages.factor.generator import factor
 
     program = factor("10")
     assert len(program) == 142
@@ -115,7 +115,7 @@ def test_one_input_not_stays_within_the_command_ledger(bit, expected) -> None:
 @pytest.mark.medium
 def test_multiple_residuals_reduce_encoded_size_within_ledger():
     from esolangs._digits import digit_limit_for
-    from esolangs.tools.factor import _encode, _program
+    from esolangs.languages.factor.generator import _encode, _program
     from tests.support.generator_support import assert_shared_program
 
     n = 10
@@ -148,7 +148,7 @@ def test_multiple_residuals_reduce_encoded_size_within_ledger():
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_projection_skips_ascii_normalization(bit):
-    from esolangs.tools.factor import _factor
+    from esolangs.languages.factor.generator import _factor
     from tests.support.generator_support import assert_shared_program
 
     n = 8
@@ -170,7 +170,7 @@ def test_constant_projection_skips_ascii_normalization(bit):
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_projection_retains_balanced_encoding(n, bit):
-    from esolangs.tools.factor import _factor
+    from esolangs.languages.factor.generator import _factor
     from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)
@@ -181,7 +181,7 @@ def test_constant_projection_retains_balanced_encoding(n, bit):
 
 @pytest.mark.medium
 def test_factor_bank_compares_decimal_encodings_and_executes_within_ledger():
-    from esolangs.tools.factor import _encode, _program
+    from esolangs.languages.factor.generator import _encode, _program
     from tests.support.generator_support import assert_shared_program
 
     n = 8

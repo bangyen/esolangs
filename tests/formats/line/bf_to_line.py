@@ -9,7 +9,7 @@ arm is what follows (``_layout`` never follows a ``?``'s ``.next``).
 
 from __future__ import annotations
 
-from esolangs.tools.line.render import Node
+from esolangs.languages.line.generator.render import Node
 
 _BF_TO_LINE = {"+": "+", "-": "-", "<": "<", ">": ">", ",": "i", ".": "o"}
 

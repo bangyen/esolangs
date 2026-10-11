@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.tools.ram0 import ram0
+from esolangs.languages.ram0.generator import ram0
 from esolangs.tools.wrap import wrap_space_delimited
 from tests.support.witness_tables import witnesses
 

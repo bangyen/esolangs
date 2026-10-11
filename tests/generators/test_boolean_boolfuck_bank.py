@@ -32,7 +32,7 @@ def _bank_tables():
 def test_banked_residuals_execute_and_match_command_price(kind, case, table):
     import esolangs
     from esolangs.debugger import make_vm
-    from esolangs.tools.boolfuck import _boolfuck_tree
+    from esolangs.languages.boolfuck.generator import _boolfuck_tree
     from esolangs.tools.helpers import permute_truth_table
     from esolangs.tools.shared_block import repeated_bank
     from esolangs.tools.shared_flag import flag_tree_body
@@ -100,7 +100,7 @@ def test_mixed_depth_bank_executes_and_matches_command_price(case):
     """A bank whose blocks sit at several depths shares all of them and computes."""
     import esolangs
     from esolangs.debugger import make_vm
-    from esolangs.tools.boolfuck import _boolfuck_tree
+    from esolangs.languages.boolfuck.generator import _boolfuck_tree
     from esolangs.tools.shared_block import repeated_bank, repeated_mixed_bank
 
     table = _bank_tables()[case]

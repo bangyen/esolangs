@@ -25,7 +25,7 @@ the answer stub read the thirteenth.  ``n == 14`` computes four copies'
 readouts in the main code, lets inputs twelve and thirteen pick a copy and
 the stub read the fourteenth, and resolves shared cells over three levels.
 ``n == 15`` and ``n == 16`` drop the hash for a collision-free positional
-address (:mod:`esolangs.tools.malbolge.digits`); ``n > 16`` is refused.
+address (:mod:`esolangs.languages.malbolge.generator.digits`); ``n > 16`` is refused.
 
 The source is the fixed 59049-cell memory at every arity, so folding or
 sharing stubs cannot shrink it.

@@ -5,9 +5,9 @@ from typing import ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.alight import _Machine, _replace_first, run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.alight import alight
+from esolangs.languages.alight.generator import alight
+from esolangs.languages.alight.interpreter import _Machine, _replace_first, run
 from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
@@ -548,7 +548,7 @@ class TestFunctionDefinitionEdges:
 
     def test_a_malformed_number_literal_is_refused(self) -> None:
         """Two decimal points is not a number."""
-        from esolangs.interpreters.alight import _parse_number, _Parser
+        from esolangs.languages.alight.interpreter import _parse_number, _Parser
 
         with pytest.raises(ValueError, match="bad number literal"):
             _parse_number(_Parser("1.2.3"))

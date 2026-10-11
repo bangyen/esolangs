@@ -4,14 +4,14 @@ import random
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 
 
 class TestPainfuck:
     def test_commands_are_preshifted_for_the_trans_table(self) -> None:
         """The interpreter shifts commands through its cycles, so the source
         must be the inverse shift; the translated commands are the BF moves."""
-        from esolangs.interpreters.painfuck import _translate
+        from esolangs.languages.painfuck.interpreter import _translate
 
         program = boolean.painfuck("0110")
         translated = _translate(program)
@@ -23,7 +23,7 @@ class TestPainfuck:
 
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
-    from esolangs.tools.painfuck import _painfuck_tree
+    from esolangs.languages.painfuck.generator import _painfuck_tree
     from tests.support.generator_support import assert_shared_program
     from tests.support.screen_support import corpus
 
@@ -59,8 +59,8 @@ def _multiple_tables():
 def test_multiple_flags_execute_with_their_native_command_price(table):
     import esolangs
     from esolangs.debugger import make_vm
+    from esolangs.languages.painfuck.generator import _painfuck_shared
     from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.painfuck import _painfuck_shared
     from esolangs.tools.shared_block import repeated_bank, repeated_blocks
     from scripts.benchmark import WrittenState
 
@@ -98,7 +98,7 @@ def test_multiple_flags_execute_with_their_native_command_price(table):
 # shard pushed it past the 15s scaled limit.
 @pytest.mark.slow
 def test_multiple_flags_reduce_dense_cap_program_within_ledger():
-    from esolangs.tools.painfuck import _painfuck_tree
+    from esolangs.languages.painfuck.generator import _painfuck_tree
     from esolangs.tools.shared_block import repeated_block
     from tests.support.generator_support import assert_shared_program
 

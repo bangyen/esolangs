@@ -5,9 +5,9 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grapheme import _Machine as Grapheme
-from esolangs.interpreters.grapheme import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.grapheme.interpreter import _Machine as Grapheme
+from esolangs.languages.grapheme.interpreter import run
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
     CycleContract,
@@ -37,7 +37,7 @@ run_program = partial(_run_program, run)
 def test_lf_is_removed_before_literals_functions_and_command_positions(
     code: str, expected: str
 ) -> None:
-    from esolangs.interpreters.grapheme import _Machine
+    from esolangs.languages.grapheme.interpreter import _Machine
 
     plain = _Machine(code, ScriptedIO(""))
     wrapped = _Machine("\n" + "\n".join(code) + "\n", ScriptedIO(""))

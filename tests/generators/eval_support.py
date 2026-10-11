@@ -3,7 +3,7 @@
 from functools import cache
 from math import factorial
 
-from esolangs.tools.eval_lang import (
+from esolangs.languages.eval.generator import (
     _EVAL_READ_STACK,
     _EVAL_TREE_STACK,
     _eval_ordered,

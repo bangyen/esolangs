@@ -11,7 +11,7 @@ prefix-XOR over the cells crossed, costing the staircase
 a byte, or on zero *reads*, which marks the row ``dead``).  ``"[x" * k``
 keeps its own spelling (:meth:`_Sim.run_walk`).  The interpreter's ``_step``
 stays the definition and the tests pin every law to it differentially from
-arbitrary states.  What to emit lives in :mod:`esolangs.tools.minifuck`.
+arbitrary states.  What to emit lives in :mod:`esolangs.languages.minifuck.generator`.
 """
 
 from collections.abc import Callable

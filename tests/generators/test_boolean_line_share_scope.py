@@ -12,8 +12,8 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     permute_truth_table,
 )
-from esolangs.tools.line.render import _has_goto
-from esolangs.tools.line.shared import shared_tree
+from esolangs.languages.line.generator.render import _has_goto
+from esolangs.languages.line.generator.shared import shared_tree
 from tests.generators.test_boolean_line_projection import _execute
 from tests.support.witness_tables import parity
 

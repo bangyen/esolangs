@@ -37,7 +37,7 @@ def test_sources_names_the_interpreter_and_generator() -> None:
         if lang.interpreter is None or lang.boolean is None:
             continue
         found = new_language.sources(name)
-        interpreter = "src/esolangs/interpreters/" + lang.interpreter.replace(".", "/")
+        interpreter = f"src/esolangs/languages/{lang.id}/interpreter"
         # A package interpreter is its directory.
         assert found[0] in {f"{interpreter}.py", interpreter}, name
         generator = Path(inspect.getfile(lang.boolean))

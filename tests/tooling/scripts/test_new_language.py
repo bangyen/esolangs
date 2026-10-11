@@ -20,7 +20,7 @@ def root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 @pytest.mark.usefixtures("root")
 def test_scaffold_creates_source_generator_and_tests() -> None:
-    source, test, generator, generator_test, *compatibility = new_language.scaffold(
+    source, test, generator, generator_test, *packages = new_language.scaffold(
         "Tiny Lang", "other"
     )
     assert (source.name, generator.name) == ("interpreter.py", "generator.py")
@@ -29,7 +29,7 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
         == generator.parent
         == new_language.ROOT / "src/esolangs/languages/tiny_lang"
     )
-    assert {path.name for path in compatibility} == {"__init__.py", "tiny_lang.py"}
+    assert {path.name for path in packages} == {"__init__.py"}
     assert (test.name, generator_test.name) == (
         "test_tiny_lang.py",
         "test_boolean_tiny_lang.py",
@@ -55,7 +55,7 @@ def test_scaffold_records_the_language_as_unassessed(root: Path) -> None:
 
 
 def test_scaffold_refuses_overwrite(root: Path) -> None:
-    target = root / "src/esolangs/interpreters/tiny.py"
+    target = root / "src/esolangs/languages/tiny/interpreter.py"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("owned")
     with pytest.raises(FileExistsError, match="refusing to overwrite"):
@@ -151,7 +151,7 @@ def test_check_with_open_steps_is_not_a_failure(
 
     # main imports ``from docs.generate import update_exports``; shadow that
     # module, not a bare ``generate``, or the real writer runs against ROOT
-    # and rewrites src/esolangs/tools/__init__.py in the working tree.
+    # and rewrites src/esolangs/languages/generators.py in the working tree.
     fake = types.ModuleType("docs.generate")
     fake.update_exports = lambda *_: None  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "docs.generate", fake)
@@ -408,29 +408,13 @@ def test_remove_cleans_both_layouts(
     assert not (root / "src/esolangs/languages/tiny").exists()
 
 
-def test_retained_generator_alias_drops_registration_only(tmp_path: Path) -> None:
-    path = tmp_path / "alias.py"
-    path.write_text(
-        "if TYPE_CHECKING:\n"
-        "    from esolangs.languages.tiny.generator import LANGUAGE as LANGUAGE\n"
-        "    from esolangs.languages.tiny.generator import helper as helper\n"
-    )
-    remove_language._drop_registration_export(  # noqa: SLF001
-        path, "esolangs.languages.tiny.generator"
-    )
-    source = path.read_text()
-    assert "LANGUAGE" not in source
-    assert "helper as helper" in source
-    compile(source, str(path), "exec")
+def test_eval_source_listing_includes_its_canonical_generator():
+    assert "src/esolangs/languages/eval/generator.py" in new_language.sources("Eval")
 
 
-def test_eval_source_listing_includes_its_legacy_generator():
-    assert "src/esolangs/tools/eval_lang.py" in new_language.sources("Eval")
-
-
-def test_eval_removal_owns_its_legacy_generator():
+def test_eval_removal_owns_its_canonical_generator():
     from esolangs.registry import LANGUAGES
 
     modules, paths = remove_language._owned_module_paths(LANGUAGES["Eval"])  # noqa: SLF001
-    assert "esolangs.tools.eval_lang" in modules
-    assert remove_language.ROOT / "src/esolangs/tools/eval_lang.py" in paths
+    assert "esolangs.languages.eval.generator" in modules
+    assert remove_language.ROOT / "src/esolangs/languages/eval/generator.py" in paths

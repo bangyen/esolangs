@@ -91,7 +91,7 @@ UNWRAPPABLE = {lang.id: lang.no_wrap for lang in LANGUAGES.values() if lang.no_w
 # wider than the width is re-emitted as the (foldable) linear form.
 #
 # Derived from :func:`takes_width` rather than written out, for the reason
-# ``esolangs.tools.BOOLEAN`` is derived from the registry: the
+# ``esolangs.languages.BOOLEAN`` is derived from the registry: the
 # hand-written table had drifted both ways.  It omitted Streetcode, which
 # really does take a width.  And it named Dig, which at the time took only
 # a truth table and returned the same program whatever width was asked for
@@ -187,7 +187,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
         plain = example.build(width)
         wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
         if name == "Packlang":
-            from esolangs.interpreters.packlang._lex import _tokenize
+            from esolangs.languages.packlang.interpreter._lex import _tokenize
 
             assert _tokenize(wrapped) == _tokenize(plain)
         elif name in {"FRACTRAN", "RAM0"}:

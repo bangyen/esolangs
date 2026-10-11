@@ -20,7 +20,7 @@ GENERATED = (
     "docs/limitations.md",
     "docs/CONTRIBUTING.md",
     ".github/ISSUE_TEMPLATE/language_request.yml",
-    "src/esolangs/tools/__init__.py",
+    "src/esolangs/languages/generators.py",
 )
 
 

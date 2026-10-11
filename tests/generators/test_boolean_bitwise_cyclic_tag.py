@@ -3,14 +3,14 @@
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
-from esolangs.interpreters.bitwise_cyclic_tag import (
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages import generators as boolean
+from esolangs.languages.bitwise_cyclic_tag.generator import PAIR as BCT_PAIR
+from esolangs.languages.bitwise_cyclic_tag.interpreter import (
     _Machine as BctMachine,
 )
-from esolangs.interpreters.bitwise_cyclic_tag import run as run_bct
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
+from esolangs.languages.bitwise_cyclic_tag.interpreter import run as run_bct
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.generators.reader_support import _TABLES
 from tests.support.witness_tables import parity as _parity

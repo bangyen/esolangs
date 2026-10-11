@@ -4,10 +4,10 @@ import random
 
 import pytest
 
-from esolangs.interpreters.boolfuck import _Machine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.boolfuck import boolfuck
-from esolangs.tools.boolfuck._gates import affine_stream, normal_gates
+from esolangs.languages.boolfuck.generator import boolfuck
+from esolangs.languages.boolfuck.generator._gates import affine_stream, normal_gates
+from esolangs.languages.boolfuck.interpreter import _Machine
 from scripts.benchmark import WrittenState
 
 

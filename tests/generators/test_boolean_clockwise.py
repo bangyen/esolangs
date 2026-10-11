@@ -1,8 +1,8 @@
-"""Covers :mod:`esolangs.tools.clockwise`."""
+"""Covers :mod:`esolangs.languages.clockwise.generator`."""
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_clockwise,
 )
@@ -12,7 +12,7 @@ from tests.support.witness_tables import parity, row_bits, witnesses
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_ring_reads_and_prints_without_a_lookup(n: int, bit: str) -> None:
-    from esolangs.tools.clockwise import _balance
+    from esolangs.languages.clockwise.generator import _balance
 
     table = bit * (1 << n)
     default = boolean.clockwise(table)
@@ -35,8 +35,8 @@ def test_trailing_inputs_are_read_after_the_two_entry_lookup(width: int | None) 
 
 @pytest.mark.parametrize("width", [None, 1, 20])
 def test_return_reads_complete_exactly_one_rotation(width: int | None) -> None:
-    from esolangs.interpreters.clockwise import _Machine
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.clockwise.interpreter import _Machine
 
     n = 8
     table = "".join(str(((row >> 7) ^ (row >> 6)) & 1) for row in range(256))
@@ -76,8 +76,8 @@ class TestClockwise:
     @pytest.mark.parametrize("width", [None, 1])
     def test_every_run_reads_each_input_exactly_once(self, width: int | None) -> None:
         """Clockwise's input queue rotates, so a run must consume 7n bits."""
-        from esolangs.interpreters.clockwise import _Machine
         from esolangs.interpreters.io import IO
+        from esolangs.languages.clockwise.interpreter import _Machine
 
         class _Quiet(IO):
             def __init__(self, text: str) -> None:
@@ -162,8 +162,8 @@ def test_entry_digit_prefix_executes_every_small_table() -> None:
 
 def test_single_column_cannot_close_a_clockwise_ring() -> None:
     """A downward beam's next clockwise turn leaves the only column."""
-    from esolangs.interpreters.clockwise import _Machine
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.clockwise.interpreter import _Machine
 
     machine = _Machine(["R", "R"], ScriptedIO(""))
     machine.step()

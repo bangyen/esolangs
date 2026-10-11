@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.streetcode import (
+from esolangs.languages.streetcode.interpreter import (
     _Machine,
     run,
 )

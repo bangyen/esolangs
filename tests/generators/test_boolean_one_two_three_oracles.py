@@ -3,8 +3,12 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.one_two_three import _Machine
-from esolangs.tools.one_two_three import _LAWS, _construct_small, _separated
+from esolangs.languages.one_two_three.generator import (
+    _LAWS,
+    _construct_small,
+    _separated,
+)
+from esolangs.languages.one_two_three.interpreter import _Machine
 from tests.support.witness_tables import witnesses
 
 

@@ -1,15 +1,15 @@
-"""Covers :mod:`esolangs.tools.minifuck` and its
-:mod:`esolangs.tools.minifuck.mux`."""
+"""Covers :mod:`esolangs.languages.minifuck.generator` and its
+:mod:`esolangs.languages.minifuck.generator.mux`."""
 
 import importlib
 from unittest.mock import patch
 
 import pytest
 
+from esolangs.languages.minifuck.generator import _solve
+from esolangs.languages.minifuck.generator.mux import _MUX_MIN_ARITY, _mux, _mux_lookup
+from esolangs.languages.minifuck.generator.sim import _MINIFUCK_INPUT, PAIR
 from esolangs.tools.helpers import essential_inputs
-from esolangs.tools.minifuck import _solve
-from esolangs.tools.minifuck.mux import _MUX_MIN_ARITY, _mux, _mux_lookup
-from esolangs.tools.minifuck.sim import _MINIFUCK_INPUT, PAIR
 from tests.generators.minifuck_support import _MinifuckCase, _mux_separate, run_count
 from tests.support.witness_tables import row_bits
 
@@ -42,7 +42,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
     def test_no_arity_is_gated(self) -> None:
         """A fully-essential six-input table builds and prints all 64 rows."""
 
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.languages.minifuck.generator")
         assert _MUX_MIN_ARITY == 2
 
         n = 6
@@ -74,7 +74,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
     ) -> None:
         """With the degenerate route stubbed off, ``_mux`` builds the table."""
 
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.languages.minifuck.generator")
 
         with patch.object(module, "_degenerate", lambda *_a, **_k: None):
             _solve.cache_clear()
@@ -100,7 +100,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
 
     def test_template_is_input_independent_and_equal_length(self) -> None:
         """The template has placeholders and every fill has the same length."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         template = generators.minifuck("0110")
         assert "{X" not in template
@@ -112,9 +112,9 @@ class TestParameterizedMinifuck(_MinifuckCase):
 
     def test_ignored_inputs_wrap_the_inner_program(self) -> None:
         """An inert block before it per leading input, a run after per trailing one."""
-        from esolangs.interpreters.minifuck import _step
+        from esolangs.languages.minifuck.interpreter import _step
 
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.languages.minifuck.generator")
         inert = module._INERT  # noqa: SLF001
         for fill in PAIR:
             code, tape, ptr, at = inert.replace(_MINIFUCK_INPUT, fill), 0, 0, 0

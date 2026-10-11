@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from esolangs.tools.helpers import essential_inputs, permute_truth_table
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import (
@@ -15,8 +15,8 @@ from tests.support.generator_support import (
 
 def _forth_scope_keys(table: str) -> set[int]:
     """The heap indices a Forþ program's definitions actually reach."""
-    from esolangs.interpreters.forth import _Machine
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.forth.interpreter import _Machine
 
     machine = _Machine(boolean.forth(table).split(",")[0], ScriptedIO(""))
     while not machine.halted:
@@ -26,7 +26,7 @@ def _forth_scope_keys(table: str) -> set[int]:
 
 def _forth_plain(table: str) -> str:
     """Forþ's build with no subtree shared: the fold alone, in natural order."""
-    from esolangs.tools.forth import _forth_ordered
+    from esolangs.languages.forth.generator import _forth_ordered
 
     n = len(table).bit_length() - 1
     natural = tuple(reversed(range(n)))
@@ -117,14 +117,14 @@ class TestForth:
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
-        from esolangs.tools.forth import _forth_const
+        from esolangs.languages.forth.generator import _forth_const
 
         assert _forth_const(0) == "0"
         assert len(_forth_const(300)) > len(_forth_const(48))
 
     def test_const_is_base_fifteen(self) -> None:
         """Digits are ``0-E`` and the radix is 15, not 16."""
-        from esolangs.tools.forth import _forth_const
+        from esolangs.languages.forth.generator import _forth_const
 
         assert _forth_const(14) == "E"
         assert _forth_const(15) == "1F*0+"

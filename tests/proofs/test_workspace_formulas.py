@@ -10,8 +10,8 @@ from collections.abc import Callable
 import pytest
 
 import esolangs
-from esolangs.interpreters.sstack import _parse
-from esolangs.tools.three_x import _level
+from esolangs.languages.sstack.interpreter import _parse
+from esolangs.languages.three_x.generator import _level
 from scripts.benchmark import state_bits
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger

@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs.tools.arrowqueue import arrowqueue
+from esolangs.languages.arrowqueue.generator import arrowqueue
 from tests.generators.fills import fill
 from tests.support.divergence import diverges
 from tests.support.witness_tables import row_bits

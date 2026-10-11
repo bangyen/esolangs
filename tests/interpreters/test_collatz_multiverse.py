@@ -5,8 +5,8 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.collatz_multiverse import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.collatz_multiverse.interpreter import _Machine, run
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
@@ -171,7 +171,7 @@ def test_output(program: str, stdin: str, expected: str) -> None:
 
 def test_sparse_register_and_array_lookups_return_zero() -> None:
     """Absent names and cells are semantic zeroes, not stored entries."""
-    from esolangs.interpreters.collatz_multiverse import (
+    from esolangs.languages.collatz_multiverse.interpreter import (
         _arr_get,
         _arr_set,
         _reg_get,

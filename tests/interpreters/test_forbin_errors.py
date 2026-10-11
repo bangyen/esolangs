@@ -3,8 +3,8 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.forbin import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.forbin.interpreter import run
 from tests.interpreters.forbin_support import run_program
 from tests.support.raises import raises_message
 

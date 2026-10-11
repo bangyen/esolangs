@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 import esolangs
-import esolangs.tools as boolean
+import esolangs.languages.generators as boolean
 from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES
 from tests.integration.cli.test_cli import call_main

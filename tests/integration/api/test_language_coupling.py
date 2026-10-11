@@ -14,7 +14,6 @@ import ast
 import io
 import re
 import subprocess
-import sys
 import tokenize
 import tomllib
 from collections import Counter
@@ -35,7 +34,7 @@ TREES = ("src/", "tests/", "scripts/")
 MANAGED = frozenset(
     {
         "src/esolangs/registry/_table.py",
-        "src/esolangs/tools/__init__.py",
+        "src/esolangs/languages/generators.py",
         "tests/support/samples.py",
         "tests/generators/boolean_runners.py",
         "tests/generators/test_wrap.py",
@@ -215,25 +214,13 @@ def test_citation_matching_covers_a_compound() -> None:
 
 def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
     """Return a language's spellings and the path prefixes it owns."""
-    modules = [f"esolangs.interpreters.{lang.interpreter}"] if lang.interpreter else []
+    modules = [f"esolangs.languages.{lang.id}.interpreter"] if lang.interpreter else []
     if lang.boolean is not None:
         modules.append(lang.boolean.__module__.removesuffix(".__init__"))
     canonical = [m for m in modules if m.startswith("esolangs.languages.")]
-    if canonical:
-        implementation = sys.modules.get(canonical[0])
-        modules.extend(
-            [
-                name
-                for name, candidate in sorted(sys.modules.items())
-                if implementation is not None
-                and candidate is implementation
-                and name.startswith("esolangs.tools.")
-            ]
-            or [f"esolangs.tools.{lang.id}"]
-        )
-    stems = {
-        m.rsplit(".", 1)[-1] for m in modules if not m.startswith("esolangs.languages.")
-    } | {lang.id}
+    stems = {lang.id}
+    if lang.boolean is not None:
+        stems.add(lang.boolean.__name__)
     prefixes = [f"src/{m.replace('.', '/')}" for m in modules]
     prefixes.append(f"src/esolangs/languages/{lang.id}/")
     prefixes += [f"src/{m.split('.generator')[0].replace('.', '/')}" for m in canonical]

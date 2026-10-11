@@ -4,8 +4,8 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.home_row import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.home_row.interpreter import run
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
@@ -50,7 +50,7 @@ def test_output(code, expected) -> None:
 class TestPointer:
     def test_wraps_within_a_row_and_by_rows(self) -> None:
         """``f`` wraps at the row edge; ``d`` moves a whole row forward."""
-        from esolangs.interpreters.home_row import _Machine
+        from esolangs.languages.home_row.interpreter import _Machine
 
         for code, ptr in (("d", 5), ("f", 1)):
             machine = _Machine(code, ScriptedIO())
@@ -88,7 +88,7 @@ class TestLongProgram:
 
 class TestStepMachine:
     def test_snapshot_changes_after_a_step(self) -> None:
-        from esolangs.interpreters.home_row import _Machine
+        from esolangs.languages.home_row.interpreter import _Machine
 
         machine = _Machine("a", ScriptedIO())
         before = machine.snapshot()
@@ -98,8 +98,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.home_row import _Machine
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.home_row.interpreter import _Machine
 
     return _Machine(code, ScriptedIO())
 

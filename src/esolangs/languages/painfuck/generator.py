@@ -9,7 +9,7 @@ pointer, so returning to the reads costs one character instead of one
 per cell.
 """
 
-from esolangs.interpreters.painfuck import _CYCLES
+from esolangs.languages.painfuck.interpreter import _CYCLES
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,

@@ -5,9 +5,9 @@ import random
 
 import pytest
 
-from esolangs.interpreters.boolfuck import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.boolfuck import boolfuck
+from esolangs.languages.boolfuck.generator import boolfuck
+from esolangs.languages.boolfuck.interpreter import _Machine, run
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import boolfuck as oracle
 from tests.support.raises import assert_rejected_with_hint

@@ -3,8 +3,8 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.sbleq import _Machine, run
-from esolangs.interpreters.sbleq import _Machine as Sbleq
+from esolangs.languages.sbleq.interpreter import _Machine, run
+from esolangs.languages.sbleq.interpreter import _Machine as Sbleq
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 

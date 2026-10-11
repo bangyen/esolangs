@@ -5,7 +5,7 @@ import re
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO
 from tests.generators.boolean_runners import run_sophie, run_sophie_from
 from tests.generators.sophie_support import _residual_levels, _sophie_dag, _sophie_tree

@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.unary import _Machine, decode, run
+from esolangs.languages.unary.interpreter import _Machine, decode, run
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
 

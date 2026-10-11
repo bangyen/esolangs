@@ -2,8 +2,8 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.interpreters.clockwise import run
 from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.languages.clockwise.interpreter import run
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -53,7 +53,7 @@ class TestClockwise:
 class TestMachineState:
     def test_a_ring_with_no_read_never_touches_the_input(self) -> None:
         """The bits are read at construction, but only if a ``.`` is there."""
-        from esolangs.interpreters.clockwise import _Machine
+        from esolangs.languages.clockwise.interpreter import _Machine
 
         io = ScriptedIO("A\n")
         _Machine(["+;S;S;S;S;S;+;R", "R             R"], io)
@@ -65,7 +65,7 @@ class TestMove:
 
     def test_a_position_off_the_grid_is_a_malformed_ring(self) -> None:
         """Each side of both bounds is rejected before the cell is read."""
-        from esolangs.interpreters.clockwise import move
+        from esolangs.languages.clockwise.interpreter import move
 
         grid = ["  R", "R R"]
         for row, col in ((2, 0), (-1, 0), (0, 3), (0, -1)):
@@ -74,7 +74,7 @@ class TestMove:
 
     def test_the_origin_is_only_ever_entered_heading_left_or_up(self) -> None:
         """The heading-right exception guards a state no caller can build."""
-        from esolangs.interpreters.clockwise import move
+        from esolangs.languages.clockwise.interpreter import move
 
         grid = ["RR", "RR"]
         assert move(0, 1, 1, grid, 0)[:3] == (0, 0, 2)
@@ -84,7 +84,7 @@ class TestMove:
 
     def test_a_question_turns_once_when_nonzero(self) -> None:
         """``?`` tests whether ``acc`` is nonzero; its turn is one quarter."""
-        from esolangs.interpreters.clockwise import move
+        from esolangs.languages.clockwise.interpreter import move
 
         counts = (0, 1, 2, 3, 4, -1)
         assert [move(1, 1, 0, ["???"] * 3, acc)[2] for acc in counts] == [
@@ -101,7 +101,7 @@ class TestMove:
 
 class TestStepMachine:
     def test_step_tracks_position_heading_and_accumulator(self) -> None:
-        from esolangs.interpreters.clockwise import _Machine
+        from esolangs.languages.clockwise.interpreter import _Machine
 
         machine = _Machine(["+;S;S;S;S;S;+;R", "R             R"], IO())
         assert (machine.row, machine.col, machine.r, machine.acc) == (0, 0, 0, 0)
@@ -114,7 +114,7 @@ class TestStepMachine:
 
     def test_a_read_keeps_the_counts_above_the_low_bit(self) -> None:
         """``.`` clears the low bit and adds the input one, keeping the rest."""
-        from esolangs.interpreters.clockwise import _Machine
+        from esolangs.languages.clockwise.interpreter import _Machine
 
         machine = _Machine(["++.R", "  ?R", "R R "], ScriptedIO("A"))
         for _ in range(3):
@@ -123,7 +123,7 @@ class TestStepMachine:
 
     def test_snapshot_includes_the_input_bits_and_their_rotation(self) -> None:
         """A consuming ``.`` rotates the input bit list, changing the snapshot."""
-        from esolangs.interpreters.clockwise import _Machine
+        from esolangs.languages.clockwise.interpreter import _Machine
 
         machine = _Machine(
             ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"],
@@ -149,7 +149,7 @@ def test_reading_with_no_input_is_eof() -> None:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.clockwise import _Machine
+    from esolangs.languages.clockwise.interpreter import _Machine
 
     return _Machine(code, IO())
 

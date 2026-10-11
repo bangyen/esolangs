@@ -1,12 +1,12 @@
-"""Covers :mod:`esolangs.tools.laserfuck`."""
+"""Covers :mod:`esolangs.languages.laserfuck.generator`."""
 
 import importlib
 import random
 
 import pytest
 
-from esolangs import tools as boolean
-from esolangs.tools.laserfuck import MARGIN
+from esolangs.languages import generators as boolean
+from esolangs.languages.laserfuck.generator import MARGIN
 from tests.generators.boolean_runners import (
     run_laserfuck,
 )
@@ -64,7 +64,7 @@ class TestLaserFuck:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.laserfuck")
+        module = importlib.import_module("esolangs.languages.laserfuck.generator")
         real = module._laserfuck_build  # noqa: SLF001
 
         for n, table, orders in ((3, "01011010", 2),):
@@ -390,9 +390,9 @@ def test_overhead_funnel_larger_tables(n: int) -> None:
 def test_valid_more_expensive_input_order_keeps_identity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from esolangs.tools.laserfuck import _laserfuck_build
+    from esolangs.languages.laserfuck.generator import _laserfuck_build
 
-    module = importlib.import_module("esolangs.tools.laserfuck")
+    module = importlib.import_module("esolangs.languages.laserfuck.generator")
     table = "01101001"
     identity = _laserfuck_build(table, (0, 1, 2), 80)
     alternative = _laserfuck_build(table, (1, 0, 2), 80)
@@ -410,7 +410,7 @@ def test_valid_more_expensive_input_order_keeps_identity(
 @pytest.mark.parametrize("width", [1, 7, 9, 10, 15, 18, 20, 40, 80])
 def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
     import esolangs
-    from esolangs.tools.laserfuck import (
+    from esolangs.languages.laserfuck.generator import (
         _laserfuck_build,
         _laserfuck_raise_funnel,
     )
@@ -431,11 +431,11 @@ def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
 def test_vertical_tree_places_permuted_inputs_in_stream_order(
     table: str, perm: tuple[int, ...]
 ) -> None:
-    from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.laserfuck import (
+    from esolangs.languages.laserfuck.generator import (
         _laserfuck_build,
         _laserfuck_raise_funnel,
     )
+    from esolangs.tools.helpers import permute_truth_table
 
     source = _laserfuck_build(
         permute_truth_table(table, perm), perm, 1, vertical_tree=True

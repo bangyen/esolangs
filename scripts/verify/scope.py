@@ -469,8 +469,8 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # program and instantiate it through the shipped fill.  The runner is in
     # the scope too, since it decides which of them run at all.
     "deep proofs (verify band)": (
-        "src/esolangs/tools/bio.py",
-        "src/esolangs/tools/arrowqueue.py",
+        "src/esolangs/languages/bio/generator.py",
+        "src/esolangs/languages/arrowqueue/generator.py",
         "src/esolangs/tools/examples.py",
         "tests/proofs/deep/",
     ),
@@ -551,16 +551,10 @@ def _generator_test_scope(module: str) -> list[str] | None:
     for language in LANGUAGES.values():
         if language.boolean is not None:
             defining = language.boolean.__module__
-            implementation = sys.modules.get(defining)
-            owner = next(
-                (
-                    name.removeprefix("esolangs.tools.")
-                    for name, candidate in sorted(sys.modules.items())
-                    if implementation is not None
-                    and candidate is implementation
-                    and name.startswith("esolangs.tools.")
-                ),
-                defining.removeprefix("esolangs.tools."),
+            owner = (
+                language.id
+                if defining.startswith("esolangs.languages.")
+                else defining.removeprefix("esolangs.tools.")
             )
             aliases[defining] = owner
             for name in (

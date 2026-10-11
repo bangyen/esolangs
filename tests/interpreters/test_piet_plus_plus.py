@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.piet_plus_plus import _COMMANDS, run
+from esolangs.languages.piet_plus_plus.interpreter import _COMMANDS, run
 from esolangs.raster import Raster
 
 _DELTA = {name: delta for delta, name in _COMMANDS.items()}
@@ -222,8 +222,8 @@ def test_a_black_start_halts_at_once() -> None:
 
 
 def test_entry_point_shares_the_run() -> None:
-    from esolangs.interpreters import piet_plus_plus
-    from esolangs.interpreters.piet_plus_plus import __main__ as entry
+    from esolangs.languages.piet_plus_plus import interpreter as piet_plus_plus
+    from esolangs.languages.piet_plus_plus.interpreter import __main__ as entry
 
     assert entry.run is piet_plus_plus.run
 
@@ -232,7 +232,7 @@ def test_entry_point_shares_the_run() -> None:
 @pytest.mark.parametrize("bit", [0, 1])
 def test_enlarged_generated_programs_detect_their_scale(scale: int, bit: int) -> None:
     import esolangs
-    from esolangs.tools.piet_plus_plus import LANGUAGE
+    from esolangs.languages.piet_plus_plus.generator import LANGUAGE
 
     source = esolangs.generate(LANGUAGE.name, "01", scale=scale)
     assert esolangs.run(LANGUAGE.name, source, stdin=f"{bit}\n") == str(bit)

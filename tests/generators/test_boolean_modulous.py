@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_modulous,
 )

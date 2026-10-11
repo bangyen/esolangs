@@ -3,7 +3,7 @@
 import warnings
 
 import esolangs
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 
 
 def test_run_warns_when_input_runs_out() -> None:

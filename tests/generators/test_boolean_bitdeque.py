@@ -2,8 +2,8 @@
 
 import pytest
 
-from esolangs import tools as boolean
-from esolangs.tools.bitdeque import _bitdeque_ordered
+from esolangs.languages import generators as boolean
+from esolangs.languages.bitdeque.generator import _bitdeque_ordered
 from tests.support.source_support import source_units
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -12,8 +12,8 @@ class TestParameterizedBitdeque:
     """Input-by-substitution boolean generator for the no-input language Bitdeque."""
 
     def run_bitdeque(self, prog: str) -> str:
-        from esolangs.interpreters.bitdeque import run
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.languages.bitdeque.interpreter import run
 
         io = ScriptedIO()
         run(prog, io)
@@ -32,8 +32,8 @@ class TestParameterizedBitdeque:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
-        from esolangs import tools as generators
-        from esolangs.tools.bitdeque import BITDEQUE_PAIR
+        from esolangs.languages import generators
+        from esolangs.languages.bitdeque.generator import BITDEQUE_PAIR
         from esolangs.tools.helpers import runs
 
         for n in (2, 5):
@@ -45,9 +45,9 @@ class TestParameterizedBitdeque:
 
     def test_odd_inputs_are_pushed_complemented(self) -> None:
         """The load flips the register per block; the tree's table absorbs it."""
-        from esolangs import tools as generators
-        from esolangs.interpreters.bitdeque import run
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.languages import generators
+        from esolangs.languages.bitdeque.interpreter import run
 
         template = generators.bitdeque("0101")
         prelude_and_load = " ".join(self.instantiate(template, [0, 1]).split()[:12])
@@ -60,7 +60,7 @@ class TestParameterizedBitdeque:
     def test_linear_route_forces_the_register_between_inputs(self) -> None:
         """Both discard paths meet at a reset, and the last input skips it."""
 
-        from esolangs.tools.bitdeque import _bitdeque_linear
+        from esolangs.languages.bitdeque.generator import _bitdeque_linear
 
         n = 5
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
@@ -79,7 +79,7 @@ class TestParameterizedBitdeque:
 
     def test_constant_leaf_and_shared_halt_trampoline(self) -> None:
         """A constant table is a branching-free leaf; both leaves use GOTO 1."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         template = generators.bitdeque("0000")
         assert "POP" in template
@@ -90,7 +90,7 @@ class TestParameterizedBitdeque:
 
     def test_linear_discard_executes_wide_rows(self) -> None:
         """Head/tail discards leave sampled six-input answers."""
-        from esolangs.tools.bitdeque import _bitdeque_linear
+        from esolangs.languages.bitdeque.generator import _bitdeque_linear
 
         n = 6
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
@@ -146,7 +146,7 @@ def test_bitdeque_short_load_saved_source_and_large_tables(width: int) -> None:
 
 
 def test_bitdeque_short_load_rejects_changed_prefix() -> None:
-    from esolangs.tools.bitdeque import bitdeque, bitdeque_setters
+    from esolangs.languages.bitdeque.generator import bitdeque, bitdeque_setters
 
     template = bitdeque("0110", 1)
     pair = bitdeque_setters(template, 2)

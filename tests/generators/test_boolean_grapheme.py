@@ -4,15 +4,15 @@ import importlib
 
 import pytest
 
-from esolangs import tools as boolean
-from esolangs.interpreters.grapheme import run
-from esolangs.interpreters.grapheme._dialect import GraphemeDialect
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.grapheme import (
+from esolangs.languages import generators as boolean
+from esolangs.languages.grapheme.generator import (
     _grapheme_literal,
     _grapheme_push65,
     _grapheme_table,
 )
+from esolangs.languages.grapheme.interpreter import run
+from esolangs.languages.grapheme.interpreter._dialect import GraphemeDialect
 from tests.generators.test_boolean_contract import _one_minterm
 from tests.support.generator_support import evaluate_generated
 
@@ -59,7 +59,7 @@ class TestGraphemeTable:
     ) -> None:
         """The positive control: the index is load-bearing, not decoration."""
         packed = _grapheme_table
-        module = importlib.import_module("esolangs.tools.grapheme")
+        module = importlib.import_module("esolangs.languages.grapheme.generator")
         monkeypatch.setattr(module, "_grapheme_table", lambda t: 2 * packed(t))
         table = _one_minterm(6)
         assert evaluate_generated("Grapheme", table, timeout=60) != table
@@ -80,7 +80,7 @@ def test_generator_literals_are_exact(mode):
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
-    from esolangs.tools.grapheme import _program
+    from esolangs.languages.grapheme.generator import _program
     from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)

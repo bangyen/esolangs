@@ -6,7 +6,7 @@ import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_vm
 from esolangs.exceptions import TemplateError
-from esolangs.tools.slashes import _is_unfilled_template
+from esolangs.languages.slashes.generator import _is_unfilled_template
 from scripts.benchmark import WrittenState
 
 

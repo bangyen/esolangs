@@ -8,8 +8,8 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.streetcode import _Machine, run
-from esolangs.interpreters.streetcode.geometry import (
+from esolangs.languages.streetcode.interpreter import _Machine, run
+from esolangs.languages.streetcode.interpreter.geometry import (
     _ReachableCell,
 )
 from esolangs.vm import run_until_halt_or_cycle

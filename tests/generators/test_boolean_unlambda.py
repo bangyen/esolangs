@@ -2,9 +2,9 @@
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
+from esolangs.languages.unlambda.generator import unlambda
 from esolangs.tools.helpers import _validate_truth_table
-from esolangs.tools.unlambda import unlambda
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import (
     _read_answer,
@@ -54,7 +54,7 @@ def test_the_plain_tree_grows_by_a_line() -> None:
 
 def unlambda_plain(truth_table: str) -> str:
     """Return the unshared tree of forced promises, ``29T - 25`` at most."""
-    from esolangs.tools.unlambda import _READ, _leaf
+    from esolangs.languages.unlambda.generator import _READ, _leaf
 
     n = _validate_truth_table(truth_table)
     return separated_tree_text(

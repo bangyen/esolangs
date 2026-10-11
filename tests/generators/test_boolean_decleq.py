@@ -2,7 +2,7 @@
 
 import random
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from esolangs.tools.wrap import balance_program, balance_score, wrap_program
 from tests.generators.boolean_runners import (
     run_decleq,

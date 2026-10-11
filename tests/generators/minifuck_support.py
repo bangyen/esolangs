@@ -1,8 +1,14 @@
 """The Minifuck suites' shared harness: run a program, fill a template."""
 
+from esolangs.languages.minifuck.generator.pool import _BASE, _SEP
+from esolangs.languages.minifuck.generator.sim import (
+    PAIR,
+    _clamp,
+    _Joint,
+    _Sim,
+    _walk_to,
+)
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
-from esolangs.tools.minifuck.pool import _BASE, _SEP
-from esolangs.tools.minifuck.sim import PAIR, _clamp, _Joint, _Sim, _walk_to
 
 
 def _copy(sim: _Sim) -> _Sim:
@@ -71,7 +77,7 @@ class _MinifuckCase:
 
     def run_minifuck(self, prog: str) -> str:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.minifuck import run
+        from esolangs.languages.minifuck.interpreter import run
 
         io_ = ScriptedIO("")
         run(prog, io_)
@@ -89,13 +95,13 @@ class _MinifuckCase:
 # --- The separation gadget and the pool oracles.  Nothing shipped builds
 # through these: the mux is the preloaded-strip lookup.  They stay as the
 # fixtures and the exhaustive checks the pool tests drive.
-from esolangs.tools.minifuck.mux import (  # noqa: E402
+from esolangs.languages.minifuck.generator.mux import (  # noqa: E402
     _MUX_GUARD,
     _mux_start,
     _mux_weight,
     _mux_weights,
 )
-from esolangs.tools.minifuck.pool import _POOL, _POOL_WIDTH  # noqa: E402
+from esolangs.languages.minifuck.generator.pool import _POOL, _POOL_WIDTH  # noqa: E402
 
 # One separation per arity, forked out.  A dict: the value is a mutable ``_Joint``.
 _MUX_SEPARATED: dict[int, _Joint] = {}

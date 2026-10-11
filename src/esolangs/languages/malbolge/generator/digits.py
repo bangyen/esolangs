@@ -159,7 +159,7 @@ def _hubs(
 ) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
     """Return hub and stub data, stub code and rotations per hub.
 
-    As :func:`~esolangs.tools.malbolge.core._t_hubs` with stubs placed in
+    As :func:`~esolangs.languages.malbolge.generator.core._t_hubs` with stubs placed in
     ``_D_FLOOR..``, and the ``n`` stubs flipping through the prepared operand
     cells rather than a hub value.
     """

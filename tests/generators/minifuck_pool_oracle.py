@@ -2,13 +2,13 @@
 
 from functools import cache
 
-from esolangs.tools.minifuck.pool import (
+from esolangs.languages.minifuck.generator.pool import (
     _POOL,
     _POOL_MASK,
     _POOL_WIDTH,
     _PROBE_WALK_OUT,
 )
-from esolangs.tools.minifuck.sim import _Joint, _runs, _Sim, _walk_to
+from esolangs.languages.minifuck.generator.sim import _Joint, _runs, _Sim, _walk_to
 
 
 def _step(carry: int = 1, backs: int = 1, *, odd: bool = True) -> str:

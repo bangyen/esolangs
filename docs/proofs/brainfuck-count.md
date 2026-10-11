@@ -46,7 +46,7 @@ character is an instruction).  Cells hold bytes (`+`,`-` wrap mod 256), all 0 at
 starts at cell 0.
 
 * Tape: **clip**: cells `0, 1, 2, ...`, `<` at cell 0 does nothing.  Variant **bi** (the repository
-  interpreter, `src/esolangs/interpreters/brainfuck.py`, since 2026-10-06): cells indexed by `Z`.
+  interpreter, `src/esolangs/languages/brainfuck/interpreter.py`, since 2026-10-06): cells indexed by `Z`.
 * Input: a finite byte string `w`, read left to right by `,`.  At end of input: **err** (the repository
   interpreter: the run stops with result `(eof, o)`, `o` the output so far), **const** (the cell is set
   to 0), **keep** (the cell is unchanged).

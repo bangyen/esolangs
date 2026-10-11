@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs.interpreters.line import extract
-from esolangs.interpreters.line.extract import _UNIT_TOLERANCE
-from esolangs.interpreters.line.mask import Mask
+from esolangs.languages.line.interpreter import extract
+from esolangs.languages.line.interpreter.extract import _UNIT_TOLERANCE
+from esolangs.languages.line.interpreter.mask import Mask
 
 
 def _blank(height: int = 8, width: int = 8) -> Mask:
@@ -77,7 +77,7 @@ class TestClassifyingNothing:
 
 def _vertices(runs: list[tuple[int, int]]) -> list:
     """Return vertices whose ``_direction_runs`` are exactly ``runs``."""
-    from esolangs.interpreters.line.lattice import Vertex
+    from esolangs.languages.line.interpreter.lattice import Vertex
 
     out = []
     x = 0

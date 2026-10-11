@@ -1,11 +1,11 @@
-"""Covers :mod:`esolangs.tools.ram0`: the shared tree."""
+"""Covers :mod:`esolangs.languages.ram0.generator`: the shared tree."""
 
 import random
 import re
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits
 
@@ -16,7 +16,7 @@ class TestParameterizedRam0:
     def run_ram0(self, prog: str) -> str:
 
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.ram0 import run
+        from esolangs.languages.ram0.interpreter import run
 
         io = ScriptedIO()
         run(prog, io)
@@ -34,9 +34,9 @@ class TestParameterizedRam0:
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
+        from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR
         from esolangs.tools.helpers import TEMPLATE_CHAR, runs
-        from esolangs.tools.ram0 import PAIR as RAM0_PAIR
 
         template = generators.ram0("0110")
         assert "{X" not in template
@@ -44,8 +44,8 @@ class TestParameterizedRam0:
 
     def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
         """Every leaf jumps to 2; only the trampoline names the end."""
-        from esolangs import tools as generators
-        from esolangs.tools.ram0 import _ram0_ordered
+        from esolangs.languages import generators
+        from esolangs.languages.ram0.generator import _ram0_ordered
 
         tokens = generators.ram0("01101001").split()
         assert tokens[0] == "C"
@@ -56,9 +56,9 @@ class TestParameterizedRam0:
     @staticmethod
     def _sharing_totals(tables: list[str]) -> tuple[int, int]:
         """(before, shipped) totals, each table checked not to grow."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
+        from esolangs.languages.ram0.generator import _ram0_ordered
         from esolangs.tools.helpers import best_input_order
-        from esolangs.tools.ram0 import _ram0_ordered
 
         before = after = 0
         for table in tables:
@@ -74,7 +74,7 @@ class TestParameterizedRam0:
 
     def test_shared_tree_executes_wide_rows(self) -> None:
         """A seeded seven-input table, every row, through the shared tree."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         n = 7
         table = format(random.Random(7).getrandbits(2**n), f"0{2**n}b")

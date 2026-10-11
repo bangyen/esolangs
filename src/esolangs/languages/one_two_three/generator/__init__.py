@@ -14,7 +14,7 @@ setter here displaces the fills oppositely, so the looping set need not
 be upward-closed.
 
 Construction (``n <= 3``; wider tables go to
-:mod:`esolangs.tools.one_two_three.construction`):
+:mod:`esolangs.languages.one_two_three.generator.construction`):
 
 1. **Seed** ``"2"*w0 $ "2"*w1 $ ... "33"`` -- the fills are the
    embedding; ``33`` closes at the first offset where no row sits on a
@@ -188,7 +188,7 @@ def _construct_small(truth_table: str, n: int, law: int = 0) -> str:
 
     No closing replay: ``test_all_small_tables`` sweeps every ``n <= 3``
     table through the real interpreter, the same contract as
-    :func:`~esolangs.tools.one_two_three.construction.construct`.
+    :func:`~esolangs.languages.one_two_three.generator.construction.construct`.
     """
     _work[0] = _WORK_BUDGET
     try:

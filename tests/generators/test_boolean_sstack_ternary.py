@@ -5,9 +5,9 @@ import random
 import pytest
 
 from esolangs.debugger import make_vm
-from esolangs.tools.sstack import _sstack_tree, sstack
-from esolangs.tools.sstack._binary import _Metric
-from esolangs.tools.sstack._ternary import (
+from esolangs.languages.sstack.generator import _sstack_tree, sstack
+from esolangs.languages.sstack.generator._binary import _Metric
+from esolangs.languages.sstack.generator._ternary import (
     _PROLOGUE,
     _decoder,
     _width,

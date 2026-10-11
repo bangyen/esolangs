@@ -6,7 +6,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_forbin_boolean,
 )
@@ -71,7 +71,7 @@ class TestForbinBoolean:
 
     def test_compact_variables_skip_keywords_without_duplicates(self) -> None:
         """Filtering a reserved word does not reuse its successor's name."""
-        from esolangs.tools.forbin import _FORBIN_RESERVED, _forbin_name
+        from esolangs.languages.forbin.generator import _FORBIN_RESERVED, _forbin_name
 
         names = [_forbin_name(i) for i in range(600)]
         assert len(set(names)) == len(names)
@@ -79,7 +79,7 @@ class TestForbinBoolean:
 
     def test_constant_spans_fold_above_the_block(self) -> None:
         """A constant span of blocks calls a printer instead of painting."""
-        from esolangs.tools.forbin import _BLOCK_BITS, _Names
+        from esolangs.languages.forbin.generator import _BLOCK_BITS, _Names
 
         arity = _BLOCK_BITS + 2
         wide = 2**arity
@@ -103,7 +103,7 @@ class TestForbinBoolean:
 
     def test_a_repeated_block_is_painted_once(self) -> None:
         """Blocks a b b a share one function per distinct block."""
-        from esolangs.tools.forbin import _BLOCK_BITS
+        from esolangs.languages.forbin.generator import _BLOCK_BITS
 
         rng = random.Random(7)
         a, b = (
@@ -122,9 +122,9 @@ def test_forbin_skips_keywords_at_length_boundaries(
 ) -> None:
     import importlib
 
-    from esolangs.tools.forbin import _forbin_name
+    from esolangs.languages.forbin.generator import _forbin_name
 
-    module = importlib.import_module("esolangs.tools.forbin")
+    module = importlib.import_module("esolangs.languages.forbin.generator")
     monkeypatch.setattr(module, "_FORBIN_ALPHABET", "ab")
     monkeypatch.setattr(module, "_FORBIN_RESERVED", {"a", "ab", "bbb"})
     names = [_forbin_name(index) for index in range(12)]

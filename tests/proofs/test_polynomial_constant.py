@@ -3,7 +3,7 @@
 import math
 from fractions import Fraction
 
-from esolangs.interpreters.polynomial import (
+from esolangs.languages.polynomial.interpreter import (
     _advance,
     _bracket_pairs,
 )

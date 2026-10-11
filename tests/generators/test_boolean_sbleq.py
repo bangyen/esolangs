@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.sbleq`: the shared tree and the
+"""Covers :mod:`esolangs.languages.sbleq.generator`: the shared tree and the
 packed decoder."""
 
 import random
@@ -6,11 +6,11 @@ import random
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.sbleq import _Machine
+from esolangs.languages import generators as boolean
+from esolangs.languages.sbleq.generator import _sbleq_hoisted
+from esolangs.languages.sbleq.interpreter import _Machine
 from esolangs.tools.packed_decoder import packed_decoder
-from esolangs.tools.sbleq import _sbleq_hoisted
 from tests.generators.boolean_runners import run_sbleq
 from tests.support.generator_support import assert_parity_at_most_doubles
 

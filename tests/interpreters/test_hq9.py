@@ -2,8 +2,8 @@
 
 import pytest
 
-from esolangs.interpreters.hq9 import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.hq9.interpreter import _Machine, run
 from tests.interpreters.runner import run_program
 
 

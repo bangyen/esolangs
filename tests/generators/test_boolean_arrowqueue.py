@@ -1,10 +1,10 @@
-"""Covers :mod:`esolangs.tools.arrowqueue`."""
+"""Covers :mod:`esolangs.languages.arrowqueue.generator`."""
 
 import random
 
 import pytest
 
-from esolangs.tools.arrowqueue import PAIR
+from esolangs.languages.arrowqueue.generator import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from tests.generators.fills import fill
 from tests.support.witness_tables import row_bits
@@ -16,7 +16,7 @@ class TestParameterizedArrowQueue:
     """Input-by-substitution boolean generator for the no-input language ArrowQueue."""
 
     def run_arrowqueue(self, prog: str) -> str:
-        from esolangs.interpreters.arrowqueue import _Machine
+        from esolangs.languages.arrowqueue.interpreter import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         return "0" if run_until_halt_or_cycle(_Machine(prog.splitlines())) else "1"
@@ -26,7 +26,7 @@ class TestParameterizedArrowQueue:
 
     def test_random_tables(self) -> None:
         """Seeded random tables through five inputs produce the right result."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         random.seed(13)
         for n in (1, 2, 3, 4, 5):
@@ -41,7 +41,7 @@ class TestParameterizedArrowQueue:
     @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
     def test_every_input_is_the_same_one_cell(self, table: str) -> None:
         """Both routes spell every input as one cell, ``.`` against ``~``."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         n = len(table).bit_length() - 1
         template = generators.arrowqueue(table)
@@ -66,7 +66,7 @@ class TestParameterizedArrowQueue:
     )
     def test_folded_tables_past_three_inputs(self, table: str, n: int) -> None:
         """Folded leaves stay correct deeper than the exhaustive n <= 3 sweep."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         template = generators.arrowqueue(table)
         for combo in range(2**n):
@@ -81,7 +81,7 @@ def test_constant_balance_and_setters_off_path(bit: str) -> None:
     """Constant roots keep their setters off the halt/ring path, balanced."""
     import esolangs
     from esolangs._evaluate import _evaluate
-    from esolangs.tools.arrowqueue import _program
+    from esolangs.languages.arrowqueue.generator import _program
     from esolangs.tools.wrap import balance_score
 
     n = 8

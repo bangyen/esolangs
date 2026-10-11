@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.circuit_diagram` and its layout guards."""
+"""Covers :mod:`esolangs.languages.circuit_diagram.generator` and its layout guards."""
 
 import hashlib
 import importlib
@@ -19,7 +19,7 @@ class TestCircuitDiagramLayoutGuards:
 
     @staticmethod
     def _layout() -> object:
-        from esolangs.tools.circuit_diagram import _Layout
+        from esolangs.languages.circuit_diagram.generator import _Layout
 
         return _Layout()
 
@@ -109,7 +109,7 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_the_clash_scan_keeps_looking_after_its_first_hit(self) -> None:
         """The reported cell is the earliest, not the first one found."""
-        from esolangs.tools.circuit_diagram import _Layout
+        from esolangs.languages.circuit_diagram.generator import _Layout
 
         late_is_earlier = _Layout._clash(  # noqa: SLF001
             [(6, 9, 1), (2, 4, 2)], None, 0, 10, 9
@@ -120,7 +120,7 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_interval_primitives_keep_order_and_the_earliest_clash(self) -> None:
         """Guard-only insertion and a later glyph preserve the first hit."""
-        from esolangs.tools.circuit_diagram import _Layout
+        from esolangs.languages.circuit_diagram.generator import _Layout
 
         runs = [(6, 9, 2)]
         _Layout._record(runs, (2, 4, 1))  # noqa: SLF001
@@ -189,7 +189,7 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_h_layout_reserves_linear_area(self) -> None:
         """Two input levels quarter recursively without overlapping leaves."""
-        from esolangs.tools.circuit_diagram.hlayout import (
+        from esolangs.languages.circuit_diagram.generator.hlayout import (
             _h_blocks,
             _h_sites,
             _h_size,
@@ -211,7 +211,7 @@ class TestCircuitDiagramLayoutGuards:
             assert _h_size(n) ** 2 <= 10_000 * 2**n
 
     def test_h_depth_buckets_bound_literal_anchor_visits(self) -> None:
-        from esolangs.tools.circuit_diagram.hlayout import _h_term_plan
+        from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_plan
 
         for n in range(2, 13):
             plan = _h_term_plan("01" * (1 << (n - 1)))
@@ -228,9 +228,9 @@ class TestCircuitDiagramLayoutGuards:
     @pytest.mark.slow
     def test_h_layout_executes_every_two_input_table(self) -> None:
         """The routed minterm and reduction trees compute all small functions."""
-        from esolangs.interpreters.circuit_diagram import run
+        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+        from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
 
         for value in range(1, 15):
             table = format(value, "04b")
@@ -245,7 +245,7 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_layout_index_stops_past_the_probe(self) -> None:
         """The interval guard stops once later wires and glyphs are reached."""
-        from esolangs.tools.circuit_diagram import _Layout
+        from esolangs.languages.circuit_diagram.generator import _Layout
 
         assert (
             _Layout._clash(  # noqa: SLF001 - exercise the interval primitive
@@ -256,7 +256,7 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_invert_can_start_a_new_band(self) -> None:
         """A complement honors a width already exhausted by its input."""
-        from esolangs.tools.circuit_diagram import _Builder
+        from esolangs.languages.circuit_diagram.generator import _Builder
 
         builder = _Builder()
         source = builder.input_bus()
@@ -266,7 +266,7 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_real_layouts_never_come_within_one_cell(self) -> None:
         """The generator's spacing keeps every table clear of the guard."""
-        from esolangs.tools.circuit_diagram import _Layout, circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import _Layout, circuit_diagram
 
         closest = []
         original = _Layout._check_junction_spacing  # noqa: SLF001
@@ -289,9 +289,9 @@ class TestCircuitDiagramLayoutGuards:
     @staticmethod
     def _run_at(table: str, width: int | None) -> str:
         """The banded program's output for every input, in table order."""
-        from esolangs.interpreters.circuit_diagram import run
+        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram import circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
         n = len(table).bit_length() - 1
         program = circuit_diagram(table, width).split("\n")
@@ -306,7 +306,7 @@ class TestCircuitDiagramLayoutGuards:
     @pytest.mark.slow
     def test_a_width_bands_the_drawing_and_it_still_computes(self) -> None:
         """Banding carries the live signals left; the circuit is unchanged."""
-        from esolangs.tools.circuit_diagram import circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
         # ``00101111`` at 30 is the case that bands on the final ``~``: a
         # dense table is drawn from its zero rows and inverted, and that one
@@ -324,7 +324,7 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_narrow_gate_groups_preserve_every_small_table(self) -> None:
         """Compact groups and native XOR gates preserve every small table."""
-        from esolangs.tools.circuit_diagram import circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
         program = circuit_diagram("0110", 1)
         assert max(map(len, program.splitlines())) == 4
@@ -346,9 +346,9 @@ class TestCircuitDiagramLayoutGuards:
                 assert self._run_at(table, width) == table
 
     def test_native_affine_chains_verify_constants_and_complements(self) -> None:
-        from esolangs.interpreters.circuit_diagram import run
+        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram import _affine_circuit
+        from esolangs.languages.circuit_diagram.generator import _affine_circuit
 
         for n in range(1, 4):
             for table in witnesses(n):
@@ -362,7 +362,7 @@ class TestCircuitDiagramLayoutGuards:
                     assert io.reads == n
 
     def test_output_columns_fit_the_affine_and_mux_boundary(self) -> None:
-        from esolangs.tools.circuit_diagram import circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
         for table in ("00000001", "01101001", "0110100110010110"):
             floor = max(map(len, circuit_diagram(table, 1).splitlines()))
@@ -373,7 +373,7 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_banding_brings_every_arity_inside_eighty(self) -> None:
         """Which is the point: unbanded, parity clears 80 columns at n == 4."""
-        from esolangs.tools.circuit_diagram import circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
         for n in (4, 5, 6):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
@@ -391,9 +391,9 @@ class TestCircuitDiagramLayoutGuards:
     ) -> None:
         """Forgetting a carried signal hands its column away while it is live."""
 
-        from esolangs.tools.circuit_diagram import _Builder
+        from esolangs.languages.circuit_diagram.generator import _Builder
 
-        module = importlib.import_module("esolangs.tools.circuit_diagram")
+        module = importlib.import_module("esolangs.languages.circuit_diagram.generator")
         original = getattr(_Builder, "_band")  # noqa: B009 - SLF001 otherwise
 
         def forgetful(self: _Builder) -> None:
@@ -415,9 +415,9 @@ class TestCircuitDiagram:
     @staticmethod
     def run_table(table: str) -> str:
         """Return the generated program's output for every input, in order."""
-        from esolangs.interpreters.circuit_diagram import run
+        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram import circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
         n = len(table).bit_length() - 1
         program = circuit_diagram(table).split("\n")
@@ -441,13 +441,13 @@ class TestCircuitDiagram:
     )
     def test_only_needed_complements_are_built(self, table: str, tildes: int) -> None:
         """A ``~`` is drawn only when a mux rule needs the inverse selector."""
-        from esolangs.tools.circuit_diagram import circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
         assert circuit_diagram(table).count("~") == tildes
 
     def test_complementary_sparse_tables_have_comparable_drawings(self) -> None:
         """Shannon folding handles a function and its complement symmetrically."""
-        from esolangs.tools.circuit_diagram import circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
         dense = circuit_diagram("11111110")  # NAND3: seven ones
         sparse = circuit_diagram("00000001")  # its complement: one
@@ -483,9 +483,9 @@ class TestCircuitDiagram:
 
     def test_each_run_prints_exactly_one_bit(self) -> None:
         """The output wire is live for exactly one generation."""
-        from esolangs.interpreters.circuit_diagram import run
+        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram import circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
         for table in ("0001", "0110", "00010111"):
             n = len(table).bit_length() - 1
@@ -498,7 +498,7 @@ class TestCircuitDiagram:
 
     def test_input_lines_start_with_a_dash(self) -> None:
         """Each bit arrives on its own line, which the spec makes an input."""
-        from esolangs.tools.circuit_diagram import circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
         rows = circuit_diagram("00010111").split("\n")
         starts = [row for row in rows if row.startswith("-")]
@@ -506,7 +506,7 @@ class TestCircuitDiagram:
 
     def test_a_route_may_cross_a_hold_but_not_corner_beside_it(self) -> None:
         """A held cell keeps corners out of its neighbourhood, not wires."""
-        from esolangs.tools.circuit_diagram.layout import (
+        from esolangs.languages.circuit_diagram.generator.layout import (
             _HOLD,
             _RoutingLayout,
         )
@@ -526,7 +526,7 @@ class TestCircuitDiagram:
     @pytest.mark.parametrize("collision", ["endpoint", "neighbour", "interior"])
     def test_a_route_refuses_each_kind_of_claimed_cell(self, collision: str) -> None:
         """Endpoints, their neighbours and run interiors are all guarded."""
-        from esolangs.tools.circuit_diagram.layout import _RoutingLayout
+        from esolangs.languages.circuit_diagram.generator.layout import _RoutingLayout
 
         layout = _RoutingLayout()
         if collision == "endpoint":
@@ -542,9 +542,9 @@ class TestCircuitDiagram:
         """Fixed lanes lay a correct circuit where every wire class meets."""
         import random
 
-        from esolangs.interpreters.circuit_diagram import run
+        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+        from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
 
         rng = random.Random(4)
         for _ in range(3):
@@ -560,7 +560,7 @@ class TestCircuitDiagram:
 
 def test_a_repeated_subtree_is_drawn_once_and_still_computes() -> None:
     from esolangs._evaluate import _evaluate
-    from esolangs.tools.circuit_diagram import circuit_diagram
+    from esolangs.languages.circuit_diagram.generator import circuit_diagram
 
     gates = lambda t: sum(map(str(circuit_diagram(t)).count, "aox"))  # noqa: E731
     tiled, distinct = "0110111010010011" * 2, "01101110100100110011101011000101"
@@ -574,7 +574,7 @@ def test_a_repeated_subtree_is_drawn_once_and_still_computes() -> None:
 @pytest.mark.parametrize("inputs", [6, 8])
 @pytest.mark.parametrize("affine", [False, True])
 def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
-    from esolangs.tools.circuit_diagram import _circuit_diagram_at
+    from esolangs.languages.circuit_diagram.generator import _circuit_diagram_at
 
     language = "Circuit Diagram"
     rng = random.Random(1022 + inputs)
@@ -592,7 +592,7 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
         for width in range(1, widest + 1)
     ]
     if inputs >= 8 and "1" in table:
-        from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+        from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
 
         layouts.append(_h_term_layout(table).render())
     assert balanced in layouts
@@ -609,7 +609,7 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_wide_constant_uses_only_its_scalar_clock_frame(bit):
     from esolangs._evaluate import _evaluate
-    from esolangs.tools.circuit_diagram import _circuit_diagram_at
+    from esolangs.languages.circuit_diagram.generator import _circuit_diagram_at
 
     table = bit * 256
     program = boolean.circuit_diagram(table)
@@ -620,7 +620,7 @@ def test_wide_constant_uses_only_its_scalar_clock_frame(bit):
 @pytest.mark.medium
 def test_wide_constant_balance_keeps_the_old_square_candidate():
     from esolangs._evaluate import _evaluate
-    from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+    from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
 
     table = "1" * 256
     legacy = _h_term_layout(table).render()
@@ -634,8 +634,8 @@ def test_wide_constant_balance_keeps_the_old_square_candidate():
 @pytest.mark.parametrize("inputs", [8, 9])
 def test_wide_repeated_cofactors_use_the_bounded_shared_circuit(inputs):
     from esolangs._evaluate import _evaluate
-    from esolangs.tools.circuit_diagram import _linear_shared_layout
-    from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+    from esolangs.languages.circuit_diagram.generator import _linear_shared_layout
+    from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
 
     table = "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
     model = _linear_shared_layout(table, inputs)
@@ -654,9 +654,9 @@ def test_wide_repeated_cofactors_use_the_bounded_shared_circuit(inputs):
 @pytest.mark.medium
 def test_wide_projection_retains_nonadjacent_ports_outside_the_shared_budget():
     from esolangs._evaluate import _evaluate
-    from esolangs.tools.circuit_diagram import _linear_shared_layout
-    from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
-    from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
+    from esolangs.languages.circuit_diagram.generator import _linear_shared_layout
+    from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+    from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
 
     rng = random.Random(841)
     residual = "".join(rng.choice("01") for _ in range(128))

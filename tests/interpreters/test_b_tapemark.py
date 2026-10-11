@@ -2,14 +2,14 @@
 
 import pytest
 
-from esolangs.interpreters.b_tapemark import (
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.b_tapemark.interpreter import (
     _advance,
     _Grid,
     _load,
     _read,
     run,
 )
-from esolangs.interpreters.io import ScriptedIO
 
 
 def execute(source: str, stdin: str = "") -> str:

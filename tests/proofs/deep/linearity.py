@@ -12,7 +12,7 @@ from pathlib import Path
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-import esolangs.tools as boolean
+import esolangs.languages.generators as boolean
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import load as load_audit

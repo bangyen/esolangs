@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.malbolge import (
+from esolangs.languages.malbolge.interpreter import (
     _EOF,
     _WORDS,
     _advance,

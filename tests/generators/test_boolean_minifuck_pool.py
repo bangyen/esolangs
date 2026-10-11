@@ -1,11 +1,11 @@
-"""Covers the pool half of :mod:`esolangs.tools.minifuck.pool`."""
+"""Covers the pool half of :mod:`esolangs.languages.minifuck.generator.pool`."""
 
 import importlib
 
 import pytest
 
-from esolangs.tools.minifuck import _solve
-from esolangs.tools.minifuck.sim import _clamp, _Joint, _Sim
+from esolangs.languages.minifuck.generator import _solve
+from esolangs.languages.minifuck.generator.sim import _clamp, _Joint, _Sim
 from tests.generators.minifuck_pool_oracle import (
     _POOL_CODES,
     _POOL_PTR_MAX,
@@ -77,7 +77,7 @@ class TestMinifuckPool(_MinifuckCase):
 
     def test_the_pool_search_needs_the_rows_to_agree_on_the_pointer(self) -> None:
         """A pool is only a pool if every row reads it from one place."""
-        from esolangs.tools.minifuck.sim import _clamp
+        from esolangs.languages.minifuck.generator.sim import _clamp
         from tests.generators.minifuck_pool_oracle import _find_pool
 
         spread = _embed(2)
@@ -92,7 +92,7 @@ class TestMinifuckPool(_MinifuckCase):
         """Two ways the endgame cannot run, reported rather than emitted."""
 
         module = importlib.import_module("tests.generators.minifuck_pool_oracle")
-        from esolangs.tools.minifuck.sim import _clamp
+        from esolangs.languages.minifuck.generator.sim import _clamp
 
         joint = _embed(2)
         _clamp(joint)
@@ -107,7 +107,7 @@ class TestMinifuckPool(_MinifuckCase):
 
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
         """``[x`` walks are only safe rightward from one shared position."""
-        from esolangs.tools.minifuck.sim import _clamp, _walk_to
+        from esolangs.languages.minifuck.generator.sim import _clamp, _walk_to
 
         spread = _embed(2)
         with pytest.raises(ValueError, match="converged pointer"):

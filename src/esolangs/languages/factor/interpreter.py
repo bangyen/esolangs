@@ -23,8 +23,8 @@ from esolangs._drive import drive
 from esolangs.factor_primes import isprime64 as _isprime64
 from esolangs.factor_primes import prime_segments
 from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brainfuck import _Machine as _BFMachine
 from esolangs.interpreters.io import IO
+from esolangs.languages.brainfuck.interpreter import _Machine as _BFMachine
 
 _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
 

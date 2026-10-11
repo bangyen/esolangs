@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_collatz_multiverse,
 )
@@ -54,7 +54,7 @@ class TestCollatzMultiverse:
 
     def test_numbered_cells_halve_the_three_input_total(self) -> None:
         """The plain build against the shipped one over every varied table."""
-        from esolangs.tools.collatz_multiverse import _cm_build
+        from esolangs.languages.collatz_multiverse.generator import _cm_build
 
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], numbered=False)) for t in varied)
@@ -63,7 +63,7 @@ class TestCollatzMultiverse:
 
     def test_numbering_never_grows_a_program(self) -> None:
         """Numbered cells beat the retired value-as-code size oracle."""
-        from esolangs.tools.collatz_multiverse import _cm_build
+        from esolangs.languages.collatz_multiverse.generator import _cm_build
 
         rng = random.Random(0)
         tables = [format(v, "08b") for v in range(1, 255)]
@@ -138,7 +138,7 @@ class TestCollatzMultiverse:
 
     def test_narrow_statement_floor_is_idempotent(self) -> None:
         """Another alias prefix cannot narrow or widen the existing floor."""
-        from esolangs.tools.collatz_multiverse import _cm_layout
+        from esolangs.languages.collatz_multiverse.generator import _cm_layout
 
         table = "01101001"
         narrow = boolean.collatz_multiverse(table, 1)
@@ -162,7 +162,7 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 
 def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     """Nothing above k2 is needed, so the plan sieve is never entered."""
-    from esolangs.tools.collatz_multiverse import _cm_constants
+    from esolangs.languages.collatz_multiverse.generator import _cm_constants
 
     lines = _cm_constants([1, 2])
     assert len(lines) == 4

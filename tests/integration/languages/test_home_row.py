@@ -1,9 +1,5 @@
 """Home Row through the shared API, CLI and machinery."""
 
-import importlib
-
-import pytest
-
 import esolangs
 from tests.runtime.io.test_input_encoding import XOR
 
@@ -31,19 +27,3 @@ def test_a_wrapped_instantiation_still_computes_the_table() -> None:
 def test_internal_spacing_is_still_normalized() -> None:
     """The strip must not have replaced the rule that was already working."""
     assert esolangs.describe("Home  Row")["name"] == "Home Row"
-
-
-@pytest.mark.parametrize(
-    ("legacy", "canonical"),
-    [
-        ("esolangs.interpreters.home_row", "esolangs.languages.home_row.interpreter"),
-        ("esolangs.tools.home_row", "esolangs.languages.home_row.generator"),
-    ],
-)
-def test_compatibility_imports_share_module_state(legacy, canonical, monkeypatch):
-    old = importlib.import_module(legacy)
-    new = importlib.import_module(canonical)
-    assert old is new
-    marker = object()
-    monkeypatch.setattr(old, "compatibility_probe", marker, raising=False)
-    assert new.compatibility_probe is marker

@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_unsquare,
 )
@@ -67,8 +67,8 @@ class TestUnsquare:
 
 @pytest.mark.medium
 def test_shared_push_body_executes_within_ledger() -> None:
+    from esolangs.languages.unsquare.generator import _runs, _shared_pushes, unsquare
     from esolangs.tools.helpers import essential_inputs, read_at
-    from esolangs.tools.unsquare import _runs, _shared_pushes, unsquare
     from tests.support.generator_support import assert_shared_program
 
     first = "0001011101101001" * 4
@@ -94,7 +94,7 @@ def test_shared_push_body_executes_within_ledger() -> None:
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
-    from esolangs.tools.unsquare import _program
+    from esolangs.languages.unsquare.generator import _program
     from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)

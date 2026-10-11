@@ -63,7 +63,7 @@ GENERATORS = {
     if (generator := lang.boolean) is not None
 }
 INTERPRETERS = {
-    name: f"esolangs.interpreters.{lang.interpreter}"
+    name: f"esolangs.languages.{lang.id}.interpreter"
     for name, lang in LANGUAGES.items()
     if lang.interpreter is not None
 }

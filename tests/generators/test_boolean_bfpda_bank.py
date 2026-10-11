@@ -4,8 +4,8 @@ import random
 
 import pytest
 
-from esolangs.tools.bfpda import _bfpda_tree, _prepare, _reflected, bfpda
-from esolangs.tools.bfpda._bank import _body_metrics, _price, best_bank
+from esolangs.languages.bf_pda.generator import _bfpda_tree, _prepare, _reflected, bfpda
+from esolangs.languages.bf_pda.generator._bank import _body_metrics, _price, best_bank
 from tests.generators.test_boolean_bfpda import _execute_bank
 
 
@@ -92,7 +92,7 @@ def test_bank_keeps_existing_paths_when_no_candidate_is_admissible():
 def test_emitter_drift_aborts(monkeypatch):
     from importlib import import_module
 
-    module = import_module("esolangs.tools.bfpda")
+    module = import_module("esolangs.languages.bf_pda.generator")
     words = tuple(f"{word:04b}" for word in range(1, 9))
     table, _, _, _, _ = _fixture(words, "0123456776543210", 2)
     monkeypatch.setattr(module, "_bfpda_tree", lambda *_args, **_kwargs: (".", 1))

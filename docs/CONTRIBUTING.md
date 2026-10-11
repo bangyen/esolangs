@@ -48,8 +48,8 @@ axes never remove a language; a stalled row moves to the
 
 | Path | Holds |
 | --- | --- |
-| `src/esolangs/interpreters/` | shared runtime machinery and compatibility imports |
-| `src/esolangs/tools/` | shared generator helpers and compatibility imports |
+| `src/esolangs/interpreters/` | shared runtime machinery |
+| `src/esolangs/tools/` | shared generator helpers |
 | `src/esolangs/languages/` | colocated language implementations; legacy imports remain supported |
 | `src/esolangs/registry/` | the source of truth for public integration |
 | `tests/` | interpreter and generator coverage |
@@ -76,7 +76,7 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   whole-source or split-line input. A language with a generator declares
   its own `LANGUAGE = Language(...)` at the end of its generator module, and
   the registry collects those; only interpreter-only languages are listed
-  in `registry/_table.py`. `esolangs.tools`'s imports are generated from
+  in `registry/_table.py`. `esolangs.languages.generators`'s imports come from
   the declarations (`scripts/docs/generate.py`, run by `generate.py docs`
   and by `check`).
 - Interpreters and generators live in `src/esolangs/languages/<id>/`, each
@@ -86,7 +86,7 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   `encode_inputs` handles stdin conventions, and `read_answer` reads printed
   and state-dump answers through the contract; termination answers (halt or
   diverge) are read by the evaluation harness, which runs every row.
-- `run` loads the language module from `src/esolangs/interpreters/`
+- `run` loads `src/esolangs/languages/<id>/interpreter`
   and calls its `run(code, io)`; `make_vm` exposes its
   step-capable machine to the debugger and the hang proofs.
 - `tests/interpreters/` and `tests/generators/` hold language suites and shared

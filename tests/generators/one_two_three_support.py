@@ -1,6 +1,6 @@
 """The 123 replay oracle: re-execute an emitted program and judge it."""
 
-from esolangs.tools.one_two_three.construction import (
+from esolangs.languages.one_two_three.generator.construction import (
     _ONE,
     _RING,
     ConstructError,

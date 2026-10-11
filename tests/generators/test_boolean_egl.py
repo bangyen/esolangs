@@ -4,9 +4,9 @@ import itertools
 
 import pytest
 
-from esolangs import tools
-from esolangs.interpreters.egl import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages import generators as tools
+from esolangs.languages.egl.interpreter import run
 from tests.support.generator_support import assert_an_ignored_input_costs
 
 
@@ -25,7 +25,7 @@ def test_the_walk_is_branch_free() -> None:
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_into_scratch_and_prints_a_literal(n: int, bit: str) -> None:
-    from esolangs.tools.egl import _balance
+    from esolangs.languages.egl.generator import _balance
 
     table = bit * (1 << n)
     default = tools.egl(table)

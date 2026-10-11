@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.jaune`: the tree, its sharing,
+"""Covers :mod:`esolangs.languages.jaune.generator`: the tree, its sharing,
 the linear lookup."""
 
 import contextlib
@@ -6,9 +6,9 @@ import random
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
+from esolangs.languages.jaune.generator import _jaune_ordered
 from esolangs.tools.helpers import best_input_order
-from esolangs.tools.jaune import _jaune_ordered
 from tests.generators.boolean_runners import run_jaune
 from tests.generators.plain_oracles import _jaune_linear
 from tests.generators.sample_tables import five_input_sample
@@ -25,7 +25,7 @@ class TestJaune:
     def test_reads_every_input_whatever_the_table(self) -> None:
         """Every table consumes exactly ``n`` inputs, folds included."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.jaune import run
+        from esolangs.languages.jaune.interpreter import run
 
         n = 3
         for table in ("11111111", "00000000", "11110000", "10101010", "10010110"):

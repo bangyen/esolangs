@@ -5,10 +5,10 @@ import random
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.slashes import _Machine as SlashMachine
-from esolangs.interpreters.slashes import run as run_slashes
+from esolangs.languages.slashes.generator import slashes
+from esolangs.languages.slashes.interpreter import _Machine as SlashMachine
+from esolangs.languages.slashes.interpreter import run as run_slashes
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.slashes import slashes
 from tests.support.witness_tables import witnesses
 
 
@@ -88,12 +88,16 @@ def test_slashes_literal_dollar_and_serialized_template() -> None:
 
 @pytest.mark.parametrize("tail", ["$", ">qAqB", "x>qAqB", "$>qAq", "$>qAqZ", "$>qA"])
 def test_slashes_template_recognition_rejects_noncanonical_tails(tail: str) -> None:
-    from esolangs.tools.slashes import _DECODE, _UNARY, _is_unfilled_template
+    from esolangs.languages.slashes.generator import (
+        _DECODE,
+        _UNARY,
+        _is_unfilled_template,
+    )
 
     assert not _is_unfilled_template(_UNARY + _DECODE + tail)
 
 
 def test_slashes_template_recognition_rejects_changed_prefix() -> None:
-    from esolangs.tools.slashes import _is_unfilled_template
+    from esolangs.languages.slashes.generator import _is_unfilled_template
 
     assert not _is_unfilled_template("x" + slashes("01"))

@@ -6,7 +6,7 @@ class TestConstructorWorkBudget:
 
     def test_a_fill_token_resolves_to_the_row_own_bit(self) -> None:
         """A tuple token is an input fill: the row decides its character."""
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             _ONE,
             _ZERO,
             _Row,
@@ -20,7 +20,7 @@ class TestConstructorWorkBudget:
 
     def test_a_fill_coalesces_with_the_run_beside_it(self) -> None:
         """Adjacent equal characters become one run, fills included."""
-        from esolangs.tools.one_two_three.construction import (
+        from esolangs.languages.one_two_three.generator.construction import (
             _ONE,
             _Row,
             _row_runs,

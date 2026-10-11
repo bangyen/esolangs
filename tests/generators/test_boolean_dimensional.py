@@ -3,10 +3,10 @@
 import pytest
 
 from esolangs import generate
-from esolangs import tools as boolean
-from esolangs.interpreters.dimensional import _Machine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.dimensional import dimensional
+from esolangs.languages import generators as boolean
+from esolangs.languages.dimensional.generator import dimensional
+from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.tools.wrap import (
     wrap_program,
 )

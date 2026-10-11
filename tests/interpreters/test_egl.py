@@ -5,7 +5,7 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.egl import _advance, run
+from esolangs.languages.egl.interpreter import _advance, run
 from tests.interpreters.runner import run_program
 
 execute = partial(run_program, run, suppress_eof=False)
@@ -36,7 +36,7 @@ def test_dimensions_past_the_host_digit_limit_parse() -> None:
 
 def test_a_cursorless_read_loop_is_not_a_cycle() -> None:
     """Reads count in the snapshot: ``(x)`` runs to EOF, not a false cycle."""
-    from esolangs.interpreters.egl import _Machine
+    from esolangs.languages.egl.interpreter import _Machine
     from esolangs.vm import run_until_halt_or_cycle
     from tests.interpreters.cursorless_io import CursorlessIO
 

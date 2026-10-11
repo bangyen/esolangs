@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.flowchart import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.flowchart.interpreter import _Machine, run
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.runner import run_program as _run_program
 from tests.support.fixtures import grid
@@ -140,7 +140,7 @@ class TestParsing:
 
     def test_turning_left_rotates_every_heading(self) -> None:
         """A left turn is a rotation, so four of them return the heading."""
-        from esolangs.interpreters.flowchart import _turn_left
+        from esolangs.languages.flowchart.interpreter import _turn_left
 
         north, south, west, east = (-1, 0), (1, 0), (0, -1), (0, 1)
         assert _turn_left(north) == west

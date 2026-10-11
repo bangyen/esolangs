@@ -4,9 +4,9 @@ import random
 
 import pytest
 
-from esolangs.interpreters.brainfuck import _Machine
-from esolangs.interpreters.factor import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.brainfuck.interpreter import _Machine
+from esolangs.languages.factor.interpreter import run
 from tests.proofs._factor_blocks import (
     ball_count,
     block_decoder,

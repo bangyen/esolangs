@@ -10,7 +10,7 @@ from tests.reference import REFERENCE
 @pytest.mark.medium
 def test_affine_stream_all_small_coefficients_within_ledger():
     from esolangs.debugger import make_vm
-    from esolangs.tools.brainfuck import _affine_stream
+    from esolangs.languages.brainfuck.generator import _affine_stream
     from scripts.benchmark import WrittenState
 
     admitted = 0
@@ -49,7 +49,7 @@ def test_affine_stream_all_small_coefficients_within_ledger():
 
 @pytest.mark.medium
 def test_affine_stream_reduces_cap_parity_within_ledger():
-    from esolangs.tools.brainfuck import _bf_ordered
+    from esolangs.languages.brainfuck.generator import _bf_ordered
     from tests.support.generator_support import assert_shared_program
 
     n = 16
@@ -69,7 +69,7 @@ def test_affine_stream_reduces_cap_parity_within_ledger():
 
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
-    from esolangs.tools.brainfuck import _bf_ordered
+    from esolangs.languages.brainfuck.generator import _bf_ordered
     from tests.support.generator_support import assert_shared_program
 
     zero = "0001011101101001" * 4

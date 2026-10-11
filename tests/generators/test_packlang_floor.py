@@ -5,8 +5,8 @@ import random
 import pytest
 
 import esolangs
-from esolangs.interpreters.packlang._lex import _tokenize
-from esolangs.tools.packlang import packlang
+from esolangs.languages.packlang.generator import packlang
+from esolangs.languages.packlang.interpreter._lex import _tokenize
 from esolangs.tools.wrap import wrap_program
 from tests.support.generator_support import evaluate_generated
 from tests.support.witness_tables import witnesses

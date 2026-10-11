@@ -7,8 +7,8 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
-from esolangs.interpreters.thisthat import _Machine, _Pointer, run
-from esolangs.tools.thisthat import thisthat
+from esolangs.languages.thisthat.generator import thisthat
+from esolangs.languages.thisthat.interpreter import _Machine, _Pointer, run
 
 
 @pytest.mark.parametrize(

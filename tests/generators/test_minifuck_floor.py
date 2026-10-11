@@ -3,9 +3,9 @@
 import pytest
 
 import esolangs
+from esolangs.languages.minifuck.generator import _solve, minifuck
+from esolangs.languages.minifuck.generator.sim import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, mark_runs
-from esolangs.tools.minifuck import _solve, minifuck
-from esolangs.tools.minifuck.sim import PAIR
 from esolangs.tools.wrap import wrap_program
 
 

@@ -1,13 +1,13 @@
-"""Covers :mod:`esolangs.tools.flowchart`."""
+"""Covers :mod:`esolangs.languages.flowchart.generator`."""
 
 from collections.abc import Callable
 from itertools import pairwise
 
 import pytest
 
-from esolangs import tools as boolean
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.tools.flowchart import (
+from esolangs.languages import generators as boolean
+from esolangs.languages.flowchart.generator import (
     _flowchart_cells,
     _flowchart_deque,
     _flowchart_render,
@@ -92,7 +92,7 @@ class TestFlowchart:
     )
     def test_vertical_rails_meet_node_middles(self, table: str) -> None:
         """Every ``│`` connects to the middle of the node above and below it."""
-        from esolangs.interpreters.flowchart import _Machine
+        from esolangs.languages.flowchart.interpreter import _Machine
 
         drawing = _flowchart_render(_flowchart_cells(table))
         machine = _Machine(drawing.splitlines(), IO())
@@ -118,7 +118,7 @@ class TestFlowchart:
         The tree draws 1 + 8 reads per later internal node, and a folded
         leaf carries the reads its skipped levels owe.
         """
-        from esolangs.interpreters.flowchart import _Machine
+        from esolangs.languages.flowchart.interpreter import _Machine
 
         n = len(table).bit_length() - 1
         for name, text in (

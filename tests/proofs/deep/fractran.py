@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import random
 
-from esolangs.interpreters.fractran import _choose, _parse
-from esolangs.tools.fractran import PAIR, _primes, _tree, fractran
+from esolangs.languages.fractran.generator import PAIR, _primes, _tree, fractran
+from esolangs.languages.fractran.interpreter import _choose, _parse
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     constant_span_test,

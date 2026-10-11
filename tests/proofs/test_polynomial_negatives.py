@@ -12,13 +12,13 @@ import sympy as sp
 import z3
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.polynomial import (
+from esolangs.languages.polynomial.generator import polynomial
+from esolangs.languages.polynomial.generator.algebra import format_coeffs, multiply
+from esolangs.languages.polynomial.interpreter import (
     _parse_program,
     run,
     sanitize,
 )
-from esolangs.tools.polynomial import polynomial
-from esolangs.tools.polynomial.algebra import format_coeffs, multiply
 
 # --------------------------------------------------------------------------
 # Polynomial cannot ship a factored program

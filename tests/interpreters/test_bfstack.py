@@ -3,8 +3,8 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.bfstack import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.bfstack.interpreter import _Machine, run
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,

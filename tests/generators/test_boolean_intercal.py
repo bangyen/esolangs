@@ -6,13 +6,13 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.interpreters.intercal import run
+from esolangs.languages.intercal.generator import PAIR, TEMPLATE_CHAR, intercal
+from esolangs.languages.intercal.interpreter import run
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     constant_span_test,
 )
-from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, intercal
 from tests.support.generator_support import run_filled
 
 
@@ -93,7 +93,7 @@ def test_narrow_balance_regime_edge_executes(table):
 
 def intercal_plain(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one order's template; level ``k`` selects input ``perm[k]``."""
-    from esolangs.tools.intercal import _Expr, _mux, _program
+    from esolangs.languages.intercal.generator import _Expr, _mux, _program
 
     n = _validate_truth_table(truth_table)
     constant = constant_span_test(truth_table)

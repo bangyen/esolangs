@@ -1,7 +1,7 @@
 """Fill Minifuck's positional and state-accumulator templates."""
 
+from esolangs.languages.minifuck.generator import minifuck_setters
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.minifuck import minifuck_setters
 
 
 def fill(template: str, bits: list[int]) -> str:

@@ -11,8 +11,8 @@ import esolangs
 from esolangs import DialectSettings, Raster
 from esolangs._evaluate import _evaluate
 from esolangs.cli import main
-from esolangs.interpreters.line.extract import detect_scale, normalize_scale
-from esolangs.interpreters.line.mask import Mask
+from esolangs.languages.line.interpreter.extract import detect_scale, normalize_scale
+from esolangs.languages.line.interpreter.mask import Mask
 from tests.integration.cli.test_cli import _FakeStdin, call_main
 from tests.integration.cli.test_cli_portable import save_generated
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line

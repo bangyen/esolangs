@@ -13,7 +13,7 @@ from tests.interpreters.contract import (
 )
 from tests.support.raises import assert_rejected_with_hint, raises_message
 
-run = importlib.import_module("esolangs.interpreters.bf_pda").run
+run = importlib.import_module("esolangs.languages.bf_pda.interpreter").run
 
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
@@ -110,7 +110,7 @@ class TestMalformed:
 
 class TestStepMachine:
     def test_snapshot_changes_after_a_step(self) -> None:
-        from esolangs.interpreters.bf_pda import _Machine
+        from esolangs.languages.bf_pda.interpreter import _Machine
 
         machine = _Machine("<", ScriptedIO())
         before = machine.snapshot()
@@ -120,8 +120,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.bf_pda import _Machine
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.bf_pda.interpreter import _Machine
 
     return _Machine(code, ScriptedIO())
 

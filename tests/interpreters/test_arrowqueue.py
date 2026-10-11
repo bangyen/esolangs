@@ -3,8 +3,8 @@
 from functools import partial
 from typing import ClassVar
 
-from esolangs.interpreters.arrowqueue import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.arrowqueue.interpreter import _Machine, run
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -83,7 +83,7 @@ class TestMachineState:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.arrowqueue import _Machine
+    from esolangs.languages.arrowqueue.interpreter import _Machine
 
     return _Machine(code)
 

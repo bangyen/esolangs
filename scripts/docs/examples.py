@@ -188,7 +188,7 @@ def examples_main() -> int:
     return 0
 
 
-INIT = "src/esolangs/tools/__init__.py"
+INIT = "src/esolangs/languages/generators.py"
 START = "# BEGIN GENERATED EXPORTS: python scripts/docs/generate.py docs"
 END = "# END GENERATED EXPORTS"
 

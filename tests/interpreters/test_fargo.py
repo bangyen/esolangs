@@ -3,13 +3,13 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.fargo import (
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.fargo.interpreter import (
     _is_literal,
     _Machine,
     _parse_program,
     run,
 )
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 

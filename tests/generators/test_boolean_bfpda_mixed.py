@@ -4,11 +4,11 @@ import random
 
 import pytest
 
-from esolangs.interpreters.bf_pda import _Machine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.bfpda import _prepare, _reflected, bfpda
-from esolangs.tools.bfpda._bank import _Metric
-from esolangs.tools.bfpda._mixed import _decoder, best_mixed_bank
+from esolangs.languages.bf_pda.generator import _prepare, _reflected, bfpda
+from esolangs.languages.bf_pda.generator._bank import _Metric
+from esolangs.languages.bf_pda.generator._mixed import _decoder, best_mixed_bank
+from esolangs.languages.bf_pda.interpreter import _Machine
 from tests.generators.fills import fill
 from tests.generators.test_boolean_bfpda import _execute_bank
 

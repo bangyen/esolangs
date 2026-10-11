@@ -3,8 +3,8 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.polynomial import _Machine as Polynomial
-from esolangs.tools.polynomial import _polynomial_assemble
+from esolangs.languages.polynomial.generator import _polynomial_assemble
+from esolangs.languages.polynomial.interpreter import _Machine as Polynomial
 from tests.generators.polynomial_support import _polynomial_tree
 
 

@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_bfstack,
 )
@@ -106,7 +106,7 @@ def test_constant_leaf_is_used_at_every_arity(n: int, bit: str) -> None:
 
 def test_small_tables_do_not_grow_and_execute() -> None:
     """The n=3 total drops from 58,948 to 58,934 characters."""
-    from esolangs.tools.bfstack import _bfstack_small
+    from esolangs.languages.bfstack.generator import _bfstack_small
 
     total = 0
     for n in range(1, 4):

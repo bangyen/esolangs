@@ -5,7 +5,7 @@ from itertools import pairwise
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_inject,
 )
@@ -107,7 +107,7 @@ class TestInject:
 
     def test_the_tree_collapses_on_the_constant_subtree_alone(self) -> None:
         """Depth never terminates the recursion; a constant subtree always does."""
-        from esolangs.tools.inject import _Names, _tree
+        from esolangs.languages.inject.generator import _Names, _tree
 
         calls: list[tuple[str, int, int]] = []
 

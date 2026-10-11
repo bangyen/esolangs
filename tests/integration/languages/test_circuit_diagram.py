@@ -76,7 +76,7 @@ class TestAFailedRowSaysWhichRow:
 
     def test_a_real_timeout_carries_one_too(self) -> None:
         """Not only the stand-in: the path a caller actually hits."""
-        from esolangs.interpreters import circuit_diagram
+        from esolangs.languages.circuit_diagram import interpreter as circuit_diagram
 
         table = "".join(str(bin(r).count("1") & 1) for r in range(128))
         # A warm compile cache (another test, same worker) beats 5 ms a row.

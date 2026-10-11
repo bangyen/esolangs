@@ -2,7 +2,7 @@
 
 import itertools
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 
 
 class TestThreeX:
@@ -14,7 +14,7 @@ class TestThreeX:
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than the identity order's program."""
-        from esolangs.tools.three_x import _three_x_ordered
+        from esolangs.languages.three_x.generator import _three_x_ordered
 
         for i in range(256):
             table = format(i, "08b")
@@ -23,14 +23,14 @@ class TestThreeX:
 
     def test_unimproved_tables_keep_their_emission(self) -> None:
         """A table no reorder helps emits exactly what it emitted before."""
-        from esolangs.tools.three_x import _three_x_ordered
+        from esolangs.languages.three_x.generator import _three_x_ordered
 
         for table in ("0" * 8, "1" * 8):
             assert boolean.three_x(table) == _three_x_ordered(table, (0, 1, 2))
 
     def test_reads_stay_in_stream_order(self) -> None:
         """Only the store target moves, so the input stream is consumed the same."""
-        from esolangs.tools.three_x import _three_x_ordered
+        from esolangs.languages.three_x.generator import _three_x_ordered
 
         table = "00010111"
         for perm in ((0, 1, 2), (2, 1, 0), (1, 2, 0)):
@@ -44,8 +44,8 @@ class TestThreeX:
         """The permuted build computes the original table on the original stream."""
 
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.three_x import run
-        from esolangs.tools.three_x import _three_x_ordered
+        from esolangs.languages.three_x.generator import _three_x_ordered
+        from esolangs.languages.three_x.interpreter import run
 
         def permuted(table: str, perm: tuple[int, ...]) -> str:
             out = []
@@ -105,8 +105,8 @@ class TestThreeX:
     def test_constant_ladder_is_the_grammar_shortest_first(self) -> None:
         """Keys are the shortest ``C ::= 3 | C C C x`` programs, by length."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.three_x import run
-        from esolangs.tools.three_x import _constants
+        from esolangs.languages.three_x.generator import _constants
+        from esolangs.languages.three_x.interpreter import run
 
         codes = _constants(13)
         assert [len(c) for c in codes] == [1, 4, 7, 7] + [10] * 4 + [13] * 5
@@ -120,7 +120,7 @@ class TestThreeX:
 
     def test_constant_ladder_only_ever_extends(self) -> None:
         """More names append to the cache; 30 of them still fit 16 characters."""
-        from esolangs.tools.three_x import _constants
+        from esolangs.languages.three_x.generator import _constants
 
         first = _constants(4)
         longer = _constants(30)
@@ -136,8 +136,8 @@ class TestThreeX:
     def test_repeated_blocks_are_written_once(self) -> None:
         """Three copies of one block cost one block, and the program still runs."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.three_x import run
-        from esolangs.tools.three_x import _three_x_emit
+        from esolangs.languages.three_x.generator import _three_x_emit
+        from esolangs.languages.three_x.interpreter import run
 
         a, b = "0010110111010001", "1101001000101110"
         table = a + a + b + a

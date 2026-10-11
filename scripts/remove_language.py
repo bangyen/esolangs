@@ -427,30 +427,17 @@ def _declaring_module(lang: Language) -> str | None:
             return name
     for module_name, module in sorted(sys.modules.items()):
         if (
-            module_name.startswith("esolangs.tools.")
+            module_name.startswith("esolangs.languages.")
             and getattr(module, "LANGUAGE", None) is lang
         ):
             return module_name
     return None
 
 
-def _legacy_generator_module(lang: Language) -> str:
-    """Resolve a runtime compatibility alias even when its filename differs."""
-    implementation = sys.modules.get(lang.boolean.__module__) if lang.boolean else None
-    return next(
-        (
-            name
-            for name, module in sorted(sys.modules.items())
-            if name.startswith("esolangs.tools.") and module is implementation
-        ),
-        f"esolangs.tools.{lang.id}",
-    )
-
-
 def _owned_module_paths(lang: Language) -> tuple[set[str], set[Path]]:
     """Return implementation and compatibility modules, keeping leaves separate."""
     modules = (
-        {f"esolangs.interpreters.{lang.interpreter}"} if lang.interpreter else set()
+        {f"esolangs.languages.{lang.id}.interpreter"} if lang.interpreter else set()
     )
     declaring = _declaring_module(lang)
     if declaring:
@@ -458,8 +445,6 @@ def _owned_module_paths(lang: Language) -> tuple[set[str], set[Path]]:
     package = ROOT / "src/esolangs/languages" / lang.id
     if package.is_dir():
         modules.add(f"esolangs.languages.{lang.id}.interpreter")
-        if lang.boolean is not None:
-            modules.add(_legacy_generator_module(lang))
     paths = {path for module in modules if (path := _module_path(module))}
     init = package / "__init__.py"
     if init.is_file():
@@ -549,29 +534,6 @@ def _drop_language_statement(path: Path) -> None:
     path.write_text("".join(lines).rstrip("\n") + "\n", encoding="utf-8")
 
 
-def _drop_registration_export(path: Path, module: str) -> None:
-    """Remove a retained compatibility module's registration re-export."""
-    source = path.read_text(encoding="utf-8")
-    lines = source.splitlines(keepends=True)
-    nodes = [
-        node
-        for node in ast.walk(ast.parse(source))
-        if isinstance(node, ast.ImportFrom)
-        and node.module == module
-        and any(name.name == "LANGUAGE" for name in node.names)
-    ]
-    for node in sorted(nodes, key=lambda item: item.lineno, reverse=True):
-        names = [name for name in node.names if name.name != "LANGUAGE"]
-        indent = " " * node.col_offset
-        replacement = (
-            indent + ast.unparse(ast.ImportFrom(module=module, names=names, level=0))
-            if names
-            else indent + "pass"
-        )
-        lines[node.lineno - 1 : node.end_lineno] = [replacement + "\n"]
-    path.write_text("".join(lines), encoding="utf-8")
-
-
 def _owner_id(filename: str, ids: set[str]) -> str | None:
     """Return the longest language id owning ``filename`` at a name boundary.
 
@@ -606,7 +568,7 @@ def _dead_test_files(
 
     The owned prefixes name a language's module stems, not its submodules, so
     ``tests/generators/test_circuit_free_columns.py`` (importing
-    ``esolangs.tools.circuit_diagram.free_columns``) is caught here instead;
+    ``esolangs.languages.circuit_diagram.generator.free_columns``) is caught here;
     it cannot run once the module is gone.
     """
     candidates = {
@@ -858,7 +820,7 @@ def _drop_from_series(path: Path, name: str, tail: str) -> None:
 #: coupling guard does not count them for the same reason.
 _EDITED = (
     "src/esolangs/registry/_table.py",
-    "src/esolangs/tools/__init__.py",
+    "src/esolangs/languages/generators.py",
     "tests/support/samples.py",
     "tests/generators/boolean_runners.py",
     "tests/generators/test_wrap.py",
@@ -978,10 +940,6 @@ def remove(name: str) -> list[str]:
     for path in module_paths - doomed:
         if declaring and path == _module_path(declaring):
             _drop_language_statement(path / "__init__.py" if path.is_dir() else path)
-        elif declaring:
-            _drop_registration_export(
-                path / "__init__.py" if path.is_dir() else path, declaring
-            )
     keys = {name, module, lang.id, gen, stem} - {""}
     # ``Path("tests/interpreters/test_inject.py")`` in a support list.
     paths = {str(p.relative_to(ROOT)) for p in doomed}
@@ -1139,7 +1097,7 @@ def remove(name: str) -> list[str]:
         for quote in ('"', "'", "`")
     ]
     if module:
-        patterns.append(f"esolangs.interpreters.{module}")
+        patterns.append(f"esolangs.languages.{module}.interpreter")
     if declaring:
         patterns.append(declaring)
     patterns = list(dict.fromkeys(patterns))

@@ -3,8 +3,8 @@
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
-from esolangs.tools.false import false
+from esolangs.languages import generators as boolean
+from esolangs.languages.false.generator import false
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import assert_emissions_grow_by_a_line
 from tests.generators.sample_tables import five_input_sample
@@ -83,7 +83,7 @@ def test_the_plain_tree_grows_by_a_line() -> None:
 
 def false_plain(truth_table: str, n: int) -> str:
     """Return the tree with every half written out where it is used."""
-    from esolangs.tools.false import (
+    from esolangs.languages.false.generator import (
         _FLIPPED,
         _SAME,
         _SKIP,

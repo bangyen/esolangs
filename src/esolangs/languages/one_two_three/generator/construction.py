@@ -1,6 +1,6 @@
 r"""Constructed 123 templates for the wide route and the small route's helpers.
 
-Same contract as :mod:`esolangs.tools.one_two_three`: each run once in
+Same contract as :mod:`esolangs.languages.one_two_three.generator`: each run once in
 name order, ``1`` a one and ``2`` a zero, halt for a 0 entry and a proven
 loop for a 1.
 

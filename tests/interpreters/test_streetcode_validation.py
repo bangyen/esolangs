@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.streetcode import _Machine, run
+from esolangs.languages.streetcode.interpreter import _Machine, run
 from tests.interpreters.streetcode_support import run_street
 
 

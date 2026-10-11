@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-import esolangs.tools as boolean
+import esolangs.languages.generators as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Raster
 from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
@@ -128,13 +128,13 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
     assert not missing, (
         f"these languages export a boolean generator but are absent from "
         f"BOOLEAN, so describe() reports boolean_generator=False for them: "
-        f"{sorted(missing)} -- add them to BOOLEAN in tools/__init__.py"
+        f"{sorted(missing)} -- check their LANGUAGE declarations"
     )
     stale = boolean.BOOLEAN - set(exported.values())
     assert not stale, (
         f"BOOLEAN names these languages but the package exports no generator "
         f"resolving to them: {sorted(stale)} -- remove them from BOOLEAN, or "
-        f"export the generator from tools/__init__.py"
+        f"export the generator from languages/generators.py"
     )
 
 
@@ -154,7 +154,7 @@ def test_reorder_permutation_preserves_the_function() -> None:
 
 def test_greedy_order_never_grows_a_wide_program() -> None:
     """The identity candidate keeps the greedy heuristic from growing output."""
-    from esolangs.tools.brainfuck import _bf_ordered
+    from esolangs.languages.brainfuck.generator import _bf_ordered
 
     n = 8
     table = "0" * (2**n - 1) + "1"
@@ -194,7 +194,7 @@ def test_wide_order_selection_builds_only_identity() -> None:
 
 def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     """A greedily-ordered program still computes its table."""
-    from esolangs.interpreters.brainfuck import run
+    from esolangs.languages.brainfuck.interpreter import run
     from esolangs.tools.helpers import _greedy_input_order
     from tests.interpreters.runner import run_program
 
@@ -238,7 +238,7 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """``perm`` reaches the emission in exactly one place, and it shows."""
     from itertools import permutations
 
-    from esolangs.tools.brainfuck import _bf_ordered
+    from esolangs.languages.brainfuck.generator import _bf_ordered
 
     lengths = {
         perm: len(_bf_ordered("00010111", perm)) for perm in permutations(range(3))

@@ -6,10 +6,10 @@ import random
 
 import pytest
 
-from esolangs.interpreters.fractran import _choose, _Machine, _parse
-from esolangs.interpreters.fractran import index as fractran_index
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.fractran import PAIR
+from esolangs.languages.fractran.generator import PAIR
+from esolangs.languages.fractran.interpreter import _choose, _Machine, _parse
+from esolangs.languages.fractran.interpreter import index as fractran_index
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs._fractran_chunks import (
     chunk_template,

@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs.tools.polynomial.algebra import (
+from esolangs.languages.polynomial.generator.algebra import (
     _PACKED_MIN_FACTORS,
     _normalise,
     _pack,
@@ -12,7 +12,7 @@ from esolangs.tools.polynomial.algebra import (
     multiply,
     render_product,
 )
-from esolangs.tools.polynomial.resources import estimate_generation
+from esolangs.languages.polynomial.generator.resources import estimate_generation
 
 
 def _incremental(factors: list[list[int]]) -> str:
@@ -55,13 +55,15 @@ class TestResourceEstimate:
         import decimal
         import importlib
 
-        from esolangs.tools.polynomial import (
+        from esolangs.languages.polynomial.generator import (
             _polynomial_dag,
             _polynomial_factors,
         )
         from tests.support.witness_tables import dense as _dense
 
-        module = importlib.import_module("esolangs.tools.polynomial.algebra")
+        module = importlib.import_module(
+            "esolangs.languages.polynomial.generator.algebra"
+        )
         original = _pack
         packed_digits: list[int] = []
 
@@ -79,7 +81,7 @@ class TestResourceEstimate:
         assert max(left, right) <= len(program)
 
     def test_public_generator_covers_dispatch_resource_branches(self) -> None:
-        from esolangs.tools.polynomial import _polynomial_dag, polynomial
+        from esolangs.languages.polynomial.generator import _polynomial_dag, polynomial
 
         assert polynomial("0101").startswith("f(x) = ")  # leading ignored input
         assert polynomial("0000").startswith("f(x) = ")  # one constant leaf
@@ -90,7 +92,7 @@ class TestResourceEstimate:
         ["01", "0110", "01101001", "0110100110010110"],
     )
     def test_render_bound_holds_on_generator_corpus(self, table: str) -> None:
-        from esolangs.tools.polynomial import (
+        from esolangs.languages.polynomial.generator import (
             _polynomial_factors,
             _polynomial_hybrid,
         )
@@ -121,7 +123,7 @@ class TestResourceEstimate:
 
 
 def test_cold_parse_estimate_covers_a_root_past_the_old_fixed_lift() -> None:
-    from esolangs.tools.polynomial.resources import estimate_cold_parse
+    from esolangs.languages.polynomial.generator.resources import estimate_cold_parse
 
     coeffs = [1, *([0] * 399)]
     estimate = estimate_cold_parse(coeffs)
@@ -138,9 +140,9 @@ def test_assemble_refuses_an_oversized_estimate_before_expansion(
     import importlib
 
     from esolangs.exceptions import GeneratorCapError
-    from esolangs.tools.polynomial import _polynomial_assemble
+    from esolangs.languages.polynomial.generator import _polynomial_assemble
 
-    module = importlib.import_module("esolangs.tools.polynomial")
+    module = importlib.import_module("esolangs.languages.polynomial.generator")
     monkeypatch.setattr(module, "_POLYNOMIAL_MAX_ESTIMATED_CHARS", 100)
     with pytest.raises(GeneratorCapError, match="live decimal digits"):
         _polynomial_assemble([[10**40, 1]])
@@ -215,6 +217,6 @@ def test_draining_remains_available_at_the_instruction_cap(
 
     from tests.support.generator_support import evaluate_generated
 
-    module = importlib.import_module("esolangs.tools.polynomial")
+    module = importlib.import_module("esolangs.languages.polynomial.generator")
     monkeypatch.setattr(module, "_POLYNOMIAL_MAX_INSTRS", 15)
     assert evaluate_generated("Polynomial", "0101") == "0101"

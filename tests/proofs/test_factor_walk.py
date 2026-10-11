@@ -6,9 +6,9 @@ from collections.abc import Callable
 
 import pytest
 
-from esolangs.interpreters.brainfuck import _Machine
-from esolangs.interpreters.factor import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.brainfuck.interpreter import _Machine
+from esolangs.languages.factor.interpreter import run
 from tests.proofs._factor_walk import packed_program, walked_program
 from tests.proofs.test_factor_print import _render
 from tests.support.witness_tables import witnesses

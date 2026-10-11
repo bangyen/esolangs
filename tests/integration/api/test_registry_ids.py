@@ -1,6 +1,21 @@
+import importlib
+
 import pytest
 
 from esolangs.registry import LANGUAGES, resolve
+
+
+def test_language_names_keep_their_package_namespace() -> None:
+    from esolangs import languages
+
+    for lang in LANGUAGES.values():
+        package = importlib.import_module(f"esolangs.languages.{lang.id}")
+        assert getattr(languages, lang.id) is package
+        if lang.boolean is not None:
+            generator = importlib.import_module(
+                f"esolangs.languages.{lang.id}.generator"
+            )
+            assert getattr(generator, lang.boolean.__name__) is lang.boolean
 
 
 def test_every_language_has_a_canonical_id() -> None:

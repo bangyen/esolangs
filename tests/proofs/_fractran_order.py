@@ -4,7 +4,7 @@ from collections.abc import Callable, Sequence
 from functools import cache
 from math import factorial
 
-from esolangs.tools.fractran import _primes
+from esolangs.languages.fractran.generator import _primes
 from esolangs.tools.helpers import TEMPLATE_CHAR
 
 

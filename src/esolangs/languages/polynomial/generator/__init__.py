@@ -1,6 +1,6 @@
 """Boolean-function generator for Polynomial.
 
-:mod:`esolangs.tools.polynomial.algebra` is the algebra; this decides the
+:mod:`esolangs.languages.polynomial.generator.algebra` is the algebra; this decides the
 instructions.  Every instruction is priced by opcode: ``[a, b]`` is the
 factor ``(x - a)**2 + p**(2*b)`` and ``[v]`` is ``x - p**v``, with
 ``+=`` at ``b == 1``, ``-=`` 2, ``*=`` 3, ``//=`` 4 and ``if > 0`` at

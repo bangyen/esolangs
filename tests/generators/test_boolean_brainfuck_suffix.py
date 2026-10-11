@@ -4,8 +4,11 @@ import random
 
 import pytest
 
-from esolangs.tools.brainfuck import _bf_ordered
-from esolangs.tools.brainfuck._binary import binary_bank, larger_suffix_bank
+from esolangs.languages.brainfuck.generator import _bf_ordered
+from esolangs.languages.brainfuck.generator._binary import (
+    binary_bank,
+    larger_suffix_bank,
+)
 from esolangs.tools.helpers import essential_inputs
 from tests.generators.test_boolean_brainfuck_binary import _execute
 

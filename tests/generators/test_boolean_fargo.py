@@ -5,7 +5,7 @@ import random
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_fargo,
 )
@@ -79,7 +79,7 @@ class TestFargo:
 
     def test_choosing_arms_shrinks_the_corpus(self) -> None:
         """Tables to two inputs never grow; the three-input corpus shrinks 11%."""
-        from esolangs.tools.fargo import anf_coefficients
+        from esolangs.languages.fargo.generator import anf_coefficients
         from tests.generators.fargo_oracle import _anf_expression
 
         before = after = 0

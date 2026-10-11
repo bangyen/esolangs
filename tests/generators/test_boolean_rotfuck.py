@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_rotfuck,
     run_rotfuck_forward,
@@ -35,8 +35,8 @@ class TestRotfuck:
 
     def test_the_rotation_cycle_is_the_interpreters_default(self) -> None:
         """The prose's ``+-><,.[]`` turned backward, and it is a cycle."""
-        from esolangs.interpreters.rotfuck import CYCLES
-        from esolangs.tools.rotfuck import _ROTFUCK_CHAIN, _rotfuck_rot
+        from esolangs.languages.rotfuck.generator import _ROTFUCK_CHAIN, _rotfuck_rot
+        from esolangs.languages.rotfuck.interpreter import CYCLES
 
         assert _ROTFUCK_CHAIN == "+][.,<>-" == CYCLES["backward"]
         assert CYCLES["forward"] == "+-><,.[]"
@@ -58,8 +58,8 @@ class TestRotfuck:
         self, rotation: str
     ) -> None:
         """A command's rotation, seen from a seek's, must not be a bracket."""
-        from esolangs.interpreters.rotfuck import CYCLES
-        from esolangs.tools.rotfuck import _rotfuck_rot, _shows
+        from esolangs.languages.rotfuck.generator import _rotfuck_rot, _shows
+        from esolangs.languages.rotfuck.interpreter import CYCLES
 
         cycle = CYCLES[rotation]
         for seek in range(8):
@@ -75,7 +75,7 @@ class TestRotfuck:
 
     def test_every_pad_is_invisible_and_they_are_shortest_first(self) -> None:
         """Padding shifts the rotation without shifting anything else."""
-        from esolangs.tools.rotfuck import _PADS
+        from esolangs.languages.rotfuck.generator import _PADS
 
         assert _PADS[:4] == ("+-", "-+", "><", "<>")
         assert list(_PADS) == sorted(_PADS, key=len)
@@ -92,8 +92,8 @@ class TestRotfuck:
     @pytest.mark.parametrize("trips", range(7))
     def test_a_loop_leaves_the_rotation_where_it_found_it(self, trips: int) -> None:
         """The invariant every loop rests on, checked by running one."""
+        from esolangs.languages.rotfuck.generator import _Builder, _parse
         from esolangs.tools.helpers import _ASCII_ZERO
-        from esolangs.tools.rotfuck import _Builder, _parse
 
         out = _Builder()
         out.emit(_parse("+" * trips + "[->+<]>" + "+" * _ASCII_ZERO + "."))
@@ -102,8 +102,8 @@ class TestRotfuck:
     @pytest.mark.parametrize("body", ["-", "-+-", ">+<-", "[-]"])
     def test_a_body_of_either_parity_closes_at_its_phase(self, body: str) -> None:
         """An even body opens with a ``[`` that cannot fire; an odd one does not."""
+        from esolangs.languages.rotfuck.generator import _Builder, _parse
         from esolangs.tools.helpers import _ASCII_ZERO
-        from esolangs.tools.rotfuck import _Builder, _parse
 
         out = _Builder()
         out.emit(_parse(f"+++[{body}]" + "+" * _ASCII_ZERO + "."))
@@ -191,7 +191,7 @@ def test_rotation_is_checked():
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     from esolangs import generate
-    from esolangs.tools.rotfuck import _program
+    from esolangs.languages.rotfuck.generator import _program
     from tests.support.generator_support import assert_shared_program
 
     language = "ROTfuck"
@@ -216,7 +216,7 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
-    from esolangs.tools.rotfuck import _program
+    from esolangs.languages.rotfuck.generator import _program
     from tests.support.generator_support import assert_constant_balanced_shape
 
     table = bit * (1 << n)

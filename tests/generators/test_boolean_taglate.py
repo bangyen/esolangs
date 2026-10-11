@@ -1,9 +1,9 @@
-"""Covers :mod:`esolangs.tools.taglate`."""
+"""Covers :mod:`esolangs.languages.taglate.generator`."""
 
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from esolangs.tools.wrap import (
     _taglate,
 )
@@ -19,7 +19,7 @@ def test_constant_reads_the_ghost_and_real_inputs_before_printing(
     n: int, bit: str
 ) -> None:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.taglate import _Machine
+    from esolangs.languages.taglate.interpreter import _Machine
 
     table = bit * (1 << n)
     programs = [esolangs.generate("Taglate", table, width=w) for w in (None, 1, 20)]
@@ -135,7 +135,7 @@ class TestTaglate:
 @pytest.mark.parametrize("width", [1, 7, 19])
 def test_narrow_seed_truth_tables(width: int) -> None:
     """Bootstrapping leaves the original seed and input consumption intact."""
-    from esolangs.tools.taglate import _taglate_raw
+    from esolangs.languages.taglate.generator import _taglate_raw
 
     tables = [f"{value:02b}" for value in range(4)]
     tables += [f"{value:04b}" for value in range(16)]
@@ -155,8 +155,8 @@ def test_narrow_seed_truth_tables(width: int) -> None:
 @pytest.mark.parametrize("count", [20, 70, 262, 1030])
 def test_seed_bootstrap_exact_queue(count: int) -> None:
     """Multiple URL layers initialize the exact FIFO without any input."""
-    from esolangs.interpreters.taglate import _advance, _match, _tokens
-    from esolangs.tools.taglate import _seed_commands
+    from esolangs.languages.taglate.generator import _seed_commands
+    from esolangs.languages.taglate.interpreter import _advance, _match, _tokens
 
     seed = "1" + "0" * (count - 2) + "1"
     tokens = _tokens(_seed_commands(seed))

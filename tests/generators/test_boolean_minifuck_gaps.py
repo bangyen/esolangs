@@ -4,11 +4,11 @@ import importlib
 
 import pytest
 
-from esolangs.tools.minifuck import _solve
-from esolangs.tools.minifuck.mux import (
+from esolangs.languages.minifuck.generator import _solve
+from esolangs.languages.minifuck.generator.mux import (
     _probe_frame,
 )
-from esolangs.tools.minifuck.pool import _POOL_WIDTH
+from esolangs.languages.minifuck.generator.pool import _POOL_WIDTH
 
 
 class TestProbeFrameAndColumns:
@@ -23,7 +23,7 @@ def test_degenerate_column_rules_execute_or_decline() -> None:
     """Standing columns cover both first inputs; later inputs use the mux."""
     from tests.generators.minifuck_support import _MinifuckCase
 
-    module = importlib.import_module("esolangs.tools.minifuck")
+    module = importlib.import_module("esolangs.languages.minifuck.generator")
     runner = _MinifuckCase()
     for table in ("0101", "1010"):
         template = module._degenerate(table, 2)  # noqa: SLF001
@@ -43,8 +43,8 @@ def test_every_ignored_input_drops_from_the_lookup() -> None:
     """Interior inputs 1 and 4, and trailing input 6, leave the table index."""
     from esolangs import generate
     from esolangs._evaluate import _evaluate
-    from esolangs.tools.minifuck import _reduce
-    from esolangs.tools.minifuck.mux import _mux_lookup
+    from esolangs.languages.minifuck.generator import _reduce
+    from esolangs.languages.minifuck.generator.mux import _mux_lookup
 
     inner = "0110100110010111"
     bits = ((r >> 6 - i & 1 for i in (0, 2, 3, 5)) for r in range(128))
@@ -67,7 +67,7 @@ def test_every_ignored_input_drops_from_the_lookup() -> None:
 def test_extended_pads_compute_every_small_table(
     n: int, gaps: tuple[int, ...], start: int, *, paired: bool
 ) -> None:
-    from esolangs.tools.minifuck.mux import _mux_lookup
+    from esolangs.languages.minifuck.generator.mux import _mux_lookup
     from tests.generators.minifuck_support import _MinifuckCase
 
     runner = _MinifuckCase()
@@ -109,7 +109,7 @@ def test_failed_unary_column_rule_aborts_without_a_program() -> None:
 
     import pytest
 
-    module = importlib.import_module("esolangs.tools.minifuck")
+    module = importlib.import_module("esolangs.languages.minifuck.generator")
     _solve.cache_clear()
     try:
         with (
@@ -125,8 +125,8 @@ def test_canonical_endgame_rejects_an_accumulator_inside_the_pool() -> None:
     """The pool is reserved; invalid accumulator placement fails before emitting."""
     import pytest
 
-    from esolangs.tools.minifuck.mux import _canonical_endgame
-    from esolangs.tools.minifuck.sim import _Joint
+    from esolangs.languages.minifuck.generator.mux import _canonical_endgame
+    from esolangs.languages.minifuck.generator.sim import _Joint
 
     joint = _Joint(1)
     before = joint.template()
@@ -137,7 +137,7 @@ def test_canonical_endgame_rejects_an_accumulator_inside_the_pool() -> None:
 
 def test_probe_frame_refuses_a_pointer_outside_its_low_byte() -> None:
     """A low-byte summary cannot describe a cursor that has left that byte."""
-    from esolangs.tools.minifuck.mux import _probe_frame
+    from esolangs.languages.minifuck.generator.mux import _probe_frame
 
     assert _probe_frame("[" * (_POOL_WIDTH - 1), 0) == (_POOL_WIDTH - 1, 0)
     assert _probe_frame("[" * _POOL_WIDTH, 0) is None

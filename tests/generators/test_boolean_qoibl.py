@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_qoibl,
 )
@@ -93,7 +93,7 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 def test_qoibl_affine_row_envelope_minima():
     from itertools import product
 
-    from esolangs.tools.qoibl.balance import _best_width
+    from esolangs.languages.qoibl.generator.balance import _best_width
     from esolangs.tools.wrap import balance_score
 
     for negative, constant, positive, extra in product(

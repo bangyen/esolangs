@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.a_painter_ant` and the trace it
+"""Covers :mod:`esolangs.languages.a_painter_ant.generator` and the trace it
 reads."""
 
 from itertools import product
@@ -6,8 +6,8 @@ from itertools import product
 import pytest
 
 import esolangs
-from esolangs.interpreters.a_painter_ant import run as run_a_painter_ant
-from esolangs.tools.a_painter_ant import PAIR, a_painter_ant
+from esolangs.languages.a_painter_ant.generator import PAIR, a_painter_ant
+from esolangs.languages.a_painter_ant.interpreter import run as run_a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from tests.generators.fills import fill
 from tests.support.witness_tables import parity as _parity

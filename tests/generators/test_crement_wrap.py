@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs.tools.crement import crement
+from esolangs.languages.crement.generator import crement
 from tests.support.divergence import diverges
 
 

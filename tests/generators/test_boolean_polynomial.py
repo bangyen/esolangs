@@ -6,9 +6,9 @@ import pytest
 
 import esolangs
 from esolangs import generate
-from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
-from esolangs.tools.polynomial import _polynomial_dag, _polynomial_states
+from esolangs.languages import generators as boolean
+from esolangs.languages.polynomial.generator import _polynomial_dag, _polynomial_states
 from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
     _polynomial,
@@ -29,7 +29,7 @@ from tests.support.witness_tables import row_bits
 class TestPolynomial:
     def test_uncapped_dag_has_matching_text_bound(self) -> None:
         """Pin and execute the construction matching the language lower bound."""
-        from esolangs.tools.polynomial import _polynomial_assemble
+        from esolangs.languages.polynomial.generator import _polynomial_assemble
         from tests.support.witness_tables import dense as _dense
 
         for n in range(4, 9):
@@ -81,7 +81,7 @@ class TestPolynomial:
 
     def test_polynomial_cap_admits_every_n10_table(self) -> None:
         """The cap is the analytic worst case over n == 10 tables."""
-        from esolangs.tools.polynomial import _POLYNOMIAL_MAX_INSTRS
+        from esolangs.languages.polynomial.generator import _POLYNOMIAL_MAX_INSTRS
 
         states = [min(2**k, 2 ** (2 ** (10 - k))) for k in range(11)]
         # Root level 3, every other level 6 per state, two leaves at 6.
@@ -134,7 +134,7 @@ class TestPolynomial:
 
     def test_polynomial_hybrid_cost_mirrors_build(self) -> None:
         """The hybrid's cost function is a deliberate mirror of its emitter."""
-        from esolangs.tools.polynomial import (
+        from esolangs.languages.polynomial.generator import (
             _polynomial_hybrid,
             _polynomial_hybrid_cost,
         )
@@ -149,7 +149,7 @@ class TestPolynomial:
 
     def test_hybrid_endpoints_match_the_tree_and_machine(self) -> None:
         """``k == n`` is the tree and ``k == 0`` is the machine."""
-        from esolangs.tools.polynomial import _polynomial_hybrid
+        from esolangs.languages.polynomial.generator import _polynomial_hybrid
 
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
@@ -168,7 +168,7 @@ class TestPolynomial:
     @pytest.mark.slow
     def test_polynomial_screen_slack(self) -> None:
         """The screen's slack is a measurement, and it is arity-dependent."""
-        from esolangs.tools.polynomial import (
+        from esolangs.languages.polynomial.generator import (
             _POLYNOMIAL_SCREEN_SLACK,
             _polynomial_assemble,
             _polynomial_hybrid,
@@ -199,7 +199,7 @@ class TestPolynomial:
     )
     def test_hybrid_shortens_and_still_computes(self, table: str) -> None:
         """A split whose halves merge separately beats both parents."""
-        from esolangs.tools.polynomial import _polynomial_hybrid
+        from esolangs.languages.polynomial.generator import _polynomial_hybrid
 
         assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
         program = boolean.polynomial(table)
@@ -219,7 +219,7 @@ class TestPolynomial:
     @pytest.mark.parametrize("table", ["00100000", "11011111", "00000010"])
     def test_machine_losing_on_characters_does_not_ship(self, table: str) -> None:
         """Fewer instructions is not fewer characters."""
-        from esolangs.tools.polynomial import (
+        from esolangs.languages.polynomial.generator import (
             _polynomial_assemble,
             _polynomial_hybrid,
         )
@@ -265,8 +265,8 @@ def test_polynomial_balanced_folds_compute_the_table(table):
 @pytest.mark.medium
 @pytest.mark.parametrize("options", [{}, {"balance": True}])
 def test_dense_polynomial_eight_executes_every_row(options) -> None:
-    from esolangs.interpreters.polynomial import _parse_program
-    from esolangs.interpreters.polynomial.roots import _factor_roots
+    from esolangs.languages.polynomial.interpreter import _parse_program
+    from esolangs.languages.polynomial.interpreter.roots import _factor_roots
 
     _parse_program.cache_clear()
     _factor_roots.cache_clear()
@@ -361,7 +361,7 @@ def test_generator_restrictions_name_both_budgets() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_root_ends_after_consuming_the_inputs(bit):
-    from esolangs.tools.polynomial import (
+    from esolangs.languages.polynomial.generator import (
         _polynomial_assemble,
         _polynomial_hybrid,
     )
@@ -383,7 +383,7 @@ def test_constant_root_ends_after_consuming_the_inputs(bit):
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_root_retains_the_previous_balanced_polynomial(n, bit):
-    from esolangs.tools.polynomial import (
+    from esolangs.languages.polynomial.generator import (
         _polynomial_assemble,
         _polynomial_hybrid,
     )

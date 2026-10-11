@@ -6,7 +6,7 @@ import itertools
 import pytest
 
 from esolangs.factor_primes import prime_segments
-from esolangs.tools.factor import _BF_RESIDUE, _spans
+from esolangs.languages.factor.generator import _BF_RESIDUE, _spans
 
 
 def _complete(primes: list[int], start: int, width: int) -> bool:
@@ -15,7 +15,7 @@ def _complete(primes: list[int], start: int, width: int) -> bool:
 
 @pytest.mark.medium
 def test_complete_windows_cover_greedy_streams(monkeypatch: pytest.MonkeyPatch) -> None:
-    factor_module = importlib.import_module("esolangs.tools.factor")
+    factor_module = importlib.import_module("esolangs.languages.factor.generator")
     monkeypatch.setattr(factor_module, "_FACTOR_PRIME_CHUNK", 256)
     streams = [
         [p for _length, p in _spans("".join(word))]

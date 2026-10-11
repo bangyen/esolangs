@@ -12,8 +12,8 @@ from tests.support.witness_tables import row_bits
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_setters_leave_scratch_zero(n: int, bit: str) -> None:
-    from esolangs.interpreters.home_row import _Machine
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.home_row.interpreter import _Machine
 
     table = bit * (1 << n)
     programs = [esolangs.generate("Home Row", table, width=w) for w in (None, 1, 20)]
@@ -36,8 +36,8 @@ class TestParameterizedHomeRow:
     """Input-by-substitution boolean generator for the no-input language Home Row."""
 
     def run_home_row(self, prog: str) -> str:
-        from esolangs.interpreters.home_row import run
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.languages.home_row.interpreter import run
 
         io_ = ScriptedIO("")
         run(prog, io_)
@@ -53,7 +53,7 @@ class TestParameterizedHomeRow:
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
-        from esolangs.tools.home_row import HOME_ROW_PAIR
+        from esolangs.languages.home_row.generator import HOME_ROW_PAIR
         from tests.generators.fills import fill
 
         _fill_home_row = fill("Home Row")
@@ -71,7 +71,7 @@ class TestParameterizedHomeRow:
     def test_five_inputs_sample(self) -> None:
         """A sample of dense five-input tables, past the removed n <= 2 cap."""
 
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         n = 5
         rng = random.Random(0)
@@ -85,9 +85,9 @@ class TestParameterizedHomeRow:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
+        from esolangs.languages.home_row.generator import HOME_ROW_PAIR
         from esolangs.tools.helpers import runs
-        from esolangs.tools.home_row import HOME_ROW_PAIR
 
         template = generators.home_row("0110")
         assert "{X" not in template
@@ -100,7 +100,7 @@ class TestParameterizedHomeRow:
 
     def test_rows_that_agree_with_the_last_share_its_leaf(self) -> None:
         """Only the rows before the table's trailing run get a guarded leaf."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         setup = "aaaaaalsffaaaaaaaaffflfa$lsffffaafla$lsffffafl"
         assert generators.home_row("0111") == setup + "fffflflfflk;lffffak"
@@ -111,7 +111,7 @@ class TestParameterizedHomeRow:
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
         """Total emitted bytes over every three-input table."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         tables = (format(v, "08b") for v in range(256))
         assert sum(len(generators.home_row(t)) for t in tables) == 28404

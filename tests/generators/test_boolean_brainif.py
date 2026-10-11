@@ -5,7 +5,7 @@ from itertools import pairwise
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import (
     run_brainif,
 )
@@ -47,8 +47,8 @@ class TestBrainIf:
     @staticmethod
     def _reads(program: str, stdin: str) -> tuple[str, int]:
         """Run ``program`` and return its answer and how many inputs it read."""
-        from esolangs.interpreters.brainif import run
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.languages.brainif.interpreter import run
 
         io = ScriptedIO(stdin)
         run(program.splitlines(), io)
@@ -106,7 +106,7 @@ class TestBrainIf:
 
     def test_pruning_never_grows_a_table(self) -> None:
         """No table through four inputs is longer than its unpruned tree."""
-        from esolangs.tools.brainif import _brainif_tree
+        from esolangs.languages.brainif.generator import _brainif_tree
 
         for n in (1, 2, 3, 4):
             for i in range(0, 1 << (1 << n), 1 if n < 4 else 257):
@@ -130,8 +130,8 @@ class TestBrainIf:
 # 1, 11 and 12 build the same programs, as do 40 and 80.
 @pytest.mark.parametrize("width", [1, 13, 40])
 def test_brainif_zero_landing_executes_all_small_tables(width: int) -> None:
-    from esolangs.interpreters.brainif import run
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.brainif.interpreter import run
 
     for n in range(1, 4):
         for table in witnesses(n):
@@ -170,7 +170,7 @@ def test_brainif_zero_landing_public_and_larger_samples(width: int) -> None:
 
 
 def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:
-    from esolangs.tools.brainif import _brainif_tree
+    from esolangs.languages.brainif.generator import _brainif_tree
 
     table = "".join(str(row.bit_count() % 2) for row in range(32))
     program = _brainif_tree(table, 1, prune=False)
@@ -193,7 +193,7 @@ def test_linear_lookup_drops_ignored_inputs() -> None:
 def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
     """Ignored inputs 1-7 put levels 0 and 8 on one marker cell: only level 0 loops."""
     from esolangs import generate
-    from esolangs.tools.brainif import _Strip
+    from esolangs.languages.brainif.generator import _Strip
 
     n, kept = 12, [0, 8, 9, 10, 11]
     small = "01101001100101101001011001101001"

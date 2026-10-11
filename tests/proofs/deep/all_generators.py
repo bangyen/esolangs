@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import get_context
 
-import esolangs.tools as boolean
+import esolangs.languages.generators as boolean
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import Row, load
 from tests.proofs.deep._lemmas import (

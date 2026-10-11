@@ -11,7 +11,7 @@ class TestSeparationLaws:
         """The law's constants are re-derived, not trusted."""
         from itertools import product
 
-        from esolangs.tools.one_two_three import (
+        from esolangs.languages.one_two_three.generator import (
             _LAWS,
             _WORK_BUDGET,
             ConstructError,

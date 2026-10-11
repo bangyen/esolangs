@@ -6,8 +6,8 @@ from typing import Any, ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.inject import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.inject.interpreter import _Machine, run
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,

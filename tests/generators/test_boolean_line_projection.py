@@ -5,8 +5,8 @@ import random
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.line import _Machine
-from esolangs.tools.line import balance, line, projected_boolean
+from esolangs.languages.line.generator import balance, line, projected_boolean
+from esolangs.languages.line.interpreter import _Machine
 from scripts.benchmark import WrittenState
 
 
@@ -91,8 +91,8 @@ def test_projection_leaves_fully_essential_trees_to_existing_constructors():
 
 @pytest.mark.medium
 def test_compact_loader_admits_a_shared_return_within_the_original_input_budget():
-    from esolangs.tools.line.render import _has_goto
-    from esolangs.tools.line.shared import shared_tree
+    from esolangs.languages.line.generator.render import _has_goto
+    from esolangs.languages.line.generator.shared import shared_tree
 
     rng = random.Random(73041)
     residual = "".join(str(rng.randrange(2)) for _ in range(64))
@@ -106,10 +106,10 @@ def test_compact_loader_admits_a_shared_return_within_the_original_input_budget(
 
 @pytest.mark.medium
 def test_multiple_returns_share_a_native_trunk_within_projected_ledger():
+    from esolangs.languages.line.generator import _grey_rows, _project_loader
+    from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
     from esolangs.raster import Raster
     from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.line import _grey_rows, _project_loader
-    from esolangs.tools.line.shared import shared_canvas, shared_tree
 
     rng = random.Random(15)
     a, b, c = ["".join(rng.choice("01") for _ in range(16)) for _ in range(3)]

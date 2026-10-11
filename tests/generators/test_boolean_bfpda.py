@@ -12,7 +12,7 @@ class TestParameterizedBfpda:
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is four characters whichever bit it carries."""
-        from esolangs.tools.bfpda import BFPDA_PAIR
+        from esolangs.languages.bf_pda.generator import BFPDA_PAIR
         from tests.generators.fills import fill
 
         _fill_bfpda = fill("BF-PDA")
@@ -29,7 +29,7 @@ class TestParameterizedBfpda:
 
     def test_leaf_leaves_the_stack_empty(self) -> None:
         """A zero drains and prints the empty stack; a one prints the bottom marker."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         assert generators.bfpda("10") == "@<$[>>.]>[>@.>]"  # NOT
         assert generators.bfpda("0110") == (
@@ -38,7 +38,7 @@ class TestParameterizedBfpda:
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
         """Total emitted bytes over every three-input table."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         total = sum(len(generators.bfpda(format(v, "08b"))) for v in range(256))
         assert total == 14502
@@ -46,7 +46,7 @@ class TestParameterizedBfpda:
 
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
-    from esolangs.tools.bfpda import _bfpda_tree, _reflected
+    from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected
     from tests.support.generator_support import assert_shared_program
 
     a, b = "0001" * 16, "0110" * 16
@@ -56,8 +56,8 @@ def test_shared_residual_executes_within_ledger() -> None:
 
 
 def _execute_bank(table, template, rows):
-    from esolangs.interpreters.bf_pda import _Machine
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.bf_pda.interpreter import _Machine
     from scripts.benchmark import WrittenState
     from tests.generators.fills import fill
 
@@ -86,7 +86,7 @@ def _execute_bank(table, template, rows):
 
 @pytest.mark.medium
 def test_deeper_classifier_is_selected_only_within_command_bound():
-    from esolangs.tools.bfpda import _bfpda_tree, _reflected, bfpda
+    from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected, bfpda
 
     for n, admitted in ((8, False), (10, True)):
         blocks = ("0001" * (1 << (n - 5)), "0110" * (1 << (n - 5)))
@@ -99,7 +99,7 @@ def test_deeper_classifier_is_selected_only_within_command_bound():
 
 
 def test_classifier_cannot_exceed_retired_stack_space():
-    from esolangs.tools.bfpda import _bfpda_tree
+    from esolangs.languages.bf_pda.generator import _bfpda_tree
 
     with pytest.raises(ValueError, match="two consumed inputs"):
         _bfpda_tree("00010110", classes=("0001", "0110"), class_depth=1)
@@ -107,7 +107,7 @@ def test_classifier_cannot_exceed_retired_stack_space():
 
 @pytest.mark.medium
 def test_deeper_classifier_preserves_a_constant_class():
-    from esolangs.tools.bfpda import _bfpda_tree, _reflected, bfpda
+    from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected, bfpda
 
     blocks = ("0" * 128, "0110" * 32)
     table = _reflected("".join(blocks[int(bit)] for bit in "00101110"), 10)
@@ -121,7 +121,7 @@ def test_deeper_classifier_preserves_a_constant_class():
 @pytest.mark.parametrize("seed", [73027, 73028, 73029])
 @pytest.mark.parametrize("start", range(0, 2048, 128))
 def test_cap_classifier_covers_every_essential_row(seed, start):
-    from esolangs.tools.bfpda import _bfpda_tree, _reflected, bfpda
+    from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected, bfpda
 
     rng = random.Random(seed)
     blocks = tuple(

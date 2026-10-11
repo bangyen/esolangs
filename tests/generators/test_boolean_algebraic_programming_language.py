@@ -7,9 +7,9 @@ import pytest
 
 import esolangs
 from esolangs import generate
-from esolangs import tools as boolean
-from esolangs.interpreters.algebraic_programming_language import _Machine
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages import generators as boolean
+from esolangs.languages.algebraic_programming_language.interpreter import _Machine
 from esolangs.tools.helpers import best_input_order
 from tests.generators.boolean_runners import (
     run_algebraic_programming_language,
@@ -186,14 +186,14 @@ class TestAlgebraicProgrammingLanguageShapes:
 
     def test_the_name_alphabet_is_codepoint_ascending(self) -> None:
         """``_order_key`` sorts literals by name to keep reads in order."""
-        from esolangs.tools.algebraic_programming_language import _NAMES
+        from esolangs.languages.algebraic_programming_language.generator import _NAMES
 
         assert list(_NAMES) == sorted(_NAMES)
         assert len(set(_NAMES)) == len(_NAMES)
 
     def test_constant_arms_need_no_guard(self) -> None:
         """A node over a constant arm is one literal and one operator."""
-        from esolangs.tools.algebraic_programming_language import (
+        from esolangs.languages.algebraic_programming_language.generator import (
             _apl_tree_ordered,
         )
 
@@ -215,7 +215,7 @@ class TestAlgebraicProgrammingLanguageShapes:
 
     def test_the_reduced_diagram_skips_idle_tests_and_complements(self) -> None:
         """The fixed-order reduced diagram stays within the retirement budget."""
-        from esolangs.tools.algebraic_programming_language import (
+        from esolangs.languages.algebraic_programming_language.generator import (
             _apl_tree_ordered,
         )
 
@@ -326,7 +326,7 @@ def test_operator_binding_reads_every_input_once(table: str, width: int) -> None
 
 def test_xor_arithmetic_family_reaches_four_columns() -> None:
     import esolangs
-    from esolangs.tools.algebraic_programming_language import (
+    from esolangs.languages.algebraic_programming_language.generator import (
         algebraic_programming_language,
     )
 
@@ -351,7 +351,9 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 
 @pytest.mark.medium
 def test_default_reuses_emitted_frames() -> None:
-    from esolangs.tools.algebraic_programming_language import _apl_reduced_ordered
+    from esolangs.languages.algebraic_programming_language.generator import (
+        _apl_reduced_ordered,
+    )
     from tests.support.screen_support import corpus, execute
 
     table = corpus(8)["tiled"]

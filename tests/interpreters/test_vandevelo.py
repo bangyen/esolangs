@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.vandevelo import (
+from esolangs.languages.vandevelo.interpreter import (
     _advance,
     _Expr,
     _Machine,

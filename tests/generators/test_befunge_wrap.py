@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs.tools.befunge import balance_befunge, befunge
+from esolangs.languages.befunge.generator import balance_befunge, befunge
 
 
 @pytest.mark.parametrize("inputs", [1, 4, 13])

@@ -16,8 +16,8 @@ import tomllib
 from typing import cast
 
 import esolangs
+from esolangs.languages.generators import BOOLEAN
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
-from esolangs.tools import BOOLEAN
 
 
 def main() -> int:
@@ -229,9 +229,7 @@ def render_contributor_tools_section() -> str:
             or source == colocated.with_suffix(".py").resolve()
         ):
             raise ValueError(f"{language.name}'s generator is outside {generator_dir}")
-    return (
-        "| `src/esolangs/tools/` | shared generator helpers and compatibility imports |"
-    )
+    return "| `src/esolangs/tools/` | shared generator helpers |"
 
 
 def _reads_stdin() -> list[str]:
@@ -485,7 +483,7 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     from docs.proof_status import update_docs
 
     update_exports(output_root)
-    print("updated the generated exports of esolangs.tools")
+    print("updated the generated exports of esolangs.languages")
     update_docs(output_root)
     update_readme(output_root)
     print("updated the generated sections of README.md")
@@ -500,7 +498,7 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     return 0
 
 
-INIT = "src/esolangs/tools/__init__.py"
+INIT = "src/esolangs/languages/generators.py"
 START = "# BEGIN GENERATED EXPORTS: python scripts/docs/generate.py docs"
 END = "# END GENERATED EXPORTS"
 #: Ruff's line limit, which the generated import block must respect.
@@ -508,49 +506,28 @@ LINE_LIMIT = 88
 
 
 def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
-    """Return ``(module, generator)`` for every module declaring a ``LANGUAGE``."""
-    tools = root / "src/esolangs/tools"
-    aliases = {
-        node.module: ".".join(
-            path.relative_to(tools).with_suffix("").parts[:-1]
-            if path.name == "__init__.py"
-            else path.relative_to(tools).with_suffix("").parts
-        )
-        for path in sorted(tools.rglob("*.py"))
-        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8")))
-        if isinstance(node, ast.ImportFrom)
-        and node.module
-        and node.module.startswith("esolangs.languages.")
-        and node.module.endswith(".generator")
-    }
+    """Return canonical module and function names for declared generators."""
     found = []
-    paths = [*tools.rglob("*.py"), *(root / "src/esolangs/languages").rglob("*.py")]
-    for path in sorted(paths):
-        if "__pycache__" in path.parts:
-            continue
+    for path in sorted((root / "src/esolangs/languages").rglob("*.py")):
         text = path.read_text(encoding="utf-8")
-        start = text.find("\nLANGUAGE = Language(")
-        if start < 0:
-            continue
-        statement = ast.parse(text[start:]).body[0]
-        assert isinstance(statement, ast.Assign)
-        assert isinstance(statement.value, ast.Call)
-        generator = next(
-            kw.value.id
-            for kw in statement.value.keywords
-            if kw.arg == "boolean" and isinstance(kw.value, ast.Name)
-        )
-        # ``tools/<name>[.py|/__init__.py]`` -> ``<name>``.
-        if path.is_relative_to(tools):
-            parts = path.relative_to(tools).with_suffix("").parts
-            module = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
-        else:
-            parts = path.relative_to(root / "src").with_suffix("").parts
-            canonical = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
-            module = aliases.get(
-                canonical, path.relative_to(root / "src/esolangs/languages").parts[0]
+        for statement in ast.parse(text).body:
+            if not (
+                isinstance(statement, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "LANGUAGE"
+                    for target in statement.targets
+                )
+                and isinstance(statement.value, ast.Call)
+            ):
+                continue
+            generator = next(
+                kw.value.id
+                for kw in statement.value.keywords
+                if kw.arg == "boolean" and isinstance(kw.value, ast.Name)
             )
-        found.append((module, generator))
+            parts = path.relative_to(root / "src").with_suffix("").parts
+            module = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
+            found.append((module, generator))
     return sorted(found)
 
 
@@ -561,11 +538,11 @@ def render(root: pathlib.Path = ROOT) -> str:
     for m, g in pairs:
         # A generator named for its language may shadow a builtin (Eval).
         comment = "  # noqa: A004 - the language's name" if hasattr(builtins, g) else ""
-        line = f"from esolangs.tools.{m} import {g}"
+        line = f"from {m} import {g}"
         # Keep the block stable under `ruff format`: past the line limit, a
         # trailing comma forces the multi-line form ruff would write anyway.
         if len(line + comment) > LINE_LIMIT:
-            lines.append(f"from esolangs.tools.{m} import (\n    {g},{comment}\n)")
+            lines.append(f"from {m} import (\n    {g},{comment}\n)")
         else:
             lines.append(line + comment)
     imports = "\n".join(lines)
@@ -577,7 +554,7 @@ def render(root: pathlib.Path = ROOT) -> str:
 def update_exports(
     output_root: pathlib.Path = ROOT, source_root: pathlib.Path = ROOT
 ) -> None:
-    """Rewrite the marked block of ``tools/__init__.py`` under ``output_root``."""
+    """Rewrite the marked language export block under ``output_root``."""
     path = output_root / INIT
     text = path.read_text(encoding="utf-8")
     block = START + "\n" + render(source_root) + "\n" + END

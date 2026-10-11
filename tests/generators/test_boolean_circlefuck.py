@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import run_circlefuck
 
 
@@ -21,9 +21,9 @@ def _rows(program: str, table: str, n: int) -> None:
 def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit):
     import esolangs
     from esolangs._evaluate import _evaluate
-    from esolangs.interpreters.circlefuck import _Machine
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.tools.circlefuck import _program
+    from esolangs.languages.circlefuck.generator import _program
+    from esolangs.languages.circlefuck.interpreter import _Machine
     from esolangs.tools.wrap import balance_program, balance_score
 
     table = bit * (1 << n)
@@ -56,7 +56,7 @@ def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit):
 class TestCirclefuck:
     def test_the_index_survives_more_than_one_digit(self) -> None:
         """Past 128 entries the index needs a carry, and it is spent right."""
-        from esolangs.tools.circlefuck import _DIGIT_BITS
+        from esolangs.languages.circlefuck.generator import _DIGIT_BITS
 
         n = 9
         table = "".join("1" if row % 3 == 0 else "0" for row in range(2**n))
@@ -71,7 +71,7 @@ class TestCirclefuck:
         self, fed: str
     ) -> None:
         """Whatever is read, the index stays inside the table."""
-        from esolangs.interpreters.circlefuck import run
+        from esolangs.languages.circlefuck.interpreter import run
         from tests.interpreters.runner import run_program
 
         table = "01101001"

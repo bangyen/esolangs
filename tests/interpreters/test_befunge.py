@@ -3,9 +3,9 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.befunge import _advance, _Machine, run
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Seeded
+from esolangs.languages.befunge.interpreter import _advance, _Machine, run
 from esolangs.vm import run_until_halt
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint

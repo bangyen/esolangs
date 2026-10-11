@@ -9,16 +9,16 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.interpreters.line.extract import extract
-from esolangs.interpreters.line.simulate import (
+from esolangs.languages.line.interpreter.extract import extract
+from esolangs.languages.line.interpreter.simulate import (
     IO,
     compile_program,
     run_compiled,
 )
 from esolangs.raster import Raster, png
-from esolangs.tools.line import line_boolean
-from esolangs.tools.line.render import Node, render
-from esolangs.tools.line.tree_layout import tree_extents
+from esolangs.languages.line.generator import line_boolean
+from esolangs.languages.line.generator.render import Node, render
+from esolangs.languages.line.generator.tree_layout import tree_extents
 from tests.support.witness_tables import row_bits
 
 
@@ -172,8 +172,8 @@ class TestLineBoolean:
 
 def test_line_generator_entry_points() -> None:
     import esolangs
-    from esolangs.tools.line import balance
-    from esolangs.tools.line import line as generate
+    from esolangs.languages.line.generator import balance
+    from esolangs.languages.line.generator import line as generate
 
     source = generate("01", scale=2)
     assert _evaluate("Line", source, inputs=1) == "01"
@@ -229,7 +229,7 @@ def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
 
 @pytest.mark.medium
 def test_tighter_spacing_executes_every_small_function(tmp_path: Path) -> None:
-    from esolangs.tools.line.small_tree import small_tree_canvas
+    from esolangs.languages.line.generator.small_tree import small_tree_canvas
 
     total = 0
     path = str(tmp_path / "shorter-stems.png")
@@ -279,7 +279,7 @@ def test_tighter_spacing_preserves_path_clearance(table: str, tmp_path: Path) ->
 @pytest.mark.medium
 @pytest.mark.parametrize("table", ["00010111", "00010101", "00100110", "01000101"])
 def test_shorter_stems_balance_keeps_the_area_ceiling(table: str) -> None:
-    from esolangs.tools.line.small_tree import small_tree_canvas
+    from esolangs.languages.line.generator.small_tree import small_tree_canvas
 
     previous = [
         small_tree_canvas(line_boolean(table, reverse=reverse), compact=False)
@@ -323,10 +323,10 @@ def test_tighter_lattice_balance_keeps_the_area_ceiling() -> None:
 @pytest.mark.parametrize("unit", [8, 12, 16, 20])
 @pytest.mark.parametrize("scale", [1, 2, 3])
 def test_generated_unit_survives_plain_png(unit: int, scale: int) -> None:
-    from esolangs.interpreters.line.extract import extract_mask
-    from esolangs.interpreters.line.mask import from_grey
+    from esolangs.languages.line.interpreter.extract import extract_mask
+    from esolangs.languages.line.interpreter.mask import from_grey
     from esolangs.raster.png import read_grey
-    from esolangs.tools.line import balance, line
+    from esolangs.languages.line.generator import balance, line
 
     table = "01000110"
     default = line(table, unit=unit)
@@ -343,10 +343,10 @@ def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) ->
     """Raster balancing renders the tree without revisiting a subtree."""
     import importlib
 
-    from esolangs.tools.line import line_boolean
-    from esolangs.tools.line.render import render
+    from esolangs.languages.line.generator import line_boolean
+    from esolangs.languages.line.generator.render import render
 
-    module = importlib.import_module("esolangs.tools.line.render")
+    module = importlib.import_module("esolangs.languages.line.generator.render")
 
     def reject(*_args: object) -> None:
         raise AssertionError("tree renderer revisited a subtree")
@@ -359,9 +359,9 @@ def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) ->
 @pytest.mark.medium
 def test_shared_ancestor_return_executes_within_ledger(tmp_path: Path) -> None:
     """A consumed prefix bit selects one physical residual after returning."""
-    from esolangs.tools.line import _render_node
-    from esolangs.tools.line.render import _has_goto
-    from esolangs.tools.line.shared import shared_canvas, shared_tree
+    from esolangs.languages.line.generator import _render_node
+    from esolangs.languages.line.generator.render import _has_goto
+    from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
     from tests.support.generator_support import assert_shared_program
 
     residual = "00010111" * 8
@@ -392,8 +392,8 @@ def test_shared_ancestor_return_executes_within_ledger(tmp_path: Path) -> None:
 @pytest.mark.medium
 def test_shared_return_retains_unshared_balance_and_scale() -> None:
     """The emitted return extracts at scale two and balancing retains old trees."""
-    from esolangs.tools.line import _render_node, balance, line
-    from esolangs.tools.line.shared import shared_canvas, shared_tree
+    from esolangs.languages.line.generator import _render_node, balance, line
+    from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
 
     residual = "00010111" * 8
     table = residual * 3 + "1" * len(residual)
@@ -416,7 +416,7 @@ def test_shared_return_retains_unshared_balance_and_scale() -> None:
 def test_shared_return_extends_an_interior_tip() -> None:
     """A clear straight exit joins the perimeter without exceeding the ledger."""
     from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.line.shared import shared_canvas, shared_tree
+    from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
 
     residual = "01" * 16
     other = "0110" * 8
@@ -424,7 +424,7 @@ def test_shared_return_extends_an_interior_tip() -> None:
     table = permute_truth_table(table, (1, 0, *range(2, 8)))
     shared = shared_tree(table)
     assert shared is not None
-    from esolangs.tools.line import _grey_rows
+    from esolangs.languages.line.generator import _grey_rows
     from tests.generators.test_boolean_line_projection import _execute
 
     draw = shared_canvas(shared[0], 10**12)
@@ -434,9 +434,9 @@ def test_shared_return_extends_an_interior_tip() -> None:
 
 def test_shared_candidate_preserves_the_small_tree_fallback() -> None:
     """An admissible return still loses to the five-input pixel layout."""
-    from esolangs.tools.line import _grey_rows, line
-    from esolangs.tools.line.shared import shared_tree
-    from esolangs.tools.line.small_tree import small_tree_canvas
+    from esolangs.languages.line.generator import _grey_rows, line
+    from esolangs.languages.line.generator.shared import shared_tree
+    from esolangs.languages.line.generator.small_tree import small_tree_canvas
 
     residual = "01" * 4
     table = residual * 3 + "1" * len(residual)
@@ -450,7 +450,7 @@ def test_shared_candidate_preserves_the_small_tree_fallback() -> None:
 @pytest.mark.medium
 def test_balance_retains_a_more_balanced_shared_raster() -> None:
     """A shared return can improve both area and the old orientation's shape."""
-    from esolangs.tools.line import _render_node, balance, line
+    from esolangs.languages.line.generator import _render_node, balance, line
 
     residual = "0010" * 16
     table = residual * 3 + "0" * len(residual)

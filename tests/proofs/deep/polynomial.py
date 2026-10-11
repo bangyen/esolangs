@@ -220,7 +220,7 @@ def _check_mass(failures: list[str]) -> int:
 
 def _check_loops(failures: list[str]) -> int:
     """Pin the loop case covered by the block-incidence argument."""
-    from esolangs.interpreters.polynomial import (
+    from esolangs.languages.polynomial.interpreter import (
         _advance,
         _bracket_pairs,
         convert,
@@ -260,8 +260,8 @@ def _check_loops(failures: list[str]) -> int:
 
 def _check_routing(failures: list[str]) -> int:
     """Pin the executed facts behind the routing lemma."""
-    from esolangs.interpreters.polynomial import _advance, _bracket_pairs
-    from esolangs.tools.polynomial import polynomial
+    from esolangs.languages.polynomial.generator import polynomial
+    from esolangs.languages.polynomial.interpreter import _advance, _bracket_pairs
 
     count = 0
     # A real instruction has two successors whatever the register: a taken
@@ -305,7 +305,7 @@ def _check_routing(failures: list[str]) -> int:
     import hashlib
     import re
 
-    from esolangs.interpreters.polynomial import sanitize
+    from esolangs.languages.polynomial.interpreter import sanitize
 
     def dense(n: int) -> str:
         digest = hashlib.sha256(f"dense:{n}".encode()).digest()
@@ -318,7 +318,7 @@ def _check_routing(failures: list[str]) -> int:
         return "".join(bits[: 2**n])
 
     for n in (2, 3, 4):
-        from esolangs.interpreters.polynomial.roots import _find_roots
+        from esolangs.languages.polynomial.interpreter.roots import _find_roots
 
         cleaned = re.sub(r"[^\df(x)=+-^]", "", polynomial(dense(n)))
         roots = _find_roots(sanitize(cleaned))
@@ -336,7 +336,7 @@ def _check_routing(failures: list[str]) -> int:
     # and is exactly what the counterexample is.
     import itertools
 
-    from esolangs.interpreters.polynomial import _parse_program
+    from esolangs.languages.polynomial.interpreter import _parse_program
 
     def run_all(instrs: list[list[int]], n: int):
         pairs = _bracket_pairs(instrs)
@@ -387,7 +387,7 @@ def _check_routing(failures: list[str]) -> int:
 def _check_routing_bound(failures: list[str]) -> int:
     """Pin the facts around the sharpened routing bound."""
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.polynomial import (
+    from esolangs.languages.polynomial.interpreter import (
         _COND,
         _advance,
         _bracket_pairs,
@@ -593,7 +593,7 @@ def _residual_cursors(instrs: list[list[int]], n: int):
     """Return ``(m_routing, all, essential)`` cursor counts per read level."""
     import itertools
 
-    from esolangs.interpreters.polynomial import _advance, _bracket_pairs
+    from esolangs.languages.polynomial.interpreter import _advance, _bracket_pairs
 
     pairs = _bracket_pairs(instrs)
     if any(len(i) == 1 and p not in pairs for p, i in enumerate(instrs)):

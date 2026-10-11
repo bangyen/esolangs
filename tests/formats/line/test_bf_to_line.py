@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.line.extract import extract
-from esolangs.interpreters.line.simulate import IO, run
-from esolangs.tools.line import render as render_module
-from esolangs.tools.line.render import render
+from esolangs.languages.line.generator import render as render_module
+from esolangs.languages.line.generator.render import render
+from esolangs.languages.line.interpreter.extract import extract
+from esolangs.languages.line.interpreter.simulate import IO, run
 from tests.formats.line.bf_to_line import bf_to_line
 
 

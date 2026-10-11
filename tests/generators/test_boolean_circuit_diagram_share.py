@@ -6,16 +6,16 @@ import hashlib
 
 import pytest
 
-from esolangs.interpreters.circuit_diagram import _Machine
+from esolangs.languages.circuit_diagram.interpreter import _Machine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.circuit_diagram import (
+from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
     _linear_shared_layout,
     circuit_diagram,
 )
-from esolangs.tools.circuit_diagram.hlayout import _h_minterm_sites, _h_term_layout
-from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
+from esolangs.languages.circuit_diagram.generator.hlayout import _h_minterm_sites, _h_term_layout
+from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
 from tests.generators.test_boolean_circuit_diagram_pool import _execute
 from tests.support.witness_tables import nested_dense
 

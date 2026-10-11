@@ -6,8 +6,8 @@ import random
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import run_container
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import assert_an_ignored_input_costs
@@ -16,8 +16,8 @@ from tests.support.witness_tables import row_bits, witnesses
 
 def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:
     """Run a Container program under a hard tick budget and return its output."""
-    from esolangs.interpreters.container import _Machine
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.container.interpreter import _Machine
 
     stream = ScriptedIO("".join(f"{line}" for line in inputs))
     machine = _Machine(program.splitlines(), stream)
@@ -49,9 +49,9 @@ class TestContainer:
         "original", ["A:\n+9 A<=18\nEXIT:", "A=27:\n-9 A>=9\nEXIT:"]
     )
     def test_exact_delta_chunks_preserve_each_tick(self, original: str) -> None:
-        from esolangs.interpreters.container import _Machine
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.container import _narrow_rules
+        from esolangs.languages.container.generator import _narrow_rules
+        from esolangs.languages.container.interpreter import _Machine
 
         before = _Machine(original.splitlines(), ScriptedIO(""))
         after = _Machine(_narrow_rules(original, 1).splitlines(), ScriptedIO(""))
@@ -74,9 +74,12 @@ class TestContainer:
 
     @pytest.mark.medium
     def test_factored_rules_preserve_synchronous_state(self) -> None:
-        from esolangs.interpreters.container import _Machine
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.container import _container_threshold, _narrow_rules
+        from esolangs.languages.container.generator import (
+            _container_threshold,
+            _narrow_rules,
+        )
+        from esolangs.languages.container.interpreter import _Machine
 
         original = _container_threshold("01101001")
         narrow = _narrow_rules(original, 7)
@@ -109,7 +112,7 @@ class TestContainer:
 
     def test_name_allocation_steps_over_container_s_own_names(self) -> None:
         """Letter names reach ``T`` at 45 and ``IN`` at 754, so they collide."""
-        from esolangs.tools.container import _RESERVED, _allocate_names
+        from esolangs.languages.container.generator import _RESERVED, _allocate_names
 
         uses = {("node", 0, index): 1000 - index for index in range(800)}
         names = _allocate_names(uses)
@@ -142,7 +145,7 @@ class TestContainer:
 
     def test_dense_tables_evaluate_the_complement(self) -> None:
         """A dense table is summed from its zero leaves and inverted."""
-        from esolangs.tools.container import _container_tree
+        from esolangs.languages.container.generator import _container_tree
 
         full = [
             len(_container_tree("1" * k + "0" * (8 - k), prune=False)) for k in range(9)
@@ -189,7 +192,7 @@ class TestContainer:
 
     def test_pruning_never_grows_a_table(self) -> None:
         """No table up to three inputs comes out longer than its full tree."""
-        from esolangs.tools.container import _container_tree
+        from esolangs.languages.container.generator import _container_tree
 
         for n in (1, 2, 3):
             for i in range(1 << (1 << n)):
@@ -231,7 +234,7 @@ class TestContainerSharing:
     @staticmethod
     def _totals(tables: list[str]) -> tuple[int, int]:
         """Return unshared and shipped character totals."""
-        from esolangs.tools.container import _container_tree
+        from esolangs.languages.container.generator import _container_tree
 
         before = after = 0
         for table in tables:

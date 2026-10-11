@@ -2,8 +2,8 @@
 
 import pytest
 
-from esolangs import tools as boolean
-from esolangs.tools.suffolk import _suffolk_lookup
+from esolangs.languages import generators as boolean
+from esolangs.languages.suffolk.generator import _suffolk_lookup
 from tests.generators.boolean_runners import (
     run_suffolk,
 )

@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import run_sstack
 
 
@@ -16,7 +16,7 @@ def test_screen_sharing_potential_is_mostly_below_the_label_reach() -> None:
     level) cannot be labeled; the screen counts them anyway. The constructs
     reach the size >= 4 repeats and save 4.8% of the plain tree.
     """
-    from esolangs.tools.sstack import _sstack_tree, sstack
+    from esolangs.languages.sstack.generator import _sstack_tree, sstack
     from tests.generators.sample_tables import five_input_sample
 
     def by_size(table: str) -> dict[int, int]:
@@ -47,7 +47,7 @@ def test_screen_sharing_potential_is_mostly_below_the_label_reach() -> None:
 )
 def test_dispatch_prices_single_reachable_path_classes(table, shared):
     from esolangs.debugger import make_vm
-    from esolangs.tools.sstack import _sstack_tree
+    from esolangs.languages.sstack.generator import _sstack_tree
 
     program, bound = _sstack_tree(table, shared)
     for row, expected in enumerate(table):
@@ -71,7 +71,7 @@ def test_every_two_input_table_on_every_row() -> None:
 
 def test_a_full_tree_is_21_characters_a_node_and_3_a_leaf() -> None:
     """O(T): 21(T - 1) + 3T + 12 for the prologue, parity folds nothing."""
-    from esolangs.tools.sstack import _sstack_tree
+    from esolangs.languages.sstack.generator import _sstack_tree
 
     for n in (1, 4, 6):
         parity = "".join(str(r.bit_count() % 2) for r in range(1 << n))
@@ -90,7 +90,7 @@ def test_a_constant_subtree_still_reads_its_inputs() -> None:
 
 def test_popping_before_descent_admits_shared_parity_without_nested_test_bytes():
     from esolangs.debugger import make_vm
-    from esolangs.tools.sstack import _sstack_tree
+    from esolangs.languages.sstack.generator import _sstack_tree
 
     n = 6
     table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
@@ -121,8 +121,8 @@ def test_the_program_is_only_sstack_glyphs() -> None:
 
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
-    from esolangs.interpreters.sstack import _parse
-    from esolangs.tools.sstack import _sstack_tree
+    from esolangs.languages.sstack.generator import _sstack_tree
+    from esolangs.languages.sstack.interpreter import _parse
     from tests.support.generator_support import assert_shared_program
 
     a, b = "0001" * 16, "0110" * 16
@@ -141,9 +141,9 @@ def test_shared_residual_executes_within_ledger() -> None:
 @pytest.mark.parametrize("branching", [False, True])
 def test_multiple_definitions_preserve_inputs_commands_and_workspace(branching):
     from esolangs.debugger import make_vm
-    from esolangs.interpreters.sstack import _parse
+    from esolangs.languages.sstack.generator import _sstack_shared
+    from esolangs.languages.sstack.interpreter import _parse
     from esolangs.tools.shared_block import repeated_definitions
-    from esolangs.tools.sstack import _sstack_shared
     from scripts.benchmark import WrittenState
 
     n = 8
@@ -174,9 +174,9 @@ def test_multiple_definitions_preserve_inputs_commands_and_workspace(branching):
 @pytest.mark.medium
 def test_six_bit_labels_include_the_ascii_constants_and_last_label():
     from esolangs.debugger import make_vm
-    from esolangs.interpreters.sstack import _parse
+    from esolangs.languages.sstack.generator import _sstack_shared
+    from esolangs.languages.sstack.interpreter import _parse
     from esolangs.tools.shared_block import repeated_definitions
-    from esolangs.tools.sstack import _sstack_shared
     from scripts.benchmark import WrittenState
 
     n = 11
@@ -222,7 +222,7 @@ def test_six_bit_labels_include_the_ascii_constants_and_last_label():
     ],
 )
 def test_invalid_shared_definitions_abort(table, blocks, message):
-    from esolangs.tools.sstack import _sstack_shared
+    from esolangs.languages.sstack.generator import _sstack_shared
 
     with pytest.raises(ValueError, match=message):
         _sstack_shared(table, blocks)
@@ -230,9 +230,9 @@ def test_invalid_shared_definitions_abort(table, blocks, message):
 
 @pytest.mark.medium
 def test_multiple_definitions_reduce_cap_program_within_ledger():
-    from esolangs.interpreters.sstack import _parse
+    from esolangs.languages.sstack.generator import _sstack_tree
+    from esolangs.languages.sstack.interpreter import _parse
     from esolangs.tools.shared_block import repeated_block
-    from esolangs.tools.sstack import _sstack_tree
     from tests.support.generator_support import assert_shared_program
 
     n = 16
@@ -265,10 +265,10 @@ def _binary_bank_table() -> str:
 @pytest.mark.medium
 def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger():
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.sstack import _Machine, _parse
+    from esolangs.languages.sstack.generator import _sstack_tree
+    from esolangs.languages.sstack.generator._binary import binary_bank
+    from esolangs.languages.sstack.interpreter import _Machine, _parse
     from esolangs.tools.shared_block import _repeated_blocks
-    from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack._binary import binary_bank
     from scripts.benchmark import WrittenState
 
     table = _binary_bank_table()
@@ -318,8 +318,8 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger():
 )
 def test_binary_codes_preserve_completed_outputs_and_fixed_digits(words):
     from esolangs.debugger import make_vm
-    from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack._binary import binary_bank
+    from esolangs.languages.sstack.generator import _sstack_tree
+    from esolangs.languages.sstack.generator._binary import binary_bank
 
     table = "".join(words)
     n = len(table).bit_length() - 1
@@ -359,16 +359,16 @@ def test_binary_codes_preserve_completed_outputs_and_fixed_digits(words):
     ],
 )
 def test_invalid_binary_banks_abort(table, blocks, message):
-    from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack._binary import binary_bank
+    from esolangs.languages.sstack.generator import _sstack_tree
+    from esolangs.languages.sstack.generator._binary import binary_bank
 
     with pytest.raises(ValueError, match=message):
         binary_bank(table, blocks, _sstack_tree)
 
 
 def test_binary_selector_rejects_inadmissible_or_unprofitable_banks():
-    from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack._binary import best_binary_bank
+    from esolangs.languages.sstack.generator import _sstack_tree
+    from esolangs.languages.sstack.generator._binary import best_binary_bank
 
     assert best_binary_bank("0" * 16, _sstack_tree, 100, 1000) is None
     table = _binary_bank_table()
@@ -378,9 +378,9 @@ def test_binary_selector_rejects_inadmissible_or_unprofitable_banks():
 
 
 def test_binary_selector_skips_a_bank_whose_word_exceeds_the_workspace_budget():
+    from esolangs.languages.sstack.generator import _sstack_tree
+    from esolangs.languages.sstack.generator._binary import best_binary_bank
     from esolangs.tools.shared_block import _repeated_blocks
-    from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack._binary import best_binary_bank
 
     sequence = [*range(256), *range(255, -1, -1)]
     table = "".join(f"{code:08b}" for code in sequence)
@@ -389,8 +389,8 @@ def test_binary_selector_skips_a_bank_whose_word_exceeds_the_workspace_budget():
 
 
 def test_binary_bank_refuses_a_drifted_inline_builder():
-    from esolangs.tools.sstack import _sstack_tree
-    from esolangs.tools.sstack._binary import binary_bank
+    from esolangs.languages.sstack.generator import _sstack_tree
+    from esolangs.languages.sstack.generator._binary import binary_bank
 
     def drifted(table):
         program, commands = _sstack_tree(table)

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs.tools.circuit_diagram.layout import _Layout, _RoutingLayout
+from esolangs.languages.circuit_diagram.generator.layout import _Layout, _RoutingLayout
 
 
 @pytest.mark.parametrize("layout_type", [_Layout, _RoutingLayout])

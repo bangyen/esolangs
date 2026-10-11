@@ -7,8 +7,8 @@ import argparse
 import random
 import sys
 
-from esolangs.interpreters.arrowqueue import _advance, _Machine
-from esolangs.tools.arrowqueue import _DRAINED_RING, _STAGE, arrowqueue
+from esolangs.languages.arrowqueue.generator import _DRAINED_RING, _STAGE, arrowqueue
+from esolangs.languages.arrowqueue.interpreter import _advance, _Machine
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.vm import run_until_halt_or_cycle
 from tests.generators.fills import fill

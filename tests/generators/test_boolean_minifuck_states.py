@@ -7,10 +7,10 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.minifuck import _Machine
+from esolangs.languages.minifuck.generator import _affine_mask, minifuck_setters
+from esolangs.languages.minifuck.generator.states import _emit, state_setters, two_state
+from esolangs.languages.minifuck.interpreter import _Machine
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.minifuck import _affine_mask, minifuck_setters
-from esolangs.tools.minifuck.states import _emit, state_setters, two_state
 
 
 @pytest.mark.medium

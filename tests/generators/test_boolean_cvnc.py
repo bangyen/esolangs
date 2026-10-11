@@ -1,12 +1,12 @@
-"""Covers :mod:`esolangs.tools.cvnc`."""
+"""Covers :mod:`esolangs.languages.cvnc.generator`."""
 
 import importlib
 import random
 
 import pytest
 
-from esolangs import tools as boolean
-from esolangs.tools.cvnc import (
+from esolangs.languages import generators as boolean
+from esolangs.languages.cvnc.generator import (
     _HALT_SQUARINGS,
     _direct,
     _halt,
@@ -32,7 +32,7 @@ def _branches(program: str) -> int:
 class TestCvnc:
     def test_a_table_that_folds_nothing_is_a_full_tree(self) -> None:
         """Parity folds nowhere, so its plain tree keeps a leaf per row."""
-        module = importlib.import_module("esolangs.tools.cvnc")
+        module = importlib.import_module("esolangs.languages.cvnc.generator")
         tree = module._render(module._tree("01101001"))  # noqa: SLF001
         assert _leaves(tree) == 8  # one leaf per row
         assert _branches(tree) == 7  # one branch per interior node
@@ -62,7 +62,7 @@ class TestCvnc:
 
     def test_the_halting_goto_clears_every_program_without_escalating(self) -> None:
         """The starting gadget's reach covers every arity worth asking for."""
-        module = importlib.import_module("esolangs.tools.cvnc")
+        module = importlib.import_module("esolangs.languages.cvnc.generator")
         reach = module._reach(_HALT_SQUARINGS)  # noqa: SLF001
 
         # parity is the table that folds nothing, so it is the worst case
@@ -78,7 +78,7 @@ class TestCvnc:
         """Past the reach every gadget squares once more, until it fits."""
         # ``esolangs.tools.cvnc`` resolves to the re-exported
         # *function*, so the module has to be fetched by name.
-        module = importlib.import_module("esolangs.tools.cvnc")
+        module = importlib.import_module("esolangs.languages.cvnc.generator")
         monkeypatch.setattr(module, "_HALT_SQUARINGS", 0)
         rng = random.Random(7)
         dense = "".join(rng.choice("01") for _ in range(128))
@@ -96,7 +96,7 @@ class TestCvnc:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Shared jumps still land after a larger halt prologue."""
-        module = importlib.import_module("esolangs.tools.cvnc")
+        module = importlib.import_module("esolangs.languages.cvnc.generator")
         monkeypatch.setattr(module, "_HALT_SQUARINGS", 5)
         table = "11101000"
         program = boolean.cvnc(table)
@@ -144,7 +144,7 @@ class TestCvncSharing:
 
     def test_the_climb_is_a_closed_form(self) -> None:
         """A target is its nearer square's root climbed to, squared, stepped."""
-        module = importlib.import_module("esolangs.tools.cvnc")
+        module = importlib.import_module("esolangs.languages.cvnc.generator")
         climb = module._climb  # noqa: SLF001
         assert climb(1, 9) == [("i", 2), ("æ", 1), ("i", 0)]
         # 0, 2, 4, 16, 15: four squared is nearer fifteen than three squared.

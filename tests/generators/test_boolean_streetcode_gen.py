@@ -1,10 +1,10 @@
-"""Covers :mod:`esolangs.tools.streetcode`."""
+"""Covers :mod:`esolangs.languages.streetcode.generator`."""
 
 from importlib import import_module
 
 import pytest
 
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from esolangs.tools.wrap import shortest
 from tests.generators.boolean_runners import (
     run_streetcode,
@@ -44,7 +44,7 @@ class TestStreetcode:
 
     def test_default_uses_only_shared_layouts(self) -> None:
         """Per-input loops are width fallbacks, never default candidates."""
-        module = import_module("esolangs.tools.streetcode")
+        module = import_module("esolangs.languages.streetcode.generator")
 
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
@@ -204,7 +204,7 @@ def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
 @pytest.mark.parametrize("row", [0, 1, -1])
 def test_quarter_turned_lookup_preserves_input_order(n: int, row: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.streetcode import run
+    from esolangs.languages.streetcode.interpreter import run
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(1 << n))
     row %= len(table)

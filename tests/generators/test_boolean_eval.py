@@ -1,7 +1,7 @@
-"""Covers :mod:`esolangs.tools.eval_lang`."""
+"""Covers :mod:`esolangs.languages.eval.generator`."""
 
-from esolangs import tools as boolean
-from esolangs.tools.eval_lang import PAIR
+from esolangs.languages import generators as boolean
+from esolangs.languages.eval.generator import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from tests.support.witness_tables import row_bits
 
@@ -13,8 +13,8 @@ class TestEvalBoolean:
     """Input-by-substitution boolean generator for the no-input language Eval."""
 
     def run_eval(self, prog: str) -> str:
-        from esolangs.interpreters.eval import run
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.languages.eval.interpreter import run
 
         io_ = ScriptedIO("")
         run(prog, io_)
@@ -30,7 +30,7 @@ class TestEvalBoolean:
 
     def test_ignored_inputs_shrink_the_lookup(self) -> None:
         """A constant table pushes one result and only drains its inputs."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         full = generators.eval("10010110")
         folded = generators.eval("11111111")
@@ -39,7 +39,7 @@ class TestEvalBoolean:
 
     def test_folding_keeps_both_bits_equal_width(self) -> None:
         """Folding shrinks the template, never one instantiation."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         for table in ("11111111", "11110000", "11001100", "0001"):
             n = len(table).bit_length() - 1
@@ -51,7 +51,7 @@ class TestEvalBoolean:
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         template = generators.eval("0110")
         assert "{X" not in template
@@ -59,8 +59,8 @@ class TestEvalBoolean:
 
     def test_reordering_is_not_part_of_the_lookup(self) -> None:
         """The free staged order is always shortest for the linear lookup."""
-        from esolangs import tools as generators
-        from esolangs.tools.eval_lang import _eval_ordered
+        from esolangs.languages import generators
+        from esolangs.languages.eval.generator import _eval_ordered
         from esolangs.tools.helpers import permute_truth_table
 
         # Staging pushes X0 first, so the free arrangement's split order is
@@ -74,7 +74,7 @@ class TestEvalBoolean:
 
     def test_reorder_cost_selects_the_emitted_template(self) -> None:
         """The pricing model matches every candidate and picks the shortest."""
-        from esolangs.tools.eval_lang import _eval_ordered
+        from esolangs.languages.eval.generator import _eval_ordered
         from esolangs.tools.helpers import permute_truth_table
         from tests.generators.eval_support import _eval_cost, _eval_stack_programs
 
@@ -92,7 +92,7 @@ class TestEvalBoolean:
 
     def test_reorder_ops_run_outside_the_placeholders(self) -> None:
         """The rearrangement is emitted code, not a change to the fills."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
         from tests.generators.fills import fill
 
         _fill_eval = fill("Eval")
@@ -177,7 +177,7 @@ class TestEvalBoolean:
 
     def test_scales_to_more_inputs(self) -> None:
         """Size stays linear and a wider generated program executes."""
-        from esolangs import tools as generators
+        from esolangs.languages import generators
 
         sizes = []
         for width in range(6, 13):

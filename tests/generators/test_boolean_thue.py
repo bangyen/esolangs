@@ -6,12 +6,12 @@ import random
 import pytest
 
 from esolangs import generate
-from esolangs import tools as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.randomness import Seeded
-from esolangs.interpreters.thue import _Machine, _matches
-from esolangs.interpreters.thue import run as run_thue
-from esolangs.tools.thue import thue
+from esolangs.languages import generators as boolean
+from esolangs.languages.thue.generator import thue
+from esolangs.languages.thue.interpreter import _Machine, _matches
+from esolangs.languages.thue.interpreter import run as run_thue
 from tests.generators.reader_support import _TABLES, assert_emissions_grow_by_a_line
 from tests.support.witness_tables import row_bits as _bits
 from tests.support.witness_tables import witnesses
@@ -19,7 +19,7 @@ from tests.support.witness_tables import witnesses
 
 @pytest.mark.medium
 def test_shared_block_expands_before_lookup_within_ledger() -> None:
-    from esolangs.tools.thue import _tables, _thue_entries, _thue_layout
+    from esolangs.languages.thue.generator import _tables, _thue_entries, _thue_layout
     from tests.support.generator_support import assert_shared_program
 
     entries = "0001011101101001" * 6 + "0110100100010111" + "0011010101010011"
@@ -33,7 +33,7 @@ def test_shared_block_expands_before_lookup_within_ledger() -> None:
 
 
 def test_short_tree_interns_constant_residuals() -> None:
-    from esolangs.tools.thue import _thue_short_tree
+    from esolangs.languages.thue.generator import _thue_short_tree
 
     program = _thue_short_tree("0" * 8)
     assert len(program.splitlines()) == 13
@@ -141,7 +141,7 @@ def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
 @pytest.mark.parametrize("table", _TABLES)
 def test_thue_never_leaves_the_draw_a_choice(table: str) -> None:
     """Every state a generated program reaches offers exactly one rewrite."""
-    from esolangs.interpreters.thue import _Machine, _matches
+    from esolangs.languages.thue.interpreter import _Machine, _matches
 
     n = len(table).bit_length() - 1
     program = boolean.thue(table)
@@ -172,7 +172,7 @@ def test_thue_answers_the_same_under_every_draw(table: str) -> None:
 @pytest.mark.medium
 def test_an_ignored_input_reads_without_halving() -> None:
     """Its round is an ``S`` in the queue: read, delete, nothing to draw."""
-    from esolangs.interpreters.thue import _Machine, _matches
+    from esolangs.languages.thue.interpreter import _Machine, _matches
 
     inner = "".join(str((row * 73 + row // 3) & 1) for row in range(64))
     # Seven inputs, the third ignored: 64 entries, not 128.
@@ -193,7 +193,7 @@ def test_an_ignored_input_reads_without_halving() -> None:
 @pytest.mark.medium
 def test_thue_contracted_heads_keep_a_unique_rewrite() -> None:
     """Ready and waiting symbols leave exactly one rewrite before each read."""
-    from esolangs.interpreters.thue import _Machine, _matches
+    from esolangs.languages.thue.interpreter import _Machine, _matches
 
     assert max(map(len, boolean.thue("0110", 1).splitlines())) == 7
     for n in range(1, 4):
@@ -213,7 +213,7 @@ def test_thue_contracted_heads_keep_a_unique_rewrite() -> None:
 @pytest.mark.medium
 def test_thue_fixed_width_chunk_names_expand_before_reading() -> None:
     """The marker alphabet excludes every table and control symbol."""
-    from esolangs.interpreters.thue import _Machine, _matches
+    from esolangs.languages.thue.interpreter import _Machine, _matches
 
     for n in range(4, 7):
         table = "".join(
@@ -244,7 +244,7 @@ def test_narrow_layouts_drop_ignored_inputs() -> None:
 
 def test_a_constant_half_is_stored_once_and_stays_deterministic() -> None:
     """The fold's one-entry collapse still reads every line, one rule a step."""
-    from esolangs.tools.thue import _fold, _thue_layout
+    from esolangs.languages.thue.generator import _fold, _thue_layout
 
     half = "01101001"
     tables = (half + "0" * 8, "1" * 8 + half, half[:4] * 2 + "1" * 8)

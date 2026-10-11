@@ -6,8 +6,8 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.bit_tilde import run
 from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.languages.bit_tilde.interpreter import run
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
@@ -76,7 +76,7 @@ class TestBitTilde:
 
     def test_input_extends_the_pool_by_exactly_the_shortfall(self) -> None:
         """The pool grows to the end of the window and no further."""
-        from esolangs.interpreters.bit_tilde import _Machine
+        from esolangs.languages.bit_tilde.interpreter import _Machine
 
         machine = _Machine(">>)(", ScriptedIO("A"))
         while not machine.halted:
@@ -89,7 +89,7 @@ class TestBitTilde:
 
     def test_input_replaces_exactly_eight_cells(self) -> None:
         """``)`` on a clear window writes its eight bits and no more."""
-        from esolangs.interpreters.bit_tilde import _Machine
+        from esolangs.languages.bit_tilde.interpreter import _Machine
 
         machine = _Machine(">><<)", ScriptedIO("A"))
         while not machine.halted:
@@ -119,8 +119,8 @@ class TestBitTilde:
 
 class TestStepMachine:
     def test_step_tracks_pool_and_cursor(self) -> None:
-        from esolangs.interpreters.bit_tilde import _Machine
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.languages.bit_tilde.interpreter import _Machine
 
         machine = _Machine("~(", ScriptedIO())
         assert (machine.ind, list(machine.tape)) == (0, [0] * 8)
@@ -134,8 +134,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.bit_tilde import _Machine
     from esolangs.interpreters.io import ScriptedIO
+    from esolangs.languages.bit_tilde.interpreter import _Machine
 
     return _Machine(code, ScriptedIO())
 

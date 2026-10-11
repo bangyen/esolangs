@@ -1,11 +1,11 @@
 """One tiny program per registry language, and the stdin it needs."""
 
 from esolangs._program import Program
+from esolangs.languages.line.generator import line as _line_sample
+from esolangs.languages.piet.generator import piet as _piet_sample
+from esolangs.languages.piet_plus_plus.generator import piet_plus_plus as _pp_sample
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
-from esolangs.tools.line import line as _line_sample
-from esolangs.tools.piet import piet as _piet_sample
-from esolangs.tools.piet_plus_plus import piet_plus_plus as _pp_sample
 
 # The corrected Inject truth machine lives beside the interpreter's own
 # tests: the mutation bundle does not inline this module, so a test file

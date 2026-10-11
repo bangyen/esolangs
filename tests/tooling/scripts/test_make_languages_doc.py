@@ -75,7 +75,7 @@ def test_a_language_without_a_generator_is_ignored() -> None:
     language = next(iter(module.LANGUAGES.values()))
     module.LANGUAGES = {language.name: replace(language, boolean=None)}
     assert module.render_contributor_tools_section().endswith(
-        "| shared generator helpers and compatibility imports |"
+        "| shared generator helpers |"
     )
 
 
@@ -123,7 +123,7 @@ def test_main_updates_all_registry_derived_docs(
     for relative in (
         "docs/proofs/index.md",
         "docs/roadmap.md",
-        "src/esolangs/tools/__init__.py",
+        "src/esolangs/languages/generators.py",
     ):
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -251,7 +251,7 @@ def test_documentation_check_preserves_source_files(
     assert ("run python scripts/docs/generate.py docs: README.md" in error) == stale
 
 
-def test_colocated_exports_preserve_a_different_legacy_filename(tmp_path):
+def test_exports_use_the_canonical_generator_module(tmp_path):
     from scripts.docs.generate import declared
 
     tools = tmp_path / "src/esolangs/tools"
@@ -266,4 +266,4 @@ def test_colocated_exports_preserve_a_different_legacy_filename(tmp_path):
         "def fixture(table): return table\n"
         "LANGUAGE = Language('Fixture', boolean=fixture)\n"
     )
-    assert declared(tmp_path) == [("different", "fixture")]
+    assert declared(tmp_path) == [("esolangs.languages.fixture.generator", "fixture")]

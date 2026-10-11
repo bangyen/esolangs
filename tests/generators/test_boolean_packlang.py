@@ -5,11 +5,11 @@ import random
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.packlang import run as packlang_run
-from esolangs.tools.packlang import _folded
+from esolangs.languages import generators as boolean
+from esolangs.languages.packlang.generator import _folded
+from esolangs.languages.packlang.interpreter import run as packlang_run
 from esolangs.tools.wrap import (
     _packlang,
     balance_score,
@@ -91,7 +91,7 @@ class TestPacklangPaintedArray:
 
 @pytest.mark.parametrize("indent", [0, 4, 16, 64])
 def test_packlang_reduced_indent_crossing(indent):
-    from esolangs.tools.packlang import _balance_form
+    from esolangs.languages.packlang.generator import _balance_form
 
     for table in ("0110", "0001", "10010110"):
         default = esolangs.generate("Packlang", table)

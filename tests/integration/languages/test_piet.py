@@ -71,9 +71,9 @@ class TestSpecAbortsRatherThanReturningNothing:
 
     def test_a_raster_language_returns_its_own_module_docstring(self) -> None:
         """Piet describes its own interpreter rather than another raster's."""
-        piet = importlib.import_module("esolangs.interpreters.piet")
+        piet = importlib.import_module("esolangs.languages.piet.interpreter")
         other = importlib.import_module(
-            "esolangs.interpreters." + LANGUAGES[first_other_raster()].interpreter
+            f"esolangs.languages.{LANGUAGES[first_other_raster()].id}.interpreter"
         )
         assert esolangs.describe("Piet")["spec"] == (piet.__doc__ or "").strip()
         assert esolangs.describe("Piet")["spec"] != (other.__doc__ or "").strip()
@@ -127,7 +127,7 @@ def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
 
 
 def test_empty_piet_operation_path_halts() -> None:
-    from esolangs.tools.piet.balance import _emit, _plan
+    from esolangs.languages.piet.generator.balance import _emit, _plan
 
     image = _emit([], _plan([], 13, 14))
     assert esolangs.run("Piet", image) == ""
@@ -142,20 +142,3 @@ def test_piet_detects_its_scale(scale: int) -> None:
 
 def test_it_reads_numeric_tokens_on_the_same_line() -> None:
     assert_reads_tokens_on_one_line("Piet")
-
-
-@pytest.mark.parametrize(
-    ("legacy", "canonical"),
-    [
-        ("esolangs.interpreters.piet", "esolangs.languages.piet.interpreter"),
-        ("esolangs.tools.piet", "esolangs.languages.piet.generator"),
-        ("esolangs.tools.piet.balance", "esolangs.languages.piet.generator.balance"),
-    ],
-)
-def test_compatibility_imports_share_module_state(legacy, canonical, monkeypatch):
-    old = importlib.import_module(legacy)
-    new = importlib.import_module(canonical)
-    assert old is new
-    marker = object()
-    monkeypatch.setattr(old, "compatibility_probe", marker, raising=False)
-    assert new.compatibility_probe is marker
