@@ -163,6 +163,7 @@ def _generate(truth_table: str) -> Raster:
         centered_streaming_canvas,
         destination_canvas,
         forward_canvas,
+        median_streaming_canvas,
         streaming_canvas,
     )
     from .shared import shared_canvas, shared_tree
@@ -213,6 +214,7 @@ def _generate(truth_table: str) -> Raster:
         destination_canvas,
         streaming_canvas,
         centered_streaming_canvas,
+        median_streaming_canvas,
     ):
         forward = build(truth_table, smallest)
         if forward is not None:
