@@ -183,3 +183,32 @@ def test_nine_input_atom_shares_internal_residuals_of_distinct_roots():
     assert len(code) == 258_216
     assert model.bounds()[0] * model.bounds()[1] == 367_633
     assert _execute(table, code) == 18
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("shared", [False, True])
+def test_online_class_rectangle_rejects_before_copying(monkeypatch, shared):
+    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    table = _three_classes(9)
+    model = module._class_bank_layout(table, shared=shared)  # noqa: SLF001
+    assert model is not None
+    height, width = model.bounds()
+
+    def unexpected(*_args, **_kwargs):
+        pytest.fail("the output rectangle must reject before copying")
+
+    monkeypatch.setattr(module, "_assemble_banks", unexpected)
+    assert module._class_bank_layout(table, height * width - 1, shared=shared) is None  # noqa: SLF001
+
+
+@pytest.mark.medium
+def test_single_class_preserves_its_native_area_ceiling():
+    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    table = dense(7, b"single-class-ceiling") * 4
+    model = module._class_bank_layout(table, shared=False)  # noqa: SLF001
+    assert model is not None
+    height, width = model.bounds()
+    admitted = module._class_bank_layout(table, height * width, shared=False)  # noqa: SLF001
+    assert admitted is not None
+    assert admitted.render() == model.render()
+    _execute(table, admitted.render())

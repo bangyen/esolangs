@@ -1,4 +1,4 @@
-"""Bounded folded masks beyond the pooled-mask class cap."""
+"""Bounded folded masks with large original prefix ports."""
 
 import importlib
 from itertools import combinations, islice
@@ -134,3 +134,37 @@ def test_public_area_competition_executes_an_admitted_candidate(monkeypatch):
     monkeypatch.setattr(module, "_linear_shared_layout", lambda *_args: None)
     monkeypatch.setattr(folded, "folded_class_bank_candidate", lambda *_args: model)
     assert _execute(table, circuit_diagram(table)) <= 20
+
+
+@pytest.mark.medium
+def test_two_classes_with_large_mask_ports_execute():
+    table, _ = _classes(7, 2)
+    model = folded_class_bank_candidate(table)
+    assert model is not None
+    rows = sorted({0, len(table) - 1, *range(0, len(table), 4096)})
+    assert _execute(table, model.render(), rows) <= 36
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("start", [0, 51, 102, 153])
+def test_public_folded_masks_below_old_cap_execute_every_class(start):
+    table, pairs = _classes(7, 202)
+    code = circuit_diagram(table)
+    lines = code.splitlines()
+    assert len(lines) * max(map(len, lines)) == 19_767_825
+    assert len(code) == 18_992_795
+    rows = sorted(
+        {
+            0,
+            len(table) - 1,
+            *(
+                (index << 7) + row
+                for index in range(start, min(start + 51, 202))
+                for row in (
+                    *pairs[index],
+                    next(row for row in range(128) if row not in pairs[index]),
+                )
+            ),
+        }
+    )
+    assert _execute(table, code, rows) == 24

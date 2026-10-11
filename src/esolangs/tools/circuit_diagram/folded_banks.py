@@ -18,18 +18,19 @@ from esolangs.tools.helpers import _validate_truth_table
 def folded_class_bank_candidate(
     table: str, ceiling: int | None = None
 ) -> _Layout | None:
-    """Return a bounded separate bank beyond the H-mask class cap."""
+    """Return a bounded separate bank with folded masks above eight inputs."""
     n = _validate_truth_table(table)
     tail = 7 if n % 2 else 8
     prefix = n - tail
-    if prefix < 2:
+    # Pooled masks through eight inputs already use this same fold.
+    if prefix <= 8:
         return None
     size = 1 << tail
     chunks = [table[i : i + size] for i in range(0, len(table), size)]
     counts = Counter(chunks)
     classes = [word for word in counts if "1" in word]
     q = len(classes)
-    if q < 1 << (tail + 1) or q * len(chunks) > 4 * len(table):
+    if q < 2 or q * len(chunks) > 4 * len(table):
         return None
     if not any("0" in word and counts[word] > 1 for word in classes):
         return None

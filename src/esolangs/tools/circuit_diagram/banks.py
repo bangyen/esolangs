@@ -364,6 +364,27 @@ def _residual_class_bank_candidate(
     return forest if height * width < old_height * old_width else separate
 
 
+def _online_bank_area_floor(
+    dimensions: list[tuple[int, int]], n: int, prefix: int, q: int, ands: int
+) -> int:
+    """Bound the final output row and last carry OR, including partial bands."""
+    if q < 2 or not dimensions:
+        return 0
+    # The final output sits at y+4: copied bands, ANDs, q-1 carry
+    # joins and group gaps determine y. The last OR forces this width.
+    height = (
+        2 * n
+        + 8
+        + 4 * prefix
+        + sum(h + 8 for h, w in dimensions)
+        + 20 * q
+        + 12 * ands
+        - 7
+    )
+    width = max(w for h, w in dimensions) + 2 * n + 40 + 2 * ((q - 1).bit_length() + 1)
+    return height * width
+
+
 def _class_bank_layout(
     table: str, ceiling: int | None = None, *, shared: bool
 ) -> _Layout | None:
@@ -398,6 +419,8 @@ def _class_bank_layout(
         if height * width > ceiling:
             return None
     parts: list[list[tuple[_Layout, list[int]]]] = []
+    dimensions = [] if forest is None else [forest[0].bounds()]
+    ands = sum("0" in chunk for chunk in classes)
     for chunk in classes:
         mask = "".join("1" if word == chunk else "0" for word in chunks)
         models: list[tuple[_Layout, list[int]]] = []
@@ -412,6 +435,13 @@ def _class_bank_layout(
                 reduced, input_order=used, port_inputs=ports, ceiling=ceiling
             )
             if model is None:
+                return None
+            dimensions.append(model.bounds())
+            if (
+                ceiling is not None
+                and _online_bank_area_floor(dimensions, n, prefix, len(classes), ands)
+                > ceiling
+            ):
                 return None
             models.append((model, order))
         parts.append(models)
