@@ -118,9 +118,9 @@ jobs:
         echo "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" >> "$GITHUB_ENV"
         export SOURCE_DATE_EPOCH
         uv build --python 3.12
-        python scripts/ci.py normalize dist/*.tar.gz
+        python scripts/release.py normalize dist/*.tar.gz
         uv build --python 3.12 --out-dir /tmp/release-rebuild
-        python scripts/ci.py normalize /tmp/release-rebuild/*.tar.gz
+        python scripts/release.py normalize /tmp/release-rebuild/*.tar.gz
         for artifact in dist/*; do
           cmp "$artifact" "/tmp/release-rebuild/$(basename "$artifact")"
         done
@@ -136,11 +136,11 @@ jobs:
           venv="/tmp/relcheck-$version"
           uv venv --python "$version" "$venv"
           uv pip install --python "$venv/bin/python" "${wheels[0]}"
-          "$venv/bin/python" -I scripts/ci.py smoke
+          "$venv/bin/python" -I scripts/release.py smoke
           uv pip install --python "$venv/bin/python" "${wheels[0]}[math]"
-          "$venv/bin/python" -I scripts/ci.py smoke --math
+          "$venv/bin/python" -I scripts/release.py smoke --math
           uv pip install --python "$venv/bin/python" "${wheels[0]}[image]"
-          "$venv/bin/python" -I scripts/ci.py smoke --math --image
+          "$venv/bin/python" -I scripts/release.py smoke --math --image
         done
 
     - name: Rebuild and test the sdist independently
@@ -149,7 +149,7 @@ jobs:
         tar -xzf dist/*.tar.gz -C /tmp/sdist-source --strip-components=1
         uv build --wheel /tmp/sdist-source --out-dir /tmp/sdist-wheel
         uv pip install --python /tmp/relcheck-3.12/bin/python --reinstall /tmp/sdist-wheel/*.whl
-        /tmp/relcheck-3.12/bin/python -I scripts/ci.py smoke --math --image
+        /tmp/relcheck-3.12/bin/python -I scripts/release.py smoke --math --image
 
     - uses: actions/upload-artifact@v7
       with:

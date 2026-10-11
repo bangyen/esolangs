@@ -424,14 +424,14 @@ jobs:
         fi
         echo "ARTIFACT_PYTHON=$artifact_python" >> "$GITHUB_ENV"
         uv pip install --python "$artifact_python" dist/*.whl
-        "$artifact_python" -I scripts/ci.py smoke
+        "$artifact_python" -I scripts/release.py smoke
     - name: Install optional extras and exercise Polynomial and PNG I/O
       run: |
         wheels=(dist/*.whl)
         uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[math]"
-        "$ARTIFACT_PYTHON" -I scripts/ci.py smoke --math
+        "$ARTIFACT_PYTHON" -I scripts/release.py smoke --math
         uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[image]"
-        "$ARTIFACT_PYTHON" -I scripts/ci.py smoke --math --image
+        "$ARTIFACT_PYTHON" -I scripts/release.py smoke --math --image
 
   execution-platform:
     runs-on: ${{ matrix.os }}

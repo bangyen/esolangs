@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-from scripts import ci as smoke
+from scripts import release as smoke
 
 
 def test_generator_batch_executes_all_rows() -> None:
