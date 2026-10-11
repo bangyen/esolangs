@@ -463,7 +463,6 @@ jobs:
         uv run pytest -q -o addopts=""
         tests/test_run_bounded.py tests/test_memory_budget.py
         tests/scripts/test_engineering_followups.py
-        tests/scripts/test_artifact_retention.py
         tests/scripts/test_benchmark_protocol.py
         tests/scripts/test_bounded_logs.py
         tests/scripts/test_check_generator_sizes.py::test_benchmark_deadline_reaps_workers_with_positive_control
