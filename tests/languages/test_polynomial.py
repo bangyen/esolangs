@@ -1,11 +1,8 @@
 """Polynomial through the shared API, CLI and machinery."""
 
-from pathlib import Path
-
 import pytest
 
 import esolangs
-from tests.scripts.script_support import load
 
 
 class TestADeliberateRefusalIsAnEsolangError:
@@ -36,12 +33,3 @@ def test_the_refusal_is_catchable_at_the_size_it_refuses() -> None:
     """A refusal past the sweep's bound, at the first arity that triggers it."""
     with pytest.raises(esolangs.GeneratorCapError, match="cost"):
         esolangs.generate("Polynomial", _big_table(11))
-
-
-@pytest.mark.medium
-def test_sympy_required_note(tmp_path: Path) -> None:
-    """Polynomial's bundle tells the user sympy is required."""
-    bundle_one = load(Path(__file__).parents[2] / "scripts/bundle_one.py")
-    out = tmp_path / "polynomial.py"
-    bundle_one.bundle("Polynomial", bundle_one.Source(None), out)
-    assert "Requires: pip install sympy" in out.read_text()

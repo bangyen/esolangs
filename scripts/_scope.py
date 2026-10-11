@@ -112,16 +112,6 @@ def widens_to_everything(changed: list[str]) -> str | None:
 
 
 TOOLING_INTEGRATIONS = {
-    "tests/scripts/test_bundle_one.py": (
-        (
-            "TestBundleCompiles::test_every_bundle_exposes_run",
-            "TestBundleDetails",
-            "test_raster_module_entry_point_matches_the_library",
-            "test_package_bundle_also_supports_text_without_pillow",
-            "test_raster_package_bundles_from_raw_http_sources",
-        ),
-        ("src/", "scripts/bundle_one.py", "scripts/install_one.sh", "tests/pick.py"),
-    ),
     "tests/scripts/test_ci_coverage.py": (
         ("test_combining_shards_retains_every_branch",),
         (
