@@ -32,7 +32,7 @@ SHARED_INTERPRETER = (
 # The checking machinery itself.  A change here can alter what every step
 # does, so it can never be validated by a scoped run of that same machinery.
 SHARED_TOOLING = (
-    "scripts/verify/verify.py",
+    "scripts/verify/gate.py",
     "scripts/verify/scope.py",
     "checks/check_diff_coverage.py",
     "pyproject.toml",

@@ -207,7 +207,7 @@ def mutate(text: str, rng: random.Random, n: int = 12) -> list[str]:
 
 
 # The scoping rule (which files changed, and what forces a full sweep) is
-# shared with scripts/verify/verify.py, so both agree on when a narrowed run is safe.
+# shared with scripts/verify/gate.py, so both agree on when a narrowed run is safe.
 sys.path.insert(0, str(_ROOT / "scripts"))
 from verify.scope import SHARED_INTERPRETER as _SHARED
 from verify.scope import changed_files as _changed_files

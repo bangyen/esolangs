@@ -75,7 +75,7 @@ jobs:
     - name: Verify the release commit
       env:
         PYTEST_ADDOPTS: "-n auto"
-      run: uv run python scripts/verify/verify.py --full
+      run: uv run python scripts/verify/gate.py --full
 
     - name: Retain worker and verification logs
       if: always()

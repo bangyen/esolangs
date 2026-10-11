@@ -37,7 +37,7 @@ install-dev:
         python -m pip install -U pip
         pip install -e . --group dev
     fi
-    # Enable the pre-push gate (scripts/verify/verify.py) so every push runs the
+    # Enable the pre-push gate (scripts/verify/gate.py) so every push runs the
     # full local check: lint, pytest, bandit, and the verify scripts.
     git config core.hooksPath .githooks
 
@@ -58,11 +58,11 @@ lint: lint-python
 # whole tree.  Pass --quiet to suppress successful step output.
 # test (local check: lint, pytest, bandit, verify scripts)
 test *args:
-    {{PYTHON}} scripts/verify/verify.py {{args}}
+    {{PYTHON}} scripts/verify/gate.py {{args}}
 
 # every step over the whole tree, ignoring what this branch touched
 test-full *args:
-    {{PYTHON}} scripts/verify/verify.py --full {{args}}
+    {{PYTHON}} scripts/verify/gate.py --full {{args}}
 
 # inner loop: pre-commit + pytest, fast band only, quiet by default.
 # Four workers, the pytest config's default: this box also runs sessions in
@@ -71,13 +71,13 @@ test-full *args:
 # spuriously.  Measured here: eight failed at load 35, four passed at 36, for
 # about 6s more wall.
 test-quick *args:
-    PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly'" {{PYTHON}} scripts/verify/verify.py --quiet --only pre-commit,pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly'" {{PYTHON}} scripts/verify/gate.py --quiet --only pre-commit,pytest {{args}}
 
 # pytest fast and medium bands only; use just test before a commit
 test-mid *args:
-    PYTEST_ADDOPTS="-m 'not slow and not weekly'" {{PYTHON}} scripts/verify/verify.py --only pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not weekly'" {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
 
-# granular targets — each maps to one STEPS entry in scripts/verify/verify.py (see verify.py --list)
+# granular targets — each maps to one STEPS entry in scripts/verify/gate.py (see verify.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)
 #
 # these pass --only, so each runs its step in full — including the `slow`
@@ -86,15 +86,15 @@ test-mid *args:
 
 # pytest only, in full -- including the `slow` band
 test-py *args:
-    {{PYTHON}} scripts/verify/verify.py --only pytest {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
 
 # lint + duplicate-code + bandit + dead definitions
 test-lint *args:
-    {{PYTHON}} scripts/verify/verify.py --only pre-commit,"duplicate-code check (pylint)",bandit,"dead definitions" {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"duplicate-code check (pylint)",bandit,"dead definitions" {{args}}
 
 # security scan only
 test-bandit *args:
-    {{PYTHON}} scripts/verify/verify.py --only bandit {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only bandit {{args}}
 
 # emit repeatable generator size/time/command evidence as JSON
 benchmark language table *args:

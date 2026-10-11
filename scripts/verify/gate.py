@@ -26,10 +26,10 @@ Output is replayed only for the steps that failed.  A run of one step streams
 it live instead (``--verbose`` forces that, ``--quiet`` forbids it).
 
 Usage:
-    python scripts/verify/verify.py [--only STEPS] [--skip STEPS] [--full]
-    python scripts/verify/verify.py --full          # every step, whole tree
-    python scripts/verify/verify.py --only pytest,bandit
-    python scripts/verify/verify.py --only pre-commit,pytest --skip bandit
+    python scripts/verify/gate.py [--only STEPS] [--skip STEPS] [--full]
+    python scripts/verify/gate.py --full          # every step, whole tree
+    python scripts/verify/gate.py --only pytest,bandit
+    python scripts/verify/gate.py --only pre-commit,pytest --skip bandit
 """
 
 # Annotate lazily: ``collect_long`` below is annotated ``subprocess.Popen[str]``,
@@ -71,7 +71,7 @@ def python_cmd() -> list[str]:
     """Return the project's Python command.
 
     ``verify.py`` may be run with the system interpreter (e.g. plain
-    ``python scripts/verify/verify.py``), which does not have the project's dev
+    ``python scripts/verify/gate.py``), which does not have the project's dev
     dependencies.  Prefer the local venv, then ``uv run python`` (the uv
     workflow the justfile uses), and only fall back to the running
     interpreter.
@@ -212,7 +212,7 @@ def _rerun_hint(name: str) -> list[str]:
     """
     step = "pytest" if name == DIFF_COVERAGE_STEP else name
     rerun = (
-        f"  rerun: uv run python scripts/verify/verify.py --only {shlex.quote(step)}"
+        f"  rerun: uv run python scripts/verify/gate.py --only {shlex.quote(step)}"
     )
     return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
 
@@ -489,7 +489,7 @@ def main() -> int:
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
     # Probe PY rather than the running interpreter: verify.py may be launched
     # by a different python than the one it runs the steps with (e.g.
-    # `uv run --with pylint python scripts/verify/verify.py`, which leaves PY pointing
+    # `uv run --with pylint python scripts/verify/gate.py`, which leaves PY pointing
     # at .venv), and it is PY that has to import pylint.
     have_pylint = (
         run_bounded(

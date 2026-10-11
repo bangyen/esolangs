@@ -63,7 +63,7 @@ class TestWidensToEverything:
     def test_verification_tooling_widens(self) -> None:
         """A scoped run cannot be trusted to validate the scoping code itself."""
         scope = load_script()
-        for name in ("scripts/verify/verify.py", "scripts/verify/scope.py"):
+        for name in ("scripts/verify/gate.py", "scripts/verify/scope.py"):
             assert scope.widens_to_everything([name]) is not None  # type: ignore[attr-defined]
 
     def test_ordinary_interpreter_does_not_widen(self) -> None:
