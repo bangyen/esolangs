@@ -5,6 +5,10 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 0.11.1
+
+- Fix release archive normalization in build environments without an installed package.
+
 ## 0.11.0
 
 - Keep public API exports and signatures unchanged; internal import paths changed.
