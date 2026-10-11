@@ -52,7 +52,7 @@ def test_every_small_function_executes_without_growing() -> None:
             )
             if inputs == 3:
                 total += area
-    assert total == 34_512
+    assert total == 34_062
 
 
 @pytest.mark.medium

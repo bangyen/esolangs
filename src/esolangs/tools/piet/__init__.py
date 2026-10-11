@@ -65,7 +65,7 @@ def _literal_product(
         cell: (row >> (len(essential) - position - 1)) & 1
         for position, cell in enumerate(essential)
     }
-    operations = [_push(1)]
+    operations = [] if essential else [_push(1)]
     for cell in range(inputs):
         operations.append(_Operation(_IN_NUMBER))
         if cell not in literals:
@@ -73,7 +73,8 @@ def _literal_product(
             continue
         if literals[cell] == 0:
             operations.append(_Operation(_NOT))
-        operations.append(_Operation(_MULTIPLY))
+        if cell != essential[0]:
+            operations.append(_Operation(_MULTIPLY))
     if invert:
         operations.append(_Operation(_NOT))
     operations.append(_Operation(_OUT_NUMBER))
@@ -227,12 +228,15 @@ def strip(
 ) -> Raster:
     """Lay ``operations`` out as one row of blocks, Piet traversal rules.
 
-    A three-codel initial block reaches row 1.  Its pop is ignored on the
-    empty stack; the final vertical block is entered at its middle codel,
+    A three-codel initial block reaches row 1.  It supplies the first read
+    or an ignored pop; the final vertical block is entered at its middle codel,
     so every DP/CC exit is blocked and the program terminates.
     """
     blocks: list[tuple[Pixel, int]] = []
-    colour = next_colour(initial, _POP)
+    first_read = operations[0].change == _IN_NUMBER
+    colour = next_colour(initial, _IN_NUMBER if first_read else _POP)
+    if first_read:
+        operations = operations[1:]
     for operation in operations:
         blocks.append((colour, operation.size))
         colour = next_colour(colour, operation.change)

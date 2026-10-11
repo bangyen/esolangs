@@ -35,6 +35,28 @@ def test_png_round_trip_executes_the_same_program() -> None:
     )
 
 
+@pytest.mark.parametrize("balanced", [False, True])
+def test_and_uses_two_reads_multiply_and_output(*, balanced: bool) -> None:
+    program = esolangs.generate("Piet", "0001", balance=balanced)
+    assert isinstance(program, Raster)
+    assert (len(program.rows[0]), len(program.rows)) == (6, 3)
+    assert _evaluate("Piet", Raster.from_png(program.to_png()), inputs=2) == "0001"
+
+
+@pytest.mark.parametrize("table", ["0001", "0010", "0100", "1000", "1110"])
+@pytest.mark.parametrize("width", [None, 13])
+def test_literal_product_keeps_ignored_inputs(table: str, width: int | None) -> None:
+    for expanded in (
+        table + table,
+        "".join(bit * 2 for bit in table),
+        "".join(table[start : start + 2] * 2 for start in (0, 2)),
+    ):
+        program = generate(expanded, width=width)
+        assert (
+            _evaluate("Piet", Raster.from_png(program.to_png()), inputs=3) == expanded
+        )
+
+
 @pytest.mark.medium
 def test_every_three_input_function_executes_through_png() -> None:
     total = 0
@@ -58,7 +80,7 @@ def test_every_three_input_function_executes_through_png() -> None:
             assert esolangs.run("Piet", program, stdin=stdin) == truth_table[row]
     # Parent table lookup emitted 38,997 codels over this exhaustive corpus.
     # Folding a constant half: 34,638 -> 34,512.
-    assert total == 34_512
+    assert total == 34_062
 
 
 @pytest.mark.slow
@@ -209,7 +231,7 @@ def test_compact_folds_execute_without_growing() -> None:
             )
             if inputs == 3:
                 total += score(image)[1]
-    assert total == 64_572
+    assert total == 62_663
 
 
 @pytest.mark.parametrize("width", [13, 19, 30])
