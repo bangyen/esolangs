@@ -473,7 +473,7 @@ def _sources(
                     raise FileNotFoundError(f"imported source not found: {name}")
             elif dependency not in sources:
                 pending.append(dependency)
-    return sorted({_HERE, _ROOT / "scripts" / "_scope.py", *sources, *shared})
+    return sorted({_HERE, _ROOT / "scripts" / "_lib" / "scope.py", *sources, *shared})
 
 
 def _runtime_identity() -> bytes:

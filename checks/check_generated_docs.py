@@ -50,14 +50,15 @@ def main() -> int:
         ]
     if changed:
         print(
-            "generated documentation is stale; run python scripts/docs/generate.py docs: "
-            + ", ".join(changed),
+            "generated documentation is stale; run python "
+            "scripts/docs/generate.py docs: " + ", ".join(changed),
             file=sys.stderr,
         )
         return 1
     if _manifest_is_stale():
         print(
-            "examples/MANIFEST.md is stale; run python scripts/docs/generate.py examples",
+            "examples/MANIFEST.md is stale; run python "
+            "scripts/docs/generate.py examples",
             file=sys.stderr,
         )
         return 1

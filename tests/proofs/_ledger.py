@@ -176,7 +176,7 @@ def load(path: Path | None = None) -> Ledger:
         for match in re.finditer(r"^\*\*(.+?)\.\*\*", schemes, re.MULTILINE)
     }
 
-    # ``scripts/proof_status.py`` renders this sentence; reading it back
+    # ``scripts/docs/proof_status.py`` renders this sentence; reading it back
     # catches a committed copy left behind by an edit to the ledger rows.
     count = re.search(
         r"records (\d+) theoretical totality arguments and (\w+) exceptions?",

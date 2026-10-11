@@ -615,7 +615,7 @@ class Worker:
         """Spawn ``command``, or this module in ``--worker`` mode by default."""
         self.command = command or [
             sys.executable,
-            str(Path(__file__).parents[1] / "_lib" / "worker.py"),
+            str(Path(__file__).resolve().parent / "_lib" / "worker.py"),
         ]
         self.process: subprocess.Popen[str] | None = None
         self.messages: queue.Queue[str | None] = queue.Queue(maxsize=1)

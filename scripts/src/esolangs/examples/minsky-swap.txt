@@ -1,6 +1,6 @@
 decnz(2);
 inc();
-inc();   
+inc();
 decnz(9);
 decnz(9);
 decnz(9);

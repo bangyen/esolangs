@@ -8,7 +8,7 @@ import pytest
 from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "ci.py"
+SCRIPT = REPO_ROOT / "scripts" / "ci" / "shard.py"
 
 
 def load_script() -> Any:

@@ -12,7 +12,7 @@ from tests.scripts.script_support import load
 from tests.test_language_coupling import REFERENCE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "generate.py"
+SCRIPT = REPO_ROOT / "scripts" / "docs" / "generate.py"
 README = REPO_ROOT / "README.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
 LIMITATIONS = REPO_ROOT / "docs" / "limitations.md"

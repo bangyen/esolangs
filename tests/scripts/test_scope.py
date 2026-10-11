@@ -10,7 +10,7 @@ import pytest
 from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "_scope.py"
+SCRIPT = REPO_ROOT / "scripts" / "_lib" / "scope.py"
 
 
 def load_script() -> Any:
