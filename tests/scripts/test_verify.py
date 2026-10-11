@@ -6,6 +6,7 @@ import re
 import subprocess
 import sys
 import time
+import tomllib
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -22,8 +23,149 @@ def load_script() -> Any:
     return load(SCRIPT)
 
 
+class TestPytestScopeCollects:
+    @pytest.mark.parametrize(
+        ("path", "scoped"),
+        [
+            ("tests/tools/polynomial_support.py", False),
+            ("tests/test_vm.py", True),
+            ("src/esolangs/interpreters/other/demo/brainfuck.py", False),
+            ("src/esolangs/interpreters/io.py", False),
+        ],
+    )
+    def test_only_collected_leaf_modules_are_scoped(self, path, scoped):
+        verify = load_script()
+        scope = verify._pytest_scope([path])  # noqa: SLF001
+        assert scope == ([path] if scoped else verify.WHOLE_SUITE)
+
+    def test_an_interpreter_runs_shared_contracts_and_its_generator(self) -> None:
+        verify = load_script()
+        scope = verify._pytest_scope(  # noqa: SLF001
+            ["src/esolangs/interpreters/tape_based/brainfuck.py"]
+        )
+        assert isinstance(scope, list)
+        assert set(verify.INTERPRETER_CONTRACT_TESTS) <= set(scope)
+        assert "tests/interpreters/test_brainfuck.py" in scope
+        assert "tests/tools/test_boolean_brainfuck.py" in scope
+        assert all((REPO_ROOT / path).is_file() for path in scope)
+
+    def test_the_patterns_match_pyproject(self) -> None:
+        verify = load_script()
+        config = tomllib.loads(
+            (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        )
+        patterns = config["tool"]["pytest"]["ini_options"]["python_files"]
+        assert list(verify.COLLECTED_PATTERNS) == patterns
+
+
+class TestScopedCoverage:
+    COV = ("python", "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report=")
+
+    def test_touched_source_files_become_an_include_rc(self) -> None:
+        verify = load_script()
+        cmd = verify._scoped_coverage(  # noqa: SLF001
+            list(self.COV),
+            ["src/esolangs/vm.py", "tests/test_vm.py", "src/esolangs/tools/x.py"],
+        )
+        assert "--cov" in cmd
+        assert "--cov-branch" not in cmd  # the rc carries branch=True
+        rc = next(c for c in cmd if c.startswith("--cov-config=")).split("=", 1)[1]
+        text = Path(rc).read_text(encoding="utf-8")
+        assert "include =" in text
+        assert "src/esolangs/vm.py" in text
+        assert "src/esolangs/tools/x.py" in text
+        assert "tests/test_vm.py" not in text
+        assert "branch = True" in text
+        assert "source" not in text  # coverage ignores include beside source
+
+    def test_no_touched_source_file_measures_nothing(self) -> None:
+        verify = load_script()
+        cmd = verify._scoped_coverage(list(self.COV), ["tests/test_vm.py"])  # noqa: SLF001
+        assert not any(c.startswith("--cov") for c in cmd)
+        assert cmd == ["python", "-m", "pytest", "-q"]
+
+    def test_a_command_without_coverage_is_left_alone(self) -> None:
+        verify = load_script()
+        bare = ["python", "-m", "pytest", "-q"]
+        assert verify._scoped_coverage(bare, ["src/esolangs/vm.py"]) == bare  # noqa: SLF001
+
+    def test_the_whole_suite_fallback_still_narrows(self) -> None:
+        verify = load_script()
+        cmd = verify._scoped_cmd(  # noqa: SLF001
+            "pytest",
+            list(self.COV),
+            ["tests/tools/polynomial_support.py", "src/esolangs/vm.py"],
+        )
+        assert cmd is not None
+        assert any(c.startswith("--cov-config=") for c in cmd)
+        assert not any(c.startswith("tests/") for c in cmd)
+
+
 LEAF = "src/esolangs/interpreters/register_based/addsubjump.py"
 CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+
+
+@pytest.mark.parametrize("options", ["", "-n 8", "--numprocesses=2"])
+@pytest.mark.parametrize("shared", [False, True])
+def test_split_coverage_retains_the_full_suite_and_worker_override(options, shared):
+    verify = load_script()
+    changed = [LEAF, "src/esolangs/tools/wrap.py"] if shared else [LEAF]
+    cmd = verify._scoped_coverage(  # noqa: SLF001
+        list(TestScopedCoverage.COV), changed
+    )
+    env = {"PYTEST_ADDOPTS": options}
+    plan = verify._split_coverage([("pytest", cmd, env)], changed)  # noqa: SLF001
+    coverage, suite = plan
+    assert coverage[0] == verify.COVERAGE_TEST_STEP
+    assert "tests/interpreters/test_addsubjump.py" in coverage[1]
+    assert "--cov" in coverage[1]
+    assert coverage[1][coverage[1].index("-n") + 1] == "0"
+    assert ("tests/tools/test_wrap.py" in coverage[1]) is shared
+    assert suite[0] == "pytest"
+    assert "--no-cov" in suite[1]
+    assert not any(arg.startswith("tests/") for arg in suite[1])
+    assert ("-n" in suite[1]) == (not options)
+    assert suite[2] == coverage[2] == env
+
+
+@pytest.mark.parametrize(
+    ("source", "extra", "options"),
+    [
+        ("src/esolangs/vm.py", [], ""),
+        ("src/esolangs/tools/taglate.py", [], ""),
+        (None, [], ""),
+        (LEAF, [], "--no-cov"),
+        (LEAF, [], "--cov=esolangs"),
+        (LEAF, ["tests/interpreters/test_addsubjump.py"], ""),
+    ],
+)
+def test_coverage_split_fallback(source, extra, options):
+    verify = load_script()
+    cmd = [*TestScopedCoverage.COV, *extra]
+    plan = [("pytest", cmd, {"PYTEST_ADDOPTS": options})]
+    assert verify._split_coverage(plan, [source] if source else []) == plan  # noqa: SLF001
+
+
+@pytest.mark.parametrize(("suite_code", "coverage_code"), [(0, 0), (3, 0), (0, 3)])
+def test_coverage_gate_requires_both_runs(monkeypatch, suite_code, coverage_code):
+    verify = load_script()
+    called = []
+
+    def start(cmd, **_kwargs):
+        called.append(cmd[0])
+        return mock.Mock(stdout=io.TextIOWrapper(io.BytesIO()))
+
+    codes = {"pytest": suite_code, verify.COVERAGE_TEST_STEP: coverage_code, "gate": 0}
+    monkeypatch.setattr(verify.subprocess, "Popen", start)
+    monkeypatch.setattr(
+        verify, "_wait_with_heartbeat", lambda _proc, name, _start: ("", codes[name])
+    )
+    runnable = [(name, [name], {}) for name in ("pytest", verify.COVERAGE_TEST_STEP)]
+    failures, _, _ = verify._run_steps(  # noqa: SLF001
+        runnable, stream=False, gate=("gate", ["gate"], {})
+    )
+    assert failures == int(bool(suite_code)) + int(bool(coverage_code))
+    assert ("gate" in called) == (suite_code == coverage_code == 0)
 
 
 def _signature(cmd: list[str]) -> str:
@@ -52,6 +194,14 @@ class TestCiRedoesEveryLocalStep:
         workflow = CI.read_text(encoding="utf-8")
         bogus = _signature(["uv", "run", "python", "scripts/no_such_check.py"])
         assert bogus not in workflow
+
+
+@pytest.mark.parametrize(("path", "size"), [("", 0), ("README.md", 1), ("src/x.py", 1)])
+def test_local_test_selection(path, size) -> None:
+    verify = load_script()
+    assert verify.LOCAL_PYTEST_MARKS == "not slow and not weekly"
+    assert verify.FULL_PYTEST_MARKS == "not weekly"
+    assert len(verify.local_tooling_deselections([path] if path else [])) == size
 
 
 class TestZeroStepsIsNotAPass:
@@ -134,6 +284,37 @@ def test_missing_tools_never_report_complete_verification(
     assert ("incomplete verification" if allow else "verification failed") in text
 
 
+def test_shared_changes_keep_all_tests_but_measure_only_touched_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    verify = load_script()
+    monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
+    monkeypatch.setattr(
+        verify, "_parse_only_skip", lambda: (None, None, False, True, False, False)
+    )
+    monkeypatch.setattr(
+        verify, "_scope_plan", lambda **_: (None, "verification tooling changed")
+    )
+    monkeypatch.setattr(
+        verify,
+        "_scope_changed_files",
+        lambda: ("scripts/verify/gate.py", "src/esolangs/tools/vandevelo.py"),
+    )
+    monkeypatch.setattr(
+        verify,
+        "run_bounded",
+        lambda *_a, **_kw: subprocess.CompletedProcess([], 0),
+    )
+    with mock.patch.object(verify, "_run_steps", return_value=(0, [], 0.0)) as run:
+        assert verify.main() == 0
+    runnable = run.call_args.args[0]
+    cmd = next(cmd for name, cmd, _ in runnable if name == "pytest")
+    assert not any(arg.startswith("tests/") for arg in cmd)
+    rc = next(arg for arg in cmd if arg.startswith("--cov-config=")).split("=", 1)[1]
+    assert "src/esolangs/tools/vandevelo.py" in Path(rc).read_text()
+    assert "--cov" in cmd
+
+
 def test_shadow_uv_command_cannot_resync_the_active_test_environment() -> None:
     verify = load_script()
     cmd = next(cmd for name, cmd in verify.STEPS if name == "bandit")
@@ -182,6 +363,94 @@ assert ready.exists(), 'producer stalled on captured output'
         assert "START" + "x" * 1000000 + "END" in Path(log).read_text()
     else:
         assert "START" not in output
+
+
+class TestGeneratorScope:
+    def test_leaf_generator_keeps_shared_contracts_and_its_suites(self) -> None:
+        verify = load_script()
+        scope = verify._pytest_scope(  # noqa: SLF001
+            ["src/esolangs/tools/bfstack.py"]
+        )
+        assert isinstance(scope, list)
+        assert "tests/tools/test_boolean_bfstack.py" in scope
+        assert "tests/interpreters/test_bfstack.py" in scope
+        assert "tests/tools/test_boolean_contract.py" in scope
+        assert "tests/proofs/test_execution_formulas.py" in scope
+        assert "tests/tools/test_boolean_line.py" not in scope
+        assert "tests/tools/test_boolean_malbolge.py" not in scope
+
+    @pytest.mark.parametrize("module", ["helpers.py", "line/render.py", "__init__.py"])
+    def test_shared_or_package_generator_changes_keep_the_whole_suite(
+        self, module
+    ) -> None:
+        verify = load_script()
+        assert (
+            verify._pytest_scope(  # noqa: SLF001
+                [f"src/esolangs/tools/{module}"]
+            )
+            == verify.WHOLE_SUITE
+        )
+
+    def test_explicitly_changed_language_tests_are_never_dropped(self) -> None:
+        verify = load_script()
+        scope = verify._pytest_scope(  # noqa: SLF001
+            ["src/esolangs/tools/bfstack.py", "tests/tools/test_boolean_line.py"]
+        )
+        assert "tests/tools/test_boolean_line.py" in scope
+
+
+def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from esolangs import registry
+
+    verify = load_script()
+    verify.ROOT = tmp_path
+    languages = {}
+    for name in ("target", "consumer", "unrelated"):
+
+        def build():
+            return ""
+
+        build.__module__ = "esolangs.tools." + (
+            "package.consumer" if name == "consumer" else name
+        )
+        build.__name__ = name
+        languages[name] = SimpleNamespace(id=name, name=name, aliases=(), boolean=build)
+    monkeypatch.setattr(registry, "LANGUAGES", languages)
+    for path, text in {
+        "src/esolangs/tools/target.py": "",
+        "src/esolangs/tools/package/dependency.py": (
+            "from esolangs.tools.target import build\n"
+        ),
+        "src/esolangs/tools/package/consumer.py": ("from . import dependency\n"),
+        "tests/tools/test_boolean_target.py": "",
+        "tests/tools/test_boolean_consumer.py": "",
+        "tests/tools/test_boolean_unrelated.py": "",
+        "tests/tools/test_contracts.py": "",
+    }.items():
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+    assert verify._pytest_scope(["src/esolangs/tools/target.py"]) == [  # noqa: SLF001
+        "tests/tools/test_boolean_consumer.py",
+        "tests/tools/test_boolean_target.py",
+        "tests/tools/test_contracts.py",
+    ]
+
+
+def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
+    verify = load_script()
+    assert any(
+        "src/esolangs/_traits.py".startswith(prefix)
+        for prefix in verify.STEP_SCOPE["exception leaks"]
+    )
+
+
+def test_leak_step_covers_shipped_examples():
+    from scripts.verify.gate import STEP_SCOPE
+
+    assert "src/esolangs/examples/fixture.txt".startswith(STEP_SCOPE["exception leaks"])
 
 
 @pytest.mark.medium
