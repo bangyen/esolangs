@@ -1503,6 +1503,50 @@ computes the one-input identity and depends on all 59,049 cells), and
 length and alphabet cuts are closed; [limitations](../limitations.md#boolean-generators)
 records the controls.
 
+## Native bootstrap progress (2026-10-11)
+
+Two further legal-source controls execute from reset, without memory or
+register overlays. Each source has 59,049 characters and reads seventeen
+bits plus one EOF. Neither control prints an answer or contains a complete
+Boolean decoder.
+
+The first control reaches cell 26,690 with the hub at 2,916, its complement
+in cell 59, and the native donor 37 preserved in cell 31. Moving the
+complement write saves eleven executed instruction cells in the third bank.
+Its source SHA-256 is
+`76463ff722870705fccf8771ee6d1f7a8ed0a69a157331306ee6098cc60d3375`.
+
+A separate control constructs the pointer 46,250 by rotating the complement
+of 205 six times and applying the ALL2 crazy operation. This avoids a copy
+and a later complement operation, saving twelve first-bank instruction
+cells. The recovered space prepares decoder roots 4 and 5 as ALL1 before
+entering cell 46,251. That source has SHA-256
+`a57ef061d847428cce4321fcc73a8bcd083b34c5e15d71cb3575fffeba48a4d8`.
+These are instruction-budget improvements; the emitted source length stays
+59,049 characters.
+
+Each control passes all 131,072 input vectors, seven Python/C comparisons
+of the complete memory and register state, and 3,584 legal selected-record
+variants (512 variants on each of seven records). Omitted-write controls
+fail. The controls are separate constructions; their prepared cells and
+spare budgets cannot be combined without another executed source.
+
+The latest continuation diagnostic splits root 7 preparation across banks
+and reenters the retired bank. Seven reset executions reach cell 82 with
+roots 4, 5 and 7 prepared and root 9 only partially cleared. This is not an
+exhaustive continuation result. Routing from that landing crosses cells
+still used by the input prefix, so arbitrary replacement is invalid.
+
+Evidence remains in the local, ignored `notes/malbolge17-preseed/` directory:
+`native6804-comp59-preserved37-bank26690-evidence.json`, its variant evidence,
+`native-pointer46250-clear45-evidence.json`, its variant evidence, and
+`native-pointer46250-split7-partial9-reentry-evidence.json`.
+
+Seventeen remains open. Completion requires one legal source integrating
+all decoder initialization, descriptor and branch bodies, the query and
+truth-table encoder, followed by end-to-end output checks and the repository
+verification gate. The shipped cap remains sixteen.
+
 ## Malbolge Unshackled: the cap lifts, off the registry
 
 Malbolge Unshackled (Johansen, 2007) lifts the 59,049-cell store, so it

@@ -94,7 +94,7 @@ full 17-input truth table. Raw record addresses can overlap executing code,
 so relocation must precede capture. The reduced LAST-only layout is short by
 8,432 cells before adding the remaining query, selector and metadata. This is
 a deficit for that construction, not an impossibility bound. See
-[the latest controls](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09).
+[the latest controls](proofs/malbolge-scaling.md#native-bootstrap-progress-2026-10-11).
 The shipped cap remains sixteen.
 
 Vandevelo's fixed sparse-candidate cap forces Ω(T log n) emitted characters
