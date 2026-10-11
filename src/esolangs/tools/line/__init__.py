@@ -15,6 +15,8 @@ and re-enter its zero arm. Reads and the tape footprint stay unchanged.
 Projected loaders store only essential inputs: ignored reads overwrite the
 next kept slot, or one spare slot after the last kept input. Projected trees
 and ancestor returns compete by emitted area, including balanced layouts.
+Descending residual stems also share forward joins: the saved loader rewind
+pays for join transitions, and their measured area must beat the tree.
 """
 
 from __future__ import annotations
@@ -154,6 +156,7 @@ def _grey_rows(canvas: Canvas) -> Rows:
 @lru_cache(maxsize=8)
 def _generate(truth_table: str) -> Raster:
     """Return a Line raster computing ``truth_table``."""
+    from .forward import forward_canvas
     from .shared import shared_canvas, shared_tree
 
     node = line_boolean(truth_table)
@@ -197,6 +200,9 @@ def _generate(truth_table: str) -> Raster:
             smallest = draw.area
             selected_draw = draw
             node = graph
+    forward = forward_canvas(truth_table, smallest)
+    if forward is not None:
+        node, selected_draw = forward
     if selected_draw is not None:
         return lazy_raster(lambda: _grey_rows(selected_draw()), node)
     if canvas is not None:

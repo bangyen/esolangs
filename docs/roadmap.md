@@ -12,16 +12,15 @@ Close each gap with a named construction and native execution, or an
 exemption supported by a structural proof or the measured criterion in
 [Contributing](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
-- **Line:** exempt (measured). The canonical share is present (`shared_tree`),
-  but the measured 40.3% is same-level duplication an ancestor return cannot
-  express: every share must re-descend a *test-free* arm. The structured
-  cases that dominate that measure carry no reachable fork at all -- parity
-  repeats 240 of 255 nodes at n=8, majority 105, and neither has a fork whose
-  test-free arm reaches a recurring residual. On random n=5..8 no generated
-  program emits a loop-back, though reachable fork candidates exist (854 over
-  200 n=7 tables), so the wall is return overhead and layout: a second return
-  target needs bus routing Line's crossing-free strokes forbid. Controls in
-  `tests/generators/test_boolean_line_share_scope.py`.
+- **Line:** forward residual stems now share same-level duplicates within
+  the existing 5n command and workspace bounds. Descending tests save the
+  loader rewind, paying for joins. Parity at n=8 occupies 15,132,000 pixels
+  at scale 1 against the tree's 17,472,000; all 256 rows execute natively.
+  Dense tables and majority still keep the smaller tree: the layered bus
+  is area-admitted, not a linear-area sharing construction. The measured
+  40.3% repeated-subtree upside remains open. Controls in
+  `tests/tools/test_boolean_line_forward.py` and
+  `tests/tools/test_boolean_line_share_scope.py`.
 - **Circuit Diagram:** wall (measured). The cofactor-sharing bus fold is
   area-smaller than the H-layout but not linear-area. Its node-count cutoff
   (`nodes**2 <= 4*T`) rejects the dense n=8 fold (75 nodes) although the

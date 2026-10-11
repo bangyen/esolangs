@@ -1,16 +1,4 @@
-"""Line's ancestor returns miss the screen's repeated-subtree upside.
-
-The sharing catalogue weights repeated
-non-constant subtables at 40.3% of Line's n=5 emitted area.  Line has one
-share: an ancestor return that re-descends a *test-free* arm -- a fork whose
-one arm is a chain of equal-halves nodes to a residual that recurs in the
-other arm at the matching depth.  These controls pin that the mechanism
-reaches none of the screen's structured dominance, and that no return
-survives into a generated program on random tables even though reachable
-fork candidates exist: the residual gap is a layout wall -- same-level
-duplicates need bus routing Line's crossing-free strokes forbid -- not a
-better pick among one residual's occurrences.
-"""
+"""Ancestor-return scope and area admission for forward residual joins."""
 
 from __future__ import annotations
 
@@ -88,7 +76,7 @@ def _reachable_forks(table: str) -> int:
 
 
 class TestLineReturnScope:
-    """The screen's structured cases and random tables carry no usable share."""
+    """Forward joins extend the ancestor mechanism's structured scope."""
 
     def test_parity_and_majority_have_no_reachable_fork(self) -> None:
         """No fork at all can re-descend to the nodes these tables repeat."""
@@ -98,12 +86,15 @@ class TestLineReturnScope:
                 assert _reachable_forks(table) == 0, (build.__name__, n)
                 assert shared_tree(table, multiple=True) is None, (build.__name__, n)
 
-    def test_parity_and_majority_generate_no_return(self) -> None:
-        """The shipped generator emits no loop-back for either family."""
+    def test_forward_joins_admit_parity_beyond_ancestor_return_scope(self) -> None:
+        """Forward parity joins pay at n=7; majority keeps its smaller tree."""
         for build in (parity, _majority):
             for n in range(5, 9):
                 payload = esolangs.generate("Line", build(n))._payload  # noqa: SLF001
-                assert not _has_goto(payload), (build.__name__, n)
+                assert _has_goto(payload) == (build is parity and n >= 7), (
+                    build.__name__,
+                    n,
+                )
 
     @pytest.mark.medium  # 1.6s: 800 generated graphs
     def test_random_tables_generate_no_return(self) -> None:
