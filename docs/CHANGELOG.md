@@ -5,6 +5,15 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 0.11.0
+
+- Keep public API exports and signatures unchanged; internal import paths changed.
+- Flatten interpreter and generator modules by language; group the CLI into a package.
+- Improve generator constructions and raster layouts, including Vandevelo fallback work.
+- Preserve caller alarm deadlines during bounded execution and compact isolated raster transport.
+- Consolidate language metadata and reorganize tests and developer tooling.
+- Move release history and the complete language catalog into `docs/`.
+
 ## 0.10.0
 
 Covers everything since 0.8.0, including 0.9.1, which shipped without notes.
