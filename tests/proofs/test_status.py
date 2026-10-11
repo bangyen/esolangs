@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import proof_status as status
+from scripts.docs import proof_status as status
 
 
 def test_rendering_preserves_committed_tables(

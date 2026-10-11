@@ -26,7 +26,7 @@ Judgment calls for what the page leaves open:
   rewritten current codel changes its own block, and one written black
   halts the run (the page gives no way off a black codel).
 - A codel is one pixel ("a block of color equivalent to a single pixel")
-  of the codel grid; like Piet, the grid's scale is detected when omitted
+  of the codel grid; the grid's scale is detected when omitted
   (so enlarged images such as ``generate(..., scale=2)`` read correctly),
   and an explicit ``scale`` overrides detection.
 - Add with a stack keeps stack order: an integer above a stack goes on its

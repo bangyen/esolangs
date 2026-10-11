@@ -7,7 +7,7 @@ module imports nothing from the package, so any generator can import it.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
@@ -17,7 +17,7 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
 
 # ``generator(truth_table)`` returns a program computing it; the few that lay
-# out two dimensions (LaserFuck) also take a ``width``, hence ``...``.
+# out two dimensions also take a ``width``, hence ``...``.
 Generator = Callable[..., Program]
 Payload = tuple[tuple[int, ...], tuple[int, ...], int, int]
 
@@ -57,7 +57,7 @@ class Example:
     expected_compared: bool = True
     kwargs: tuple[tuple[str, int], ...] = ()
     scale: int = 1
-    #: Whether text is unfilled, where ``char`` is also source (``///``).
+    #: Whether text is unfilled, where ``char`` is also source.
     unfilled: Callable[[str], bool] | None = None
     #: Building it balanced is a medium-length run.
     slow_build: bool = False
@@ -76,7 +76,7 @@ class Language:
     # Source: ``split`` passes ``run()`` one string per line; ``extra`` is
     # the optional-dependency group its interpreter needs (``math``).
     split: bool = False
-    #: Source that looks like a file path is still source (``///`` rules).
+    #: Source that looks like a file path is still source.
     path_like_source: bool = False
     source_kind: SourceKind = SourceKind.TEXT
     extra: str = ""
@@ -91,6 +91,8 @@ class Language:
     documented_sizes: tuple[int, int, float] | None = None
     #: Validates ``DialectSettings``: one defaulted keyword per setting.
     dialect: Callable[..., Any] | None = None
+    #: Valid values per dialect setting, for the ``describe`` schema.
+    dialect_values: Mapping[str, tuple[int | str, ...]] | None = None
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
     wrap: Callable[[str, int], str] | None = None

@@ -8,10 +8,10 @@ import pytest
 import esolangs
 from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
-from tests.generator_support import assert_an_ignored_input_costs
+from tests.support.generator_support import assert_an_ignored_input_costs
+from tests.support.witness_tables import row_bits, witnesses
 from tests.tools.boolean_runners import run_container
 from tests.tools.sample_tables import five_input_sample
-from tests.witness_tables import row_bits, witnesses
 
 
 def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:

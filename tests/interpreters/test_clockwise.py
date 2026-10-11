@@ -10,7 +10,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_lines
-from tests.raises import raises_message
+from tests.support.raises import raises_message
 
 run_and_capture = run_lines(run)
 

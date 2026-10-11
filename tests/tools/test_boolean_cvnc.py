@@ -12,11 +12,11 @@ from esolangs.tools.cvnc import (
     _halt,
 )
 from esolangs.tools.helpers import in_input_order
+from tests.support.witness_tables import witnesses
 from tests.tools.boolean_runners import (
     run_cvnc,
 )
 from tests.tools.sample_tables import five_input_sample
-from tests.witness_tables import witnesses
 
 
 def _leaves(program: str) -> int:

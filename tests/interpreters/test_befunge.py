@@ -8,7 +8,7 @@ from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Seeded
 from esolangs.vm import run_until_halt
 from tests.interpreters.runner import run_program
-from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
+from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 
 def run_befunge(program: str, stdin: str = "", rng: object = None) -> str:

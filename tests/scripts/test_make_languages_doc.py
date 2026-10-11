@@ -7,12 +7,12 @@ from typing import Any
 
 import pytest
 
-from tests.pick import one
+from tests.reference import REFERENCE
 from tests.scripts.script_support import load
-from tests.test_language_coupling import REFERENCE
+from tests.support.pick import one
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "generate_docs.py"
+SCRIPT = REPO_ROOT / "scripts" / "docs" / "generate.py"
 README = REPO_ROOT / "README.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
 LIMITATIONS = REPO_ROOT / "docs" / "limitations.md"
@@ -126,7 +126,7 @@ def test_main_updates_all_registry_derived_docs(
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((REPO_ROOT / relative).read_bytes())
-    assert module.main(output_root=tmp_path) == 0
+    assert module.docs_main(output_root=tmp_path) == 0
     assert called == ["readme", "usage", "limitations", "contributing", "request"]
     assert "language request template" in capsys.readouterr().out
 
@@ -215,8 +215,7 @@ def test_documentation_check_preserves_source_files(
     *,
     stale: bool,
 ) -> None:
-    monkeypatch.syspath_prepend(str(REPO_ROOT / "scripts"))
-    import check_generated_docs
+    from checks import check_generated_docs
 
     for relative in check_generated_docs.GENERATED:
         target = tmp_path / relative
@@ -246,4 +245,4 @@ def test_documentation_check_preserves_source_files(
         for relative in check_generated_docs.GENERATED
     } == before
     error = capsys.readouterr().err
-    assert ("run python scripts/generate.py docs: README.md" in error) == stale
+    assert ("run python scripts/docs/generate.py docs: README.md" in error) == stale

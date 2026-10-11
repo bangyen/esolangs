@@ -1,0 +1,52 @@
+"""Admission routes, and API and VM integration for the interpreter-only three."""
+
+import tomllib
+from pathlib import Path
+
+import pytest
+
+import esolangs
+from esolangs.registry import LANGUAGES
+from esolangs.vm import make_vm
+from tests.support.generator_support import CHECK
+from tests.support.pick import languages
+from tests.support.samples import SAMPLES
+
+_CENSUS = tomllib.loads(
+    (Path(__file__).parents[1] / "fixtures/curation.toml").read_text(encoding="utf-8")
+)["languages"]
+
+
+def test_every_language_was_admitted_by_a_recorded_route() -> None:
+    """Fame is 60 backlinks; below that, a first implementation or one of six."""
+    unrecorded = sorted(set(LANGUAGES) - set(_CENSUS))
+    assert not unrecorded, f"no admission record for {unrecorded}; {CHECK}"
+    stale = sorted(set(_CENSUS) - set(LANGUAGES))
+    assert not stale, f"remove {stale} from tests/fixtures/curation.toml"
+    for name, row in _CENSUS.items():
+        if row["route"] == "unassessed":
+            continue  # offline; `finish` asks for the count before merging
+        assert (row["route"] == "fame") == (row["backlinks"] >= 60), name
+        assert row["route"] in {"fame", "first implementation", "grandfathered"}
+    grandfathered = {
+        name for name, row in _CENSUS.items() if row["route"] == "grandfathered"
+    }
+    # Closed: a new language takes "fame" or "first implementation".
+    assert grandfathered <= {"123", "BF-PDA", "BIO", "Jaune", "NoComment", "Sophie"}
+
+
+@pytest.mark.parametrize("language", languages(boolean_generator=False))
+def test_api_and_vm(language: str) -> None:
+    code, stdin = SAMPLES[language]
+    output = esolangs.run(language, code, stdin=stdin)
+    vm = make_vm(language, code, stdin=stdin)
+    while not vm.halted:
+        hash(vm.snapshot())
+        vm.step()
+    assert vm.output == output
+    final = vm.snapshot()
+    vm.step()
+    assert vm.snapshot() == final
+    assert esolangs.describe(language)["boolean_generator"] is False
+    with pytest.raises(ValueError, match="no boolean generator"):
+        esolangs.generate(language, "01")

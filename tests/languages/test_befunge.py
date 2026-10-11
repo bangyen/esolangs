@@ -6,8 +6,8 @@ from typing import Any
 import pytest
 
 import esolangs
-from tests.cli_support import _failure
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
+from tests.support.cli_support import _failure
 
 
 def test_generator_cap_hint_reaches_cli(capsys):

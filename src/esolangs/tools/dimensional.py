@@ -41,7 +41,18 @@ def dimensional(truth_table: str, width: int | None = None) -> str:
     inputs arrive one per line and the answer prints as a digit. Width one
     paints leaf coordinates through two inputs; larger tables retain the index.
     """
+    return _program(truth_table, width)
+
+
+def _program(
+    truth_table: str, width: int | None = None, *, keep_constant_layout: bool = False
+) -> str:
+    """Build an indexed lookup or read into scratch and print a fresh literal."""
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1 and not keep_constant_layout:
+        move = "[-]+++>" if width == 1 and n <= 2 else f">{_PLANE}"
+        constant = "d" * n + move + "+" * (_ASCII_ZERO + int(truth_table[0])) + "."
+        return wrap_program(constant, "dimensional", width)
     if width == 1 and n <= 2:
         return wrap_program(_dimensional_bare(truth_table, n), "dimensional", width)
     # An ignored input is a bare ``d``: the next read overwrites its byte.
@@ -150,10 +161,25 @@ def _dimensional_bare(table: str, n: int) -> str:
 
 def _balance(table: str, default: str) -> str:
     """Balance index tokens above width one and compare bare leaf coordinates."""
+    if len(set(table)) == 1:
+        legacy = _program(table, keep_constant_layout=True)
+        return min(
+            _balanced(table, default),
+            _balanced(table, legacy, keep_constant_layout=True),
+            key=balance_score,
+        )
+    return _balanced(table, default)
+
+
+def _balanced(table: str, default: str, *, keep_constant_layout: bool = False) -> str:
+    """Compare the token-balanced and one-column layouts of one construction."""
     tokens = re.findall(_DIMENSIONAL_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
     return min(
-        default, dimensional(table, width), dimensional(table, 1), key=balance_score
+        default,
+        _program(table, width, keep_constant_layout=keep_constant_layout),
+        _program(table, 1, keep_constant_layout=keep_constant_layout),
+        key=balance_score,
     )
 
 

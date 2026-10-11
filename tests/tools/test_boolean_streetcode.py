@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.tools.wrap import balance_score
-from tests.generator_support import evaluate_generated
+from tests.support.generator_support import evaluate_generated
 
 
 @pytest.mark.medium

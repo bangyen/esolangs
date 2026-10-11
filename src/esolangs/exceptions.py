@@ -147,7 +147,7 @@ class InputExhaustedError(EsolangError, EOFError):
 class GeneratorCapError(EsolangError, ValueError):
     """A boolean generator refusing a table that is too big for it.
 
-    Polynomial (primes).  Still a
+    a prime-based generator.  Still a
     :class:`ValueError`.  The caps are not arity-bounded, which is why
     ``describe`` carries no maximum arity.
     """
@@ -156,5 +156,5 @@ class GeneratorCapError(EsolangError, ValueError):
 class InterpreterLimitError(HaltError):
     """An interpreter hit an implementation limit running a program.
 
-    The program is well formed (Qoibl's recursion); distinct from a generator's cap.
+    The program is well formed (a recursion); distinct from a generator's cap.
     """

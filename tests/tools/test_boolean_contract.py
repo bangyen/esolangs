@@ -16,9 +16,9 @@ from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
 from esolangs.registry._language import Shape
 from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import _BranchingStepMachine, run_until_halt, run_until_halt_or_cycle
-from tests.generator_support import evaluate_generated
-from tests.source_support import source_units
-from tests.witness_tables import dense, parity, row_bits
+from tests.support.generator_support import evaluate_generated
+from tests.support.source_support import source_units
+from tests.support.witness_tables import dense, parity, row_bits
 
 # Every sweep here runs an interpreter over a generated program -- the whole
 # file is the execution gate -- so the module is `medium` and the inner loop

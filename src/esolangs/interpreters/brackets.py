@@ -3,9 +3,9 @@
 Every interpreter that rejects an unbalanced program statically raises
 ``unmatched '<char>' at position <i>`` as a :class:`ValueError`, spelled
 once here; the glyphs are a parameter (``[]``, ``l``, ``{}``).  Not used
-by run-time scanners (Circlefuck, bit~), which have no position to name,
-nor by languages where an unmatched bracket is legal (Painfuck, Rotfuck,
-Unsquare).  Token-level matchers (BIO, CVNC, Taglate) differ in opener,
+by run-time scanners, which have no position to name,
+nor by languages where an unmatched bracket is legal.  Token-level
+matchers differ in opener,
 closer, return shape and error, so each spells its six-line stack loop
 itself; all build a table once at load, never a scan per jump.
 """

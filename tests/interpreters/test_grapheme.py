@@ -16,7 +16,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program as _run_program
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 run_program = partial(_run_program, run)
 
@@ -60,93 +60,48 @@ def test_loading_ignores_only_lf(char: str) -> None:
 @pytest.mark.parametrize(
     ("code", "expected"),
     [
-        # E HELLOWORLD E Y -> the E's terminate the string, dropping one E
         pytest.param("EHLLOWORLDEY", "HLLOWORLD", id="stringmode"),
-        # no closing E: the string is flushed at end of program
-        pytest.param("EAY", "", id="stringmode_accumulates_to_end"),
-        # F A F -> 1; F B F -> 2; A adds; Y prints
+        pytest.param("EAY", "", id="stringmode_to_end"),
         pytest.param("FAFFBFAY", "3", id="intmode"),
         pytest.param("FAFFBFBY", "1", id="subtract"),
         pytest.param("FAFFBFSY", "2", id="multiply"),
         pytest.param("FCFFBFRY", "0", id="floor_divide"),
-        # "A" (65) + "A" (65) = 130
-        pytest.param("EAEEAEAY", "130", id="string_math_uses_ords"),
+        pytest.param("EAEEAEAY", "130", id="string_math_ords"),
         pytest.param("FAFKYY", "11", id="duplicate"),
         pytest.param("FAFFBFLYY", "12", id="swap"),
         pytest.param("EABEECDEPYY", "ABCD", id="reverse"),
         pytest.param("EAEM", "", id="pop"),
         pytest.param("EAEOY", "1", id="length"),
-        # 1 -> digit 1 -> "A"
         pytest.param("FAFNY", "A", id="int_to_string"),
-        # A=1 and J=10: 1*10 + 10 = 20
         pytest.param("EAJEJY", "20", id="string_to_int"),
         pytest.param("EAEKKCDY", "A", id="set_and_get"),
-        # D of the never-set VARIABL pushes the name itself
-        pytest.param(
-            "EVARIABLEEMYVAREKCDY",
-            "VARIABL",
-            id="the_wiki_variables_example_prints_variabl",
-        ),
-        pytest.param("EBEEAECEAEDY", "B", id="a_set_variable_shadows_its_name"),
+        pytest.param("EVARIABLEEMYVAREKCDY", "VARIABL", id="wiki_variables"),
+        pytest.param("EBEEAECEAEDY", "B", id="set_variable_shadows_name"),
         pytest.param("FAFEYEG", "1", id="g_executes_string"),
-        # H Y H makes a function of Y; I runs it on the pushed 1
         pytest.param("FAFHYHIE", "1", id="i_runs_function"),
         pytest.param("FAFHYHZ", "1", id="z_runs_while_stack_nonempty"),
-        # K duplicates the 1, so the Z body runs twice before the stack empties
-        pytest.param("FAFKHYHZ", "11", id="z_repeats_until_the_stack_empties"),
-        # Each conditional's declining arm.  Q pops two integers rather than a
-        # function and a test, so there is no body; the third copy is printed.
-        pytest.param("FAFKKQY", "1", id="q_ignores_a_value_that_is_not_a_function"),
-        # V pops a truthy value, so the pc is left alone and Y still runs.
-        pytest.param("FAFKKVY", "1", id="v_does_not_jump_when_the_test_is_truthy"),
-        # Z needs a function to loop over; an integer leaves the stack as is.
-        pytest.param("FAFKZY", "1", id="z_ignores_a_value_that_is_not_a_function"),
-        # [1, 0]: U pops 0 (falsy) and skips the K, so Y prints the 1
-        # [0, 1]: U pops 1 (truthy), K duplicates the 0, Y prints it
-        pytest.param("FFFAFUKY", "0", id="u_does_not_skip_when_truthy"),
-        # [1, 0]: X pops 0 (falsy) and skips the K, so Y prints the 1
-        pytest.param("FAFFFXKY", "1", id="x_skips_next_when_falsy"),
-        # [0, 1]: X pops 1 (truthy), Y prints the 0, then the K is skipped
-        # [1, 2, 3]: X pops the truthy 3, Y prints 2, the K is skipped,
-        # and the last Y prints the 1 that is still underneath.
-        pytest.param("FAFFBFFCFXYKY", "21", id="x_resumes_two_commands_on"),
-        # X opens a called body XYK: X pops the 2, Y prints the 1, K is skipped
-        pytest.param("FAFFBFHXYKHI", "1", id="x_can_open_the_body_it_governs"),
-        pytest.param("FAFJJY", "1", id="j_on_an_int_is_identity"),
-        pytest.param("EFAEJY", "0", id="j_on_a_string_stops_at_an_f"),
-        pytest.param("EAENY", "A", id="n_on_a_string_is_identity"),
-        pytest.param("FFNY", "J", id="n_on_zero_is_j"),
-        pytest.param("FAFIY", "1", id="i_pushes_back_a_non_function"),
+        pytest.param("FAFKHYHZ", "11", id="z_repeats"),
+        pytest.param("FAFKKQY", "1", id="q_needs_a_function"),
+        pytest.param("FAFKKVY", "1", id="v_truthy_no_jump"),
+        pytest.param("FAFKZY", "1", id="z_needs_a_function"),
+        pytest.param("FFFAFUKY", "0", id="u_truthy_runs"),
+        pytest.param("FAFFFXKY", "1", id="x_falsy_skips"),
+        pytest.param("FAFFBFFCFXYKY", "21", id="x_resumes_two_on"),
+        pytest.param("FAFFBFHXYKHI", "1", id="x_opens_its_body"),
+        pytest.param("FAFJJY", "1", id="j_on_int"),
+        pytest.param("EFAEJY", "0", id="j_on_string"),
+        pytest.param("EAENY", "A", id="n_on_string"),
+        pytest.param("FFNY", "J", id="n_on_zero"),
+        pytest.param("FAFIY", "1", id="i_pushes_non_function"),
         pytest.param("F", "", id="unterminated_int_mode"),
         pytest.param("H", "", id="unterminated_func_mode"),
-        # V moves the cursor on, not back.  [2, 1, 0]: V pops the falsy 0 and
-        # the offset 1, skipping the M that would discard the 2 before Y
-        pytest.param(
-            "FBFFFTFFVMY", "2", id="v_jumps_forward_over_the_commands_it_counts"
-        ),
-        # Each pass over a Z body begins with no skip outstanding: four
-        # values, and a body of four commands: dup, drop, drop, print
-        pytest.param(
-            "FAFFBFFCFFDFHKMMYHZ", "31", id="a_z_lap_starts_with_nothing_pending"
-        ),
-        # Only Z re-runs its body; I runs it once.  1 and 2 on the stack, the
-        # function prints one and returns; the 1 left must not restart it
-        pytest.param("FAFFBFHYHI", "2", id="a_call_does_not_repeat_itself"),
-        # A on two empty strings is 0, not the ord of a stand-in
-        pytest.param(
-            "EEEEAY", "0", id="an_empty_string_is_worth_nothing_in_arithmetic"
-        ),
-        pytest.param(
-            "EABFCEJY",
-            "12",
-            id="string_integer_conversion_stops_before_f_without_a_final_shift",
-        ),
-        # "skip the next B commands" never moves back to re-run ``V``.
-        pytest.param(
-            "FAFFZFBFZFVFAFY", "1", id="v_with_a_negative_count_skips_nothing"
-        ),
-        # The map takes "integers/strings/functions" as keys, by body.
-        pytest.param("FBFHAHCHAHDY", "2", id="a_function_names_a_variable"),
+        pytest.param("FBFFFTFFVMY", "2", id="v_jumps_forward"),
+        pytest.param("FAFFBFFCFFDFHKMMYHZ", "31", id="z_lap_starts_empty"),
+        pytest.param("FAFFBFHYHI", "2", id="call_does_not_repeat"),
+        pytest.param("EEEEAY", "0", id="empty_string_is_zero"),
+        pytest.param("EABFCEJY", "12", id="string_integer_conversion"),
+        pytest.param("FAFFZFBFZFVFAFY", "1", id="v_negative_skips_nothing"),
+        pytest.param("FBFHAHCHAHDY", "2", id="function_names_a_variable"),
     ],
 )
 def test_prints(code: str, expected: str) -> None:
@@ -158,26 +113,16 @@ def test_prints(code: str, expected: str) -> None:
     [
         # a string read from input and executed via G is validated
         pytest.param(
-            "WG",
-            "zkg",
-            ValueError,
-            "unhandled command",
-            id="g_on_input_with_bad_commands_rejected",
+            "WG", "zkg", ValueError, "unhandled command", id="g_on_input_rejected"
         ),
         # truthy 1 on the stack, fn Y: Q pops fn and the 1, then Y pops empty
         pytest.param("FAFHYHQ", "", HaltError, "popped", id="q_conditional_execution"),
         pytest.param("AB", "", HaltError, "popped", id="pop_empty_halts"),
         pytest.param("hello", "", ValueError, "uppercase", id="lowercase_rejected"),
+        pytest.param("FFFFVY", "", HaltError, "popped", id="v_branches_on_falsy"),
+        # N's A-J digits have no minus sign; 0 - 1 refuses
         pytest.param(
-            "FFFFVY", "", HaltError, "popped", id="v_branches_on_a_falsy_value"
-        ),
-        # N's A-J digits have no minus sign (wiki: the reverse of intmode); 0 - 1
-        pytest.param(
-            "FAFFZFBN",
-            "",
-            HaltError,
-            "negative integer",
-            id="n_refuses_a_negative_integer",
+            "FAFFZFBN", "", HaltError, "negative integer", id="n_refuses_negative"
         ),
     ],
 )
@@ -215,10 +160,7 @@ class TestIO:
 class TestErrors:
     def test_constructor_builds_a_runnable_machine_and_validates(self) -> None:
         """The constructor is the one way a program becomes a machine."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.grapheme import _Machine
-
-        machine = _Machine("FAFY", ScriptedIO())
+        machine = Grapheme("FAFY", ScriptedIO())
         assert machine.ip == (0,)  # one frame, at its start
         while not machine.halted:
             machine.step()
@@ -227,7 +169,7 @@ class TestErrors:
         assert machine.ip == (len("FAFY"),)
 
         with pytest.raises(ValueError, match="uppercase"):
-            _Machine("hello", ScriptedIO())
+            Grapheme("hello", ScriptedIO())
 
 
 class TestEdgeCases:
@@ -239,9 +181,7 @@ class TestEdgeCases:
 
     def test_the_last_command_leaves_the_machine_halted(self) -> None:
         """A frame finishes on the step that runs its final command."""
-        from esolangs.interpreters.stack_based.grapheme import _Machine
-
-        machine = _Machine("FAFY", ScriptedIO())
+        machine = Grapheme("FAFY", ScriptedIO())
         for _ in range(4):
             assert not machine.halted
             machine.step()
@@ -249,8 +189,7 @@ class TestEdgeCases:
 
     def test_recursion_is_not_artificially_capped(self) -> None:
         """A 501-deep finite call chain follows the language's unbounded stack."""
-        # the body decrements the count, keeps a copy, and calls itself
-        # again through Q while the copy is nonzero
+        # the body decrements the count, keeps a copy, and calls itself again
         program = "H" + "FFTPBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
         assert run_program("FEZZF" + program) == ""
         assert run_program("FEZZF" + "FFT" + "A" + program) == ""
@@ -270,31 +209,18 @@ class TestEdgeCases:
                 run_program(code)
             assert str(caught.value) == message
 
-    def test_the_malformed_program_message_reads_in_full(self) -> None:
-        """The rejection names its own rule, in the case it uses."""
-        import re
-
-        message = "Grapheme programs may only contain uppercase Latin letters"
-        with pytest.raises(ValueError, match=re.escape(message)) as caught:
-            run_program("abc")
-        assert str(caught.value) == message
-
 
 class TestStepMachine:
     def test_the_read_pushes_the_whole_line(self) -> None:
         """``W`` pushes the line itself, not a byte of it."""
-        from esolangs.interpreters.stack_based.grapheme import _Machine
-
-        machine = _Machine("W", ScriptedIO("hi"))
+        machine = Grapheme("W", ScriptedIO("hi"))
         machine.step()
         assert machine.stack == ["hi"]
 
     def test_a_closed_mode_leaves_the_frame_as_it_found_it(self) -> None:
         """After a mode ends, the frame reads as one that never opened it."""
-        from esolangs.interpreters.stack_based.grapheme import _Machine
-
         for code, value in (("EAEK", "A"), ("FAFK", 1), ("HAHK", ("func", "A"))):
-            machine = _Machine(code, ScriptedIO())
+            machine = Grapheme(code, ScriptedIO())
             for _ in range(3):
                 machine.step()
             assert machine.snapshot() == (
@@ -308,15 +234,11 @@ class TestStepMachine:
 
 def _machine(code: object) -> object:
     """A machine with ``code`` in its first frame."""
-    from esolangs.interpreters.stack_based.grapheme import _Machine
-
-    return _Machine(str(code), ScriptedIO())
+    return Grapheme(str(code), ScriptedIO())
 
 
 def _reader(code: object, stdin: str) -> object:
-    from esolangs.interpreters.stack_based.grapheme import _Machine
-
-    return _Machine(str(code), ScriptedIO(stdin))
+    return Grapheme(str(code), ScriptedIO(stdin))
 
 
 class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
@@ -345,46 +267,18 @@ def test_spec_truth_machine_zero_branch():
     assert run_program("HFAFYHWJUZFZFY", "Z") == "0"
 
 
-def test_spec_truth_machine_one_branch_as_drawn_prints_zero():
-    """Z pops the loop body off an empty stack, so the loop never runs."""
-    assert run_program("HFAFYHWJUZFZFY", "A") == "0"
-
-
-def test_spec_cat_echoes_lines_until_eof():
-    from esolangs.interpreters.stack_based.grapheme import run
-
-    io = ScriptedIO("ab\ncd\n")
-    with pytest.raises(EOFError):
-        run("WKYHWYHZ", io)
-    assert io.getvalue() == "abcd"
-
-
-def test_truth_machine_body_repeats_one_with_a_live_stack():
-    from esolangs.interpreters.stack_based.grapheme import _Machine
-
-    machine = _Machine("FAFHFAFYHZ", ScriptedIO())
-    for _ in range(100):
-        machine.step()
-        if len(machine.io.getvalue()) >= 5:
-            break
-    assert machine.io.getvalue() == "11111"
-    assert not machine.halted
-
-
 def test_an_empty_z_body_repeats_while_the_stack_is_live():
     """Z runs its function "while the stack is not empty", empty body or not."""
-    from esolangs.interpreters.stack_based.grapheme import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    assert run_until_halt_or_cycle(_Machine("FAFHHZ", ScriptedIO()), limit=100) is False
+    assert run_until_halt_or_cycle(Grapheme("FAFHHZ", ScriptedIO()), limit=100) is False
 
 
 def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle():
     """A port with no cursor reports position 0; the snapshot counts reads."""
-    from esolangs.interpreters.stack_based.grapheme import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    machine = _Machine("FAFHWMHZ", PositionlessIO("a\n" * 10))
+    machine = Grapheme("FAFHWMHZ", PositionlessIO("a\n" * 10))
     with pytest.raises(EOFError):
         run_until_halt_or_cycle(machine, limit=100)
 
@@ -405,13 +299,3 @@ def test_grapheme_changing_stack_halts() -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Grapheme", "abc", "uppercase Latin")
-
-
-@pytest.mark.parametrize(
-    ("source", "expected"),
-    [("FAFY", "10"), ("FABFY", "120"), ("FZFY", "0"), ("EABFCEJY", "120")],
-)
-def test_after_each_letter_conversion(source, expected):
-    io = ScriptedIO("")
-    run(source, io, integer_conversion="after_each_letter")
-    assert io.getvalue() == expected

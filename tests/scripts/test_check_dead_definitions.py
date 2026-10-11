@@ -6,7 +6,7 @@ from typing import Any
 from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "check_dead_definitions.py"
+SCRIPT = REPO_ROOT / "checks" / "check_dead_definitions.py"
 
 
 def load_script() -> Any:

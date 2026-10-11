@@ -11,7 +11,7 @@ import pytest
 from _pytest.reports import TestReport
 from coverage.collector import Collector
 
-from tests.duration_policy import evidence_violation, hard_ceiling, violation
+from tests.support.duration_policy import evidence_violation, hard_ceiling, violation
 
 
 def _reject_stale_install() -> None:

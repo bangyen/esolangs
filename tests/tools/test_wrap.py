@@ -25,9 +25,9 @@ from esolangs.tools.wrap import (
     wrap_space_delimited,
     wrap_tokens,
 )
-from tests.divergence import diverges, terminates
-from tests.generator_support import CHECK
-from tests.witness_tables import parity
+from tests.support.divergence import diverges, terminates
+from tests.support.generator_support import CHECK
+from tests.support.witness_tables import parity
 
 # Every boolean generator can build two-input XOR.
 TABLE = "0110"
@@ -187,7 +187,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
         plain = example.build(width)
         wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
         if name == "Packlang":
-            from esolangs.interpreters.other._packlang_lex import _tokenize
+            from esolangs.interpreters.other.packlang._lex import _tokenize
 
             assert _tokenize(wrapped) == _tokenize(plain)
         elif name in {"FRACTRAN", "RAM0"}:

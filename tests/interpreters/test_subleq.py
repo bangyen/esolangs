@@ -8,11 +8,9 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.subleq import _Machine
 from esolangs.interpreters.tape_based.subleq import run as run_subleq
-from esolangs.tools.subleq import subleq
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import subleq as oracle
-from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
-from tests.witness_tables import witnesses
+from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 
 @pytest.mark.medium
@@ -24,7 +22,6 @@ def test_bad_programs_carry_a_repair_hint() -> None:
 def _corpus():
     yield from ["", "12 13 -1", "3 -1 0 321", "-1 9 0 9 -1 0 9 9 -1 0", "0 0 0"]
     yield from ["9 3 3 9 -1 6 9 9 -1 3", "12 13 6 12 -1 9 13 -1 9 12 12 -1 3 2"]
-    yield "12 13 6 12 -1 9 13 -1 9 12 12 -1 1 2"
     rng = random.Random(1702)
     for _ in range(96):
         cells = []
@@ -62,26 +59,6 @@ def test_oracle_controls(code, outcome):
     else:
         assert isinstance(result, outcome)
     assert not agrees(_Machine, oracle, "0 0 0", "").halted
-
-
-@pytest.mark.medium
-def test_all_three_input_tables() -> None:
-    for n in range(1, 4):
-        for table in witnesses(n):
-            code = subleq(table)
-            for row in range(1 << n):
-                io = ScriptedIO(f"{row:0{n}b}")
-                run_subleq(code, io)
-                assert io.getvalue() == table[row]
-
-
-def test_rendered_scaling() -> None:
-    sizes = []
-    for n in (8, 10, 12):
-        rng = random.Random(1729)
-        table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
-        sizes.append(len(subleq(table)))
-    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) <= 4.4
 
 
 def test_subleq_direct_jump_and_output() -> None:

@@ -5,7 +5,7 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.tools.helpers import _validate_truth_table
 from esolangs.tools.unlambda import unlambda
-from tests.generator_support import verify_generated
+from tests.support.generator_support import verify_generated
 from tests.tools.plain_oracles import separated_tree_text
 from tests.tools.reader_support import _read_answer, assert_emissions_grow_by_a_line
 from tests.tools.sample_tables import five_input_sample

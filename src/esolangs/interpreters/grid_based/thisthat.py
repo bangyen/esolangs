@@ -26,7 +26,7 @@ barriers. Readings the page leaves open, each forced by a wiki example:
   empty transfer.  An empty transfer into a data-mode ``◇`` prints nothing; it
   is the page's "flag", which skips the rest of the set and moves reads to the
   next.  The page says "switching to the next set of input" but not how sets
-  are separated; the Bitwise Cyclic Tag example needs two (program, data).
+  are separated; the shared example needs two (program, data).
 
 Malformed input, connections, or source
 raise :class:`~esolangs.exceptions.HaltError`. ``◘`` uses the shared randomness

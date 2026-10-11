@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.parametrize("width", [1, 40])

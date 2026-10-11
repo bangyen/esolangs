@@ -13,12 +13,12 @@ import esolangs
 from esolangs.debugger import make_vm
 from esolangs.tools.one_two_three.construction import _leftover
 from scripts.benchmark import WrittenState
-from tests.generator_support import CHECK
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import _dense, run_to_answer
-from tests.witness_tables import parity as _parity
-from tests.witness_tables import row_bits
+from tests.support.generator_support import CHECK
+from tests.support.witness_tables import parity as _parity
+from tests.support.witness_tables import row_bits
 
 
 def _taglate(n: int) -> int:
@@ -40,6 +40,8 @@ def _vandevelo(p: str) -> int:
 #: Formulas the ledger notation cannot state: a case split, a definition,
 #: a count taken from the program.
 _HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
+    # Every instruction runs once, then the EOF read stops the second pass.
+    "Suffolk": (lambda _, p: len(p) + p.index(",") + 1, True, (3, 6)),
     "Container": (lambda n, _: 2 * n + 2, True, (3, 7)),
     # Two passes of the whitespace-free program, the second proving the repeat.
     "A Painter Ant": (lambda _, p: 2 * len("".join(p.split())), True, (3, 6)),
@@ -167,7 +169,9 @@ _ARITIES: dict[str, tuple[int, ...]] = {
 
 #: Generator -> (formula, exact?, arities): the ledger's own clause where
 #: it parses (``tests/proofs/_formula.py``), else ``_HAND``.
-FORMULAS = ledger_formulas(lambda row: row.execution_clause, _HAND, _ARITIES)
+FORMULAS = ledger_formulas(
+    lambda row: row.execution_clause, _HAND, _ARITIES, column="execution"
+)
 
 
 def _seeded(n: int, seed: int) -> str:
@@ -223,8 +227,9 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     """Parity, dense, seeded, constants, AND, both alternations, NAND, ends."""
     width = 1 << n
     if name == "Circuit Diagram" and n >= 8:
-        # Its worst, the all-ones H-layout; a wide circuit parses in 0.7s.
-        return ("1" * width,)
+        # Seeded minterms retain the H worst; parity exercises the bounded
+        # shared fold, and constants now use only their clock gate.
+        return (_seeded(n, 1), _parity(n), "1" * width)
     if name == "Streetcode":
         # Its worst in both columns on all 10 tables checked to n = 7: all ones.
         return ("1" * width,)

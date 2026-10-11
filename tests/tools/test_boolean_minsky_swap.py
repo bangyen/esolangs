@@ -4,7 +4,7 @@ from itertools import pairwise
 
 import pytest
 
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 class TestParameterizedMinskySwap:

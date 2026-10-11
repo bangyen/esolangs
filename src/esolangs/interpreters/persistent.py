@@ -2,8 +2,8 @@
 
 A flat-tuple write ``(*cells[:i], v, *cells[i + 1:])`` copies the whole
 tape, and the boolean corpus writes Theta(T) times to Theta(T) cells, so
-execution grew Theta(T^2): BrainIf x2.5 per added input at nine inputs,
-LaserFuck x2.6, Jaune x2.5, RAM0 x2.5, against a linear x2.0.  Stored as
+execution grew Theta(T^2): x2.5 per added input at nine inputs for one
+language and x2.6/x2.5/x2.5 for three more, against a linear x2.0.  Stored as
 a tuple of fixed-size chunks, a write costs ``CHUNK + len(tape) / CHUNK``
 copies and every untouched chunk is the *same object*, which also makes
 Brent's snapshot equality compare by identity.

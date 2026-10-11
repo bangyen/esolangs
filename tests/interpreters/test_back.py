@@ -9,7 +9,7 @@ from esolangs.interpreters.tape_based.back import run
 from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_printing
-from tests.raises import raises_message
+from tests.support.raises import raises_message
 
 run_and_capture = partial(run_printing, run)
 

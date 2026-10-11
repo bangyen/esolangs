@@ -14,7 +14,7 @@ from esolangs.vm import (
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_lines
-from tests.raises import (
+from tests.support.raises import (
     assert_halts_with_hint,
     assert_rejected_with_hint,
     raises_message,

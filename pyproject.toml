@@ -1,7 +1,7 @@
 [build-system]
 # The SPDX-string `license` below is PEP 639, which setuptools implements
-# from 77.0; older versions reject it as invalid pyproject config.
-requires = ["setuptools>=77"]
+# from 77.0; pin the measured backend so rebuilding a tag uses the same tool.
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -55,9 +55,6 @@ dev = [
     "sympy>=1.12.0",
     "Pillow>=11.3.0",
     "z3-solver>=4.15.0",
-    # Was pinned to 3.3.1 against a class-method selection bug; 3.7.0 does not
-    # have it, and fixes one of its own.  See scripts/mutate.py.
-    "mutmut==3.8.0",
 ]
 
 [project.urls]
@@ -115,7 +112,7 @@ ignore = [
 "__init__.py" = ["F401"]
 # The leak sweep imports the package under test, so it has to extend
 # sys.path before those imports can resolve.
-"scripts/verify_no_exception_leaks.py" = ["E402"]
+"checks/verify_no_exception_leaks.py" = ["E402"]
 # Test files are exempt from docstring requirements: test method and class
 # names are self-documenting, so the D rules would only add boilerplate.
 "tests/**/*.py" = ["D", "N802"]
@@ -125,19 +122,19 @@ ignore = [
 # so on.  Here the confusable character is the correct one -- these rules
 # catch a homoglyph typed by mistake, and there is no non-IPA spelling to
 # prefer -- so they are off for the files that spell the language.  That
-# includes tests/samples.py, which is otherwise language-agnostic but
+# includes tests/support/samples.py, which is otherwise language-agnostic but
 # holds one CV(N)(C) program in its per-language table.
 "src/esolangs/interpreters/other/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "src/esolangs/tools/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/interpreters/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
-"tests/samples.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
+"tests/support/samples.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 strict = true
 python_version = "3.12"
 # scripts/ is CI infrastructure (the verification and installer checks), so
 # it is type-checked alongside the package itself.
-files = ["src", "scripts"]
+files = ["src", "scripts", "checks"]
 exclude = ["\\.venv/", "build/", "dist/"]
 warn_return_any = true
 warn_unused_configs = true
@@ -245,6 +242,7 @@ omit = [
     "*/env.bak/*",
     "*/venv.bak/*",
     "*/_template.py",
+    "*/__main__.py",
 ]
 
 [tool.coverage.report]

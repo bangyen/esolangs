@@ -10,7 +10,7 @@ from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run
 from tests.fixtures import grid
 from tests.interpreters.contract import SnapshotContract, StateViewContract
-from tests.raises import raises_message
+from tests.support.raises import raises_message
 
 HELLO_WORLD = grid("container/hello_world.txt")
 

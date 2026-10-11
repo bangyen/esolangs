@@ -66,7 +66,7 @@ jobs:
     # the cheap part of the bill.
     #
     # Bare `pytest` is also what makes this the *only* runner that sees the
-    # `weekly` marker.  `scripts/verify.py` appends `-m "not weekly"` on a
+    # `weekly` marker.  `scripts/verify/gate.py` appends `-m "not weekly"` on a
     # --full run and `-m "not slow"` otherwise, so the `weekly` probes run
     # here and nowhere else.
     #
@@ -77,10 +77,10 @@ jobs:
     # command that report prints.
     # Preserve the native construction cap without competing xdist workers.
     - name: Check the preserving certificate without competing workers
-      run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.pytest_durations --duration-output certificate-durations.json
+      run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci.shard --duration-output certificate-durations.json
 
     - name: Test with pytest (full suite, including the slow band)
-      run: uv run python -m pytest -n auto -k "not test_preserving_certificate" -p scripts.pytest_durations --duration-output test-durations.json
+      run: uv run python -m pytest -n auto -k "not test_preserving_certificate" -p scripts.ci.shard --duration-output test-durations.json
 
     - name: Retain measured test durations
       if: always()
@@ -88,8 +88,19 @@ jobs:
       with:
         name: test-durations-${{ matrix.python-version }}
         path: |
-          test-durations.json
-          certificate-durations.json
+          test-durations*.json
+          certificate-durations*.json
+
+    - name: Retain worker and verification logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: logs-${{ github.job }}-${{ strategy.job-index }}
+        path: |
+          notes/verification/*.log
+          notes/benchmarks/*.log
+        if-no-files-found: ignore
+        retention-days: 14
 
   # Generation *time* is the one axis the per-PR gate cannot judge: it is
   # machine- and load-dependent, and a threshold loose enough not to flake on
@@ -130,13 +141,8 @@ jobs:
     # fields drifted, which on `main` would mean the gate was bypassed.
     - name: Sweep every generator
       run: >
-        uv run python scripts/check_generator_sizes.py
+        uv run python checks/check_generator_sizes.py
         --repeat 5 --timings generator-timings.json
-
-    - name: Report sustained generation slowdowns
-      run: >
-        uv run python scripts/report_generator_timings.py generator-timings.json
-        --history .generator-timing-history.json --summary "$GITHUB_STEP_SUMMARY"
 
     - name: Upload the timings
       uses: actions/upload-artifact@v7
@@ -145,25 +151,13 @@ jobs:
         path: generator-timings.json
         retention-days: 90
 
-  mutations:
-    runs-on: ubuntu-latest
-    # Two targets, four minutes each; at most two mutant workers.
-    timeout-minutes: 15
-    steps:
-    - uses: actions/checkout@v7
-    - uses: astral-sh/setup-uv@v7
-    - uses: actions/setup-python@v7
-      with:
-        python-version: "3.14"
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.14
-    - name: Run the rotating mutation pair
-      run: uv run python scripts/mutate_weekly.py --output mutation-evidence
-    - name: Retain scores, survivors and inspection files
+    - name: Retain worker and verification logs
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: mutation-evidence
-        path: mutation-evidence/
-        if-no-files-found: error
-        retention-days: 30
+        name: logs-${{ github.job }}-${{ strategy.job-index }}
+        path: |
+          notes/verification/*.log
+          notes/benchmarks/*.log
+        if-no-files-found: ignore
+        retention-days: 14

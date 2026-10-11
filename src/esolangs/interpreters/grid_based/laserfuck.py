@@ -361,7 +361,7 @@ class _Machine:
     def step(self) -> None:
         """Move the active laser one step, dumping the tape once halted.
 
-        The dump is the step after the halt, as in Minsky Swap and RAM0, so
+        The dump is the step after the halt, so
         stepping to a standstill writes what ``run`` writes; the VM adapter
         once dumped on ``not lsrs`` where ``run`` dumped on ``halted``, so a
         program stopped by a second ``o`` printed under one and not the

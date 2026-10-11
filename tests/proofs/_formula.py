@@ -13,11 +13,15 @@ and the test file spells that formula by hand.
 from __future__ import annotations
 
 import ast
+import importlib
 import math
 import re
 from collections.abc import Callable
 from fractions import Fraction
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from esolangs.registry._slug import canonical_id
 
 if TYPE_CHECKING:
     from tests.proofs._ledger import Row as LedgerRow
@@ -120,17 +124,29 @@ def ledger_formulas(
     clause: Callable[[LedgerRow], str],
     hand: dict[str, tuple[Formula, bool, tuple[int, ...]]],
     arities: dict[str, tuple[int, ...]],
+    *,
+    column: str | None = None,
 ) -> dict[str, tuple[Formula, bool, tuple[int, ...]]]:
-    """Return generator -> (formula, exact, arities): parsed, then ``hand``.
+    """Return parsed bounds, handwritten fallbacks, then language-owned overrides.
 
     Arities run from the first n through three more for a ``poly n`` row,
     two more otherwise (each rung of a linear row costs twice the last),
-    unless ``arities`` names them.
+    unless ``arities`` names them. ``column`` loads language-owned formulas
+    from ``tests/<language id>/formulas.py`` when present.
     """
     from tests.proofs._ledger import load
 
     table: dict[str, tuple[Formula, bool, tuple[int, ...]]] = {}
+    local: dict[str, tuple[Formula, bool, tuple[int, ...]]] = {}
     for row in load().rows:
+        if column is not None:
+            stem = canonical_id(row.generator)
+            path = Path(__file__).resolve().parents[1] / stem / "formulas.py"
+            if path.is_file():
+                owner = importlib.import_module(f"tests.{stem}.formulas")
+                if formula := owner.FORMULAS.get(column):
+                    local[row.generator] = formula
+                    continue
         parsed = parse(clause(row)) if row.generator not in hand else None
         if parsed is not None:
             formula, exact, start = parsed
@@ -140,4 +156,4 @@ def ledger_formulas(
                 exact,
                 arities.get(row.generator, (start, start + span)),
             )
-    return {**table, **hand}
+    return {**table, **hand, **local}

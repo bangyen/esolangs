@@ -43,6 +43,15 @@ run_bf = _runner("tape_based.brainfuck")
 run_factor = _runner("tape_based.factor")
 run_suffolk = _runner("tape_based.suffolk")
 run_rotfuck = _runner("tape_based.rotfuck")
+
+
+def run_rotfuck_forward(program: str, inputs: list[str]) -> str:
+    """Run a ROTfuck program under the forward rotation."""
+    from esolangs.interpreters.tape_based.rotfuck import run as _run
+
+    return run_program(_run, program, "".join(inputs), rotation="forward")
+
+
 run_circlefuck = _runner("tape_based.circlefuck")
 run_collatz_multiverse = _runner("register_based.collatz_multiverse", newline=True)
 run_decleq = _runner("register_based.decleq")

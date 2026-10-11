@@ -14,7 +14,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint, raises_message
+from tests.support.raises import assert_rejected_with_hint, raises_message
 
 # The wiki's own examples, which are the specification's ground truth.
 TRUTH_MACHINE = "x? = x & x?\nn?"
@@ -57,10 +57,10 @@ def machine(program: str, stdin: str = "") -> _Machine:
             "0\n",
             id="while_stops_when_its_condition_is_false",
         ),
-        # ``{ 123 456 }`` prints 123 and returns 456.
+        # ``{ 5 6 }`` prints 5 and returns 6.
         pytest.param(
-            "M() = {\n123\n456\n}\nM()",
-            "123\n456\n",
+            "M() = {\n5\n6\n}\nM()",
+            "5\n6\n",
             id="multiline_prints_every_statement_but_the_last",
         ),
         pytest.param(

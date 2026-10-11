@@ -14,6 +14,7 @@ from esolangs.registry import (
     wiki_url,
 )
 from esolangs.registry._contracts import AnswerMode, InputShape, WidthEffect
+from esolangs.registry._language import Shape
 from esolangs.settings import DialectOption, dialect_choices
 from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import machine_traits
@@ -31,6 +32,11 @@ _STATE_MODELS = {
     "other": "other",
 }
 
+#: The ``state_model`` labels (the language's category) and generator shapes;
+#: the CLI's ``--state-model`` and ``--shape`` filters accept exactly these.
+STATE_MODELS: tuple[str, ...] = tuple(_STATE_MODELS.values())
+SHAPES: tuple[str, ...] = tuple(shape.value for shape in Shape)
+
 
 class LanguageInfo(TypedDict):
     """What :func:`describe` returns, as a type a caller can annotate with.
@@ -46,6 +52,7 @@ class LanguageInfo(TypedDict):
     id: str
     source_kind: str
     state_model: str | None
+    shape: str | None
     generator_max_inputs: int | None
     generator_restrictions: str | None
     boolean_generator: bool
@@ -74,22 +81,25 @@ def describe(language: str) -> LanguageInfo:
 
     ``spec`` contains the interpreter docstring; missing docstrings raise.
     ``dialect_settings`` gives runtime defaults, choices, bounds and dependencies.
-    Identity: ``name``, ``id``, ``source_kind``, ``state_model``, ``wiki_url``.
+    Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the language's
+    category, derived from its interpreter family), ``wiki_url``.
     Generation: ``generator_max_inputs`` is an explicit arity cap (None means
     none declared, or no generator); ``generator_restrictions`` names additional
     table-dependent budgets, None when there are none.  ``boolean_generator``;
+    ``shape`` is the generator's construction growth class -- ``"tree"``,
+    ``"reducing"`` or ``"lookup"`` -- and None without a generator;
     ``parameterized`` (a template, filled by :func:`instantiate`,
     ``reads_input`` false).  Width: ``width_effect`` is
     ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
     tokens) or ``"none"`` (newlines are semantic); ``width_aware`` is the
     narrower ``== "layout"``.  Input: ``input_shape`` and ``input_encoding``,
-    the ``(zero, one)`` pair (``("%", "A")`` for Grapheme) -- the wrong
+    the ``(zero, one)`` pair -- the wrong
     alphabet is a wrong answer.  Answer: ``answer_mode`` is ``"output"``
     (last non-whitespace character), ``"dump"`` (a fixed place in the final
     state) or ``"termination"`` (a proven halt or divergence);
     ``answer_pattern`` is the regex whose first group holds it (None: no regex);
     ``answer_encoding`` the ``(zero, one)`` or ``("halts", "diverges")``;
-    ``answer_convention`` prose or None.  These describe raw output (A Painter Ant's
+    ``answer_convention`` prose or None.  These describe raw output (a mark's
     ``("o", "@")`` is a grid mark); :func:`read_answer` returns ``"0"``/``"1"``.
     Machine traits (``self_halts``, ``dumps_on_the_post_halt_step``,
     ``steppable_to_answer``, ``eof_is_a_value``) are documented on
@@ -119,6 +129,7 @@ def describe(language: str) -> LanguageInfo:
         "id": lang.id,
         "source_kind": lang.source_kind.value,
         "state_model": _STATE_MODELS.get(family) if family else None,
+        "shape": lang.shape.value if lang.boolean is not None else None,
         "boolean_generator": lang.boolean is not None,
         "generator_max_inputs": lang.generator_max_inputs,
         "generator_restrictions": lang.generator_restrictions or None,

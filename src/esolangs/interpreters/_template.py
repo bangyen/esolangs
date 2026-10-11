@@ -6,7 +6,7 @@ dispatch.  The conventions every interpreter follows -- ``run(code, io)``,
 for an invalid operation, ``EOFError`` on exhausted input (unless the spec
 gives EOF a value: then ``eof=`` on its ``LANGUAGE``), a ``_Machine``
 with ``step``/``halted``/``snapshot``, a pure :func:`_advance`, and the
-module docstring shape ``tests/test_interpreter_conventions.py`` checks --
+module docstring shape ``tests/generators/test_interpreter_conventions.py`` checks --
 are listed under "Interpreter conventions" in ``docs/CONTRIBUTING.md``.
 """
 

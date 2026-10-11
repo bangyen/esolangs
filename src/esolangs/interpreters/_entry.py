@@ -1,9 +1,8 @@
 """The shared ``python <file>`` entry point behind every interpreter.
 
-Each interpreter keeps a two-line ``__main__`` block, because
-``bundle_one.py`` keeps the target's one and a curl-fetched bundle has to
-run standalone.  Its body moved here from 63 copies in nine variants, which
-coverage's ``exclude_lines`` measured in none of them.
+Each interpreter keeps a two-line ``__main__`` block so a standalone
+``python <file>`` runs it.  Its body moved here from 63 copies in nine
+variants, which coverage's ``exclude_lines`` measured in none of them.
 """
 
 from __future__ import annotations
@@ -30,7 +29,7 @@ def script_main(
     """Run the program file named by ``sys.argv[1]``, if one was given.
 
     A missing argument is a no-op; a non-``None`` return becomes the exit
-    status (Container's halt).  Read as UTF-8, not the locale encoding.
+    status (the language's halt).  Read as UTF-8, not the locale encoding.
     """
     if len(sys.argv) < 2:
         return

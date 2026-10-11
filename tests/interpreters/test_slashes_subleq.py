@@ -9,7 +9,7 @@ from esolangs.interpreters.other.slashes import _Machine as SlashMachine
 from esolangs.interpreters.other.slashes import run as run_slashes
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.slashes import slashes
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.medium

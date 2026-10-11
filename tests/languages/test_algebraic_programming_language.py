@@ -5,6 +5,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.vm import make_vm, run_until_halt_or_ancestor
+from tests.reference import REFERENCE
 
 
 class TestTheVmPathRefusesLikeRunDoes:
@@ -16,7 +17,7 @@ class TestTheVmPathRefusesLikeRunDoes:
     def test_a_malformed_program_is_a_program_error(self, entry: str) -> None:
         """The one-character case, on the language it was reported for."""
         with pytest.raises(esolangs.ProgramError, match="unmatched"):
-            getattr(debugger_api, entry)("brainfuck", "]")
+            getattr(debugger_api, entry)(REFERENCE, "]")
 
     def test_no_language_leaks_anything_else(self) -> None:
         """Every language against six kinds of junk, both entry points."""
@@ -36,9 +37,9 @@ class TestTheVmPathRefusesLikeRunDoes:
         """Not merely "both raise" -- both raise the *same* thing."""
         for entry in (debugger_api.make_vm, debugger_api.make_debugger):
             with pytest.raises(esolangs.ProgramError) as stepped:
-                entry("brainfuck", "]")
+                entry(REFERENCE, "]")
             with pytest.raises(esolangs.ProgramError) as ran:
-                esolangs.run("brainfuck", "]")
+                esolangs.run(REFERENCE, "]")
             assert str(stepped.value) == str(ran.value)
 
     def test_a_recursion_limit_is_an_interpreter_limit(self) -> None:

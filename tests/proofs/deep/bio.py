@@ -34,10 +34,10 @@ def lookup(program: str) -> str:
     return body.removesuffix(_RISE * _ASCII_ZERO + "1iy;")
 
 
-def indexed(table: str, program: str) -> str:
-    """The table the telescope indexes: the essential inputs' when skipped."""
+def indexed(table: str) -> str:
+    """The essential-input table, including a constant's single literal row."""
     n = len(table).bit_length() - 1
-    return input_weights(table, n)[1] if _BIO_SKIP[0] in program else table
+    return input_weights(table, n)[1]
 
 
 def levels(program: str) -> list[str]:
@@ -82,7 +82,7 @@ def check_l1(max_n: int = 7) -> list[str]:
         executed = 0
         for table in tables:
             program = bio(table)
-            kept = indexed(table, program)
+            kept = indexed(table)
             adjust = levels(program)
             expected = len(kept) - 1 - collapsed(kept)
             assert len(adjust) == expected, (
@@ -142,7 +142,7 @@ def check_l2(max_n: int = 9) -> list[str]:
         # brace profile reads straight off the telescope.
         template = bio(table)
         assert "{X" not in template, f"n={n}: template still carries {{Xi}} marks"
-        table = indexed(table, template)
+        table = indexed(table)
         size = len(table)
         program = lookup(template)
         depth = 0

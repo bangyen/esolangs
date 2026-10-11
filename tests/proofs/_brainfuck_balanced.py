@@ -193,11 +193,9 @@ def rotation_certificate() -> tuple[list[list[int]], Matrix, Matrix, Matrix]:
 if __name__ == "__main__":
     import argparse
     import json
-    import sys
     from pathlib import Path
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
-    from balanced_certificate import check_certificate
+    from tests.proofs.balanced_certificate import check_certificate
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--export", type=Path)

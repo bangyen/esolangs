@@ -11,12 +11,15 @@ from esolangs import tools as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.algebraic_programming_language import _Machine
 from esolangs.tools.helpers import best_input_order
-from tests.generator_support import assert_parity_at_most_doubles, verify_generated
+from tests.support.generator_support import (
+    assert_parity_at_most_doubles,
+    verify_generated,
+)
+from tests.support.witness_tables import witnesses
 from tests.tools.boolean_runners import (
     run_algebraic_programming_language,
 )
 from tests.tools.sample_tables import five_input_sample
-from tests.witness_tables import witnesses
 
 
 class TestAlgebraicProgrammingLanguage:
@@ -220,8 +223,8 @@ class TestAlgebraicProgrammingLanguageShapes:
         )
         three = [f"{value:08b}" for value in range(256)]
         for tables, before, after in (
-            (three, 16303, 16599),
-            (five_input_sample(), 42875, 42440),
+            (three, 16303, 16527),
+            (five_input_sample(), 42875, 35147),
         ):
             inline = [len(best_input_order(t, _apl_tree_ordered)) for t in tables]
             reduced = [len(boolean.algebraic_programming_language(t)) for t in tables]
@@ -340,3 +343,18 @@ def test_xor_arithmetic_family_reaches_four_columns() -> None:
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.algebraic_programming_language, (7, 8), 31)
+
+
+@pytest.mark.medium
+def test_default_reuses_emitted_frames() -> None:
+    from esolangs.tools.algebraic_programming_language import _apl_reduced_ordered
+    from tests.support.screen_support import corpus, execute
+
+    table = corpus(8)["tiled"]
+    plain = _apl_reduced_ordered(table, tuple(range(8)))
+    program = boolean.algebraic_programming_language(table)
+    assert (len(plain), len(program)) == (1019, 428)
+    assert (
+        execute("Algebraic Programming Language", program, table, {}, all_rows=True)
+        == 256
+    )

@@ -51,7 +51,7 @@ _ZERO_WIDTH = "​"
 class _Func:
     """A callable: a builtin or a user definition, with its arity.
 
-    Not a ``@dataclass``: ``scripts/mutate_one.py`` rewrites the decorator
+    Not a ``@dataclass``: the removed mutation harness rewrote the decorator
     to ``C = dataclass(C)`` after the body, below ``_BUILTINS``' use of it.
     """
 

@@ -10,6 +10,7 @@ from esolangs import _check_program
 from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster, lazy_raster
 from esolangs.registry import LANGUAGES, SourceKind
+from tests.reference import REFERENCE
 
 RASTER_LANGUAGES = [
     name
@@ -174,9 +175,9 @@ def test_text_step_builders_refuse_raster_scale(builder_name: str) -> None:
 
     builder = getattr(debugger, builder_name)
     with pytest.raises(esolangs.ArgumentError, match="only supported for raster"):
-        builder("brainfuck", "+", scale=2)
+        builder(REFERENCE, "+", scale=2)
     with pytest.raises(esolangs.ArgumentError):
-        builder("brainfuck", "+", scale=0)
+        builder(REFERENCE, "+", scale=0)
 
 
 def test_repeated_tuple_rows_with_mutable_pixels_are_revalidated() -> None:

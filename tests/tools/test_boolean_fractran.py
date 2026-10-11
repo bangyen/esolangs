@@ -11,10 +11,10 @@ from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
 from esolangs.tools.fractran import fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.wrap import balance_program, balance_score
-from tests.generator_support import evaluate_generated
+from tests.support.generator_support import evaluate_generated
+from tests.support.witness_tables import row_bits as _bits
+from tests.support.witness_tables import witnesses
 from tests.tools.reader_support import _TABLES
-from tests.witness_tables import row_bits as _bits
-from tests.witness_tables import witnesses
 
 
 def _fractran_answer(table: str, row: int) -> str:

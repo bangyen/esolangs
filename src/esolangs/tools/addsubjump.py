@@ -4,6 +4,7 @@ from typing import Any
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.tools.constant_projection import balanced_projection
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -11,9 +12,10 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
     in_input_order,
+    input_weights,
     stored_inputs,
 )
-from esolangs.tools.wrap import wrap_grid
+from esolangs.tools.wrap import balance_program, wrap_grid
 
 #: The ``d`` operand of every instruction: cell 7, the last word of the
 #: first data block, which nothing writes, so ``*d > 0`` never holds and the
@@ -29,7 +31,8 @@ def addsubjump(truth_table: str) -> str:
 
     Up to 16 rows, the shorter of tree and shared residuals in input order; 32 rows
     also try the shared residual tree; wider tables use the linear packed
-    decoder (``n``-bit cells, size ``O(T)``).  Packed cells are read by a
+    decoder over essential inputs, or a read-and-print constant root.
+    Packed cells (``m``-bit cells, size ``O(T)``) are read by a
     running operand, so equal cells cannot share a word (interning saves 0.00%
     at n=8) and a constant run costs a cell each.
     """
@@ -42,10 +45,26 @@ def addsubjump(truth_table: str) -> str:
     return packed
 
 
-def _addsubjump_packed(truth_table: str) -> str:
-    """Emit a linear packed decoder (O(T)); interning equal cells saves 0.00% at n=8."""
+def _addsubjump_packed(truth_table: str, *, keep_ignored_inputs: bool = False) -> str:
+    """Emit the shorter full or essential-input packed decoder."""
     n = _validate_truth_table(truth_table)
-    chunk_width = max(n, 1)
+    if keep_ignored_inputs:
+        return _packed_build(truth_table, [1] * n)
+    weights, projected = input_weights(truth_table, n)
+    if all(weights):
+        return _packed_build(truth_table, weights)
+    legacy = _packed_build(truth_table, [1] * n)
+    folded = (
+        _addsubjump_ordered(truth_table, tuple(range(n)))
+        if len(projected) == 1
+        else _packed_build(projected, weights)
+    )
+    return min(legacy, folded, key=len)
+
+
+def _packed_build(truth_table: str, weights: list[int]) -> str:
+    """Decode packed essential rows while consuming every original input."""
+    chunk_width = max(sum(bool(weight) for weight in weights), 1)
     # ``c`` is a literal destination (the wiki's ``goto c``), so a label or
     # ``"next"`` resolves straight into the operand and an ``int`` is already
     # one.  A computed jump is therefore a *write* to an instruction's own
@@ -107,10 +126,12 @@ def _addsubjump_packed(truth_table: str) -> str:
         emit(jump_cell, "FOUR", "next", "ONE")
         emit("ZERO", "ZERO", zero)
 
-    # Read every input once and form its binary row index.
-    for _ in range(n):
+    # Only essential reads extend the Horner index; ignored reads reuse TMP.
+    for weight in weights:
         clear("TMP")
         emit("TMP", -1, "next")
+        if not weight:
+            continue
         emit("TMP", "C48", "next", "ONE")
         emit("INDEX", "INDEX", "next")
         emit("INDEX", "TMP", "next")
@@ -161,7 +182,7 @@ def _addsubjump_packed(truth_table: str) -> str:
     emit("OUT", "R", "next")
     emit(-1, "OUT", -8)  # print, then halt on the special address
 
-    # Pack n adjacent rows per cell.  Both each value and each cell address
+    # Pack m adjacent essential rows per cell. Each value and each cell address
     # have O(log T) digits, while there are O(T/log T) cells.
     chunks = [
         sum(
@@ -198,6 +219,18 @@ def _addsubjump_packed(truth_table: str) -> str:
     # operand through the contiguous chunk cells.
     memory[4 * load_operand_increment] = 4 * load_chunk + 1
     return " ".join(map(str, memory))
+
+
+def balance_addsubjump(table: str, default: str) -> str:
+    """Keep the former full packed layout among the balanced candidates."""
+    if len(table) <= 16 or all(input_weights(table, _validate_truth_table(table))[0]):
+        return balance_program(default, "addsubjump")
+    legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
+    if len(table) == 32:
+        legacy = min(
+            legacy, _addsubjump_ordered(table, tuple(range(5)), shared=True), key=len
+        )
+    return balanced_projection(default, legacy, "addsubjump")
 
 
 def _addsubjump_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -346,6 +379,7 @@ LANGUAGE = Language(
     "AddSubJump",
     "register_based.addsubjump",
     boolean=addsubjump,
+    balance=balance_addsubjump,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

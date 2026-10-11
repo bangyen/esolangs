@@ -11,7 +11,7 @@ from esolangs.interpreters.other.fractran import _choose, _Machine, _parse
 from esolangs.tools.fractran import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs._fractran_chunks import chunk_template, chunk_width
-from tests.witness_tables import row_bits
+from tests.support.witness_tables import row_bits
 
 
 def _run(template: str, table: str, row: int, k: int) -> int:

@@ -268,11 +268,11 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
         if "def test_placeholder_" in path.read_text(encoding="utf-8")
     )
     if _registered_generator(name):
-        pass  # tests/samples.py derives its sample from the generator
-    elif name not in _tests_module("samples", "SAMPLES"):
+        pass  # tests/support/samples.py derives its sample from the generator
+    elif name not in _tests_module("support.samples", "SAMPLES"):
         gaps.append(
             Gap(
-                "tests/samples.py",
+                "tests/support/samples.py",
                 f'add "{name}": (<tiny program>, <stdin>) to SAMPLES; the VM '
                 "protocol and debugger tests step it",
             )
@@ -308,7 +308,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         gaps.append(
             Gap(
                 str(source.relative_to(ROOT)),
-                "implement the generator; tests/samples.py derives the "
+                "implement the generator; tests/support/samples.py derives the "
                 "language's VM sample from its one-input program",
             )
         )
@@ -421,7 +421,7 @@ def quick_tests(name: str) -> list[str]:
         if (ROOT / path).exists()
     ]
     nodes += [
-        "tests/test_interpreter_conventions.py"
+        "tests/generators/test_interpreter_conventions.py"
         "::test_interpreter_docstrings_follow_the_template",
         f"tests/fuzz/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
@@ -536,17 +536,17 @@ def _gate() -> int:
     """Regenerate, run the gate, and rerun its failures alone."""
     python = [sys.executable]
     for cmd in (
-        [*python, "scripts/generate.py", "examples"],
-        [*python, "scripts/generate.py", "docs"],
-        [*python, "scripts/check_generator_sizes.py", "--update"],
+        [*python, "scripts/docs/generate.py", "examples"],
+        [*python, "scripts/docs/generate.py", "docs"],
+        [*python, "checks/check_generator_sizes.py", "--update"],
     ):
         print("+", " ".join(cmd[1:]), flush=True)
         if subprocess.run(cmd, cwd=ROOT, check=False).returncode:
             return 1
-    print("+ scripts/verify.py --quiet", flush=True)
+    print("+ scripts/verify/gate.py --quiet", flush=True)
     failed = []
     with subprocess.Popen(
-        [*python, "scripts/verify.py", "--quiet"],
+        [*python, "scripts/verify/gate.py", "--quiet"],
         cwd=ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -629,7 +629,7 @@ def main(argv: list[str] | None = None) -> int:
         # Before anything imports the package: a new LANGUAGE is registered
         # by the export this writes.
         sys.path.insert(0, str(ROOT / "scripts"))
-        from generate_exports import update as update_exports
+        from docs.generate import update_exports
 
         update_exports(ROOT, ROOT)
     if args.command == "check":
@@ -642,7 +642,7 @@ def main(argv: list[str] | None = None) -> int:
         before = _dirty()
         for target in ("examples", "docs"):
             subprocess.run(
-                [sys.executable, "scripts/generate.py", target],
+                [sys.executable, "scripts/docs/generate.py", target],
                 cwd=ROOT,
                 check=True,
                 stdout=subprocess.DEVNULL,
@@ -667,7 +667,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "finish":
         return finish(args.name)
     if args.command == "remove":
-        leftover = remove(args.name)
+        try:
+            leftover = remove(args.name)
+        except ValueError as exc:
+            parser.error(str(exc))
         print(f"removed {args.name}; {len(leftover)} mention(s) left to edit by hand")
         print("\n".join(leftover))
         return 0

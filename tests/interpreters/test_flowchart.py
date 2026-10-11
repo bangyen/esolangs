@@ -310,7 +310,7 @@ class TestNodes:
         assert machine.pointers[0].reg is None
 
     def test_unicode_input_is_reduced_modulo_256(self) -> None:
-        """A code point past 255 is read as its low byte, as in Boolfuck."""
+        """A code point past 255 is read as its low byte."""
         body = "─".join(["/ /─\\ \\"] * 8)
         assert run_program([f"( )─{body}─(( ))"], "Ł") == "A"
 

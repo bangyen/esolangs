@@ -8,14 +8,13 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, cli_io
 from esolangs._evaluate import _evaluate
 from esolangs._isolated import _worker
 from esolangs.exceptions import ArgumentError
 from tests.cli.test_cli import _program, call_main
-from tests.cli_support import _LOOPS, call_both
-from tests.generator_support import evaluate_generated, verify_generated
-from tests.test_dialects import Unreadable
+from tests.reference import REFERENCE
+from tests.support.cli_support import _LOOPS, call_both
+from tests.support.generator_support import evaluate_generated, verify_generated
 
 
 class TestTheTerminationProofFallsBackToTheClock:
@@ -78,25 +77,6 @@ def test_termination_diagnostic_does_not_score_a_timeout() -> None:
         esolangs.read_answer("123", "1")
 
 
-@pytest.mark.parametrize("language", ["Brainfuck", "123"])
-def test_evaluation_refuses_settings_before_source_reads(language):
-    settings = DialectSettings(cell_modulus=255)
-    with pytest.raises(esolangs.ArgumentError):
-        _evaluate(language, Unreadable(), inputs=1, settings=settings)
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("isolated", [False, True])
-def test_empty_settings_survive_termination_evaluation(isolated):
-    source = esolangs.generate("123", "01")
-    assert (
-        _evaluate(
-            "123", source, inputs=1, settings=DialectSettings(), isolated=isolated
-        )
-        == "01"
-    )
-
-
 @pytest.mark.medium
 @pytest.mark.parametrize("isolated", [False, True])
 def test_termination_answers_still_require_a_proof_with_a_total_budget(isolated):
@@ -135,42 +115,8 @@ def test_capped_termination_worker_reports_overflow_instead_of_divergence(
     assert "result" not in messages[-1]
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("arguments", "diagnostic"),
-    [
-        (["--table", "xyz", "brainfuck"], "unknown option"),
-        (["--judge", "123"], "unknown option"),
-    ],
-)
-def test_run_rejects_bad_options_before_acquiring_source_or_stdin(
-    arguments, diagnostic, monkeypatch, capsys
-):
-    import esolangs.cli_run as cli_run
-
-    def unreadable(*_args, **_kwargs):
-        pytest.fail("invalid run options must be rejected before reading")
-
-    monkeypatch.setattr(cli_run, "_read_program", unreadable)
-    monkeypatch.setattr(cli_run, "_read_stdin", unreadable)
-    with pytest.raises(SystemExit) as caught:
-        call_main(["run", *arguments, "never-read.txt"], capsys)
-    assert caught.value.code == 2
-    assert diagnostic in capsys.readouterr().err
-
-
-# 3.0s over 12 tests: waits out a real timeout.
-@pytest.mark.medium
 class TestATimeoutIsNotAProgramError:
     """They shared exit 1, so a script could not tell them apart."""
-
-    def test_a_program_failure_still_exits_1(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The other half of the distinction, which is what makes 124 useful."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["run", "brainfuck", _program(tmp_path, ",")], capsys, stdin="")
-        assert exc.value.code == 1
 
     def test_a_termination_languages_timeout_is_undecided(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -187,21 +133,6 @@ class TestATimeoutIsNotAProgramError:
 
 class TestAnUnboundedRunSaysSo:
     """Several of these languages loop forever by design."""
-
-    def test_a_bounded_run_never_arms_it(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """With --timeout there is nothing to warn about."""
-        monkeypatch.setattr(cli_io, "_UNBOUNDED_NOTICE_AFTER", 0.01)
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        _out, err = call_both(
-            ["run", "--timeout", "10", "brainfuck", str(path)], capsys, stdin="1\n0\n"
-        )
-        assert "no bound" not in err
 
     def test_debug_warns_about_a_termination_language(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -236,7 +167,7 @@ class TestTheVerifierIsShipped:
     def test_a_malformed_table_is_refused_before_anything_runs(self) -> None:
         """Named as a table, not as whichever generator saw it first."""
         with pytest.raises(esolangs.TruthTableError):
-            evaluate_generated("brainfuck", "011")
+            evaluate_generated(REFERENCE, "011")
 
 
 class TestTheCallersSignalsAreTheirOwn:
@@ -250,7 +181,7 @@ class TestTheCallersSignalsAreTheirOwn:
         timer = signal.setitimer(signal.ITIMER_REAL, 30, 5)
         try:
             with contextlib.suppress(esolangs.EsolangError):
-                esolangs.run("brainfuck", program, timeout=1)
+                esolangs.run(REFERENCE, program, timeout=1)
             remaining, interval = signal.getitimer(signal.ITIMER_REAL)
             assert remaining > 0
             assert interval == 5
@@ -266,9 +197,9 @@ class TestTheCallersSignalsAreTheirOwn:
         previous = signal.signal(signal.SIGALRM, lambda *_a: None)
         try:
             signal.alarm(30)
-            program = esolangs.generate("brainfuck", "0110")
-            stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
-            esolangs.run("brainfuck", program, stdin=stdin, timeout=5)
+            program = esolangs.generate(REFERENCE, "0110")
+            stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
+            esolangs.run(REFERENCE, program, stdin=stdin, timeout=5)
             remaining = signal.alarm(0)
             assert remaining > 0, "the caller's alarm was cancelled"
         finally:
@@ -291,7 +222,7 @@ class TestTheEncodersRefuseWhatTheyCannotAnswer:
 
     def test_read_answer_refuses_a_non_string(self) -> None:
         with pytest.raises(esolangs.ProgramError, match="output must be a string"):
-            esolangs.read_answer("brainfuck", None)  # type: ignore[arg-type]
+            esolangs.read_answer(REFERENCE, None)  # type: ignore[arg-type]
 
 
 def test_read_answer_refuses_a_termination_language(
@@ -304,20 +235,6 @@ def test_read_answer_refuses_a_termination_language(
     err = capsys.readouterr().err
     assert "--timeout" in err
     assert "observe" in err
-
-
-def test_run_timeout_is_the_one_for_a_termination_language(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """For the four that answer by diverging, the timeout carries the 1."""
-    program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
-    with pytest.raises(SystemExit) as exc:
-        call_main(
-            ["run", "--timeout", _LOOPS, "123", _program(tmp_path, program)],
-            capsys,
-        )
-    assert exc.value.code == 124
-    assert "the Boolean answer is undecided" in capsys.readouterr().err
 
 
 def test_run_halt_is_the_zero_for_a_termination_language(

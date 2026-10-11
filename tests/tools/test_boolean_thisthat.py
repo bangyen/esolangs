@@ -11,8 +11,12 @@ import esolangs
 from esolangs.interpreters.grid_based.thisthat import run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.thisthat import _Builder, _deque_plan, _tree, thisthat
-from tests.generator_support import evaluate_generated, run_lines, verify_generated
-from tests.witness_tables import parity, witnesses
+from tests.support.generator_support import (
+    evaluate_generated,
+    run_lines,
+    verify_generated,
+)
+from tests.support.witness_tables import parity, witnesses
 
 
 def _run(table: str, row: int) -> tuple[str, int]:
@@ -21,7 +25,7 @@ def _run(table: str, row: int) -> tuple[str, int]:
 
 @pytest.mark.medium
 def test_source_growth_is_linear_in_the_table() -> None:
-    """Parity keeps every node, so it is the full tree's growth."""
+    """Parity exercises both inline trees and shared residual DAGs."""
     sizes = [len(thisthat(parity(n))) for n in range(1, 13)]
     assert all(right <= 3 * left for left, right in pairwise(sizes[3:]))
     assert max(size / (1 << n) for n, size in enumerate(sizes, 1)) < 300
@@ -158,7 +162,7 @@ def test_narrow_strip_executes_every_small_table() -> None:
                 assert (io.getvalue(), io.reads) == (expected, n)
     assert max(map(len, thisthat("0110", 1).splitlines())) == 1
     assert len(thisthat("0110", 1)) == 17
-    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1150
+    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1028
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])
@@ -208,3 +212,89 @@ def test_narrow_strip_counts_kept_inputs() -> None:
 def test_xor_has_one_column() -> None:
     xor = esolangs.generate("thisthat", "0110", width=1)
     assert max(map(len, xor.splitlines())) == 1
+
+
+@pytest.mark.medium
+def test_shared_residual_buses_execute_within_ledger() -> None:
+    from esolangs.tools.thisthat._shared import shared_tree
+    from tests.support.generator_support import assert_shared_program
+
+    a, b = "0001011101101001" * 4, "0110100100010111" * 4
+    table = a + b + b + a
+    plain = _tree(table)
+    program = thisthat(table)
+
+    def area(source):
+        return len(source.splitlines()) * max(map(len, source.splitlines()))
+
+    assert (area(plain), area(program)) == (12995, 5831)
+    shared = shared_tree(table)
+    assert shared is not None
+    assert shared[1] == 335
+    assert_shared_program(
+        "thisthat",
+        table,
+        plain,
+        483,
+        lambda _: (
+            4 * 8
+            + 89
+            + 2 * (8).bit_length()
+            + sum(max(1, c.bit_length()) for c in range(8))
+        ),
+        size=area,
+    )
+
+
+@pytest.mark.medium
+def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:
+    from esolangs.tools.thisthat import _rotate_tree
+    from esolangs.tools.thisthat._shared import shared_tree
+
+    exercised = 0
+    for table in witnesses(3):
+        built = shared_tree(table)
+        if built is None:
+            continue
+        exercised += 1
+        program, _ = built
+        for source in (program, _rotate_tree(program)):
+            for row, expected in enumerate(table):
+                io = ScriptedIO(f"{row:03b}")
+                run(source.splitlines(), io)
+                assert (io.getvalue(), io.reads) == (expected, 3)
+    assert exercised > 0
+
+
+@pytest.mark.medium
+def test_shared_area_envelope_admits_more_than_old_node_cap() -> None:
+    from esolangs.tools.helpers import subtree_ids
+    from esolangs.tools.thisthat._shared import shared_tree
+
+    rng = random.Random(15)
+    table = "".join(rng.choice("01") for _ in range(64))
+    ids = subtree_ids(table)
+    nodes = sum(len(set(level) - {0, 1}) for level in ids) + 2
+    assert nodes == 25  # The preceding six-input node cap was 16.
+    built = shared_tree(table)
+    assert built is not None
+    source, _ = built
+    assert len(source.splitlines()) * max(map(len, source.splitlines())) == 12139
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:06b}")
+        run(source.splitlines(), io)
+        assert (io.getvalue(), io.reads) == (expected, 6)
+
+
+@pytest.mark.medium
+def test_shared_unequal_bus_banks_execute_all_rows() -> None:
+    rng = random.Random(15)
+    parts = ["".join(rng.choice("01") for _ in range(16)) * 4 for _ in range(3)]
+    table = "".join(parts[i] for i in (0, 1, 2, 0, 2, 1, 0, 2))
+    source = thisthat(table)
+    area = len(source.splitlines()) * max(map(len, source.splitlines()))
+    assert area == 13455 < 14283  # Preceding equal-bank emitted area.
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:09b}")
+        run(source.splitlines(), io)
+        assert (io.getvalue(), io.reads) == (expected, 9)

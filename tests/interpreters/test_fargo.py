@@ -11,7 +11,7 @@ from esolangs.interpreters.other.fargo import (
     run,
 )
 from esolangs.vm import run_until_halt_or_ancestor
-from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
+from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 # The wiki's truth machine, verbatim apart from the zero-width spaces it
 # renders inside the first two lines (kept in TestWikiExamples below).

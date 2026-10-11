@@ -4,7 +4,7 @@ import pytest
 
 from esolangs.registry import LANGUAGES
 from scripts import new_language
-from tests.pick import first
+from tests.support.pick import first
 
 
 @pytest.mark.medium
@@ -22,7 +22,7 @@ def test_an_unregistered_language_is_told_to_register() -> None:
 
 def test_a_generator_language_needs_no_hand_sample() -> None:
     import esolangs
-    from tests import samples
+    from tests.support import samples
 
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
     program, stdin = samples._generated(name)  # noqa: SLF001

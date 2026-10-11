@@ -12,9 +12,33 @@ from esolangs.interpreters.other.thue import _Machine, _matches
 from esolangs.interpreters.other.thue import run as run_thue
 from esolangs.interpreters.randomness import Seeded
 from esolangs.tools.thue import thue
+from tests.support.witness_tables import row_bits as _bits
+from tests.support.witness_tables import witnesses
 from tests.tools.reader_support import _TABLES, assert_emissions_grow_by_a_line
-from tests.witness_tables import row_bits as _bits
-from tests.witness_tables import witnesses
+
+
+@pytest.mark.medium
+def test_shared_block_expands_before_lookup_within_ledger() -> None:
+    from esolangs.tools.thue import _tables, _thue_entries, _thue_layout
+    from tests.support.generator_support import assert_shared_program
+
+    entries = "0001011101101001" * 6 + "0110100100010111" + "0011010101010011"
+    table = _thue_entries(entries).translate(str.maketrans("ab", "01")) * 2
+    plain = min((_thue_layout(*layout, None) for layout in _tables(table)), key=len)
+    assert_shared_program(
+        "Thue", table, plain, 2 * 256 + 3 * 8 - 2, lambda _p: 8 * 256 + 24 + 5
+    )
+    for row in (0, 1, 127, 128, 255):
+        _execute(table, row, 512)
+
+
+def test_short_tree_interns_constant_residuals() -> None:
+    from esolangs.tools.thue import _thue_short_tree
+
+    program = _thue_short_tree("0" * 8)
+    assert len(program.splitlines()) == 13
+    for row in range(8):
+        _execute("0" * 8, row, 1)
 
 
 def _execute(table: str, row: int, width: int) -> None:
@@ -97,7 +121,7 @@ def test_short_tree_executes_one_and_two_input_tables() -> None:
 
 def test_thue_proof_text_counts_the_emitted_rules() -> None:
     """The ledger says at most 23 fixed rules: 19, or 23 with a round queue."""
-    from scripts.proof_status import load
+    from scripts.docs.proof_status import load
 
     for table, count in (("0110", 19), ("0110" * 32, 23)):
         lines = boolean.thue(table).splitlines()

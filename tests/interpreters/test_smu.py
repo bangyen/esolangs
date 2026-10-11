@@ -6,7 +6,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.smu import preprocess, run
 from esolangs.tools.smu import smu
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 CAT = "x(+|)xg()+gy(g)ybx=(=)y=xy+x=ba(bxggxg)aa(|=)=a(+=)=baxg"
 _A = "((+|)=(=)(()+)=(+|)(()+)+(+|)=(+|)()+()+(+|)()+)"

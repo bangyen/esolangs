@@ -11,7 +11,7 @@ import esolangs
 from esolangs.cli import HELP, USAGE
 from esolangs.registry import wiki_url
 from tests.cli.test_cli import call_main
-from tests.pick import first
+from tests.support.pick import first
 
 
 class TestExamplesShipWithThePackage:

@@ -5,7 +5,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.one_two_three import _Machine
 from esolangs.tools.one_two_three import _LAWS, _construct_small, _separated
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 def _instantiate(template: str, bits: str) -> str:

@@ -5,6 +5,7 @@ cell; the strip is preloaded with the table and one left run reads it.
 """
 
 from functools import cache
+from itertools import pairwise
 
 from esolangs.tools.minifuck.pool import (
     _BASE,
@@ -171,8 +172,19 @@ def _mux_lookup(
     ``paired`` absorbs skips on fresh padding, allowing two-character breaks.
     ``gaps[i]`` ignored inputs (see :data:`_GAP_BLOCK`) sit after setter ``i``.
     """
+    weights = _mux_weights(n)
+    pads = [
+        max(a + b - 1, a + (gaps[i] if gaps else 0))
+        for i, (a, b) in enumerate(pairwise(weights))
+    ]
+    extra = sum(
+        pad - (a + b - 1)
+        for pad, a, b in zip(pads, weights[:-1], weights[1:], strict=True)
+    )
     total = len(truth_table)
-    phase = (n ^ (_mux_start(n) - _MUX_BASE) ^ 1) & 1
+    # Cross the setter before the first gap so its right-hand cells are fresh.
+    # Each extra step flips one separator bit and moves the final pointer once.
+    phase = (n ^ (_mux_start(n) - _MUX_BASE) ^ extra ^ 1) & 1
     baseline = [((row.bit_count() ^ phase) & 1) for row in range(total)]
     controls = [
         int(bit) ^ base for bit, base in zip(truth_table, baseline, strict=True)
@@ -189,17 +201,16 @@ def _mux_lookup(
     parts = [walk * (field_lo - 1), _mux_init_bits(field + "0", paired=paired)]
     parts.extend((_MUX_PRESERVE_RIGHT, walk * (start - 1 - field_end)))
 
-    weights = _mux_weights(n)
     for i, weight in enumerate(weights):
         parts.append(_MINIFUCK_INPUT)
         parts.append(_mux_weight(weight))
         if i + 1 < n:
             # The next gadget reaches ``next_weight - 2`` left of its setter;
-            # this pad puts it on fresh tape.  Pads sum to T/2-1, not T/4 each.
+            # ordinary pads sum to 3T/2-n-2; gap extensions add at most O(n).
             gap = gaps[i] if gaps else 0
-            parts.append("[x" * (weight + weights[i + 1] - 1 - gap) + _GAP_BLOCK * gap)
+            parts.append("[x" * (pads[i] - gap) + _GAP_BLOCK * gap)
 
-    pmax = start + 3 * total // 2 - 3
+    pmax = start + 3 * total // 2 - 3 + extra
     field_high = field_lo + total - 1
     parts.extend(("<" * (pmax - field_high + 1), "[x"))
     parts.append("<" * (field_high + 1))

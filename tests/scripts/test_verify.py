@@ -1,8 +1,11 @@
 """The local gate may skip work, but only work CI is known to redo."""
 
+import io
+import os
 import re
 import subprocess
 import sys
+import time
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -13,11 +16,16 @@ import pytest
 from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "verify.py"
+SCRIPT = REPO_ROOT / "scripts" / "verify" / "gate.py"
+SCOPE_SCRIPT = REPO_ROOT / "scripts" / "verify" / "scope.py"
 
 
 def load_script() -> Any:
     return load(SCRIPT)
+
+
+def load_scope() -> Any:
+    return load(SCOPE_SCRIPT)
 
 
 class TestPytestScopeCollects:
@@ -25,7 +33,7 @@ class TestPytestScopeCollects:
         ("path", "scoped"),
         [
             ("tests/tools/polynomial_support.py", False),
-            ("tests/test_vm.py", True),
+            ("tests/vm/test_vm.py", True),
             ("src/esolangs/interpreters/other/demo/brainfuck.py", False),
             ("src/esolangs/interpreters/io.py", False),
         ],
@@ -62,7 +70,7 @@ class TestScopedCoverage:
         verify = load_script()
         cmd = verify._scoped_coverage(  # noqa: SLF001
             list(self.COV),
-            ["src/esolangs/vm.py", "tests/test_vm.py", "src/esolangs/tools/x.py"],
+            ["src/esolangs/vm.py", "tests/vm/test_vm.py", "src/esolangs/tools/x.py"],
         )
         assert "--cov" in cmd
         assert "--cov-branch" not in cmd  # the rc carries branch=True
@@ -71,13 +79,13 @@ class TestScopedCoverage:
         assert "include =" in text
         assert "src/esolangs/vm.py" in text
         assert "src/esolangs/tools/x.py" in text
-        assert "tests/test_vm.py" not in text
+        assert "tests/vm/test_vm.py" not in text
         assert "branch = True" in text
         assert "source" not in text  # coverage ignores include beside source
 
     def test_no_touched_source_file_measures_nothing(self) -> None:
         verify = load_script()
-        cmd = verify._scoped_coverage(list(self.COV), ["tests/test_vm.py"])  # noqa: SLF001
+        cmd = verify._scoped_coverage(list(self.COV), ["tests/vm/test_vm.py"])  # noqa: SLF001
         assert not any(c.startswith("--cov") for c in cmd)
         assert cmd == ["python", "-m", "pytest", "-q"]
 
@@ -150,7 +158,7 @@ def test_coverage_gate_requires_both_runs(monkeypatch, suite_code, coverage_code
 
     def start(cmd, **_kwargs):
         called.append(cmd[0])
-        return mock.Mock()
+        return mock.Mock(stdout=io.TextIOWrapper(io.BytesIO()))
 
     codes = {"pytest": suite_code, verify.COVERAGE_TEST_STEP: coverage_code, "gate": 0}
     monkeypatch.setattr(verify.subprocess, "Popen", start)
@@ -193,7 +201,7 @@ class TestCiRedoesEveryLocalStep:
         assert bogus not in workflow
 
 
-@pytest.mark.parametrize(("path", "size"), [("", 0), ("README.md", 7), ("src/x.py", 1)])
+@pytest.mark.parametrize(("path", "size"), [("", 0), ("README.md", 1), ("src/x.py", 1)])
 def test_local_test_selection(path, size) -> None:
     verify = load_script()
     assert verify.LOCAL_PYTEST_MARKS == "not slow and not weekly"
@@ -260,8 +268,8 @@ def test_missing_tools_never_report_complete_verification(
         verify.shutil, "which", lambda _: None if tool == "uv" else "/uv"
     )
     monkeypatch.setattr(
-        verify.subprocess,
-        "run",
+        verify,
+        "run_bounded",
         lambda *_args, **_kwargs: subprocess.CompletedProcess(
             [], int(tool == "pylint")
         ),
@@ -295,11 +303,11 @@ def test_shared_changes_keep_all_tests_but_measure_only_touched_source(
     monkeypatch.setattr(
         verify,
         "_scope_changed_files",
-        lambda: ("scripts/verify.py", "src/esolangs/tools/vandevelo.py"),
+        lambda: ("scripts/verify/gate.py", "src/esolangs/tools/vandevelo.py"),
     )
     monkeypatch.setattr(
-        verify.subprocess,
-        "run",
+        verify,
+        "run_bounded",
         lambda *_a, **_kw: subprocess.CompletedProcess([], 0),
     )
     with mock.patch.object(verify, "_run_steps", return_value=(0, [], 0.0)) as run:
@@ -350,7 +358,14 @@ assert ready.exists(), 'producer stalled on captured output'
     assert {name for name, _ in timings} == {"pytest", "shadow"}
     output = capsys.readouterr().out
     if returncode:
-        assert "START" + "x" * 1000000 + "END" in output
+        assert "END" in output
+        assert len(output) < 40000
+        log = next(
+            line.removeprefix("[log] ")
+            for line in output.splitlines()
+            if line.startswith("[log] ")
+        )
+        assert "START" + "x" * 1000000 + "END" in Path(log).read_text()
     else:
         assert "START" not in output
 
@@ -381,18 +396,6 @@ class TestGeneratorScope:
             == verify.WHOLE_SUITE
         )
 
-    @pytest.mark.parametrize(
-        ("source", "expected"),
-        [
-            ("paths", None),
-            ("canonical", ["tests/scripts/test_canonical.py"]),
-        ],
-    )
-    def test_screen_scope(self, source, expected):
-        verify = load_script()
-        scope = verify._pytest_scope([f"scripts/screens/{source}.py"])  # noqa: SLF001
-        assert scope == (verify.WHOLE_SUITE if expected is None else expected)
-
     def test_explicitly_changed_language_tests_are_never_dropped(self) -> None:
         verify = load_script()
         scope = verify._pytest_scope(  # noqa: SLF001
@@ -401,26 +404,12 @@ class TestGeneratorScope:
         assert "tests/tools/test_boolean_line.py" in scope
 
 
-def test_screen_imported_from_its_package_keeps_the_whole_suite(tmp_path) -> None:
-    verify = load_script()
-    verify.ROOT = tmp_path
-    for path, text in {
-        "tests/scripts/test_probe.py": "",
-        "scripts/screens/probe.py": "",
-        "scripts/consumer.py": "from scripts.screens import probe\n",
-    }.items():
-        target = tmp_path / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text)
-    assert verify._pytest_scope(["scripts/screens/probe.py"]) == verify.WHOLE_SUITE  # noqa: SLF001
-
-
 def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch) -> None:
     from types import SimpleNamespace
 
     from esolangs import registry
 
-    verify = load_script()
+    verify = load_scope()
     verify.ROOT = tmp_path
     languages = {}
     for name in ("target", "consumer", "unrelated"):
@@ -464,7 +453,7 @@ def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
 
 
 def test_leak_step_covers_shipped_examples():
-    from scripts.verify import STEP_SCOPE
+    from scripts.verify.scope import STEP_SCOPE
 
     assert "src/esolangs/examples/fixture.txt".startswith(STEP_SCOPE["exception leaks"])
 
@@ -519,9 +508,92 @@ def test_companion_checks_share_one_serial_lane(monkeypatch):
 
     monkeypatch.setattr(verify, "_wait_with_heartbeat", wait)
     monkeypatch.setattr(
-        verify.subprocess, "Popen", lambda *_args, **_kwargs: mock.Mock()
+        verify.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: mock.Mock(stdout=io.TextIOWrapper(io.BytesIO())),
     )
     runnable = [(name, [name], {}) for name in ("pytest", "first", "second")]
     failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
     assert failures == 0
     assert {name for name, _ in timings} == {"pytest", "first", "second"}
+
+
+@pytest.mark.parametrize(
+    ("stream", "shadow"), [(False, False), (True, False), (False, True)]
+)
+def test_deadline_kills_step_and_its_worker(
+    tmp_path, monkeypatch, capsys, stream, shadow
+):
+    v = load_script()
+    monkeypatch.setattr(v, "STEP_DEADLINES", {"pytest": 0.5})
+    marker = tmp_path / "worker"
+    worker = f"""
+import time
+from pathlib import Path
+path = Path({str(marker)!r})
+while True:
+    path.write_text(str(time.monotonic()))
+    time.sleep(0.01)
+"""
+    parent = (
+        "import subprocess, sys, time; "
+        f"subprocess.Popen([sys.executable, '-c', {worker!r}]); "
+        "print('worker started', flush=True); time.sleep(30)"
+    )
+    steps = [("pytest", [sys.executable, "-c", parent], dict(os.environ))]
+    if shadow:
+        steps.append(("shadow", [sys.executable, "-c", "pass"], dict(os.environ)))
+    start = time.monotonic()
+    failures, _, _ = v._run_steps(steps, stream=stream)  # noqa: SLF001
+    assert failures == 1
+    assert time.monotonic() - start < 3
+    value = marker.read_text()
+    time.sleep(0.1)
+    assert marker.read_text() == value
+    assert "deadline exceeded (0.5s)" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_step_logs_persist_for_streamed_and_captured_output(tmp_path, capsys, stream):
+    verify = load_script()
+    verify.ROOT = tmp_path
+    steps = [("probe", [sys.executable, "-c", "print('log marker')"], dict(os.environ))]
+    assert verify._run_steps(steps, stream=stream)[0] == 0  # noqa: SLF001
+    logs = list((tmp_path / "notes/verification").glob("*.log"))
+    assert len(logs) == 1
+    assert logs[0].read_text() == "log marker\n"
+    assert ("log marker" in capsys.readouterr().out) is stream
+
+
+@pytest.mark.medium
+def test_streamed_logs_deliver_short_flushes_before_exit(tmp_path, monkeypatch):
+    verify = load_script()
+    verify.ROOT = tmp_path
+    marker = tmp_path / "received"
+    output = sys.stdout
+
+    class Stream:
+        def write(self, text):
+            if "live marker" in text:
+                marker.touch()
+            return output.write(text)
+
+        def flush(self):
+            output.flush()
+
+    monkeypatch.setattr(sys, "stdout", Stream())
+    script = f"""
+import time
+from pathlib import Path
+print('live marker', flush=True)
+deadline = time.monotonic() + 1
+while not Path({str(marker)!r}).exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+assert Path({str(marker)!r}).exists(), 'stream withheld a flushed short line'
+"""
+    assert (
+        verify._run_steps(  # noqa: SLF001
+            [("probe", [sys.executable, "-c", script], dict(os.environ))], stream=True
+        )[0]
+        == 0
+    )

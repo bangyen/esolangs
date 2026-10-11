@@ -2,8 +2,34 @@
 
 import random
 
+import pytest
+
+import esolangs
+from tests.support.witness_tables import row_bits
 from tests.tools.fills import _run_form
-from tests.witness_tables import row_bits
+
+
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_setters_leave_scratch_zero(n: int, bit: str) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.home_row import _Machine
+
+    table = bit * (1 << n)
+    programs = [esolangs.generate("Home Row", table, width=w) for w in (None, 1, 20)]
+    programs.append(esolangs.generate("Home Row", table, balance=True))
+    for program in programs:
+        assert str(program).count("$") == n
+        for row in range(1 << n):
+            bits = [int(value) for value in f"{row:0{n}b}"]
+            io = ScriptedIO("")
+            machine = _Machine(str(esolangs.instantiate("Home Row", program, bits)), io)
+            for _ in range(1000):
+                if machine.halted:
+                    break
+                machine.step()
+            assert machine.halted
+            assert io.getvalue() == bit
 
 
 class TestParameterizedHomeRow:
@@ -60,19 +86,13 @@ class TestParameterizedHomeRow:
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
         from esolangs import tools as generators
+        from esolangs.tools.helpers import runs
+        from esolangs.tools.home_row import HOME_ROW_PAIR
 
         template = generators.home_row("0110")
         assert "{X" not in template
         # each packing line opens with its two-character run
         assert "a$lsffffaafla$lsffffafl" in template
-
-    def test_each_input_embedded_once(self) -> None:
-
-        from esolangs import tools as generators
-        from esolangs.tools.helpers import runs
-        from esolangs.tools.home_row import HOME_ROW_PAIR
-
-        template = generators.home_row("0110")
         # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
         assert len(runs(template, "$", (HOME_ROW_PAIR,) * 2)) == 2
         assert "{C0}" not in template
@@ -94,4 +114,4 @@ class TestParameterizedHomeRow:
         from esolangs import tools as generators
 
         tables = (format(v, "08b") for v in range(256))
-        assert sum(len(generators.home_row(t)) for t in tables) == 28452
+        assert sum(len(generators.home_row(t)) for t in tables) == 28404

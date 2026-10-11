@@ -9,8 +9,8 @@ import pytest
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other._packlang_parse import _Parser
 from esolangs.interpreters.other.packlang import _get, _Machine, _node, run
+from esolangs.interpreters.other.packlang._parse import _Parser
 from esolangs.tools.packlang import packlang
 from esolangs.vm import run_until_halt_or_cycle
 from tests.fixtures import text
@@ -20,7 +20,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint
+from tests.support.raises import assert_rejected_with_hint
 
 # The wiki's five example programs, verbatim.
 HELLO, TRUTH_MACHINE, CAT, PLUS_OR_MINUS, DEPENDENCY = (
@@ -567,7 +567,7 @@ def test_dependency_readings_under_each_literal_policy():
 
 @pytest.mark.parametrize("policy", ["decimal", "binary_digits"])
 def test_literal_roundtrip(policy):
-    from esolangs._dialects import PacklangLiterals
+    from esolangs.interpreters.other.packlang._literals import PacklangLiterals
 
     literals = PacklangLiterals(policy)
     for value in (0, 1, 2, 10, 48, 128, 255):

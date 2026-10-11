@@ -16,7 +16,7 @@ just test-quick
 Run `just test` before committing; use `just test-full` for release-scale
 changes (`test-full` includes slow tests; weekly probes run separately with
 `just test-py`, or in scheduled CI). Regenerate committed examples with
-`python scripts/generate.py examples`.
+`python scripts/docs/generate.py examples`.
 
 CI checks the wheel on Linux, macOS and Windows: packaged examples, CLI I/O,
 Line/Piet PNG execution, and installation with and without the mathematics extra.
@@ -161,10 +161,8 @@ requirements:
   count as shorter programs.
 
 Execution-time optimizations require 5% fewer commands summed over every row
-of the three-input tables (`scripts/screens/steps.py`), with no table slower
-or larger. Choose candidates by size, breaking ties by steps.
-
-Use `scripts/screens/` to bound the upside first.
+of the three-input tables, with no table slower or larger. Choose candidates
+by size, breaking ties by steps. Bound the per-piece upside before choosing.
 
 ## Checklist
 
@@ -206,8 +204,15 @@ Use `scripts/screens/` to bound the upside first.
 
 To take a language out, `just remove-language "Name"` deletes what `check`
 asks for and every test file `tests/test_language_coupling.py` counts as
-the language's own (committed or not), regenerates, lowers
-`tests/fixtures/coupling.toml`, and lists the prose mentions left to edit.
+the language's own (committed or not), prunes the helper modules only it
+imported and the per-language code the shared generators and
+`wrap.py` no longer reference, drops its wiki fixtures, timing rows and
+prose entries, regenerates, lowers `tests/fixtures/coupling.toml`, and
+lists the mentions left to edit by hand (display name and aliases, quoted
+ids, dotted module paths), each labelled with the edit it needs -- a
+runnable example, prose, or a comment. brainfuck is the reference language
+shared tests, the examples and `scripts/docs/generate.py` spell out, so
+`remove` refuses it rather than leave a tree that cannot build.
 
 A language should live in its own files: its generator module's
 `LANGUAGE`, its interpreter, and its own test files. A fact another file
@@ -218,8 +223,10 @@ down. Put such a fact on `Language`, or the test in the language's own
 test file: `tests/interpreters/test_<id>.py` for its interpreter,
 `tests/tools/test_boolean_<gen>.py` for its generator, and
 `tests/languages/test_<id>.py` for it through the shared API, CLI, VM and
-debugger. brainfuck is the reference language shared tests use as their
-example.
+debugger. A shared file states a language's own facts, never a second
+language's: an example or comparison that names another language (`as in
+X`, `unlike X`, `X's axis`) is coupling in prose too, and
+`tests/test_language_coupling.py` rejects it.
 
 ### The Boolean I/O contract
 

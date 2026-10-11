@@ -12,7 +12,7 @@ from esolangs.interpreters.stack_based.false import (
     run,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
+from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 
 @pytest.mark.parametrize(

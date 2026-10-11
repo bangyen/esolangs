@@ -3,7 +3,8 @@
 import pytest
 
 import esolangs
-from tests.generator_support import verify_generated
+from tests.reference import REFERENCE
+from tests.support.generator_support import verify_generated
 
 
 class TestAnInterpreterLimitIsStillAnEsolangError:
@@ -24,7 +25,7 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
 
         monkeypatch.setattr(esolangs, "_run", explode)
         with pytest.raises(esolangs.EsolangError) as caught:
-            esolangs.run("brainfuck", "+.", stdin="")
+            esolangs.run(REFERENCE, "+.", stdin="")
         assert isinstance(caught.value, esolangs.InterpreterLimitError)
         assert "recursed deeper" in str(caught.value)
         assert "setrecursionlimit" in str(caught.value)
@@ -39,7 +40,7 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
 
         monkeypatch.setattr(esolangs, "_run", explode)
         with pytest.raises(esolangs.InterpreterLimitError, match="out of memory"):
-            esolangs.run("brainfuck", "+.", stdin="")
+            esolangs.run(REFERENCE, "+.", stdin="")
 
     @pytest.mark.slow
     def test_qoibl_no_longer_hits_the_wall(self) -> None:

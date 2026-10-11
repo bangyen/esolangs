@@ -16,8 +16,10 @@ from esolangs.tools.alight import (
     _dimensions,
     _half_before,
     _postfix_units,
+    _program,
 )
 from esolangs.tools.helpers import _validate_truth_table, input_weights
+from esolangs.tools.wrap import balance_score
 
 _Affine = tuple[int, int]
 _EAST = len(_ALIGHT_EAST_TURN)
@@ -221,19 +223,43 @@ def _balance_postfix(
 
 
 def balance_alight(
-    table: str, default: str, *, expression_syntax: str = "infix"
+    table: str,
+    default: str,
+    *,
+    expression_syntax: str = "infix",
+    keep_constant_input: bool = False,
 ) -> str:
     """Balance the layouts that can win the native minimax width selector."""
     n = _validate_truth_table(table)
     weights, projected = input_weights(table, n)
-    # An ignored input is read and dropped; a constant keeps every input.
+    # Constants have no index inputs; reads remain in stream order.
     essential = [bool(weight) for weight in weights]
+    if not any(essential) and not keep_constant_input:
+        legacy = _program(
+            table, expression_syntax=expression_syntax, keep_constant_input=True
+        )
+        return min(
+            _balance_projected(projected, n, default, essential, expression_syntax),
+            balance_alight(
+                table,
+                legacy,
+                expression_syntax=expression_syntax,
+                keep_constant_input=True,
+            ),
+            key=balance_score,
+        )
     if not any(essential) or all(essential):
         essential = [True] * n
         projected = table
+    return _balance_projected(projected, n, default, essential, expression_syntax)
+
+
+def _balance_projected(
+    table: str, n: int, default: str, essential: list[bool], expression_syntax: str
+) -> str:
+    """Balance an indexed lookup after projecting its input dimensions."""
     if expression_syntax == "postfix":
-        return _balance_postfix(projected, n, default, essential)
-    table = projected
+        return _balance_postfix(table, n, default, essential)
     plans = _plans(n, tuple(essential))
     records = [next(plan for plan in plans if plan.kind == _ROW)]
     best: _Plan | None = None

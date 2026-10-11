@@ -6,7 +6,10 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.helpers import essential_inputs, permute_truth_table
-from tests.generator_support import assert_an_ignored_input_costs, verify_generated
+from tests.support.generator_support import (
+    assert_an_ignored_input_costs,
+    verify_generated,
+)
 from tests.tools.sample_tables import five_input_sample
 
 

@@ -41,8 +41,8 @@ class Test123:
         assert io.getvalue() == "h\ni"
 
     def test_false_jump_skips_forward(self) -> None:
-        """A FALSE 3 skips to the next 3, then the 1 halts (pos below 0)."""
-        # 3 (FALSE, bit@0) -> next 3 -> 1 flips bit@0 and moves to pos -1.
+        """A false 3 skips to the next 3, then the 1 halts (pos below 0)."""
+        # 3 (false, bit@0) -> next 3 -> 1 flips bit@0 and moves to pos -1.
         assert run_program("3231") == ""
 
     def test_false_jump_starts_looking_at_the_next_command(self) -> None:
@@ -60,7 +60,7 @@ class Test123:
         from esolangs.interpreters.tape_based.one_two_three import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        # 2 (pos 0->1) 1 (flip bit@1, pos 1->0) 3 (bit@0 is FALSE, skip to
+        # 2 (pos 0->1) 1 (flip bit@1, pos 1->0) 3 (bit@0 is false, skip to
         # end) then loop-or-halt sees pos=0 (not <0) and restarts at ip=0
         # with bit@1 toggled back — a genuine bounded cycle (positions 0-1
         # only), decided by the deterministic state-cycle detector with no

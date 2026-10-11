@@ -6,9 +6,9 @@ import pytest
 
 from esolangs.tools.back import _back_ordered
 from esolangs.tools.helpers import TEMPLATE_CHAR, permute_truth_table, runs
-from tests.generator_support import assert_an_ignored_input_costs
+from tests.support.generator_support import assert_an_ignored_input_costs
+from tests.support.witness_tables import row_bits, witnesses
 from tests.tools.test_boolean_parameterized_contract import _drawing
-from tests.witness_tables import row_bits, witnesses
 
 
 class TestParameterizedBack:
@@ -315,7 +315,8 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
         (7, 2033),
         (8, 2034),
         (9, 2035),
-        (10, 2036),
+        # ~1.2s alone on this machine, over the one-second fast band.
+        pytest.param(10, 2036, marks=pytest.mark.medium),
         pytest.param(11, 2037, marks=pytest.mark.medium),
         # 5.24s alone with coverage exceeds the five-second medium band.
         pytest.param(12, 2038, marks=pytest.mark.slow),
@@ -369,7 +370,7 @@ def test_selective_bend_preserves_the_command_bound(n: int, seed: int) -> None:
 
 
 def test_bend_walk_rejects_cycles_and_counts_both_skip_outcomes() -> None:
-    from esolangs.tools.back_routes import _back_walk
+    from esolangs.tools.back._routes import _back_walk
 
     assert _back_walk({(0, 1): "*"}, 1, 3) == 1
     assert _back_walk({(0, 1): "+", (0, 3): "*"}, 1, 4) == 3
@@ -378,7 +379,7 @@ def test_bend_walk_rejects_cycles_and_counts_both_skip_outcomes() -> None:
 
 @pytest.mark.parametrize("obstruction", ["owner", "distance", "occupied"])
 def test_bend_refuses_a_missing_owner_or_blocked_corridor(obstruction: str) -> None:
-    from esolangs.tools.back_routes import _back_bend
+    from esolangs.tools.back._routes import _back_bend
 
     positions = {(1, 0): (1, 5), (1, 1): (4, 5), (1, 2): (10, 5)}
     grid = dict.fromkeys(positions.values(), "\\")

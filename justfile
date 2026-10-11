@@ -37,7 +37,7 @@ install-dev:
         python -m pip install -U pip
         pip install -e . --group dev
     fi
-    # Enable the pre-push gate (scripts/verify.py) so every push runs the
+    # Enable the pre-push gate (scripts/verify/gate.py) so every push runs the
     # full local check: lint, pytest, bandit, and the verify scripts.
     git config core.hooksPath .githooks
 
@@ -58,21 +58,26 @@ lint: lint-python
 # whole tree.  Pass --quiet to suppress successful step output.
 # test (local check: lint, pytest, bandit, verify scripts)
 test *args:
-    {{PYTHON}} scripts/verify.py {{args}}
+    {{PYTHON}} scripts/verify/gate.py {{args}}
 
 # every step over the whole tree, ignoring what this branch touched
 test-full *args:
-    {{PYTHON}} scripts/verify.py --full {{args}}
+    {{PYTHON}} scripts/verify/gate.py --full {{args}}
 
-# inner loop: pre-commit + pytest, fast band only, quiet by default
+# inner loop: pre-commit + pytest, fast band only, quiet by default.
+# Four workers, the pytest config's default: this box also runs sessions in
+# parallel, and at eight workers the subprocess-heavy fast tests starve past
+# the band's starved wall ceiling (3.5-4.1s vs the 3s limit) and fail
+# spuriously.  Measured here: eight failed at load 35, four passed at 36, for
+# about 6s more wall.
 test-quick *args:
-    PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly' -n 8" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly'" {{PYTHON}} scripts/verify/gate.py --quiet --only pre-commit,pytest {{args}}
 
 # pytest fast and medium bands only; use just test before a commit
 test-mid *args:
-    PYTEST_ADDOPTS="-m 'not slow and not weekly'" {{PYTHON}} scripts/verify.py --only pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not weekly'" {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
 
-# granular targets — each maps to one STEPS entry in scripts/verify.py (see verify.py --list)
+# granular targets — each maps to one STEPS entry in scripts/verify/gate.py (see verify.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)
 #
 # these pass --only, so each runs its step in full — including the `slow`
@@ -81,15 +86,15 @@ test-mid *args:
 
 # pytest only, in full -- including the `slow` band
 test-py *args:
-    {{PYTHON}} scripts/verify.py --only pytest {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
 
 # lint + duplicate-code + bandit + dead definitions
 test-lint *args:
-    {{PYTHON}} scripts/verify.py --only pre-commit,"duplicate-code check (pylint)",bandit,"dead definitions" {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"duplicate-code check (pylint)",bandit,"dead definitions" {{args}}
 
 # security scan only
 test-bandit *args:
-    {{PYTHON}} scripts/verify.py --only bandit {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only bandit {{args}}
 
 # emit repeatable generator size/time/command evidence as JSON
 benchmark language table *args:
@@ -100,7 +105,11 @@ benchmark language table *args:
 # so the diff carries it.  Also a `just test` step ("generator size baseline").
 # check emitted sizes and step counts against the committed baseline
 sizes *args:
-    {{PYTHON}} scripts/check_generator_sizes.py {{args}}
+    {{PYTHON}} checks/check_generator_sizes.py {{args}}
+
+# Merge downloaded artifacts, one complete CI run per directory.
+refresh-ci-timings *args:
+    {{PYTHON}} scripts/ci/shard.py refresh --serial-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate {{args}}
 
 # create interpreter, generator and test stubs; pass e.g. --category tape_based
 new-language name *args:
@@ -117,19 +126,6 @@ finish-language name:
 # delete a language everywhere check looks, then list prose mentions left
 remove-language name:
     {{PYTHON}} scripts/new_language.py remove "{{name}}"
-
-# Not part of `just test`: a few minutes per language.
-# `language` is quoted: display names like "A Painter Ant" contain spaces,
-# and unquoted they split into two arguments.
-# mutation-test one interpreter: what its tests would NOT have caught
-mutate language *args:
-    {{PYTHON}} scripts/mutate.py interpreter "{{language}}" {{args}}
-
-# `module` is family/module, e.g. tools/register or core/vm; pass --slow to
-# include slow tests.
-# the same for one generator
-mutate-gen module *args:
-    {{PYTHON}} scripts/mutate.py generator {{module}} {{args}}
 
 # `python -m tests.proofs.deep --list` shows which proofs CI and verify run.
 # run every executable proof: the ledger obligations and the deep proofs

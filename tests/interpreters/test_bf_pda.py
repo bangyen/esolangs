@@ -11,7 +11,7 @@ from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
 )
-from tests.raises import assert_rejected_with_hint, raises_message
+from tests.support.raises import assert_rejected_with_hint, raises_message
 
 run = importlib.import_module("esolangs.interpreters.stack_based.bf_pda").run
 

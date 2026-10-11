@@ -20,7 +20,87 @@ from esolangs.tools.slow_acv_mammalian import (
 from esolangs.tools.wrap import (
     _mammalian,
 )
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("essential", range(1, 8))
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
+    essential, io_modulus
+):
+    import esolangs
+    from esolangs.tools._mammalian_compact import compact_chain
+
+    used = [*range(essential - 1), 7]
+    # Parity makes every selected coordinate essential, including both ends.
+    table = "".join(
+        str(sum((row >> (7 - bit)) & 1 for bit in used) % 2) for row in range(256)
+    )
+    program = compact_chain(
+        table, 8, modulus=255, io_modulus=io_modulus, project_inputs=True
+    )
+    settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
+    for row in (0, 1, 85, 128, 170, 255):
+        bits = [int(bit) for bit in f"{row:08b}"]
+        output = esolangs.run(
+            "SLOW ACV MAMMALIAN",
+            program,
+            stdin=esolangs.encode_inputs("SLOW ACV MAMMALIAN", bits),
+            settings=settings,
+        )
+        assert esolangs.read_answer("SLOW ACV MAMMALIAN", output) == table[row]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", [2, 3, 8])
+@pytest.mark.parametrize("io_modulus", [255, 256])
+@pytest.mark.parametrize("kind", ["first", "last", "ends"])
+def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
+    inputs, io_modulus, kind
+):
+    import esolangs
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.tools.slow_acv_mammalian import _program
+    from esolangs.tools.wrap import balance_program, balance_score
+    from esolangs.vm import run_until_halt_or_cycle
+
+    used = {"first": [0], "last": [inputs - 1], "ends": [0, inputs - 1]}[kind]
+    table = "".join(
+        str(sum((row >> (inputs - 1 - bit)) & 1 for bit in used) % 2)
+        for row in range(1 << inputs)
+    )
+    settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
+    legacy = _program(
+        table, cell_modulus=255, io_modulus=io_modulus, keep_ignored_inputs=True
+    )
+    program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings)
+    assert len(program) <= len(legacy)
+    if inputs >= 3 or io_modulus == 256:
+        assert program.split().count("ACCEPT") == inputs
+    if inputs == 8 and io_modulus == 255:
+        assert len(program) < len(legacy)  # positive control for projection
+    balanced = esolangs.generate(
+        "SLOW ACV MAMMALIAN", table, settings=settings, balance=True
+    )
+    assert balance_score(balanced) <= balance_score(
+        balance_program(legacy, "slow_acv_mammalian")
+    )
+    rows = range(1 << inputs) if inputs <= 3 else (0, 1, 128, 255)
+    for row in rows:
+        bits = [int(bit) for bit in format(row, f"0{inputs}b")]
+        stdin = esolangs.encode_inputs("SLOW ACV MAMMALIAN", bits)
+        for candidate in (legacy, program, balanced):
+            io_obj = ScriptedIO(stdin + "0")
+            run_until_halt_or_cycle(
+                _Machine(candidate, io_obj, cell_modulus=255, io_modulus=io_modulus)
+            )
+            assert io_obj.position() == inputs
+            assert (
+                esolangs.read_answer("SLOW ACV MAMMALIAN", io_obj.getvalue())
+                == table[row]
+            )
 
 
 class TestSlowAcvMammalian:
@@ -181,8 +261,11 @@ class TestSlowAcvMammalian:
 
     def test_a_slot_is_the_same_width_for_either_digit(self) -> None:
         """The table's stride is a leaf, and a leaf does not read the sum."""
+        from esolangs.tools.slow_acv_mammalian import _program
+
+        # Constants bypass this dispatch; compare its two leaf digits directly.
         sizes = {
-            len(boolean.slow_acv_mammalian(table))
+            len(_program(table, keep_constant_input=True))
             for table in ("0000", "1111", "0110", "1001", "0111")
         }
         assert len(sizes) == 1
@@ -826,3 +909,41 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
     whitespace-only program is returned as it came."""
     assert _mammalian("", 40) == ""
     assert _mammalian("   \n ", 40) == "   \n "
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("cell", [255, 256])
+@pytest.mark.parametrize("io", [255, 256])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_print_array_is_independent_of_every_input(cell, io, bit):
+    import esolangs
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.slow_acv_mammalian import _program
+
+    table = bit * 256
+    settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
+    program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings)
+    assert len(program) < len(
+        _program(table, cell_modulus=cell, io_modulus=io, keep_constant_input=True)
+    )
+    assert program.split().count("ACCEPT") == 8
+    assert "LEAPFROG" not in program
+    assert (
+        _evaluate("SLOW ACV MAMMALIAN", program, inputs=8, settings=settings) == table
+    )
+
+
+@pytest.mark.parametrize("cell", [255, 256])
+@pytest.mark.parametrize("io", [255, 256])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit):
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+    program = boolean.slow_acv_mammalian(bit * 8, cell_modulus=cell, io_modulus=io)
+    stream = ScriptedIO("0101")
+    machine = _Machine(program, stream, cell_modulus=cell, io_modulus=io)
+    while not machine.halted:
+        machine.step()
+    assert stream.position() == 3
+    assert stream.getvalue() == bit

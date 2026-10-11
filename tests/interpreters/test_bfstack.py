@@ -13,7 +13,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_lines
-from tests.raises import assert_rejected_with_hint, raises_message
+from tests.support.raises import assert_rejected_with_hint, raises_message
 
 run_and_capture = run_lines(run)
 
@@ -62,14 +62,11 @@ class TestBFStack:
         with raises_message(ValueError, "unmatched '['"):
             run_and_capture(">[")
 
-    def test_output_on_empty_stack_raises(self) -> None:
-        with pytest.raises(HaltError):
-            run_and_capture(".")
-
-    def test_unmatched_closing_bracket_raises(self) -> None:
-        """] with no matching [ is an invalid operation."""
-        with pytest.raises(HaltError):
-            run_and_capture(">]")
+    def test_operations_on_empty_or_unbalanced_programs_raise(self) -> None:
+        """`.` and `<` underflow; `]`, `+` and `-` need a value or a partner."""
+        for code in (".", ">]", "<", "+", "-"):
+            with pytest.raises(HaltError):
+                run_and_capture(code)
 
     def test_cells_wrap_at_a_byte(self) -> None:
         """+ and - wrap modulo 256, in both directions."""
@@ -77,24 +74,9 @@ class TestBFStack:
         assert run_and_capture(">" + "+" * 256 + ".") == "\x00"
         assert run_and_capture(">" + "+" * 255 + ".") == "\xff"
 
-    def test_pop_on_empty_stack_raises(self) -> None:
-        """< on an empty stack is an invalid operation."""
-        with pytest.raises(HaltError):
-            run_and_capture("<")
-
-    def test_arithmetic_on_empty_stack_raises(self) -> None:
-        """+ and - need a value to act on."""
-        with pytest.raises(HaltError):
-            run_and_capture("+")
-        with pytest.raises(HaltError):
-            run_and_capture("-")
-
 
 class TestStepMachine:
     def test_step_tracks_stack_and_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.bfstack import _Machine
-
         machine = _Machine(">+.", ScriptedIO())
         assert (machine.ind, machine.stk) == (0, ())
         machine.step()  # > pushes 0
@@ -109,9 +91,6 @@ class TestStepMachine:
 
     def test_lst_holds_the_positions_of_entered_loops(self) -> None:
         """``lst`` is the loop stack: a ``[`` that is entered records itself."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.bfstack import _Machine
-
         machine = _Machine(">+[", ScriptedIO())
         for _ in range(3):
             machine.step()
@@ -119,9 +98,6 @@ class TestStepMachine:
 
     def test_memory_is_empty_because_the_store_is_the_stack(self) -> None:
         """``memory`` and ``stack`` are different views, not one field twice."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.bfstack import _Machine
-
         machine = _Machine(">+", ScriptedIO())
         for _ in range(2):
             machine.step()
@@ -130,9 +106,6 @@ class TestStepMachine:
 
     def test_an_unmatched_bracket_leaves_the_machine_halted(self) -> None:
         """The cursor is moved to the end before the error is raised."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.bfstack import _Machine
-
         machine = _Machine(">[", ScriptedIO())
         machine.step()  # > pushes 0
         with raises_message(ValueError, "unmatched '['"):
@@ -142,16 +115,10 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.stack_based.bfstack import _Machine
-
     return _Machine(code, ScriptedIO())
 
 
 def _reader(code: object, stdin: str) -> object:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.stack_based.bfstack import _Machine
-
     return _Machine(code, ScriptedIO(stdin))
 
 

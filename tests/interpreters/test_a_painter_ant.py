@@ -3,7 +3,6 @@
 import pytest
 
 from esolangs.interpreters.grid_based.a_painter_ant import _Machine, run
-from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _AntMachine
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.contract import EmptyProgramContract
 
@@ -18,48 +17,30 @@ def run_program(code: str, passes: int = 1) -> str:
 
 
 class TestMovement:
-    def test_lowercase_moves_on_black(self) -> None:
-        # n/e/s/w move one cell onto an adjacent black cell; 'o' is the ant
-        # on a black cell, so it marks where the move ended.
-        assert run_program("n") == "o\n."
+    def test_lowercase_moves_on_black_and_uppercase_does_not(self) -> None:
+        assert run_program("n") == "o\n."  # n/e/s/w move onto adjacent black
         assert run_program("s") == ".\no"
         assert run_program("e") == ".o"
         assert run_program("w") == "o."
-
-    def test_uppercase_does_not_move_onto_black(self) -> None:
-        # N/E/S/W only move onto white cells; all cells start black, so the
-        # ant stays on the origin and the box never grows past it.
-        assert run_program("N") == "o"
-        assert run_program("S") == "o"
-        assert run_program("E") == "o"
-        assert run_program("W") == "o"
+        # N/E/S/W only move onto white; all cells start black, so no move.
+        for command in "NSEW":
+            assert run_program(command) == "o"
 
     def test_uppercase_moves_onto_white(self) -> None:
-        # Paint the cell north of the start white, return, then N moves onto
-        # it: '@' is the ant resting on a white cell.
         assert run_program("nPsN") == "@\n."
 
     def test_conditional_movement_leaves_ant_in_place(self) -> None:
-        # P whites the origin, n leaves it, N finds a black cell north: no
-        # move, so the ant is still on the white origin ('#' below it).
+        # P whites the origin, n leaves, N finds a black cell north: no move.
         assert run_program("PnN") == "o\n#"
 
 
-class TestPainting:
+class TestPaintingAndLoop:
     def test_paint_then_move_writes_the_trail(self) -> None:
-        # Each pass paints the current cell white, then steps north, so the
-        # trail behind the ant is white ('#') and the ant sits on black.
+        # Each pass paints the current cell, then steps north and wraps.
         assert run_program("Pn", 3) == "o\n#\n#\n#"
-
-
-class TestImplicitLoop:
-    def test_program_wraps_after_the_last_instruction(self) -> None:
-        # "P n" repeated four times paints a northward trail of four whites.
         assert run_program("Pn", 4) == "o\n#\n#\n#\n#"
 
     def test_diamond_example(self) -> None:
-        # The wiki's diamond program paints the start of an ever-growing
-        # diamond, with the east move blocked by the newly painted cell.
         assert run_program("PnPwPsPe", 3) == ".##\n###\n##.\n.#o"
 
     def test_run_finds_the_first_repeated_pass(self) -> None:
@@ -78,8 +59,6 @@ class TestFormat:
 
 class TestStepMachine:
     def test_step_tracks_ip_grid_and_position(self) -> None:
-        from esolangs.interpreters.grid_based.a_painter_ant import _Machine
-
         machine = _Machine("Pn")
         assert machine.halted is False
         assert machine.ip == 0
@@ -91,8 +70,6 @@ class TestStepMachine:
         assert (machine.x, machine.y) == (0, -1)
 
     def test_snapshot_is_a_hashable_complete_state(self) -> None:
-        from esolangs.interpreters.grid_based.a_painter_ant import _Machine
-
         machine = _Machine("Pn")
         first = machine.snapshot()
         assert hash(first) is not None
@@ -100,7 +77,6 @@ class TestStepMachine:
         assert machine.snapshot() != first  # the paint changed the state
 
     def test_blocked_instruction_loops_and_is_a_cycle(self) -> None:
-        from esolangs.interpreters.grid_based.a_painter_ant import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         # N never fires (all cells start black), so the run revisits state.
@@ -118,7 +94,7 @@ class TestPainterAntDumpsOnce:
     def test_stepping_an_interrupted_machine_again_does_not_redump(self) -> None:
         """The picture is printed once, however often the machine is stepped."""
         io = ScriptedIO()
-        machine = _AntMachine("Pn", io)
+        machine = _Machine("Pn", io)
         machine.interrupt()
         machine.step()
         first = io.getvalue()

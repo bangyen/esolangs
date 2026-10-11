@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import IO, ScriptedIO
+from tests.reference import REFERENCE
 
 
 def assert_echoes_a_newline(language: str, program: str) -> None:
@@ -15,7 +16,7 @@ def assert_echoes_a_newline(language: str, program: str) -> None:
 
 
 def test_character_input_preserves_newline():
-    assert_echoes_a_newline("brainfuck", ",.")
+    assert_echoes_a_newline(REFERENCE, ",.")
 
 
 def test_newline_is_distinct_from_eof():
@@ -26,7 +27,7 @@ def test_newline_is_distinct_from_eof():
 
 
 def test_stream_echo_preserves_characters_on_the_same_line():
-    assert esolangs.run("brainfuck", ",.,.,.", stdin="ab\n") == "ab\n"
+    assert esolangs.run(REFERENCE, ",.,.,.", stdin="ab\n") == "ab\n"
 
 
 def test_interactive_empty_line_is_a_newline_character():

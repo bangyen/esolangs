@@ -5,11 +5,11 @@ import importlib
 import pytest
 
 from esolangs import tools as boolean
-from esolangs._grapheme import GraphemeDialect
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import run
+from esolangs.interpreters.stack_based.grapheme._dialect import GraphemeDialect
 from esolangs.tools.grapheme import _grapheme_literal, _grapheme_push65, _grapheme_table
-from tests.generator_support import evaluate_generated
+from tests.support.generator_support import evaluate_generated
 from tests.tools.test_boolean_contract import _one_minterm
 
 
@@ -19,15 +19,6 @@ class TestGrapheme:
         parity = boolean.grapheme("01101001")
         assert set("UVX").isdisjoint(parity)
         assert set("UVX").isdisjoint(boolean.grapheme("0" * 8))
-
-    def test_the_table_costs_about_a_third_of_a_character_an_entry(self) -> None:
-        """The literal is the table in base 10, so log10(2) letters an entry."""
-        sizes = []
-        for n in (7, 11):
-            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
-            sizes.append(len(boolean.grapheme(table)))
-        grown = (sizes[1] - sizes[0]) / ((1 << 11) - (1 << 7))
-        assert 0.30 < grown < 0.35, sizes
 
     def test_the_program_is_only_grapheme_commands(self) -> None:
         """Only int-mode digits and the commands used are emitted."""
@@ -80,3 +71,15 @@ def test_generator_literals_are_exact(mode):
     io = ScriptedIO("")
     run(_grapheme_push65(dialect) + "Y", io, integer_conversion=mode)
     assert io.getvalue() == "65"
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
+@pytest.mark.parametrize("bit", "01")
+def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
+    from esolangs.tools.grapheme import _program
+    from tests.support.generator_support import assert_constant_balanced_shape
+
+    table = bit * (1 << n)
+    assert_constant_balanced_shape(
+        "Grapheme", "grapheme", table, _program(table, keep_constant_input=True)
+    )

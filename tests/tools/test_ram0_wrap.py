@@ -6,7 +6,7 @@ import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.tools.ram0 import ram0
 from esolangs.tools.wrap import wrap_space_delimited
-from tests.witness_tables import witnesses
+from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.medium)])

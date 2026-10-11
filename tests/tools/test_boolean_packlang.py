@@ -9,6 +9,7 @@ from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.packlang import run as packlang_run
+from esolangs.tools.packlang import _folded
 from esolangs.tools.wrap import (
     _packlang,
     balance_score,
@@ -135,3 +136,8 @@ def test_literal_policy_is_checked_and_does_not_leak():
 def test_packlang_keeps_unknown_punctuation_verbatim() -> None:
     unknown = "package t { invalid@token; }"
     assert _packlang(unknown, 1) == unknown
+
+
+def test_folded_skips_an_empty_statement() -> None:
+    """An empty statement contributes no line to the fold."""
+    assert _folded(["", "a"]) == ["a"]

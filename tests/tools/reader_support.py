@@ -7,7 +7,7 @@ from typing import Any
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES
-from tests.witness_tables import row_bits
+from tests.support.witness_tables import row_bits
 
 
 def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]]:

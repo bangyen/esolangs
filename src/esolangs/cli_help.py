@@ -36,6 +36,7 @@ commands:
   Catalog:
     list [--details] [--json] [--generator | --interpreter-only]
          [--source text|raster] [--answer output|dump|termination] [--inputs N]
+         [--state-model MODEL] [--shape SHAPE]
                                 list languages matching their capabilities
     describe [--json] [--spec] <language>
                                 print how that language reads its input and
@@ -89,7 +90,7 @@ example:
     "list": """usage: esolangs list [--details] [--json]
                      [--generator | --interpreter-only]
                      [--source text|raster] [--answer output|dump|termination]
-                     [--inputs N]
+                     [--inputs N] [--state-model MODEL] [--shape SHAPE]
 
 List matching languages, one per line. Filters combine with AND.
 
@@ -108,6 +109,11 @@ options:
   --answer    select output, dump, or termination as the Boolean answer
   --inputs N  select generators whose declared input cap admits positive N;
               table-dependent restrictions still apply (shown by --details)
+  --state-model MODEL
+              select the language's category, from its interpreter family:
+              register, tape, stack, grid, queue, other
+  --shape SHAPE
+              select generators by construction shape: tree, reducing, lookup
 
 example:
   esolangs list --generator --source text --answer output --inputs 4 --details

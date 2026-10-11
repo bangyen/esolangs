@@ -3,16 +3,29 @@
 from __future__ import annotations
 
 import argparse
+import builtins
+import contextlib
+import hashlib
+import io
 import json
-import signal
+import os
+import platform
+import queue
 import statistics
+import subprocess
+import sys
+import tempfile
 import threading
 import time
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import fields, is_dataclass
 from fractions import Fraction
 from itertools import chain, compress
 from operator import is_not
-from typing import Any, cast
+from pathlib import Path
+from typing import Any, BinaryIO, cast
 
 import esolangs
 import esolangs.debugger as debugger_api
@@ -22,9 +35,91 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES
 from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from verify.process import (
+    EXCERPT_BYTES,
+    MAX_LOG_BYTES,
+    run_bounded,
+    spool,
+    stop_process_tree,
+)
+
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
 _MEMO_TYPES = (tuple, frozenset, Fraction)
+
+
+def artifact_hash(program: esolangs.Program) -> str:
+    """Hash UTF-8 text or dimensioned RGB rows without PNG encoder variation."""
+    if isinstance(program, str):
+        payload = b"text\0" + program.encode("utf-8")
+    else:
+        payload = b"rgb\0" + json.dumps(program.rows, separators=(",", ":")).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def source_identity(timeout: float = 60) -> dict[str, Any]:
+    """Identify the checkout; refuse evidence without readable Git state."""
+    root = Path(__file__).resolve().parents[1]
+
+    check_timeout(timeout)
+    deadline = time.monotonic() + timeout
+
+    def git(*args: str) -> bytes:
+        return cast(
+            bytes,
+            run_bounded(
+                ["git", *args],
+                cwd=root,
+                capture_output=True,
+                check=True,
+                text=False,
+                timeout=max(0, deadline - time.monotonic()),
+            ).stdout,
+        )
+
+    untracked = hashlib.sha256()
+    for name in sorted(
+        git("ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
+    ):
+        if name:
+            untracked.update(name + b"\0")
+            untracked.update(
+                hashlib.sha256((root / os.fsdecode(name)).read_bytes()).digest()
+            )
+    return {
+        "untracked_sha256": untracked.hexdigest(),
+        "commit": git("rev-parse", "HEAD").decode().strip(),
+        "dirty": bool(git("status", "--porcelain", "--untracked-files=normal")),
+        "tracked_diff_sha256": hashlib.sha256(
+            git("diff", "HEAD", "--binary")
+        ).hexdigest(),
+        "checkout": str(root),
+    }
+
+
+_WORKER: ContextVar[Worker | None] = ContextVar("benchmark_worker", default=None)
+
+_EVIDENCE: ContextVar[dict[str, Any] | None] = ContextVar(
+    "benchmark_evidence", default=None
+)
+
+
+@contextmanager
+def evidence_session() -> Iterator[None]:
+    """Check checkout state once around a sweep, before publishing its records."""
+    identity = source_identity()
+    token = _EVIDENCE.set(identity)
+    worker = Worker()
+    worker_token = _WORKER.set(worker)
+    try:
+        yield
+        if source_identity() != identity:
+            raise RuntimeError("checkout changed during benchmark")
+    finally:
+        worker.close()
+        _WORKER.reset(worker_token)
+        _EVIDENCE.reset(token)
 
 
 def _bits(row: int, inputs: int) -> list[int]:
@@ -217,6 +312,7 @@ def _execute(
     *,
     track_store: bool = False,
     facts: LanguageInfo | None = None,
+    source_digest: str | None = None,
 ) -> dict[str, Any]:
     if facts is None:
         facts = esolangs.describe(language)
@@ -234,6 +330,9 @@ def _execute(
     if track_store and facts["answer_mode"] == "termination":
         raise ValueError("store tracking requires a halting-answer language")
     result: dict[str, Any] = {
+        "artifact_sha256": source_digest
+        if source_digest is not None
+        else artifact_hash(source),
         "row": row,
         "expected_answer": table[row],
         "actual_answer": None,
@@ -326,13 +425,13 @@ def _commands(
     cap: int,
 ) -> int | None:
     """Return steps to halt for the size screens, checking the same artifact."""
-    result = _execute(language, program, table, row, cap, None)
+    result = _execute(language, program, table, row, cap, None, source_digest="")
     if result["matches"] is False:
         raise ValueError(f"{language} row {row}: wrong generated answer")
     return cast("int | None", result["commands"])
 
 
-def measure(
+def _measure(
     language: str,
     table: str,
     *,
@@ -343,6 +442,7 @@ def measure(
     sample_rows: tuple[int, ...] | None = None,
     timeout: float | None = 30.0,
     track_store: bool = False,
+    _progress: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Benchmark the last timed artifact; optionally check every input row."""
     if repeat < 1 or step_cap < 1:
@@ -356,13 +456,9 @@ def measure(
     ):
         raise ValueError("sample rows must index the table and include row")
     check_timeout(timeout)
-    if timeout is not None and not (
-        threading.current_thread() is threading.main_thread()
-        and hasattr(signal, "SIGALRM")
-    ):
-        raise esolangs.ArgumentError(
-            "benchmark timeout needs a Unix main thread; pass timeout=None"
-        )
+    identity = _EVIDENCE.get() or source_identity()
+    if _progress is not None:
+        _progress("generation")
     timings: list[int] = []
     program: esolangs.Program | None = None
     for _ in range(repeat):
@@ -372,23 +468,38 @@ def measure(
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
     facts = esolangs.describe(language)
+    digest = artifact_hash(program)
     rows = range(len(table)) if all_rows else sample_rows or (row,)
-    executions = [
-        _execute(
-            language,
-            program,
-            table,
-            at,
-            step_cap,
-            timeout,
-            track_store=track_store,
-            facts=facts,
+    executions = []
+    for at in rows:
+        if _progress is not None:
+            _progress("execution")
+        executions.append(
+            _execute(
+                language,
+                program,
+                table,
+                at,
+                step_cap,
+                timeout,
+                track_store=track_store,
+                facts=facts,
+                source_digest=None if facts["parameterized"] else digest,
+            )
         )
-        for at in rows
-    ]
     selected = next(item for item in executions if item["row"] == row)
+    if _EVIDENCE.get() is None and source_identity() != identity:
+        raise RuntimeError("checkout changed during benchmark")
     return {
-        "schema": 5,
+        "schema": 6,
+        "provenance": {
+            **identity,
+            "python": sys.version,
+            "platform": platform.platform(),
+            "machine": platform.machine(),
+            "harness": 1,
+            "generated_artifact_sha256": digest,
+        },
         "track_store": track_store,
         "language": facts["name"],
         "truth_table": table,
@@ -413,6 +524,46 @@ def measure(
     }
 
 
+def measure(
+    language: str,
+    table: str,
+    *,
+    repeat: int,
+    row: int,
+    step_cap: int,
+    all_rows: bool = False,
+    sample_rows: tuple[int, ...] | None = None,
+    timeout: float | None = 30.0,
+    track_store: bool = False,
+    generation_timeout: float | None = 30.0,
+) -> dict[str, Any]:
+    """Bound generation and each execution row in a reusable supervised worker."""
+    check_timeout(timeout)
+    check_timeout(generation_timeout)
+    identity = _EVIDENCE.get() or source_identity()
+    worker = _WORKER.get() or Worker()
+    arguments = {
+        "language": language,
+        "table": table,
+        "repeat": repeat,
+        "row": row,
+        "step_cap": step_cap,
+        "all_rows": all_rows,
+        "sample_rows": sample_rows,
+        "timeout": timeout,
+        "track_store": track_store,
+    }
+    try:
+        result = worker.measure(arguments, identity, generation_timeout)
+        if _EVIDENCE.get() is None and source_identity() != identity:
+            raise RuntimeError("checkout changed during benchmark")
+        result["generation_timeout"] = generation_timeout
+        return result
+    finally:
+        if _WORKER.get() is None:
+            worker.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     """Print JSON evidence; fail if any requested row is wrong or undecided."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -426,6 +577,7 @@ def main(argv: list[str] | None = None) -> int:
     bounds.add_argument(
         "--no-timeout", action="store_const", dest="timeout", const=None
     )
+    parser.add_argument("--generation-timeout", type=float, default=30.0)
     parser.add_argument("--all-rows", action="store_true")
     parser.add_argument(
         "--track-store",
@@ -446,10 +598,278 @@ def main(argv: list[str] | None = None) -> int:
         step_cap=args.step_cap,
         all_rows=args.all_rows,
         timeout=args.timeout,
+        generation_timeout=args.generation_timeout,
         track_store=args.track_store,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if all(item["matches"] is True for item in result["executions"]) else 1
+
+
+MAX_RECORD_CHARS = 1024 * 1024
+
+
+class Worker:
+    """Reuse one interpreter across a sweep; kill the tree on any deadline."""
+
+    def __init__(self, command: list[str] | None = None) -> None:
+        """Spawn ``command``, or this module in ``--worker`` mode by default."""
+        self.command = command or [
+            sys.executable,
+            str(Path(__file__).resolve().parent / "_benchmark_worker.py"),
+        ]
+        self.process: subprocess.Popen[str] | None = None
+        self.messages: queue.Queue[str | None] = queue.Queue(maxsize=1)
+        self.stopped = threading.Event()
+        self.reader: threading.Thread | None = None
+        self.writer: threading.Thread | None = None
+        self.log_path: Path | None = None
+        self.log_reader: threading.Thread | None = None
+        self.log_overflow = threading.Event()
+
+    def start(self) -> subprocess.Popen[str]:
+        """Start the worker process if it is not already running."""
+        if self.process is None:
+            self.messages = queue.Queue(maxsize=1)
+            self.stopped = threading.Event()
+            directory = Path(__file__).resolve().parents[1] / "notes" / "benchmarks"
+            directory.mkdir(parents=True, exist_ok=True)
+            fd, filename = tempfile.mkstemp(
+                prefix="worker-", suffix=".log", dir=directory
+            )
+            self.log_path = Path(filename)
+            os.close(fd)
+            self.log_overflow.clear()
+            try:
+                self.process = subprocess.Popen(
+                    self.command,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                    start_new_session=os.name == "posix",
+                    cwd=Path(__file__).resolve().parents[1],
+                )
+            except BaseException:
+                self.log_path.unlink(missing_ok=True)
+                raise
+            process = self.process
+            messages, stopped = self.messages, self.stopped
+
+            def copy_log() -> None:
+                assert process.stderr is not None
+                assert self.log_path is not None
+
+                def stop() -> None:
+                    self.log_overflow.set()
+                    stop_process_tree(process)
+
+                spool(
+                    cast(BinaryIO, cast("io.TextIOWrapper", process.stderr).buffer),
+                    self.log_path,
+                    MAX_LOG_BYTES,
+                    stop,
+                )
+
+            self.log_reader = threading.Thread(target=copy_log, daemon=True)
+            self.log_reader.start()
+
+            def read() -> None:
+                assert process.stdout is not None
+                while not stopped.is_set():
+                    line = process.stdout.readline(MAX_RECORD_CHARS + 1) or None
+                    oversized = line is not None and len(line) > MAX_RECORD_CHARS
+                    if oversized:
+                        line = json.dumps(
+                            {
+                                "error": {
+                                    "type": "RuntimeError",
+                                    "message": "benchmark worker record exceeds limit",
+                                }
+                            }
+                        )
+                    while not stopped.is_set():
+                        try:
+                            messages.put(line, timeout=0.05)
+                            break
+                        except queue.Full:
+                            pass
+                    if line is None or oversized:
+                        break
+
+            self.reader = threading.Thread(target=read, daemon=True)
+            self.reader.start()
+        return self.process
+
+    def close(self, *, check_log: bool = True) -> None:
+        """Stop the worker tree and surface a truncated diagnostic log."""
+        if self.process is not None:
+            self.stopped.set()
+            stop_process_tree(self.process)
+            if self.reader is not None:
+                self.reader.join(5)
+            if self.writer is not None:
+                self.writer.join(5)
+            if self.log_reader is not None:
+                self.log_reader.join(5)
+            for stream in (
+                self.process.stdin,
+                self.process.stdout,
+                self.process.stderr,
+            ):
+                # Closing a pipe to a reaped worker flushes and raises
+                # BrokenPipeError; cleanup must not mask the deadline that
+                # triggered it (the worker is killed before this runs).
+                if stream is not None:
+                    with contextlib.suppress(OSError):
+                        stream.close()
+            self.process = None
+            if check_log and self.log_overflow.is_set():
+                raise RuntimeError("benchmark diagnostic byte limit exceeded")
+
+    def measure(
+        self,
+        arguments: dict[str, Any],
+        identity: dict[str, Any],
+        generation_timeout: float | None,
+        *,
+        total_timeout: float | None = None,
+    ) -> dict[str, Any]:
+        """Measure one request through the worker, killing its tree on a deadline."""
+        process = self.start()
+        phase, limit = "generation", generation_timeout
+        deadline = None if limit is None else time.monotonic() + limit
+        total_deadline = (
+            None if total_timeout is None else time.monotonic() + total_timeout
+        )
+        generated = False
+        executed = 0
+        expected = (
+            len(arguments.get("table", ""))
+            if arguments.get("all_rows")
+            else len(arguments.get("sample_rows") or (0,))
+        )
+        try:
+            messages, stopped = self.messages, self.stopped
+
+            def send() -> None:
+                assert process.stdin is not None
+                try:
+                    process.stdin.write(
+                        json.dumps({"arguments": arguments, "identity": identity})
+                        + "\n"
+                    )
+                    process.stdin.flush()
+                except OSError as error:
+                    failure = json.dumps(
+                        {"error": {"type": type(error).__name__, "message": str(error)}}
+                    )
+                    while not stopped.is_set():
+                        try:
+                            messages.put(failure, timeout=0.05)
+                            break
+                        except queue.Full:
+                            pass
+
+            self.writer = threading.Thread(target=send, daemon=True)
+            self.writer.start()
+            while True:
+                remaining = (
+                    None if deadline is None else max(0.0, deadline - time.monotonic())
+                )
+                if total_deadline is not None:
+                    total_remaining = max(0.0, total_deadline - time.monotonic())
+                    if total_remaining == 0:
+                        raise esolangs.ExecutionTimeoutError(
+                            "benchmark total work deadline exceeded"
+                        )
+                    remaining = (
+                        total_remaining
+                        if remaining is None
+                        else min(remaining, total_remaining)
+                    )
+                try:
+                    line = self.messages.get(timeout=remaining)
+                except queue.Empty:
+                    if (
+                        total_deadline is not None
+                        and time.monotonic() >= total_deadline
+                    ):
+                        raise esolangs.ExecutionTimeoutError(
+                            "benchmark total work deadline exceeded"
+                        ) from None
+                    raise esolangs.ExecutionTimeoutError(
+                        f"benchmark {phase} deadline exceeded ({limit:g}s)"
+                    ) from None
+                if self.log_overflow.is_set():
+                    raise RuntimeError("benchmark diagnostic byte limit exceeded")
+                if line is None:
+                    raise RuntimeError("benchmark worker exited without evidence")
+                message = json.loads(line)
+                if not isinstance(message, dict):
+                    raise RuntimeError("invalid benchmark worker record")
+                if "phase" in message:
+                    next_phase = message["phase"]
+                    if (
+                        next_phase == "generation"
+                        and not generated
+                        and set(message) == {"phase"}
+                    ):
+                        generated = True
+                    elif (
+                        next_phase == "execution"
+                        and generated
+                        and executed < expected
+                        and type(message.get("index")) is int
+                        and message["index"] == executed
+                        and set(message) == {"phase", "index"}
+                    ):
+                        phase = next_phase
+                        executed += 1
+                        limit = arguments["timeout"]
+                        deadline = None if limit is None else time.monotonic() + limit
+                    else:
+                        raise RuntimeError("invalid benchmark worker phase transition")
+                elif "result" in message:
+                    if (
+                        not generated
+                        or executed != expected
+                        or set(message) != {"result"}
+                        or not isinstance(message["result"], dict)
+                    ):
+                        raise RuntimeError(
+                            "premature or invalid benchmark worker result"
+                        )
+                    return dict(message["result"])
+                elif "error" in message:
+                    error = message["error"]
+                    if (
+                        set(message) != {"error"}
+                        or not isinstance(error, dict)
+                        or set(error) != {"type", "message"}
+                        or not all(isinstance(value, str) for value in error.values())
+                    ):
+                        raise RuntimeError("invalid benchmark worker error")
+                    cls = getattr(
+                        esolangs,
+                        error["type"],
+                        getattr(builtins, error["type"], RuntimeError),
+                    )
+                    if not isinstance(cls, type) or not issubclass(cls, Exception):
+                        cls = RuntimeError
+                    raise cls(error["message"])
+                else:
+                    raise RuntimeError("invalid benchmark worker record")
+        except BaseException as error:
+            self.close(check_log=False)
+            if isinstance(error, Exception) and self.log_overflow.is_set():
+                error = RuntimeError("benchmark diagnostic byte limit exceeded")
+            if isinstance(error, Exception) and self.log_path is not None:
+                with self.log_path.open("rb") as log:
+                    log.seek(max(0, self.log_path.stat().st_size - EXCERPT_BYTES))
+                    tail = log.read(EXCERPT_BYTES).decode("utf-8", errors="replace")
+                error.add_note(f"[log] {self.log_path}\n{tail}")
+            raise error
 
 
 if __name__ == "__main__":
