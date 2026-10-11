@@ -52,14 +52,12 @@ from __future__ import annotations
 
 import argparse
 import ast
-import atexit
 import functools
 import os
 import shlex
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
@@ -128,7 +126,6 @@ DEFAULT_STEP_DEADLINE = 60.0
 # short steps go by.  A sibling step would race it and read a half-written
 # file, so the gate is run by _run_steps once the long step has exited.
 DIFF_COVERAGE_STEP = "touched-file coverage"
-COVERAGE_TEST_STEP = "coverage tests"
 
 
 # Which paths each step actually guards.  A step whose prefixes the branch did
@@ -179,11 +176,9 @@ STEPS = [
     # `--cov-report=` writes no report: the run is here for the data file,
     # which the touched-file gate reads afterwards.
     #
-    # Whole-package measurement is what a full run pays for: 13s over the
+    # Whole-package measurement is what the run pays for: 13s over the
     # 27s the fast selection takes bare, measured on 3.14 at
-    # 9861 tests (it read as free at half that suite).  A scoped run does
-    # not pay it -- `_scoped_coverage` narrows the measurement to the
-    # touched files, which is all the gate reads.
+    # 9861 tests (it read as free at half that suite).
     #
     # `--cov-branch` costs 3.3 times before 3.14, where sys.monitoring cannot
     # measure branches and coverage falls back to the old tracer.  An older
@@ -266,7 +261,7 @@ def _rerun_hint(name: str) -> list[str]:
     The coverage gate is not a ``STEPS`` entry, so ``--only`` cannot name it;
     it runs after pytest, which is what reproduces it.
     """
-    step = "pytest" if name in (DIFF_COVERAGE_STEP, COVERAGE_TEST_STEP) else name
+    step = "pytest" if name == DIFF_COVERAGE_STEP else name
     rerun = f"  rerun: uv run python scripts/verify.py --only {shlex.quote(step)}"
     return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
 
@@ -505,130 +500,10 @@ def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | No
         paths = _pytest_scope(changed)
         if not paths:
             return None  # nothing the Python tests cover moved
-        cmd = _scoped_coverage(cmd, changed)
         if paths == WHOLE_SUITE:
             return cmd  # not localisable: run every test
         return [*cmd, *paths]
     return cmd
-
-
-def _scoped_coverage(cmd: list[str], changed: list[str]) -> list[str]:
-    """Measure coverage over the touched source files only.
-
-    The gate that reads the data judges just the ``src/esolangs`` files the
-    branch touched, so measuring the whole package is overhead spent on files
-    nothing will look at.  Whole-package ``--cov --cov-branch`` costs 13s on
-    top of a 27s run; an ``include`` of the touched files costs nothing
-    measurable, because sys.monitoring never instruments the rest.  A branch
-    that touched no source file measures nothing at all -- the gate skips on
-    its own, having no targets.
-
-    coverage refuses ``include`` beside ``source`` (it warns and ignores the
-    include), so this cannot be a pyproject default; the rc is written for
-    the run and replaces the pyproject one for *measurement* only.  Reporting
-    is untouched: the gate reads the data through ``coverage json``, which
-    consults pyproject and so keeps ``exclude_lines``.
-    """
-    if "--cov" not in cmd:
-        return cmd
-    touched = [
-        f for f in changed if f.startswith("src/esolangs/") and f.endswith(".py")
-    ]
-    without = [c for c in cmd if c not in ("--cov", "--cov-branch", "--cov-report=")]
-    if not touched:
-        return without
-    fd, rc = tempfile.mkstemp(prefix="verify-coverage-", suffix=".rc")
-    with os.fdopen(fd, "w") as f:
-        f.write("[run]\ncore = sysmon\nbranch = True\ninclude =\n")
-        f.writelines(f"    {path}\n" for path in touched)
-    atexit.register(os.unlink, rc)
-    return [*without, "--cov", f"--cov-config={rc}", "--cov-report="]
-
-
-def _split_coverage(
-    runnable: list[tuple[str, list[str], dict[str, str]]], changed: list[str]
-) -> list[tuple[str, list[str], dict[str, str]]]:
-    """Measure audited source suites separately from a whole-suite run."""
-    touched = [
-        path for path in changed if path.startswith("src/") and path.endswith(".py")
-    ]
-    shared = {
-        "src/esolangs/tools/wrap.py": [
-            "tests/tools/test_wrap.py",
-            "tests/tools/test_balance.py",
-        ]
-    }
-    shared["src/esolangs/interpreters/tape_based/line/mask.py"] = [
-        "tests/line/test_mask.py"
-    ]
-    shared["src/esolangs/_isolated.py"] = [
-        "tests/test_run_isolated.py::test_raster_transport_preserves_every_pixel"
-    ]
-    leaves = [
-        path
-        for path in touched
-        if path.startswith("src/esolangs/interpreters/") and path not in shared
-    ]
-    if any(path not in shared and path not in leaves for path in touched):
-        return runnable
-    paths = _pytest_scope(leaves) if leaves else []
-    if not touched or paths == WHOLE_SUITE:
-        return runnable
-    paths = [
-        path
-        for path in paths
-        if path.startswith("tests/interpreters/")
-        and path not in INTERPRETER_CONTRACT_TESTS
-    ]
-    paths.extend(test for source in touched for test in shared.get(source, []))
-    if not paths:
-        return runnable
-    result = []
-    for name, cmd, env in runnable:
-        options = shlex.split(env.get("PYTEST_ADDOPTS", ""))
-        if (
-            name != LONG_STEP
-            or "--cov" not in cmd
-            or any(arg.startswith("tests/") for arg in cmd)
-            or any(arg.startswith(("--cov", "--no-cov")) for arg in options)
-        ):
-            result.append((name, cmd, env))
-            continue
-        bare = [arg for arg in cmd if not arg.startswith("--cov")]
-        if not any(
-            arg.startswith(("-n", "--numprocesses")) for arg in [*cmd, *options]
-        ):
-            bare += ["-n", "8"]
-        if not any(arg.startswith("--dist") for arg in [*cmd, *options]):
-            bare += [
-                "--dist",
-                "loadfile",
-                "--no-loadscope-reorder",
-                "-p",
-                "scripts.ci",
-                "--duration-order",
-                "--duration-output=.cache/pytest/durations.json",
-            ]
-        result.insert(
-            0,
-            (
-                COVERAGE_TEST_STEP,
-                [
-                    *cmd,
-                    *(
-                        ["-m", "not medium and not slow and not weekly"]
-                        if any(path in shared for path in touched)
-                        else []
-                    ),
-                    "-n",
-                    "0",
-                    *paths,
-                ],
-                env,
-            ),
-        )
-        result.append((name, [*bare, "--no-cov"], env))
-    return result
 
 
 def _parse_only_skip() -> tuple[
@@ -881,12 +756,7 @@ def _run_steps(
     # nothing about the data file.  It is 0.2s and it unblocks nothing, so it
     # goes before the heavy steps rather than after them.
     ran_pytest = any(name == LONG_STEP for name, _ in timings)
-    if (
-        gate is not None
-        and ran_pytest
-        and LONG_STEP not in failed
-        and COVERAGE_TEST_STEP not in failed
-    ):
+    if gate is not None and ran_pytest and LONG_STEP not in failed:
         run_serial(*gate)
 
     # Phase 4: the parallel steps, now that they can have the machine.
@@ -955,16 +825,6 @@ def main() -> int:
                 print(f"[skip] {name}: branch touched none of its files")
                 continue
             cmd = narrowed
-        elif (
-            name == "pytest"
-            and changed
-            and only is None
-            and not full
-            and os.environ.get("VERIFY_FULL", "0") in ("", "0")
-        ):
-            # Shared changes still run every test. Only measurement narrows:
-            # the diff-coverage gate reads the touched source files alone.
-            cmd = _scoped_coverage(cmd, changed)
         # The `slow` marker covers the generator derivations and fuzz loops
         # whose cost is seconds each.  Deselecting them locally trades no
         # coverage, because the sharded `slow` job runs every marked test
@@ -1017,9 +877,6 @@ def main() -> int:
                 "verification failed: install required tools or use --allow-incomplete"
             )
             return 1
-
-    if only is None and not full and changed:
-        runnable = _split_coverage(runnable, changed)
 
     if "LEAKSWEEP_JOBS" not in env:
         overlap = not _should_stream(

@@ -58,114 +58,8 @@ class TestPytestScopeCollects:
         assert list(verify.COLLECTED_PATTERNS) == patterns
 
 
-class TestScopedCoverage:
-    COV = ("python", "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report=")
-
-    def test_touched_source_files_become_an_include_rc(self) -> None:
-        verify = load_script()
-        cmd = verify._scoped_coverage(  # noqa: SLF001
-            list(self.COV),
-            ["src/esolangs/vm.py", "tests/test_vm.py", "src/esolangs/tools/x.py"],
-        )
-        assert "--cov" in cmd
-        assert "--cov-branch" not in cmd  # the rc carries branch=True
-        rc = next(c for c in cmd if c.startswith("--cov-config=")).split("=", 1)[1]
-        text = Path(rc).read_text(encoding="utf-8")
-        assert "include =" in text
-        assert "src/esolangs/vm.py" in text
-        assert "src/esolangs/tools/x.py" in text
-        assert "tests/test_vm.py" not in text
-        assert "branch = True" in text
-        assert "source" not in text  # coverage ignores include beside source
-
-    def test_no_touched_source_file_measures_nothing(self) -> None:
-        verify = load_script()
-        cmd = verify._scoped_coverage(list(self.COV), ["tests/test_vm.py"])  # noqa: SLF001
-        assert not any(c.startswith("--cov") for c in cmd)
-        assert cmd == ["python", "-m", "pytest", "-q"]
-
-    def test_a_command_without_coverage_is_left_alone(self) -> None:
-        verify = load_script()
-        bare = ["python", "-m", "pytest", "-q"]
-        assert verify._scoped_coverage(bare, ["src/esolangs/vm.py"]) == bare  # noqa: SLF001
-
-    def test_the_whole_suite_fallback_still_narrows(self) -> None:
-        verify = load_script()
-        cmd = verify._scoped_cmd(  # noqa: SLF001
-            "pytest",
-            list(self.COV),
-            ["tests/tools/polynomial_support.py", "src/esolangs/vm.py"],
-        )
-        assert cmd is not None
-        assert any(c.startswith("--cov-config=") for c in cmd)
-        assert not any(c.startswith("tests/") for c in cmd)
-
-
 LEAF = "src/esolangs/interpreters/register_based/addsubjump.py"
 CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
-
-
-@pytest.mark.parametrize("options", ["", "-n 8", "--numprocesses=2"])
-@pytest.mark.parametrize("shared", [False, True])
-def test_split_coverage_retains_the_full_suite_and_worker_override(options, shared):
-    verify = load_script()
-    changed = [LEAF, "src/esolangs/tools/wrap.py"] if shared else [LEAF]
-    cmd = verify._scoped_coverage(  # noqa: SLF001
-        list(TestScopedCoverage.COV), changed
-    )
-    env = {"PYTEST_ADDOPTS": options}
-    plan = verify._split_coverage([("pytest", cmd, env)], changed)  # noqa: SLF001
-    coverage, suite = plan
-    assert coverage[0] == verify.COVERAGE_TEST_STEP
-    assert "tests/interpreters/test_addsubjump.py" in coverage[1]
-    assert "--cov" in coverage[1]
-    assert coverage[1][coverage[1].index("-n") + 1] == "0"
-    assert ("tests/tools/test_wrap.py" in coverage[1]) is shared
-    assert suite[0] == "pytest"
-    assert "--no-cov" in suite[1]
-    assert not any(arg.startswith("tests/") for arg in suite[1])
-    assert ("-n" in suite[1]) == (not options)
-    assert suite[2] == coverage[2] == env
-
-
-@pytest.mark.parametrize(
-    ("source", "extra", "options"),
-    [
-        ("src/esolangs/vm.py", [], ""),
-        ("src/esolangs/tools/taglate.py", [], ""),
-        (None, [], ""),
-        (LEAF, [], "--no-cov"),
-        (LEAF, [], "--cov=esolangs"),
-        (LEAF, ["tests/interpreters/test_addsubjump.py"], ""),
-    ],
-)
-def test_coverage_split_fallback(source, extra, options):
-    verify = load_script()
-    cmd = [*TestScopedCoverage.COV, *extra]
-    plan = [("pytest", cmd, {"PYTEST_ADDOPTS": options})]
-    assert verify._split_coverage(plan, [source] if source else []) == plan  # noqa: SLF001
-
-
-@pytest.mark.parametrize(("suite_code", "coverage_code"), [(0, 0), (3, 0), (0, 3)])
-def test_coverage_gate_requires_both_runs(monkeypatch, suite_code, coverage_code):
-    verify = load_script()
-    called = []
-
-    def start(cmd, **_kwargs):
-        called.append(cmd[0])
-        return mock.Mock(stdout=io.TextIOWrapper(io.BytesIO()))
-
-    codes = {"pytest": suite_code, verify.COVERAGE_TEST_STEP: coverage_code, "gate": 0}
-    monkeypatch.setattr(verify.subprocess, "Popen", start)
-    monkeypatch.setattr(
-        verify, "_wait_with_heartbeat", lambda _proc, name, _start: ("", codes[name])
-    )
-    runnable = [(name, [name], {}) for name in ("pytest", verify.COVERAGE_TEST_STEP)]
-    failures, _, _ = verify._run_steps(  # noqa: SLF001
-        runnable, stream=False, gate=("gate", ["gate"], {})
-    )
-    assert failures == int(bool(suite_code)) + int(bool(coverage_code))
-    assert ("gate" in called) == (suite_code == coverage_code == 0)
 
 
 def _signature(cmd: list[str]) -> str:
@@ -282,37 +176,6 @@ def test_missing_tools_never_report_complete_verification(
     assert f"{tool} not installed" in text
     assert runs == (["available"] if allow else [])
     assert ("incomplete verification" if allow else "verification failed") in text
-
-
-def test_shared_changes_keep_all_tests_but_measure_only_touched_source(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    verify = load_script()
-    monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
-    monkeypatch.setattr(
-        verify, "_parse_only_skip", lambda: (None, None, False, True, False, False)
-    )
-    monkeypatch.setattr(
-        verify, "_scope_plan", lambda **_: (None, "verification tooling changed")
-    )
-    monkeypatch.setattr(
-        verify,
-        "_scope_changed_files",
-        lambda: ("scripts/verify.py", "src/esolangs/tools/vandevelo.py"),
-    )
-    monkeypatch.setattr(
-        verify,
-        "run_bounded",
-        lambda *_a, **_kw: subprocess.CompletedProcess([], 0),
-    )
-    with mock.patch.object(verify, "_run_steps", return_value=(0, [], 0.0)) as run:
-        assert verify.main() == 0
-    runnable = run.call_args.args[0]
-    cmd = next(cmd for name, cmd, _ in runnable if name == "pytest")
-    assert not any(arg.startswith("tests/") for arg in cmd)
-    rc = next(arg for arg in cmd if arg.startswith("--cov-config=")).split("=", 1)[1]
-    assert "src/esolangs/tools/vandevelo.py" in Path(rc).read_text()
-    assert "--cov" in cmd
 
 
 def test_shadow_uv_command_cannot_resync_the_active_test_environment() -> None:
