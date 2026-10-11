@@ -383,8 +383,11 @@ def _class_bank_layout(
     classes = [chunk for chunk in dict.fromkeys(chunks) if "1" in chunk]
     # Keep the former implied class cap independently of the gate count:
     # sparse masks can fit the workspace even when their worst-case bound cannot.
+    # The fixed nine-input atom also shares internal seven-input residuals
+    # across its four distinct roots: dense9 executes in 258,216 characters.
     if len(classes) >= 1 << (tail + 1) or not any(
-        "0" in chunk and chunks.count(chunk) > 1 for chunk in classes
+        "0" in chunk and (chunks.count(chunk) > 1 or (shared and n == 9))
+        for chunk in classes
     ):
         return None
     forest = _suffix_forest(classes, tail) if shared else None

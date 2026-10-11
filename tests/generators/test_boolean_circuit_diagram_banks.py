@@ -160,10 +160,13 @@ def test_repeats_below_distinct_four_bank_cofactors_share(n):
     assert _repeated_cofactor_bank(table) is None
     model = _cofactor_bank_layout(table, 3)
     code = circuit_diagram(table)
-    assert code == model.render()
-    assert len(code) == {9: 956_518, 10: 1_928_450}[n]
+    lines = code.splitlines()
+    height, width = model.bounds()
+    assert len(lines) * max(map(len, lines)) <= height * width
+    assert len(code) == {9: 125_374, 10: 1_928_450}[n]
     rows = None if n == 9 else sorted({0, len(table) - 1, *range(0, len(table), 32)})
     _execute(table, code, rows)
+    _execute(table, model.render(), rows)
 
 
 @pytest.mark.slow

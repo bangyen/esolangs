@@ -171,3 +171,15 @@ def test_large_h_masks_keep_their_local_complement_drivers():
     assert model is not None
     rows = sorted({0, len(table) - 1, *range(0, len(table), len(table) // 32)})
     _execute(table, model.render(), rows)
+
+
+@pytest.mark.medium
+def test_nine_input_atom_shares_internal_residuals_of_distinct_roots():
+    table = dense(9)
+    assert len({table[i : i + 128] for i in range(0, 512, 128)}) == 4
+    model = _residual_class_bank_candidate(table)
+    assert model is not None
+    code = model.render()
+    assert len(code) == 258_216
+    assert model.bounds()[0] * model.bounds()[1] == 367_633
+    assert _execute(table, code) == 18

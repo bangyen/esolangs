@@ -654,12 +654,18 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     # Constants need only the scalar clock gate, not a minterm lattice.
     if width is None and inputs >= 8 and "1" in truth_table and "0" in truth_table:
         from .banks import _cofactor_bank_candidate, _residual_class_bank_candidate
+        from .folded_banks import folded_class_bank_candidate
         from .hpool import _h_pool_area_floor, _h_pool_layout, _large_pool_layout
 
         selected = _linear_shared_layout(truth_table, inputs)
         used, projected = _essential_table(truth_table, inputs)
         ceiling = None
         if selected is not None:
+            height, columns = selected.bounds()
+            ceiling = height * columns
+        folded = folded_class_bank_candidate(truth_table, ceiling)
+        if folded is not None:
+            selected = folded
             height, columns = selected.bounds()
             ceiling = height * columns
         large = _large_pool_layout(
@@ -749,7 +755,7 @@ LANGUAGE = Language(
     # invariants.
     scaling_rungs=(8, 9),
     boolean=circuit_diagram,
-    documented_sizes=(147_264, 1_832_734, 12.4),
+    documented_sizes=(147_264, 258_216, 1.8),
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",
