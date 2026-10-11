@@ -140,9 +140,12 @@ def test_check_with_open_steps_is_not_a_failure(
 ) -> None:
     import types
 
-    fake = types.ModuleType("generate")
+    # main imports ``from docs.generate import update_exports``; shadow that
+    # module, not a bare ``generate``, or the real writer runs against ROOT
+    # and rewrites src/esolangs/tools/__init__.py in the working tree.
+    fake = types.ModuleType("docs.generate")
     fake.update_exports = lambda *_: None  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "generate", fake)
+    monkeypatch.setitem(sys.modules, "docs.generate", fake)
     gap = new_language.Gap("somewhere", "do it")
     monkeypatch.setattr(new_language, "check", lambda _: [gap])
     assert new_language.main(["check", "Tiny"]) == 0
