@@ -19,6 +19,7 @@ help:
     @echo "  just test-mid     Fast + medium tests"
     @echo "  just test         Required checks before committing (branch-scoped)"
     @echo "  just test-full    Whole-tree checks, including slow tests, before release"
+    @echo "  just test-full-parallel  The same gate on every core (idle machine only)"
     @echo ""
     @echo 'New language: just new-language "Name" --category tape_based'
     @echo 'Then: just check-language "Name"; when ready: just finish-language "Name"'
@@ -66,6 +67,15 @@ test *args:
 # local checks over the whole tree, including slow tests
 test-full *args:
     {{PYTHON}} scripts/verify/gate.py --full {{args}}
+
+# The release gate is deliberate, not the inner loop, so it may take the box:
+# on a quiet machine the committed measurement (pyproject.toml's worker note)
+# is 85.6s at `-n auto` against 126.9s at four.  Not the default because >4
+# workers starve the fast band's subprocess tests past their starved ceiling
+# when the box is also loaded -- see the test-quick note.
+# Same full gate on every core; idle machine only.
+test-full-parallel *args:
+    PYTEST_ADDOPTS="-n auto" {{PYTHON}} scripts/verify/gate.py --full {{args}}
 
 # inner loop: pre-commit + pytest, fast band only, quiet by default.
 # Four workers, the pytest config's default: this box also runs sessions in
