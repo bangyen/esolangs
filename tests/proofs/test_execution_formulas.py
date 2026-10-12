@@ -253,7 +253,6 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         _parity(n),
         _dense(n),
         _seeded(n, 1),
-        _seeded(n, 3),
         "0" * width,
         "1" * width,
         "0" * (width - 1) + "1",
