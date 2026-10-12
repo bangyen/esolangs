@@ -427,6 +427,27 @@ def _declaring_module(lang: Language) -> str | None:
     return None
 
 
+def _owned_evidence(name: str) -> set[Path]:
+    """Return standalone proof documents cited exclusively by this language."""
+    manifest = ROOT / "src/esolangs/proof_status.toml"
+    if not manifest.is_file():
+        return set()
+    data = tomllib.loads(manifest.read_text(encoding="utf-8"))
+    owners: dict[Path, set[str]] = {}
+    proofs = (ROOT / "docs/proofs").resolve()
+    for group in ("ledger", "audit"):
+        for row in data.get(group, []):
+            relative = row.get("evidence", "").partition("#")[0]
+            path = (ROOT / relative).resolve()
+            if (
+                path.is_relative_to(proofs)
+                and path.name != "index.md"
+                and path.is_file()
+            ):
+                owners.setdefault(path, set()).add(row["generator"])
+    return {path for path, names in owners.items() if names == {name}}
+
+
 def _owned_module_paths(lang: Language) -> tuple[set[str], set[Path]]:
     """Return owned implementation modules, keeping leaves separate."""
     modules = (
@@ -862,6 +883,7 @@ def remove(name: str) -> list[str]:
         ROOT / "src/esolangs/languages" / lang.id / "examples",
         *_owned_scripts(lang),
     }
+    doomed |= _owned_evidence(name)
     doomed |= _dead_test_files(doomed, _gone_modules(doomed), users)
     doomed |= _orphans(doomed, users)
     # A ``src`` module the remaining code imports stays, minus its

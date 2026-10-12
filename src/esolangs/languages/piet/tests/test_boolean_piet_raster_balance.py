@@ -4,7 +4,12 @@ import pytest
 
 import esolangs
 from esolangs.raster import Raster
-from esolangs.tools.raster_lookup.balance import _bounded_operations, _emit, _plan, _tight_plan
+from esolangs.tools.raster_lookup.balance import (
+    _bounded_operations,
+    _emit,
+    _plan,
+    _tight_plan,
+)
 from tests.support.witness_tables import witnesses
 
 pytestmark = pytest.mark.medium
@@ -118,9 +123,9 @@ def test_white_bridge_lanes_execute_exhaustively(
     ],
 )
 def test_white_bridge_turn_colors_and_halt_execute(table: str) -> None:
+    from esolangs.languages.piet.interpreter import BLACK, WHITE
     from esolangs.tools.raster_lookup.balance import _balanced_plan
     from esolangs.tools.raster_lookup.packing import pack
-    from esolangs.languages.piet.interpreter import BLACK, WHITE
 
     operations = _bounded_operations(table)
     default = esolangs.generate("Piet", table)

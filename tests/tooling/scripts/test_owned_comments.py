@@ -73,3 +73,23 @@ def test_arithmetic_literal_keeps_real_language_calls_visible(tmp_path: Path):
         "identifier"
     )
     assert mention_edit(tmp_path, "sample.py:2:call", name).startswith("code")
+
+
+def test_proof_ownership_preserves_shared_index_and_evidence(tmp_path, monkeypatch):
+    from scripts import remove_language
+
+    monkeypatch.setattr(remove_language, "ROOT", tmp_path)
+    proofs = tmp_path / "docs/proofs"
+    proofs.mkdir(parents=True)
+    for name in ("index.md", "private.md", "shared.md"):
+        (proofs / name).write_text("Proof evidence.\n")
+    manifest = tmp_path / "src/esolangs/proof_status.toml"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(
+        '[[ledger]]\ngenerator="Tiny"\nevidence="docs/proofs/private.md#bound"\n'
+        '[[audit]]\ngenerator="Tiny"\nevidence="docs/proofs/index.md#bound"\n'
+        '[[ledger]]\ngenerator="Tiny"\nevidence="docs/proofs/shared.md"\n'
+        '[[ledger]]\ngenerator="Other"\nevidence="docs/proofs/shared.md"\n'
+    )
+    assert remove_language._owned_evidence("Tiny") == {proofs / "private.md"}  # noqa: SLF001
+    assert remove_language._owned_evidence("Other") == set()  # noqa: SLF001

@@ -3,10 +3,16 @@
 from math import isqrt
 from typing import NamedTuple
 
-from esolangs.tools.raster_lookup.palette import BLACK, WHITE
 from esolangs.raster import Raster
-
-from esolangs.tools.raster_lookup import _INITIAL, _POP, Pixel, _next_colour, _Operation, _push
+from esolangs.tools.raster_lookup import (
+    _INITIAL,
+    _POP,
+    Pixel,
+    _next_colour,
+    _Operation,
+    _push,
+)
+from esolangs.tools.raster_lookup.palette import BLACK, WHITE
 
 _POINTER = (3, 1)
 _DUPLICATE = (4, 0)
