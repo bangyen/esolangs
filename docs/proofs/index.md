@@ -282,7 +282,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | Subleq | finite lookup | shared direct-jump residual DAG or packed decoder with interned chunk payloads | linear: O(T/n) residuals or packed chunks, O(n)-digit addresses or payloads | linear: at most 8T + (7n+5)(⌊T/n⌋-1) + 23n - 6 steps: bank selection adds two | linear: at most max(T+2C+(C+2)bl(B+17+2C)+I·bl(B)+(2I-1)bl(B+17)+R, M·max(7,bl(M))+bl(M)+bl(n)) bits: decoder or tree, M=19+10n+6D |
 | BrainIf | tree | equal cofactors share one layered DAG node, and an ignored input is read by the next layer's nodes; spatial lookup remains a candidate | linear: O(T/n) nodes with O(n)-digit addresses | poly n: worst 4n + 50 commands, one DAG path and a tail | poly n: worst 13 + bl(lines) + bl(n) bits: two cells, a line cursor |
 | Circlefuck | linear lookup | the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer | linear: bounded dependency scan and canonical residual IDs | linear: worst (2n+13)T + 63n + 89 + 2S to n = 7, S the codes of program characters 1..n | linear: worst 6L + 10n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the tape |
-| Circuit Diagram | tree | finite planar routing with fixed-size shared cofactor pools | linear: prefix H-layout side C sqrt(T), fixed-size cofactor pools | poly n: worst 2n + 1 commands; at most 2n + 2 past n = 8 | linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses |
+| Circuit Diagram | tree | finite planar routing with fixed-size shared cofactor pools | linear: prefix H-layout side C sqrt(T), fixed-size cofactor pools | poly n: worst 2n + 1 commands; 2n + 2 past n = 7 | linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses |
 | Clockwise | linear lookup | the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit | linear: five table rows of 2T columns, doubling gadgets whose widths halve downward | linear: worst 10T + 20n + 30 steps: the pointer's path to the last row | poly n: worst 57n + 50 + bl(2n+14) + bl(2^(n+1)+9n+1) bits: 7n-character queue |
 | Collatz Multiverse | finite lookup | an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it | linear: one line per four rows, a 64-cell decoder, 3n index lines | linear: at most T/4 + 3n + 130 lines to n = 8: one step per line, no branching | T log T: at most ⌈T/4⌉(bl(⌊L/17⌋)+6) + 64(bl(⌊L/17⌋)+1) + (n²+168)(8n+bl(L)+9)/2 + 2bl(L) + 115 bits: arrays, registers |
 | Container | finite lookup | the table is the prefix sum of its own steps, summed against a row counter that is live for one tick | linear: one line per step in the table, halting in 2n+2 ticks | poly n: worst 2n + 2 commands, a threshold build past n = 6 | poly n: worst 25n + 154 + bl(2n+2) + 2bl(n) bits, n in 7..24 |
@@ -339,6 +339,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: 7n input characters plus at most 11T - 4 tree characters | poly n: at most 14n - 1 commands, one path of n selections | linear: at most 24L + 120T + 32n - 176 + bl(2L+10T+6n-14) bits: spliced program, stack |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf | poly n: at most max(77n + 12, 84n - 9) steps: 77 a split level, 7 a bound node | T log T: at most 12L + 69 + (3n+6)(8L + 24 + bl(3n+6)) + bl(n) bits: a shared subterm per frame |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row | linear: worst 4T + 79n + 22 commands past n=5: 12- or 14-cell loops, 76 per read, weight pops | linear: worst T + 12 + bl(L) + bl(max(0,L-33)) + 2bl(n) bits: T + 1 table cells on the stack |
+| Unary | tree, cap | complemented-byte decision tree; constants, projections and conjunction guards avoid flags | lower bound: worst source length at least 2**T - 1; zero-count encoding | unmeasured: exempt as a cap row | unmeasured: exempt as a cap row |
 | Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) lines and commands for every table, O(T log n) identifier text; the build is measured flat, but child-rebuild scans are bounded only by q**2 a node and core work by O(T*sqrt(n)) | linear: at most Q - G + 3C steps: Q ? reads, C comparisons, G guards' final loop? skipped | poly n: at most n * n registers; sqrt T below the cap |
 
 Symbols the formula cells use:
@@ -393,6 +394,8 @@ ceiling below.
 
 The remaining `cap` rows do have a uniform lift argument.
 
+- Unary's complemented-byte tree is finite at every arity. Removing the
+  32 MiB source screen and its eight-input consequence permits every encoding.
 - Polynomial's `k == n` candidate is the finite decision tree.  Each of its
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
@@ -429,7 +432,7 @@ the interpreter decodes it to the tree the generator encoded.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 77 theoretical totality arguments and
+Accordingly, this ledger records 78 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->
@@ -723,5 +726,6 @@ size regression. Open generator-linearity work lives in the
 | Malbolge | Exception | Open | Linear |
 | Polynomial | Cap | Language lower bound | Language lower bound |
 | Vandevelo | Total | Open | Measured |
+| Unary | Cap | Language lower bound | Language lower bound |
 
 <!-- SCALING-STATUS:END -->

@@ -252,7 +252,10 @@ def render_input_shapes_section() -> str:
     ]
     for name in odd:
         record = esolangs.describe(name)
-        alphabet = "/".join(f"`{c}`" for c in record["input_encoding"])
+        alphabet = "/".join(
+            f"`{c if c.isprintable() else repr(c)[1:-1]}`"
+            for c in record["input_encoding"]
+        )
         stdin = repr(esolangs.encode_inputs(name, _SAMPLE_BITS))
         rows.append(f"| {name} | `{record['input_shape']}` | {alphabet} | `{stdin}` |")
     default = repr(esolangs.encode_inputs("brainfuck", _SAMPLE_BITS))

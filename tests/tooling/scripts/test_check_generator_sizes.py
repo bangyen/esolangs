@@ -14,6 +14,7 @@ from checks.check_generator_sizes import (
     TABLES,
     baseline,
     boundary_tables,
+    control_tables,
     differences,
 )
 from scripts import benchmark as b
@@ -104,7 +105,9 @@ class TestCommittedBaseline:
         assert recorded["tables"] == list(TABLES)
         assert recorded["records"]
         for name, rows in recorded["records"].items():
-            assert sorted(rows) == sorted((*TABLES, *boundary_tables(name))), name
+            assert sorted(rows) == sorted(
+                (*control_tables(name), *boundary_tables(name))
+            ), name
             for table, fields in rows.items():
                 assert fields["source_units"] > 0, (name, table)
 
@@ -258,3 +261,29 @@ def hang(*args, **kwargs):
         "Brainfuck", "01", repeat=1, row=1, step_cap=10000, all_rows=True
     )
     assert all(row["matches"] for row in record["executions"])
+
+
+@pytest.mark.parametrize(
+    "verdict", [None, ("Total", "Language lower bound"), ("Cap", "Linear")]
+)
+def test_custom_corpus_cannot_hide_an_unproved_scaling_failure(monkeypatch, verdict):
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    from checks import check_generator_sizes as sizes
+    from docs import proof_status
+
+    lang = replace(sizes.LANGUAGES[REFERENCE], benchmark_tables=("01",))
+    monkeypatch.setattr(sizes, "LANGUAGES", {REFERENCE: lang})
+    rows = (
+        ()
+        if verdict is None
+        else (
+            SimpleNamespace(
+                generator=REFERENCE, totality=verdict[0], output_size=verdict[1]
+            ),
+        )
+    )
+    monkeypatch.setattr(proof_status, "load", lambda: ((), rows))
+    with pytest.raises(ValueError, match="proved resource cap"):
+        sizes.control_tables(REFERENCE)

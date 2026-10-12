@@ -7,6 +7,7 @@ verbatim, with no logic to read.
 
 from __future__ import annotations
 
+from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
 USAGE = """usage: esolangs <command> [...]
@@ -199,8 +200,8 @@ options:
   --max-output N     cap isolated output in Unicode characters (including zero).
   --max-memory BYTES cap Linux worker address space; requires --isolated.
   --timeout SECONDS  stop the run after this long rather than hanging.
-                     Unbounded by default.  123, ArrowQueue, Crement and
-                     Vandevelo answer 1 by *not* terminating, so a timeout
+                     Unbounded by default.  {termination_languages}
+                     answer 1 by *not* terminating, so a timeout
                      there is the answer, not a failure.
   --scale N          override detected raster scale; 1 preserves native pixels.
   -p, --portable         load JSON saved by generate --portable.  The language
@@ -291,7 +292,7 @@ options:
   --break-on-cell I=V  stop while memory cell I still holds V.
   --timeout SECONDS    stop the run after this long, reporting
                        `stopped: timeout`.  Like --steps this bounds a
-                       program that never halts, which is what the four
+                       program that never halts, which is what the registered
                        terminate-as-answer languages are.
   --stdin TEXT         feed TEXT verbatim using the language's input unit.
                        Without this option, read the program input from stdin.
@@ -304,3 +305,12 @@ options:
 
 """,
 }
+
+HELP["run"] = HELP["run"].replace(
+    "{termination_languages}",
+    ", ".join(
+        lang.name
+        for lang in LANGUAGES.values()
+        if lang.contract.answer_mode == "termination"
+    ),
+)

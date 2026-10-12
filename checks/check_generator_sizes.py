@@ -82,6 +82,23 @@ def boundary_tables(name: str) -> tuple[str, ...]:
 SCHEMA = 3
 
 
+def control_tables(name: str) -> tuple[str, ...]:
+    """Return smaller controls only for a proved language resource cap."""
+    custom = LANGUAGES[name].benchmark_tables
+    if custom:
+        from docs.proof_status import load
+
+        _, audits = load()
+        row = next((row for row in audits if row.generator == name), None)
+        if (
+            row is None
+            or row.totality != "Cap"
+            or row.output_size != "Language lower bound"
+        ):
+            raise ValueError(f"{name}: custom controls require a proved resource cap")
+    return custom or TABLES
+
+
 def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
     """Return one full benchmark record per (language, table), timings and all."""
     with evidence_session():
@@ -98,7 +115,7 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
             # carried for its fame and marked ``int``.
             for name in esolangs.list_languages()
             if esolangs.describe(name)["boolean_generator"]
-            for table in TABLES
+            for table in control_tables(name)
         ]
         records.extend(
             measure(

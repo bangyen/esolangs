@@ -417,14 +417,6 @@ and 4.000 (///). The constructions supply the bounds; these ratios are measureme
   `ConstantLanguage("Nope.")` ignores source and input, so neither runtime
   input nor source embeds can change its output. Accept arbitrary source,
   including empty source, under those constant semantics.
-- [Unary](https://esolangs.org/wiki/Unary) (63): interpreter-only under the generator
-  contracts. Valid sources encode only their zero count; whitespace formatting
-  does not evade that bound. Runtime input exists through
-  decoded Brainfuck, but sources of length at most L supply at most L+1
-  functions. Covering all 2**T truth tables requires L >= 2**T - 1 somewhere,
-  precluding an O(T) generator. Decoded Brainfuck uses wrapping bytes,
-  a tape growing in both directions and zero at EOF, as its cat example
-  requires.
 - [大白话](https://esolangs.org/wiki/大白话) (134): deferred. The command table is
   explicitly partial; expression precedence, complete block grammar, library
   semantics, and embedded-language dispatch are unspecified. A restricted
@@ -547,3 +539,24 @@ languages remain rejected from the same image-source screen.
   User:Miui/Nah. (`Nah.`) pin the delta sign.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.
+
+## Unary
+
+Valid sources encode only their zero count; whitespace adds no functions.
+Sources of length at most L supply at most L+1 functions. Covering all
+2**T truth tables therefore requires L >= 2**T - 1 somewhere; writing
+those zeros has the same generation-time lower bound.
+
+The generator reads bytes 0/255 in input order. Halt answers zero; a fixed
+empty loop answers one. Complemented reads feed a folded decision tree;
+constants, projections and conjunctions use direct guards. Encoding m
+commands needs between 8**m and 2*8**m - 1 zeros. Refuse above 32 MiB
+before allocating source; eight inputs is an absolute ceiling, and most
+nontrivial tables hit the source cap earlier. Removing both screens leaves
+a finite encoding for every table.
+
+The eight-command AND guard `,>,[<[]]` emits 27,452,351 zeros. All four
+rows execute: three halt, 11 cycles, and each consumes two inputs. The
+committed example uses one-input identity instead to keep the artifact small.
+Decoded Brainfuck uses wrapping bytes, a tape growing in both directions
+and zero at EOF.

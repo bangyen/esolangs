@@ -10,6 +10,7 @@ import esolangs
 import esolangs._evaluate as evaluator
 from esolangs._evaluate import _evaluate, _iter_evaluate
 from tests.reference import REFERENCE
+from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages
 
 
@@ -26,13 +27,14 @@ def _kinds() -> list[str]:
 
 @pytest.mark.parametrize("name", _kinds())
 def test_evaluate_files(name: str, tmp_path: Path) -> None:
-    program = esolangs.generate(name, "0110")
+    table = probe_table(name)
+    program = esolangs.generate(name, table)
     path = tmp_path / "source"
     if isinstance(program, esolangs.Raster):
         path.write_bytes(program.to_png())
     else:
         path.write_text(program + "\n")
-    assert _evaluate(name, path, inputs=2) == "0110"
+    assert _evaluate(name, path, inputs=len(table).bit_length() - 1) == table
 
 
 @pytest.mark.parametrize("inputs", [True, 0, 65, 2.5, "2"])
@@ -117,8 +119,12 @@ def test_evaluation_output_limit_requires_isolation():
 @pytest.mark.medium
 @pytest.mark.parametrize("name", _kinds())
 def test_streaming_executes_the_expected_table(name):
-    program = esolangs.generate(name, "0110")
-    assert "".join(_iter_evaluate(name, program, inputs=2)) == "0110"
+    table = probe_table(name)
+    program = esolangs.generate(name, table)
+    assert (
+        "".join(_iter_evaluate(name, program, inputs=len(table).bit_length() - 1))
+        == table
+    )
 
 
 def test_row_budget_refuses_before_loading():

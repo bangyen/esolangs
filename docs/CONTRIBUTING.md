@@ -39,7 +39,7 @@ answer convention, or input interface:
 These are generator tests. A language whose specification precludes a
 generator qualifies only through the fame threshold under Curation in
 [limitations](limitations.md). Such languages are interpreter-only, marked
-`int` by `esolangs list --details`; Deadfish, HQ9+, Nope. and Unary qualify.
+`int` by `esolangs list --details`; Deadfish, HQ9+ and Nope. qualify.
 Curation also defines removal independently of admission. Generator audit
 axes never remove a language; a stalled row moves to the
 [roadmap](roadmap.md#parked)'s Parked section.

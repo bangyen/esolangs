@@ -49,13 +49,16 @@ def test_stripped_docstrings_preserve_all_answer_mechanisms() -> None:
 import esolangs
 from esolangs._evaluate import _evaluate
 from tests.support.stdin_check import _check_stdin
+from tests.support.generator_support import probe_table
 for name in {names!r}:
-    program = esolangs.generate(name, '0110')
-    result = _evaluate(name, program, inputs=2)
-    if result != '0110':
+    table = probe_table(name)
+    inputs = len(table).bit_length() - 1
+    program = esolangs.generate(name, table)
+    result = _evaluate(name, program, inputs=inputs)
+    if result != table:
         raise AssertionError((name, result))
     if name in {readers!r}:
-        _check_stdin(name, esolangs.encode_inputs(name, [0, 1]), '0110')
+        _check_stdin(name, esolangs.encode_inputs(name, [0] * inputs), table)
 try:
     esolangs.describe('brainfuck')
 except esolangs.ProgramError as exc:

@@ -9146,6 +9146,50 @@
     "source_units": 195
    }
   },
+  "Unary": {
+   "00": {
+    "commands": 1,
+    "commands_by_row": {
+     "0": 1,
+     "1": 1
+    },
+    "source_units": 13
+   },
+   "0001": {
+    "commands": null,
+    "commands_by_row": {
+     "0": 4,
+     "1": 7,
+     "2": 4,
+     "3": null
+    },
+    "source_units": 27452351
+   },
+   "01": {
+    "commands": null,
+    "commands_by_row": {
+     "0": 2,
+     "1": null
+    },
+    "source_units": 887
+   },
+   "10": {
+    "commands": 3,
+    "commands_by_row": {
+     "0": null,
+     "1": 3
+    },
+    "source_units": 6839
+   },
+   "11": {
+    "commands": null,
+    "commands_by_row": {
+     "0": null,
+     "1": null
+    },
+    "source_units": 53431
+   }
+  },
   "Underload": {
    "00000001": {
     "commands": 37,

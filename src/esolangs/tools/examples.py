@@ -32,9 +32,8 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
-# The committed programs all witness the same two-input function and row:
-# AND2 evaluated on 0,1.  The generator suites cover the other tables and
-# rows; keeping this corpus uniform makes the files directly comparable.
+# Examples use AND2 on 0,1 unless the source budget requires a smaller
+# witness. Generator suites cover the other tables and rows.
 AND2 = "0001"
 
 
@@ -317,6 +316,8 @@ def _register() -> None:
             example = _embedded(
                 cast(Callable[[str], str], lang.boolean),
                 lang.interpreter,
+                table=spec.table,
+                bits=spec.bits,
                 pair=spec.pair,
                 setters=spec.setters,
                 char=spec.char or TEMPLATE_CHAR,
@@ -326,15 +327,19 @@ def _register() -> None:
                 kwargs=spec.kwargs,
             )
         else:
-            stdin = encode_inputs(lang.name, (0, 1), truth_table=AND2)
+            stdin = encode_inputs(lang.name, spec.bits, truth_table=spec.table)
             example = _reader(
                 lang.boolean,
                 lang.interpreter,
-                inputs=tuple(stdin.splitlines()),
+                table=spec.table,
+                inputs=(stdin,)
+                if lang.contract.input_shape == "char_stream"
+                else tuple(stdin.splitlines()),
                 expected=spec.expected,
                 split=lang.split,
                 kwargs=spec.kwargs,
             )
+        example = replace(example, expected_compared=spec.expected_compared)
         stem = _stem(lang)
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem, scale=spec.scale)
 

@@ -5,6 +5,7 @@ import pytest
 import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.exceptions import TemplateError
+from tests.support.generator_support import assert_proved_resource_cap, probe_table
 from tests.support.pick import languages
 
 
@@ -15,7 +16,13 @@ from tests.support.pick import languages
 @pytest.mark.parametrize("n", [4, 6])
 def test_width_one_layouts_compute_the_table(language: str, n: int) -> None:
     table = "".join(str((row * 17 + row // 3).bit_count() % 2) for row in range(1 << n))
-    program = esolangs.generate(language, table, width=1)
+    try:
+        program = esolangs.generate(language, table, width=1)
+    except esolangs.GeneratorCapError:
+        assert_proved_resource_cap(language)
+        table = probe_table(language)
+        n = len(table).bit_length() - 1
+        program = esolangs.generate(language, table, width=1)
     assert _evaluate(language, program, inputs=n) == table
 
 

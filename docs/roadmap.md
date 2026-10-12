@@ -72,7 +72,7 @@ workspace contracts.
 
 The [scaling status](proofs/index.md#scaling-status) records current verdicts.
 Edit `src/esolangs/proof_status.toml` and run
-`python scripts/docs/generate.py docs` to update it. Factor and Polynomial
+`python scripts/docs/generate.py docs` to update it. Factor, Polynomial and Unary
 have documented language lower bounds; Befunge has a finite-source totality
 exception. Those limits remain evidence, not optimization tasks.
 

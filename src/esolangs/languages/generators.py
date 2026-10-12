@@ -78,6 +78,7 @@ from esolangs.languages.taglate.generator import taglate
 from esolangs.languages.thisthat.generator import thisthat
 from esolangs.languages.three_x.generator import three_x
 from esolangs.languages.thue.generator import thue
+from esolangs.languages.unary.generator import unary
 from esolangs.languages.underload.generator import underload
 from esolangs.languages.unlambda.generator import unlambda
 from esolangs.languages.unsquare.generator import unsquare
@@ -160,6 +161,7 @@ __all__ = [
     "thisthat",
     "three_x",
     "thue",
+    "unary",
     "underload",
     "unlambda",
     "unsquare",

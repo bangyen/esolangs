@@ -87,6 +87,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `taglate/examples/taglate.txt` | Taglate | `0001` | `01` | 01 | '0' |
 | `thisthat/examples/thisthat.txt` | thisthat | `0001` | `01` | 01 | '0' |
 | `thue/examples/thue.txt` | Thue | `0001` | `01` | 0 1 | '0' |
+| `unary/examples/unary.txt` | Unary | `01` | `0` | '\x00' | not the answer -- see note |
 | `underload/examples/underload.txt` | Underload | `0001` | `01` | embedded 01 | '0' |
 | `unlambda/examples/unlambda.txt` | Unlambda | `0001` | `01` | 01 | '0' |
 | `unsquare/examples/unsquare.txt` | Unsquare | `0001` | `01` | 01 | '0' |
@@ -120,4 +121,5 @@ Row gives the logical bits; Input gives their language-specific encoding.
 - **smu** -- Smu reads one bit a run, low bit of each byte first, and packs its output bits into bytes the same way
 - **taglate** -- Taglate reads adjacent characters, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four characters. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
+- **unary** -- Bytes 0/255 encode inputs; halt means 0, a fixed cycle means 1.
 - **vandevelo** -- Vandevelo answers by terminating: nil halts and not nil loops

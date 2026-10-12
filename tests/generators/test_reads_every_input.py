@@ -6,6 +6,7 @@ import esolangs
 from esolangs import vm
 from esolangs.interpreters.io import ScriptedIO
 from tests.reference import REFERENCE
+from tests.support.generator_support import assert_proved_resource_cap
 
 IGNORING = ["0101", "01100110", "0011", "00111100", "".join(c * 2 for c in "0110" * 8)]
 INFOS = {n: esolangs.describe(n) for n in esolangs.list_languages()}
@@ -53,12 +54,19 @@ def test_the_audit_sees_unread_input(monkeypatch):
     ids=str,
 )
 def test_every_input_is_read(monkeypatch, name, path):
+    built = 0
     for table in IGNORING:
         n = (len(table) - 1).bit_length()
         if n <= (INFOS[name]["generator_max_inputs"] or 6):
-            program = esolangs.generate(name, table, **path)
+            try:
+                program = esolangs.generate(name, table, **path)
+            except esolangs.GeneratorCapError:
+                assert_proved_resource_cap(name)
+                continue
+            built += 1
             rows, unread, past = _audit(name, program, n, monkeypatch)
             assert rows > 0
             assert unread == 0, (name, table)
             # A language that ends at EOF probes it once a row, no more.
             assert past in (0, rows), (name, table)
+    assert built, f"{name} never built an input-consumption control"

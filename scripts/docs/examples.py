@@ -93,7 +93,13 @@ def boolean_manifest_text() -> str:
         if example.fill is not None:
             given = "embedded " + "".join(str(b) for b in example.bits)
         else:
-            given = " ".join(example.inputs) or "(none)"
+            given = (
+                " ".join(
+                    value if value.isprintable() else repr(value)
+                    for value in example.inputs
+                )
+                or "(none)"
+            )
         row = _logical_row(stem, example)
         if not example.expected_compared:
             expected = "not the answer -- see note"

@@ -21,7 +21,6 @@ __all__ = ["LANGUAGES", "Generator", "Language", "SourceKind"]
 _INTERPRETER_ONLY = (
     Language("HQ9+", "hq9", category="register_based", id="hq9"),
     Language("Nope.", "nope", category="other"),
-    Language("Unary", "unary", category="tape_based"),
     Language("Deadfish", "deadfish", category="register_based"),
 )
 

@@ -16,7 +16,10 @@ from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
 from esolangs.registry._language import Shape
 from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import _BranchingStepMachine, run_until_halt, run_until_halt_or_cycle
-from tests.support.generator_support import evaluate_generated
+from tests.support.generator_support import (
+    assert_proved_resource_cap,
+    evaluate_generated,
+)
 from tests.support.source_support import source_units
 from tests.support.witness_tables import dense, parity, row_bits
 
@@ -94,6 +97,12 @@ def _reads(entry: tuple, table: str) -> int:
 )
 def test_every_table_reads_the_same_number_of_inputs(name: str, entry: tuple) -> None:
     """A generator reads its ``n`` inputs whatever the truth table says."""
+    controls = LANGUAGES[esolangs.resolve(name)].benchmark_tables
+    if controls:
+        assert_proved_resource_cap(name)
+        for table in controls:
+            assert _reads(entry, table) == len(table).bit_length() - 1
+        return
     counts = {table: _reads(entry, table) for table in _TABLES}
     baseline = counts["01101001"]
     assert baseline > 0, f"{name} read no input from parity"
@@ -290,8 +299,12 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
     """A tree folds a one-dependency table; a reducing sum drops its inputs."""
     fn = LANGUAGES[name].boolean
     assert fn is not None
-    best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
-    parity = source_units(fn(_PARITY))
+    try:
+        best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
+        parity = source_units(fn(_PARITY))
+    except esolangs.GeneratorCapError:
+        assert_proved_resource_cap(name)
+        pytest.skip("fold probe exceeds a proved language resource cap")
     folds = 1 - best / parity
     if LANGUAGES[name].shape is Shape.REDUCING:
         # The gain is real but is not a fold, so assert it from the other
@@ -323,16 +336,23 @@ _SHAPES = (("dense", dense), ("parity", parity))
 
 @pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
 def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
-    """Every boolean generator builds n=1..5 on both shapes, refusing none.
+    """Every generator builds n=1..5 unless a proved resource cap refuses it.
 
     The round trips execute n=2..3; the CI deep band builds to n=8 but lets a
     capped row refuse, so this is the local gate on n=1, 4 and 5.
     """
     fn = getattr(boolean, name)
+    built = 0
     for n in range(1, 6):
         for shape, make in _SHAPES:
-            program = fn(make(n))
+            try:
+                program = fn(make(n))
+            except esolangs.GeneratorCapError:
+                assert_proved_resource_cap(name)
+                continue
+            built += 1
             assert program, f"{name} built an empty program at n={n} ({shape})"
+    assert built, f"{name} never built a positive control"
 
 
 # The build sweep above proves every generator *returns* a program up to five
@@ -390,7 +410,12 @@ def test_every_generator_runs_what_it_builds(
 ) -> None:
     """Build a table using all six inputs, execute it, and check every row."""
     table = make(_ONE_MINTERM_ARITY)
-    assert evaluate_generated(name, table, timeout=30) == table
+    try:
+        result = evaluate_generated(name, table, timeout=30)
+    except esolangs.GeneratorCapError:
+        assert_proved_resource_cap(name)
+        pytest.skip("execution probe exceeds a proved language resource cap")
+    assert result == table
 
 
 @pytest.mark.parametrize(

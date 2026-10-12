@@ -77,7 +77,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [Smallfuck](https://esolangs.org/wiki/Smallfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/smallfuck/interpreter.py))
 - [Subleq](https://esolangs.org/wiki/Subleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/subleq/interpreter.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/suffolk/interpreter.py))
-- [Unary](https://esolangs.org/wiki/Unary) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/unary/interpreter.py)) *(interpreter-only)*
+- [Unary](https://esolangs.org/wiki/Unary) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/unary/interpreter.py))
 - [bit~](https://esolangs.org/wiki/bit~) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/bit_tilde/interpreter.py))
 - [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/brainfuck/interpreter.py))
 
