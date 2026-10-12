@@ -25,7 +25,7 @@ def test_every_language_has_a_canonical_id() -> None:
 
 
 def test_every_name_id_and_alias_resolves_to_its_language() -> None:
-    """An id set by hand (``///``'s ``slashes``) must still be reachable."""
+    """Explicit ids and aliases must still resolve to the canonical name."""
     for name, lang in LANGUAGES.items():
         for spelling in (name, name.casefold(), lang.id, *lang.aliases):
             assert resolve(spelling) == name, spelling

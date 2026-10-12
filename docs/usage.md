@@ -18,11 +18,17 @@ The API handles language I/O conventions using [`describe`](#describe) metadata.
 
 `encode` and `read-answer` wrap `run` for one input row:
 
-```bash
-esolangs generate LaserFuck 0110 > prog.txt
-esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck  # prints 1
-esolangs generate Modulous 0110 > modulous.txt
-```
+- LaserFuck:
+
+  ```bash
+  esolangs generate LaserFuck 0110 > prog.txt
+  esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck  # prints 1
+  ```
+- Modulous:
+
+  ```bash
+  esolangs generate Modulous 0110 > modulous.txt
+  ```
 
 ## Work with one language
 
@@ -221,9 +227,9 @@ option. Parent source loading is outside the cap; exhaustion raises
 
 Untrusted programs need all three bounds: `isolated=True`, a `timeout` and,
 on Linux, `max_memory`. A timeout alone does not bound memory, and a program
-can grow faster than any timeout fires (Underload's `(x)(~:*~:^):^` doubles a
-string past a gigabyte in under a second). Elsewhere, cap the process
-yourself.
+can grow faster than any timeout fires. Elsewhere, cap the process yourself.
+
+- Underload's `(x)(~:*~:^):^` doubles a string past a gigabyte in under a second.
 
 `run(language, program, stdin=stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with

@@ -498,10 +498,11 @@ Every other row is `Total` or theoretically total past a resource ceiling.
 Call a layered construction input-forgetting when, just before each read,
 its data store and pointer depend only on depth; the control location carries
 the residual function. Ordered reads alone do not imply this property:
-`,>,>,<<.` reaches one cursor with four stores after two reads. The shipped
-BrainIf residual-DAG candidate does satisfy it. Its first input cell is zero;
-before each later read, `if 48 increment` maps the prior Boolean byte to 49.
-The one input then overwrites it. No earlier input remains in the store.
+`,>,>,<<.` reaches one cursor with four stores after two reads.
+
+- BrainIf's residual-DAG candidate satisfies it. Its first input cell is zero;
+  before each later read, `if 48 increment` maps the prior Boolean byte to 49.
+  The one input then overwrites it. No earlier input remains in the store.
 
 After `k` reads, distinct residual functions require distinct states: equal
 states would execute identically on every common suffix. At depth `k` there
@@ -518,24 +519,24 @@ the total is below `12T/n`. For a matching lower bound, at remaining depth
 There are `T/2**(r+1) >= T/(2n)` prefixes and enough different residuals
 by maximality of `r`; every input-forgetting realization needs that width.
 
-BrainIf emits four lines per DAG node, three at the root. Destinations have
-`O(n)` digits, so the worst-case source is `O(T)`. Two shared output tails
-add constant text. A run consumes exactly `n` inputs in order and executes
-at most `4n+50` lines. The zero tail moves to a virgin cell only when the
-last byte is 49, then builds 48; the one tail increments 48 if needed and
-prints 49. All gotos go forward, so termination is structural.
-Interning and writing the labels cost `O(T)` in the repository's
-`Theta(n)`-bit table/index word model. This does not assert linear bit work.
+- BrainIf emits four lines per DAG node, three at the root. Destinations have
+  `O(n)` digits, so the worst-case source is `O(T)`. Two shared output tails
+  add constant text. A run consumes exactly `n` inputs in order and executes
+  at most `4n+50` lines. The zero tail moves to a virgin cell only when the
+  last byte is 49, then builds 48; the one tail increments 48 if needed and
+  prints 49. All gotos go forward, so termination is structural.
+  Interning and writing the labels cost `O(T)` in the repository's
+  `Theta(n)`-bit table/index word model. This does not assert linear bit work.
 
-The public generator keeps the shorter source against the tree/spatial
-candidate; width requests retain that older route. Every three-input table
-shrinks: total characters `319576 -> 291524` (8.78%), summed executed
-lines `134984 -> 74440` (44.85%), with no table growing or slowing.
-All 2,120 rows through three inputs execute; constants, parity and four
-seeded tables per arity four through six also execute every row. A separate
-200-table five-input sample gives `573675 -> 360230` characters and
-`1501446 -> 280080` lines. Full-store boundary checks confirm erasure before
-the next read. The controls are in `tests/proofs/test_research_tracks.py`.
+  The public generator keeps the shorter source against the tree/spatial
+  candidate; width requests retain that older route. Every three-input table
+  shrinks: total characters `319576 -> 291524` (8.78%), summed executed
+  lines `134984 -> 74440` (44.85%), with no table growing or slowing.
+  All 2,120 rows through three inputs execute; constants, parity and four
+  seeded tables per arity four through six also execute every row. A separate
+  200-table five-input sample gives `573675 -> 360230` characters and
+  `1501446 -> 280080` lines. Full-store boundary checks confirm erasure before
+  the next read. The controls are in `tests/proofs/test_research_tracks.py`.
 
 
 ## Vandevelo identifier and fallback audit

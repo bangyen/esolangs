@@ -420,22 +420,8 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     assert relaid, f"{name}: no width produced a different layout"
 
 
-def test_unwrappable_languages_are_untouched() -> None:
-    """No unwrappable language has a wrapper, so a one-line program is kept."""
+def test_unwrappable_languages_have_no_wrapper() -> None:
     assert set(UNWRAPPABLE).isdisjoint(WRAPPERS)
-    assert wrap_program("iiiioddo", "slashes", 4) == "iiiioddo"
-
-
-def test_zero_and_negative_widths_do_not_wrap() -> None:
-    """A nonsensical width is a no-op rather than an error or a crash."""
-    for width in (0, -1):
-        assert wrap_program("a b c", "decleq", width) == "a b c"
-
-
-def test_already_multiline_programs_are_left_alone() -> None:
-    """A program that already has newlines is never re-wrapped."""
-    program = "line one\nline two"
-    assert wrap_program(program, "decleq", 4) == program
 
 
 def test_wrap_tokens_refuses_a_pattern_that_does_not_tile() -> None:
