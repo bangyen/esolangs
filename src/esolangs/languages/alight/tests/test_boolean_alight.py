@@ -8,7 +8,7 @@ import pytest
 import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
-from esolangs.languages.alight.generator.balance import _balance_postfix
+from esolangs.languages.alight.generator import _balance_postfix
 from esolangs.languages.alight.interpreter import run as alight_run
 from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
@@ -22,8 +22,11 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 
 def test_alight_affine_fold_comparisons_and_empty_turn_rows():
-    from esolangs.languages.alight.generator import _alight_folded, _dimensions
-    from esolangs.languages.alight.generator.balance import _fold_shape
+    from esolangs.languages.alight.generator import (
+        _alight_folded,
+        _dimensions,
+        _fold_shape,
+    )
 
     pieces = [(0, 6)] * 3 + [(0, 8), (1, 20), (1, 20), (0, 6), (0, 4)]
     assert _fold_shape(pieces, (1, 90), 1, 31)[3] == 4
@@ -38,7 +41,7 @@ def test_alight_affine_fold_comparisons_and_empty_turn_rows():
 
 
 def test_alight_planned_layouts_render_and_execute():
-    from esolangs.languages.alight.generator.balance import _emit, _plans
+    from esolangs.languages.alight.generator import _emit, _plans
 
     for plan in _plans(2):
         program = _emit("0110", 2, plan)
@@ -59,7 +62,7 @@ def test_alight_balance_drops_ignored_inputs(syntax):
 
 
 def test_alight_model_drift_aborts(monkeypatch):
-    from esolangs.languages.alight.generator import balance as module
+    from esolangs.languages.alight import generator as module
 
     monkeypatch.setattr(module, "_alight_folded", lambda *_args: "begin;end;")
     with pytest.raises(AssertionError, match="fold model disagrees"):
@@ -228,7 +231,7 @@ def test_postfix_settings_are_checked_and_do_not_leak():
 def test_postfix_balance_model_checks_rendering():
     with (
         patch(
-            "esolangs.languages.alight.generator.balance._alight_folded",
+            "esolangs.languages.alight.generator._alight_folded",
             return_value="bad",
         ),
         pytest.raises(AssertionError, match="postfix fold model"),
@@ -263,8 +266,7 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit):
 def test_constant_lookup_executes_every_layout(syntax, bit, width, n):
     import esolangs
     from esolangs.generation.wrap import balance_score
-    from esolangs.languages.alight.generator import _program
-    from esolangs.languages.alight.generator.balance import balance_alight
+    from esolangs.languages.alight.generator import _program, balance_alight
     from esolangs.runtime._evaluate import _evaluate
 
     table = bit * (1 << n)
