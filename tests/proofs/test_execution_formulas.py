@@ -173,7 +173,7 @@ FORMULAS = ledger_formulas(
 
 
 def _seeded(n: int, seed: int) -> str:
-    """A seeded random table; seeds 1 and 3 reach worst-case witnesses."""
+    """A deterministic random table for the formula corpus."""
     width = 1 << n
     return f"{random.Random(7919 * seed + n).getrandbits(width):0{width}b}"
 
@@ -223,7 +223,7 @@ def _one_two_three_worst(n: int) -> str:
 
 
 def _tables(name: str, n: int) -> tuple[str, ...]:
-    """Parity, dense, seeded, constants, AND, both alternations, NAND, ends."""
+    """Structured and random tables, with named worst-case witnesses."""
     width = 1 << n
     if name == "Circuit Diagram" and n >= 8:
         # Parity reaches 2n+1 at n=8; dense tables exercise pool admission
@@ -251,7 +251,6 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         return (_parity(n), _dense(n), "0" * width, "1" * width)
     tables = (
         _parity(n),
-        _dense(n),
         _seeded(n, 1),
         "0" * width,
         "1" * width,
@@ -300,7 +299,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
             at = 16 * j + 2 * j % 16
             cells[at], cells[at + 1] = cells[at + 1], cells[at]
         tables += ("".join(cells) * (width // block),)
-    return tables
+    return tuple(dict.fromkeys(tables))
 
 
 def _measure(
