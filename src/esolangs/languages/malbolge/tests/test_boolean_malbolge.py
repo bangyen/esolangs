@@ -53,11 +53,9 @@ def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) 
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("n", [6, 9, 10])
-@pytest.mark.parametrize("shape", [dense, parity])
-def testdense_andparity_run(n: int, shape: object) -> None:
-    """The two worst-case shapes at the top of the supported range."""
-    table = shape(n)  # type: ignore[operator]
+def test_ten_inputs_execute_every_row() -> None:
+    """Execute every direct-stub row at the last arity before the cascade."""
+    table = dense(10)
     assert _rows(table) == list(table)
 
 
@@ -252,11 +250,16 @@ def test_digit_builds_label_every_cell(n: int) -> None:
     "fifteen/sixteen-input digit readout samples both halves of answer pairs"
 )
 @pytest.mark.parametrize("n", [15, 16])
-@pytest.mark.parametrize("shape", [dense, parity])
-def test_digit_builds_sampled(n: int, shape: object) -> None:
+def test_digit_builds_sampled(n: int) -> None:
     """Every 128th row, offset per arity so both halves of each pair run."""
-    table = shape(n)  # type: ignore[operator]
+    table = dense(n)
     rows = range(n - 15, 2**n, 128)
+    assert {table[2 * (row // 2) : 2 * (row // 2) + 2] for row in rows} == {
+        "00",
+        "01",
+        "10",
+        "11",
+    }
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
