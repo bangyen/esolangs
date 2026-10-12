@@ -830,7 +830,7 @@ def _nearest_plane(
     On a Lagrange--Gauss-reduced basis of a lattice whose minimum exceeds
     ``sqrt(16/3) B``, a coset vector of norm at most ``B`` is the one
     returned: both roundings are forced (see the proof in
-    ``docs/proofs/polynomial.md``).
+    ``docs/proofs/index.md#polynomial-bound``).
     """
     first, second = basis
     gram11, gram12 = _dot(first, first), _dot(first, second)

@@ -223,10 +223,10 @@ def _parse_program(code: str) -> tuple[tuple[int, ...], ...]:
     """Recover the instruction list from a program's source, once.
 
     Keyed on the source: re-parsing a tens-of-megabytes program cost 0.9s
-    per row on dense n=8.  Polynomial time in the source length for every
-    source (``docs/proofs/polynomial.md``, "Cold parsing of arbitrary
-    programs"): a dense source takes the peels, a sparse one never builds
-    its coefficient list.
+    per row on dense n=8. Parsing is polynomial in source length, except
+    for the zero polynomial's output-sized list; see
+    ``docs/proofs/index.md#polynomial-bound``. Dense sources take the peels;
+    sparse sources never build a coefficient list.
     """
     cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
     if cleaned_code[:5] != "f(x)=":

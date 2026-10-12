@@ -2,7 +2,7 @@
 
 Interpreter conventions, generator constraints, and proved limits.
 
-- Polynomial has a [size lower bound](proofs/polynomial.md).
+- Polynomial has a [size lower bound](proofs/index.md#polynomial-bound).
 
 The measurement screens and the Vandevelo profiler were removed once their
 findings were recorded here; numbers attributed to them are evidence, not a
@@ -105,7 +105,7 @@ Eleven through fourteen use collision-resolving pointer cascades; fifteen and
 sixteen use positional readouts, one cell per row pair. The representative
 dense, parity, constant tables were executed exhaustively at each shipped
 arity. Construction details and measurements are in
-[malbolge-scaling](proofs/malbolge-scaling.md).
+[construction summary](proofs/index.md#malbolge-bound).
 
 Seventeen remains open. Native capture, semantic readout, footer dispatch and
 terminal-output components execute separately; no source computes an arbitrary
@@ -113,14 +113,14 @@ full 17-input truth table. Raw record addresses can overlap executing code,
 so relocation must precede capture. The reduced LAST-only layout is short by
 8,432 cells before adding the remaining query, selector and metadata. This is
 a deficit for that construction, not an impossibility bound. See
-[the latest controls](proofs/malbolge-scaling.md#native-bootstrap-progress-2026-10-11).
+[the construction summary](proofs/index.md#malbolge-bound).
 The shipped cap remains sixteen.
 
 - Vandevelo's fixed sparse-candidate cap forces Ω(T log n) emitted characters
   on an explicit odd-prefix family, where T = 2ⁿ. Character-level generation
   time is therefore superlinear for the shipped construction. A replacement
   with universal O(T) size and generation time remains open; no language-wide
-  impossibility was proved. See [the proof](proofs/vandevelo-sparse-tail.md).
+  impossibility was proved. See [the bound summary](proofs/index.md#vandevelo-sparse-bound).
 
 Counting bounds each family independently of mixer quality:
 
@@ -161,7 +161,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 16 | 16 | Stubs need gap-3 readouts (none at eleven bits); the hashed cascade through fourteen resolves collisions over up to three levels and stops where their depth outruns the decoder. Fifteen and sixteen address positionally, three bits per two-trit digit, so no row collides; that positional readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell packing remains unintegrated ([scaling](proofs/malbolge-scaling.md)). |
+| Malbolge | 16 | 16 | Stubs need gap-3 readouts (none at eleven bits); the hashed cascade through fourteen resolves collisions over up to three levels and stops where their depth outruns the decoder. Fifteen and sixteen address positionally, three bits per two-trit digit, so no row collides; that positional readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell packing remains unintegrated ([scaling](proofs/index.md#malbolge-bound)). |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 - Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
@@ -169,11 +169,11 @@ expressible at any length.
   prices every multiple of their distinct-root product. The routing lemma that
   forces those values holds for every read count, so the language bound is
   `Theta(T**2 / log T)` for every cofactor and operand sign. See
-  [polynomial](proofs/polynomial.md).
+  [polynomial](proofs/index.md#polynomial-bound).
 
 - Factor has a language floor
   `Omega(T log T)`, a weighted exponent-vector count on D-digit integers
-  ([factor](proofs/factor.md)); its worst-case generated encoding is `Theta(T log T)`.
+  ([factor](proofs/index.md#factor-bound)); its worst-case generated encoding is `Theta(T log T)`.
 
 ### Scaling
 
@@ -192,7 +192,7 @@ Loading is intentionally excluded from execution time.
   it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
   most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
   versus 23.6 for the tree. The construction and the counting floor are in
-  [fractran](proofs/fractran.md) and `src/esolangs/languages/fractran/tests/proofs/deep/fractran.py`.
+  [fractran](proofs/index.md#fractran-bound) and `src/esolangs/languages/fractran/tests/proofs/deep/fractran.py`.
 
 The canonical sharing piece is applied or exempt by measurement. Potential
 before a generator's own share is bounded per piece: repeated nodes,

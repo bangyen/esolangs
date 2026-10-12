@@ -136,16 +136,6 @@ proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all
 
-# compile the standalone complexity notes; PDFs are ignored generated files
-proofs-pdf:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    command -v tectonic >/dev/null 2>&1 || {
-        echo "tectonic is required (brew install tectonic)" >&2
-        exit 1
-    }
-    tectonic --outdir docs/proofs docs/proofs/polynomial.tex
-
 # Not in `just test` or CI; run it when A Painter Ant's generator changes.
 # re-check the A Painter Ant uniform-in-n proof
 apa-proof:

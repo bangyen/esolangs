@@ -1,23 +1,115 @@
 # Boolean-generator coverage proofs
 
-Standalone proofs and implementation bounds:
+Construction summaries use `T = 2**n` table entries; logarithms have a
+fixed base unless specified. Detailed derivations and research history are
+archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
 
-- Polynomial has a [standalone proof](polynomial.tex) and a
-  [Markdown companion](polynomial.md) for implementation bounds,
-  measurements and counterexamples. Its lower bound imports
-  Corollary 3.4 of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex),
-  the companion manuscript bounding the coefficient mass of a polynomial
-  multiple. `tests/proofs/test_citations.py` checks the numbered
-  cross-references against the labels they name.
-- Factor proves `Theta(T log T)` text ([proof](factor.md)).
-- FRACTRAN proves a super-linear address budget but linear language
-  complexity through packing, trading characters for steps
-  ([proof](fractran.md)).
-- brainfuck bounds distinct behaviours of `C`-character programs
-  ([proof](brainfuck-count.md)).
-- Vandevelo proves Ω(T log n) characters for the shipped bounded-sparse-cube
-  construction; universal linear size and generation time remain open
-  ([proof](vandevelo-sparse-tail.md)).
+- Polynomial: <a id="polynomial-bound"></a> worst-case expanded integer-polynomial
+  source is `Theta(T**2 / log T)`. Ordered input overwrites the register;
+  maximal-width tables force `Omega(T/log T)` distinct positive real instruction
+  roots even with repeated roots, arbitrary read counts, operand signs and
+  unrecognized cofactors. Every multiple of their root product pays
+  `Omega(r**2 log r)` coefficient digits for `r` distinct roots. An uncapped
+  residual DAG has `O(T/log T)` states and at most six instructions per state;
+  multiplying its factors gives the matching text upper bound. Product notation
+  is outside this expanded-source model. The public 1934-instruction cap
+  still refuses some tables.
+  For worst-case minimum length `C_P(n)`, the limiting bracket for
+  `C_P(n)*n/T**2` is `(13/4)*log10(2)` through `(325/8)*log10(2)`
+  (0.978 through 12.23); the factor-12.5 gap and existence of the limit remain open.
+  Corollary 3.4 (Logarithmic mass) of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex) supplies the mass bound.
+  Lemma 2.1, Corollary 2.3 and Theorem 4.2 of [coefficient-mass-complex](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass-complex.tex) supply multisection and sign refinements.
+  Proposition 2.1 of [coefficient-mass-attainment](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass-attainment.tex) gives the confluent attainment construction.
+  With rendered length `L`, fixed libmpdec uncapped generation costs
+  `Theta((T**2/log T)**log2(3))` word operations; within the direct-FNT range
+  admitted by the public cap it is `Theta(T**2)`. Generated-family cold parsing
+  has the conservative bit bound `O(L**2 + D**4 M(H + D log D))`, where
+  `D` is degree, `H` coefficient bit length and `M` integer multiplication.
+  Arbitrary-source parsing is deterministic polynomial time in source length
+  `s`, except that an all-zero source with largest written exponent `E > 2s`
+  returns `E` instructions in `O(E)` output work. Sparse parsing avoids a
+  degree-sized list, uses gap splitting and exact integer/Gaussian-root recovery;
+  nearest-plane recovery is unique when the lattice minimum exceeds
+  `sqrt(16/3)*B` for a candidate norm bound `B`.
+  The separate common-norm Gaussian-factor result assumes
+  `a_j**2+c_j**2=R`, distinct prime powers `c_j=p_j**b_j`, `b_j>=2`, and
+  `Q(y)=prod(y**2-2(a_j**2-c_j**2)*y+R**2)` over `K>=2` factors.
+  Every nonzero integer multiple has at least `(K+3)/2` terms. Raw factors and
+  scaled reciprocal or anti-reciprocal multiples have logarithmic coefficient
+  mass at least `K**2*log(R)/16 >= K**2*log(K)/4`; arbitrary multiples remain
+  conjectural, and general register roots need not share a norm.
+  Controls: `src/esolangs/languages/polynomial/tests/test_boolean_polynomial.py`,
+  its `tests/proofs/test_polynomial_negatives.py`, and
+  `src/esolangs/languages/polynomial/tests/proofs/deep/polynomial.py`.
+- Factor: <a id="factor-bound"></a> worst-case decimal source has
+  `Theta(T log T)` digits for both the language and generator. A prime's residue
+  modulo 11 selects one of eight commands and its exponent is a run length.
+  Weighted exponent counting admits only `exp(O(D/log D))` behaviours at
+  `D` digits, forcing the lower bound; a linear decoded tree and short
+  prime windows supply the upper bound. Ignored residues and leading zeros
+  add no behaviours. The limiting bracket for minimum digits divided by
+  `T*n` is 0.11701409 through 0.29229475, with existence and sharp constant open.
+  Generation is bounded by `O(T + Q log log Q + D**log2(3))`, where `Q`
+  is the largest selected prime; a matching time lower bound is not established.
+  Generated-source cold decoding is polynomial; arbitrary-integer factorization
+  is not covered. Controls: `src/esolangs/languages/factor/tests/`.
+- FRACTRAN: <a id="fractran-bound"></a> worst-case Boolean source is `Theta(T)`.
+  The counting floor is `T/log2(15)-O(1)` characters. A shared decision diagram
+  stores `C=sum_d min(2**d, 2**(2**(n-d)))=O(T/log T)` states,
+  at most `C+n+1` primes and `2C+n` fractions. Its first-match rule branches
+  on an input prime; leaf fractions produce the answer and trailing fractions
+  clear unread set inputs. Runs fire at most `n+1` fractions on
+  `O(n log n)`-bit values. Distinct row addresses instead cost
+  `Theta(T log T)` text; that is a construction bound, not a language bound.
+  Indexed execution and literal scanning have different costs. The experimental
+  direct-mapping chunk construction gives `O(T)` bit work for generation,
+  sparse-factor loading and execution, with `O(T)` persistent source/index bits;
+  materializing the initial integer is outside this sparse-factor contract.
+  It does not replace the public decision-diagram generator.
+  Controls: `src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py`
+  and `src/esolangs/languages/fractran/tests/proofs/deep/`.
+- brainfuck: <a id="brainfuck-behaviours"></a> the exponential growth rate
+  of distinct behaviours of programs of at most `C` characters remains open.
+  On the repository's bi-infinite wrapping-byte tape, over all inputs,
+  the `liminf B(C)**(1/C)` lower bound is 4.24200 with EOF error and 3.79003
+  with EOF keep; corresponding `limsup` upper bounds are 6.885 and 7.1949.
+  For every fixed nonempty finite input set, the lower bound is 3.36614.
+  Rewrite automata and rational Perron inequalities certify upper bounds;
+  distinguishable output and nested-loop families supply lower bounds.
+  The old 7.0341 and 7.0194 certificates excluded legal `[-[]]` and are invalid
+  behaviour bounds. Exact arithmetic cannot repair an unsound rewrite.
+  Controls: `src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_count.py`
+  checks contextual rewrites, independent automata and positive counterexamples.
+- Malbolge: <a id="malbolge-bound"></a> the shipped hashed cascade reaches
+  fourteen inputs, positional addressing reaches fifteen and sixteen, and
+  seventeen remains open. Finite source space excludes some eighteen-input
+  tables, so mathematical totality is impossible. The load law allows at most
+  two final rows per answer cell; a one-cell-per-row-pair construction cannot
+  cover seventeen in the 59,049-cell store. This is not a universal seventeen-input
+  obstruction. Table-free memoized planning and one-pass fill are separate:
+  fill is `Theta(T+59049)`, with exactly half a cell assignment per row in the
+  positional build. Prefix sharing makes generation `Theta(T+59049)` through
+  ten inputs. Wider cold planners are separate searches; their finite-domain
+  measurements do not prove an asymptotic generation bound.
+  Native seventeen-input components and unbuilt routes are not a complete
+  generator. Controls: `src/esolangs/languages/malbolge/tests/`; archived
+  seventeen-input tools are available at `09ab2fad:scripts/malbolge17/`.
+- Vandevelo: <a id="vandevelo-sparse-bound"></a> the shipped fixed-candidate
+  sparse construction has worst-case `Omega(T log n)` characters, not `O(T)`.
+  For `n>=100`, take `m` as the largest odd integer at most `T/n` and output
+  one exactly on unsigned inputs below `m`. Both affine shortcuts reject the
+  odd cardinalities, and the sparse route is selected. Each cube has dimension
+  at most 48, so at least `T/(2n*2**48)` disjoint cubes are required. Every
+  guard retains at least `n/2` independent equations and distinct identifiers;
+  the 66-character identifier alphabet forces
+  `L_n >= (T/2**51)*floor(log_66(n/4))`. Writing the source also forces
+  super-linear character work. This does not bound every legal program,
+  executed command count, or a construction with a growing candidate limit;
+  universal linear source and generation remain open. The finite odd-prefix
+  controls at eight and nine inputs executed 768 rows, using five/nine ones,
+  cube dimensions `(2,0)`/`(3,0)` and 204/221 characters. Those measurements
+  check the route, not the asymptotic bound. Controls remain in
+  `src/esolangs/languages/vandevelo/tests/`.
 
 The ledger records coverage of every `2**n`-bit table for every finite `n`.
 “Total” means mathematical coverage. Ignore explicit digit, instruction,
@@ -57,7 +149,7 @@ evidence against linearity; passing it is not a
 proof.
 
 - Factor passes at x2.11 despite its language-level super-linear bound
-  ([factor](factor.md)).
+  ([summary](#factor-bound)).
 
 - Polynomial's block-incidence lemma forces
   `Omega(T/log T)` distinct real instruction-root values even when roots
@@ -65,7 +157,7 @@ proof.
   product, giving `Omega(T**2 / log T)` for every program, whatever its read
   count: only the last two reads before a routing position can carry a residual
   that depends on its next input and not on it alone.  The argument is in
-  [polynomial](polynomial.md).
+  [summary](#polynomial-bound).
 
 A `linear` row is within a constant of the worst-case optimum. A language with `c`
 source characters has fewer than `c**(L+1)` programs of length at most `L`,
@@ -346,7 +438,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Dimensional | linear lookup | a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1 | linear: 2T table characters plus at most a fixed gadget per input | linear: at most 15T - 8n + 37 commands: paint 2T + 2, then 13 per index unit doubled | T log T: worst Σ_{k<T} bl(k) + 5T + n(n-1)/2 + 4n + 6 + bl(2T+20n+56) + bl(2n-1) bits |
 | EGL | finite lookup | row 1 is painted with the table and each essential input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell | linear: T painted cells, guard weights sum to T - 1 | linear: worst 3T + 52n + 3 commands: paint at most T-1 ones; weights sum to T-1 | linear: worst 2T + 2n + 7 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of T |
 | Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: T literal plus halving `;` runs under T | linear: worst 2T + 13n + 1 commands: one per program character, then the final frame pop | linear: worst 8L + T + n + 2 + bl(L) bits: frame program text and a stack |
-| Factor | tree | Brainfuck tree over the essential inputs followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence; unused level flags defer repeated residuals in depth order | lower bound: tight language and generated Theta(T log T) ([factor](factor.md)) | poly n: worst 265n + 231 commands; the prelude is at most 247n + 240 past n=1 | poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(51·2^(n-2)+16n+14) bits |
+| Factor | tree | Brainfuck tree over the essential inputs followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence; unused level flags defer repeated residuals in depth order | lower bound: tight language and generated Theta(T log T) ([summary](#factor-bound)) | poly n: worst 265n + 231 commands; the prelude is at most 247n + 240 past n=1 | poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(51·2^(n-2)+16n+14) bits |
 | FALSE | tree | — | linear: 12 characters an internal node, two a leaf | poly n: at most min(12n + 69, 10n + 99) commands, 26 stored lambdas | poly n: at most (2n+56)(n+4) + n + 1 + bl(n) bits: 26 lambdas |
 | Fish | finite lookup | the inputs form a Horner row index and `g` reads that column from the table row | linear: T table cells, one g at the index | poly n: worst 9n + 9 commands, n Horner reads and one `g` | poly n: worst n + 13 + bl(9n+8) + bl(n) bits: one stack, x |
 | Fargo | tree | finite folded layout | linear: word-packed transform and emission | linear: at most 5T + 1 commands past n = 5, else 15T/2 - 4: each token runs once | linear: at most 16(L - 3) + bl(L) + 11 bits past n = 5: one frame's tokens, pending calls |
@@ -361,7 +453,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Jaune | finite lookup | a spatial table reached with two labels, against a hoisted tree that lays out each distinct subtable once and jumps to it | linear: two cells per row, unary weights sum T - 1 | poly n: at most 8n - 2 commands, one root-to-leaf path | poly n: at most n + 1 + bl(5·2^n+5n-4) + bl(n-1) + bl(2n-1) bits |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T | linear: at most 18T + 56n + 5 commands past n = 4: one pass along the weighted row | linear: at most 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells |
 | Line | tree | finite decision trees can store only essential inputs; guarded ancestor returns share a residual through a consumed input | linear: alternating subtree extents bound rectangular area by O(T) | poly n: worst 5n commands; shared returns retain this bound | poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) bits past n = 4 |
-| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([malbolge-scaling](malbolge-scaling.md)) | measured: fixed 59049-cell store through n <= 16 | unmeasured: worst 478n + 1459 steps for n ≤ 10; eleven to sixteen are separate builds | poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag |
+| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound)) | measured: fixed 59049-cell store through n <= 16 | unmeasured: worst 478n + 1459 steps for n ≤ 10; eleven to sixteen are separate builds | poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag |
 | Minifuck | parameterized construction | affine or two-residual byte accumulator; budgeted stored residuals; total positional `_mux` fallback | linear: shared tape text admitted within the positional mux budget | linear: at most L commands: straight-line, the cursor never moves back | linear: worst 6T + 30 + bl(6T+28) + bl(6T+30) + bl(L) bits past n = 4: a tape bit-integer |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity whose inputs all matter renders to the same length (an ignored input's stage is a bare `~ ~`) | linear: cascade routes to two shared leaves, one-digit targets | linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down | poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor |
 | Modulous | linear lookup | the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard | linear: T-character literal, one read block an input | linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded | linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack |
@@ -371,7 +463,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1) | poly n: at most ceil(3n^2 / 4) + 20n + 4 commands, one path | poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n |
 | Piet | finite lookup | each table entry is pushed and an input index selects its output; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels | linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation | linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack |
 | Piet++ | finite lookup | Piet's lookup recoloured into Piet++ deltas: each table entry is pushed and an input index rolls its output up; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels | linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation | linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack |
-| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) | unmeasured: exempt as a cap row | poly n: at most bl(min(10T-7,1934) + 10) + 1 + max(bl(n+3), bl(49(M-1))) + 2bl(n) bits, M = max_k min(2^k, 2^(2^(n-k))) |
+| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([summary](#polynomial-bound)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([summary](#polynomial-bound)) | unmeasured: exempt as a cap row | poly n: at most bl(min(10T-7,1934) + 10) + 1 + max(bl(n+3), bl(49(M-1))) + 2bl(n) bits, M = max_k min(2^k, 2^(2^(n-k))) |
 | Qoibl | linear lookup | the table is one binary literal, divided by the power of two the reads build | linear: T-bit literal, one squaring statement per input | poly n: worst n + 2 commands, one statement per input | linear: worst T + 3 + bl(n) + bl(n+2) bits: variables 0 and 1 |
 | RAM0 | parameterized tree | the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out, and the straight-line lookup is kept as a candidate | linear: O(T/n) distinct subtables, O(n) commands each | poly n: worst n^2 + 8n + 5 commands, one root-to-leaf path | poly n: worst n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a)) bits, S the token count |
 | ROTfuck | finite lookup | every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count | linear: bounded dependency scan and canonical residual IDs | linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: NAND's all-ones row, walks quadratic per digit | linear: at most 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n) bits: 2T + 7 cells |
@@ -433,7 +525,7 @@ Symbols the formula cells use:
   computes at most one table, so some 18-input tables have no Malbolge program;
   no generator can be total under this interpreter's language semantics.  The shipped
   construction reaches sixteen inputs, one below that wall:
-  [malbolge-scaling](malbolge-scaling.md) measures why the hashed cascade stopped at
+  [summary](#malbolge-bound) measures why the hashed cascade stopped at
   fourteen (the depth a truth table forces climbs past any decoder pass count as the
   answer-cell load rises), gives the positional build that covers fifteen and sixteen with
   no collisions, and shows why seventeen is beyond any build spending a cell per row

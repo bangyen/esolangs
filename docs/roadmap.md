@@ -52,7 +52,7 @@ evidence, not optimization tasks.
 
 - **Malbolge:** settle generation at seventeen inputs and the first
   unreachable arity. Share initialization and query control, then relocate
-  records before capture; see [the layout gap](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09).
+  records before capture; see [the construction summary](proofs/index.md#malbolge-bound).
 - **Vandevelo:** settle generation time and structural output scaling via
   the `O(log n)` DNF-of-parities gap; see [the audit](proofs/index.md#vandevelo-identifier-and-fallback-audit).
 

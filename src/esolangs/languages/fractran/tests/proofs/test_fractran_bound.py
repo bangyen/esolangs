@@ -1,4 +1,4 @@
-"""The lemmas ``docs/proofs/fractran.md`` rests on, as executable checks."""
+"""The lemmas ``docs/proofs/index.md#fractran-bound`` rests on, as executable checks."""
 
 from __future__ import annotations
 

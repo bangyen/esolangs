@@ -78,3 +78,20 @@ def test_ledger_evidence_can_name_a_whole_file():
     data = tomllib.loads(status.MANIFEST.read_text())
     data["ledger"][0]["evidence"] = "docs/proofs/index.md"
     status.validate(data)
+
+
+def test_owned_evidence_anchor_is_required(tmp_path, monkeypatch):
+    monkeypatch.setattr(status, "ROOT", tmp_path)
+    document = tmp_path / "proof.md"
+    document.write_text(
+        '# Bounds\n\n- Example: <a id="example-bound"></a> finite construction.\n'
+        '\n```html\n<a id="code-only"></a>\n```\n'
+    )
+    data = tomllib.loads(status.MANIFEST.read_text())
+    data["ledger"] = []
+    data["audit"] = [data["audit"][0]]
+    data["audit"][0]["evidence"] = "proof.md#example-bound"
+    status.validate(data)
+    document.write_text('# Bounds\n\n```html\n<a id="example-bound"></a>\n```\n')
+    with pytest.raises(ValueError, match="missing evidence anchor"):
+        status.validate(data)
