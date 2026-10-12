@@ -113,7 +113,7 @@ def test_invalid_preflight_rectangle_aborts(monkeypatch):
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.folded_banks"
     )
-    table, _ = _classes(7, 257)
+    table, _ = _classes(7, 2)
 
     class Oversized:
         def bounds(self):
