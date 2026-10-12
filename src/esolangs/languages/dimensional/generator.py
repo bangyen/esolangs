@@ -101,6 +101,10 @@ def _count(count: int) -> str:
 
 def _advance(length: int) -> str:
     """Move along dimension 1 using unary, counted, or balanced-stride commands."""
+    bare = f">{_INDEX}" * length
+    # Nine is the first zero run that a counted loop shortens.
+    if length < 9:
+        return bare
 
     def counted(stride: int) -> str:
         count, rest = divmod(length, stride)
@@ -112,9 +116,7 @@ def _advance(length: int) -> str:
             + f">{_INDEX}" * rest
         )
 
-    return min(
-        f">{_INDEX}" * length, counted(1), counted(max(1, isqrt(length))), key=len
-    )
+    return min(bare, counted(1), counted(max(1, isqrt(length))), key=len)
 
 
 def _dimensional_bare(table: str, n: int) -> str:
