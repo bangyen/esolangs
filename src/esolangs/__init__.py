@@ -738,7 +738,7 @@ def run(
     # Before ``_run``, so every ValueError from the run is the
     # interpreter's.  The message names both routes out for a worker
     # thread.  Not a silent fallback to stepping: two paths for one
-    # function is how they diverged (``tests/runtime/vm/test_stepping_parity.py``).
+    # function is how they diverged (``tests/runtime/test_stepping_parity.py``).
     check_signal_timeout(
         timeout,
         "the timeout guard uses SIGALRM and needs a Unix main thread; "

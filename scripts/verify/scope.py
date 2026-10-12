@@ -534,8 +534,8 @@ def _is_collected(path: str) -> bool:
 
 
 INTERPRETER_CONTRACT_TESTS = (
-    "tests/runtime/vm/test_vm_protocol.py",
-    "tests/runtime/vm/test_stepping_parity.py",
+    "tests/runtime/test_vm_protocol.py",
+    "tests/runtime/test_stepping_parity.py",
     "tests/api/test_api_contracts.py",
     "tests/interpreters/test_interpreter_conventions.py",
     "tests/interpreters/test_io.py",

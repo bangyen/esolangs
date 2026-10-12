@@ -35,7 +35,7 @@ class TestPytestScopeCollects:
         ("path", "scoped"),
         [
             ("src/esolangs/languages/polynomial/tests/polynomial_support.py", False),
-            ("tests/runtime/vm/test_vm.py", True),
+            ("tests/runtime/test_vm.py", True),
             ("src/esolangs/runtime/demo/brainfuck.py", False),
             ("src/esolangs/runtime/io.py", False),
         ],

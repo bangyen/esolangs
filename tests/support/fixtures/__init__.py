@@ -7,7 +7,9 @@ from tests.support.paths import ROOT
 
 def path(language: str, name: str) -> Path:
     """Return a fixture path under a canonical language ID."""
-    return ROOT / "src/esolangs/languages" / language / "tests/fixtures" / name
+    root = ROOT / "src/esolangs/languages" / language / "tests"
+    direct = root / name
+    return direct if direct.is_file() else root / "fixtures" / name
 
 
 def text(language: str, name: str) -> str:

@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from tests.runtime.io.test_input_encoding import XOR
+from tests.runtime.test_input_encoding import XOR
 from tests.support.stdin_check import _check_stdin
 
 

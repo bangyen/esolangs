@@ -53,7 +53,12 @@ def _text(page: Path, example: dict, key: str) -> str:
 
 
 def _cases():
-    for page in sorted(_DIR.glob("*/tests/fixtures/wiki_examples.toml")):
+    for page in sorted(
+        [
+            *_DIR.glob("*/tests/wiki_examples.toml"),
+            *_DIR.glob("*/tests/fixtures/wiki_examples.toml"),
+        ]
+    ):
         data = tomllib.loads(page.read_text(encoding="utf-8"))
         for example in data["examples"]:
             yield pytest.param(
@@ -61,7 +66,7 @@ def _cases():
                 page,
                 example,
                 f"https://esolangs.org/w/index.php?oldid={data['oldid']}",
-                id=f"{page.parents[2].name}-{example['id']}",
+                id=f"{page.relative_to(_DIR).parts[0]}-{example['id']}",
                 marks=[getattr(pytest.mark, example["band"])]
                 if "band" in example
                 else [],

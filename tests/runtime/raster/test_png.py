@@ -15,7 +15,7 @@ from tests.support.pick import one
 
 #: Two wiki images, kept apart from any one language's fixtures so the codec
 #: tests outlive the language that drew them.
-FIXTURES = Path(__file__).parents[1] / "support/fixtures"
+FIXTURES = Path(__file__).parents[2] / "support/fixtures"
 
 # Shape and ink count (pixels below the 128 threshold extract.py uses) for
 # each checked-in fixture, as decoded by Pillow's Image.open().convert("L")

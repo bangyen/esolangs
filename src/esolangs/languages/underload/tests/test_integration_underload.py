@@ -7,7 +7,7 @@ import pytest
 import esolangs
 from esolangs.runtime import _isolated
 from esolangs.runtime._evaluate import _evaluate
-from tests.runtime.vm.test_memory_budget import _BUDGET, _LINUX
+from tests.runtime.test_memory_budget import _BUDGET, _LINUX
 
 
 @pytest.mark.parametrize(

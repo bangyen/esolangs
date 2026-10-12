@@ -13,7 +13,7 @@ from tests.support.generator_support import evaluate_generated, probe_table
 from tests.support.pick import first, languages
 from tests.support.reference import REFERENCE
 
-ROOT = pathlib.Path(__file__).parents[3]
+ROOT = pathlib.Path(__file__).parents[2]
 
 
 README = (ROOT / "README.md").read_text()
