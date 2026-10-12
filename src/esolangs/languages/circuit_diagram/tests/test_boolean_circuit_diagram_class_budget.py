@@ -2,15 +2,17 @@
 
 import pytest
 
-from esolangs.interpreters.circuit_diagram import _Machine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.circuit_diagram import circuit_diagram
-from esolangs.tools.circuit_diagram.banks import (
+from esolangs.languages.circuit_diagram.generator import circuit_diagram
+from esolangs.languages.circuit_diagram.generator.banks import (
     _class_bank_layout,
     _residual_class_bank_candidate,
 )
-from esolangs.tools.circuit_diagram.forest import _suffix_forest
-from tests.generators.test_boolean_circuit_diagram_pool import _execute
+from esolangs.languages.circuit_diagram.generator.forest import _suffix_forest
+from esolangs.languages.circuit_diagram.interpreter import _Machine
+from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _execute,
+)
 from tests.support.witness_tables import dense
 
 

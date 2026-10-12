@@ -4,9 +4,13 @@ from itertools import combinations, islice
 
 import pytest
 
-from esolangs.tools.circuit_diagram import circuit_diagram
-from esolangs.tools.circuit_diagram.banks import _residual_class_bank_candidate
-from tests.generators.test_boolean_circuit_diagram_pool import _execute
+from esolangs.languages.circuit_diagram.generator import circuit_diagram
+from esolangs.languages.circuit_diagram.generator.banks import (
+    _residual_class_bank_candidate,
+)
+from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _execute,
+)
 
 
 def _sparse_classes():

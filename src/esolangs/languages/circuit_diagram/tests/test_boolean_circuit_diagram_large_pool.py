@@ -4,15 +4,20 @@ import importlib
 
 import pytest
 
-from esolangs.tools.circuit_diagram import circuit_diagram
-from esolangs.tools.circuit_diagram.hlayout import _h_term_area_floor, _h_term_layout
-from esolangs.tools.circuit_diagram.hpool import (
+from esolangs.languages.circuit_diagram.generator import circuit_diagram
+from esolangs.languages.circuit_diagram.generator.hlayout import (
+    _h_term_area_floor,
+    _h_term_layout,
+)
+from esolangs.languages.circuit_diagram.generator.hpool import (
     _atom_gate_bound,
     _h_pool_area_floor,
     _h_pool_layout,
     _large_pool_layout,
 )
-from tests.generators.test_boolean_circuit_diagram_pool import _execute
+from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _execute,
+)
 from tests.support.witness_tables import dense, parity
 
 
@@ -63,7 +68,9 @@ def test_large_atom_preserves_gapped_original_ports():
 
 
 def test_large_pool_floor_rejects_before_atom_routing(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.hpool")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.hpool"
+    )
 
     def unexpected(*_args, **_kwargs):
         pytest.fail("area floor must reject before routing atoms")
@@ -92,10 +99,12 @@ def test_direct_atom_exact_area_ceiling():
 @pytest.mark.medium
 @pytest.mark.parametrize("floor", [0, 10**12])
 def test_large_atom_displaces_older_layout_after_exact_comparison(monkeypatch, floor):
-    module = importlib.import_module("esolangs.tools.circuit_diagram")
+    module = importlib.import_module("esolangs.languages.circuit_diagram.generator")
     monkeypatch.setattr(module, "_linear_shared_layout", lambda *_args: None)
     monkeypatch.setattr(module, "_h_term_area_floor", lambda *_args: floor)
-    pools = importlib.import_module("esolangs.tools.circuit_diagram.hpool")
+    pools = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.hpool"
+    )
     monkeypatch.setattr(pools, "_h_pool_area_floor", lambda *_args: 0)
     table = dense(8)
     code = circuit_diagram(table)

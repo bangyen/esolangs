@@ -58,7 +58,10 @@ def test_lattice_probe_length_is_derived_from_unit() -> None:
 
 @pytest.mark.parametrize("unit", [8, 12, 16, 20])
 def test_explicit_unit_preserves_input_arithmetic(unit: int, tmp_path: Path) -> None:
-    from esolangs.interpreters.line.simulate import compile_program, run_compiled
+    from esolangs.languages.line.interpreter.simulate import (
+        compile_program,
+        run_compiled,
+    )
 
     path = str(tmp_path / "unit.png")
     render(chain("i", "+", "+", "o"), unit=unit).save(path)
@@ -102,7 +105,7 @@ def test_render_rejects_unextractable_units(unit: int) -> None:
 
 @pytest.mark.parametrize("unit", [0, True, 8.0])
 def test_extract_rejects_invalid_units(unit: int) -> None:
-    from esolangs.interpreters.line.extract import extract_mask
+    from esolangs.languages.line.interpreter.extract import extract_mask
 
     with pytest.raises(ValueError, match="Line unit"):
         extract_mask(Mask(1, 1), unit=unit)

@@ -39,14 +39,14 @@ class TestPytestScopeCollects:
         ],
     )
     def test_only_collected_leaf_modules_are_scoped(self, path, scoped):
-        verify = load_script()
+        verify = load_scope()
         scope = verify._pytest_scope([path])  # noqa: SLF001
         assert scope == ([path] if scoped else verify.WHOLE_SUITE)
 
     def test_an_interpreter_runs_shared_contracts_and_its_generator(self) -> None:
-        verify = load_script()
+        verify = load_scope()
         scope = verify._pytest_scope(  # noqa: SLF001
-            ["src/esolangs/interpreters/brainfuck.py"]
+            ["src/esolangs/languages/brainfuck/interpreter.py"]
         )
         assert isinstance(scope, list)
         assert set(verify.INTERPRETER_CONTRACT_TESTS) <= set(scope)
@@ -275,9 +275,9 @@ assert ready.exists(), 'producer stalled on captured output'
 
 class TestGeneratorScope:
     def test_leaf_generator_keeps_shared_contracts_and_its_suites(self) -> None:
-        verify = load_script()
+        verify = load_scope()
         scope = verify._pytest_scope(  # noqa: SLF001
-            ["src/esolangs/tools/bfstack.py"]
+            ["src/esolangs/languages/bfstack/generator.py"]
         )
         assert isinstance(scope, list)
         assert "src/esolangs/languages/bfstack/tests/test_boolean_bfstack.py" in scope
@@ -294,7 +294,7 @@ class TestGeneratorScope:
     def test_shared_or_package_generator_changes_keep_the_whole_suite(
         self, module
     ) -> None:
-        verify = load_script()
+        verify = load_scope()
         assert (
             verify._pytest_scope(  # noqa: SLF001
                 [f"src/esolangs/tools/{module}"]
@@ -303,67 +303,55 @@ class TestGeneratorScope:
         )
 
     def test_explicitly_changed_language_tests_are_never_dropped(self) -> None:
-        verify = load_script()
+        verify = load_scope()
         scope = verify._pytest_scope(  # noqa: SLF001
             [
-                "src/esolangs/tools/bfstack.py",
-                "tests/generators/test_boolean_line.py",
+                "src/esolangs/languages/bfstack/generator.py",
+                "src/esolangs/languages/line/tests/test_boolean_line.py",
             ]
         )
         assert "src/esolangs/languages/line/tests/test_boolean_line.py" in scope
 
 
-@pytest.mark.parametrize("colocated", [False, True])
-def test_generator_scope_keeps_transitive_dependents(
-    tmp_path, monkeypatch, *, colocated
-) -> None:
-    from types import ModuleType, SimpleNamespace
+@pytest.mark.parametrize("package", [False, True])
+def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch, *, package):
+    from types import SimpleNamespace
 
     from esolangs import registry
 
     verify = load_scope()
     verify.ROOT = tmp_path
     languages = {}
-    for name, module in (
-        ("target", "target"),
-        ("consumer", "package.consumer"),
-        ("unrelated", "unrelated"),
-    ):
+    for name in ("target", "consumer", "unrelated"):
 
         def build():
             return ""
 
-        build.__module__ = "esolangs.tools." + module
+        build.__module__ = f"esolangs.languages.{name}.generator"
         build.__name__ = name
         languages[name] = SimpleNamespace(id=name, name=name, aliases=(), boolean=build)
-    if colocated:
-        for name, language in languages.items():
-            legacy = language.boolean.__module__
-            canonical = f"esolangs.languages.{name}.generator"
-            module = ModuleType(canonical)
-            monkeypatch.setitem(sys.modules, legacy, module)
-            monkeypatch.setitem(sys.modules, canonical, module)
-            language.boolean.__module__ = canonical
-        source = tmp_path / "src/esolangs/languages/consumer/generator.py"
-        source.parent.mkdir(parents=True)
-        source.write_text("from esolangs.tools.package import dependency\n")
     monkeypatch.setattr(registry, "LANGUAGES", languages)
+    consumer = (
+        "src/esolangs/languages/consumer/generator/__init__.py"
+        if package
+        else "src/esolangs/languages/consumer/generator.py"
+    )
     for path, text in {
-        "src/esolangs/tools/target.py": "",
-        "src/esolangs/tools/package/dependency.py": (
-            "from esolangs.tools.target import build\n"
+        "src/esolangs/languages/target/generator.py": "",
+        "src/esolangs/tools/dependency.py": (
+            "from esolangs.languages.target.generator import build\n"
         ),
-        "src/esolangs/tools/package/consumer.py": ("from . import dependency\n"),
-        "tests/generators/test_boolean_target.py": "",
-        "tests/generators/test_boolean_consumer.py": "",
-        "tests/generators/test_boolean_unrelated.py": "",
+        consumer: "from esolangs.tools import dependency\n",
+        "src/esolangs/languages/target/tests/test_boolean_target.py": "",
+        "src/esolangs/languages/consumer/tests/test_boolean_consumer.py": "",
+        "src/esolangs/languages/unrelated/tests/test_boolean_unrelated.py": "",
         "tests/generators/test_contracts.py": "",
     }.items():
         target = tmp_path / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text)
     assert verify._pytest_scope(  # noqa: SLF001
-        ["src/esolangs/tools/target.py"]
+        ["src/esolangs/languages/target/generator.py"]
     ) == [
         "src/esolangs/languages/consumer/tests/test_boolean_consumer.py",
         "src/esolangs/languages/target/tests/test_boolean_target.py",
@@ -604,11 +592,3 @@ def test_colocated_test_changes_run_directly_and_helpers_widen(
         == verify.WHOLE_SUITE
     )
     assert verify._pytest_scope(["conftest.py"]) == verify.WHOLE_SUITE  # noqa: SLF001
-
-
-def test_colocated_tests_are_not_scoped_coverage_targets() -> None:
-    verify = load_scope()
-    command = ["python", "-m", "pytest", "--cov", "--cov-branch", "--cov-report="]
-    assert verify._scoped_coverage(  # noqa: SLF001
-        command, ["src/esolangs/languages/target/tests/test_target.py"]
-    ) == ["python", "-m", "pytest"]

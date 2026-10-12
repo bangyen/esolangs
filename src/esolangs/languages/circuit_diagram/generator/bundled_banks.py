@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from esolangs.tools.circuit_diagram import _circuit_diagram_model
-from esolangs.tools.circuit_diagram.banks import (
+from esolangs.languages.circuit_diagram.generator import _circuit_diagram_model
+from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
     _online_bank_area_floor,
 )
-from esolangs.tools.circuit_diagram.folded_banks import _folded_class_masks
-from esolangs.tools.circuit_diagram.forest import _suffix_forest
-from esolangs.tools.circuit_diagram.hpool import _h_pool_area_floor
-from esolangs.tools.circuit_diagram.layout import _Layout
+from esolangs.languages.circuit_diagram.generator.folded_banks import (
+    _folded_class_masks,
+)
+from esolangs.languages.circuit_diagram.generator.forest import _suffix_forest
+from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_area_floor
+from esolangs.languages.circuit_diagram.generator.layout import _Layout
 from esolangs.tools.helpers import _validate_truth_table
 
 

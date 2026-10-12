@@ -9,6 +9,9 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
+from esolangs.languages.line.generator import line_boolean
+from esolangs.languages.line.generator.render import Node, render
+from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.languages.line.interpreter.extract import extract
 from esolangs.languages.line.interpreter.simulate import (
     IO,
@@ -16,9 +19,6 @@ from esolangs.languages.line.interpreter.simulate import (
     run_compiled,
 )
 from esolangs.raster import Raster, png
-from esolangs.languages.line.generator import line_boolean
-from esolangs.languages.line.generator.render import Node, render
-from esolangs.languages.line.generator.tree_layout import tree_extents
 from tests.support.witness_tables import row_bits
 
 
@@ -323,10 +323,10 @@ def test_tighter_lattice_balance_keeps_the_area_ceiling() -> None:
 @pytest.mark.parametrize("unit", [8, 12, 16, 20])
 @pytest.mark.parametrize("scale", [1, 2, 3])
 def test_generated_unit_survives_plain_png(unit: int, scale: int) -> None:
+    from esolangs.languages.line.generator import balance, line
     from esolangs.languages.line.interpreter.extract import extract_mask
     from esolangs.languages.line.interpreter.mask import from_grey
     from esolangs.raster.png import read_grey
-    from esolangs.languages.line.generator import balance, line
 
     table = "01000110"
     default = line(table, unit=unit)
@@ -415,8 +415,8 @@ def test_shared_return_retains_unshared_balance_and_scale() -> None:
 
 def test_shared_return_extends_an_interior_tip() -> None:
     """A clear straight exit joins the perimeter without exceeding the ledger."""
-    from esolangs.tools.helpers import permute_truth_table
     from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
+    from esolangs.tools.helpers import permute_truth_table
 
     residual = "01" * 16
     other = "0110" * 8

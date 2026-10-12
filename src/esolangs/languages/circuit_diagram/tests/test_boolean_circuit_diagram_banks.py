@@ -4,13 +4,15 @@ import importlib
 
 import pytest
 
-from esolangs.tools.circuit_diagram import circuit_diagram
-from esolangs.tools.circuit_diagram.banks import (
+from esolangs.languages.circuit_diagram.generator import circuit_diagram
+from esolangs.languages.circuit_diagram.generator.banks import (
     _cofactor_bank_candidate,
     _cofactor_bank_layout,
     _repeated_cofactor_bank,
 )
-from tests.generators.test_boolean_circuit_diagram_pool import _execute
+from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _execute,
+)
 from tests.support.witness_tables import dense
 
 
@@ -68,7 +70,9 @@ def test_unique_cofactors_share_internal_residuals_in_eight_banks():
 @pytest.mark.medium
 def test_oversized_bank_cannot_displace_existing_output(monkeypatch):
     table = dense(8)
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: None)
     expected = circuit_diagram(table)
 
@@ -79,14 +83,18 @@ def test_oversized_bank_cannot_displace_existing_output(monkeypatch):
         def render(self):
             pytest.fail("oversized bank must not be emitted")
 
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: Oversized())
     assert circuit_diagram(table) == expected
 
 
 @pytest.mark.medium
 def test_explicit_width_never_builds_a_bank(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     monkeypatch.setattr(
         module,
         "_cofactor_bank_candidate",
@@ -101,12 +109,16 @@ def test_explicit_width_never_builds_a_bank(monkeypatch):
 
 @pytest.mark.medium
 def test_equal_area_bank_preserves_existing_output(monkeypatch):
-    from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
+    from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
 
-    pools = importlib.import_module("esolangs.tools.circuit_diagram.hpool")
+    pools = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.hpool"
+    )
     monkeypatch.setattr(pools, "_large_pool_layout", lambda *_args, **_kwargs: None)
     table = dense(8)
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: None)
     expected = circuit_diagram(table)
     bounds = _h_pool_layout(table).bounds()
@@ -118,7 +130,9 @@ def test_equal_area_bank_preserves_existing_output(monkeypatch):
         def render(self):
             pytest.fail("area ties must preserve the existing candidate")
 
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: EqualArea())
     assert circuit_diagram(table) == expected
 
@@ -186,7 +200,7 @@ def test_eight_bank_growth_with_native_positive_controls(arities):
 @pytest.mark.medium
 @pytest.mark.parametrize("prefix", [2, 3])
 def test_bank_glyph_floor_never_rejects_a_fitting_native_layout(prefix):
-    from esolangs.tools.circuit_diagram.banks import _bank_exceeds_area
+    from esolangs.languages.circuit_diagram.generator.banks import _bank_exceeds_area
 
     table = dense(10, b"bank-floor")
     model = _cofactor_bank_layout(table, prefix)
@@ -196,7 +210,9 @@ def test_bank_glyph_floor_never_rejects_a_fitting_native_layout(prefix):
 
 
 def test_bank_glyph_floor_skips_provably_oversized_bodies(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     monkeypatch.setattr(
         module,
         "_cofactor_bank_layout",

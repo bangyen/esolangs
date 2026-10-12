@@ -2,14 +2,16 @@
 
 import pytest
 
-from esolangs.tools.circuit_diagram import (
+from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
     _linear_shared_layout,
     circuit_diagram,
 )
+from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _execute,
+)
 from esolangs.tools.helpers import permute_truth_table
-from tests.generators.test_boolean_circuit_diagram_pool import _execute
 
 
 def _margulis_cofactors(log_side):

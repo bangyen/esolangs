@@ -6,8 +6,8 @@ from itertools import combinations
 
 import pytest
 
-from esolangs.tools.line.forward import _join_lanes, forward_canvas
-from tests.generators.test_boolean_line_forward import _check
+from esolangs.languages.line.generator.forward import _join_lanes, forward_canvas
+from esolangs.languages.line.tests.test_boolean_line_forward import _check
 
 
 def test_disjoint_spans_reuse_rows_with_a_three_unit_gap():
@@ -68,7 +68,7 @@ def test_majority22_packing_beats_unique_rows_with_native_contracts(
             *range(0, len(table), len(table) // 32),
         }
     )
-    module = importlib.import_module("esolangs.tools.line.forward")
+    module = importlib.import_module("esolangs.languages.line.generator.forward")
     with monkeypatch.context() as baseline:
         baseline.setattr(
             module,

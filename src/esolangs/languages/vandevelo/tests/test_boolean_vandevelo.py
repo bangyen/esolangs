@@ -450,7 +450,7 @@ def test_the_clause_bound_holds_on_assure_alone(
 
 
 def test_certification_refresh_scans_charge_to_removed_cosets(monkeypatch) -> None:
-    from esolangs.tools.vandevelo import _Peel
+    from esolangs.languages.vandevelo.generator import _Peel
 
     peel = _Peel(set(range(128)), 7)
     refresh = _Peel.refresh
@@ -475,9 +475,9 @@ def test_certification_refresh_scans_charge_to_removed_cosets(monkeypatch) -> No
 
 
 def test_certification_assures_unrefreshed_candidate_pools(monkeypatch) -> None:
-    from esolangs.tools.vandevelo import _Peel
+    from esolangs.languages.vandevelo.generator import _Peel
 
-    module = importlib.import_module("esolangs.tools.vandevelo")
+    module = importlib.import_module("esolangs.languages.vandevelo.generator")
     monkeypatch.setattr(module, "_nearest", lambda *_, **__: [])
     monkeypatch.setattr(module, "_ensure_popular", lambda *_: None)
     peel = _Peel({row for row in range(256) if row % 5 != 0}, 8)
@@ -500,7 +500,7 @@ def test_certification_assures_unrefreshed_candidate_pools(monkeypatch) -> None:
 
 
 def test_certification_discards_dead_candidates_before_refresh() -> None:
-    from esolangs.tools.vandevelo import _Peel
+    from esolangs.languages.vandevelo.generator import _Peel
 
     peel = _Peel({*range(128), 200, 201}, 8)
     node = peel.certify()

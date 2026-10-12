@@ -5,9 +5,13 @@ from itertools import combinations, islice
 
 import pytest
 
-from esolangs.tools.circuit_diagram import circuit_diagram
-from esolangs.tools.circuit_diagram.folded_banks import folded_class_bank_candidate
-from tests.generators.test_boolean_circuit_diagram_pool import _execute
+from esolangs.languages.circuit_diagram.generator import circuit_diagram
+from esolangs.languages.circuit_diagram.generator.folded_banks import (
+    folded_class_bank_candidate,
+)
+from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _execute,
+)
 
 
 def _classes(tail, count):
@@ -44,7 +48,9 @@ def test_folded_masks_reject_small_ceiling_and_excess_table_work(monkeypatch):
     table, _ = _classes(7, 257)
     assert folded_class_bank_candidate(table, 100) is None
     table, _ = _classes(7, 513)
-    module = importlib.import_module("esolangs.tools.circuit_diagram.folded_banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.folded_banks"
+    )
 
     def unexpected(*_args, **_kwargs):
         pytest.fail("excess table work must reject before folding")
@@ -64,7 +70,9 @@ def test_unrepeated_classes_and_empty_area_reject():
 
 
 def test_excess_fold_work_rejects_before_model_construction(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.folded_banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.folded_banks"
+    )
     table, _ = _classes(7, 257)
     monkeypatch.setattr(
         module, "_dag", lambda *_args: (list(range(1000)), 0, set(), {})
@@ -78,14 +86,18 @@ def test_excess_fold_work_rejects_before_model_construction(monkeypatch):
 
 
 def test_unavailable_body_rejects(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.folded_banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.folded_banks"
+    )
     table, _ = _classes(7, 257)
     monkeypatch.setattr(module, "_large_pool_layout", lambda *_args, **_kwargs: None)
     assert folded_class_bank_candidate(table) is None
 
 
 def test_excess_workspace_gates_reject_before_assembly(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.folded_banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.folded_banks"
+    )
     table, _ = _classes(7, 257)
 
     class TooManyGates:
@@ -98,7 +110,9 @@ def test_excess_workspace_gates_reject_before_assembly(monkeypatch):
 
 
 def test_invalid_preflight_rectangle_aborts(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.folded_banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.folded_banks"
+    )
     table, _ = _classes(7, 257)
 
     class Oversized:
@@ -125,8 +139,10 @@ def test_constant_one_class_needs_only_its_mask():
 
 @pytest.mark.medium
 def test_public_area_competition_executes_an_admitted_candidate(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram")
-    folded = importlib.import_module("esolangs.tools.circuit_diagram.folded_banks")
+    module = importlib.import_module("esolangs.languages.circuit_diagram.generator")
+    folded = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.folded_banks"
+    )
     from tests.support.witness_tables import parity
 
     table = parity(9)

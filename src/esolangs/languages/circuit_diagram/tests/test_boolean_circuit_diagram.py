@@ -7,7 +7,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import tools as boolean
+from esolangs.languages import generators as boolean
 from esolangs.tools.wrap import balance_score
 from tests.support.witness_tables import witnesses
 
@@ -228,9 +228,9 @@ class TestCircuitDiagramLayoutGuards:
     @pytest.mark.slow
     def test_h_layout_executes_every_two_input_table(self) -> None:
         """The routed minterm and reduction trees compute all small functions."""
-        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+        from esolangs.languages.circuit_diagram.interpreter import run
 
         for value in range(1, 15):
             table = format(value, "04b")
@@ -266,7 +266,10 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_real_layouts_never_come_within_one_cell(self) -> None:
         """The generator's spacing keeps every table clear of the guard."""
-        from esolangs.languages.circuit_diagram.generator import _Layout, circuit_diagram
+        from esolangs.languages.circuit_diagram.generator import (
+            _Layout,
+            circuit_diagram,
+        )
 
         closest = []
         original = _Layout._check_junction_spacing  # noqa: SLF001
@@ -289,9 +292,9 @@ class TestCircuitDiagramLayoutGuards:
     @staticmethod
     def _run_at(table: str, width: int | None) -> str:
         """The banded program's output for every input, in table order."""
-        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circuit_diagram.generator import circuit_diagram
+        from esolangs.languages.circuit_diagram.interpreter import run
 
         n = len(table).bit_length() - 1
         program = circuit_diagram(table, width).split("\n")
@@ -346,9 +349,9 @@ class TestCircuitDiagramLayoutGuards:
                 assert self._run_at(table, width) == table
 
     def test_native_affine_chains_verify_constants_and_complements(self) -> None:
-        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circuit_diagram.generator import _affine_circuit
+        from esolangs.languages.circuit_diagram.interpreter import run
 
         for n in range(1, 4):
             for table in witnesses(n):
@@ -415,9 +418,9 @@ class TestCircuitDiagram:
     @staticmethod
     def run_table(table: str) -> str:
         """Return the generated program's output for every input, in order."""
-        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circuit_diagram.generator import circuit_diagram
+        from esolangs.languages.circuit_diagram.interpreter import run
 
         n = len(table).bit_length() - 1
         program = circuit_diagram(table).split("\n")
@@ -483,9 +486,9 @@ class TestCircuitDiagram:
 
     def test_each_run_prints_exactly_one_bit(self) -> None:
         """The output wire is live for exactly one generation."""
-        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circuit_diagram.generator import circuit_diagram
+        from esolangs.languages.circuit_diagram.interpreter import run
 
         for table in ("0001", "0110", "00010111"):
             n = len(table).bit_length() - 1
@@ -542,9 +545,9 @@ class TestCircuitDiagram:
         """Fixed lanes lay a correct circuit where every wire class meets."""
         import random
 
-        from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+        from esolangs.languages.circuit_diagram.interpreter import run
 
         rng = random.Random(4)
         for _ in range(3):

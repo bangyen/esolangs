@@ -5,21 +5,28 @@ import random
 
 import pytest
 
-from esolangs.interpreters.circuit_diagram import _Machine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.circuit_diagram import circuit_diagram
-from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
-from esolangs.tools.circuit_diagram.hpool import _h_pool_layout, _h_pool_size
+from esolangs.languages.circuit_diagram.generator import circuit_diagram
+from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+from esolangs.languages.circuit_diagram.generator.hpool import (
+    _h_pool_layout,
+    _h_pool_size,
+)
+from esolangs.languages.circuit_diagram.interpreter import _Machine
 from scripts.benchmark import WrittenState
 from tests.support.witness_tables import dense, nested_dense, parity
 
 
 @pytest.mark.medium
 def test_public_pool_admission_preserves_the_minterm_area_ceiling(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.hpool")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.hpool"
+    )
     monkeypatch.setattr(module, "_large_pool_layout", lambda *_args, **_kwargs: None)
     table = dense(8)
-    banks = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    banks = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     monkeypatch.setattr(banks, "_cofactor_bank_candidate", lambda *_args: None)
     lattice = _h_term_layout(table)
     height, width = lattice.bounds()
@@ -39,11 +46,15 @@ def test_public_pool_admission_preserves_the_minterm_area_ceiling(monkeypatch):
 
 @pytest.mark.medium
 def test_projected_lattice_remains_available_below_pool_arity(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram")
+    module = importlib.import_module("esolangs.languages.circuit_diagram.generator")
     monkeypatch.setattr(module, "_linear_shared_layout", lambda *_args: None)
-    pools = importlib.import_module("esolangs.tools.circuit_diagram.hpool")
+    pools = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.hpool"
+    )
     monkeypatch.setattr(pools, "_large_pool_layout", lambda *_args, **_kwargs: None)
-    banks = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    banks = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     monkeypatch.setattr(banks, "_cofactor_bank_candidate", lambda *_args: None)
     table = "".join(str((row >> 7) & (row & 1)) for row in range(256))
     code = circuit_diagram(table)

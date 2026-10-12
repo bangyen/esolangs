@@ -2,12 +2,12 @@
 
 import pytest
 
-from esolangs.tools.line import line
-from esolangs.tools.line.forward import packed_streaming_canvas
-from tests.generators import test_boolean_line_forward as controls
-from tests.generators.test_boolean_line_forward import _check
-from tests.generators.test_boolean_line_projection import _execute
-from tests.generators.test_boolean_line_share_scope import _sample
+from esolangs.languages.line.generator import line
+from esolangs.languages.line.generator.forward import packed_streaming_canvas
+from esolangs.languages.line.tests import test_boolean_line_forward as controls
+from esolangs.languages.line.tests.test_boolean_line_forward import _check
+from esolangs.languages.line.tests.test_boolean_line_projection import _execute
+from esolangs.languages.line.tests.test_boolean_line_share_scope import _sample
 from tests.support.witness_tables import dense, parity
 
 
@@ -72,7 +72,7 @@ def test_packed_scaled_crossings(packed_check, tmp_path):
 def test_packed_excessive_layer_work_rejects_before_routing(monkeypatch):
     from importlib import import_module
 
-    forward = import_module("esolangs.tools.line.forward")
+    forward = import_module("esolangs.languages.line.generator.forward")
 
     def unexpected(*_args, **_kwargs):
         raise AssertionError("routing exceeded its work budget")

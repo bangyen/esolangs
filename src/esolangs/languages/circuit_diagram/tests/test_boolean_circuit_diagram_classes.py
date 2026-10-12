@@ -4,12 +4,17 @@ import importlib
 
 import pytest
 
-from esolangs.tools.circuit_diagram import _linear_shared_layout, circuit_diagram
-from esolangs.tools.circuit_diagram.banks import (
+from esolangs.languages.circuit_diagram.generator import (
+    _linear_shared_layout,
+    circuit_diagram,
+)
+from esolangs.languages.circuit_diagram.generator.banks import (
     _repeated_cofactor_bank,
     _residual_class_bank_candidate,
 )
-from tests.generators.test_boolean_circuit_diagram_pool import _execute
+from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _execute,
+)
 from tests.support.witness_tables import dense
 
 
@@ -78,7 +83,9 @@ def test_constant_classes_and_projected_suffix_ports_execute():
 
 
 def test_unrepeated_and_excess_classes_reject_before_routing(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
 
     def unexpected(*_args, **_kwargs):
         pytest.fail("ineligible classes must be rejected before building masks")
@@ -104,7 +111,9 @@ def test_class_area_ceiling_preserves_a_fitting_native_layout(monkeypatch):
     )
     assert _residual_class_bank_candidate(table, height * width - 1) is None
     _execute(table, model.render(), (0, len(table) - 1))
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
 
     def unexpected(*_args, **_kwargs):
         pytest.fail("an oversized body must reject before copying banks")
@@ -116,7 +125,9 @@ def test_class_area_ceiling_preserves_a_fitting_native_layout(monkeypatch):
 @pytest.mark.medium
 @pytest.mark.parametrize("extra_height", [0, 1])
 def test_public_class_admission_preserves_existing_area_ties(monkeypatch, extra_height):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: None)
     monkeypatch.setattr(module, "_residual_class_bank_candidate", lambda *_args: None)
     table = dense(9)
@@ -139,7 +150,9 @@ def test_public_class_admission_preserves_existing_area_ties(monkeypatch, extra_
 
 @pytest.mark.medium
 def test_explicit_width_never_builds_class_masks(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
 
     def unexpected(*_args, **_kwargs):
         pytest.fail("class masks must not run in the width-constrained fold")
@@ -188,7 +201,9 @@ def test_nine_input_atom_shares_internal_residuals_of_distinct_roots():
 @pytest.mark.medium
 @pytest.mark.parametrize("shared", [False, True])
 def test_online_class_rectangle_rejects_before_copying(monkeypatch, shared):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     table = _three_classes(9)
     model = module._class_bank_layout(table, shared=shared)  # noqa: SLF001
     assert model is not None
@@ -203,7 +218,9 @@ def test_online_class_rectangle_rejects_before_copying(monkeypatch, shared):
 
 @pytest.mark.medium
 def test_single_class_preserves_its_native_area_ceiling():
-    module = importlib.import_module("esolangs.tools.circuit_diagram.banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.banks"
+    )
     table = dense(7, b"single-class-ceiling") * 4
     model = module._class_bank_layout(table, shared=False)  # noqa: SLF001
     assert model is not None

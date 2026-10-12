@@ -2,11 +2,11 @@
 
 import pytest
 
+from esolangs.languages.line.generator import line
+from esolangs.languages.line.generator.forward import destination_canvas, forward_canvas
+from esolangs.languages.line.tests import test_boolean_line_forward as controls
+from esolangs.languages.line.tests.test_boolean_line_forward import _check
 from esolangs.tools.helpers import permute_truth_table
-from esolangs.tools.line import line
-from esolangs.tools.line.forward import destination_canvas, forward_canvas
-from tests.generators import test_boolean_line_forward as controls
-from tests.generators.test_boolean_line_forward import _check
 from tests.support.witness_tables import dense, parity
 
 

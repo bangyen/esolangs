@@ -4,12 +4,14 @@ import random
 
 import pytest
 
-from esolangs.tools.circuit_diagram import hlayout, hpool
-from esolangs.tools.circuit_diagram.hcells import _HCellLayout
-from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
-from esolangs.tools.circuit_diagram.hpool import _h_pool_layout
-from esolangs.tools.circuit_diagram.layout import _HOLD, _RoutingLayout
-from tests.generators.test_boolean_circuit_diagram_pool import _execute
+from esolangs.languages.circuit_diagram.generator import hlayout, hpool
+from esolangs.languages.circuit_diagram.generator.hcells import _HCellLayout
+from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
+from esolangs.languages.circuit_diagram.generator.layout import _HOLD, _RoutingLayout
+from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _execute,
+)
 
 
 class _IntervalBaseline(_RoutingLayout):

@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from collections import Counter
 
-from esolangs.tools.circuit_diagram import (
+from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
     _essential_table,
 )
-from esolangs.tools.circuit_diagram.banks import _assemble_banks
-from esolangs.tools.circuit_diagram.hpool import _h_pool_area_floor, _large_pool_layout
-from esolangs.tools.circuit_diagram.layout import _Layout
+from esolangs.languages.circuit_diagram.generator.banks import _assemble_banks
+from esolangs.languages.circuit_diagram.generator.hpool import (
+    _h_pool_area_floor,
+    _large_pool_layout,
+)
+from esolangs.languages.circuit_diagram.generator.layout import _Layout
 from esolangs.tools.helpers import _validate_truth_table
 
 

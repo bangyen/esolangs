@@ -3,10 +3,10 @@
 import pytest
 
 from esolangs._evaluate import _evaluate
-from esolangs.tools.line import line
-from esolangs.tools.line.forward import streaming_canvas
-from tests.generators import test_boolean_line_forward as controls
-from tests.generators.test_boolean_line_forward import _check
+from esolangs.languages.line.generator import line
+from esolangs.languages.line.generator.forward import streaming_canvas
+from esolangs.languages.line.tests import test_boolean_line_forward as controls
+from esolangs.languages.line.tests.test_boolean_line_forward import _check
 from tests.support.witness_tables import dense, parity
 
 

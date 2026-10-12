@@ -14,7 +14,13 @@ The n<=5 cutoff retains the preceding 30 px screen: at n=6 it saved only
 
 from __future__ import annotations
 
-from esolangs.languages.line.generator.render import _UNIT, Canvas, Node, _arrowhead, _check_unit
+from esolangs.languages.line.generator.render import (
+    _UNIT,
+    Canvas,
+    Node,
+    _arrowhead,
+    _check_unit,
+)
 
 _DIRS = [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]
 _SOUTH = 4

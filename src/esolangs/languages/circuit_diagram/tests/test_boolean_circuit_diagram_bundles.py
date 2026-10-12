@@ -4,10 +4,14 @@ import importlib
 
 import pytest
 
-from esolangs.tools.circuit_diagram import circuit_diagram
-from esolangs.tools.circuit_diagram.bundled_banks import bundled_class_bank_candidate
-from esolangs.tools.circuit_diagram.forest import _suffix_forest
-from tests.generators.test_boolean_circuit_diagram_pool import _execute
+from esolangs.languages.circuit_diagram.generator import circuit_diagram
+from esolangs.languages.circuit_diagram.generator.bundled_banks import (
+    bundled_class_bank_candidate,
+)
+from esolangs.languages.circuit_diagram.generator.forest import _suffix_forest
+from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _execute,
+)
 from tests.support.witness_tables import dense, nested_dense, parity
 
 
@@ -48,8 +52,12 @@ def test_bundle_rejects_constants_small_prefixes_and_zero_budget():
 
 
 def test_mask_work_is_checked_before_building_forests(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.bundled_banks")
-    masks = importlib.import_module("esolangs.tools.circuit_diagram.folded_banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.bundled_banks"
+    )
+    masks = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.folded_banks"
+    )
     monkeypatch.setattr(masks, "_dag", lambda *_args: ([None] * 1000, None))
     monkeypatch.setattr(
         module, "_suffix_forest", lambda *_args: pytest.fail("mask work rejected")
@@ -58,7 +66,9 @@ def test_mask_work_is_checked_before_building_forests(monkeypatch):
 
 
 def test_excess_class_work_rejects_before_mask_extraction(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.bundled_banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.bundled_banks"
+    )
     monkeypatch.setattr(
         module, "_folded_class_masks", lambda *_args: pytest.fail("class work rejected")
     )
@@ -66,7 +76,9 @@ def test_excess_class_work_rejects_before_mask_extraction(monkeypatch):
 
 
 def test_small_ceiling_rejects_before_copying_banks(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.bundled_banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.bundled_banks"
+    )
     monkeypatch.setattr(
         module,
         "_assemble_banks",
@@ -76,7 +88,9 @@ def test_small_ceiling_rejects_before_copying_banks(monkeypatch):
 
 
 def test_gate_budget_rejects_before_copying_banks(monkeypatch):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.bundled_banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.bundled_banks"
+    )
 
     def oversized(words, inputs):
         model, endpoints = _suffix_forest(words, inputs)
@@ -95,7 +109,9 @@ def test_gate_budget_rejects_before_copying_banks(monkeypatch):
 @pytest.mark.medium
 @pytest.mark.parametrize("extra_area", [0, 1])
 def test_public_selection_preserves_existing_area_ties(monkeypatch, extra_area):
-    module = importlib.import_module("esolangs.tools.circuit_diagram.bundled_banks")
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.bundled_banks"
+    )
     table = parity(9)
     original = circuit_diagram(table)
 
