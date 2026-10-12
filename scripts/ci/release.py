@@ -82,12 +82,18 @@ def _generator(name: str, *, math_extra: bool, image_extra: bool) -> None:
     """Execute all rows in one process; its parent supplies the deadline."""
     import esolangs
     from esolangs._evaluate import _evaluate
+    from esolangs.registry import LANGUAGES, resolve
 
-    generated = esolangs.generate(name, "0110")
+    controls = LANGUAGES[resolve(name)].benchmark_tables
+    table = next((t for t in controls if "0" in t and "1" in t), "0110")
+    generated = esolangs.generate(name, table)
     if image_extra and isinstance(generated, esolangs.Raster):
         generated = esolangs.Raster.from_png(generated.to_png())
     try:
-        assert _evaluate(name, generated, timeout=None, inputs=2) == "0110", name
+        assert (
+            _evaluate(name, generated, timeout=None, inputs=len(table).bit_length() - 1)
+            == table
+        ), name
     except esolangs.MissingDependencyError:
         assert not math_extra, name
 

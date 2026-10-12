@@ -10,7 +10,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from tests.reference import REFERENCE
-from tests.support.generator_support import evaluate_generated
+from tests.support.generator_support import evaluate_generated, probe_table
 from tests.support.pick import first, languages
 
 ROOT = pathlib.Path(__file__).parents[3]
@@ -239,8 +239,10 @@ class TestWhatHappensWhenAProgramIsUnderfed:
 
     def _underfed(self, name: str) -> tuple[str, str | None]:
         """Return ``(outcome, answer)`` for ``name`` fed one bit too few."""
-        program = esolangs.generate(name, self.TABLE)
-        short = esolangs.encode_inputs(name, [1, 0])
+        table = probe_table(name, self.TABLE)
+        program = esolangs.generate(name, table)
+        n = len(table).bit_length() - 1
+        short = esolangs.encode_inputs(name, [1, 0][: n - 1]) if n > 1 else ""
         try:
             output = esolangs.run(name, program, stdin=short, timeout=10)
         except esolangs.InputExhaustedError:

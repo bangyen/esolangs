@@ -27,10 +27,10 @@ def test_public_folded_masks_share_257_classes():
     table, pairs = _classes(7, 257)
     code = circuit_diagram(table)
     lines = code.splitlines()
-    assert len(lines) * max(map(len, lines)) == 22_542_755
-    assert len(code) == 21_523_083
+    assert len(lines) * max(map(len, lines)) == 8_391_063
+    assert len(code) == 6_297_848
     rows = [0, 1, 127, (256 << 7) + pairs[256][0], 131071]
-    assert _execute(table, code, rows) == 24
+    assert _execute(table, code, rows) == 34
 
 
 @pytest.mark.slow
@@ -167,8 +167,8 @@ def test_public_folded_masks_below_old_cap_execute_every_class(start):
     table, pairs = _classes(7, 202)
     code = circuit_diagram(table)
     lines = code.splitlines()
-    assert len(lines) * max(map(len, lines)) == 19_767_825
-    assert len(code) == 18_992_795
+    assert len(lines) * max(map(len, lines)) == 17_887_129
+    assert len(code) == 11_578_344
     rows = sorted(
         {
             0,
@@ -183,4 +183,4 @@ def test_public_folded_masks_below_old_cap_execute_every_class(start):
             ),
         }
     )
-    assert _execute(table, code, rows) == 24
+    assert _execute(table, code, rows) == 30

@@ -1,6 +1,7 @@
 """Run every committed example program and check its output."""
 
 import sys
+from itertools import zip_longest
 from pathlib import Path
 
 import pytest
@@ -74,7 +75,10 @@ def test_boolean_example_matches_generator(name: str) -> None:
     program = example.build(balance=True)
     stale = f"{path.relative_to(BASE_DIR)} is stale; run {REGENERATE}"
     if isinstance(program, CompressedText):
-        assert path.read_bytes() == program.to_gzip(), stale
+        saved = CompressedText(path.read_bytes())
+        assert all(a == b for a, b in zip_longest(saved.chunks(), program.chunks())), (
+            stale
+        )
     elif isinstance(program, Raster):
         # PNG compression differs across platforms; the pixels are the program.
         assert Raster.from_png(path.read_bytes()) == program, stale
@@ -310,3 +314,17 @@ def test_an_unknown_interpreter_names_the_file_to_fix() -> None:
 
     with pytest.raises(LookupError, match=r"src/esolangs/tools/examples\.py"):
         _contract_for("no_such_module")
+
+
+def test_compressed_example_equality_uses_source_text():
+    import gzip
+
+    from scripts.docs.examples import _same_program
+
+    text = b"0" * 100_000
+    first = gzip.compress(text, compresslevel=1, mtime=0)
+    second = gzip.compress(text, compresslevel=9, mtime=0)
+    assert first != second
+    program = CompressedText(second)
+    assert _same_program(first, second, program)
+    assert not _same_program(gzip.compress(text + b"1"), second, program)

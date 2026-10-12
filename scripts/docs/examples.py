@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import pathlib
 from collections.abc import Iterator
+from itertools import zip_longest
 
 from esolangs._program import Program
 from esolangs.compressed import CompressedText
@@ -153,6 +154,9 @@ def _same_program(existing: bytes | None, encoded: bytes, generated: Program) ->
         return False
     if isinstance(generated, Raster):
         return Raster.from_png(existing) == generated
+    if isinstance(generated, CompressedText):
+        saved = CompressedText(existing)
+        return all(a == b for a, b in zip_longest(saved.chunks(), generated.chunks()))
     return existing == encoded
 
 

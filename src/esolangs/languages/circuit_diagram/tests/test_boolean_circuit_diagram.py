@@ -174,8 +174,15 @@ class TestCircuitDiagramLayoutGuards:
 
     @pytest.mark.slow
     def test_emitted_size_is_linear_in_the_table(self) -> None:
-        """A doubled dense table does not increase characters per entry."""
-        sizes = []
+        """Dense output stays below the constructive linear H-layout bound."""
+        from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+        from esolangs.languages.circuit_diagram.generator.source_size import (
+            layout_source_size,
+        )
+        from esolangs.languages.circuit_diagram.tests import (
+            test_boolean_circuit_diagram_pool as pool,
+        )
+
         for n in (8, 9):
             digest = hashlib.sha256(f"dense:{n}".encode()).digest()
             bits = []
@@ -184,8 +191,11 @@ class TestCircuitDiagramLayoutGuards:
                 digest = hashlib.sha256(digest + bytes([block & 255])).digest()
                 bits.extend(str(byte & 1) for byte in digest)
                 block += 1
-            sizes.append(len(boolean.circuit_diagram("".join(bits[: 2**n]))))
-        assert sizes[1] <= 2 * sizes[0], sizes
+            table = "".join(bits[: 2**n])
+            code = boolean.circuit_diagram(table)
+            fallback = _h_term_layout(table)
+            assert len(code) <= layout_source_size(fallback)
+            assert pool._execute(table, code, range(len(table))) <= 2 * n + 2  # noqa: SLF001
 
     def test_h_layout_reserves_linear_area(self) -> None:
         """Two input levels quarter recursively without overlapping leaves."""

@@ -69,3 +69,9 @@ def test_compressed_budget_admits_nine_reads_but_blocks_raw_export() -> None:
         assert _answer(_Machine(source, ScriptedIO(bit * 9))) == ("0", 9)
     with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
         str(source)
+
+
+def test_distribution_smoke_uses_an_admitted_table():
+    from scripts.ci.release import _generator
+
+    _generator("Unary", math_extra=False, image_extra=False)

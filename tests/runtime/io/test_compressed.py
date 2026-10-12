@@ -26,7 +26,14 @@ def test_streaming_text_round_trip_and_size(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "data", [b"plain", b"\x1f\x8b", gzip.compress(b"\xff"), gzip.compress(b"abc")[:-1]]
+    "data",
+    [
+        b"plain",
+        b"\x1f\x8b",
+        gzip.compress(b"\xff", mtime=0),
+        gzip.compress(b"abc", mtime=0)[:-1],
+    ],
+    ids=["plain", "truncated_header", "invalid_utf8", "truncated_payload"],
 )
 def test_corrupt_or_non_utf8_gzip_is_a_program_error(data: bytes) -> None:
     with pytest.raises(esolangs.ProgramError):

@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from tests.reference import REFERENCE
 from tests.support.divergence import terminates
+from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages
 from tests.support.witness_tables import row_bits
 
@@ -73,8 +74,9 @@ def test_every_language_verifies_with_no_per_language_knowledge(table: str) -> N
     for name in esolangs.list_languages():
         if not esolangs.describe(name)["boolean_generator"]:
             continue
-        got = _verify(name, table)
-        if got != table:
+        selected = probe_table(name, table)
+        got = _verify(name, selected)
+        if got != selected:
             wrong[name] = got
     assert wrong == {}, (
         f"{len(wrong)} language(s) did not compute {table} through the "

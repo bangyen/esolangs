@@ -515,11 +515,15 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
 @pytest.mark.slow
 def test_nothing_else_is_anywhere_near_that_big() -> None:
     """The document's "every other generator is under 600KB at n=9"."""
+    for lang in LANGUAGES.values():
+        if lang.benchmark_tables:
+            assert_proved_resource_cap(lang.name)
     biggest = max(
         (len(esolangs.generate(name, dense(9))), name)
         for name in esolangs.list_languages()
         if name not in _DOCUMENTED_SIZES
         and LANGUAGES[name].boolean is not None
+        and not LANGUAGES[name].benchmark_tables
         and esolangs.describe(name)["source_kind"] == "text"
     )
     # language-owners: ["Boolfuck", "SLOW ACV MAMMALIAN", "thisthat"]

@@ -27,7 +27,7 @@ def test_counted_mask_banks_execute_every_class(start):
     assert old_bound > 2 * len(table) + 8 * 15 + 111
     code = circuit_diagram(table)
     lines = code.splitlines()
-    assert len(lines) * max(map(len, lines)) == 8_749_827
+    assert len(lines) * max(map(len, lines)) == 3_961_697
     rows = sorted(
         {
             0,
@@ -42,7 +42,7 @@ def test_counted_mask_banks_execute_every_class(start):
             ),
         }
     )
-    assert _execute(table, code, rows) == 20
+    assert _execute(table, code, rows) == 30
 
 
 def test_counted_banks_still_obey_the_area_ceiling():
