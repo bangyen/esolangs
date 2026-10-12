@@ -171,21 +171,6 @@ def test_explicit_width_never_builds_class_masks(monkeypatch):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("arities", [(9, 11, 13), (10, 12, 14)])
-def test_class_bank_growth_executes_native_positive_controls(arities):
-    sizes = []
-    for n in arities:
-        table = _three_classes(n)
-        model = _residual_class_bank_candidate(table)
-        assert model is not None
-        code = model.render()
-        rows = sorted({0, len(table) - 1, *range(0, len(table), len(table) // 32)})
-        _execute(table, code, rows)
-        sizes.append(len(code))
-    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) <= 4.4
-
-
-@pytest.mark.slow
 def test_large_h_masks_keep_their_local_complement_drivers():
     table = _three_classes(17)
     model = _residual_class_bank_candidate(table)

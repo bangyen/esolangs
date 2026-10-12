@@ -18,7 +18,7 @@ from esolangs.languages.circuit_diagram.generator.hpool import (
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
-from tests.support.witness_tables import dense, parity
+from tests.support.witness_tables import dense, nested_dense, parity
 
 
 @pytest.mark.medium
@@ -113,13 +113,16 @@ def test_large_atom_displaces_older_layout_after_exact_comparison(monkeypatch, f
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("arities", [(8, 10, 12), (9, 11, 13)])
-def test_public_large_pool_growth_executes_positive_controls(arities):
+@pytest.mark.parametrize(
+    ("family", "arities"),
+    [(dense, (8, 10, 12)), (dense, (9, 11, 13)), (nested_dense, (8, 10, 12))],
+)
+def test_public_growth_executes_positive_controls(family, arities):
     sizes = []
     for n in arities:
-        table = dense(n)
+        table = family(n)
         code = circuit_diagram(table)
         rows = sorted({0, len(table) - 1, *range(0, len(table), len(table) // 32)})
         _execute(table, code, rows)
         sizes.append(len(code))
-    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) <= 4.4
+    assert 0 < sizes[2] - sizes[1] <= 4.4 * (sizes[1] - sizes[0])
