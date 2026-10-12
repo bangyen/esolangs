@@ -41,8 +41,8 @@ def test_the_directory_has_no_unregistered_proof(proofs: list[Proof]) -> None:
     }
     source = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
     on_disk |= {
-        path.stem
-        for path in source.glob("*/tests/proofs/deep/*.py")
+        path.stem.removeprefix("proof_")
+        for path in source.glob("*/tests/proof_*.py")
         if not path.stem.startswith("_")
     }
     assert on_disk == {proof.name for proof in proofs}

@@ -1,6 +1,6 @@
 """Revision-pinned published programs, independent of this repo's generators.
 
-Each language's ``tests/fixtures/wiki_examples/<id>.toml`` holds its wiki page's
+Each language's ``tests/fixtures/wiki_examples.toml`` holds its wiki page's
 examples (CC0): ``language``, ``oldid`` and one ``[[examples]]`` table each.
 An example has an ``id``, its ``source`` (or a ``source_file`` beside the
 TOML), optional ``stdin``, and the page's stated output as ``expected`` (or
@@ -53,7 +53,7 @@ def _text(page: Path, example: dict, key: str) -> str:
 
 
 def _cases():
-    for page in sorted(_DIR.glob("*/tests/fixtures/wiki_examples/*.toml")):
+    for page in sorted(_DIR.glob("*/tests/fixtures/wiki_examples.toml")):
         data = tomllib.loads(page.read_text(encoding="utf-8"))
         for example in data["examples"]:
             yield pytest.param(
@@ -61,7 +61,7 @@ def _cases():
                 page,
                 example,
                 f"https://esolangs.org/w/index.php?oldid={data['oldid']}",
-                id=f"{page.stem}-{example['id']}",
+                id=f"{page.parents[2].name}-{example['id']}",
                 marks=[getattr(pytest.mark, example["band"])]
                 if "band" in example
                 else [],

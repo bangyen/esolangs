@@ -347,7 +347,7 @@ def test_a_read_loop_on_a_cursorless_port_runs_to_eof() -> None:
     assert ScriptedIO.position(io) == 20  # every token was read
 
 
-_WIKI = Path(__file__).parents[1] / "fixtures"
+_WIKI = Path(__file__).parent / "fixtures"
 
 
 def _stepped(name: str, stdin: str, steps: int) -> _Machine:

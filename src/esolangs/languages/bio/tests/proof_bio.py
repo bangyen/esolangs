@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 # Run as a script (not under pytest), the repo root is not on the path.
-sys.path.insert(0, str(Path(__file__).resolve().parents[7]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
 from esolangs.languages.bio.generator import _BIO_SKIP, BIO_PAIR, bio
 from esolangs.tools.helpers import _ASCII_ZERO, input_weights, runs

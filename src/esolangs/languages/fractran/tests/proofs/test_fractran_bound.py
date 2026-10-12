@@ -11,7 +11,7 @@ import pytest
 
 from esolangs.languages.fractran.generator import PAIR, fractran
 from esolangs.languages.fractran.interpreter import _choose, _parse
-from esolangs.languages.fractran.tests.proofs.deep.fractran import (
+from esolangs.languages.fractran.tests.proof_fractran import (
     row_addressed,
     rows,
     spelled,

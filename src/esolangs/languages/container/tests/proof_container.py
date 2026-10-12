@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 # Run as a script (not under pytest), the repo root is not on the path.
-sys.path.insert(0, str(Path(__file__).resolve().parents[7]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.container.generator import _container_threshold

@@ -55,10 +55,11 @@ def discover() -> list[Proof]:
     ]
     source = Path(__file__).resolve().parents[3] / "src"
     modules += [
-        (path.stem, ".".join(path.relative_to(source).with_suffix("").parts))
-        for path in sorted(
-            (source / "esolangs/languages").glob("*/tests/proofs/deep/*.py")
+        (
+            path.stem.removeprefix("proof_"),
+            ".".join(path.relative_to(source).with_suffix("").parts),
         )
+        for path in sorted((source / "esolangs/languages").glob("*/tests/proof_*.py"))
         if not _is_helper(path.stem) and not path.stem.startswith("test_")
     ]
     for name, reference in modules:

@@ -196,7 +196,7 @@ Loading is intentionally excluded from execution time.
   it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
   most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
   versus 23.6 for the tree. The construction and the counting floor are in
-  [fractran](proofs/index.md#fractran-bound) and `src/esolangs/languages/fractran/tests/proofs/deep/fractran.py`.
+  [fractran](proofs/index.md#fractran-bound) and `src/esolangs/languages/fractran/tests/proof_fractran.py`.
 
 The canonical sharing piece is applied or exempt by measurement. Potential
 before a generator's own share is bounded per piece: repeated nodes,

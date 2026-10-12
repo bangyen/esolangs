@@ -204,7 +204,7 @@ by size, breaking ties by steps. Bound the per-piece upside before choosing.
    word limits and fold measure, its formula rows, and bandit on its
    sources. It lists the generated files it refreshed.
    Optional: the wiki page's own examples, with their stated output, go in
-   `src/esolangs/languages/<id>/tests/fixtures/wiki_examples/<id>.toml` (schema in
+   `src/esolangs/languages/<id>/tests/fixtures/wiki_examples.toml` (schema in
    `tests/interpreters/test_published_programs.py`).
    To try a program that may loop, bound it:
    `esolangs.run("Name", program, stdin=..., max_steps=10_000)` or

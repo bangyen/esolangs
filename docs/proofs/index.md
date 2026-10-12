@@ -40,7 +40,7 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   conjectural, and general register roots need not share a norm.
   Controls: `src/esolangs/languages/polynomial/tests/test_boolean_polynomial.py`,
   its `tests/proofs/test_polynomial_negatives.py`, and
-  `src/esolangs/languages/polynomial/tests/proofs/deep/polynomial.py`.
+  `src/esolangs/languages/polynomial/tests/proof_polynomial.py`.
 - Factor: <a id="factor-bound"></a> worst-case decimal source has
   `Theta(T log T)` digits for both the language and generator. A prime's residue
   modulo 11 selects one of eight commands and its exponent is a run length.

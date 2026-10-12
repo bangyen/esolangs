@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 # Run as a script (not under pytest), the repo root is not on the path.
-sys.path.insert(0, str(Path(__file__).resolve().parents[7]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
 from esolangs.languages.a_painter_ant.generator import a_painter_ant
 from esolangs.languages.a_painter_ant.tests.a_painter_ant_trace import run
