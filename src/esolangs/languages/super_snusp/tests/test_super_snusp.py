@@ -12,6 +12,7 @@ from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
+from tests.runtime.test_vm_protocol import assert_one_row_moves_along_it
 from tests.support.raises import assert_halts_with_hint
 
 
@@ -249,3 +250,8 @@ def test_super_snusp_declines_input_and_caps_a_wide_span() -> None:
         run_until_halt_or_all_branches_cycle(wide, limit=100000)
     assert "cap on a single transition" in str(caught.value)
     assert "limit does not raise this transition cap" in caught.value.__notes__[0]
+
+
+def test_its_one_row_program_moves_along_the_columns() -> None:
+    """The row component of ``VM.ip`` stays put on a one-row program."""
+    assert_one_row_moves_along_it("Super SNUSP")

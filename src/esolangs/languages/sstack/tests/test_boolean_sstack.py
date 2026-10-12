@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
+from scripts import new_language
 from tests.generators.boolean_runners import _runner
 
 run_sstack = _runner("sstack")
@@ -400,3 +401,9 @@ def test_binary_bank_refuses_a_drifted_inline_builder():
 
     with pytest.raises(ValueError, match="builder disagrees"):
         binary_bank("00010110", ((1, 0), (1, 4)), drifted)
+
+
+def test_check_runs_the_formula_case_bounds_measures() -> None:
+    nodes = new_language.quick_tests("SStack")
+    assert nodes[-1].endswith("formulas_hold[SStack-3]")
+    assert new_language.bounds("SStack", range(1, 2))[0][:4] == (1, 9, 23, 19)

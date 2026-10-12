@@ -8,6 +8,7 @@ from esolangs.languages.dig.interpreter import run
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract, InputCursorContract
 from tests.interpreters.runner import run_lines
+from tests.runtime.test_vm_protocol import assert_starts_downward
 from tests.support.raises import raises_message
 
 run_and_capture = run_lines(run)
@@ -284,3 +285,8 @@ class TestContract(CycleContract, InputCursorContract):
     reading_program: ClassVar[list[str]] = [">$=:", " 2 "]
     reading_stdin = "A"
     steps_before_read = 2  # move over, dig, and only then read
+
+
+def test_the_first_move_is_down_the_rows() -> None:
+    """It begins vertically, so ``VM.ip``'s first component moves first."""
+    assert_starts_downward("Dig")

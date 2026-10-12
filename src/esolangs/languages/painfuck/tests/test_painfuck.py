@@ -18,6 +18,7 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
     SnapshotContract,
 )
+from tests.runtime.test_vm import assert_random_steps_reproduce
 from tests.support.raises import assert_halts_with_hint
 
 run = importlib.import_module("esolangs.languages.painfuck.interpreter").run
@@ -445,3 +446,8 @@ def test_branching_search_leaves_input_and_wide_coin_paths_undecided() -> None:
         run_until_halt_or_all_branches_cycle(
             Painfuck(_encode("ccy"), ScriptedIO()), limit=4
         )
+
+
+def test_stepping_through_the_random_instruction_is_reproducible() -> None:
+    """Its random instruction steps the same way twice under one seed."""
+    assert_random_steps_reproduce("Painfuck", "y")

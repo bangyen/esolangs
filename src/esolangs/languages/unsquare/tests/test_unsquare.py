@@ -4,8 +4,10 @@ from functools import partial
 
 import pytest
 
+import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.languages.unsquare.interpreter import run
+from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters import runner
 from tests.interpreters.contract import (
@@ -211,3 +213,12 @@ def test_loading_a_stack_detaches_it_and_preserves_other_state() -> None:
     assert machine.acc == 2
     machine.step()
     assert machine.io.getvalue() == "B"
+
+
+class TestTheSpecIsReachable:
+    """The best documentation here was reachable only by guessing."""
+
+    def test_it_is_the_interpreter_that_is_read(self) -> None:
+        """Read, not stored, so it cannot drift from what it describes."""
+        module = interpreter_module("Unsquare")
+        assert esolangs.describe("Unsquare")["spec"] == (module.__doc__ or "").strip()

@@ -3,7 +3,8 @@
 import pytest
 
 from esolangs.languages import generators as boolean
-from esolangs.languages.rotfuck.tests.runners import run_rotfuck, run_rotfuck_forward
+from tests.generators.boolean_runners import _runner
+from tests.interpreters.runner import run_program
 from tests.support.witness_tables import row_bits
 
 
@@ -220,3 +221,13 @@ def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
     assert_constant_balanced_shape(
         "ROTfuck", "rotfuck", table, _program(table, keep_constant_input=True)
     )
+
+
+run_rotfuck = _runner("rotfuck")
+
+
+def run_rotfuck_forward(program: str, inputs: list[str]) -> str:
+    """Run a ROTfuck program under the forward rotation."""
+    from esolangs.languages.rotfuck.interpreter import run as _run
+
+    return run_program(_run, program, "".join(inputs), rotation="forward")

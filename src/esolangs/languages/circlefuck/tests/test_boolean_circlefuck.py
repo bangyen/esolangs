@@ -1,9 +1,11 @@
 """Circlefuck boolean generation: the deleting lookup and its index."""
 
 import random
+import warnings
 
 import pytest
 
+import esolangs
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 
@@ -104,3 +106,10 @@ class TestCirclefuck:
         )
         _rows(boolean.circlefuck("11111111"), "11111111", 3)
         _rows(boolean.circlefuck("11110000"), "11110000", 3)
+
+
+def test_run_warns_when_input_runs_out() -> None:
+    program = boolean.circlefuck("10")  # reads one input bit
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        esolangs.run("Circlefuck", program, stdin="")
