@@ -240,11 +240,17 @@ helper, and one is exempt. Presence does not establish complete sharing.
   The [construction proof](proofs/circuit-diagram-sharing.md) bounds modeling
   and emitted text by O(T), rather than claiming every shared rectangle has
   linear area.
-- Line declares `shared_tree`. Its general sharing/routing gap remains.
-  Partial-prefix cloning saves only 2.19% of aggregate planned area on 200
-  seeded eight-input tables, below the bespoke gate. Its native positive
-  control passes all 256 rows, saving 33,700,800 to 32,865,600 scale-one
-  pixels with the same 23-command maximum, so it remains unshipped.
+- Line compares complete ordered residual folds by exact emitted pixel area;
+  a complete fold wins a fallback tie. The five unpacked models have no
+  sharing cutoff. The [construction proof](proofs/line-sharing.md) establishes
+  complete state sharing, O(T) modeling and area-admitted output. On 200
+  seeded eight-input tables, complete drawings total 6,834,444,000 scale-one
+  pixels against 3,809,364,000 for the smaller fallback (79.41% larger);
+  102,400 native rows pass the unchanged command and workspace bounds. This
+  is the canonical average-larger exemption, not a physical area lower bound.
+  Partial-prefix cloning remains unshipped: its 2.19% aggregate planned gain
+  misses the bespoke gate; its native positive control passes all 256 rows,
+  from 33,700,800 to 32,865,600 pixels with the same 23-command maximum.
 - Polynomial declares `_polynomial_states`.
 - Piet is exempt: a strip has no jump, so a repeated subtable cannot be shared.
 
@@ -254,7 +260,7 @@ helper, and one is exempt. Presence does not establish complete sharing.
   inputs, Line's reverse-order destination layout passes all 4,096 rows in
   34,750,000 scale-one pixels with at most 50 commands. Reversal reduces the
   witness's nonconstant residual states from 18,437 to 548 at nineteen inputs
-  (graph counts only). A routing exemption still needs a physical embedding
+  (graph counts only). A language-wide area lower bound needs a physical embedding
   proof and a witness covering alternative input orders and encodings.
   [VLSI layout bounds](https://publications.csail.mit.edu/lcs/pubs/pdf/MIT-LCS-TR-305.pdf)
   require an applicable embedding model;

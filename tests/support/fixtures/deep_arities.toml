@@ -10,7 +10,7 @@ circuit_diagram = 13
 factor = 11
 polynomial = 9
 streetcode = 10
-line = 6  # native Line at n=6 already renders millions of pixels
+# Line uses the default twelve: the six-input cap mixed small-tree and tree layouts.
 
 [execution]
 # Loading, not command count, sets the measured ceilings below.

@@ -16,11 +16,12 @@ and re-enter its zero arm. Reads and the tape footprint stay unchanged.
 Projected loaders store only essential inputs: ignored reads overwrite the
 next kept slot, or one spare slot after the last kept input. Projected trees
 and ancestor returns compete by emitted area, including balanced layouts.
-Descending residual stems also share forward joins: the saved loader rewind
+Complete ordered residual folds share forward joins: the saved loader rewind
 pays for join transitions, and their measured area must beat the tree.
 Shared destination moves allow narrower nonterminal forks. Input-order streaming
 also shares reads on stems, overwriting cell zero and draining constant tails;
-its fresh output cell stays within the original tape. All layouts compete by area.
+its fresh output cell stays within the original tape. Complete folds win fallback
+area ties; larger drawings retain the smaller fallback.
 """
 
 from __future__ import annotations
@@ -225,6 +226,7 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
             smallest = draw.area
             selected_draw = draw
             node = graph
+    complete_selected = False
     for build in (
         forward_canvas,
         destination_canvas,
@@ -233,10 +235,12 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
         median_streaming_canvas,
         packed_streaming_canvas,
     ):
-        forward = build(truth_table, smallest, unit=unit)
+        # A complete fold wins a fallback tie; later folds retain the first tie.
+        forward = build(truth_table, smallest + int(not complete_selected), unit=unit)
         if forward is not None:
             node, selected_draw = forward
             smallest = selected_draw.area
+            complete_selected = True
     if selected_draw is not None:
         return lazy_raster(lambda: _grey_rows(selected_draw()), node)
     if canvas is not None:
