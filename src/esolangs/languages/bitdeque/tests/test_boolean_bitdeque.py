@@ -1,9 +1,12 @@
 """bitdeque generator tests."""
 
+import itertools
+
 import pytest
 
 from esolangs.languages import generators as boolean
 from esolangs.languages.bitdeque.generator import _bitdeque_ordered
+from tests.proofs.test_conventions import _embedding, _tables
 from tests.support.source_support import source_units
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -178,3 +181,16 @@ def test_reordering_never_grows_and_shrinks_where_it_should() -> None:
     assert source_units(boolean.bitdeque(table)) < len(
         _bitdeque_ordered(table, (0, 1, 2))
     )
+
+
+def test_bitdeque_linear_route_is_one_width() -> None:
+    """The route the equal-width test misses stays at one length."""
+    example = _embedding()["Bitdeque"]
+    assert example.fill is not None
+    for n in (4, 5):
+        template = example.generator(_tables(n)[0])
+        lengths = {
+            len(example.fill(template, list(bits)))
+            for bits in itertools.product((0, 1), repeat=n)
+        }
+        assert len(lengths) == 1, (n, sorted(lengths))

@@ -16,6 +16,10 @@ from esolangs.languages.vandevelo.generator import (
 from esolangs.languages.vandevelo.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.proofs._ledger import load as load_ledger
+from tests.proofs._roadmap import load
+from tests.proofs.deep.execution import exempt_generators as execution_exempt
+from tests.proofs.deep.linearity import exempt_generators
 
 
 def _result(program: str, bits: tuple[int, ...]) -> str:
@@ -684,3 +688,13 @@ def test_nearest_corpus_matches_direct_reduction_and_executes(monkeypatch) -> No
                 "".join(_result(program, bits) for bits in product(range(2), repeat=n))
                 == table
             )
+
+
+def test_vandevelo_remains_held_to_both_regressions() -> None:
+    row = load().by_name()["Vandevelo"]
+    assert row.output_size == "Measured"
+    assert load_ledger().by_name()["Vandevelo"].execution_class == "linear"
+    assert not row.size_is_settled
+    assert row.is_open
+    assert "Vandevelo" not in exempt_generators()
+    assert "Vandevelo" not in execution_exempt()

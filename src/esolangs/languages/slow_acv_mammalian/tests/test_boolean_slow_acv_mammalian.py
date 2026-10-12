@@ -7,6 +7,7 @@ from math import gcd
 
 import pytest
 
+from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.slow_acv_mammalian.generator import (
     _greedy_advance,
@@ -17,7 +18,10 @@ from esolangs.languages.slow_acv_mammalian.generator import (
     _w_raise,
     _w_raise_len,
 )
-from esolangs.languages.slow_acv_mammalian.wrapping import _mammalian
+from esolangs.languages.slow_acv_mammalian.wrapping import (
+    _balance_mammalian,
+    _mammalian,
+)
 from tests.support.witness_tables import witnesses
 
 
@@ -954,3 +958,14 @@ def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit):
         machine.step()
     assert stream.position() == 3
     assert stream.getvalue() == bit
+
+
+def test_equal_cells_reach_the_global_minimum() -> None:
+    for count in range(1, 33):
+        program = " ".join(["1111"] * count)
+        balanced = _balance_mammalian(program)
+        optimum = min(
+            (_mammalian(program, width) for width in range(1, len(program) + 1)),
+            key=balance_score,
+        )
+        assert balance_score(balanced) == balance_score(optimum)
