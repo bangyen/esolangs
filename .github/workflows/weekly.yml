@@ -77,7 +77,7 @@ jobs:
     # command that report prints.
     # Preserve the native construction cap without competing xdist workers.
     - name: Check the preserving certificate without competing workers
-      run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci.shard --duration-output certificate-durations.json
+      run: uv run python -m pytest src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci.shard --duration-output certificate-durations.json
 
     - name: Test with pytest (full suite, including the slow band)
       run: uv run python -m pytest -n auto -k "not test_preserving_certificate" -p scripts.ci.shard --duration-output test-durations.json
@@ -108,8 +108,7 @@ jobs:
   # So it is recorded, not gated.  One job, one interpreter, best-of-five:
   # the artifact is the trend, and `just benchmark` is how a suspicion gets
   # checked by hand afterwards.  The exact half of the same sweep -- emitted
-  # size and step count -- is gated per-PR by `just test`'s "generator size
-  # baseline" step instead.
+  # size and step count -- is gated per-PR by CI's generator size baseline instead.
   timings:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -161,3 +160,36 @@ jobs:
           notes/benchmarks/*.log
         if-no-files-found: ignore
         retention-days: 14
+
+  maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v7
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+    - name: Install dependencies
+      run: uv sync --group dev --python 3.12
+
+    # A generator route that was replaced keeps its own tests green; three
+    # sat unread for months.  Reports any tools/ name, or any private name
+    # elsewhere in src/, that nothing in src/ or scripts/ reads.  <2s.
+    - name: Check for definitions nothing reads
+      run: uv run python checks/check_dead_definitions.py
+
+    # Scan production and tooling sources: tests/ is left
+    # out because shared test scaffolding is not what this check is for,
+    # and including it roughly quadrupled the file pairs the O(files^2)
+    # comparison walks (141s of this job's 218s in run 37334678602).
+    - name: Check for duplicated code blocks
+      run: >
+        uv run --with pylint python checks/check_duplicate_code.py --disable=all
+        --enable=duplicate-code --min-similarity-lines=10
+        --ignore-imports=yes src/esolangs scripts
+
+    - name: Audit dependencies with pip-audit
+      run: uv run --with pip-audit pip-audit --local

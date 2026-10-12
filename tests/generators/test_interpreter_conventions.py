@@ -1,6 +1,7 @@
 """Source-shape conventions the interpreters share, swept over the tree."""
 
 import ast
+import importlib
 import inspect
 import pathlib
 import re
@@ -14,9 +15,7 @@ from esolangs.registry import LANGUAGES
 # The interpreter tree, anchored to this file rather than the working
 # directory, so the sweep finds the same modules wherever pytest was
 # started from.
-_INTERPRETERS = pathlib.Path(__file__).resolve().parents[2] / (
-    "src/esolangs/interpreters"
-)
+_INTERPRETERS = pathlib.Path(__file__).resolve().parents[2] / ("src/esolangs")
 
 # ``run`` is the entry point the template puts the IO on -- it builds the
 # machine, drives it, and is handed the ``IO`` to do it with.  It is the
@@ -62,10 +61,15 @@ def _io_surface() -> frozenset[str]:
 
 def _module_files() -> list[pathlib.Path]:
     """Return every interpreter module, read off the tree."""
-    return sorted(
-        [path for path in _INTERPRETERS.glob("*/*.py") if not path.name.startswith("_")]
-        + list(_INTERPRETERS.glob("*/*/__init__.py"))
-    )
+    paths = []
+    for language in LANGUAGES.values():
+        if language.interpreter is None:
+            continue
+        module = importlib.import_module(
+            f"esolangs.languages.{language.id}.interpreter"
+        )
+        paths.append(pathlib.Path(inspect.getfile(module)))
+    return sorted(paths)
 
 
 def _is_io_receiver(node: ast.expr) -> bool:
@@ -129,7 +133,15 @@ class TestTheSweepCanSee:
             for path in _module_files()
         }
         registered = {
-            lang.interpreter.replace(".", "/")
+            pathlib.Path(
+                inspect.getfile(
+                    importlib.import_module(f"esolangs.languages.{lang.id}.interpreter")
+                )
+            )
+            .relative_to(_INTERPRETERS)
+            .as_posix()
+            .removesuffix("/__init__.py")
+            .removesuffix(".py")
             for lang in LANGUAGES.values()
             if lang.interpreter
         }
@@ -174,7 +186,9 @@ _BARE_RAISE = re.compile(
 def _wordless_halts() -> dict[str, int]:
     """Count the bare raises in every interpreter, keyed by relative path."""
     found: dict[str, int] = {}
-    for path in sorted(_INTERPRETERS.rglob("*.py")):
+    for path in sorted(
+        set((_INTERPRETERS / "interpreters").rglob("*.py")) | set(_module_files())
+    ):
         hits = sum(
             bool(_BARE_RAISE.match(line))
             for line in path.read_text(encoding="utf-8").splitlines()
@@ -201,7 +215,7 @@ def test_no_interpreter_halts_without_saying_why() -> None:
     assert _BARE_RAISE.match("        raise ValueError()")
     assert not _BARE_RAISE.match('    raise HaltError("division by zero")')
     # Modulous was the reported case and is fixed, so it must not be here.
-    assert "stack_based/modulous.py" not in _wordless_halts()
+    assert "modulous.py" not in _wordless_halts()
 
 
 def _docstring_issues(path: pathlib.Path, language: str | None) -> list[str]:
@@ -234,10 +248,11 @@ def test_interpreter_docstrings_follow_the_template() -> None:
     }
     named_paths = {}
     for module, name in names.items():
-        relative = pathlib.Path(*module.split("."))
-        path = _INTERPRETERS / relative.with_suffix(".py")
-        if not path.exists():
-            path = _INTERPRETERS / relative / "__init__.py"
+        path = pathlib.Path(
+            inspect.getfile(
+                importlib.import_module(f"esolangs.languages.{module}.interpreter")
+            )
+        )
         assert path.is_file(), module
         named_paths[path] = name
     paths = sorted(set(_module_files()) | set(named_paths))

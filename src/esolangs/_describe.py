@@ -20,9 +20,9 @@ from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import machine_traits
 
 #: The committed examples, inside the package so the wheel ships them.
-_EXAMPLES = pathlib.Path(__file__).resolve().parent / "examples"
+_LANGUAGES = pathlib.Path(__file__).resolve().parent / "languages"
 
-# Interpreter module family -> state model name.
+# Registry category -> state model name.
 _STATE_MODELS = {
     "register_based": "register",
     "tape_based": "tape",
@@ -82,7 +82,7 @@ def describe(language: str) -> LanguageInfo:
     ``spec`` contains the interpreter docstring; missing docstrings raise.
     ``dialect_settings`` gives runtime defaults, choices, bounds and dependencies.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the language's
-    category, derived from its interpreter family), ``wiki_url``.
+    category, recorded by the registry), ``wiki_url``.
     Generation: ``generator_max_inputs`` is an explicit arity cap (None means
     none declared, or no generator); ``generator_restrictions`` names additional
     table-dependent budgets, None when there are none.  ``boolean_generator``;
@@ -108,17 +108,26 @@ def describe(language: str) -> LanguageInfo:
     ``examples`` lists the committed programs as POSIX paths relative to
     the package
     (``importlib.resources.files("esolangs") / path``);
-    ``examples/MANIFEST.md`` says what each computes.
+    ``languages/EXAMPLES.md`` says what each computes.
     """
     name = resolve(language)
     lang = LANGUAGES[name]
-    family = lang.interpreter.split(".")[0] if lang.interpreter else None
+    family = lang.category if lang.interpreter else None
     stem = example_stems().get(lang.id, lang.id)
     # Package-relative: repository-relative paths broke a ``chdir`` away and
     # under any install, and absolute ones froze the install location into
     # the public output.  ``importlib.resources.files("esolangs")`` resolves.
-    suffix = ".png" if lang.source_kind.value == "raster" else ".txt"
-    examples = sorted(f"examples/{p.name}" for p in _EXAMPLES.glob(f"{stem}{suffix}"))
+    suffix = (
+        ".png"
+        if lang.source_kind.value == "raster"
+        else ".txt.gz"
+        if lang.compressed_source
+        else ".txt"
+    )
+    examples = sorted(
+        f"languages/{lang.id}/examples/{p.name}"
+        for p in (_LANGUAGES / lang.id / "examples").glob(f"{stem}{suffix}")
+    )
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
     contract = lang.contract

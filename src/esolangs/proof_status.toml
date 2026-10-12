@@ -273,9 +273,9 @@ evidence = "docs/proofs/index.md#generator-ledger"
 [[ledger]]
 generator = "Circuit Diagram"
 labels = ["tree"]
-qualification = "finite planar routing"
-scaling = "linear: H-layout side C sqrt(T), area Theta(T)"
-execution = "poly n: worst 2n + 1 commands; 2n + 2 past n = 7"
+qualification = "finite planar routing with fixed-size shared cofactor pools"
+scaling = "linear: prefix H-layout side C sqrt(T), fixed-size cofactor pools"
+execution = "poly n: worst 2n + 1 commands; at most 2n + 2 past n = 8"
 workspace = """\
     linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses"""
 evidence = "docs/proofs/index.md#generator-ledger"
@@ -1061,6 +1061,15 @@ workspace = """\
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "Unary"
+labels = ["tree", "cap"]
+qualification = "complemented-byte decision tree; constants, projections and conjunction guards avoid flags"
+scaling = "lower bound: worst source length at least 2**T - 1; zero-count encoding"
+execution = "unmeasured: exempt as a cap row"
+workspace = "unmeasured: exempt as a cap row"
+evidence = "docs/limitations.md#unary"
+
+[[ledger]]
 generator = "Vandevelo"
 labels = ["minterms"]
 qualification = """\
@@ -1110,3 +1119,10 @@ totality = "Total"
 generation_time = "Open"
 output_size = "Measured"
 evidence = "docs/proofs/index.md#vandevelo-identifier-and-fallback-audit"
+
+[[audit]]
+generator = "Unary"
+totality = "Cap"
+generation_time = "Language lower bound"
+output_size = "Language lower bound"
+evidence = "docs/limitations.md#unary"

@@ -12,134 +12,76 @@ Close each gap with a named construction and native execution, or an
 exemption supported by a structural proof or the measured criterion in
 [Contributing](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
-- **Line:** exempt (measured). The canonical share is present (`shared_tree`),
-  but the measured 40.3% is same-level duplication an ancestor return cannot
-  express: every share must re-descend a *test-free* arm. The structured
-  cases that dominate that measure carry no reachable fork at all -- parity
-  repeats 240 of 255 nodes at n=8, majority 105, and neither has a fork whose
-  test-free arm reaches a recurring residual. On random n=5..8 no generated
-  program emits a loop-back, though reachable fork candidates exist (854 over
-  200 n=7 tables), so the wall is return overhead and layout: a second return
-  target needs bus routing Line's crossing-free strokes forbid. Controls in
-  `tests/tools/test_boolean_line_share_scope.py`.
-- **Circuit Diagram:** wall (measured). The cofactor-sharing bus fold is
-  area-smaller than the H-layout but not linear-area. Its node-count cutoff
-  (`nodes**2 <= 4*T`) rejects the dense n=8 fold (75 nodes) although the
-  shared model is 194,775 cells against the H-layout's 1,946,024, so the
-  public build emits the unshared lattice and jumps x26.4 in area from n=7
-  (73,809) to n=8. Removing the cutoff admits folds whose same-parity growth
-  n=8->10 is x4.93, over the x4.4 contract; banding lowers the constant but
-  not the exponent (x4.79), and the H-layout's own is x4.37. Sharing would
-  have to be grafted onto the H-recursion -- one lattice site per distinct
-  residual, parents' buses routed to it -- a new construction, not a parameter
-  change. Controls in
-  `tests/tools/test_boolean_circuit_diagram_share.py`.
+- **Line:** forward residual stems now share same-level duplicates within
+  the existing 5n command and workspace bounds. Streaming reads overwrite
+  cell zero in input order; constant tails drain the remaining reads. Parity
+  at n=8 occupies 1,534,400 pixels at scale 1 against the tree's 17,472,000;
+  all 256 rows execute natively. Majority at n=8 occupies 3,952,000 pixels,
+  with all 256 rows checked. Descending tests also save the loader rewind,
+  paying for joins.
+  Majority at n=9 shares in 13,438,400 pixels against 28,492,800; all 512
+  rows execute. Disjoint arrivals/joins reuse channel rows; shared destination
+  moves narrow nonterminal forks. The n=22 majority control occupies
+  53,875,200 pixels at scale 1 against 87,270,400, with 36 native rows checked.
+  Dense tables still keep the smaller tree: the layered bus
+  is area-admitted, not a linear-area sharing construction. The measured
+  40.3% repeated-subtree upside remains open. Controls in
+  `tests/generators/test_boolean_line_forward.py`,
+  `tests/generators/test_boolean_line_destination.py`,
+  `tests/generators/test_boolean_line_streaming.py`,
+  `tests/generators/test_boolean_line_join_lanes.py` and
+  `tests/generators/test_boolean_line_share_scope.py`.
+- **Circuit Diagram:** fixed-size cofactor pools share locally inside
+  a prefix H recursion; cell guards and coordinate buckets give linear
+  expected work and area. Seven/eight-input atoms use fixed footer routing;
+  dense n=8 occupies 194,775 cells / 147,264 characters against the minterm lattice's
+  1,946,024 / 1,780,773; every row executes natively. Three- and four-input
+  pools and larger atoms keep both arity parities inside the measured growth gate. Global
+  complete cofactors share through four/eight predicate-and-function banks:
+  the n=10 ABBA control occupies 387,711 cells against 492,826; all 1,024
+  native rows pass. Repeated seven/eight-input classes now share across all
+  prefixes through H masks, admitted by a conservative workspace gate bound.
+  The n=13 sixteen-class witness occupies 2,453,905 cells against 35,581,224;
+  both execute 33 native rows. The n=13 eight-class witness drops
+  from 1,530,528 to 1,160,811 cells and 1,064 to 874 gates; both execute 33 native rows, with
+  all three global fold orders rejected and all eight top-level banks distinct.
+  A bounded multi-output forest now shares internal residuals between class roots.
+  Counted mask/body gates admit 202 sparse classes at n=15 in 8,749,827 cells;
+  607 native rows cover every class within 20 commands. Forest area floors
+  skip oversized assembly. Binary-carry OR returns retain one root per level.
+  Repeats beyond the fixed class cap or gate budget remain open when all three fixed
+  fold orders exceed the node-count budget. Moving three/four tail inputs first avoids the
+  expander control's original graph: n=12 drops from 221 to 60 fold nodes
+  and executes in 138,953 cells. Controls in
+  `tests/generators/test_boolean_circuit_diagram_banks.py`,
+  `tests/generators/test_boolean_circuit_diagram_classes.py`,
+  `tests/generators/test_boolean_circuit_diagram_class_budget.py`,
+  `tests/generators/test_boolean_circuit_diagram_forest.py`,
+  `tests/generators/test_boolean_circuit_diagram_hcells.py`,
+  `tests/generators/test_boolean_circuit_diagram_order.py`,
+  `tests/generators/test_boolean_circuit_diagram_pool.py` and
+  `tests/generators/test_boolean_circuit_diagram_share.py`.
 
-## Research follow-up
+## Generator linearity
 
-- **Linear Boolean generators: make generation and output grow only with
-  the table.** Here `T` is the truth-table length. The goal is build time
-  and emitted size both O(T). For each generator still open, the path to
-  done is either (a) add a loop-less O(T) construction with an executed
-  scaling regression, or (b) record a structural proof that the language
-  or its required encoding forces super-linear output, then move on.
-  Generation time includes choosing an input order and writing the result.
+For truth-table length `T`, target O(T) generation time and emitted size.
+Generation includes input ordering and writing the program. Close a gap with
+an executed, loop-less construction or a language-wide lower bound; measured
+scaling alone does not prove linearity. Preserve totality, execution, and
+workspace contracts.
 
-  A row closes when its generator is O(T) on every audit axis below, when
-  it carries a proved language-wide lower bound, or when tests pin a
-  semantic obstruction that every attempted construction breaks. A
-  syntax-level lookup table does not count as a generator. If one more
-  executed round produces neither a construction nor a bound, the row
-  moves to [Parked](#parked): one line there, its known state in the
-  language's proof page. The language stays, and its status-table cells
-  keep their vocabulary; [curation](limitations.md#curation) alone admits
-  and removes languages.
-  An unproved wall is not a lookup table.
+The [scaling status](proofs/index.md#scaling-status) records current verdicts.
+Edit `src/esolangs/proof_status.toml` and run
+`python scripts/docs/generate.py docs` to update it. Factor, Polynomial and Unary
+have documented language lower bounds; Befunge has a finite-source totality
+exception. Those limits remain evidence, not optimization tasks.
 
-  The three axes are totality (does the generator handle every table it
-  claims?), generation time, and output size; execution time and workspace
-  are `proofs/index.md`'s Execution and Workspace columns.
-  `proofs/index.md` defines totality; `tests/proofs/deep/linearity.py`
-  measures output size by same-parity successive differences through
-  n=12. Timings use the top five arities, best of three, and exclude
-  loading; runs under 10 ms do not establish an exponent. An axis closes
-  only with a language-wide lower bound; `Measured` keeps the empirical
-  regression gate without asserting a proof. To update the table, edit
-  `src/esolangs/proof_status.toml` and run `python scripts/docs/generate.py docs`. Current
-  status:
+- **Malbolge:** settle generation at seventeen inputs and the first
+  unreachable arity. Share initialization and query control, then relocate
+  records before capture; see [the layout gap](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09).
+- **Vandevelo:** settle generation time and structural output scaling via
+  the `O(log n)` DNF-of-parities gap; see [the audit](proofs/index.md#vandevelo-identifier-and-fallback-audit).
 
-  <!-- SCALING-STATUS:START -->
-
-  | Language | Totality | Generation time | Output size |
-  | --- | --- | --- | --- |
-  | Befunge | Exception | Linear | Linear |
-  | Factor | Total | Language lower bound | Language lower bound |
-  | Malbolge | Exception | Open | Linear |
-  | Polynomial | Cap | Language lower bound | Language lower bound |
-  | Vandevelo | Total | Open | Measured |
-
-  <!-- SCALING-STATUS:END -->
-
-  Where the remaining rows stand:
-
-  - **Befunge** ships through thirteen inputs using a six-bit
-    printable-ASCII lookup. Its fixed 80x25 source grid admits fewer than
-    `2**42000` programs even with Unicode cells, whereas sixteen inputs
-    admit `2**65536` truth tables, so some tables have no program under the
-    source-embedded contract. Unbounded runtime integers do not enlarge
-    the source alphabet.
-  - **Malbolge** ships through sixteen inputs. Finite source space
-    excludes some 18-input tables, so generation time at seventeen inputs
-    is the open axis. Its fixed 59,049-character source makes output
-    `O(1)`, while set cells grow linearly; see
-    [malbolge-scaling](proofs/malbolge-scaling.md#the-emitted-size-law).
-  - **Factor** has worst-case encoding and language floor `Theta(T log T)`;
-    [factor](proofs/factor.md) gives the totality and generation bounds.
-  - **Polynomial** has language-level text complexity
-    `Theta(T**2 / log T)` and super-linear generation time;
-    [polynomial](proofs/polynomial.md) proves both bounds and the parser's
-    totality.
-
-  Measured growth, for calibration only: wider dense-table measurements
-  give same-parity size-difference ratios 3.971 (B-tapemark), 4.004 (6-5),
-  3.855 (Forth), and 4.211 (Vandevelo) over n=12,14,16. Circuit Diagram,
-  after its n=8 route change, reads 4.135 over n=10,12,14 and 4.119 over
-  n=11,13,15. Parity tables read no higher. All sit inside the measured
-  4.4 contract; that is a measurement, not a proof of linearity.
-
-Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
-close ordered input-forgetting construction, generated-family loading
-bounds, and the weighted-description theorem.
-
-## Parked
-
-Stalled problems, one line each; detail lives in the linked proof page. A
-line changes only when its next step does.
-
-- **FRACTRAN bit-linear pipeline.** Forward cleanup now executes without
-  minimum-tree updates. The sieve measures ~8% of a build that doubles per
-  input through n=19, so the `Theta(T log T)` is bit work, not wall clock.
-  Next: a bit-linear construction, sieve and literal conversion together
-  ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
-- **Brainfuck behaviour count.** Cancelling tested-cell updates with balance
-  confined to `{-1,0,1}` are certified. Next: cover larger excursions or
-  lower the exponential bound
-  ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
-- **Brainfuck on bounded inputs.** Next: establish Theorem 6's limit or
-  sharpen either side ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
-- **Polynomial's constant.** Next: replace the instruction profile or raise
-  the coefficient-mass bound ([polynomial](proofs/polynomial.md#explicit-constants)).
-- **Factor leading constant.** Clearing-loop normalization lowers the Perron
-  root to `5.948789300`. Next: broaden the normal form or construct a cheaper
-  weighted command stream
-  ([factor](proofs/factor.md#open-problems)).
-- **Malbolge's first unreachable arity.** Seventeen remains open. Native
-  components pass separate controls, but the reduced LAST-only layout is
-  8,432 cells short before the full query and relocation selector. Next:
-  share initialization and query control, then relocate records before capture
-  ([malbolge-scaling](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09)).
-- **Vandevelo structural scaling.** The build-side `certify` fix measures
-  under 3% of generation time at n=16, so it moves no gate and the axis is
-  proof-shaped. Next: settle Cohen and Shinkar's `O(log n)` DNF-of-parities
-  gap, which bounds output and so generation time
-  ([index](proofs/index.md#vandevelo-identifier-and-fallback-audit)).
+Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
+An unresolved bound stays open; it does not authorize removing its regression
+check or weakening a contract.

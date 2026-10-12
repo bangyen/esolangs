@@ -1,0 +1,230 @@
+"""Unit tests for the Jaune interpreter."""
+
+from functools import partial
+
+import pytest
+
+from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.jaune.interpreter import _Machine as Jaune
+from esolangs.languages.jaune.interpreter import run
+from esolangs.vm import run_until_halt_or_ancestor
+from tests.interpreters import runner
+from tests.interpreters.contract import SnapshotContract
+from tests.support.raises import assert_halts_with_hint
+
+run_program = partial(runner.run_program, run, suppress_eof=False)
+
+
+class TestArithmetic:
+    def test_explicit_zero_and_signed_counts_are_literals(self) -> None:
+        assert run_program("0+^.") == "0"
+        assert run_program("-2+^.") == "-2"
+        assert run_program("+2+^.") == "2"
+        assert run_program("5+-2-^.") == "7"
+        with pytest.raises(HaltError, match="undefined label -1"):
+            run_program("-1?")
+
+
+class TestInput:
+    def test_read_digit(self) -> None:
+        assert run_program("v^.", "7\n") == "7"
+
+    def test_input_eof(self) -> None:
+        with pytest.raises(EOFError):
+            run_program("v.", "")
+
+    def test_numeric_input_accepts_whitespace_and_signs(self) -> None:
+        """Numeric reads skip whitespace before the next integer."""
+        assert run_program("v^.", "\n42") == "42"
+        assert run_program("v^.", "-7") == "-7"
+
+
+class TestMemory:
+    def test_left_of_cell_zero_is_a_fresh_zero_cell(self) -> None:
+        """``<`` at cell 0 grows the tape left onto a new zero cell."""
+        assert run_program("5+<^.") == "0"
+        assert run_program("5+<<<^.") == "0"
+
+    def test_left_of_zero_and_back_keeps_both_cells(self) -> None:
+        """The grown cell and the start cell are distinct and both kept."""
+        assert run_program("5+<3+>^.") == "5"
+        assert run_program("5+<3+>^<^.") == "53"
+        assert run_program("5+<<>>^.") == "5"
+
+
+class TestControlFlow:
+    def test_loop_adder(self) -> None:
+        # v+>v+1:1-<1+>1?<^. : read a, b; while b: b--, a++; print a
+        assert run_program("v+>v+1:1-<1+>1?<^", "3\n4\n") == "7"
+
+
+class TestComputedDispatch:
+    """``v`` as the operand of a jump or a call."""
+
+    def test_the_input_names_the_subroutine(self) -> None:
+        assert run_program("v@^.1$5+;2$3+;", "1\n") == "5"
+        assert run_program("v@^.1$5+;2$3+;", "2\n") == "3"
+
+    def test_jump_on_nonzero_to_the_named_label(self) -> None:
+        assert run_program("+v?%^.3:7+^.", "3\n") == "8"
+
+    def test_a_read_operand_is_consumed_when_the_branch_is_not_taken(
+        self,
+    ) -> None:
+        """The number is evaluated to have a command at all."""
+        assert run_program("v?v^.3:", "3\n8\n") == "8"
+        assert run_program("+v!v^.3:", "3\n8\n") == "8"
+
+    def test_an_undefined_named_target_halts(self) -> None:
+        with pytest.raises(HaltError, match="undefined subroutine 7"):
+            run_program("v@^.1$5+;", "7\n")
+        with pytest.raises(HaltError, match="undefined label 4"):
+            run_program("v?^.1:9+;", "4\n")
+
+    def test_the_target_is_looked_up_before_the_branch_is_tested(self) -> None:
+        """An undefined label halts even when the jump would not be taken."""
+        with pytest.raises(HaltError, match="undefined label 1"):
+            run_program("v?^.9:", "1\n")
+
+    def test_a_read_marker_defines_nothing(self) -> None:
+        """``v:`` and ``v$`` are grammatical but have no findable identity."""
+        from esolangs.languages.jaune.interpreter import _parse
+
+        assert [c.op for c in _parse("v:5+")] == ["+"]
+        assert [c.op for c in _parse("v$5+")] == ["+"]
+        assert run_program("v:5+^.") == "5"
+        assert run_program("v$5+^.") == "5"
+
+    def test_a_loop_reading_its_own_target_exhausts_its_input(self) -> None:
+        """Each pass of the loop reads again, so input decides the end."""
+        with pytest.raises(EOFError):
+            run_program("5+1:v?^.", "1\n1\n1\n")
+
+
+class TestParsing:
+    def test_an_uppercase_letter_is_no_more_a_command_than_a_lowercase_one(
+        self,
+    ) -> None:
+        """``X`` is ignored, as every unrecognized character is."""
+        assert run_program("X^.") == "0"
+        assert run_program("1X^.") == "0"
+
+    def test_bare_operator_requires_a_number(self) -> None:
+        with pytest.raises(ValueError, match="requires a number"):
+            run_program("?")
+
+    def test_bare_operator_hint_puts_the_number_first(self) -> None:
+        """The count precedes its command (``9:``), whatever the hint said."""
+        with pytest.raises(ValueError, match="requires a number") as caught:
+            run_program(":")
+        assert any(
+            "immediately before the command" in note for note in caught.value.__notes__
+        )
+
+    def test_runs_of_an_operator_carry_their_length(self) -> None:
+        """``++`` is one command repeated twice, not two commands."""
+        from esolangs.languages.jaune.interpreter import _parse
+
+        assert [(c.op, c.arg) for c in _parse("+++")] == [("+", 3)]
+        assert [(c.op, c.arg) for c in _parse("--")] == [("-", 2)]
+        assert [(c.op, c.arg) for c in _parse("++-")] == [("+", 2), ("-", 1)]
+
+    def test_a_read_operand_needs_a_character_after_it(self) -> None:
+        """``v`` takes the next character as its operand only if there is
+        one; at the end of the code it stands alone.
+        """
+        from esolangs.languages.jaune.interpreter import _parse
+
+        assert [c.op for c in _parse("v+")] == ["v+"]
+        assert [c.op for c in _parse("v")] == ["v"]
+        assert [c.op for c in _parse("vv")] == ["v", "v"]
+
+    def test_a_number_takes_the_operator_that_follows_it(self) -> None:
+        """``3+`` is a single counted command; a number alone is dropped."""
+        from esolangs.languages.jaune.interpreter import _parse
+
+        assert [(c.op, c.arg) for c in _parse("3+")] == [("+", 3)]
+        assert [(c.op, c.arg) for c in _parse("12+")] == [("+", 12)]
+        assert _parse("12") == []
+
+
+class TestErrors:
+    def test_undefined_label(self) -> None:
+        with pytest.raises(HaltError, match="undefined label"):
+            run_program("1?^.")
+
+    def test_undefined_subroutine(self) -> None:
+        with pytest.raises(HaltError, match="undefined subroutine"):
+            run_program("1@^.")
+
+    def test_jump_on_zero_to_undefined_label(self) -> None:
+        with pytest.raises(HaltError, match="undefined label"):
+            run_program("1!")
+
+    def test_the_return_error_reads_in_full(self) -> None:
+        """The whole message, not just the fragment a ``match=`` looks for."""
+        with pytest.raises(HaltError) as caught:
+            run_program(";^")
+        assert str(caught.value) == "; with no active subroutine call"
+
+
+def _machine(code: object) -> object:
+    from esolangs.languages.jaune.interpreter import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "6+5+^."
+
+
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        pytest.param("6+5+^.", "11", id="add_and_output"),
+        # ``&`` before any ``#`` adds nothing.
+        pytest.param("&^.", "0", id="the_hold_cell_starts_at_zero"),
+        # 1+ sets cell to 1; 1? jumps to label 1 when nonzero
+        pytest.param("1+1?2:^1:^.", "1", id="jump_on_nonzero"),
+        # cell is 0; 1! jumps to label 1 when zero
+        pytest.param("1!1:^.", "0", id="jump_on_zero"),
+        # ``;`` consumes one character, leaving the next definition whole:
+        # call 1 then 2; subroutine 1 adds 5, subroutine 2 adds 3
+        pytest.param("1@2@^.1$5+;2$3+;", "8", id="a_return_ends_only_itself"),
+        # The parser steps past an unknown character, wherever it sits.
+        pytest.param(
+            "^x^.", "00", id="an_ignored_character_after_the_first_still_advances"
+        ),
+        # A sign without an operand command remains a bare operation.
+        ("+12^.", "1"),
+        ("-12^.", "-1"),
+        # Pins ASCII-only counts: Arabic-Indic three is ignored, so ``+`` adds 1.
+        pytest.param("\u0663+^.", "1", id="a_non_ascii_digit_is_not_a_count"),
+    ],
+)
+def test_output(code: str, expected: str) -> None:
+    assert run_program(code) == expected
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_halts_with_hint(
+        "Jaune", "1@", "undefined subroutine", "define the subroutine"
+    )
+
+
+def test_jaune_replayed_subroutine_is_detected_as_an_ancestor() -> None:
+    # Main calls subroutine 1, whose body immediately calls itself.
+    machine = Jaune("1@.1$1@;", ScriptedIO())
+    assert run_until_halt_or_ancestor(machine) is False
+
+
+def test_jaune_changing_tape_halts() -> None:
+    # Subroutine 1 decrements the tape then recurs until the zero case
+    # jumps to its return, so the tape belongs in the entry key.
+    machine = Jaune("3+1@.1$1-2!1@;2:;", ScriptedIO())
+    assert run_until_halt_or_ancestor(machine) is True

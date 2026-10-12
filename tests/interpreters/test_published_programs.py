@@ -1,6 +1,6 @@
 """Revision-pinned published programs, independent of this repo's generators.
 
-Each ``tests/fixtures/wiki_examples/<language>.toml`` holds one wiki page's
+Each language's ``tests/fixtures/wiki_examples/<id>.toml`` holds its wiki page's
 examples (CC0): ``language``, ``oldid`` and one ``[[examples]]`` table each.
 An example has an ``id``, its ``source`` (or a ``source_file`` beside the
 TOML), optional ``stdin``, and the page's stated output as ``expected`` (or
@@ -27,7 +27,7 @@ from esolangs.exceptions import ExecutionTimeoutError, InputExhaustedError
 from esolangs.settings import DialectSettings
 from esolangs.vm import complete_vm, make_vm
 
-_DIR = Path(__file__).parent.parent / "fixtures" / "wiki_examples"
+_DIR = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
 
 
 def _bits(text: str, *, lsb_first: bool) -> str:
@@ -53,7 +53,7 @@ def _text(page: Path, example: dict, key: str) -> str:
 
 
 def _cases():
-    for page in sorted(_DIR.glob("*.toml")):
+    for page in sorted(_DIR.glob("*/tests/fixtures/wiki_examples/*.toml")):
         data = tomllib.loads(page.read_text(encoding="utf-8"))
         for example in data["examples"]:
             yield pytest.param(

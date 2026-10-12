@@ -10,9 +10,7 @@ from collections.abc import Callable
 import pytest
 
 import esolangs
-from esolangs.interpreters.stack_based.sstack import _parse
-from esolangs.tools.three_x import _level
-from scripts.benchmark import state_bits
+from esolangs.languages.sstack.interpreter import _parse
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
@@ -115,24 +113,6 @@ def _subleq(n: int, _: str) -> int:
     residuals = sum(min(1 << k, (1 << (1 << (n - k))) - 2) for k in range(n))
     memory = 19 + 10 * n + 6 * residuals
     return max(packed, memory * max(7, bl(memory)) + bl(memory) + bl(n))
-
-
-def _key(i: int) -> int:
-    """K(i), the ledger's bound on the ith 3x key's bits."""
-    return 2 * bl(2 ** (i - 1) * 3 ** (2 * i - 1)) + 1
-
-
-def _three_x(n: int, p: str) -> int:
-    """Guard residues, read cursor and the 2n + 1 keys, K a key's bits."""
-    return (
-        n * bl(len(p))
-        + 3 * 2**n // 2
-        + 2 * n
-        + 16
-        + bl(2 * n - 1)
-        + 2 * _key(2 * n + 1)
-        + sum(_key(i) + 3 for i in range(1, 2 * n + 2))
-    )
 
 
 def _forbin(n: int, _: str) -> int:
@@ -325,7 +305,6 @@ _HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Crement": (_crement, False, (3, 6)),
     "Inject": (_inject, True, (5,)),
     "Subleq": (_subleq, False, (3, 5)),
-    "3x": (_three_x, False, (3, 5)),
     "Forbin": (_forbin, True, (3, 8)),
     "Decleq": (_decleq, True, (3, 4)),
     # Code, stack and store each near E, the expanded program, at most 95T - 80.
@@ -479,14 +458,3 @@ def test_every_formula_cell_is_checked() -> None:
     assert not unchecked, f"{unchecked} state a bound with no FORMULAS row; {CHECK}"
     orphaned = sorted(set(FORMULAS) - stated)
     assert not orphaned, f"remove {orphaned} from FORMULAS: no stated bound"
-
-
-def test_three_x_keys_fit_their_bound() -> None:
-    """K(i) covers the 41 shortest constants, every key through n = 20."""
-    keys: list = []
-    length = 0
-    while len(keys) < 41:
-        length += 1
-        keys.extend(_level(length))
-    for i, value in enumerate(keys[:41], 1):
-        assert state_bits(value, {}) <= _key(i), (i, value)

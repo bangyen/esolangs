@@ -13,13 +13,14 @@ from docs import examples, generate
 ROOT = Path(__file__).parents[1]
 GENERATED = (
     "README.md",
+    "docs/languages.md",
     "docs/proofs/index.md",
     "docs/roadmap.md",
     "docs/usage.md",
     "docs/limitations.md",
     "docs/CONTRIBUTING.md",
     ".github/ISSUE_TEMPLATE/language_request.yml",
-    "src/esolangs/tools/__init__.py",
+    "src/esolangs/languages/generators.py",
 )
 
 
@@ -27,9 +28,9 @@ def _manifest_is_stale() -> bool:
     """Return whether the committed examples manifest differs from its render.
 
     Only the manifest: regenerating every example program would make this
-    check as slow as ``tests/scripts/test_examples.py``, which covers them.
+    check as slow as ``tests/tooling/scripts/test_examples.py``, which covers them.
     """
-    manifest = examples.EXAMPLES / "MANIFEST.md"
+    manifest = examples.LANGUAGES_DIR / "EXAMPLES.md"
     return manifest.read_text(encoding="utf-8") != (examples.boolean_manifest_text())
 
 
@@ -57,7 +58,7 @@ def main() -> int:
         return 1
     if _manifest_is_stale():
         print(
-            "examples/MANIFEST.md is stale; run python "
+            "languages/EXAMPLES.md is stale; run python "
             "scripts/docs/generate.py examples",
             file=sys.stderr,
         )

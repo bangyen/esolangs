@@ -13,11 +13,10 @@ import re
 import shlex
 import sys
 import tomllib
-from typing import cast
 
 import esolangs
+from esolangs.languages.generators import BOOLEAN
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
-from esolangs.tools import BOOLEAN
 
 
 def main() -> int:
@@ -39,8 +38,7 @@ def main() -> int:
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-_INTERPRETERS = ROOT / "src" / "esolangs" / "interpreters"
-CURATION = ROOT / "tests" / "fixtures" / "curation.toml"
+CURATION = ROOT / "tests" / "support/fixtures" / "curation.toml"
 
 
 # The README's Implemented Languages section, grouped by interpreter
@@ -121,14 +119,12 @@ def render_package_count_section() -> str:
 
 def _source_link(name: str) -> str:
     """Return the GitHub URL of the language's Python interpreter."""
-    module = cast(str, LANGUAGES[name].interpreter)
-    path = module.replace(".", "/")
-    if not (_INTERPRETERS / f"{path}.py").is_file():
-        path += "/__init__"
-    return (
-        f"https://github.com/bangyen/esolangs/blob/main/"
-        f"src/esolangs/interpreters/{path}.py"
-    )
+    canonical = ROOT / "src/esolangs/languages" / LANGUAGES[name].id / "interpreter"
+    for source in (canonical.with_suffix(".py"), canonical / "__init__.py"):
+        if source.is_file():
+            relative = source.relative_to(ROOT).as_posix()
+            return f"https://github.com/bangyen/esolangs/blob/main/{relative}"
+    raise FileNotFoundError(f"no canonical interpreter for {name}")
 
 
 def render_languages_section() -> str:
@@ -148,7 +144,7 @@ def render_languages_section() -> str:
     for name, lang in LANGUAGES.items():
         if lang.interpreter is None:
             continue
-        category = lang.interpreter.split(".")[0]
+        category = lang.category
         if category not in groups:
             raise ValueError(
                 f"{name}'s interpreter category {category!r} has no README "
@@ -188,8 +184,8 @@ def render_examples_section() -> str:
         [
             f"Ready-to-run programs for each of the {count}",
             "languages with a boolean generator live in",
-            "[`examples/`]"
-            "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).",
+            "each language's [`examples/` directory]"
+            "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).",
         ]
     )
 
@@ -212,14 +208,17 @@ def render_boolean_count_section() -> str:
 def render_contributor_tools_section() -> str:
     """Render the generator directory after checking it against the registry."""
     root = ROOT / "src" / "esolangs"
-    generator_dir = root / "tools"
     for language in LANGUAGES.values():
         if language.boolean is None:
             continue
         source = pathlib.Path(language.boolean.__code__.co_filename).resolve()
-        if not source.is_relative_to(generator_dir.resolve()):
-            raise ValueError(f"{language.name}'s generator is outside {generator_dir}")
-    return "| `src/esolangs/tools/` | generators |"
+        colocated = root / "languages" / language.id / "generator"
+        if not (
+            source.is_relative_to(colocated.resolve())
+            or source == colocated.with_suffix(".py").resolve()
+        ):
+            raise ValueError(f"{language.name}'s generator is outside {colocated}")
+    return "| `src/esolangs/tools/` | shared generator helpers |"
 
 
 def _reads_stdin() -> list[str]:
@@ -253,7 +252,10 @@ def render_input_shapes_section() -> str:
     ]
     for name in odd:
         record = esolangs.describe(name)
-        alphabet = "/".join(f"`{c}`" for c in record["input_encoding"])
+        alphabet = "/".join(
+            f"`{c if c.isprintable() else repr(c)[1:-1]}`"
+            for c in record["input_encoding"]
+        )
         stdin = repr(esolangs.encode_inputs(name, _SAMPLE_BITS))
         rows.append(f"| {name} | `{record['input_shape']}` | {alphabet} | `{stdin}` |")
     default = repr(esolangs.encode_inputs("brainfuck", _SAMPLE_BITS))
@@ -377,14 +379,14 @@ def render_curation_census_section() -> str:
     """Render docs/limitations.md's census counts from the curation fixture.
 
     The fixture records one route per registry language;
-    ``tests/api/test_interpreter_only_admissions.py`` holds its keys to the
+    ``tests/integration/api/test_interpreter_only_admissions.py`` holds its keys to the
     registry, so the counts here are the registry's too.
     """
     census = tomllib.loads(CURATION.read_text(encoding="utf-8"))
     routes = [entry["route"] for entry in census["languages"].values()]
     return "\n".join(
         [
-            f"The {census['checked']} census (`tests/fixtures/curation.toml`)"
+            f"The {census['checked']} census (`tests/support/fixtures/curation.toml`)"
             " records each",
             f"language's backlinks and route: {routes.count('fame')} clear the"
             " fame gate,",
@@ -452,13 +454,18 @@ def update_readme(root: pathlib.Path = ROOT) -> None:
             _PACKAGE_COUNT_END,
             render_package_count_section,
         ),
-        (_README_START, _README_END, render_languages_section),
         (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
         (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),
         (_XOR_START, _XOR_END, render_xor_section),
     ):
         text = _splice(text, start, end, render())
     path.write_text(text)
+    catalog = root / "docs" / "languages.md"
+    catalog.write_text(
+        _splice(
+            catalog.read_text(), _README_START, _README_END, render_languages_section()
+        )
+    )
 
 
 def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
@@ -468,7 +475,7 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     from docs.proof_status import update_docs
 
     update_exports(output_root)
-    print("updated the generated exports of esolangs.tools")
+    print("updated the generated exports of esolangs.languages")
     update_docs(output_root)
     update_readme(output_root)
     print("updated the generated sections of README.md")
@@ -483,42 +490,54 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     return 0
 
 
-INIT = "src/esolangs/tools/__init__.py"
+INIT = "src/esolangs/languages/generators.py"
 START = "# BEGIN GENERATED EXPORTS: python scripts/docs/generate.py docs"
 END = "# END GENERATED EXPORTS"
+#: Ruff's line limit, which the generated import block must respect.
+LINE_LIMIT = 88
 
 
 def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
-    """Return ``(module, generator)`` for every module declaring a ``LANGUAGE``."""
-    tools = root / "src/esolangs/tools"
+    """Return canonical module and function names for declared generators."""
     found = []
-    for path in [*tools.glob("*.py"), *tools.glob("*/__init__.py")]:
+    for path in sorted((root / "src/esolangs/languages").rglob("*.py")):
         text = path.read_text(encoding="utf-8")
-        start = text.find("\nLANGUAGE = Language(")
-        if start < 0:
-            continue
-        statement = ast.parse(text[start:]).body[0]
-        assert isinstance(statement, ast.Assign)
-        assert isinstance(statement.value, ast.Call)
-        generator = next(
-            kw.value.id
-            for kw in statement.value.keywords
-            if kw.arg == "boolean" and isinstance(kw.value, ast.Name)
-        )
-        module = path.parent.name if path.name == "__init__.py" else path.stem
-        found.append((module, generator))
+        for statement in ast.parse(text).body:
+            if not (
+                isinstance(statement, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "LANGUAGE"
+                    for target in statement.targets
+                )
+                and isinstance(statement.value, ast.Call)
+            ):
+                continue
+            generator = next(
+                kw.value.id
+                for kw in statement.value.keywords
+                if kw.arg == "boolean" and isinstance(kw.value, ast.Name)
+            )
+            parts = path.relative_to(root / "src").with_suffix("").parts
+            module = ".".join(parts[:-1] if path.name == "__init__.py" else parts)
+            found.append((module, generator))
     return sorted(found)
 
 
 def render(root: pathlib.Path = ROOT) -> str:
     """Return the import block and ``__all__`` for :data:`declared`."""
     pairs = declared(root)
-    imports = "\n".join(
-        f"from esolangs.tools.{m} import {g}"
+    lines = []
+    for m, g in pairs:
         # A generator named for its language may shadow a builtin (Eval).
-        + ("  # noqa: A004 - the language's name" if hasattr(builtins, g) else "")
-        for m, g in pairs
-    )
+        comment = "  # noqa: A004 - the language's name" if hasattr(builtins, g) else ""
+        line = f"from {m} import {g}"
+        # Keep the block stable under `ruff format`: past the line limit, a
+        # trailing comma forces the multi-line form ruff would write anyway.
+        if len(line + comment) > LINE_LIMIT:
+            lines.append(f"from {m} import (\n    {g},{comment}\n)")
+        else:
+            lines.append(line + comment)
+    imports = "\n".join(lines)
     names = sorted(["BOOLEAN", *(g for _, g in pairs)])
     listed = "\n".join(f'    "{name}",' for name in names)
     return f"{imports}\n\n__all__ = [\n{listed}\n]"
@@ -527,7 +546,7 @@ def render(root: pathlib.Path = ROOT) -> str:
 def update_exports(
     output_root: pathlib.Path = ROOT, source_root: pathlib.Path = ROOT
 ) -> None:
-    """Rewrite the marked block of ``tools/__init__.py`` under ``output_root``."""
+    """Rewrite the marked language export block under ``output_root``."""
     path = output_root / INIT
     text = path.read_text(encoding="utf-8")
     block = START + "\n" + render(source_root) + "\n" + END

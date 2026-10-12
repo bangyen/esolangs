@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "esolangs"
-version = "0.10.0"
+version = "0.11.1"
 description = "A curated collection of esoteric programming language interpreters"
 authors = [{name = "Bangyen Pham", email = "bangyenp@gmail.com"}]
 license = "GPL-3.0-or-later"
@@ -61,7 +61,7 @@ dev = [
 Homepage = "https://github.com/bangyen/esolangs"
 Repository = "https://github.com/bangyen/esolangs"
 Issues = "https://github.com/bangyen/esolangs/issues"
-Changelog = "https://github.com/bangyen/esolangs/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/bangyen/esolangs/blob/main/docs/CHANGELOG.md"
 
 [project.scripts]
 esolangs = "esolangs.cli:main"
@@ -69,14 +69,14 @@ esolangs = "esolangs.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["esolangs*"]
-exclude = ["tests*", "examples*", "docs*"]
+exclude = ["tests*", "examples*", "docs*", "esolangs.languages.*.tests*"]
 
 [tool.setuptools.package-data]
 # The example programs ship with the package.  They lived at the repository
 # root, which left them out of the wheel, so `describe(...)["examples"]` was
 # populated from a checkout and empty from an install, with nothing to say
 # which you had.
-esolangs = ["py.typed", "examples/*.md", "examples/*.txt", "examples/*.png"]
+esolangs = ["py.typed", "languages/EXAMPLES.md", "languages/*/examples/*.txt", "languages/*/examples/*.png", "languages/*/examples/*.gz"]
 
 [tool.ruff]
 target-version = "py312"
@@ -116,6 +116,7 @@ ignore = [
 # Test files are exempt from docstring requirements: test method and class
 # names are self-documenting, so the D rules would only add boilerplate.
 "tests/**/*.py" = ["D", "N802"]
+"src/esolangs/languages/*/tests/**/*.py" = ["D", "N802"]
 # CV(N)(C)'s source code *is* IPA, so the ambiguous-unicode rules fire on
 # every command in the language: the fricative is U+03B8 GREEK SMALL LETTER
 # THETA, the multiplication plosive U+0261 LATIN SMALL LETTER SCRIPT G, and
@@ -124,9 +125,9 @@ ignore = [
 # prefer -- so they are off for the files that spell the language.  That
 # includes tests/support/samples.py, which is otherwise language-agnostic but
 # holds one CV(N)(C) program in its per-language table.
-"src/esolangs/interpreters/other/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
-"src/esolangs/tools/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
-"tests/interpreters/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
+"src/esolangs/languages/cvnc/interpreter.py" = ["RUF001", "RUF002", "RUF003"]
+"src/esolangs/languages/cvnc/generator.py" = ["RUF001", "RUF002", "RUF003"]
+"src/esolangs/languages/cvnc/tests/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 "tests/support/samples.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
@@ -135,7 +136,7 @@ python_version = "3.12"
 # scripts/ is CI infrastructure (the verification and installer checks), so
 # it is type-checked alongside the package itself.
 files = ["src", "scripts", "checks"]
-exclude = ["\\.venv/", "build/", "dist/"]
+exclude = ["\\.venv/", "build/", "dist/", "src/esolangs/languages/[^/]+/tests/"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -155,7 +156,7 @@ module = ["sympy"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "src/esolangs/languages"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -200,7 +201,7 @@ addopts = [
     "--dist",
     "worksteal",
     # A hang never reaches the duration policy, so every test also carries a
-    # hard stop: `tests/conftest.py` sets it per band from
+    # hard stop: `conftest.py` sets it per band from
     # `tests/duration_policy.HARD_CEILINGS`.  The thread method, not the
     # signal one: `esolangs.run` owns SIGALRM and ITIMER_REAL and a test
     # asserts the timer is disarmed after it.  A stuck test therefore takes
@@ -235,6 +236,7 @@ source = ["src/esolangs"]
 core = "sysmon"
 omit = [
     "*/__pycache__/*",
+    "*/languages/*/tests/*",
     "*/migrations/*",
     "*/venv/*",
     "*/env/*",

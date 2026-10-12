@@ -25,11 +25,12 @@ EXCERPT_BYTES = 32 * 1024
 
 @dataclass
 class Log:
-    """One logged subprocess: its spool file and overflow flag."""
+    """One logged subprocess: its spool file and logging failures."""
 
     path: Path
     reader: threading.Thread | None = None
     overflow: bool = False
+    error: str | None = None
 
 
 _LOGS: WeakKeyDictionary[subprocess.Popen[str], Log] = WeakKeyDictionary()
@@ -70,7 +71,7 @@ def start_logged(
         start_new_session=os.name == "posix",
     )
 
-    def copy() -> None:
+    def drain() -> None:
         assert proc.stdout is not None
         reader = cast("io.BufferedReader", cast("io.TextIOWrapper", proc.stdout).buffer)
         decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
@@ -90,6 +91,14 @@ def start_logged(
                 sys.stdout.write(decoder.decode(b"", final=True))
                 sys.stdout.flush()
 
+    def copy() -> None:
+        try:
+            drain()
+        except Exception as error:
+            # A dead reader otherwise lets a clean subprocess pass without logs.
+            log.error = f"{type(error).__name__}: {error}"
+            stop_process_tree(proc)
+
     log.reader = threading.Thread(target=copy, daemon=True)
     log.reader.start()
     _LOGS[proc] = log
@@ -101,10 +110,19 @@ def excerpt(proc: subprocess.Popen[str]) -> str:
     log = _LOGS[proc]
     if log.reader is not None:
         log.reader.join(5)
-    with log.path.open("rb") as output:
-        output.seek(max(0, log.path.stat().st_size - EXCERPT_BYTES))
-        tail = output.read(EXCERPT_BYTES).decode("utf-8", errors="replace")
-    return f"[log] {log.path}\n" + tail
+    tail = ""
+    read_error = None
+    try:
+        with log.path.open("rb") as output:
+            output.seek(max(0, log.path.stat().st_size - EXCERPT_BYTES))
+            tail = output.read(EXCERPT_BYTES).decode("utf-8", errors="replace")
+    except OSError as error:
+        read_error = f"{type(error).__name__}: {error}"
+        log.error = log.error or read_error
+    diagnostic = f"\n[log error] {log.error}\n" if log.error else ""
+    if read_error and read_error != log.error:
+        diagnostic += f"[log error] {read_error}\n"
+    return f"[log] {log.path}\n" + tail + diagnostic
 
 
 def stop_process_tree(proc: subprocess.Popen[str] | subprocess.Popen[bytes]) -> None:
@@ -159,13 +177,22 @@ def wait_with_heartbeat(
     deadline = start + limit
     try:
         while True:
-            remaining = deadline - time.monotonic()
+            # Parent exit and output drain share one heartbeat interval.
+            interval_end = min(deadline, time.monotonic() + heartbeat)
             try:
-                wait = max(0.0, min(heartbeat, remaining))
+                wait = max(0.0, interval_end - time.monotonic())
                 if proc in _LOGS:
                     proc.wait(timeout=wait)
+                    log = _LOGS[proc]
+                    if log.reader is not None:
+                        # An exited leader's worker can still hold stdout open;
+                        # the 0.2s regression otherwise reports success at 1.1s.
+                        wait = max(0.0, interval_end - time.monotonic())
+                        log.reader.join(wait)
+                        if log.reader.is_alive():
+                            raise subprocess.TimeoutExpired(proc.args, wait)
                     output = excerpt(proc)
-                    return output, 125 if _LOGS[proc].overflow else proc.returncode
+                    return output, 125 if log.overflow or log.error else proc.returncode
                 output, _ = proc.communicate(timeout=wait)
                 return output or "", proc.returncode
             except subprocess.TimeoutExpired:

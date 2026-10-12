@@ -51,6 +51,11 @@ _MEMO_TYPES = (tuple, frozenset, Fraction)
 
 def artifact_hash(program: esolangs.Program) -> str:
     """Hash UTF-8 text or dimensioned RGB rows without PNG encoder variation."""
+    if isinstance(program, esolangs.CompressedText):
+        digest = hashlib.sha256(b"text\0")
+        for chunk in program.chunks():
+            digest.update(chunk.encode("utf-8"))
+        return digest.hexdigest()
     if isinstance(program, str):
         payload = b"text\0" + program.encode("utf-8")
     else:
@@ -127,7 +132,7 @@ def _bits(row: int, inputs: int) -> list[int]:
 
 
 def _source_size(program: esolangs.Program) -> int:
-    if isinstance(program, str):
+    if isinstance(program, (str, esolangs.CompressedText)):
         return len(program)
     return sum(len(row) for row in program.rows)
 
@@ -506,7 +511,10 @@ def _measure(
         "inputs": len(table).bit_length() - 1,
         "source_kind": facts["source_kind"],
         "source_units": _source_size(program),
-        "source_utf8_bits": 8 * len(program.encode("utf-8"))
+        "source_utf8_bits": 8
+        * sum(len(chunk.encode("utf-8")) for chunk in program.chunks())
+        if isinstance(program, esolangs.CompressedText)
+        else 8 * len(program.encode("utf-8"))
         if isinstance(program, str)
         else None,
         "generation_ns_best": min(timings),

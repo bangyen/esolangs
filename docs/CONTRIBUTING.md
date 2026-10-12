@@ -39,7 +39,7 @@ answer convention, or input interface:
 These are generator tests. A language whose specification precludes a
 generator qualifies only through the fame threshold under Curation in
 [limitations](limitations.md). Such languages are interpreter-only, marked
-`int` by `esolangs list --details`; Deadfish, HQ9+, Nope. and Unary qualify.
+`int` by `esolangs list --details`; Deadfish, HQ9+ and Nope. qualify.
 Curation also defines removal independently of admission. Generator audit
 axes never remove a language; a stalled row moves to the
 [roadmap](roadmap.md#parked)'s Parked section.
@@ -48,10 +48,11 @@ axes never remove a language; a stalled row moves to the
 
 | Path | Holds |
 | --- | --- |
-| `src/esolangs/interpreters/` | interpreter modules and `run(code, io)` |
-| `src/esolangs/tools/` | generators |
+| `src/esolangs/interpreters/` | shared runtime machinery |
+| `src/esolangs/tools/` | shared generator helpers |
+| `src/esolangs/languages/<id>/` | interpreter, generator, tests, fixtures and examples |
 | `src/esolangs/registry/` | the source of truth for public integration |
-| `tests/` | interpreter and generator coverage |
+| `tests/` | shared contracts, infrastructure and proof runners |
 
 The registry connects the API and CLI to generators and interpreters:
 
@@ -75,20 +76,22 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   whole-source or split-line input. A language with a generator declares
   its own `LANGUAGE = Language(...)` at the end of its generator module, and
   the registry collects those; only interpreter-only languages are listed
-  in `registry/_table.py`. `esolangs.tools`'s imports are generated from
-  the declarations (`scripts/generate_exports.py`, run by `generate.py docs`
+  in `registry/_table.py`. `esolangs.languages.generators`'s imports come from
+  the declarations (`scripts/docs/generate.py`, run by `generate.py docs`
   and by `check`).
-- Generators live in `src/esolangs/tools/`. Most return runnable source;
+- Interpreters and generators live in `src/esolangs/languages/<id>/`, each
+  as a module or package. Shared generator helpers live in `src/esolangs/tools/`.
+  Most generators return runnable source;
   input-embedding languages return a `$`-run template for `instantiate`.
   `encode_inputs` handles stdin conventions, and `read_answer` reads printed
   and state-dump answers through the contract; termination answers (halt or
   diverge) are read by the evaluation harness, which runs every row.
-- `run` loads the module from `src/esolangs/interpreters/` (grouped by
-  execution model) and calls its `run(code, io)`; `make_vm` exposes its
+- `run` loads `src/esolangs/languages/<id>/interpreter`
+  and calls its `run(code, io)`; `make_vm` exposes its
   step-capable machine to the debugger and the hang proofs.
-- `tests/interpreters/` and `tests/tools/` hold language suites and shared
-  contract checks; `scripts/` holds verification, mutation and
-  documentation tools.
+- Each language’s `tests/` holds its unit and integration suites, fixtures
+  and proofs; its `examples/` holds packaged programs. Shared contracts and
+  proof infrastructure live in `tests/`; `scripts/` holds development tools.
 
 ## Interpreter conventions
 
@@ -169,7 +172,7 @@ by size, breaking ties by steps. Bound the per-piece upside before choosing.
 1. `just new-language "Name" --category tape_based` (the matching category;
    `--interpreter-only` for a fame admission) writes the interpreter,
    generator and test stubs, and records the language as
-   `{ route = "unassessed" }` in `tests/fixtures/curation.toml`. Replace
+   `{ route = "unassessed" }` in `tests/support/fixtures/curation.toml`. Replace
    the placeholder semantics and tests.
 2. `just check-language "Name"` lists every integration step still missing,
    each with the file and entry to add: registry, exports, contract,
@@ -182,7 +185,7 @@ by size, breaking ties by steps. Bound the per-piece upside before choosing.
    word limits and fold measure, its formula rows, and bandit on its
    sources. It lists the generated files it refreshed.
    Optional: the wiki page's own examples, with their stated output, go in
-   `tests/fixtures/wiki_examples/<id>.toml` (schema in
+   `src/esolangs/languages/<id>/tests/fixtures/wiki_examples/<id>.toml` (schema in
    `tests/interpreters/test_published_programs.py`).
    To try a program that may loop, bound it:
    `esolangs.run("Name", program, stdin=..., max_steps=10_000)` or
@@ -203,11 +206,11 @@ by size, breaking ties by steps. Bound the per-piece upside before choosing.
    fails.
 
 To take a language out, `just remove-language "Name"` deletes what `check`
-asks for and every test file `tests/test_language_coupling.py` counts as
+asks for and every test file `tests/integration/api/test_language_coupling.py` counts as
 the language's own (committed or not), prunes the helper modules only it
 imported and the per-language code the shared generators and
 `wrap.py` no longer reference, drops its wiki fixtures, timing rows and
-prose entries, regenerates, lowers `tests/fixtures/coupling.toml`, and
+prose entries, regenerates, lowers `tests/support/fixtures/coupling.toml`, and
 lists the mentions left to edit by hand (display name and aliases, quoted
 ids, dotted module paths), each labelled with the edit it needs -- a
 runnable example, prose, or a comment. brainfuck is the reference language
@@ -217,16 +220,15 @@ shared tests, the examples and `scripts/docs/generate.py` spell out, so
 A language should live in its own files: its generator module's
 `LANGUAGE`, its interpreter, and its own test files. A fact another file
 keys by a language's name (a list of names in a shared test, a branch on
-an id) is coupling, and `tests/test_language_coupling.py` holds each
-file's count of them to `tests/fixtures/coupling.toml`, which only goes
+an id) is coupling, and `tests/integration/api/test_language_coupling.py` holds each
+file's count of them to `tests/support/fixtures/coupling.toml`, which only goes
 down. Put such a fact on `Language`, or the test in the language's own
-test file: `tests/interpreters/test_<id>.py` for its interpreter,
-`tests/tools/test_boolean_<gen>.py` for its generator, and
-`tests/languages/test_<id>.py` for it through the shared API, CLI, VM and
-debugger. A shared file states a language's own facts, never a second
+test file under `src/esolangs/languages/<id>/tests/`: `test_<id>.py` for
+its interpreter, `test_boolean_<id>.py` for its generator, and
+`test_integration_<id>.py` for its API, CLI, VM and debugger checks. A shared file states a language's own facts, never a second
 language's: an example or comparison that names another language (`as in
 X`, `unlike X`, `X's axis`) is coupling in prose too, and
-`tests/test_language_coupling.py` rejects it.
+`tests/integration/api/test_language_coupling.py` rejects it.
 
 ### The Boolean I/O contract
 
@@ -239,5 +241,5 @@ covers languages whose stdin packs bits into bytes (Boolfuck, Smu): each
 input is then the byte `'0'` (0x30) or `'1'` (0x31), whose low bit is the
 input's value, so a program that reads low bit first takes that bit and must
 read and drop the byte's other seven before the next input (see
-`src/esolangs/tools/smu.py`). `answer_mode` covers state-dump and
+`src/esolangs/languages/smu/generator.py`). `answer_mode` covers state-dump and
 termination answers.

@@ -58,6 +58,7 @@ sys.path.insert(0, str(_ROOT / "scripts"))
 from verify.process import write_text
 
 from esolangs._program import Program
+from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.raster import Raster
 from esolangs.registry import INTERPRETERS, LANGUAGES, example_stems
@@ -226,7 +227,7 @@ def _select(
         return langs, "shared interpreter machinery changed"
     if any(
         name.startswith("src/esolangs/")
-        and not name.startswith("src/esolangs/examples/")
+        and "/examples/" not in name
         and not (_ROOT / name).is_file()
         for name in changed
     ):
@@ -234,7 +235,8 @@ def _select(
     changed_examples = {
         pathlib.Path(name).stem
         for name in changed
-        if pathlib.Path(name).parent == pathlib.Path("src/esolangs/examples")
+        if name.startswith("src/esolangs/languages/")
+        and "/examples/" in name
         and pathlib.Path(name).suffix in {".txt", ".png"}
     }
     stems = example_stems()
@@ -379,12 +381,12 @@ def _examples_by_slug() -> dict[str, list[Program]]:
     interesting cases.
     """
     by_slug: dict[str, list[Program]] = {}
-    directory = _ROOT / "src" / "esolangs" / "examples"
+    directory = _ROOT / "src" / "esolangs" / "languages"
     for slug, stem in example_stems().items():
-        path = directory / f"{stem}.txt"
+        path = directory / slug / "examples" / f"{stem}.txt"
         if path.exists():
             by_slug.setdefault(slug, []).append(path.read_text())
-        image = directory / f"{stem}.png"
+        image = directory / slug / "examples" / f"{stem}.png"
         if image.exists():
             from esolangs.raster.scale import normalize
 
@@ -497,7 +499,13 @@ def _fingerprint(
         h.update(path.read_bytes())
         h.update(b"\0")
     for text in examples:
-        h.update(text.to_png() if isinstance(text, Raster) else text.encode())
+        h.update(
+            text.to_png()
+            if isinstance(text, Raster)
+            else text.to_gzip()
+            if isinstance(text, CompressedText)
+            else text.encode()
+        )
         h.update(b"\0")
     h.update(f"{_STEP_CAP}:{_LANG_TIMEOUT}".encode())
     return h.hexdigest()

@@ -85,7 +85,10 @@ def _judged(path: pathlib.Path, root: pathlib.Path, name: str) -> bool:
     """Whether ``name`` defined in ``path`` is one this check reports."""
     if name.startswith("__") and name.endswith("__"):
         return False
-    if root / "src" / "esolangs" / "tools" in path.parents:
+    if root / "src" / "esolangs" / "tools" in path.parents or (
+        root / "src" / "esolangs" / "languages" in path.parents
+        and ("generator" in path.parts or path.stem == "generator")
+    ):
         return True
     return name.startswith("_")
 
@@ -96,6 +99,7 @@ def dead_definitions(root: pathlib.Path) -> list[tuple[pathlib.Path, str, int]]:
         p: ast.parse(p.read_text(), filename=str(p))
         for d in ("src", "scripts", "checks")
         for p in sorted((root / d).rglob("*.py"))
+        if "tests" not in p.relative_to(root).parts
     }
     total: Counter[str] = Counter()
     for tree in trees.values():

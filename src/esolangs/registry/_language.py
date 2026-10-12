@@ -42,7 +42,7 @@ class Shape(StrEnum):
 
 @dataclass(frozen=True)
 class Example:
-    """How the committed AND example deviates from a plain reading program.
+    """How the committed example deviates from a plain reading program.
 
     ``pair`` or ``setters(template, n)`` makes it a template whose bits are
     embedded (``char`` marks the runs; empty means the shared one);
@@ -50,6 +50,8 @@ class Example:
     False where that output is junk around a halting answer.
     """
 
+    table: str = "0001"
+    bits: tuple[int, ...] = (0, 1)
     expected: str = "0"
     pair: tuple[str, str] | None = None
     setters: Callable[[str, int], Any] | None = None
@@ -79,6 +81,7 @@ class Language:
     #: Source that looks like a file path is still source.
     path_like_source: bool = False
     source_kind: SourceKind = SourceKind.TEXT
+    compressed_source: bool = False
     extra: str = ""
     # The Boolean generator, its limits, and how its programs read inputs
     # and give the answer (default: a 0/1 line per input, the bit printed).
@@ -111,12 +114,14 @@ class Language:
     underfed_raises: bool = False
     #: The error an empty program raises, when the spec rejects one.
     empty_program: str = ""
-    #: The committed AND example, where the default reader does not fit.
+    #: The committed example, where the default AND reader does not fit.
     example: Example = field(default_factory=Example)
     # Growth checks: linear rungs, a size ceiling, a layout switch's arities.
     scaling_rungs: tuple[int, ...] = (8, 10, 12)
     size_bound: Callable[[int], int] | None = None
     layout_switch: tuple[int, ...] = ()
+    #: Executable baseline controls when the default corpus exceeds a proved cap.
+    benchmark_tables: tuple[str, ...] = ()
     # Shared sweeps that run long for it: marked slow, or left to its tests.
     slow_scaling: bool = False
     slow_stepping: bool = False
@@ -128,6 +133,7 @@ class Language:
     fuzz_max_digits: int | None = None
     weekly_mutation: tuple[str, ...] = ()
     showcase: bool = False
+    category: str = "other"
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""

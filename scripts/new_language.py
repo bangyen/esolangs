@@ -8,14 +8,13 @@
 
 ``start`` writes the interpreter, generator and test stubs.  ``check`` lists
 every integration point the language still lacks, with the file and entry
-to add; ``tests/scripts/test_new_language.py`` runs it over the registry,
+to add; ``tests/tooling/scripts/test_new_language.py`` runs it over the registry,
 so the list cannot drift from what the suite enforces.  Once the list is
 empty it runs the seconds-long tests ``finish`` would otherwise fail late.
 ``bounds`` measures what the proof ledger's cells state.  ``finish``
 regenerates every committed artifact and runs the full ``verify.py`` gate.
 ``remove`` deletes what ``check`` asks for, regenerates, and lists the
-mentions left in prose for a hand edit.  The bare ``"Name" --category ...``
-form still means ``start``.
+mentions left in prose for a hand edit.
 """
 
 from __future__ import annotations
@@ -42,19 +41,16 @@ ROOT = Path(__file__).parents[1]
 # this runs as a script or is imported as ``scripts.new_language``.
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
-from remove_language import (  # noqa: E402
-    _tests_attr,
-    remove,
-)
+import remove_language as removal  # noqa: E402
 
-CATEGORIES = tuple(
-    sorted(
-        path.name
-        for path in (ROOT / "src/esolangs/interpreters").iterdir()
-        if path.is_dir() and (path / "__init__.py").exists()
-    )
+CATEGORIES = (
+    "grid_based",
+    "stack_based",
+    "queue_based",
+    "tape_based",
+    "register_based",
+    "other",
 )
-COMMANDS = ("start", "check", "finish", "remove", "bounds")
 
 
 def _slug(name: str) -> str:
@@ -107,7 +103,7 @@ def {slug}(truth_table: str) -> str:
 # example=Example(pair=PAIR, expected=...) for a template, or
 # Example(expected=...) when the 0,1 row's output is not a bare "0" (a
 # trailing newline, a dump).
-LANGUAGE = Language("{name}", "{category}.{slug}", boolean={slug})
+LANGUAGE = Language("{name}", "{slug}", category="{category}", boolean={slug})
 '''
 
 _GENERATOR_TEST = '''"""Tests for the {name} Boolean generator."""
@@ -138,14 +134,13 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     """Create and return the interpreter, generator and test stubs."""
     slug = _slug(name)
+    package = ROOT / "src/esolangs/languages" / slug
     files = {
-        ROOT / "src/esolangs/interpreters" / category / f"{slug}.py": (
-            _interpreter_stub(name)
-        ),
-        ROOT / "tests" / "interpreters" / f"test_{slug}.py": (
+        package / "interpreter.py": _interpreter_stub(name),
+        package / "tests" / f"test_{slug}.py": (
             f'"""Tests for the {name} interpreter."""\n\n'
             "import pytest\n\n"
-            f"from esolangs.interpreters.{category}.{slug} import run\n"
+            f"from esolangs.languages.{slug}.interpreter import run\n"
             "from esolangs.interpreters.io import ScriptedIO\n\n\n"
             '@pytest.mark.xfail(reason="placeholder: replace with the spec")\n'
             "def test_placeholder_increment_and_write() -> None:\n"
@@ -156,13 +151,26 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     }
     if generator:
         fields = {"name": name, "slug": slug, "category": category}
-        files[ROOT / "src" / "esolangs" / "tools" / f"{slug}.py"] = _GENERATOR.format(
+        files[package / "generator.py"] = _GENERATOR.format(**fields)
+        files[package / "tests" / f"test_boolean_{slug}.py"] = _GENERATOR_TEST.format(
             **fields
         )
-        files[ROOT / "tests" / "tools" / f"test_boolean_{slug}.py"] = (
-            _GENERATOR_TEST.format(**fields)
-        )
+    files[package / "tests/__init__.py"] = '"""Language-specific execution tests."""\n'
+    files[package / "__init__.py"] = '"""Language implementation modules."""\n'
+    namespace = package.parent / "__init__.py"
+    if not namespace.exists():
+        files[namespace] = '"""Language-owned interpreters and generators."""\n'
     collisions = [path for path in files if path.exists()]
+    collisions += [
+        path
+        for path in (
+            package.with_suffix(".py"),
+            ROOT / "src/esolangs/interpreters" / slug,
+            ROOT / "src/esolangs/tools" / slug,
+        )
+        if path.exists()
+    ]
+
     if collisions:
         joined = ", ".join(str(path.relative_to(ROOT)) for path in collisions)
         raise FileExistsError(f"refusing to overwrite {joined}")
@@ -175,7 +183,7 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
 
 def _seed_curation(name: str) -> None:
     """Record ``name`` as unassessed; ``finish`` asks for the real count."""
-    path = ROOT / "tests/fixtures/curation.toml"
+    path = ROOT / "tests/support/fixtures/curation.toml"
     if not path.exists() or name in tomllib.loads(path.read_text())["languages"]:
         return
     key = name if re.fullmatch(r"[A-Za-z0-9_-]+", name) else json.dumps(name)
@@ -205,15 +213,25 @@ class Gap:
 
 
 def _tests_module(module: str, attr: str) -> Container[str]:
-    value: Container[str] = _tests_attr(module, attr)
+    value: Container[str] = removal.tests_attr(module, attr)
     return value
 
 
 def _unregistered(name: str, slug: str) -> list[Gap]:
-    found = sorted((ROOT / "src/esolangs/interpreters").glob(f"*/{slug}.py"))
-    module = f"{found[0].parent.name}.{slug}" if found else f"<category>.{slug}"
-    generator = ROOT / f"src/esolangs/tools/{slug}.py"
-    if not generator.exists():
+    module = slug
+    package = ROOT / "src/esolangs/languages" / slug / "generator"
+    generator = next(
+        (
+            path
+            for path in (
+                package.with_suffix(".py"),
+                package / "__init__.py",
+            )
+            if path.exists()
+        ),
+        None,
+    )
+    if generator is None:
         return [
             Gap(
                 "src/esolangs/registry/_table.py",
@@ -245,23 +263,38 @@ def _registered_generator(name: str) -> bool:
 def _common_gaps(name: str, module: str) -> list[Gap]:
     """List the steps every language needs, generator or not."""
     gaps = []
-    base = ROOT / "src/esolangs/interpreters" / module.replace(".", "/")
+    base = ROOT / "src/esolangs/languages" / module / "interpreter"
     source = next(
-        (p for p in (base.with_suffix(".py"), base / "__init__.py") if p.exists()),
+        (
+            p
+            for p in (
+                base.with_suffix(".py"),
+                base / "__init__.py",
+            )
+            if p.exists()
+        ),
         None,
     )
     if source is None:
         gaps.append(Gap(f"{base.relative_to(ROOT)}.py", "write the interpreter"))
     elif PLACEHOLDER in source.read_text(encoding="utf-8"):
         gaps.append(Gap(str(source.relative_to(ROOT)), "write the docstring"))
-    needle = f"esolangs.interpreters.{module}"
+    needle = f"esolangs.languages.{module}.interpreter"
     tests = [
         path
-        for path in (ROOT / "tests").rglob("*.py")
+        for path in (
+            *((ROOT / "tests").rglob("*.py")),
+            *((base.parent / "tests").rglob("*.py")),
+        )
         if needle in path.read_text(encoding="utf-8")
     ]
     if not tests:
-        gaps.append(Gap("tests/interpreters/", f"add tests importing {needle}"))
+        gaps.append(
+            Gap(
+                f"src/esolangs/languages/{module}/tests/",
+                f"add tests importing {needle}",
+            )
+        )
     gaps.extend(
         Gap(str(path.relative_to(ROOT)), "replace the placeholder test")
         for path in tests
@@ -277,11 +310,13 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
                 "protocol and debugger tests step it",
             )
         )
-    curation = tomllib.loads((ROOT / "tests/fixtures/curation.toml").read_text())
+    curation = tomllib.loads(
+        (ROOT / "tests/support/fixtures/curation.toml").read_text()
+    )
     if name not in curation["languages"]:
         gaps.append(
             Gap(
-                "tests/fixtures/curation.toml",
+                "tests/support/fixtures/curation.toml",
                 f'add "{name}" = {{ backlinks = <wiki "What links here" count>, '
                 'route = "fame" (60+) | "first implementation" } under '
                 "[languages] (see docs/limitations.md#curation); offline, "
@@ -293,38 +328,42 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
 
 def _generator_gaps(lang: Language) -> list[Gap]:
     """List the steps a language with a Boolean generator needs."""
-    from esolangs import tools
+    from esolangs.languages import generators
     from esolangs.tools.wrap import takes_width
 
     assert lang.boolean is not None
     gen = lang.boolean.__name__
+    module_rel = lang.boolean.__module__.replace(".", "/")
+    source = ROOT / f"src/{module_rel}.py"
+    if not source.exists():
+        source = ROOT / f"src/{module_rel}/__init__.py"
+    source_rel = str(source.relative_to(ROOT))
     gaps = []
-    source = ROOT / f"src/esolangs/tools/{gen}.py"
     if source.exists() and PLACEHOLDER in source.read_text(encoding="utf-8"):
-        gaps.append(Gap(str(source.relative_to(ROOT)), "write the docstring"))
+        gaps.append(Gap(source_rel, "write the docstring"))
     if source.exists() and "raise NotImplementedError(" in source.read_text(
         encoding="utf-8"
     ):
         gaps.append(
             Gap(
-                str(source.relative_to(ROOT)),
+                source_rel,
                 "implement the generator; tests/support/samples.py derives the "
                 "language's VM sample from its one-input program",
             )
         )
-    if gen not in tools.__all__:
+    if gen not in generators.__all__:
         gaps.append(
             Gap(
-                "src/esolangs/tools/__init__.py",
-                f'add `from esolangs.tools.{gen} import {gen}` and "{gen}" to __all__',
+                "src/esolangs/languages/generators.py",
+                "declare the generator's LANGUAGE and run "
+                "`python scripts/docs/generate.py docs` to regenerate the exports",
             )
         )
     width = takes_width(lang.boolean)
     if not width and lang.wrap is None and not lang.no_wrap:
-        gen_module = lang.boolean.__module__.replace(".", "/")
         gaps.append(
             Gap(
-                f"src/{gen_module}.py",
+                source_rel,
                 "add wrap=wrap_chars (from esolangs.tools.wrap, or a wrapper "
                 "its syntax needs, keeping a header such as `W,H:` whole) to "
                 "its LANGUAGE, take a width parameter, or say why a break "
@@ -332,10 +371,9 @@ def _generator_gaps(lang: Language) -> list[Gap]:
             )
         )
     if width and lang.balance is None:
-        gen_module = lang.boolean.__module__.replace(".", "/")
         gaps.append(
             Gap(
-                f"src/{gen_module}.py",
+                source_rel,
                 "add balance=_balance to its LANGUAGE: a "
                 "`_balance(table, default)` returning the squarest of its "
                 "width regimes (see tools/arrowqueue.py)",
@@ -359,8 +397,10 @@ def _ledger_gaps(name: str) -> list[Gap]:
                 'each cell is "<class>: <clause>", e.g. "linear: ..." or '
                 '"poly n: worst 7n + 3 commands ..."; '
                 "a clause after `worst`/`at most` takes at most "
-                f"{_tests_attr('proofs._ledger', 'FORMULA_CLAUSE_WORDS')} words, "
-                f"any other {_tests_attr('proofs._ledger', 'LINEAR_CLAUSE_WORDS')}; "
+                f"{removal.tests_attr('proofs._ledger', 'FORMULA_CLAUSE_WORDS')}"
+                " words, "
+                "any other "
+                f"{removal.tests_attr('proofs._ledger', 'LINEAR_CLAUSE_WORDS')}; "
                 f"`python scripts/new_language.py bounds {name!r}` measures the "
                 "worst steps and bits to state",
             )
@@ -410,20 +450,17 @@ def quick_tests(name: str) -> list[str]:
     from esolangs.registry._language import Shape
 
     lang = LANGUAGES[name]
-    gen = lang.boolean.__name__ if lang.boolean else lang.id
-    nodes = [
-        path
-        for path in (
-            f"tests/interpreters/test_{lang.id}.py",
-            f"tests/tools/test_boolean_{gen}.py",
-            f"tests/languages/test_{lang.id}.py",
+    nodes: list[str] = []
+    nodes += [
+        path.relative_to(ROOT).as_posix()
+        for path in sorted(
+            (ROOT / "src/esolangs/languages" / lang.id / "tests").rglob("test_*.py")
         )
-        if (ROOT / path).exists()
     ]
     nodes += [
         "tests/generators/test_interpreter_conventions.py"
         "::test_interpreter_docstrings_follow_the_template",
-        f"tests/fuzz/test_interpreters_robustness.py"
+        f"tests/interpreters/fuzz/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
     ]
     if lang.boolean is None:
@@ -432,15 +469,19 @@ def quick_tests(name: str) -> list[str]:
     if lang.shape is not Shape.LOOKUP:
         # A tree generator must fold an input the table ignores.
         nodes.append(
-            "tests/tools/test_boolean_contract.py"
+            "tests/generators/test_boolean_contract.py"
             f"::test_generator_shape_is_what_the_catalogue_says[{name}]"
         )
     stem = example_stems().get(lang.id, "")
     if stem:
-        nodes.append(f"tests/scripts/test_examples.py::test_boolean_example[{stem}]")
+        nodes.append(
+            f"tests/tooling/scripts/test_examples.py::test_boolean_example[{stem}]"
+        )
     if (
         stem
-        in _tests_attr("interpreters.test_input_convention", "_reading_languages")()
+        in removal.tests_attr(
+            "interpreters.test_input_convention", "_reading_languages"
+        )()
     ):
         nodes.append(
             "tests/interpreters/test_input_convention.py"
@@ -449,7 +490,9 @@ def quick_tests(name: str) -> list[str]:
     arities = [
         min(formulas[name][2])
         for table in ("execution", "workspace")
-        for formulas in (_tests_attr(f"proofs.test_{table}_formulas", "FORMULAS"),)
+        for formulas in (
+            removal.tests_attr(f"proofs.test_{table}_formulas", "FORMULAS"),
+        )
         if name in formulas
     ]
     if arities:
@@ -477,12 +520,12 @@ def sources(name: str) -> list[str]:
     from esolangs.registry import LANGUAGES
 
     lang = LANGUAGES[name]
-    modules = [f"esolangs.interpreters.{lang.interpreter}"] if lang.interpreter else []
+    modules = [f"esolangs.languages.{lang.id}.interpreter"] if lang.interpreter else []
     if lang.boolean is not None:
         modules.append(lang.boolean.__module__)
     return [
         str(path.relative_to(ROOT))
-        for module in modules
+        for module in dict.fromkeys(modules)
         for base in (ROOT / "src" / module.replace(".", "/"),)
         for path in (base.with_suffix(".py"), base)
         if path.exists()
@@ -499,8 +542,8 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     """
     import esolangs
 
-    tables = _tests_attr("proofs.test_execution_formulas", "_tables")
-    measure = _tests_attr("proofs.test_execution_formulas", "_measure")
+    tables = removal.tests_attr("proofs.test_execution_formulas", "_tables")
+    measure = removal.tests_attr("proofs.test_execution_formulas", "_measure")
     rows = []
     for n in arities:
         worst = {t: measure(name, t, written=True) for t in tables(name, n)}
@@ -528,7 +571,7 @@ def finish(name: str) -> int:
 
 def _curation(name: str) -> dict[str, Any]:
     """Return ``name``'s row in the curation fixture, or {}."""
-    text = (ROOT / "tests/fixtures/curation.toml").read_text(encoding="utf-8")
+    text = (ROOT / "tests/support/fixtures/curation.toml").read_text(encoding="utf-8")
     return dict(tomllib.loads(text)["languages"].get(name, {}))
 
 
@@ -586,8 +629,6 @@ def _report(name: str, gaps: list[Gap]) -> None:
 def main(argv: list[str] | None = None) -> int:
     """Dispatch ``start``, ``check``, ``finish`` or ``remove``."""
     argv = list(sys.argv[1:] if argv is None else argv)
-    if not argv or argv[0] not in COMMANDS:
-        argv.insert(0, "start")
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
     start = sub.add_parser("start", help="write the stubs")
@@ -668,7 +709,7 @@ def main(argv: list[str] | None = None) -> int:
         return finish(args.name)
     if args.command == "remove":
         try:
-            leftover = remove(args.name)
+            leftover = removal.remove(args.name)
         except ValueError as exc:
             parser.error(str(exc))
         print(f"removed {args.name}; {len(leftover)} mention(s) left to edit by hand")

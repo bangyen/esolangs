@@ -1,7 +1,6 @@
 """``new_language.py remove``: delete a language and every entry naming it.
 
-Split from ``new_language.py``, which re-exports what its callers use.  The
-inverse of ``start``/``check``/``finish``: it deletes what ``check`` asks
+The inverse of ``start``/``check``/``finish``: it deletes what ``check`` asks
 for, cuts the language's entries out of the shared tables it knows, keeps a
 module the remaining source still imports (minus its ``LANGUAGE``),
 regenerates, and lists the mentions left in prose.
@@ -28,7 +27,7 @@ ROOT = Path(__file__).parents[1]
 _TREES = ("tests", "scripts")
 
 
-def _tests_attr(module: str, attr: str) -> Any:
+def tests_attr(module: str, attr: str) -> Any:
     """Read ``attr`` from ``tests.<module>``, which needs the repo on the path."""
     sys.path.insert(0, str(ROOT))
     try:
@@ -360,46 +359,17 @@ def _drop_bullets(path: Path, name: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def _owned_test_files(lang: Language) -> list[Path]:
-    """Return the test files the coupling guard counts as ``lang``'s own.
-
-    One rule for both: a file the guard lets name the language goes with it.
-    A prefix that does not end a path segment must be followed by ``.``,
-    ``/`` or ``_``, so stem ``line`` does not take ``lines.toml``.  A file
-    another language claims by a longer prefix is that one's: Piet does not
-    take ``test_boolean_piet_plus_plus.py``.
-    """
+def _owned_scripts(lang: Language) -> list[Path]:
+    """Return profiling and verification scripts owned by a canonical ID."""
     from esolangs.registry import LANGUAGES
 
-    own = _tests_attr("api.test_language_coupling", "_own")
-    files = subprocess.run(
-        ["git", "ls-files", "--cached", "--others", "--exclude-standard", *_TREES],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.split()
-
-    def claim(prefixes: tuple[str, ...], path: str) -> int:
-        """Return the length of the longest prefix claiming ``path``, or 0."""
-        return max(
-            (
-                len(prefix)
-                for prefix in prefixes
-                if prefix.startswith(("tests/", "scripts/"))
-                and path.startswith(prefix)
-                and (prefix.endswith(("/", "_", ".py")) or path[len(prefix)] in "./_")
-            ),
-            default=0,
-        )
-
-    mine = own(lang)[1]
-    others = [own(other)[1] for other in LANGUAGES.values() if other is not lang]
+    ids = {other.id for other in LANGUAGES.values()}
     return [
-        ROOT / path
-        for path in files
-        if (length := claim(mine, path))
-        and all(claim(prefixes, path) <= length for prefixes in others)
+        path
+        for path in (ROOT / "scripts").rglob("*.py")
+        for prefix in ("profile_", "verify_")
+        if path.stem.startswith(prefix)
+        and _owner_id(path.stem.removeprefix(prefix), ids) == lang.id
     ]
 
 
@@ -420,14 +390,36 @@ def _module_of(path: Path) -> str:
 
 
 def _declaring_module(lang: Language) -> str | None:
-    """Return the ``esolangs.tools`` module whose ``LANGUAGE`` is ``lang``."""
+    """Return the implementation module declaring ``lang``."""
+    if lang.boolean is not None:
+        name = lang.boolean.__module__
+        if getattr(sys.modules.get(name), "LANGUAGE", None) is lang:
+            return name
     for module_name, module in sorted(sys.modules.items()):
         if (
-            module_name.startswith("esolangs.tools.")
+            module_name.startswith("esolangs.languages.")
             and getattr(module, "LANGUAGE", None) is lang
         ):
             return module_name
     return None
+
+
+def _owned_module_paths(lang: Language) -> tuple[set[str], set[Path]]:
+    """Return owned implementation modules, keeping leaves separate."""
+    modules = (
+        {f"esolangs.languages.{lang.id}.interpreter"} if lang.interpreter else set()
+    )
+    declaring = _declaring_module(lang)
+    if declaring:
+        modules.add(declaring)
+    package = ROOT / "src/esolangs/languages" / lang.id
+    if package.is_dir():
+        modules.add(f"esolangs.languages.{lang.id}.interpreter")
+    paths = {path for module in modules if (path := _module_path(module))}
+    init = package / "__init__.py"
+    if init.is_file():
+        paths.add(init)
+    return modules, paths
 
 
 def _python_files() -> list[str]:
@@ -468,6 +460,13 @@ def _within(path: str, doomed: set[Path]) -> bool:
     return any(full == d or d in full.parents for d in doomed)
 
 
+def _is_test(path: str) -> bool:
+    """Whether a repo-relative file belongs to either test tree."""
+    return path.startswith("tests/") or (
+        path.startswith("src/esolangs/languages/") and "/tests/" in path
+    )
+
+
 def _orphans(doomed: set[Path], users: dict[str, set[str]]) -> set[Path]:
     """Return the helper modules only ``doomed`` files import.
 
@@ -483,6 +482,7 @@ def _orphans(doomed: set[Path], users: dict[str, set[str]]) -> set[Path]:
         path
         for path in (ROOT / "src/esolangs").rglob("*.py")
         if not path.name.startswith("__")
+        and not _is_test(path.relative_to(ROOT).as_posix())
         and not any(path == d or d in path.parents for d in doomed)
         and users.get(_module_of(path))
     }
@@ -545,8 +545,8 @@ def _dead_test_files(
     """Return test files that import a gone module and nothing that survives.
 
     The owned prefixes name a language's module stems, not its submodules, so
-    ``tests/tools/test_circuit_free_columns.py`` (importing
-    ``esolangs.tools.circuit_diagram.free_columns``) is caught here instead;
+    ``tests/generators/test_circuit_free_columns.py`` (importing
+    ``esolangs.languages.circuit_diagram.generator.free_columns``) is caught here;
     it cannot run once the module is gone.
     """
     candidates = {
@@ -555,7 +555,7 @@ def _dead_test_files(
         for gone in gone_modules
         if imported == gone or imported.startswith(gone + ".")
         for user in importers
-        if user.startswith("tests/") and not _within(user, doomed)
+        if _is_test(user) and not _within(user, doomed)
     }
     dead: set[Path] = set()
     for path in candidates:
@@ -798,14 +798,13 @@ def _drop_from_series(path: Path, name: str, tail: str) -> None:
 #: coupling guard does not count them for the same reason.
 _EDITED = (
     "src/esolangs/registry/_table.py",
-    "src/esolangs/tools/__init__.py",
+    "src/esolangs/languages/generators.py",
     "tests/support/samples.py",
-    "tests/tools/boolean_runners.py",
-    "tests/tools/test_wrap.py",
+    "tests/generators/test_wrap.py",
     "tests/proofs/test_execution_formulas.py",
     "tests/proofs/test_workspace_formulas.py",
     "tests/proofs/test_schemes.py",
-    "tests/api/test_interpreter_only_admissions.py",
+    "tests/integration/api/test_interpreter_only_admissions.py",
     "tests/proofs/test_bands.py",
 )
 
@@ -819,7 +818,7 @@ def _mention_edit(mention: str) -> str:
     and a comment or prose line needs a sentence a human stands behind.
     """
     path = mention.split(":", 1)[0]
-    if path == "src/esolangs/cli_help.py":
+    if path == "src/esolangs/cli/help.py":
         return "example: choose a replacement language"
     if path.startswith("docs/") or path.endswith(".md"):
         return "prose: reword or drop the mention"
@@ -830,7 +829,7 @@ def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
 
-    reference = _tests_attr("api.test_language_coupling", "REFERENCE")
+    reference = tests_attr("integration.api.test_language_coupling", "REFERENCE")
     if name == reference:
         raise ValueError(
             f"{reference} is the reference language: shared tests, the example "
@@ -840,29 +839,16 @@ def remove(name: str) -> list[str]:
     lang = LANGUAGES[name]
     module = lang.interpreter or ""
     gen = lang.boolean.__name__ if lang.boolean else lang.id
-    declaring = _declaring_module(lang)
     stem = example_stems().get(lang.id, "")
-    own_modules = {f"esolangs.interpreters.{module}"} if module else set()
-    if declaring:
-        own_modules.add(declaring)
-    module_paths = {p for m in own_modules if (p := _module_path(m))}
+    declaring = _declaring_module(lang)
+    own_modules, module_paths = _owned_module_paths(lang)
     files = _python_files()
     users = _imported([f for f in files if f not in _EDITED])
-    ids = {other.id for other in LANGUAGES.values()}
-    # Every wiki fixture whose name begins with this id and no longer one:
-    # ``slashes_*.txt`` go with ``///``, not ``piet_plus_plus.toml`` with Piet.
-    wiki = [
-        path
-        for path in (ROOT / "tests/fixtures/wiki_examples").iterdir()
-        if path.is_file() and _owner_id(path.name, ids) == lang.id
-    ]
     doomed: set[Path] = {
         *module_paths,
-        ROOT / f"tests/interpreters/test_{lang.id}.py",
-        ROOT / f"tests/tools/test_boolean_{gen}.py",
-        *wiki,
-        *(ROOT / "src/esolangs/examples").glob(f"{stem}.*" if stem else "-"),
-        *_owned_test_files(lang),
+        ROOT / "src/esolangs/languages" / lang.id / "tests",
+        ROOT / "src/esolangs/languages" / lang.id / "examples",
+        *_owned_scripts(lang),
     }
     doomed |= _dead_test_files(doomed, _gone_modules(doomed), users)
     doomed |= _orphans(doomed, users)
@@ -876,7 +862,9 @@ def remove(name: str) -> list[str]:
             if path.is_relative_to(ROOT / "src")
             and path.suffix != ".txt"
             and any(
-                user.startswith("src/") and not _within(user, doomed)
+                user.startswith("src/")
+                and not _is_test(user)
+                and not _within(user, doomed)
                 for imported, importers in users.items()
                 if imported == _module_of(path)
                 or imported.startswith(_module_of(path) + ".")
@@ -894,7 +882,9 @@ def remove(name: str) -> list[str]:
                     if imported == _module_of(path)
                     or imported.startswith(_module_of(path) + ".")
                     for user in found
-                    if user.startswith("src/") and not _within(user, doomed | {path})
+                    if user.startswith("src/")
+                    and not _is_test(user)
+                    and not _within(user, doomed | {path})
                 }
             )
             shown = path.relative_to(ROOT)
@@ -922,7 +912,7 @@ def remove(name: str) -> list[str]:
         if declaring and path == _module_path(declaring):
             _drop_language_statement(path / "__init__.py" if path.is_dir() else path)
     keys = {name, module, lang.id, gen, stem} - {""}
-    # ``Path("tests/interpreters/test_inject.py")`` in a support list.
+    # ``Path("src/esolangs/languages/inject/tests/test_inject.py")`` in a support list.
     paths = {str(p.relative_to(ROOT)) for p in doomed}
     # A deleted test module too: ``tests/support/samples.py`` borrows Inject's program.
     gone_modules = _gone_modules(doomed)
@@ -959,10 +949,10 @@ def remove(name: str) -> list[str]:
             ]
         return node
 
-    _drop_json(ROOT / "tests/fixtures/generator_sizes.json", prune)
+    _drop_json(ROOT / "tests/support/fixtures/generator_sizes.json", prune)
     # Timing snapshots keep one entry per pytest node ID; drop the removed
     # language's parametrized rows and its own deleted test files.
-    timings = ROOT / "tests/fixtures/slow_durations.json"
+    timings = ROOT / "tests/support/fixtures/slow_durations.json"
 
     def drop_timings(node: object) -> object:
         if not isinstance(node, dict):
@@ -977,16 +967,16 @@ def remove(name: str) -> list[str]:
     if timings.is_file():
         _drop_json(timings, drop_timings)
     for relative in (
-        "tests/fixtures/curation.toml",
+        "tests/support/fixtures/curation.toml",
         "src/esolangs/proof_status.toml",
-        "tests/fixtures/sharing_catalogue.toml",
-        "tests/fixtures/canonical_folding_catalogue.toml",
+        "tests/support/fixtures/sharing_catalogue.toml",
+        "tests/support/fixtures/canonical_folding_catalogue.toml",
     ):
         _drop_toml(ROOT / relative, name)
     for relative in ("docs/limitations.md", "docs/proofs/index.md"):
         _drop_bullets(ROOT / relative, name)
     _drop_from_series(ROOT / "docs/proofs/index.md", name, "keeps? no tree route")
-    tuning = ROOT / "tests/fixtures/deep_arities.toml"
+    tuning = ROOT / "tests/support/fixtures/deep_arities.toml"
     tuning.write_text(
         "".join(
             line
@@ -1040,7 +1030,7 @@ def remove(name: str) -> list[str]:
         [
             sys.executable,
             "-c",
-            "from tests.api.test_language_coupling import lower_recorded; "
+            "from tests.integration.api.test_language_coupling import lower_recorded; "
             "lower_recorded()",
         ],
         cwd=ROOT,
@@ -1078,7 +1068,7 @@ def remove(name: str) -> list[str]:
         for quote in ('"', "'", "`")
     ]
     if module:
-        patterns.append(f"esolangs.interpreters.{module}")
+        patterns.append(f"esolangs.languages.{module}.interpreter")
     if declaring:
         patterns.append(declaring)
     patterns = list(dict.fromkeys(patterns))
@@ -1100,6 +1090,6 @@ def remove(name: str) -> list[str]:
     mentions = [
         f"[{_mention_edit(line)}] {line}"
         for line in grep.stdout.splitlines()
-        if not line.startswith(("scripts/remove_language.py:", "CHANGELOG.md:"))
+        if not line.startswith(("scripts/remove_language.py:", "docs/CHANGELOG.md:"))
     ]
     return kept + survived + broken + mentions

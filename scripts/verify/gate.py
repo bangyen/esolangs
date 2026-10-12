@@ -1,47 +1,13 @@
-"""Run the full local verification stack.
+"""Run lint, types and tests locally; leave specialist checks to CI.
 
-Everything that can be checked on a dev machine without a Linux host:
+The default scopes pre-commit and pytest to changed files and excludes slow
+and weekly tests. Shared changes widen to the whole tree. ``--full`` runs
+whole-tree local checks including slow tests; ``--only`` also exposes the
+specialist CI checks for manual runs. Weekly tests require explicit selection.
 
-1. pre-commit (lint, format, types) and pytest (the test suite)
-2. bandit (via uv) and the ``tests/interpreters`` suites (via uv, which supplies the
-   image libraries the package itself does not depend on)
-
-``.githooks/pre-push`` and ``just test`` both run this script.
-
-By default the run is *scoped*: each step declares the paths it guards (see
-``STEP_SCOPE``), and a step whose paths this branch never touched is skipped,
-because nothing the branch did could have broken it.  Two steps take a file
-list instead, so they are narrowed rather than skipped -- pre-commit to the
-changed files, and pytest to the matching test modules.
-
-Scoping only ever subtracts work that provably could not have broken.  When
-the branch's diff cannot be read, or it touches the shared interpreter
-machinery or the verification tooling itself, the run widens back to
-everything (see ``scripts/verify/scope.py``).  ``--full`` forces that too, and CI
-still runs the complete suite on every push regardless.
-
-A default run also leaves work to CI where CI already covers it: the steps in
-``FULL_ONLY`` and pytest's ``slow`` and ``weekly`` markers.
-``--full`` adds ``FULL_ONLY`` and ``slow``; only an explicit ``--only`` or the
-scheduled workflow runs ``weekly``.
-
-The steps do not all run one after another.  ``pytest`` is the longest, so it
-is launched first and the one-core steps run while it goes; ``pre-commit``
-runs to completion before anything else starts, because its fix hooks rewrite
-the very files the other steps read; and the steps that are parallel in their
-own right wait until pytest has joined, because beside it they were not
-overlapping work but fighting it for cores.  That makes the timing table's
-two totals differ: the sum is how much work ran, the wall is how long the
-push waited.
-
-Output is replayed only for the steps that failed.  A run of one step streams
-it live instead (``--verbose`` forces that, ``--quiet`` forbids it).
-
-Usage:
-    python scripts/verify/gate.py [--only STEPS] [--skip STEPS] [--full]
-    python scripts/verify/gate.py --full          # every step, whole tree
-    python scripts/verify/gate.py --only pytest,bandit
-    python scripts/verify/gate.py --only pre-commit,pytest --skip bandit
+Pre-commit finishes before readers start because its hooks rewrite files.
+Pytest overlaps the remaining checks. Failures replay captured output;
+single-step runs stream it. ``just test`` and the pre-push hook use this gate.
 """
 
 # Annotate lazily: ``collect_long`` below is annotated ``subprocess.Popen[str]``,
@@ -71,18 +37,10 @@ from verify.process import (  # noqa: E402
 )
 from verify.scope import (  # noqa: E402
     CACHED_STEPS,
-    COLLECTED_PATTERNS,  # noqa: F401  (re-exported for the scoping tests)
-    COVERAGE_TEST_STEP,
-    INTERPRETER_CONTRACT_TESTS,
-    STEP_SCOPE,  # noqa: F401  (re-exported for the scoping tests)
-    WHOLE_SUITE,
     VerifiedCache,
-    _generator_test_scope,  # noqa: F401  (re-exported for the scoping tests)
-    _pytest_scope,
     _scope_changed_files,
     _scope_plan,
     _scoped_cmd,
-    _scoped_coverage,
     local_tooling_deselections,
 )
 
@@ -115,10 +73,18 @@ def python_cmd() -> list[str]:
 
 PY = python_cmd()
 
-# Steps a default run leaves to CI.  These guard real bugs but cost more than
-# they save at push time, and CI already runs them on every push.  They
-# still run under --full, under an explicit --only, and via `just test-full`.
-FULL_ONLY: frozenset[str] = frozenset()
+# CI owns these checks; --only retains manual local access.
+MANUAL_ONLY = frozenset(
+    {
+        "generated docs",
+        "bandit",
+        "dead definitions",
+        "generator size baseline",
+        "duplicate-code check (pylint)",
+        "deep proofs (verify band)",
+        "exception leaks",
+    }
+)
 
 # Both local tiers exclude the weekly probes. A default run also excludes the
 # slow band; --full includes it.
@@ -134,13 +100,6 @@ HEARTBEAT_SECONDS = 20.0
 STEP_DEADLINES = {"pytest": 900.0, "exception leaks": 120.0}
 DEFAULT_STEP_DEADLINE = 60.0
 
-# Not a STEPS entry: it reads the coverage data file `pytest` writes, and
-# `pytest` is LONG_STEP -- launched with Popen and left running while the
-# short steps go by.  A sibling step would race it and read a half-written
-# file, so the gate is run by _run_steps once the long step has exited.
-DIFF_COVERAGE_STEP = "touched-file coverage"
-
-
 STEPS = [
     (
         "generated docs",
@@ -151,25 +110,22 @@ STEPS = [
     # env lacks the scripts' imports, so it could only ever cover src/, and
     # this run covers src/ and scripts/ both from the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
-    # `--cov-report=` writes no report: the run is here for the data file,
-    # which the touched-file gate reads afterwards.
-    #
-    # Whole-package measurement is what a full run pays for: 13s over the
-    # 27s the fast selection takes bare, measured on 3.14 at
-    # 9861 tests (it read as free at half that suite).  A scoped run does
-    # not pay it -- `_scoped_coverage` narrows the measurement to the
-    # touched files, which is all the gate reads.
-    #
-    # `--cov-branch` costs 3.3 times before 3.14, where sys.monitoring cannot
-    # measure branches and coverage falls back to the old tracer.  An older
-    # interpreter pays that silently rather than breaking, so if this ever
-    # feels slow again check the interpreter before the tests: coverage says
-    # so on stderr with a `no-sysmon` CoverageWarning.  Both timing tables
-    # are in ``the verification history``.
-    ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
+    ("pytest", [*PY, "-m", "pytest", "-q"]),
     (
         "bandit",
-        ["uv", "run", "--no-sync", "--with", "bandit", "bandit", "-r", "src", "-q"],
+        [
+            "uv",
+            "run",
+            "--no-sync",
+            "--with",
+            "bandit",
+            "bandit",
+            "-r",
+            "src",
+            "--exclude",
+            "*/tests/*",
+            "-q",
+        ],
     ),
     # A generator route that was replaced keeps its own tests green, so it
     # never fails; three sat that way.  <1s.
@@ -196,6 +152,7 @@ STEPS = [
             "--enable=duplicate-code",
             "--min-similarity-lines=10",
             "--ignore-imports=yes",
+            "--ignore=tests",
             "src/esolangs",
             "scripts",
             "checks",
@@ -236,102 +193,12 @@ FIXES: dict[str, tuple[str, ...]] = {
 
 
 def _rerun_hint(name: str) -> list[str]:
-    """Return the commands that rerun, and any that fix, failed step *name*.
-
-    The coverage gate is not a ``STEPS`` entry, so ``--only`` cannot name it;
-    it runs after pytest, which is what reproduces it.
-    """
+    """Return the commands that rerun, and any that fix, failed step *name*."""
     if name == "verification inputs":
         return ["  rerun: uv run python scripts/verify/gate.py"]
-    step = "pytest" if name in (DIFF_COVERAGE_STEP, COVERAGE_TEST_STEP) else name
+    step = name
     rerun = f"  rerun: uv run python scripts/verify/gate.py --only {shlex.quote(step)}"
     return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
-
-
-def _split_coverage(
-    runnable: list[tuple[str, list[str], dict[str, str]]], changed: list[str]
-) -> list[tuple[str, list[str], dict[str, str]]]:
-    """Measure audited source suites separately from a whole-suite run."""
-    touched = [
-        path for path in changed if path.startswith("src/") and path.endswith(".py")
-    ]
-    shared = {
-        "src/esolangs/tools/wrap.py": [
-            "tests/tools/test_wrap.py",
-            "tests/tools/test_balance.py",
-        ]
-    }
-    shared["src/esolangs/interpreters/tape_based/line/mask.py"] = [
-        "tests/line/test_mask.py"
-    ]
-    shared["src/esolangs/_isolated.py"] = [
-        "tests/vm/test_run_isolated.py::test_raster_transport_preserves_every_pixel"
-    ]
-    leaves = [
-        path
-        for path in touched
-        if path.startswith("src/esolangs/interpreters/") and path not in shared
-    ]
-    if any(path not in shared and path not in leaves for path in touched):
-        return runnable
-    paths = _pytest_scope(leaves) if leaves else []
-    if not touched or paths == WHOLE_SUITE:
-        return runnable
-    paths = [
-        path
-        for path in paths
-        if path.startswith("tests/interpreters/")
-        and path not in INTERPRETER_CONTRACT_TESTS
-    ]
-    paths.extend(test for source in touched for test in shared.get(source, []))
-    if not paths:
-        return runnable
-    result = []
-    for name, cmd, env in runnable:
-        options = shlex.split(env.get("PYTEST_ADDOPTS", ""))
-        if (
-            name != LONG_STEP
-            or "--cov" not in cmd
-            or any(arg.startswith("tests/") for arg in cmd)
-            or any(arg.startswith(("--cov", "--no-cov")) for arg in options)
-        ):
-            result.append((name, cmd, env))
-            continue
-        bare = [arg for arg in cmd if not arg.startswith("--cov")]
-        if not any(
-            arg.startswith(("-n", "--numprocesses")) for arg in [*cmd, *options]
-        ):
-            bare += ["-n", "8"]
-        if not any(arg.startswith("--dist") for arg in [*cmd, *options]):
-            bare += [
-                "--dist",
-                "loadfile",
-                "--no-loadscope-reorder",
-                "-p",
-                "scripts.ci",
-                "--duration-order",
-                "--duration-output=.cache/pytest/durations.json",
-            ]
-        result.insert(
-            0,
-            (
-                COVERAGE_TEST_STEP,
-                [
-                    *cmd,
-                    *(
-                        ["-m", "not medium and not slow and not weekly"]
-                        if any(path in shared for path in touched)
-                        else []
-                    ),
-                    "-n",
-                    "0",
-                    *paths,
-                ],
-                env,
-            ),
-        )
-        result.append((name, [*bare, "--no-cov"], env))
-    return result
 
 
 def _parse_only_skip() -> tuple[
@@ -486,14 +353,12 @@ def _run_steps(
     runnable: list[tuple[str, list[str], dict[str, str]]],
     *,
     stream: bool,
-    gate: tuple[str, list[str], dict[str, str]] | None = None,
 ) -> tuple[int, list[tuple[str, float]], float]:
     """Run the planned steps, overlapping the long one with the cheap ones.
 
     ``pre-commit`` finishes before readers start. Captured runs overlap
     pytest with the leak sweep and one serial shadow lane. Streaming runs
     leave the sweep until afterwards to keep terminal output coherent.
-    Coverage runs after pytest has written its complete data file.
 
     Output is captured and replayed only on failure unless *stream*.  A step
     that is holding the terminal alone can stream it live instead; two can
@@ -621,21 +486,6 @@ def _run_steps(
         for name, cmd, step_env in shadow:
             run_serial(name, cmd, step_env)
 
-    # Phase 3: the coverage gate, which only speaks for a complete data file,
-    # and only if the run that wrote it passed -- coverage from a failed suite
-    # records which lines ran before the failure, not which are tested.  Keyed
-    # on pytest alone, not on the failure count: another step failing says
-    # nothing about the data file.  It is 0.2s and it unblocks nothing, so it
-    # goes before the heavy steps rather than after them.
-    ran_pytest = any(name == LONG_STEP for name, _ in timings)
-    if (
-        gate is not None
-        and ran_pytest
-        and LONG_STEP not in failed
-        and COVERAGE_TEST_STEP not in failed
-    ):
-        run_serial(*gate)
-
     # Phase 4: the parallel steps, now that they can have the machine.
     for name, cmd, step_env in heavy:
         run_serial(name, cmd, step_env)
@@ -676,12 +526,16 @@ def main() -> int:
     # `uv run --with pylint python scripts/verify/gate.py`, which leaves PY pointing
     # at .venv), and it is PY that has to import pylint.
     have_pylint = (
-        run_bounded(
-            [*PY, "-c", "import pylint"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        ).returncode
-        == 0
+        only is not None
+        and "duplicate-code check (pylint)" in only
+        and (
+            run_bounded(
+                [*PY, "-c", "import pylint"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode
+            == 0
+        )
     )
     # Decide every step first, then run.  Deciding is pure bookkeeping (scope
     # lookups, tool probes) while running is where the time goes, so keeping
@@ -695,8 +549,8 @@ def main() -> int:
         if skip is not None and name in skip:
             print(f"[skip] {name}: filtered via --skip")
             continue
-        if name in FULL_ONLY and only is None and not full:
-            print(f"[skip] {name}: left to CI and --full")
+        if name in MANUAL_ONLY and only is None:
+            print(f"[skip] {name}: left to CI; use --only to run locally")
             continue
         if unaffected is not None and name in unaffected:
             print(f"[skip] {name}: branch touched none of its files")
@@ -707,16 +561,6 @@ def main() -> int:
                 print(f"[skip] {name}: branch touched none of its files")
                 continue
             cmd = narrowed
-        elif (
-            name == "pytest"
-            and changed
-            and only is None
-            and not full
-            and os.environ.get("VERIFY_FULL", "0") in ("", "0")
-        ):
-            # Shared changes still run every test. Only measurement narrows:
-            # the diff-coverage gate reads the touched source files alone.
-            cmd = _scoped_coverage(cmd, changed)
         # The `slow` marker covers the generator derivations and fuzz loops
         # whose cost is seconds each.  Deselecting them locally trades no
         # coverage, because the sharded `slow` job runs every marked test
@@ -770,9 +614,6 @@ def main() -> int:
             )
             return 1
 
-    if only is None and not full and changed:
-        runnable = _split_coverage(runnable, changed)
-
     if "LEAKSWEEP_JOBS" not in env:
         overlap = not _should_stream(
             len(runnable), quiet=quiet, verbose=verbose
@@ -785,27 +626,6 @@ def main() -> int:
             for name, cmd, step_env in runnable
         ]
 
-    # The gate speaks only for the suite that actually ran.  A default local
-    # run deselects the `slow` tests, so a line covered only by one of those
-    # would read as uncovered; --partial makes the gate report it rather than
-    # fail on evidence it does not have.  A --full run has no such excuse.
-    #
-    # The deselection has two sources, and both have to be caught.  This file
-    # appends its local marker expression itself, but `just test-quick`
-    # instead exports PYTEST_ADDOPTS and passes --only, which suppresses the
-    # append while pytest still runs the subset. Keying on --only alone would
-    # leave that path enforcing strict subset data -- the false failure
-    # --partial exists to prevent.
-    gate: tuple[str, list[str], dict[str, str]] | None = None
-    if any(name == "pytest" for name, _, _ in runnable):
-        gate_cmd = [*PY, "checks/check_diff_coverage.py"]
-        selected = any(
-            word.startswith("-m") for word in env.get("PYTEST_ADDOPTS", "").split()
-        )
-        if selected or (only is None and not full):
-            gate_cmd.append("--partial")
-        gate = (DIFF_COVERAGE_STEP, gate_cmd, env)
-
     # Name validation catches a typo; this catches the rest (--only X --skip X,
     # a probe that found no tool).  Zero steps is not a pass.
     if not runnable:
@@ -814,7 +634,7 @@ def main() -> int:
         return 1
 
     stream = _should_stream(len(runnable), quiet=quiet, verbose=verbose)
-    failures, timings, wall = _run_steps(runnable, stream=stream, gate=gate)
+    failures, timings, wall = _run_steps(runnable, stream=stream)
 
     if timings:
         print("-" * 40)

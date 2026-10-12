@@ -10,6 +10,32 @@ from tests.support.stdin_check import _validate_shape_for_evaluate
 from tests.support.witness_tables import parity, row_bits
 
 
+def assert_proved_resource_cap(name: str) -> None:
+    """Require a declared cap backed by a language-wide scaling obstruction."""
+    from esolangs.registry import LANGUAGES
+    from tests.proofs._roadmap import load
+
+    lang = LANGUAGES[esolangs.resolve(name)]
+    row = load().by_name().get(lang.name)
+    assert row is not None
+    assert row.totality == "Cap"
+    assert row.output_size == "Language lower bound"
+    assert lang.generator_restrictions
+
+
+def probe_table(name: str, default: str = "0110") -> str:
+    """Use a compact executable witness when a proved cap forbids the corpus."""
+    from esolangs.registry import LANGUAGES
+
+    lang = LANGUAGES[esolangs.resolve(name)]
+    if lang.benchmark_tables:
+        assert_proved_resource_cap(name)
+        return next(
+            table for table in lang.benchmark_tables if "0" in table and "1" in table
+        )
+    return default
+
+
 def evaluate_generated(
     language: str,
     table: str,

@@ -9,10 +9,11 @@ from typing import Any
 import pytest
 
 import esolangs
-import esolangs.tools as boolean
+import esolangs.languages.generators as boolean
 from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES
-from tests.cli.test_cli import call_main
+from tests.integration.cli.test_cli import call_main
+from tests.support.generator_support import probe_table
 
 
 def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
@@ -101,7 +102,13 @@ def test_a_generator_that_can_refuse_declares_its_limit():
     ),
 )
 def test_restricted_generators_have_executed_positive_controls(name):
-    assert _evaluate(name, esolangs.generate(name, "0110"), inputs=2) == "0110"
+    table = probe_table(name)
+    assert (
+        _evaluate(
+            name, esolangs.generate(name, table), inputs=len(table).bit_length() - 1
+        )
+        == table
+    )
 
 
 @pytest.mark.medium

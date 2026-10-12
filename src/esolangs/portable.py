@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import base64
 import json
+from dataclasses import asdict
 from typing import Any
 
 from esolangs._program import Program
+from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, resolve, template_char
@@ -47,9 +49,17 @@ def dump_program(
         "source": (
             base64.b64encode(source.to_png()).decode("ascii")
             if isinstance(source, Raster)
+            else base64.b64encode(source.to_gzip()).decode("ascii")
+            if isinstance(source, CompressedText)
             else str(source)
         ),
     }
+    if isinstance(source, CompressedText):
+        document.update(
+            kind="gzip",
+            source=base64.b64encode(source.to_gzip()).decode("ascii"),
+            limits=asdict(source.limits) if source.limits is not None else None,
+        )
     if isinstance(source, _Template):
         document.update(kind="template", char=source.char, setters=source.setters)
     return json.dumps(
@@ -98,6 +108,8 @@ def load_program(language: str, document: str) -> Program:
         if not isinstance(value, dict):
             raise ValueError("document must be an object")
         fields = {"format", "version", "language", "settings", "kind", "source"}
+        if value.get("kind") == "gzip" and "limits" in value:
+            fields.add("limits")
         if value.get("kind") == "template":
             fields |= {"char", "setters"}
         if set(value) != fields:
@@ -117,6 +129,19 @@ def load_program(language: str, document: str) -> Program:
         if value["kind"] == "png":
             source = Raster.from_png(
                 base64.b64decode(value["source"], validate=True)
+            ).tagged(name, settings=settings)
+        elif value["kind"] == "gzip":
+            limits = value.get("limits")
+            if limits is not None:
+                if not isinstance(limits, dict) or set(limits) != {
+                    "plain_chars",
+                    "generation_chars",
+                    "gzip_bytes",
+                }:
+                    raise ValueError("invalid compressed text limits")
+                limits = TextLimits(**limits)
+            source = CompressedText(
+                base64.b64decode(value["source"], validate=True), limits=limits
             ).tagged(name, settings=settings)
         elif value["kind"] == "text":
             source = _Tagged(value["source"], name, settings)

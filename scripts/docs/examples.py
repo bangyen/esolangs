@@ -7,6 +7,7 @@ import pathlib
 from collections.abc import Iterator
 
 from esolangs._program import Program
+from esolangs.compressed import CompressedText
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
@@ -14,7 +15,7 @@ from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
-EXAMPLES = ROOT / "src" / "esolangs" / "examples"
+LANGUAGES_DIR = ROOT / "src" / "esolangs" / "languages"
 
 
 def boolean_programs() -> Iterator[tuple[str, Program]]:
@@ -93,14 +94,21 @@ def boolean_manifest_text() -> str:
         if example.fill is not None:
             given = "embedded " + "".join(str(b) for b in example.bits)
         else:
-            given = " ".join(example.inputs) or "(none)"
+            given = (
+                " ".join(
+                    value if value.isprintable() else repr(value)
+                    for value in example.inputs
+                )
+                or "(none)"
+            )
         row = _logical_row(stem, example)
         if not example.expected_compared:
             expected = "not the answer -- see note"
         else:
             expected = repr(example.expected) if example.expected else "(nothing)"
         rows.append(
-            f"| `{example.filename}` | {_display_name(stem)} | `{example.table}` | "
+            f"| `{canonical_id(stem.replace('-', ' '))}/examples/{example.filename}` | "
+            f"{_display_name(stem)} | `{example.table}` | "
             f"`{row}` | {given} | {expected} |"
         )
     if any(e.note for e in BOOLEAN_EXAMPLES.values()):
@@ -119,13 +127,14 @@ def write_boolean_manifest() -> None:
     out.  Nothing checked the manifest at all until then, so a note added
     to a language left the committed table describing the one before it.
     """
-    path = EXAMPLES / "MANIFEST.md"
+    path = LANGUAGES_DIR / "EXAMPLES.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
     text = boolean_manifest_text()
     if path.exists() and path.read_text(encoding="utf-8") == text:
-        print(f"unchanged examples/{path.name}")
+        print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
         return
     path.write_text(text, encoding="utf-8")
-    print(f"wrote     examples/{path.name}")
+    print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
 
 
 SETS = {
@@ -150,23 +159,31 @@ def _same_program(existing: bytes | None, encoded: bytes, generated: Program) ->
 
 def write_set(name: str) -> None:
     """Write one example directory from its generators, reporting each file."""
-    directory = EXAMPLES
-    directory.mkdir(parents=True, exist_ok=True)
     for stem, generated in SETS[name]():
-        suffix = ".png" if isinstance(generated, Raster) else ".txt"
+        directory = LANGUAGES_DIR / canonical_id(stem.replace("-", " ")) / "examples"
+        directory.mkdir(parents=True, exist_ok=True)
+        suffix = (
+            ".png"
+            if isinstance(generated, Raster)
+            else ".txt.gz"
+            if isinstance(generated, CompressedText)
+            else ".txt"
+        )
         path = directory / f"{stem}{suffix}"
         # Text files retain a final POSIX newline; PNGs retain their bytes.
         program = (
             generated.to_png()
             if isinstance(generated, Raster)
+            else generated.to_gzip()
+            if isinstance(generated, CompressedText)
             else (generated.rstrip("\n") + "\n").encode("utf-8")
         )
         existing = path.read_bytes() if path.exists() else None
         if not _same_program(existing, program, generated):
             path.write_bytes(program)
-            print(f"wrote     examples/{path.name}")
+            print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
         else:
-            print(f"unchanged examples/{path.name}")
+            print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
     if name == "boolean":
         write_boolean_manifest()
 
@@ -188,7 +205,7 @@ def examples_main() -> int:
     return 0
 
 
-INIT = "src/esolangs/tools/__init__.py"
+INIT = "src/esolangs/languages/generators.py"
 START = "# BEGIN GENERATED EXPORTS: python scripts/docs/generate.py docs"
 END = "# END GENERATED EXPORTS"
 

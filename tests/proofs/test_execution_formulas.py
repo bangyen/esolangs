@@ -11,7 +11,7 @@ from collections.abc import Callable
 
 import esolangs
 from esolangs.debugger import make_vm
-from esolangs.tools.one_two_three.construction import _leftover
+from esolangs.languages.one_two_three.generator.construction import _leftover
 from scripts.benchmark import WrittenState
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
@@ -71,7 +71,8 @@ _HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
         (3, 6),
     ),
     "Factor": (lambda n, _: 265 * n + 231, True, (4,)),
-    "Circuit Diagram": (lambda n, _: 2 * n + 1 + (n >= 8), True, (3, 8)),
+    # At n=8 the large pool is one atom: no prefix/footer tick; parity reaches 17.
+    "Circuit Diagram": (lambda n, _: 2 * n + 1 + (n > 8), True, (3, 8)),
     "FALSE": (lambda n, _: min(12 * n + 69, 10 * n + 99), False, (3, 6)),
     "Taglate": (lambda n, _: _taglate(n), True, (3, 4)),
     "thisthat": (
@@ -227,8 +228,8 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     """Parity, dense, seeded, constants, AND, both alternations, NAND, ends."""
     width = 1 << n
     if name == "Circuit Diagram" and n >= 8:
-        # Seeded minterms retain the H worst; parity exercises the bounded
-        # shared fold, and constants now use only their clock gate.
+        # Parity reaches 2n+1 at n=8; dense tables exercise pool admission
+        # and constants use only their clock gate.
         return (_seeded(n, 1), _parity(n), "1" * width)
     if name == "Streetcode":
         # Its worst in both columns on all 10 tables checked to n = 7: all ones.

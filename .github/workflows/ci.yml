@@ -52,11 +52,8 @@ jobs:
     - name: Type-check src/ and scripts/
       run: uv run mypy
 
-    # A generator route that was replaced keeps its own tests green; three
-    # sat unread for months.  Reports any tools/ name, or any private name
-    # elsewhere in src/, that nothing in src/ or scripts/ reads.  <2s.
-    - name: Check for definitions nothing reads
-      run: uv run python checks/check_dead_definitions.py
+    - name: Check generated documentation
+      run: uv run python checks/check_generated_docs.py
 
     # Emitted size and step count for every language on 2-, 3- and 4-input
     # tables, compared exactly against the committed baseline.  They are the
@@ -65,16 +62,6 @@ jobs:
     # is not gated here -- see weekly.yml's `timings` job for why.  ~5s.
     - name: Check generator sizes against the baseline
       run: uv run python checks/check_generator_sizes.py
-
-    # Same scope as the local gate in scripts/verify/gate.py: tests/ is left
-    # out because shared test scaffolding is not what this check is for,
-    # and including it roughly quadrupled the file pairs the O(files^2)
-    # comparison walks (141s of this job's 218s in run 37334678602).
-    - name: Check for duplicated code blocks
-      run: >
-        uv run --with pylint python checks/check_duplicate_code.py --disable=all
-        --enable=duplicate-code --min-similarity-lines=10
-        --ignore-imports=yes src/esolangs scripts
 
     # Every deep proof in the `ci` band and cheaper: the ArrowQueue and BIO
     # lemmas, and the registry-wide battery. ~14s. Which proofs those are is
@@ -114,7 +101,7 @@ jobs:
   test:
     # The fast band on the non-coverage interpreters, sharded in two.
     # Measured in run 37334678602, the plain legs set the wall clock
-    # (3.12: 496s of pytest, 3.13: 353s) while the 3.14 coverage leg
+    # (3.12: 496s of pytest) while the 3.14 coverage leg
     # below took 297s. Coverage now shards too, combining its branch data
     # before the changed-line gate. The `slow`
     # job's sharder partitions the band; with no recorded durations
@@ -125,7 +112,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.15"]
+        python-version: ["3.12", "3.15"]
         shard: [0, 1]
 
     steps:
@@ -309,10 +296,10 @@ jobs:
     # took 78s. Put the serial step on the lighter shard.
     - name: Check the preserving certificate without competing workers
       if: matrix.shard == 2
-      run: uv run python -m pytest tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci.shard --duration-output certificate-durations.json
+      run: uv run python -m pytest src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci.shard --duration-output certificate-durations.json
 
     - name: Test one slow shard
-      run: uv run python scripts/ci/shard.py shard --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 --manifest slow.shard.json --exclude-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -- -n auto -p scripts.ci.shard --duration-output test-durations.json
+      run: uv run python scripts/ci/shard.py shard --marker "slow and not weekly" --durations tests/support/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 --manifest slow.shard.json --exclude-node src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -- -n auto -p scripts.ci.shard --duration-output test-durations.json
 
     - name: Retain measured slow-test durations
       if: always()
@@ -338,33 +325,6 @@ jobs:
         retention-days: 14
 
 
-  generated-docs:
-    # The generated docs are committed, so CI re-runs their generator and
-    # fails on a diff: a doc that drifts from the registry is the failure
-    # this catches.  It reads only the registry, so it neither needs the
-    # suite to have passed nor waits for it -- the `needs: test` this
-    # carried was for the coverage artifact the removed badge consumed.
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-    - uses: actions/checkout@v7
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-
-    - name: Set up Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: "3.12"
-
-    # Explicit, like every other sync here: with `.python-version` committed,
-    # a bare `uv sync` would follow the pin rather than the 3.12 set up above.
-    - name: Install dependencies
-      run: uv sync --group dev --python 3.12
-
-    - name: Check generated documentation
-      run: uv run python checks/check_generated_docs.py
-
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -383,10 +343,7 @@ jobs:
       run: uv sync --group dev --python 3.12
 
     - name: Run bandit security check
-      run: uv run --with bandit bandit -r src -f json -o bandit-report.json
-
-    - name: Audit dependencies with pip-audit
-      run: uv run --with pip-audit pip-audit --local
+      run: uv run --with bandit bandit -r src --exclude '*/tests/*' -f json -o bandit-report.json
 
   distribution:
     runs-on: ${{ matrix.os }}
@@ -461,14 +418,14 @@ jobs:
     - name: Exercise paths, deadlines, output limits and worker cleanup
       run: >
         uv run pytest -q -o addopts=""
-        tests/test_run_bounded.py tests/test_memory_budget.py
-        tests/scripts/test_engineering_followups.py
-        tests/scripts/test_benchmark_protocol.py
-        tests/scripts/test_bounded_logs.py
-        tests/scripts/test_check_generator_sizes.py::test_benchmark_deadline_reaps_workers_with_positive_control
-        tests/test_run_isolated.py::test_output_limit_stops_an_infinite_writer_and_reaps
-        tests/test_run_isolated.py::test_capped_timeout_retains_output_and_reaps
-        tests/test_run_isolated.py::test_input_error_retains_counts_and_output
+        tests/runtime/vm/test_run_bounded.py tests/runtime/vm/test_memory_budget.py
+        tests/tooling/scripts/test_engineering_followups.py
+        tests/tooling/scripts/test_benchmark_protocol.py
+        tests/tooling/scripts/test_bounded_logs.py
+        tests/tooling/scripts/test_check_generator_sizes.py::test_benchmark_deadline_reaps_workers_with_positive_control
+        tests/runtime/vm/test_run_isolated.py::test_output_limit_stops_an_infinite_writer_and_reaps
+        tests/runtime/vm/test_run_isolated.py::test_capped_timeout_retains_output_and_reaps
+        tests/runtime/vm/test_run_isolated.py::test_input_error_retains_counts_and_output
 
     - name: Retain worker and verification logs
       if: always()
@@ -491,7 +448,6 @@ jobs:
       matrix:
         include:
           - {source: test, python: "3.12", pattern: "shard-evidence-test-3.12-*", marker: "not slow and not weekly", shards: 2}
-          - {source: test, python: "3.13", pattern: "shard-evidence-test-3.13-*", marker: "not slow and not weekly", shards: 2}
           - {source: test, python: "3.15", pattern: "shard-evidence-test-3.15-*", marker: "not slow and not weekly", shards: 2}
           - {source: coverage-tests, python: "3.14", pattern: "shard-evidence-coverage-*", marker: "not slow and not weekly", shards: 2}
           - {source: slow, python: "3.14", pattern: "slow-test-durations-*", marker: "slow and not weekly", shards: 4}

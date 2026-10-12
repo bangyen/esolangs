@@ -3,9 +3,9 @@
 import tomllib
 from pathlib import Path
 
-_TUNING = Path(__file__).resolve().parents[2] / "fixtures" / "deep_arities.toml"
+_TUNING = Path(__file__).resolve().parents[2] / "support/fixtures" / "deep_arities.toml"
 
 
 def deep_arities(section: str) -> dict[str, object]:
-    """One section of ``tests/fixtures/deep_arities.toml``, keyed by generator."""
+    """Return deep-proof arities for a section, keyed by generator."""
     return tomllib.loads(_TUNING.read_text(encoding="utf-8"))[section]

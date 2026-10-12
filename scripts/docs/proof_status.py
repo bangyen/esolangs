@@ -184,9 +184,9 @@ def update_docs(root: Path = ROOT) -> None:
         ),
         (root / "docs/proofs/index.md", "PROOF-TOTALS", "", [render_totals(proofs)]),
         (
-            root / "docs/roadmap.md",
+            root / "docs/proofs/index.md",
             "SCALING-STATUS",
-            "  ",
+            "",
             [
                 "| Language | Totality | Generation time | Output size |",
                 "| --- | --- | --- | --- |",

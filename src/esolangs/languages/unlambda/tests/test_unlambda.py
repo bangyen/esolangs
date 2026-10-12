@@ -1,0 +1,167 @@
+"""Execution tests for the Unlambda interpreter."""
+
+import re
+
+import pytest
+
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.unlambda.interpreter import (
+    _advance,
+    _App,
+    _Machine,
+    _parse,
+    _Promise,
+    run,
+)
+from tests.interpreters.runner import run_program
+from tests.support.raises import assert_rejected_with_hint
+
+#: The wiki's Hello world: a left-nested chain of prints, newline first.
+#: Spelled from its atoms rather than by hand, because ``n`` atoms need
+#: exactly ``n - 1`` backticks and miscounting them is a parse error.
+_HELLO_ATOMS = ["r", *(f".{char}" for char in "Hello, world"), "i"]
+HELLO = "`" * (len(_HELLO_ATOMS) - 1) + "".join(_HELLO_ATOMS)
+
+
+@pytest.mark.parametrize(
+    ("program", "stdin", "expected"),
+    [
+        pytest.param(HELLO, "", "\nHello, world", id="the_reference_greeting_prints"),
+        pytest.param(
+            "`@`d``|ii", "Q\n", "Q", id="the_pipe_hands_over_the_character_read"
+        ),
+        # The spec's no-character branch, which ``@`` cannot reach here.
+        pytest.param("``|ii", "", "", id="the_pipe_before_any_read_is_v"),
+        pytest.param("`@`d``|ii", "\n", "\n", id="an_empty_line_reads_as_a_newline"),
+        # ``s i (k v)`` applied to the continuation applies it to v, and the
+        # print after that application never runs.
+        pytest.param(
+            "``c``si`kv.A", "", "", id="a_continuation_abandons_the_rest_of_its_caller"
+        ),
+    ],
+)
+def test_output(program: str, stdin: str, expected: str) -> None:
+    assert run_program(run, program, stdin) == expected
+
+
+def test_the_combinators() -> None:
+    assert run_program(run, "`i`.Xi") == "X"
+    assert run_program(run, "``k`.Ai`.Bi") == "AB"  # A then B, value is A's
+    assert run_program(run, "```s.A.Bi") == "AB"
+    assert run_program(run, "`v`.Ai") == "A"  # the argument still evaluates
+
+
+def test_d_delays_and_applying_the_promise_forces_it() -> None:
+    assert run_program(run, "`d`.Ai") == ""  # never forced
+    assert run_program(run, "``d`.Aii") == "A"  # forced by the application
+
+
+def test_a_read_and_a_test_on_the_character() -> None:
+    program = "`@`d````?0i`d`.zivi"
+    assert run_program(run, program, "0\n") == "z"
+    assert run_program(run, program, "1\n") == ""
+
+
+#: ``\b. ((b (`d `.Xi)) v)``: ``k`` keeps the promise and ``v`` swallows it,
+#: so forcing the survivor with ``i`` prints X only on ``@``'s success branch.
+#: ``v`` absorbs every argument, so the failure arm cannot run anything of its
+#: own -- silence is what it looks like, and that is the language's, not this
+#: interpreter's.
+_ON_READ = "``@``s``si`k`d`.Xi`kvi"
+
+
+def test_a_read_at_end_of_input_takes_the_spec_branch() -> None:
+    """``@`` hands its argument ``v`` at EOF rather than letting it escape."""
+    assert run_program(run, _ON_READ, "0\n", suppress_eof=False) == "X"
+    assert run_program(run, _ON_READ, "", suppress_eof=False) == ""
+
+
+def test_a_read_that_found_nothing_clears_the_character() -> None:
+    """Wiki: ``|`` applies to ``v`` once EOF has been reached, so Q is gone."""
+    assert run_program(run, "``k`@i``k`@i``|ii", "Q", suppress_eof=False) == ""
+
+
+@pytest.mark.parametrize(
+    ("program", "message"),
+    [
+        ("", "cannot be empty"),
+        ("`i", "missing one of its two terms"),
+        ("ii", "spells a second one"),
+        ("`i.", "has no character after it"),
+        ("z", "not an Unlambda command"),
+    ],
+)
+def test_a_malformed_program_is_refused(program: str, message: str) -> None:
+    with pytest.raises(ValueError, match=re.escape(message)):
+        run_program(run, program)
+
+
+def test_the_parser_is_iterative_over_a_long_chain() -> None:
+    """A deep application chain must not exhaust the recursion limit."""
+    depth = 5000
+    term = _parse("`" * depth + "i" * (depth + 1))
+    assert isinstance(term, _App)
+
+
+def test_the_continuation_is_the_stack_the_vm_shows() -> None:
+    machine = _Machine("`.A`.Bi", ScriptedIO(""))
+    machine.step()
+    assert machine.stack  # a frame is waiting on the argument
+    while not machine.halted:
+        machine.step()
+    assert not machine.stack
+
+
+def test_snapshots_compare_continuations_by_their_frames() -> None:
+    """Two runs build distinct linked continuations; the cycle detector
+    needs them equal, and hashed alike, exactly when their frames are."""
+    runs = [
+        _Machine(code, ScriptedIO("")) for code in ("``ci`.Ai", "``ci`.Ai", "``ci`.Bi")
+    ]
+    for _ in range(3):
+        for machine in runs:
+            machine.step()
+    same, twin, other = (machine.snapshot() for machine in runs)
+    assert same == twin
+    assert hash(same) == hash(twin)
+    assert same != other
+    kont = runs[0].state[1]
+    assert kont is not None
+    assert kont != kont.rest
+    assert kont != kont.frames()
+
+
+def test_d_applied_as_a_value_promises_what_it_was_given() -> None:
+    """``d`` delays whatever is *written* after it, so reaching it as a plain
+    function needs a combinator to hand it an already-evaluated argument.
+    ``c`` is the one that can: it applies ``d`` to the continuation, and the
+    answer is a promise of that value rather than of an unevaluated term."""
+    machine = _Machine("`cd", ScriptedIO(""))
+    while not machine.halted:
+        machine.step()
+    assert isinstance(machine.state[0].value, _Promise)
+    # Applying that promise forces it, and the continuation answers ``i``.
+    assert run_program(run, "```cdii") == ""
+
+
+def test_e_ends_the_run_before_a_pending_print() -> None:
+    """``e`` ends the run while the argument is evaluating, so ``.A`` never fires."""
+    assert run_program(run, "`.Ai") == "A"
+    assert run_program(run, "`.A`ei") == ""
+
+
+def test_a_comment_runs_to_the_end_of_the_line_or_the_source() -> None:
+    assert run_program(run, "`.A# ignored `.B\ni") == "A"
+    assert run_program(run, "`.Ai# tail") == "A"
+
+
+def test_advancing_a_finished_state_is_answered_not_stepped() -> None:
+    machine = _Machine("`.Ai", ScriptedIO(""))
+    while not machine.halted:
+        machine.step()
+    assert _advance(machine.state) == (machine.state, None)
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Unlambda", "`i", "exactly two expressions")

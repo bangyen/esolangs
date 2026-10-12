@@ -1,0 +1,183 @@
+"""The public raster boundary exercised by Line."""
+
+from pathlib import Path
+
+import pytest
+
+import esolangs
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.line.generator import line_boolean
+from esolangs.languages.line.generator.render import render
+from esolangs.languages.line.interpreter import run as run_line
+from esolangs.raster import Raster
+
+
+def test_png_round_trip_preserves_rgb() -> None:
+    raster = Raster((((255, 0, 0), (0, 255, 0), (0, 0, 255)),))
+    assert Raster.from_png(raster.to_png()) == raster
+
+
+def test_raster_rejects_non_rectangular_rows() -> None:
+    with pytest.raises(ValueError, match="equal-width"):
+        Raster((((0, 0, 0),), ()))
+
+
+def test_raster_rejects_an_invalid_channel() -> None:
+    with pytest.raises(ValueError, match="8-bit RGB"):
+        Raster((((0, 0, 256),),))
+
+
+def test_raster_converts_to_greyscale() -> None:
+    raster = Raster((((255, 0, 0), (0, 255, 0), (0, 0, 255)),))
+    from esolangs.languages.line.interpreter import _grey_rows
+
+    assert _grey_rows(raster.rows) == [bytearray([76, 150, 29])]
+
+
+def test_greyscale_stays_correct_past_the_row_cache_limit() -> None:
+    """Rows past the 1024-entry cache are converted uncached, not dropped."""
+    from esolangs.languages.line.interpreter import _grey_rows
+
+    rows = [((255, 0, 0), ((i + 3) % 256, 0, 0)) for i in range(1100)]
+    grey = _grey_rows(rows)
+    assert len(grey) == 1100
+    assert all(
+        row == bytearray([76, (((i + 3) % 256) * 19595 + 0x8000) >> 16])
+        for i, row in enumerate(grey)
+    )
+
+
+@pytest.mark.medium
+def test_line_consumes_the_public_raster() -> None:
+    canvas = render(line_boolean("01"))
+    raster = Raster(
+        tuple(tuple((level, level, level) for level in row) for row in canvas.pixels)
+    )
+    io = ScriptedIO("1\n")
+    run_line(raster, io)
+    assert io.getvalue() == "1"
+
+
+def test_line_is_a_public_raster_language() -> None:
+    program = esolangs.generate("Line", "01")
+    assert isinstance(program, Raster)
+    assert esolangs.describe("Line")["source_kind"] == "raster"
+    assert esolangs.run("Line", program, stdin="1\n") == "1"
+
+
+@pytest.mark.slow
+def test_public_run_loads_line_png(tmp_path: Path) -> None:
+    program = esolangs.generate("Line", "01")
+    assert isinstance(program, Raster)
+    path = tmp_path / "line.png"
+    path.write_bytes(program.to_png())
+    assert esolangs.run("Line", path, stdin="0\n") == "0"
+
+
+def test_a_corrupt_png_is_a_value_error(tmp_path: Path) -> None:
+    """The decoder's raw zlib/struct errors used to escape ``load_binary``."""
+    from esolangs.languages.line.interpreter import extract
+
+    path = tmp_path / "corrupt.png"
+    path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
+    with pytest.raises(ValueError, match="cannot read"):
+        extract.load_binary(str(path))
+
+
+def _fixture_images(directory: Path) -> list[Path]:
+    images = sorted(directory.glob("*.png"))
+    assert images, f"no Line fixtures under {directory}"
+    return images
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "image", _fixture_images(Path(__file__).parents[1] / "fixtures")
+)
+def test_every_wiki_fixture_extracts(image: Path) -> None:
+    from esolangs.languages.line.interpreter.extract import extract
+
+    extract(str(image))
+
+
+def test_empty_fixture_sweep_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(AssertionError, match="no Line fixtures"):
+        _fixture_images(tmp_path)
+
+
+def test_a_generated_raster_runs_from_its_retained_graph() -> None:
+    """``run`` short-circuits to the graph when the raster carries one."""
+    from esolangs.languages.line.generator import line as generate
+
+    program = generate("0110")
+    assert program._payload is not None  # noqa: SLF001
+    io = ScriptedIO("1\n0\n")
+    run_line(program, io)
+    assert io.getvalue() == "1"
+
+
+@pytest.mark.medium  # 0.97s alone: renders and walks the pixels
+def test_the_graph_walker_matches_the_pixels() -> None:
+    """Both routes answer the same, which is what makes the shortcut safe."""
+    from esolangs.languages.line.generator import line as generate
+
+    program = generate("0110")
+    through_graph = ScriptedIO("1\n1\n")
+    run_line(program, through_graph)
+
+    through_pixels = ScriptedIO("1\n1\n")
+    run_line(Raster(program.rows), through_pixels)
+
+    assert through_graph.getvalue() == through_pixels.getvalue() == "0"
+
+
+def test_the_graph_walker_decrements() -> None:
+    """``-`` is the one opcode no generated Line program emits."""
+    from esolangs.languages.line.generator.render import Node
+    from esolangs.languages.line.interpreter import _Machine
+
+    minus = Node("-")
+    minus.next = Node("o")
+    start = Node("+")
+    start.next = minus
+
+    io = ScriptedIO()
+    _Machine.run_node(start, io)
+    assert io.getvalue() == "0"
+
+
+def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
+    """Characterizing the fall-through: an unknown op advances, silently."""
+    from esolangs.languages.line.generator.render import Node
+    from esolangs.languages.line.interpreter import _Machine
+
+    start = Node("!")
+    start.next = Node("o")
+
+    io = ScriptedIO()
+    _Machine.run_node(start, io)
+    assert io.getvalue() == "0"
+
+
+def test_line_infers_the_entry_heading_from_the_arrow() -> None:
+    """Pins heading inference: rotated a quarter turn clockwise, the
+    ``01`` program still enters along its path (east), not forced north."""
+    pixels = render(line_boolean("01")).pixels
+    turned = [list(row) for row in zip(*pixels[::-1], strict=True)]
+    raster = Raster(tuple(tuple((v, v, v) for v in row) for row in turned))
+    for bit in "01":
+        io = ScriptedIO(f"{bit}\n")
+        run_line(raster, io)
+        assert io.getvalue() == bit
+
+
+def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
+    """A JPEG names itself and the fix, rather than failing on the signature."""
+    from esolangs.languages.line.interpreter import extract
+
+    path = tmp_path / "drawing.jpg"
+    # A JPEG start-of-image plus APP0, which is all the sniff looks at.
+    path.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 64)
+    with pytest.raises(ValueError, match="is a JPEG") as caught:
+        extract.load_binary(str(path))
+    assert "PNG" in str(caught.value)

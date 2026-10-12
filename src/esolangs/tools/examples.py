@@ -3,7 +3,7 @@
 One program per language whose generator can be verified end to end;
 :class:`BooleanExample` records generator, table, inputs and invocation,
 deriving Boolean I/O fields from the registry.
-``scripts/docs/generate.py examples`` and ``tests/scripts/test_examples.py``
+``scripts/docs/generate.py examples`` and ``tests/tooling/scripts/test_examples.py``
 both derive from :data:`BOOLEAN_EXAMPLES`.  Parameterized generators carry
 a ``fill``.  A language qualifies when its answer is recoverable from what
 it prints -- including a fixed position in a state dump -- or by
@@ -22,6 +22,7 @@ from dataclasses import dataclass, replace
 from typing import cast
 
 from esolangs._program import Program
+from esolangs.compressed import CompressedText
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, Language, SourceKind, canonical_id, resolve
 from esolangs.registry._contracts import AnswerMode, BooleanContract, InputShape
@@ -32,9 +33,8 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
-# The committed programs all witness the same two-input function and row:
-# AND2 evaluated on 0,1.  The generator suites cover the other tables and
-# rows; keeping this corpus uniform makes the files directly comparable.
+# Examples use AND2 on 0,1 unless the source budget requires a smaller
+# witness. Generator suites cover the other tables and rows.
 AND2 = "0001"
 
 
@@ -129,7 +129,14 @@ class BooleanExample:
     def filename(self) -> str:
         """Return the example filename in the language's source format."""
         kind = LANGUAGES[resolve(self.stem.replace("-", " "))].source_kind
-        return self.stem + (".png" if kind is SourceKind.RASTER else ".txt")
+        lang = LANGUAGES[resolve(self.stem.replace("-", " "))]
+        return self.stem + (
+            ".png"
+            if kind is SourceKind.RASTER
+            else ".txt.gz"
+            if lang.compressed_source
+            else ".txt"
+        )
 
     def build(
         self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False
@@ -155,6 +162,8 @@ class BooleanExample:
             program = self.generator(self.table, width)
         else:
             program = self.generator(self.table)
+        if isinstance(program, CompressedText):
+            return program.wrapped(width)
         if isinstance(program, Raster):
             return program.upscaled(self.scale)
         if self.fill is not None:
@@ -181,7 +190,7 @@ def _contract_for(interpreter: str) -> BooleanContract:
     raise LookupError(
         f"no registered language runs interpreter {interpreter!r}; the second "
         "argument of an example in src/esolangs/tools/examples.py is the "
-        "module under esolangs.interpreters, e.g. 'tape_based.brainfuck'"
+        "module under esolangs.interpreters, e.g. 'brainfuck'"
     )
 
 
@@ -317,6 +326,8 @@ def _register() -> None:
             example = _embedded(
                 cast(Callable[[str], str], lang.boolean),
                 lang.interpreter,
+                table=spec.table,
+                bits=spec.bits,
                 pair=spec.pair,
                 setters=spec.setters,
                 char=spec.char or TEMPLATE_CHAR,
@@ -326,15 +337,19 @@ def _register() -> None:
                 kwargs=spec.kwargs,
             )
         else:
-            stdin = encode_inputs(lang.name, (0, 1), truth_table=AND2)
+            stdin = encode_inputs(lang.name, spec.bits, truth_table=spec.table)
             example = _reader(
                 lang.boolean,
                 lang.interpreter,
-                inputs=tuple(stdin.splitlines()),
+                table=spec.table,
+                inputs=(stdin,)
+                if lang.contract.input_shape == "char_stream"
+                else tuple(stdin.splitlines()),
                 expected=spec.expected,
                 split=lang.split,
                 kwargs=spec.kwargs,
             )
+        example = replace(example, expected_compared=spec.expected_compared)
         stem = _stem(lang)
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem, scale=spec.scale)
 

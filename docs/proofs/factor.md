@@ -49,7 +49,7 @@ sequence of commands. Since `beta` can decrease to `1/15`, for every
     Q = O_eta(m**(15/14 + eta)).
 
 Delayed prime choices can skip complete windows. The greedy encoder's
-first-match requirement is checked in `tests/proofs/test_factor_prime_cover.py`,
+first-match requirement is checked in `src/esolangs/languages/factor/tests/proofs/test_factor_prime_cover.py`,
 with a nonempty-window control and a delayed-prime counterexample.
 
 Consequently `log Q = O(log(m + 1))` and
@@ -280,7 +280,7 @@ positive roots' product). The dominant root is simple. Allowed words of length a
 than `r` runs are already counted as prefixes. Hence distinct behaviors
 number at most `exp((ln lambda + o(1)) L/ln L)`. Comparing with `2**T`
 and using `C_F(n) = Theta(T ln T)` gives the displayed lower coefficient.
-`tests/proofs/test_factor_normal.py` checks the exact matrix polynomial,
+`src/esolangs/languages/factor/tests/proofs/test_factor_normal.py` checks the exact matrix polynomial,
 executes original, locally normalized, and prefix-normalized witnesses on
 all tables through three inputs (2,120 rows each). Both ordinary Factor
 encodings of every one-input table execute, and a prefix-pruned Factor
@@ -302,7 +302,7 @@ input read into cell 0, so the rewrite was unsound and the root was 6.110092071
 runs that former counterexample and checks deletion on the executed corpus.
 
 For the upper bound, use the signed-ball block construction in
-`tests/proofs/_factor_blocks.py`. For `n >= 5`, split the truth table into
+`src/esolangs/languages/factor/tests/proofs/_factor_blocks.py`. For `n >= 5`, split the truth table into
 `M = T/32` consecutive 32-bit words. Encode each word's integer rank as
 an integer vector of dimension 14 and total absolute value at most 14.
 The number of dimension-`a`, budget-`b` vectors is
@@ -323,7 +323,7 @@ byte wrap. Every block needs at most 14 arithmetic characters. Moving
 through the blocks and returning to the last control costs `15M+13`, so
 initialization costs at most `29M+13`.
 
-The traveling binary counter in `tests/proofs/_factor_counter.py` reads
+The traveling binary counter in `src/esolangs/languages/factor/tests/proofs/_factor_counter.py` reads
 the first `w=n-5` inputs, storing their complements as a little-endian
 distance from the last block. It decrements a positive counter, recomputes
 a nonzero guard, and shifts its bits and guard one control cell left.

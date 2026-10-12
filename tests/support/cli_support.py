@@ -9,7 +9,7 @@ import pytest
 
 from esolangs.cli import main
 
-EXAMPLES = Path(__file__).parents[2] / "examples"
+PACKAGE = Path(__file__).resolve().parents[2] / "src/esolangs"
 
 
 #: The bound a test gives a program it expects to *not finish*.  These

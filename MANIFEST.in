@@ -2,3 +2,5 @@
 # top-level test files without conftest.py, the subpackages, or the fixtures
 # they need -- a suite that cannot run.  The tests live in the repository.
 prune tests
+prune src/esolangs/languages/*/tests
+exclude conftest.py

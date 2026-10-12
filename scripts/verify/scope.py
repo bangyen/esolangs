@@ -6,7 +6,6 @@ is skipped by accident is a check that silently stops guarding.
 """
 
 import ast
-import atexit
 import functools
 import hashlib
 import importlib
@@ -53,6 +52,7 @@ SHARED_TOOLING = (
     "pyproject.toml",
     ".pre-commit-config.yaml",
     "justfile",
+    "conftest.py",
 )
 
 
@@ -127,7 +127,7 @@ def widens_to_everything(changed: list[str]) -> str | None:
 
 
 TOOLING_INTEGRATIONS = {
-    "tests/scripts/test_ci_coverage.py": (
+    "tests/tooling/scripts/test_ci_coverage.py": (
         ("test_combining_shards_retains_every_branch",),
         (
             ".github/workflows/",
@@ -146,15 +146,18 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
         in {
             "uv.lock",
             ".coveragerc",
-            "tests/conftest.py",
+            "conftest.py",
             "tests/__init__.py",
-            "tests/scripts/script_support.py",
+            "tests/tooling/scripts/script_support.py",
             "setup.cfg",
             "pytest.ini",
             "tox.ini",
         }
-        or path.startswith("tests/fixtures/")
-        or (path.startswith("tests/scripts/") and Path(path).name == "conftest.py")
+        or path.startswith("tests/support/fixtures/")
+        or (
+            path.startswith("tests/tooling/scripts/")
+            and Path(path).name == "conftest.py"
+        )
         for path in changed
     ):
         return []
@@ -163,7 +166,7 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
         for suite, (tests, dependencies) in TOOLING_INTEGRATIONS.items()
         if not any(
             path == suite
-            or path.startswith((*dependencies, "tests/scripts/__init__.py"))
+            or path.startswith((*dependencies, "tests/tooling/scripts/__init__.py"))
             for path in changed
         )
         for test in tests
@@ -444,9 +447,6 @@ class VerifiedCache:
         return True
 
 
-COVERAGE_TEST_STEP = "coverage tests"
-
-
 # Which paths each step actually guards.  A step whose prefixes the branch did
 # not touch cannot have been broken by that branch, so a scoped run skips it.
 # A step absent from this table is always run: it is either cheap enough not to
@@ -458,21 +458,23 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # Only a generator, an interpreter (the step counts are executed), or the
     # baseline itself can move these numbers.
     "generator size baseline": (
+        "src/esolangs/languages/",
         "src/esolangs/tools/",
         "src/esolangs/interpreters/",
         "checks/check_generator_sizes.py",
         "scripts/benchmark.py",
-        "tests/fixtures/generator_sizes.json",
+        "tests/support/fixtures/generator_sizes.json",
     ),
     # The union of what the two proofs in this band read: ArrowQueue's lemmas
     # import the generator and nothing else, and BIO's also parse the emitted
     # program and instantiate it through the shipped fill.  The runner is in
     # the scope too, since it decides which of them run at all.
     "deep proofs (verify band)": (
-        "src/esolangs/tools/bio.py",
-        "src/esolangs/tools/arrowqueue.py",
+        "src/esolangs/languages/bio/generator.py",
+        "src/esolangs/languages/arrowqueue/generator.py",
         "src/esolangs/tools/examples.py",
         "tests/proofs/deep/",
+        "src/esolangs/languages/",
     ),
     # Helpers outside interpreters can introduce leaks too. The sweep's
     # dependency graph narrows this to the languages that import them.
@@ -533,9 +535,9 @@ def _is_collected(path: str) -> bool:
 
 
 INTERPRETER_CONTRACT_TESTS = (
-    "tests/vm/test_vm_protocol.py",
-    "tests/vm/test_stepping_parity.py",
-    "tests/api/test_api_contracts.py",
+    "tests/runtime/vm/test_vm_protocol.py",
+    "tests/runtime/vm/test_stepping_parity.py",
+    "tests/integration/api/test_api_contracts.py",
     "tests/generators/test_interpreter_conventions.py",
     "tests/interpreters/test_io.py",
     "tests/interpreters/test_input_convention.py",
@@ -547,9 +549,12 @@ def _generator_test_scope(module: str) -> list[str] | None:
     from esolangs.registry import LANGUAGES
 
     owners: dict[str, str] = {}
+    modules: dict[str, str] = {}
     for language in LANGUAGES.values():
         if language.boolean is not None:
-            owner = language.boolean.__module__.removeprefix("esolangs.tools.")
+            defining = language.boolean.__module__
+            owner = language.id
+            modules[defining] = owner
             for name in (
                 language.id,
                 language.name,
@@ -558,6 +563,14 @@ def _generator_test_scope(module: str) -> list[str] | None:
                 owner,
             ):
                 owners[name] = owner
+
+    def normalise(reference: str) -> str:
+        for canonical, owner in modules.items():
+            if reference == canonical or reference.startswith(canonical + "."):
+                return owner + reference[len(canonical) :]
+        return reference
+
+    module = normalise(module)
     if module not in owners.values():
         return None
     needles = {name for name, owner in owners.items() if owner == module}
@@ -566,7 +579,14 @@ def _generator_test_scope(module: str) -> list[str] | None:
     tools_root = ROOT / "src/esolangs/tools"
     sources = {
         source: source.read_text(encoding="utf-8")
-        for source in tools_root.rglob("*.py")
+        for source in (
+            *tools_root.rglob("*.py"),
+            *(
+                path
+                for path in (ROOT / "src/esolangs/languages").rglob("*.py")
+                if "generator" in path.parts or path.stem == "generator"
+            ),
+        )
     }
     imports: dict[Path, set[str]] = {}
     while True:
@@ -576,7 +596,7 @@ def _generator_test_scope(module: str) -> list[str] | None:
                 continue
             if source not in imports:
                 references = set()
-                package = list(source.parent.relative_to(tools_root).parts)
+                package = list(source.parent.relative_to(ROOT / "src").parts)
                 for node in ast.walk(ast.parse(text)):
                     if isinstance(node, ast.ImportFrom):
                         prefix = node.module or ""
@@ -587,20 +607,16 @@ def _generator_test_scope(module: str) -> list[str] | None:
                                     *(prefix.split(".") if prefix else []),
                                 ]
                             )
-                        prefix = prefix.removeprefix("esolangs.tools.")
-                        references.add(prefix)
+                        references.add(normalise(prefix))
                         for alias in node.names:
-                            references.add(prefix + "." + alias.name)
+                            references.add(normalise(prefix + "." + alias.name))
                             references.add(owners.get(alias.name, alias.name))
                     elif isinstance(node, ast.Import):
-                        references.update(
-                            alias.name.removeprefix("esolangs.tools.")
-                            for alias in node.names
-                        )
+                        references.update(normalise(alias.name) for alias in node.names)
                 imports[source] = references
             if imports[source] & dependents:
-                owner = (
-                    source.relative_to(tools_root)
+                owner = normalise(
+                    source.relative_to(ROOT / "src")
                     .with_suffix("")
                     .as_posix()
                     .replace("/", ".")
@@ -611,7 +627,10 @@ def _generator_test_scope(module: str) -> list[str] | None:
             break
         dependents.update(found)
     selected = []
-    for test in (ROOT / "tests").rglob("*.py"):
+    for test in (
+        *((ROOT / "tests").rglob("*.py")),
+        *((ROOT / "src/esolangs/languages").glob("*/tests/**/*.py")),
+    ):
         path = test.relative_to(ROOT).as_posix()
         if not _is_collected(path):
             continue
@@ -628,7 +647,11 @@ def _generator_test_scope(module: str) -> list[str] | None:
                     test_owner = owners[max(matches, key=len)]
                     break
         # Only language-local directories follow this naming convention.
-        local = test.parent.name in {"tools", "interpreters", "languages"}
+        local = test.parent.name in {"generators", "interpreters", "languages"}
+        relative = test.relative_to(ROOT).parts
+        if relative[:3] == ("src", "esolangs", "languages") and "tests" in relative:
+            local = True
+            test_owner = relative[3]
         if local and test_owner is not None and test_owner not in dependents:
             text = test.read_text(encoding="utf-8").lower()
             if not any(needle.lower() in text for needle in needles):
@@ -649,7 +672,11 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
     """
     paths: set[str] = set()
     for f in changed:
-        if f.startswith("tests/"):
+        if (
+            f == "conftest.py"
+            or f.startswith("tests/")
+            or (f.startswith("src/esolangs/languages/") and "/tests/" in f)
+        ):
             # A conftest configures every test beneath it, a non-.py file is
             # fixture data some unknown test reads, and a module pytest does
             # not collect is a helper imported from tests that live elsewhere.
@@ -660,31 +687,27 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             if (ROOT / f).exists():
                 paths.add(f)
             continue
-        if f.startswith("src/esolangs/interpreters/") and f.endswith(".py"):
-            relative = Path(f).relative_to("src/esolangs/interpreters")
-            # Package helpers can share a filename with another interpreter.
-            if len(relative.parts) != 2:
+        if f.startswith("src/esolangs/languages/"):
+            relative = Path(f).relative_to("src/esolangs/languages")
+            local_tests = ROOT / "src/esolangs/languages" / relative.parts[0] / "tests"
+            if local_tests.is_dir() and (
+                relative.parts[1:2] == ("interpreter",)
+                or relative.parts[1:] == ("interpreter.py",)
+            ):
+                suites = sorted(local_tests.rglob("test_*.py"))
+                if not suites:
+                    return WHOLE_SUITE
+                paths.update(test.relative_to(ROOT).as_posix() for test in suites)
+                paths.update(INTERPRETER_CONTRACT_TESTS)
+                continue
+        if f.startswith("src/esolangs/languages/") and f.endswith("/generator.py"):
+            relative = Path(f).relative_to("src/esolangs/languages")
+            parts = relative.with_suffix("").parts
+            # Only a leaf generator at ``<id>/generator.py`` is localisable;
+            # a root helper or a package submodule keeps the whole suite.
+            if len(parts) != 2 or any(part.startswith("_") for part in parts):
                 return WHOLE_SUITE
-            stem = Path(f).stem
-            if stem.startswith("_"):
-                return WHOLE_SUITE
-            candidate = f"tests/interpreters/test_{stem}.py"
-            if not (ROOT / candidate).exists():
-                return WHOLE_SUITE
-            paths.add(candidate)
-            for suite in (ROOT / "tests/interpreters").glob(f"test_{stem}_*.py"):
-                paths.add(suite.relative_to(ROOT).as_posix())
-            # Language-local tests cannot detect broken VM or public I/O contracts.
-            paths.update(INTERPRETER_CONTRACT_TESTS)
-            generator_tests = f"tests/tools/test_boolean_{stem}.py"
-            if (ROOT / generator_tests).exists():
-                paths.add(generator_tests)
-            continue
-        if f.startswith("src/esolangs/tools/") and f.endswith(".py"):
-            relative = Path(f).relative_to("src/esolangs/tools")
-            if len(relative.parts) != 1 or relative.stem.startswith("_"):
-                return WHOLE_SUITE
-            selected = _generator_test_scope(relative.stem)
+            selected = _generator_test_scope(f"esolangs.languages.{parts[0]}.generator")
             if selected is None:
                 return WHOLE_SUITE
             paths.update(selected)
@@ -714,44 +737,10 @@ def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | No
         paths = _pytest_scope(changed)
         if not paths:
             return None  # nothing the Python tests cover moved
-        cmd = _scoped_coverage(cmd, changed)
         if paths == WHOLE_SUITE:
             return cmd  # not localisable: run every test
         return [*cmd, *paths]
     return cmd
-
-
-def _scoped_coverage(cmd: list[str], changed: list[str]) -> list[str]:
-    """Measure coverage over the touched source files only.
-
-    The gate that reads the data judges just the ``src/esolangs`` files the
-    branch touched, so measuring the whole package is overhead spent on files
-    nothing will look at.  Whole-package ``--cov --cov-branch`` costs 13s on
-    top of a 27s run; an ``include`` of the touched files costs nothing
-    measurable, because sys.monitoring never instruments the rest.  A branch
-    that touched no source file measures nothing at all -- the gate skips on
-    its own, having no targets.
-
-    coverage refuses ``include`` beside ``source`` (it warns and ignores the
-    include), so this cannot be a pyproject default; the rc is written for
-    the run and replaces the pyproject one for *measurement* only.  Reporting
-    is untouched: the gate reads the data through ``coverage json``, which
-    consults pyproject and so keeps ``exclude_lines``.
-    """
-    if "--cov" not in cmd:
-        return cmd
-    touched = [
-        f for f in changed if f.startswith("src/esolangs/") and f.endswith(".py")
-    ]
-    without = [c for c in cmd if c not in ("--cov", "--cov-branch", "--cov-report=")]
-    if not touched:
-        return without
-    fd, rc = tempfile.mkstemp(prefix="verify-coverage-", suffix=".rc")
-    with os.fdopen(fd, "w") as f:
-        f.write("[run]\ncore = sysmon\nbranch = True\ninclude =\n")
-        f.writelines(f"    {path}\n" for path in touched)
-    atexit.register(os.unlink, rc)
-    return [*without, "--cov", f"--cov-config={rc}", "--cov-report="]
 
 
 if __name__ == "__main__":

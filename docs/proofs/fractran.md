@@ -15,7 +15,7 @@ Sharing costs no execution. The diagram gives every distinct subtable one
 state, so it names `O(T / log T)` primes, and a run still fires at most a
 fraction a level, one for the leaf, and a clear a set input left unread:
 `n + 1` fractions on `O(n log n)`-bit values. Both constructions are executed
-in `tests/proofs/deep/fractran.py`.
+in `src/esolangs/languages/fractran/tests/proofs/deep/fractran.py`.
 
 ## Setup
 
@@ -268,8 +268,8 @@ continuation, agree. The clears come after every state fraction, so they
 fire only once the leaf has spent the last state. It is checked by
 execution: every row of every table at every arity from one to nine, over
 random, constant, parity and half-split tables, in
-`tests/proofs/deep/fractran.py` (10,220 rows at the pinned seed) and
-in `tests/proofs/test_fractran_bound.py`.
+`src/esolangs/languages/fractran/tests/proofs/deep/fractran.py` (10,220 rows at the pinned seed) and
+in `src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py`.
 
 *Cost.* Depth `d` holds at most `2**d` prefixes and at most `2**2**(n-d)`
 distinct subtables, so the states number at most `C`. The two terms cross
@@ -374,7 +374,7 @@ worst-case bound, not a claim about every table or every evaluator. An
 indexed or factorized implementation has a different cost model; the
 unit-cost fraction-firing model already has the shared construction above.
 
-`tests/proofs/test_fractran_bound.py` executes small total programs against
+`src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py` executes small total programs against
 the compacting lemma, checks their answers with the real chooser before and
 after deletion, and requires an oversized-guard positive control. A second
 finite check includes the zero-fraction projection and the ordered numeric
@@ -414,7 +414,7 @@ buckets of `O(1)` rules on `O(n log n)`-bit exponent vectors, and a run
 makes at most `n + 1` selections and one final failed one. Parsing reads
 each character a bounded number of times. QED.
 
-`tests/tools/test_boolean_fractran.py` checks that every generated program
+`tests/generators/test_boolean_fractran.py` checks that every generated program
 through ten inputs compiles to the index. Executed on six rows of one seeded
 dense table per arity, the slowest loaded run stays flat while loading
 follows the text:
@@ -471,7 +471,7 @@ with the four rows carrying one guard of each sign. All 24 orders of the
 same four fractions execute on all rows. Exactly 14 of 16 tables occur;
 XOR and XNOR are missing because the four feature rows are dependent.
 The eight-fraction independent-pair control realizes all sixteen tables.
-Both controls live in `tests/proofs/test_fractran_routing.py`.
+Both controls live in `src/esolangs/languages/fractran/tests/proofs/test_fractran_routing.py`.
 
 ### Order-only decoding with two priority consultations
 
@@ -1091,7 +1091,7 @@ primes still need accounting. The next construction question is whether
 rank selection can use this bit-local representation without reintroducing
 the logarithmic factor elsewhere.
 
-**Packed-counter selector control.** `tests/proofs/_fractran_bit_order.py`
+**Packed-counter selector control.** `src/esolangs/languages/fractran/tests/proofs/_fractran_bit_order.py`
 implements this local arithmetic with packed counter bits and active-width
 metadata. Cell `j` begins at bit offset
 `2*(j-1)-popcount(j-1)`, because
@@ -1145,7 +1145,7 @@ bound follows from the arithmetic and rough-number estimates above.
 ### Direct chunks with exact cleanup
 
 Rank selection is unnecessary if table data may appear in the starting
-exponents and cleanup guards. `tests/proofs/_fractran_chunks.py` gives a
+exponents and cleanup guards. `src/esolangs/languages/fractran/tests/proofs/_fractran_chunks.py` gives a
 named construction under the normal sparse-factor execution contract.
 Let `b=max(1,n-bit_length(n))` and `k=ceil(T/b)`. Each consecutive block
 of at most `b` table entries gives a little-endian binary value `a_i`.
@@ -1222,6 +1222,95 @@ zero- and one-table cleanup controls at eight. At sixteen inputs,
 `b=11`, `k=5,958`, the source has 558,000 characters and 30,063 fractions;
 the three queries use 84,912, 103,704 and 31,060 firings. These are
 construction controls, not a claim that it is the practical generator.
+
+### Direct mapping numerators
+
+The feature primes are unnecessary when each mapping numerator carries its
+own chunk value. `mapped_chunk_template` in
+`src/esolangs/languages/fractran/tests/proofs/_fractran_chunks.py` starts with mapping flag `29`, decoder
+constant `103**2` and the same input primes. Here `b` is the largest power
+of ten at most `max(1,n-bit_length(n))`; thus `b=Theta(n)` and
+`2**b=O(k)` still hold. The input loaders still put
+row `r` in register `107`. For each block, in descending order, emit
+
+    109*7**a_i / (29*107**(b*i)).
+
+The first applicable rule selects `i=floor(r/b)`, consumes the mapping
+flag, loads the chunk into register `7` and leaves local index `r-b*i`.
+The fixed decoder then returns the selected bit. There are no unselected
+features to clean up, and the halt value is exactly `1` or `2`, including
+when `a_i=0`. The source has `k+n+256` fractions. This remains a sparse-factor
+construction: materializing the register integers is outside its bounds.
+
+Generation now needs only `n` variable primes. Their sieve costs a
+polynomial in `n`, hence `O(T)` asymptotically. Chunk values are bounded by
+`2**b=O(k)`; a decimal odometer spells every value below `2**b` once and
+stores its string. It uses packed ASCII bytes rather than word-sized
+digit cells. Incrementing a unit counter visits `O(1)` digits amortized,
+so full-word scalar addresses cost `O(n)` per value. Bulk copies of each
+packed `O(n)`-bit literal also cost `O(n)`. Total counter and rendering
+work is `O(2**b*n)=O(T)`. Mapping offsets append the fixed zero suffix
+of `b` to a second unit counter, costing `O(k*n)=O(T)` bits. Slice
+positions advance by addition, not a separate multiplication per block;
+binary chunk parsing costs `O(b)` per block. Thus generation, including
+addresses and literal rendering, takes `O(T)` bit work. The strings and
+generated source occupy `O(T)` bits. The earlier word-cell decimal
+odometer did not justify this bit bound.
+
+The native decimal reader memoizes decimal prefixes. For chunk values
+below `2**b`, there are only `O(2**b)` possible nonempty prefixes; each
+stores and computes an `O(n)`-bit integer. Their total bit work is
+`O(2**b*n)=O(T)`, including string slicing and hashing. Mapping offsets
+form a descending progression of stride `b`. After two offsets, the
+reader verifies the next numeral by decrementing at the decimal position
+of `b` and subtracts `b` from the previous binary value. The packed
+decimal buffer is copied in `O(n)` bit work; the descending unit counter
+has `O(1)` scalar byte visits amortized, each with an `O(n)`-bit address.
+Materialized binary subtraction costs `O(n)` per field as well. Hence
+progression parsing costs `O(k*n)=O(T)` in all. Only guard thresholds use
+this prediction; arbitrary chunk-value order uses prefix memoization.
+The first offset and the `n` input-weight literals cost a polynomial in
+`n`. All bases are bounded by a polynomial in `n`, so factoring and the
+native loading sieve are also polynomial in `n`. The remaining token,
+guard and monotone-index work costs `O(n)` per fraction. Loading therefore
+takes `O(T)` bit work and stores `O(T)` bits.
+
+The normal machine selects indexed scans rather than the dense cursor.
+Once a mapping fires, register `107` is below `b`, so no positive-offset
+mapping can apply; the zero-offset mapping is anchored on the absent
+flag `29`. The `107` group has decreasing mapping thresholds followed by
+one cleanup threshold of `1`. The index now recognizes a wholly
+ineligible monotone group or an eligible singleton suffix before
+bisection. Thus a decoder step inspects only that cleanup candidate and
+the fixed decoder groups. Large-group bisections occur at most once per
+input loader and once for mapping, with `O(n)` comparisons of `O(n)`-bit
+integers each; the loading phase has polynomial bit cost in `n`.
+
+Successive divisions halve the selected chunk, so the decoder's firings
+sum to `O(2**b+b)=O(k+n)`. Each firing changes a fixed number of `O(n)`-bit
+exponents and consults only fixed-size groups. Execution therefore takes
+`O(k*n+poly(n))=O(T)` bit work. The live sparse state has a polynomial
+number of bits in `n`; the source and persistent index occupy `O(T)`
+bits. Together with the generation argument, this establishes a bit-linear
+pipeline under the existing sparse-factor contract. It does not change
+the public decision-diagram generator or its polynomial command bound.
+
+Controls execute all 2,122 rows through three inputs, including 74
+independent literal-arithmetic checks through two inputs, plus boundary
+and interior literal checks at six. Zero, one and
+seeded tables execute boundary and interior rows at six, ten and sixteen
+inputs. On `Random(20261011)`'s sixteen-input table, emitted source is
+153,071 characters and 6,826 fractions, against 558,012 characters for the
+feature construction on that same table. First, one-third and last rows
+use 32,070, 3,793 and 3,679 firings. The one-third-row loading control
+creates 1,036 decimal prefixes carrying 33,683 ASCII-key and binary-value
+bits in total, verifies 31,821 progression digits, and makes eight large-group
+bisections. The last-row positive controls make exactly sixteen such
+bisections on zero, one and seeded tables; none occur during decoding.
+The scalar-address control parses 2,049 descending multiples of 1,000,
+checks every value against literal conversion, and bounds actual byte
+reads below three per value and writes below two. Both counts exceed
+their no-borrow baselines, positively exercising decimal carries.
 
 ## The other end: the row-addressing tree
 

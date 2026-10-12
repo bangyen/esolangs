@@ -6,7 +6,9 @@ and counterexamples. [Factor](factor.md) proves `Theta(T log T)` text;
 [FRACTRAN](fractran.md) proves a super-linear address budget but linear
 language complexity through packing, trading characters for steps.
 [brainfuck-count](brainfuck-count.md) bounds distinct behaviours of
-`C`-character programs. Polynomial's lower bound imports
+`C`-character programs. [Vandevelo](vandevelo-sparse-tail.md) proves
+Ω(T log n) characters for the shipped bounded-sparse-cube construction;
+universal linear size and generation time remain open. Polynomial's lower bound imports
 Corollary 3.4 of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex), the companion
 manuscript bounding the coefficient mass of a polynomial multiple.
 `tests/proofs/test_citations.py` holds the numbered cross-references
@@ -18,7 +20,7 @@ line, tape, route-width, work and generation-time guards when lifting them
 leaves the construction unchanged; invalid tables are outside the domain.
 
 The exhaustive `n <= 3` and sampled `n <= 10` sweeps in
-`tests/tools/test_boolean_contract.py` seek counterexamples; they do not prove
+`tests/generators/test_boolean_contract.py` seek counterexamples; they do not prove
 the coverage arguments.
 
 In `tests/proofs/`, fast-band `test_ledger.py` checks registry consistency,
@@ -38,9 +40,9 @@ file's declaration and enforces its stated budget, not a measured runtime.
 
 Coverage does not bound source size: the schemes count nodes and entries,
 so a total generator can still emit super-linear text.  `linearity.py` is the
-separate, registry-wide scaling contract the roadmap asks for.  It measures
+separate, registry-wide scaling contract the project enforces.  It measures
 characters per table entry past each generator's last route change and holds
-every generator to it except those the roadmap's scaling audit or this
+every generator to it except those the scaling audit or this
 document's `cap` and `exception` rows already exempt. Exceeding the bound is
 evidence against linearity; passing it is not a
 proof. Factor passes at x2.11 despite its language-level super-linear bound
@@ -128,7 +130,7 @@ output size, build time or execution time -- by the shipped construction,
 and a uniform lift (below) proves the program exists without it.  The
 ceiling is one named constant; reaching it refuses, never truncates.  A
 construction that is polynomial in the table and inside the budget gets no
-ceiling: super-linear growth there is an open roadmap cell for the linearity
+ceiling: super-linear growth there is an open scaling-audit cell for the linearity
 contract to hold, and a ceiling would hide it.  A refusal with no lift
 argument is `exception`, not `cap`.  Audited across every one:
 every other arity threshold is a route switch to a total construction or an
@@ -228,7 +230,7 @@ table; the clause names the argument in twelve words or fewer); `linear,
 time n log: <term>` (size O(T), one stated `log T` factor in generation
 time); `measured: <what is unbounded>` (no invariant bounds it); `open:
 <term>` (a super-linear term with its bound -- exactly the rows open on size
-or time in the roadmap's audit); `lower bound: <bound>` (the language forces
+or time in the scaling audit); `lower bound: <bound>` (the language forces
 it).  Where a generator dispatches on table size, the cell describes the
 wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 `tests/proofs/test_linearity.py` checks the column against the audit.
@@ -280,7 +282,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | Subleq | finite lookup | shared direct-jump residual DAG or packed decoder with interned chunk payloads | linear: O(T/n) residuals or packed chunks, O(n)-digit addresses or payloads | linear: at most 8T + (7n+5)(⌊T/n⌋-1) + 23n - 6 steps: bank selection adds two | linear: at most max(T+2C+(C+2)bl(B+17+2C)+I·bl(B)+(2I-1)bl(B+17)+R, M·max(7,bl(M))+bl(M)+bl(n)) bits: decoder or tree, M=19+10n+6D |
 | BrainIf | tree | equal cofactors share one layered DAG node, and an ignored input is read by the next layer's nodes; spatial lookup remains a candidate | linear: O(T/n) nodes with O(n)-digit addresses | poly n: worst 4n + 50 commands, one DAG path and a tail | poly n: worst 13 + bl(lines) + bl(n) bits: two cells, a line cursor |
 | Circlefuck | linear lookup | the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer | linear: bounded dependency scan and canonical residual IDs | linear: worst (2n+13)T + 63n + 89 + 2S to n = 7, S the codes of program characters 1..n | linear: worst 6L + 10n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the tape |
-| Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) | poly n: worst 2n + 1 commands; 2n + 2 past n = 7 | linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses |
+| Circuit Diagram | tree | finite planar routing with fixed-size shared cofactor pools | linear: prefix H-layout side C sqrt(T), fixed-size cofactor pools | poly n: worst 2n + 1 commands; at most 2n + 2 past n = 8 | linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses |
 | Clockwise | linear lookup | the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit | linear: five table rows of 2T columns, doubling gadgets whose widths halve downward | linear: worst 10T + 20n + 30 steps: the pointer's path to the last row | poly n: worst 57n + 50 + bl(2n+14) + bl(2^(n+1)+9n+1) bits: 7n-character queue |
 | Collatz Multiverse | finite lookup | an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it | linear: one line per four rows, a 64-cell decoder, 3n index lines | linear: at most T/4 + 3n + 130 lines to n = 8: one step per line, no branching | T log T: at most ⌈T/4⌉(bl(⌊L/17⌋)+6) + 64(bl(⌊L/17⌋)+1) + (n²+168)(8n+bl(L)+9)/2 + 2bl(L) + 115 bits: arrays, registers |
 | Container | finite lookup | the table is the prefix sum of its own steps, summed against a row counter that is live for one tick | linear: one line per step in the table, halting in 2n+2 ticks | poly n: worst 2n + 2 commands, a threshold build past n = 6 | poly n: worst 25n + 154 + bl(2n+2) + 2bl(n) bits, n in 7..24 |
@@ -337,6 +339,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: 7n input characters plus at most 11T - 4 tree characters | poly n: at most 14n - 1 commands, one path of n selections | linear: at most 24L + 120T + 32n - 176 + bl(2L+10T+6n-14) bits: spliced program, stack |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf | poly n: at most max(77n + 12, 84n - 9) steps: 77 a split level, 7 a bound node | T log T: at most 12L + 69 + (3n+6)(8L + 24 + bl(3n+6)) + bl(n) bits: a shared subterm per frame |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row | linear: worst 4T + 79n + 22 commands past n=5: 12- or 14-cell loops, 76 per read, weight pops | linear: worst T + 12 + bl(L) + bl(max(0,L-33)) + 2bl(n) bits: T + 1 table cells on the stack |
+| Unary | tree, cap | complemented-byte decision tree; constants, projections and conjunction guards avoid flags | lower bound: worst source length at least 2**T - 1; zero-count encoding | unmeasured: exempt as a cap row | unmeasured: exempt as a cap row |
 | Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) lines and commands for every table, O(T log n) identifier text; the build is measured flat, but child-rebuild scans are bounded only by q**2 a node and core work by O(T*sqrt(n)) | linear: at most Q - G + 3C steps: Q ? reads, C comparisons, G guards' final loop? skipped | poly n: at most n * n registers; sqrt T below the cap |
 
 Symbols the formula cells use:
@@ -391,6 +394,8 @@ ceiling below.
 
 The remaining `cap` rows do have a uniform lift argument.
 
+- Unary's complemented-byte tree is finite at every arity. Removing the
+  raw, work and gzip screens and their nine-input consequence permits every encoding.
 - Polynomial's `k == n` candidate is the finite decision tree.  Each of its
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
@@ -427,7 +432,7 @@ the interpreter decodes it to the tree the generator encoded.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 77 theoretical totality arguments and
+Accordingly, this ledger records 78 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->
@@ -524,7 +529,7 @@ dense clauses; the sparse tail, below density `1/max(48, n)`, adds at most
 `2**n/n`. On a corpus through n=13 `_assure` checked 1,712 levels and
 never computed, so output is byte-identical. With candidates and the
 sampled fallback disabled, it alone keeps n=8 and n=10 random tables under
-`T/n` clauses (`tests/tools/test_boolean_vandevelo.py`).
+`T/n` clauses (`tests/generators/test_boolean_vandevelo.py`).
 
 Commands per row are therefore linear. A halting row fails one part of
 each guard, and every value is a strict boolean. So a register toggle
@@ -561,10 +566,19 @@ removes one. Measured, the levels do halve: three zeros at n=14 build
 12.96, 6.47, 3.23 and 1.61 `T` cosets at levels one to four. Rebuilding
 in `extend` only after a node loses three quarters would make the bound
 geometric. Over a 433-table corpus through n=13 that costs 2.5% of
-emitted size, and 4--6% at n=11..13. It also leaves `certify`, which
-refreshes every level on every call and rescores each pairless
-candidate at `q`; the untried fix keeps a level while its direction holds
-half the average, rebuilding only on a crossing. Measured, `certify`
+emitted size, and 4--6% at n=11..13. Certification now discards pairless
+candidates on every call but refills a pool only when removals reach a
+quarter of the current size. If `r` cosets left since the last refill,
+its representative scan costs `q <= 4*r`; summing over disjoint refresh
+epochs charges those scans to removals. `_assure` still runs at every
+level, preserving the half-average guarantee. Across 354 tables through
+n=9, refresh calls fell from 14,298 to 13,992; their summed node sizes
+fell from 110,943 to 108,907 cosets. No program grew and both builds
+matched all 3,590 executed rows. The exact `_assure` fallback sorts its
+representatives, costing `O(q log q)` per call; repeated assurance and
+child rebuilding remain uncharged. A separate untried fix keeps a
+level while its direction holds half the average, rebuilding only on a
+crossing. Historically, `certify`
 inclusive is 0.003s of a 0.53s build at n=13 and 0.184s of 6.27s at n=16,
 under 3%, so the fix moves no gate: the axis is proof-shaped, and the
 refresh cost it would trim is mostly `extend` and `run` -- 17% at n=16.
@@ -588,7 +602,11 @@ it. With `u <= min(n, 2**dim - 1)` distinct columns and core size `c`,
 work is `O(n + u*c)` and cache entries are `O(u + c**2)`. Since
 `c <= 1 + sqrt(2*2**dim)`, the disjoint cubes and `C <= 17*T/n` give
 `sum(n*c) <= 17*T + sqrt(34)*T*sqrt(n)` by Cauchy--Schwarz. Cache
-insertions and witness-cache upkeep total `O(T)`, but the queries still have only an
+insertions and witness-cache upkeep total `O(T)`. Core queries stop once
+the ascending core passes the current witness's last input: later triples
+cannot precede it. On all 276 tables through three inputs and 24 seeded
+tables per arity at n=4..8, this reduces pair lookups from 3,744 to 3,615
+with byte-identical emitted programs. The queries still have only an
 `O(T*sqrt(n))` bound. The former triple cache cost `c**3/3` a clause. A core with no relation of weight four or less can hold all `n`
 inputs: the extended-BCH columns `(1, x, x**3)` over GF(16) do, with
 `dim = 9`. Half the cosets of that subspace at n=16 reach a 16-input core,
@@ -692,3 +710,22 @@ step leaves 32 in `F_2^9`. That 2-flat lifts twice, so `D(11, 1/2) >= 4`.
 invariant 256-point set without a 4-flat, 12 groups in all. Groups with
 60 to 80 orbits, Frobenius among them, were undecided at the time
 limit.
+
+## Scaling status
+
+These verdicts describe shipped generators and exemptions from the measured
+size regression. Open generator-linearity work lives in the
+[roadmap](../roadmap.md#generator-linearity).
+
+<!-- SCALING-STATUS:START -->
+
+| Language | Totality | Generation time | Output size |
+| --- | --- | --- | --- |
+| Befunge | Exception | Linear | Linear |
+| Factor | Total | Language lower bound | Language lower bound |
+| Malbolge | Exception | Open | Linear |
+| Polynomial | Cap | Language lower bound | Language lower bound |
+| Vandevelo | Total | Open | Measured |
+| Unary | Cap | Language lower bound | Language lower bound |
+
+<!-- SCALING-STATUS:END -->

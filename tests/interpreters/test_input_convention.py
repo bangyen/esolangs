@@ -81,7 +81,9 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
         with pytest.raises(EOFError):
             run(name, program, stdin="")
         return
-    module = importlib.import_module("esolangs.interpreters." + example.interpreter)
+    module = importlib.import_module(
+        f"esolangs.languages.{example.interpreter}.interpreter"
+    )
     argument = program.splitlines() if example.split else program
     extra = {key: value for key, value in example.kwargs if key != "seed"}
     try:

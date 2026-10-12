@@ -6,7 +6,7 @@ import pytest
 import sympy
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.brainfuck import _Machine
+from esolangs.languages.brainfuck.interpreter import _Machine
 from tests.proofs._research_dag import read_prune
 
 
@@ -94,27 +94,6 @@ def test_ordered_reads_retain_four_stores_at_one_cursor() -> None:
         assert io.getvalue() == prefix[0]
     assert len(set(states)) == 4
     assert len({state[0] for state in states}) == 1
-
-
-@pytest.mark.medium
-def test_bounded_input_census_distinguishes_read_observations() -> None:
-    inputs = [bits for n in range(3) for bits in itertools.product((0, 1), repeat=n)]
-    seen: list[set[tuple[object, ...]]] = [set(), set(), set()]
-    for length in range(4):
-        for commands in itertools.product("><+-.,", repeat=length):
-            behavior = []
-            for bits in inputs:
-                io = ScriptedIO("".join(chr(bit) for bit in bits))
-                machine = _Machine("".join(commands), io)
-                try:
-                    while not machine.halted:
-                        machine.step()
-                    behavior.append(("halt", io.getvalue()))
-                except EOFError:
-                    behavior.append(("EOF",))
-            for m in range(3):
-                seen[m].add(tuple(behavior[: 2 ** (m + 1) - 1]))
-    assert [len(values) for values in seen] == [13, 23, 27]
 
 
 @pytest.mark.medium

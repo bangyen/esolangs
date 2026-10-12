@@ -41,12 +41,12 @@ _WORD_NUMBERS = {"no": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
 #: The Scaling column's classes, the text before the cell's first colon.
 #: ``linear`` is proved O(T) size and time; ``linear, time n log`` keeps one
 #: stated log factor in generation time; ``measured`` has no bound at all;
-#: ``open`` and ``lower bound`` are the roadmap audit's open rows.
+#: ``open`` and ``lower bound`` are the scaling audit's open rows.
 SCALING_CLASSES = frozenset(
     {"linear", "linear, time n log", "measured", "open", "lower bound"}
 )
 
-#: The classes whose rows the roadmap's audit table must carry as open on
+#: The classes whose rows the scaling audit table must carry as open on
 #: generation time or output size, and vice versa.
 UNSETTLED_SCALING = frozenset({"measured", "open", "lower bound"})
 

@@ -46,7 +46,7 @@ character is an instruction).  Cells hold bytes (`+`,`-` wrap mod 256), all 0 at
 starts at cell 0.
 
 * Tape: **clip**: cells `0, 1, 2, ...`, `<` at cell 0 does nothing.  Variant **bi** (the repository
-  interpreter, `src/esolangs/interpreters/tape_based/brainfuck.py`, since 2026-10-06): cells indexed by `Z`.
+  interpreter, `src/esolangs/languages/brainfuck/interpreter.py`, since 2026-10-06): cells indexed by `Z`.
 * Input: a finite byte string `w`, read left to right by `,`.  At end of input: **err** (the repository
   interpreter: the run stops with result `(eof, o)`, `o` the output so far), **const** (the cell is set
   to 0), **keep** (the cell is unchanged).
@@ -251,7 +251,7 @@ and `L1` a read-containing loop. The read-free sequence series `R` must include 
 
 These bodies exclude a sole loop, but permit an empty loop after a prefix that may
 zero the tested cell. The executed counterexample is pinned in
-`tests/proofs/test_brainfuck_count.py`.
+`src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_count.py`.
 
 **The six-series relaxation alone is too weak.** Put `O = 5x`, `C = x`,
 `E = x^2`, and let `L = E + L0 + L1` and `B = B0 + B1`. The first two
@@ -310,7 +310,7 @@ removal with EOF, halting and divergence observations.
 
 Reproduce from the repository root:
 
-    uv run python -m tests.proofs._brainfuck_balanced --export notes/brainfuck-balanced.json
+    uv run python -m esolangs.languages.brainfuck.tests.proofs._brainfuck_balanced --export notes/brainfuck-balanced.json
     uv run python -m tests.proofs.balanced_certificate notes/brainfuck-balanced.json
 
 **Print rotation at every depth.** The rule `[.Y]. -> .[Y.]` holds for every
@@ -349,7 +349,7 @@ matched-bracket controls at depths one through eight distinguish forbidden
 rotations from their admissible replacements. Execution controls cover
 reads that reach EOF, zero-entry skips, halting and divergence.
 
-    uv run python -m tests.proofs._brainfuck_balanced --rotation --export notes/brainfuck-rotation.json
+    uv run python -m esolangs.languages.brainfuck.tests.proofs._brainfuck_balanced --rotation --export notes/brainfuck-rotation.json
     uv run python -m tests.proofs.balanced_certificate notes/brainfuck-rotation.json
 
 No finite monitor counts the unrestricted bodies. A regular class needs finite,
@@ -368,7 +368,7 @@ A larger finite-factor monitor cannot enforce those classes.
 class counts through window 8.
 
 The unrestricted nonzero-tail rule has an exact typed coefficient constructor
-in `tests/proofs/_brainfuck_divergence.py`. Its atom state records whether any read occurs, the first atom,
+in `src/esolangs/languages/brainfuck/tests/proofs/_brainfuck_divergence.py`. Its atom state records whether any read occurs, the first atom,
 the atom count capped at two, and four suffix classes: no eligible loop,
 a loop followed by prints, a print-first loop with no following print,
 or a loop followed by prints, one sign, then prints. A new loop resets the
@@ -966,10 +966,10 @@ that exclude the counterexample `[-[]]`. Their arithmetic checks do not certify 
 behaviour bound: a certificate cannot repair an unsound rewrite.
 
 The replacement 7.0347 certificate is reproducible with
-`uv run python -m tests.proofs._brainfuck_count`. The helper builds the factors and regular
+`uv run python -m esolangs.languages.brainfuck.tests.proofs._brainfuck_count`. The helper builds the factors and regular
 monitors, computes a candidate vector by power iteration, rounds it at scale `10**12`, and
 checks the displayed Perron inequality using integers only. Floating-point accuracy is not a
-hypothesis of the certificate. `tests/proofs/test_brainfuck_count.py` checks the automata against
+hypothesis of the certificate. `src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_count.py` checks the automata against
 an independent regex oracle, executes 2,944 contextual rewrite pairs, and rejects the unsafe
 read/print commutations with positive counterexamples. The invalid `[-[]]` body remains accepted.
 

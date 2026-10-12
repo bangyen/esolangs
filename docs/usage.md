@@ -166,16 +166,17 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
 | Piet++ | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Taglate | `char_stream_padded` | `0`/`1` | `'0101'` |
 | Thue | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Unary | `char_stream` | `\x00`/`ÿ` | `'ÿ\x00ÿ'` |
 | Vandevelo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
 The other 37 that read stdin take one `0`/`1` character per bit -- `'101'`.
 The remaining 21 embed their inputs and read no stdin: `instantiate` fills them.
-The 4 interpreter-only classics have no generator, so there is no generated stdin to feed.
+The 3 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.
 
 <!-- INPUT-SHAPES:END -->
 
-[`MANIFEST.md`](../src/esolangs/examples/MANIFEST.md) lists each example’s
+[`MANIFEST.md`](../src/esolangs/languages/EXAMPLES.md) lists each example’s
 input row and encoding.
 
 `esolangs run` warns about invalid stdin through the interpreter; pipe its
@@ -293,7 +294,7 @@ shows the `gen`, `tmpl`, and `ex` markers.
 ## Compatibility
 
 The package is beta until 1.0: a 0.x minor release may still break the
-surface below, and [CHANGELOG.md](../CHANGELOG.md) lists every break. The
+surface below, and [CHANGELOG.md](CHANGELOG.md) lists every break. The
 public API is `esolangs.__all__` and `esolangs.debugger.__all__`, plus the
 documented CLI; every other module (`esolangs.vm`, `esolangs.registry`,
 `esolangs.tools`, `esolangs.interpreters`, ...) is internal. From 1.0, within

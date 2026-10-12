@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import subprocess  # nosec B404 -- fixed Python worker; source travels over stdin.
@@ -14,8 +15,10 @@ from time import monotonic
 from typing import Any, TextIO, cast
 
 from esolangs import exceptions
+from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource, read_input
 from esolangs._validate import check_timeout, check_whole
+from esolangs.compressed import CompressedText
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
@@ -175,10 +178,7 @@ def run_isolated(
                             key for key, value in choices.items() if type(value) is int
                         ],
                         "language": name,
-                        "program": _raster_transport(source)
-                        if isinstance(source, Raster)
-                        else source,
-                        "raster": isinstance(source, Raster),
+                        **_source_transport(source),
                         "stdin": read_input(stdin),
                         # Decimal JSON rendering rejects valid 4301-digit seeds.
                         "seed": hex(seed) if isinstance(seed, int) else seed,
@@ -320,9 +320,23 @@ def _bounded_output(child: subprocess.Popen[str], request: str, timeout: float) 
     return _decode("".join(output), expired=expired)
 
 
+def _source_transport(source: Program) -> dict[str, Any]:
+    """Encode all source containers for the JSON worker protocol."""
+    if isinstance(source, CompressedText):
+        return {
+            "program": base64.b64encode(source.to_gzip()).decode("ascii"),
+            "raster": False,
+            "compressed": True,
+        }
+    return {
+        "program": _raster_transport(source) if isinstance(source, Raster) else source,
+        "raster": isinstance(source, Raster),
+    }
+
+
 def termination_isolated(
     name: str,
-    source: str,
+    source: Program,
     stdin: str,
     timeout: float,
     halts: str,
@@ -339,9 +353,8 @@ def termination_isolated(
         json.dumps(
             {
                 "language": name,
-                "program": source,
+                **_source_transport(source),
                 "stdin": stdin,
-                "raster": False,
                 "max_memory": max_memory,
                 "termination": [halts, diverges],
                 "settings": choices,
@@ -395,6 +408,8 @@ def _worker() -> None:
                     f"cannot enforce memory limit: {error}"
                 ) from error
         program = request["program"]
+        if request.get("compressed", False):
+            program = CompressedText(base64.b64decode(program, validate=True))
         if request["raster"]:
             program = Raster(_raster_rows(program))
         settings = DialectSettings(

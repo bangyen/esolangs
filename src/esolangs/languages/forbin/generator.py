@@ -1,0 +1,273 @@
+"""Boolean-function generator for Forbin."""
+
+import re
+from collections.abc import Callable
+
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
+from esolangs.tools.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    constant_span_test,
+    grid_width,
+    input_weights,
+    short_name,
+    subtree_ids,
+)
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import _join_tokens, balance_score
+
+_FORBIN_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+_FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
+
+
+#: Inputs answered by the shift register rather than by a branch.  A block
+#: costs two characters an entry (the literal and its comma) against the
+#: twenty-odd a tree leaf costs, so the per-entry constant falls as this
+#: rises while the register's fixed prologue doubles with it: 2.78 at five,
+#: 2.39 at six, 2.22 at seven.  Seven is the last value that still measures
+#: cleanly -- at eight the block is wider than the whole table at ``n = 7``,
+#: which is a rung ``tests/proofs/deep/linearity.py`` fits a line through.
+_BLOCK_BITS = 7
+
+
+def _forbin_name(index: int) -> str:
+    """Return the ``index``th shortest non-keyword identifier."""
+    candidate = 0
+    while True:
+        name = short_name(candidate, _FORBIN_ALPHABET)
+        if name not in _FORBIN_RESERVED:
+            if index == 0:
+                return name
+            index -= 1
+        candidate += 1
+
+
+class _Names:
+    """The identifiers one program uses, shortest where they repeat most."""
+
+    def __init__(self, n: int, block: int) -> None:
+        taken = 0
+
+        def take(count: int) -> list[str]:
+            nonlocal taken
+            names = [_forbin_name(taken + k) for k in range(count)]
+            taken += count
+            return names
+
+        # The tree names an input bit once a node and calls ``table`` or a
+        # constant printer once a leaf, so those repeat with the table
+        # length and take the one-character names first.
+        self.bits = take(n)
+        self.table, self.zero, self.one = take(3)
+        (self.junk,) = take(1)
+        self.cells = take(block)
+        self._take = take
+
+    def fresh(self) -> str:
+        """Return a name no other part of the program uses."""
+        return self._take(1)[0]
+
+
+def _byte(bit: int) -> str:
+    """Return an ``out`` argument list printing the digit ``bit``."""
+    return ",".join(format(_ASCII_ZERO + bit, "08b"))
+
+
+def forbin(truth_table: str, width: int | None = None) -> str:
+    """Build a Forbin program computing the given truth table.
+
+    A supplied width uses disjoint guards and grammar-token wrapping, with
+    a four-column floor for ``main``. Unwrapped output retains early returns.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Forbin's ``in`` reads one bit (most significant first), so each input
+    byte contributes 8 reads and only the last bit (the LSB, which is what
+    distinguishes ``'0'`` from ``'1'``) is used.  One assignment collects
+    all ``8n`` of them: a single right-hand side is re-evaluated once per
+    target, so ``a,a,a,a,a,a,a,b=(in 0)`` drops seven bits into a scratch
+    name and keeps the eighth.
+
+    The table is *painted*, not walked.  Its last :data:`_BLOCK_BITS`
+    inputs address a block of ``2 ** _BLOCK_BITS`` entries, and each block
+    is handed to ``table`` as a literal argument list -- two characters an
+    entry.  ``table``'s parameters are a shift register: for each of those
+    inputs in turn, one multi-assignment slides the upper half of the live
+    window down over the lower half when the bit is 1, so the first
+    parameter ends up holding the addressed entry, which is printed.  The
+    remaining ``n - _BLOCK_BITS`` inputs pick the block with a range-loop
+    if (``for _:1..b`` runs once when ``b`` is 1 and not at all when it is
+    0, and every leaf returns), and a constant span anywhere in that tree
+    collapses to a call to one of the two printers.  A repeated block or
+    subtree is one function nested in ``main`` (seeded tables tiled from two
+    random 128-entry blocks: n=9 -20.5%, n=10 -42.8%; random tables unchanged).
+    """
+    if width is not None:
+        natural = forbin(truth_table)
+        if max(map(len, natural.splitlines())) <= width:
+            return natural
+    # The tree is built over the essential inputs; an ignored input is still
+    # read, but its kept bit drops into the scratch name with the other seven.
+    weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
+    n = len(table).bit_length() - 1
+    low = min(n, _BLOCK_BITS)
+    high = n - low
+    block = 1 << low
+    names = _Names(n, block)
+
+    used: set[str] = set()
+    defs, tree = _tree(table, n, high, names, used, narrow=width is not None)
+    lines = ["main{", _reads(weights, names)]
+    # A table that folds everywhere paints no block, so the register would
+    # be dead prologue.  It reads ``main``'s input bits, so it is nested
+    # there: scoping is lexical (a variable is local to a function "and its
+    # children").  It goes first, so the tree's last return closes ``main``.
+    if names.table in used:
+        lines.append(_register(names, block, high, n))
+    lines += [*defs, *tree, "}"]
+    for bit, name in ((0, names.zero), (1, names.one)):
+        if name in used:
+            lines.append(f"{name}{{out {_byte(bit)};}}")
+    program = "\n".join(lines)
+    if width is None:
+        return program
+    # Whitespace separates every grammar token; identifiers and '..' stay whole.
+    from esolangs.tools.wrap import wrap_space_delimited
+
+    tokens = re.findall(r"[A-Za-z_][A-Za-z_0-9]*|\.\.|[^\s]", program)
+    return wrap_space_delimited(" ".join(tokens), width)
+
+
+def _reads(weights: list[int], names: _Names) -> str:
+    """Return the one assignment that reads every input's low bit.
+
+    An input of weight 0 is ignored: its low bit goes to the scratch name.
+    """
+    targets: list[str] = []
+    bits = iter(names.bits)
+    for weight in weights:
+        targets.extend([names.junk] * 7)
+        targets.append(next(bits) if weight else names.junk)
+    return f"{','.join(targets)}=(in 0);"
+
+
+def _tree(
+    truth_table: str,
+    n: int,
+    high: int,
+    names: _Names,
+    used: set[str],
+    *,
+    narrow: bool = False,
+) -> tuple[list[str], list[str]]:
+    """Return the shared functions and the block-selecting branch tree.
+
+    A subtree repeated at its level becomes one function, called from each
+    place; the functions nest in ``main``, which holds the input bits.
+    """
+    constant: Callable[[int, int], bool] = constant_span_test(truth_table)
+    # A constant table is one entry, which has no levels to name.
+    ids = subtree_ids(truth_table) if n else []
+    count: dict[int, int] = {}
+
+    def tally(level: int, row: int) -> None:
+        span = 2 ** (n - level)
+        if constant(row, row + span):
+            return
+        key = ids[level][row // span]
+        count[key] = count.get(key, 0) + 1
+        # A repeat's insides are one copy, wherever it ends up.
+        if level < high and count[key] == 1:
+            tally(level + 1, row)
+            tally(level + 1, row + span // 2)
+
+    tally(0, 0)
+    shared: dict[int, str] = {}
+    defs: list[str] = []
+
+    def call(name: str) -> list[str]:
+        # The 0 is the wiki's: "something has to be passed to call it".
+        return [f"{name} 0;" if narrow else f"return({name} 0)"]
+
+    def emit(level: int, row: int) -> list[str]:
+        span = 2 ** (n - level)
+        if constant(row, row + span):
+            name = names.one if truth_table[row] == "1" else names.zero
+            used.add(name)
+            return call(name)
+        key = ids[level][row // span]
+        if key in shared:
+            return call(shared[key])
+        lines = build(level, row, span)
+        if count[key] > 1:
+            name = names.fresh()
+            # Keep the function only where its calls cost less than the copies.
+            saved = (count[key] - 1) * (len("".join(lines)) - len(*call(name)))
+            if saved > len(name) + 2:
+                shared[key] = name
+                defs.extend([f"{name}{{", *lines, "}"])
+                return call(name)
+        return lines
+
+    def build(level: int, row: int, span: int) -> list[str]:
+        if level == high:
+            # The literal block goes on a line of its own: it is one
+            # unbreakable token, and the wrapper holds a line to its width
+            # unless a single token already overruns it.
+            used.add(names.table)
+            block = ",".join(truth_table[row : row + span])
+            if narrow:
+                return [f"{names.table} {block};"]
+            return [f"return({names.table}", f"{block})"]
+        lower = emit(level + 1, row)
+        if narrow:
+            # Both guards run at most once, so a leaf needs no early return.
+            lower = [f"for _:1..!{names.bits[level]}{{", *lower, "}"]
+        return [
+            f"for _:1..{names.bits[level]}{{",
+            *emit(level + 1, row + span // 2),
+            "}",
+            *lower,
+        ]
+
+    return defs, emit(0, 0)
+
+
+def _register(names: _Names, block: int, high: int, n: int) -> str:
+    """Return the ``table`` function: a shift register over one block."""
+    cells = names.cells
+    body: list[str] = []
+    live = block
+    for level in range(high, n):
+        half = live // 2
+        slide = f"{','.join(cells[:half])}={','.join(cells[half:live])}"
+        body.append(f"for _:1..{names.bits[level]}{{{slide}}}")
+        live = half
+    body.append(f"out 0,0,1,1,0,0,0,{cells[0]};")
+    return f"{names.table} {','.join(cells)}{{{''.join(body)}}}"
+
+
+def _balance(table: str, default: str) -> str:
+    """Balance the disjoint-guard spelling below the natural statement span."""
+    tokens = forbin(table, 1).split()
+    width = balanced_token_width(tokens, " ", maximum=grid_width(default) - 1)
+    return min(default, _join_tokens(tokens, width, " "), key=balance_score)
+
+
+LANGUAGE = Language(
+    "Forbin",
+    "forbin",
+    category="other",
+    boolean=forbin,
+    # Not a tree: one painted call argument per entry, halved down to the first.
+    shape=Shape.LOOKUP,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    balance=_balance,
+    empty_program="Forbin program has no main function",
+)

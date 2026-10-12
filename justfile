@@ -5,6 +5,9 @@
 # need permission outside the repository.  An explicit UV_CACHE_DIR still wins.
 export UV_CACHE_DIR := env_var_or_default("UV_CACHE_DIR", justfile_directory() + "/.cache/uv")
 
+# Keep Pylint's statistics writable in sandboxed worktrees too.
+export PYLINTHOME := env_var_or_default("PYLINTHOME", justfile_directory() + "/.cache/pylint")
+
 # Auto-detect uv - falls back to plain python if not available
 PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python"`
 
@@ -38,7 +41,7 @@ install-dev:
         pip install -e . --group dev
     fi
     # Enable the pre-push gate (scripts/verify/gate.py) so every push runs the
-    # full local check: lint, pytest, bandit, and the verify scripts.
+    # local check: lint, types, and pytest.
     git config core.hooksPath .githooks
 
 # The formatter is ruff-format, run via pre-commit (and so via `just test`);
@@ -56,11 +59,11 @@ lint: lint-python
 # Scoped to the files this branch touched; widens to everything when the diff
 # is unreadable or shared machinery moved.  Use `just test-full` to force the
 # whole tree.  Pass --quiet to suppress successful step output.
-# test (local check: lint, pytest, bandit, verify scripts)
+# test (local check: lint, types, pytest)
 test *args:
     {{PYTHON}} scripts/verify/gate.py {{args}}
 
-# every step over the whole tree, ignoring what this branch touched
+# local checks over the whole tree, including slow tests
 test-full *args:
     {{PYTHON}} scripts/verify/gate.py --full {{args}}
 
@@ -101,8 +104,8 @@ benchmark language table *args:
     {{PYTHON}} scripts/benchmark.py "{{language}}" "{{table}}" {{args}}
 
 # Every language on 2-, 3- and 4-input tables, compared exactly against
-# tests/fixtures/generator_sizes.json.  Pass --update to re-record a change
-# so the diff carries it.  Also a `just test` step ("generator size baseline").
+# tests/support/fixtures/generator_sizes.json.  Pass --update to re-record a change
+# so the diff carries it.  Also checked in CI.
 # check emitted sizes and step counts against the committed baseline
 sizes *args:
     {{PYTHON}} checks/check_generator_sizes.py {{args}}

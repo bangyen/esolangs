@@ -8,12 +8,12 @@ repos:
       # `examples/` at the root is a symlink to them.  While this said only
       # `^examples/` the hook stripped the real files and
       # test_boolean_example_matches_generator caught it.  Wiki examples are
-      # verbatim too (all of tests/fixtures/): a 2D program's padding and an
+      # verbatim too (all of tests/support/fixtures/): a 2D program's padding and an
       # output's last byte count.
       - id: trailing-whitespace
-        exclude: ^((src/esolangs/)?examples/|tests/fixtures/)
+        exclude: ^(src/esolangs/languages/[^/]+/(examples/|tests/fixtures/)|tests/support/fixtures/)
       - id: end-of-file-fixer
-        exclude: ^((src/esolangs/)?examples/|tests/fixtures/)
+        exclude: ^(src/esolangs/languages/[^/]+/(examples/|tests/fixtures/)|tests/support/fixtures/)
       - id: check-yaml
         args: ['--unsafe']  # Allow custom YAML tags
       - id: check-added-large-files
@@ -21,7 +21,6 @@ repos:
       - id: check-merge-conflict
       - id: check-json
       - id: check-toml
-      - id: check-merge-conflict
       - id: debug-statements
       - id: check-docstring-first
 
@@ -55,6 +54,7 @@ repos:
       - id: check-comment-density
         name: Check prose density (>= 2 code lines per comment or docstring-body line)
         entry: python3 checks/check_comment_density.py
+        exclude: ^src/esolangs/languages/[^/]+/tests/
         language: system
         files: ^src/esolangs/.*\.py$
         pass_filenames: true

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-import esolangs.tools as boolean
+import esolangs.languages.generators as boolean
 from esolangs.registry import BY_BOOLEAN
 from esolangs.tools.helpers import runs
 from tests.proofs._ledger import Ledger, Row, load

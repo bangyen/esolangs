@@ -94,8 +94,14 @@ full 17-input truth table. Raw record addresses can overlap executing code,
 so relocation must precede capture. The reduced LAST-only layout is short by
 8,432 cells before adding the remaining query, selector and metadata. This is
 a deficit for that construction, not an impossibility bound. See
-[the latest controls](proofs/malbolge-scaling.md#native-components-and-layout-gap-2026-10-09).
+[the latest controls](proofs/malbolge-scaling.md#native-bootstrap-progress-2026-10-11).
 The shipped cap remains sixteen.
+
+Vandevelo's fixed sparse-candidate cap forces Ω(T log n) emitted characters
+on an explicit odd-prefix family, where T = 2ⁿ. Character-level generation
+time is therefore superlinear for the shipped construction. A replacement
+with universal O(T) size and generation time remains open; no language-wide
+impossibility was proved. See [the proof](proofs/vandevelo-sparse-tail.md).
 
 Counting bounds each family independently of mixer quality:
 
@@ -163,7 +169,7 @@ language floor. The shipped generator gives equal subtables one state, so
 it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
 most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
 versus 23.6 for the tree. The construction and the counting floor are in
-[fractran](proofs/fractran.md) and `tests/proofs/deep/fractran.py`.
+[fractran](proofs/fractran.md) and `src/esolangs/languages/fractran/tests/proofs/deep/fractran.py`.
 
 The canonical sharing piece is applied or exempt by measurement. The
 per-generator potential, before a generator's own share, is bounded per
@@ -175,15 +181,14 @@ exemptions rest on the construction that cannot take the repeat, not a
 sub-gate bound. SStack's 24.6% is 82% subtables of size 2, below the
 two-unread-input depth a deferral needs, so its constructs reach the size >= 4
 repeats and save 4.8% of the plain tree
-(`tests/tools/test_boolean_sstack.py`); thisthat, Back, Dig and BF-PDA rest on
+(`tests/generators/test_boolean_sstack.py`); thisthat, Back, Dig and BF-PDA rest on
 their own admission tests. Boolfuck's is a sub-gate potential -- 2.3% of
 emitted size at n=5, below the gate, pinned in
-`tests/tools/test_boolean_boolfuck.py`. Home
+`tests/generators/test_boolean_boolfuck.py`. Home
 Row, ROTfuck and Dimensional are lookups that name no decision-tree node, and
 LaserFuck's path-dependent leaf code makes equal subtables unequal text.
-No decision-diagram generator leaves its repeats unshared, and the presence
-proxy is now enforced for the 48 tree-shaped generators by
-`tests/tools/test_boolean_sharing_catalogue.py`: 44 reference a canonical
+The sharing-helper presence proxy is enforced for the 48 tree-shaped generators by
+`tests/generators/test_boolean_sharing_catalogue.py`: 44 reference a canonical
 helper (`subtree_ids`, `SubtreeDiagram` -- Underload and Unlambda included),
 Circuit Diagram (`_dag`), Line (`shared_tree`) and Polynomial
 (`_polynomial_states`) a declared language-local one, and Piet is exempt (a
@@ -196,10 +201,30 @@ inputs without a width (16 of 96 controls improved on the admitting run).
 Dig's shared pool is 2..10 unique 64-row classes indexed by a single decimal
 digit over 2..6 prefix bits, so a larger pool needs a multi-digit index.
 
+Circuit Diagram and Line still have a general sharing/routing gap; helper
+presence does not establish complete sharing. Circuit Diagram's bundled
+suffix forests pass native dense controls through fifteen inputs. Line's
+partial-prefix cloning saves only 2.19% of aggregate planned area on 200
+seeded eight-input tables, below the bespoke gate; its native positive
+control passes all 256 rows, saving 33,700,800 to 32,865,600 scale-one pixels
+with the same 23-command maximum, so it remains unshipped.
+
+The Margulis cofactor witness establishes an expander minor in the
+original-order residual graph, not a language-wide area floor. At twelve
+inputs, Line's reverse-order destination layout passes all 4,096 rows in
+34,750,000 scale-one pixels with at most 50 commands. Reversal reduces the
+witness's nonconstant residual states from 18,437 to 548 at nineteen inputs
+(graph counts only). A routing exemption still needs a physical embedding
+proof and a witness covering alternative input orders and encodings.
+[VLSI layout bounds](https://publications.csail.mit.edu/lcs/pubs/pdf/MIT-LCS-TR-305.pdf)
+require an applicable embedding model;
+[universal-circuit size bounds](https://encrypto.de/papers/KS16.pdf) count
+logical gates, not rendered area.
+
 The ignored-input and constant-folding pieces are held to
 `test_generator_shape_is_what_the_catalogue_says` (a tree row folds on a
 one-dependency table, a reducing row drops its ignored inputs) and to the
-presence proxy in `tests/tools/test_boolean_canonical_catalogue.py`, whose
+presence proxy in `tests/generators/test_boolean_canonical_catalogue.py`, whose
 declared exceptions carry the piece natively (three rows for ignored inputs,
 eleven for constants).
 
@@ -303,7 +328,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 <!-- CURATION-CENSUS:START -->
 
-The 2026-10-06 census (`tests/fixtures/curation.toml`) records each
+The 2026-10-06 census (`tests/support/fixtures/curation.toml`) records each
 language's backlinks and route: 21 clear the fame gate,
 56 are first implementations and 6 are grandfathered.
 
@@ -392,14 +417,6 @@ and 4.000 (///). The constructions supply the bounds; these ratios are measureme
   `ConstantLanguage("Nope.")` ignores source and input, so neither runtime
   input nor source embeds can change its output. Accept arbitrary source,
   including empty source, under those constant semantics.
-- [Unary](https://esolangs.org/wiki/Unary) (63): interpreter-only under the generator
-  contracts. Valid sources encode only their zero count; whitespace formatting
-  does not evade that bound. Runtime input exists through
-  decoded Brainfuck, but sources of length at most L supply at most L+1
-  functions. Covering all 2**T truth tables requires L >= 2**T - 1 somewhere,
-  precluding an O(T) generator. Decoded Brainfuck uses wrapping bytes,
-  a tape growing in both directions and zero at EOF, as its cat example
-  requires.
 - [大白话](https://esolangs.org/wiki/大白话) (134): deferred. The command table is
   explicitly partial; expression precedence, complete block grammar, library
   semantics, and embedded-language dispatch are unspecified. A restricted
@@ -446,7 +463,7 @@ languages remain rejected from the same image-source screen.
   would change overlapping-rule programs; `--seed` makes the draws repeatable.
   The generator writes rules that never overlap,
   so each state it reaches has exactly one rewrite and the draw cannot change
-  the answer; `tests/tools/test_boolean_thue.py` asserts that over every
+  the answer; `tests/generators/test_boolean_thue.py` asserts that over every
   table to three inputs, and checks the answer under three seeds and the
   unseeded draw.
 - Unlambda's `@` reads a Unicode character, including newlines. At EOF,
@@ -470,7 +487,7 @@ languages remain rejected from the same image-source screen.
   wiki cat's final empty pop pads to a trailing NUL.
 - LaserFuck inherits Brainfuck commands without defining EOF: exhausted input
   raises `EOFError`.
-- SStack's page has no example with a stated output; its brainfuck
+- The SStack page has no example with a stated output; its brainfuck
   interpreter is marked untested. Popping an empty stack reads 0 and leaves it
   empty, `:x:` peeks and raises `HaltError` above 255, EOF raises, and
   whitespace is discarded anywhere, inside a token too.
@@ -522,3 +539,34 @@ languages remain rejected from the same image-source screen.
   User:Miui/Nah. (`Nah.`) pin the delta sign.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.
+
+## Unary
+
+Valid sources encode only their zero count; whitespace adds no functions.
+Sources of length at most L supply at most L+1 functions. Covering all
+2**T truth tables therefore requires L >= 2**T - 1 somewhere; writing
+those zeros has the same generation-time lower bound.
+
+The generator reads bytes 0/255 in input order. Halt answers zero; a fixed
+empty loop answers one. Complemented reads feed a folded decision tree;
+constants, projections and conjunctions use direct guards. Encoding m
+commands needs between 8**m and 2*8**m - 1 zeros. Cap raw export at 32 Mi
+characters, expanded generation work at 256 Mi characters, and gzip files
+at 256 KiB. Nine inputs is an absolute ceiling; most nontrivial tables
+hit the work cap earlier. Removing the resource screens leaves
+a finite encoding for every table.
+
+The eight-command AND guard `,>,[<[]]` emits 27,452,351 zeros. All four
+rows execute: three halt, 11 cycles, and each consumes two inputs. The
+committed AND example stores gzip text; program size counts expanded characters.
+Compression is streamed in 64 KiB chunks; the interpreter counts decompressed
+zeros without retaining expanded source. The default unwrapped AND occupies
+26,712 gzip bytes. `str(program)` exports plain text; `to_gzip()` and `save()`
+export files. The CLI writes gzip by default and `--plain` exports text.
+Decoded Brainfuck uses wrapping bytes, a tape growing in both directions
+and zero at EOF.
+
+Nine-input constant false emits 230,087,533 zeros and 223,664 gzip bytes.
+Generation took 0.658 s; all-zero/all-one rows halted after nine reads in
+0.209/0.208 s. Ten-input constant false needs 1,840,700,269 zeros and was
+priced but not built. Arity is not a uniform promise below either cap.
