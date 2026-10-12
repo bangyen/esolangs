@@ -78,8 +78,12 @@ class TestExamplesShipWithThePackage:
         assert declared, "no package-data entry for esolangs"
         patterns = declared.group(1)
         directory = pathlib.Path(esolangs.__file__).resolve().parent / "languages"
-        for suffix in {path.suffix for path in directory.glob("*/examples/*")}:
-            assert f"languages/*/examples/*{suffix}" in patterns
+        for suffix in {
+            path.suffix
+            for path in directory.glob("*/*")
+            if path.suffix in {".txt", ".png", ".gz"}
+        }:
+            assert f"languages/*/*{suffix}" in patterns
         assert "languages/EXAMPLES.md" in patterns
 
 

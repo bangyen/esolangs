@@ -219,7 +219,7 @@ class TestExamplePathsWorkFromAnywhere:
         for name in esolangs.list_languages():
             for example in esolangs.describe(name)["examples"]:  # type: ignore[union-attr]
                 assert example.startswith(
-                    f"languages/{esolangs.describe(name)['id']}/examples/"
+                    f"languages/{esolangs.describe(name)['id']}/"
                 ), (name, example)
 
     def test_the_advertised_recipe_runs_from_another_directory(

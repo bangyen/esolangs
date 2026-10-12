@@ -305,7 +305,7 @@ BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
 
 
 def _stem(lang: Language) -> str:
-    """Return the language's ``examples/`` stem: its dashed lowercase name.
+    """Return the language's example stem: its dashed lowercase name.
 
     A name a filename would garble uses its id.
     """

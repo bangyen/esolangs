@@ -372,7 +372,7 @@ def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
 def test_leak_step_covers_shipped_examples():
     from scripts.verify.scope import STEP_SCOPE
 
-    assert "src/esolangs/languages/fixture/examples/fixture.txt".startswith(
+    assert "src/esolangs/languages/fixture/fixture.txt".startswith(
         STEP_SCOPE["exception leaks"]
     )
 

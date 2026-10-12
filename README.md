@@ -108,7 +108,7 @@ Feeding it the two adjacent input characters prints their XOR.
 
 Ready-to-run programs for each of the 80
 languages with a boolean generator live in
-each language's [`examples/` directory](https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).
+each language's [directory](https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).
 
 <!-- EXAMPLES:END -->
 

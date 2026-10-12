@@ -880,7 +880,11 @@ def remove(name: str) -> list[str]:
     doomed: set[Path] = {
         *module_paths,
         ROOT / "src/esolangs/languages" / lang.id / "tests",
-        ROOT / "src/esolangs/languages" / lang.id / "examples",
+        *(
+            path
+            for path in (ROOT / "src/esolangs/languages" / lang.id).iterdir()
+            if path.suffix in {".txt", ".png", ".gz"}
+        ),
         *_owned_scripts(lang),
     }
     doomed |= _owned_evidence(name)

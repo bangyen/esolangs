@@ -229,7 +229,7 @@ def _select(
         return langs, "shared interpreter machinery changed"
     if any(
         name.startswith("src/esolangs/")
-        and "/examples/" not in name
+        and pathlib.Path(name).suffix not in {".txt", ".png", ".gz"}
         and not (_ROOT / name).is_file()
         for name in changed
     ):
@@ -238,7 +238,7 @@ def _select(
         pathlib.Path(name).stem
         for name in changed
         if name.startswith("src/esolangs/languages/")
-        and "/examples/" in name
+        and len(pathlib.Path(name).parts) == 5
         and pathlib.Path(name).suffix in {".txt", ".png"}
     }
     stems = example_stems()
@@ -386,10 +386,10 @@ def _examples_by_slug() -> dict[str, list[Program]]:
     by_slug: dict[str, list[Program]] = {}
     directory = _ROOT / "src" / "esolangs" / "languages"
     for slug, stem in example_stems().items():
-        path = directory / slug / "examples" / f"{stem}.txt"
+        path = directory / slug / f"{stem}.txt"
         if path.exists():
             by_slug.setdefault(slug, []).append(path.read_text())
-        image = directory / slug / "examples" / f"{stem}.png"
+        image = directory / slug / f"{stem}.png"
         if image.exists():
             from esolangs.raster.scale import normalize
 

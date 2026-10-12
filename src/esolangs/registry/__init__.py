@@ -71,7 +71,7 @@ INTERPRETERS = {
 
 @cache
 def example_stems() -> dict[str, str]:
-    """Return canonical id -> the ``examples/`` filename stem, per language.
+    """Return canonical id -> the example filename stem, per language.
 
     The stems are dash-separated display names; every
     internal reference is the canonical ID, and a few

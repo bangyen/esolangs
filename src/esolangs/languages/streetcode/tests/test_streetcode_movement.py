@@ -173,7 +173,7 @@ class TestStreetcodeAmbiguousTurns:
         for path in (
             "src/esolangs/languages/streetcode/tests/fixtures/streetcode_hello.txt",
             "src/esolangs/languages/streetcode/tests/fixtures/streetcode_and2_wide.txt",
-            "src/esolangs/languages/streetcode/examples/streetcode.txt",
+            "src/esolangs/languages/streetcode/streetcode.txt",
         ):
             code = (root / path).read_text().split("\n")
             if code and code[-1] == "":

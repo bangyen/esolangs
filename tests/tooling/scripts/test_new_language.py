@@ -505,7 +505,7 @@ def test_remove_cleans_language_package(
     for relative in (
         "src/esolangs/languages/tiny/tests/fixtures/wiki_examples/tiny.toml",
         "src/esolangs/languages/tiny/tests/proofs/helper.py",
-        "src/esolangs/languages/tiny/examples/tiny.txt",
+        "src/esolangs/languages/tiny/tiny.txt",
     ):
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)

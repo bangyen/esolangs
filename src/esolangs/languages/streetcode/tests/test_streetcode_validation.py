@@ -252,7 +252,7 @@ class TestStreetcodeStreetWidth:
         "path",
         [
             "src/esolangs/languages/streetcode/tests/fixtures/streetcode_hello.txt",
-            "src/esolangs/languages/streetcode/examples/streetcode.txt",
+            "src/esolangs/languages/streetcode/streetcode.txt",
         ],
     )
     def test_shipped_examples_are_accepted(self, path: str) -> None:

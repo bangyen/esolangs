@@ -107,7 +107,7 @@ def boolean_manifest_text() -> str:
         else:
             expected = repr(example.expected) if example.expected else "(nothing)"
         rows.append(
-            f"| `{canonical_id(stem.replace('-', ' '))}/examples/{example.filename}` | "
+            f"| `{canonical_id(stem.replace('-', ' '))}/{example.filename}` | "
             f"{_display_name(stem)} | `{example.table}` | "
             f"`{row}` | {given} | {expected} |"
         )
@@ -163,7 +163,7 @@ def _same_program(existing: bytes | None, encoded: bytes, generated: Program) ->
 def write_set(name: str) -> None:
     """Write one example directory from its generators, reporting each file."""
     for stem, generated in SETS[name]():
-        directory = LANGUAGES_DIR / canonical_id(stem.replace("-", " ")) / "examples"
+        directory = LANGUAGES_DIR / canonical_id(stem.replace("-", " "))
         directory.mkdir(parents=True, exist_ok=True)
         suffix = (
             ".png"

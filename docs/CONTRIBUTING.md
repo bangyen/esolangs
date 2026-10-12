@@ -106,7 +106,7 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   and calls its `run(code, io)`; `make_vm` exposes its
   step-capable machine to the debugger and the hang proofs.
 - Each language’s `tests/` holds its unit and integration suites, fixtures
-  and proofs; its `examples/` holds packaged programs. Shared contracts and
+  and proofs; packaged examples live beside its modules. Shared contracts and
   proof infrastructure live in `tests/`; `scripts/` holds development tools.
 
 ## Interpreter conventions

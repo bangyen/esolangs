@@ -119,20 +119,20 @@ def test_boolean_examples_cover_every_committed_file() -> None:
     """Every file in examples is accounted for, and vice versa."""
     on_disk = {
         p.relative_to(BASE_DIR / "src/esolangs/languages").as_posix()
-        for p in (BASE_DIR / "src/esolangs/languages").glob("*/examples/*")
+        for p in (BASE_DIR / "src/esolangs/languages").glob("*/*")
         if p.suffix in (".txt", ".png", ".gz")
     }
     expected = {
-        f"{canonical_id(stem.replace('-', ' '))}/examples/{example.filename}"
+        f"{canonical_id(stem.replace('-', ' '))}/{example.filename}"
         for stem, example in BOOLEAN_GENERATED.items()
     }
     unregistered = sorted(on_disk - expected)
     assert not unregistered, (
-        f"examples/ holds {unregistered} with no BooleanExample; delete them "
+        f"language directories hold {unregistered} with no BooleanExample; delete them "
         "or register them in src/esolangs/tools/examples.py"
     )
     missing = sorted(expected - on_disk)
-    assert not missing, f"examples/ lacks {missing}; run {REGENERATE}"
+    assert not missing, f"language directories lack {missing}; run {REGENERATE}"
 
 
 @pytest.mark.parametrize("name", sorted(HALT_CONVENTION))
@@ -145,7 +145,7 @@ def test_halt_convention_examples_halt(name: str) -> None:
         else path.read_text(encoding="utf-8").rstrip("\n")
     )
     assert _halts(name, program, list(BOOLEAN_GENERATED[name].inputs)), (
-        f"examples/{name}.txt holds the looping branch; the committed "
+        f"{name}.txt holds the looping branch; the committed "
         f"program must be the halting one or the suite hangs running it"
     )
 
@@ -228,7 +228,7 @@ def test_boolean_example(name: str) -> None:
         # to be wrapped in ``pytest.raises``.  The exhausted read is a halt
         # now -- which is what ``run`` always treated it as -- so it takes
         # the common path and the branch is gone.
-        assert _prove_halt(vm), f"examples/{name}.txt does not reach its halt"
+        assert _prove_halt(vm), f"{name}.txt does not reach its halt"
         # A few state-dumping languages deliberately write on the first step
         # after their halt.  That step is otherwise a no-op, so taking it for
         # every VM exactly matches each interpreter's public ``run`` behavior.
@@ -292,7 +292,7 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         raster = Raster.from_png(BOOLEAN_GENERATED[stem].build(balance=True).to_png())
         monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", raster)]))  # type: ignore[attr-defined]
         module.write_set("boolean")  # type: ignore[attr-defined]
-        path = tmp_path / "examples" / "img/examples/img.png"
+        path = tmp_path / "examples" / "img/img.png"
         Image.open(path).save(path, compress_level=1)
         recompressed = path.read_bytes()
         module.write_set("boolean")  # type: ignore[attr-defined]

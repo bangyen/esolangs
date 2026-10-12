@@ -125,8 +125,8 @@ def describe(language: str) -> LanguageInfo:
         else ".txt"
     )
     examples = sorted(
-        f"languages/{lang.id}/examples/{p.name}"
-        for p in (_LANGUAGES / lang.id / "examples").glob(f"{stem}{suffix}")
+        f"languages/{lang.id}/{p.name}"
+        for p in (_LANGUAGES / lang.id).glob(f"{stem}{suffix}")
     )
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()

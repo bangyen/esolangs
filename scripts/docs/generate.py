@@ -175,7 +175,7 @@ def render_examples_section() -> str:
     """Render the README's Examples paragraph between the markers.
 
     The count is the number of registered boolean generators, taken from
-    the registry rather than from ``ls examples/`` -- the same rule the rest
+    the registry rather than from a directory listing -- the same rule the rest
     of this script follows.  A separate sync test already pins that every
     generator has its committed file, so the registry is the source that
     cannot drift.
@@ -185,7 +185,7 @@ def render_examples_section() -> str:
         [
             f"Ready-to-run programs for each of the {count}",
             "languages with a boolean generator live in",
-            "each language's [`examples/` directory]"
+            "each language's [directory]"
             "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).",
         ]
     )

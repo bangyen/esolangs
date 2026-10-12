@@ -137,7 +137,7 @@ options:
                 gen    has a boolean generator
                 tmpl   that generator returns a template rather than a
                        runnable program -- see `esolangs generate --help`
-                ex     a committed program in examples/
+                ex     a committed program beside its language modules
                 int    interpreter-only: a classic kept for coverage, with
                        no generator, so `generate` refuses it
   --json      print a JSON array: names, or capability records with --details

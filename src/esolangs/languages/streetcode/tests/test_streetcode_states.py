@@ -134,7 +134,7 @@ class TestStreetcodeDriveStates:
         "path",
         [
             "src/esolangs/languages/streetcode/tests/fixtures/streetcode_hello.txt",
-            "src/esolangs/languages/streetcode/examples/streetcode.txt",
+            "src/esolangs/languages/streetcode/streetcode.txt",
         ],
     )
     def test_mouth_depth_bound_does_not_change_the_driving(self, path: str) -> None:
@@ -231,7 +231,7 @@ class TestStreetcodeDriveInvariants:
         """The invariants hold over every program the repo ships."""
         root = ROOT
         paths = sorted(
-            (root / "src/esolangs/languages/streetcode/examples").glob("streetcode.txt")
+            (root / "src/esolangs/languages/streetcode").glob("streetcode.txt")
         )
         # A relative glob silently matches nothing from another working
         # directory, which would leave this passing over no programs at all.
@@ -290,7 +290,7 @@ class TestStreetcodeGraphBackedStepping:
         "path",
         [
             "src/esolangs/languages/streetcode/tests/fixtures/streetcode_hello.txt",
-            "src/esolangs/languages/streetcode/examples/streetcode.txt",
+            "src/esolangs/languages/streetcode/streetcode.txt",
         ],
     )
     def test_the_shipped_examples_agree(self, path: str) -> None:
