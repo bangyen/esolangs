@@ -172,6 +172,10 @@ class TestFactorint:
             # batch has to survive a residue that keeps shrinking under it,
             # and a later chunk's gcd has to still find 20011.
             pytest.param(2**9000 * 3**40 * 20011, id="across-chunks"),
+            pytest.param(
+                2**9000 * 3**41 * 5**40 * 7**3 * 20011**2,
+                id="successive-batch-dropouts",
+            ),
         ],
     )
     def test_the_batched_chunk_answers_what_the_divisions_would(
