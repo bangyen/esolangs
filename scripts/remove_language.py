@@ -20,13 +20,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from removal_mentions import mention_edit
+    from removal_mentions import drop_owned_comments, mention_edit
 
     from esolangs.registry import Language
 else:
-    mention_edit = importlib.import_module(
+    _mentions = importlib.import_module(
         f"{__package__ + '.' if __package__ else ''}removal_mentions"
-    ).mention_edit
+    )
+    mention_edit = _mentions.mention_edit
+    drop_owned_comments = _mentions.drop_owned_comments
 
 ROOT = Path(__file__).parents[1]
 #: Where a language's own test and script files live.
@@ -983,6 +985,15 @@ def remove(name: str) -> list[str]:
         "tests/support/fixtures/canonical_folding_catalogue.toml",
     ):
         _drop_toml(ROOT / relative, name)
+    tracked = subprocess.run(
+        ["git", "ls-files"], cwd=ROOT, check=True, capture_output=True, text=True
+    ).stdout.splitlines()
+    for relative in tracked:
+        path = ROOT / relative
+        if path.is_file() and (
+            path.suffix in {".py", ".toml", ".yaml", ".yml"} or path.name == "justfile"
+        ):
+            drop_owned_comments(path, name)
     documents = [ROOT / "README.md", ROOT / "docs/proofs/index.md"]
     documents += sorted((ROOT / "docs").glob("*.md"))
     for path in documents:
@@ -1020,7 +1031,7 @@ def remove(name: str) -> list[str]:
     if wrapper is not None and not any(
         other is not lang and other.wrap is lang.wrap for other in LANGUAGES.values()
     ):
-        exclusive = True
+        exclusive = wrapper not in external_for("src/esolangs/tools/wrap.py")
         _drop_name_items(ROOT / "src/esolangs/tools/wrap.py", {wrapper})
     for relative in shared:
         _drop_dead_code(ROOT / relative, external_for(relative))

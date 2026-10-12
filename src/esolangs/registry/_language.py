@@ -19,6 +19,7 @@ from esolangs.registry._slug import canonical_id
 # ``generator(truth_table)`` returns a program computing it; the few that lay
 # out two dimensions also take a ``width``, hence ``...``.
 Generator = Callable[..., Program]
+ProofFormula = tuple[Callable[[int, str], float], bool, tuple[int, ...]]
 Payload = tuple[tuple[int, ...], tuple[int, ...], int, int]
 
 
@@ -125,6 +126,8 @@ class Language:
     layout_switch: tuple[int, ...] = ()
     #: Executable baseline controls when the default corpus exceeds a proved cap.
     benchmark_tables: tuple[str, ...] = ()
+    proof_execution: ProofFormula | None = None
+    proof_workspace: ProofFormula | None = None
     # Shared sweeps that run long for it: marked slow, or left to its tests.
     slow_scaling: bool = False
     slow_stepping: bool = False

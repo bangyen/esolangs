@@ -7,6 +7,7 @@ a 1, so a constant half or repeat has nothing to fold or share.
 from itertools import pairwise
 from math import isqrt
 
+from esolangs.languages.taglate.proof_formulas import execution, workspace
 from esolangs.languages.taglate.wrapping import _taglate, same_layout
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -348,6 +349,8 @@ def _balanced(default: str) -> str:
 LANGUAGE = Language(
     "Taglate",
     "taglate",
+    proof_execution=(execution, True, (3, 4)),
+    proof_workspace=(workspace, True, (3, 5)),
     category="queue_based",
     boolean=taglate,
     split=True,

@@ -25,6 +25,7 @@ one_two_three = 8
 polynomial = 7
 
 [workspace]
+# language-owners: ["BFStack", "FALSE"]
 # Written state is recounted every step, so a rung costs ~4x the last.
 # Lowered where a generator's top rung passed ~3s; FALSE and BFStack keep 9,
 # since their poly n fit (x1.49, x1.48) is steeper lower down.
@@ -48,6 +49,7 @@ taglate = 7
 unlambda = 6
 
 [workspace_step_exempt]
+# language-owners: ["SLOW ACV MAMMALIAN", "Vandevelo"]
 # poly n rows whose dense increments may grow past STEP_GROWTH at the
 # measured arities.  Vandevelo's registers grow ~sqrt(T) until the n*n cap
 # binds at n=14: written bits 2450, 3361, 3872, 4419, 4998 at n=13..17,

@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import ast
+import io
+import json
 import re
+import sys
+import tokenize
 from contextlib import suppress
 from pathlib import Path
 
@@ -22,12 +26,6 @@ def mention_edit(root: Path, mention: str, name: str | None = None) -> str:
         if tree is not None
         else []
     )
-    if tree is not None and any(
-        isinstance(node, ast.Import | ast.ImportFrom)
-        and node.lineno <= line <= (node.end_lineno or node.lineno)
-        for node in ast.walk(tree)
-    ):
-        return "code: remove or replace the language dependency"
     if tree is not None:
         for node in ast.walk(tree):
             if not isinstance(node, ast.Subscript):
@@ -85,6 +83,51 @@ def mention_edit(root: Path, mention: str, name: str | None = None) -> str:
             for arg in arguments
         ):
             return "code: remove or replace the language dependency"
+    if tree is not None and name is not None:
+        bindings = {
+            alias.asname or alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom)
+            and node.module is not None
+            and node.module.split(".", 1)[0] in sys.stdlib_module_names
+            for alias in node.names
+            if (alias.asname or alias.name).casefold() == name.casefold()
+        }
+        if bindings and any(
+            node.lineno == line
+            and (
+                (isinstance(node, ast.Name) and node.id in bindings)
+                or (
+                    isinstance(node, ast.ImportFrom)
+                    and any(
+                        (alias.asname or alias.name) in bindings for alias in node.names
+                    )
+                )
+            )
+            for node in ast.walk(tree)
+            if hasattr(node, "lineno")
+        ):
+            return "identifier: standard-library binding; retain it"
+    if tree is not None and any(
+        isinstance(node, ast.Import | ast.ImportFrom)
+        and node.lineno <= line <= (node.end_lineno or node.lineno)
+        for node in ast.walk(tree)
+    ):
+        return "code: remove or replace the language dependency"
+    if (
+        tree is not None
+        and name is not None
+        and re.fullmatch(r"[0-9]+[a-z]", name)
+        and any(
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and node.lineno == line
+            and re.search(rf"(?<![\w]){re.escape(name)}(?=[\^+ -])", node.value)
+            and "=" in node.value
+            for node in ast.walk(tree)
+        )
+    ):
+        return "identifier: arithmetic coefficient in source; retain it"
     if tree is not None and path == "tests/tooling/scripts/test_new_language.py":
         helpers = {
             "_owner_id",
@@ -131,3 +174,49 @@ def mention_edit(root: Path, mention: str, name: str | None = None) -> str:
     if path.endswith((".toml", ".yaml", ".yml", ".json")):
         return "configuration: inspect the remaining reference"
     return "code: inspect the remaining dependency"
+
+
+def drop_owned_comments(path: Path, name: str) -> int:
+    """Drop a declared comment cohort when any of its owners is removed."""
+    source = path.read_text(encoding="utf-8")
+    if "# language-owners:" not in source:
+        return 0
+    lines = source.splitlines(keepends=True)
+    if path.suffix == ".py":
+        comments = {
+            token.start[0]
+            for token in tokenize.generate_tokens(io.StringIO(source).readline)
+            if token.type == tokenize.COMMENT
+        }
+    else:
+        comments = set(range(1, len(lines) + 1))
+    removed: set[int] = set()
+    for index, line in enumerate(lines):
+        if index + 1 not in comments or not line.lstrip().startswith(
+            "# language-owners:"
+        ):
+            continue
+        owners = json.loads(line.split("language-owners:", 1)[1])
+        if (
+            not isinstance(owners, list)
+            or not owners
+            or not all(isinstance(owner, str) and owner for owner in owners)
+        ):
+            raise ValueError(f"{path}:{index + 1}: invalid comment owners")
+        if name.casefold() not in {owner.casefold() for owner in owners}:
+            continue
+        stop = index + 1
+        while (
+            stop < len(lines)
+            and lines[stop].lstrip().startswith("#")
+            and stop + 1 in comments
+            and not lines[stop].lstrip().startswith("# language-owners:")
+        ):
+            stop += 1
+        removed.update(range(index, stop))
+    if removed:
+        path.write_text(
+            "".join(line for i, line in enumerate(lines) if i not in removed),
+            encoding="utf-8",
+        )
+    return len(removed)

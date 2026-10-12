@@ -178,6 +178,7 @@ def test_narrow_balance_regime_edge_executes(table):
     assert _evaluate("Crement", balanced, inputs=len(table).bit_length() - 1) == table
 
 
+# language-owners: ["ArrowQueue", "Vandevelo"]
 # The shared verifier's timeout floor was measured across 123, ArrowQueue,
 # Crement and Vandevelo on 0110, 0001, 10010110 and 00010111: 0.000s,
 # every halting row sub-millisecond; its 1s bound has 1000x headroom.

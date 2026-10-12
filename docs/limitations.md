@@ -4,7 +4,7 @@ Interpreter conventions, generator constraints, and proved limits.
 
 - Polynomial has a [size lower bound](proofs/index.md#polynomial-bound).
 
-The measurement screens and the Vandevelo profiler were removed once their
+The measurement screens and profilers were removed once their
 findings were recorded here; numbers attributed to them are evidence, not a
 command to rerun.
 
@@ -99,22 +99,56 @@ under a fixed template and fill mapping.
 - 123 has one straight-line stream per row. Its table-dependent paint sweep is
   fixed by the separation laws.
 
-Malbolge's source-embedded generator covers sixteen inputs. Through ten, a
-five-cell mixer maps rows to gap-3 addresses with three-cell answer stubs.
-Eleven through fourteen use collision-resolving pointer cascades; fifteen and
-sixteen use positional readouts, one cell per row pair. The representative
-dense, parity, constant tables were executed exhaustively at each shipped
-arity. Construction details and measurements are in
-[construction summary](proofs/index.md#malbolge-bound).
+- Malbolge:
+  Malbolge's source-embedded generator covers sixteen inputs. Through ten, a
+  five-cell mixer maps rows to gap-3 addresses with three-cell answer stubs.
+  Eleven through fourteen use collision-resolving pointer cascades; fifteen and
+  sixteen use positional readouts, one cell per row pair. The representative
+  dense, parity, constant tables were executed exhaustively at each shipped
+  arity. Construction details and measurements are in
+  [construction summary](proofs/index.md#malbolge-bound).
 
-Seventeen remains open. Native capture, semantic readout, footer dispatch and
-terminal-output components execute separately; no source computes an arbitrary
-full 17-input truth table. Raw record addresses can overlap executing code,
-so relocation must precede capture. The reduced LAST-only layout is short by
-8,432 cells before adding the remaining query, selector and metadata. This is
-a deficit for that construction, not an impossibility bound. See
-[the construction summary](proofs/index.md#malbolge-bound).
-The shipped cap remains sixteen.
+  Seventeen remains open. Native capture, semantic readout, footer dispatch and
+  terminal-output components execute separately; no source computes an arbitrary
+  full 17-input truth table. Raw record addresses can overlap executing code,
+  so relocation must precede capture. The reduced LAST-only layout is short by
+  8,432 cells before adding the remaining query, selector and metadata. This is
+  a deficit for that construction, not an impossibility bound. See
+  [the construction summary](proofs/index.md#malbolge-bound).
+  The shipped cap remains sixteen.
+
+
+  Counting bounds each family independently of mixer quality:
+
+  - stubs need three gap-3 cells per row: `3 * 2**n <= 59049`, hence `n <= 14`;
+  - cascades need one cell per row per level above ~9k code cells: `n <= 15`;
+  - last-input cells need `2**(n-1) <= 59049`: `n <= 16`.
+
+  The positional build meets the last bound. A cell answering the final two
+  inputs would need sixteen labels, but its address admits eight characters.
+  Seventeen inputs need more than two table bits per cell across almost the
+  whole store.
+
+  The language itself has a separate limit. Malbolge has 59,049 cells and
+  eight valid decoded instructions at each occupied source cell -- the
+  decipherment cycles with the cell index, and `_XLAT1` holds each instruction
+  character exactly once -- hence fewer than `sum(8**k for k in range(59050)) <
+  2**177148` programs. There are `2**262144` truth tables on 18 inputs, and one
+  program computes at most one table, so some 18-input tables have no Malbolge
+  program. Malbolge is therefore a language exception, not merely a ceiling.
+
+  Seventeen -- the registry target -- needs the count under `2**131072`, a
+  factor `2**46076` below it, and counting does not get there. A length cut
+  needs every answer to rest inside the first 43,690 cells, but cell 58,967
+  alone flips row 299 at ten inputs (`0` against `1`, both executed). An
+  alphabet cut needs 4 of the 8 characters at a cell to matter: single cells
+  realise 5 to 8 distinct behaviours (12 of 20 sampled walked-code cells at 5 or
+  more), and an every-line cap of `k` buys `log2(8/k)` bits in all -- one bit at
+  `k = 4`. What is left is a dependence cut: every table-computing program's
+  answer resting on at most 24,434 cells, the largest `K` with `C(59049, K) *
+  8**K < 2**131072`. Per program it is false: `'o'*59046 + '/<v'` computes
+  the one-input identity and every cell flips it, so only a cut over one
+  normal-form program per table remains open.
 
 - Vandevelo's fixed sparse-candidate cap forces Ω(T log n) emitted characters
   on an explicit odd-prefix family, where T = 2ⁿ. Character-level generation
@@ -122,37 +156,7 @@ The shipped cap remains sixteen.
   with universal O(T) size and generation time remains open; no language-wide
   impossibility was proved. See [the bound summary](proofs/index.md#vandevelo-sparse-bound).
 
-Counting bounds each family independently of mixer quality:
 
-- stubs need three gap-3 cells per row: `3 * 2**n <= 59049`, hence `n <= 14`;
-- cascades need one cell per row per level above ~9k code cells: `n <= 15`;
-- last-input cells need `2**(n-1) <= 59049`: `n <= 16`.
-
-The positional build meets the last bound. A cell answering the final two
-inputs would need sixteen labels, but its address admits eight characters.
-Seventeen inputs need more than two table bits per cell across almost the
-whole store.
-
-The language itself has a separate limit. Malbolge has 59,049 cells and
-eight valid decoded instructions at each occupied source cell -- the
-decipherment cycles with the cell index, and `_XLAT1` holds each instruction
-character exactly once -- hence fewer than `sum(8**k for k in range(59050)) <
-2**177148` programs. There are `2**262144` truth tables on 18 inputs, and one
-program computes at most one table, so some 18-input tables have no Malbolge
-program. Malbolge is therefore a language exception, not merely a ceiling.
-
-Seventeen -- the registry target -- needs the count under `2**131072`, a
-factor `2**46076` below it, and counting does not get there. A length cut
-needs every answer to rest inside the first 43,690 cells, but cell 58,967
-alone flips row 299 at ten inputs (`0` against `1`, both executed). An
-alphabet cut needs 4 of the 8 characters at a cell to matter: single cells
-realise 5 to 8 distinct behaviours (12 of 20 sampled walked-code cells at 5 or
-more), and an every-line cap of `k` buys `log2(8/k)` bits in all -- one bit at
-`k = 4`. What is left is a dependence cut: every table-computing program's
-answer resting on at most 24,434 cells, the largest `K` with `C(59049, K) *
-8**K < 2**131072`. Per program it is false: `'o'*59046 + '/<v'` computes
-the one-input identity and every cell flips it, so only a cut over one
-normal-form program per table remains open.
 
 The no-`i`/`j` model cannot express NOT. Straight-line `c == d` from the reset
 state gives a `p` its own cell's instruction character, one of 94 values in
@@ -244,17 +248,19 @@ helper, and one is exempt. Presence does not establish complete sharing.
 - Polynomial declares `_polynomial_states`.
 - Piet is exempt: a strip has no jump, so a repeated subtable cannot be shared.
 
-The Margulis cofactor witness establishes an expander minor in the
-original-order residual graph, not a language-wide area floor. At twelve
-inputs, Line's reverse-order destination layout passes all 4,096 rows in
-34,750,000 scale-one pixels with at most 50 commands. Reversal reduces the
-witness's nonconstant residual states from 18,437 to 548 at nineteen inputs
-(graph counts only). A routing exemption still needs a physical embedding
-proof and a witness covering alternative input orders and encodings.
-[VLSI layout bounds](https://publications.csail.mit.edu/lcs/pubs/pdf/MIT-LCS-TR-305.pdf)
-require an applicable embedding model;
-[universal-circuit size bounds](https://encrypto.de/papers/KS16.pdf) count
-logical gates, not rendered area.
+- Line:
+  The Margulis cofactor witness establishes an expander minor in the
+  original-order residual graph, not a language-wide area floor. At twelve
+  inputs, Line's reverse-order destination layout passes all 4,096 rows in
+  34,750,000 scale-one pixels with at most 50 commands. Reversal reduces the
+  witness's nonconstant residual states from 18,437 to 548 at nineteen inputs
+  (graph counts only). A routing exemption still needs a physical embedding
+  proof and a witness covering alternative input orders and encodings.
+  [VLSI layout bounds](https://publications.csail.mit.edu/lcs/pubs/pdf/MIT-LCS-TR-305.pdf)
+  require an applicable embedding model;
+  [universal-circuit size bounds](https://encrypto.de/papers/KS16.pdf) count
+  logical gates, not rendered area.
+
 
 The ignored-input and constant-folding pieces are held to
 `test_generator_shape_is_what_the_catalogue_says` (a tree row folds on a
@@ -300,14 +306,13 @@ controlled by executed checks in each language's own tests.
 - BFStack has a sampled peak machine payload of 756 bits at eight inputs.
 - Subleq has a sampled peak machine payload of 3,066 bits at eight inputs.
 
-### Malbolge sampling
-
-`test_boolean_malbolge.py` checks stride samples (every 8th/16th/32nd row)
-and every second-level cascade row. Both are needed: at eleven inputs,
-corrupting `_cascade_program`’s level-0 answers fails 117 stride rows and
-**0** second-level rows. Corrupting second-level answers fails 127
-second-level rows and only 18 stride rows. Only the stride sample covers
-the 1792 level-0 rows.
+- Malbolge:
+  `test_boolean_malbolge.py` checks stride samples (every 8th/16th/32nd row)
+  and every second-level cascade row. Both are needed: at eleven inputs,
+  corrupting `_cascade_program`’s level-0 answers fails 117 stride rows and
+  **0** second-level rows. Corrupting second-level answers fails 127
+  second-level rows and only 18 stride rows. Only the stride sample covers
+  the 1792 level-0 rows.
 
 ## Curation
 
@@ -440,11 +445,17 @@ language's backlinks and route: 21 clear the fame gate,
 
 <!-- CURATION-CENSUS:END -->
 
-The grandfathered languages were implemented elsewhere when added, all
-before the rule was written down on 2026-09-27: BIO (ais523), BF-PDA (Madk,
-2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie (their authors')
-and Jaune (two others'). Befunge-98 (Funge-98, 31, two
-dozen implementations) came after and was removed on 2026-10-06.
+These languages were implemented elsewhere before the curation rule of 2026-09-27:
+
+- BIO: ais523's implementation.
+- BF-PDA: Madk's 2010 implementation.
+- 123: a 2012 VB.NET interpreter.
+- NoComment: its author's implementation.
+- Sophie: its author's implementation.
+- Jaune: two other implementations.
+
+Befunge-98 (Funge-98, 31, two dozen implementations) came after and was
+removed on 2026-10-06.
 
 A route admits a language only when its specification fixes the core
 semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how
@@ -599,7 +610,7 @@ languages remain rejected from the same image-source screen.
   unspecified. Paths take no time, as the wiki's eight-pointer Hello World
   requires, so a step runs one node per pointer in the spec's order; cursors
   are per pointer; junctions prefer straight, right, then left. I/O is
-  Boolfuck's bytes, low bit first, as the spec says; EOF reads empty, and the
+  byte packing, low bit first, as the spec says; EOF reads empty, and the
   wiki cat's final empty pop pads to a trailing NUL.
 - LaserFuck inherits Brainfuck commands without defining EOF: exhausted input
   raises `EOFError`.

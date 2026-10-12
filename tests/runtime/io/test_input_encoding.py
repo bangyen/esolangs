@@ -44,7 +44,7 @@ class TestTheExceptionalLanguages:
     )
     @pytest.mark.parametrize("table", [XOR, PARITY3])
     def test_the_encoding_computes_the_table(self, language: str, table: str) -> None:
-        """Taglate at three inputs used to fail outright; the rest lied."""
+        """Odd-arity padding at three inputs failed; other formats misreported."""
         assert _rows(language, table) == table
 
     def test_every_reading_language_has_an_encoding(self) -> None:

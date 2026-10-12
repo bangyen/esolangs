@@ -33,6 +33,7 @@ from esolangs.interpreters.codels import DIRECTIONS, find_block, leave, slide
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_integer
 from esolangs.raster import Raster
+from esolangs.tools.raster_lookup.palette import _COLOURS, BLACK, WHITE
 
 __all__ = ["load_source", "run"]
 
@@ -41,30 +42,6 @@ supports_scale = True
 Pixel = tuple[int, int, int]
 Point = tuple[int, int]
 
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-
-# (hue, lightness), in the cycles defined by the Piet specification.
-_COLOURS: dict[Pixel, tuple[int, int]] = {
-    (255, 192, 192): (0, 0),
-    (255, 255, 192): (1, 0),
-    (192, 255, 192): (2, 0),
-    (192, 255, 255): (3, 0),
-    (192, 192, 255): (4, 0),
-    (255, 192, 255): (5, 0),
-    (255, 0, 0): (0, 1),
-    (255, 255, 0): (1, 1),
-    (0, 255, 0): (2, 1),
-    (0, 255, 255): (3, 1),
-    (0, 0, 255): (4, 1),
-    (255, 0, 255): (5, 1),
-    (192, 0, 0): (0, 2),
-    (192, 192, 0): (1, 2),
-    (0, 192, 0): (2, 2),
-    (0, 192, 192): (3, 2),
-    (0, 0, 192): (4, 2),
-    (192, 0, 192): (5, 2),
-}
 
 _INTEGER = re.compile(r"[+-]?[0-9]+")
 

@@ -14,6 +14,7 @@ language; the screens (``constant.py``, ``ignored_input.py``) bound the pieces.
 
 from __future__ import annotations
 
+import ast
 import inspect
 import tomllib
 from pathlib import Path
@@ -49,11 +50,21 @@ def _source(name: str) -> str:
     siblings = {
         sibling for directory in directories for sibling in directory.glob("*.py")
     }
+    # Imported shared packages carry the same construction after extraction.
+    tools = Path(__file__).parents[2] / "src/esolangs/tools"
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if not isinstance(node, ast.ImportFrom) or node.module is None:
+            continue
+        if node.module.startswith("esolangs.tools."):
+            package = tools.joinpath(*node.module.split(".")[2:])
+            if (package / "__init__.py").is_file():
+                siblings.update(package.glob("*.py"))
     parts = [path.read_text(encoding="utf-8")]
     parts.extend(
         sibling.read_text(encoding="utf-8")
         for sibling in sorted(siblings)
-        if sibling != path and not sibling.name.startswith("__")
+        if sibling != path
+        and (not sibling.name.startswith("__") or sibling.parent.is_relative_to(tools))
     )
     return "\n".join(parts)
 

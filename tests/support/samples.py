@@ -81,6 +81,7 @@ def bits_of(value: int) -> str:
     return "\n".join(format(value, "04b")) + "\n"
 
 
+# language-owners: ["A Painter Ant"]
 # Languages whose ``run`` writes its output on the step *after* the halt.
 # Their interpreters end ``while not machine.halted: machine.step()`` with
 # one more ``machine.step()`` to dump the final registers, so "stepping to
@@ -138,6 +139,7 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
 # against the traits in both directions.
 NEVER_SELF_HALTS = frozenset({"A Painter Ant", "Suffolk"})
 
+# language-owners: ["LaserFuck"]
 # LaserFuck's ``run`` draws the laser's initial heading at random when it
 # is not pinned, so its output is not a function of the program alone and
 # cannot be compared against a separately-built VM.  ``test_vm.py``'s
@@ -175,6 +177,7 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "Circuit Diagram": (CIRCUIT_PRIME_TESTER, bits_of(7)),
     "Clockwise": ("+;S;S;S;S;S;+;R\nR             R", ""),
     "Collatz Multiverse": ("x = negativeOne x + negativeOne, DO PRINT.", ""),
+    # language-owners: ["Container"]
     # Every Container program with a container in it runs forever (its own
     # VM test asserts exactly that of "A=0:\n+1 A>=0"); the empty program
     # is the one that reaches a halt.

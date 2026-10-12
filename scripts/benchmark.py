@@ -170,10 +170,12 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
             and type(next(iter(value))) is tuple
             and set(map(type, value)) == {tuple}
         ):
+            # language-owners: ["Streetcode"]
             # Records of ints (a sparse tape's address-value pairs) count
             # as the flat run they hold; Streetcode re-sorts its every write.
             items = list(chain.from_iterable(value))
         try:
+            # language-owners: ["SLOW ACV MAMMALIAN"]
             # A flat run of ints (a tape, an array) counts in C: magnitude
             # bits, one more for each zero, one more for each negative --
             # _integer_bits per item, and bools agree.  SLOW ACV MAMMALIAN
@@ -246,6 +248,7 @@ class WrittenState:
                 and isinstance(part, frozenset)
                 and isinstance(last, frozenset)
             ):
+                # language-owners: ["A Painter Ant"]
                 # A frozenset counts as the sum of its items, so a painted
                 # cell recounts the change, not A Painter Ant's whole grid.
                 now += state_bits(part - last, memo)
@@ -258,6 +261,7 @@ class WrittenState:
                 and part
                 and isinstance(part[0], tuple)
             ):
+                # language-owners: ["Malbolge", "Streetcode"]
                 # A chunked store (Malbolge's memory, a persistent tape):
                 # a tuple counts as the sum of its items, and an unwritten
                 # chunk is the same object, so recount only the new ones.

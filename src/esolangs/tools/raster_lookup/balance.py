@@ -1,11 +1,10 @@
-"""Piet row-fit regimes with stack-neutral turns and bounded push blocks."""
+"""Raster row-fit regimes with stack-neutral turns and bounded push blocks."""
 
 from collections.abc import Callable
 from math import isqrt
 from typing import NamedTuple
 
 from esolangs._validate import check_width
-from esolangs.languages.piet.interpreter import BLACK
 from esolangs.raster import Raster
 from esolangs.tools.helpers import _validate_truth_table
 
@@ -21,7 +20,8 @@ from . import (
     _Operation,
     _push,
 )
-from .packing import pack
+from esolangs.tools.raster_lookup.packing import pack
+from .palette import BLACK
 
 _POINTER = (3, 1)
 
@@ -92,7 +92,7 @@ def _plan(
             used += operations[at].size
             at += 1
         if at == first:
-            raise AssertionError("Piet row has no room for a bounded block")
+            raise AssertionError("Raster row has no room for a bounded block")
         rows.append(_Row(first, at, x, y, direction))
         if at == len(operations):
             widest = max(widest, x + direction * used)
@@ -128,9 +128,9 @@ def _emit(
 
     def put(x: int, y: int, colour: Pixel) -> None:
         if not (0 <= x < plan.width and 0 <= y < plan.height):
-            raise AssertionError("Piet fold exceeds its planned image")
+            raise AssertionError("Raster fold exceeds its planned image")
         if rows[y][x] != BLACK:
-            raise AssertionError("Piet fold overwrites an existing block")
+            raise AssertionError("Raster fold overwrites an existing block")
         rows[y][x] = colour
 
     for x, y in ((0, 0), (0, 1), (1, 1)):
@@ -178,12 +178,12 @@ def _emit(
         block(_Operation(_POINTER), 0, 1)
         following = plan.rows[number + 1]
         if (x, y) != (following.x, following.y):
-            raise AssertionError("Piet turn model disagrees with its emitted path")
+            raise AssertionError("Raster turn model disagrees with its emitted path")
     return Raster(tuple(tuple(row) for row in rows))
 
 
 def folded(table: str, columns: int) -> Raster:
-    """Return a folded Piet program, with a thirteen-column routing floor."""
+    """Return a folded Raster program, with a thirteen-column routing floor."""
     check_width(columns)
     operations = _bounded_operations(table)
     return _emit(

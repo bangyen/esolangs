@@ -63,6 +63,7 @@ jobs:
     - name: Check generator sizes against the baseline
       run: uv run python checks/check_generator_sizes.py
 
+    # language-owners: ["ArrowQueue", "BIO"]
     # Every deep proof in the `ci` band and cheaper: the ArrowQueue and BIO
     # lemmas, and the registry-wide battery. ~14s. Which proofs those are is
     # not spelled out here -- each declares its own band, and
@@ -382,7 +383,7 @@ jobs:
         echo "ARTIFACT_PYTHON=$artifact_python" >> "$GITHUB_ENV"
         uv pip install --python "$artifact_python" dist/*.whl
         "$artifact_python" -I scripts/ci/release.py smoke
-    - name: Install optional extras and exercise Polynomial and PNG I/O
+    - name: Install optional extras and exercise mathematics and PNG I/O
       run: |
         wheels=(dist/*.whl)
         uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[math]"

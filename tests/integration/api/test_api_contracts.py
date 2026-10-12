@@ -263,7 +263,7 @@ class TestConventionsAreDiscoverable:
         languages(answer_mode="termination") + languages(input_shape="row_index"),
     )
     def test_a_language_that_needs_explaining_explains_itself(self, name: str) -> None:
-        """Termination-as-answer and Fargo's row index are not guessable."""
+        """Termination-as-answer and integer row indices are not guessable."""
         assert esolangs.describe(name)["answer_convention"]
 
     def test_a_plain_printer_needs_no_note(self) -> None:
@@ -511,5 +511,5 @@ class TestThePathGuardKnowsMoreThanTxt:
 
     @pytest.mark.parametrize("program", ["~~", "-", "a/b/c"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
-        """``~~`` is two ArrowQueue commands and was refused."""
+        """Adjacent commands ``~~`` were refused."""
         assert not esolangs._looks_like_a_path(program), program  # noqa: SLF001

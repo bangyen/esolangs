@@ -465,6 +465,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "scripts/benchmark.py",
         "tests/support/fixtures/generator_sizes.json",
     ),
+    # language-owners: ["ArrowQueue", "BIO"]
     # The union of what the two proofs in this band read: ArrowQueue's lemmas
     # import the generator and nothing else, and BIO's also parse the emitted
     # program and instantiate it through the shipped fill.  The runner is in

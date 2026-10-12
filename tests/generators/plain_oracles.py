@@ -45,7 +45,7 @@ def separated_tree_text(
 
 
 def _jaune_linear(truth_table: str) -> str:
-    """Emit a linear spatial table and travelling counter for Jaune."""
+    """Emit a linear spatial table and travelling counter."""
     n = _validate_truth_table(truth_table)
     out = ["v>" * n]
 

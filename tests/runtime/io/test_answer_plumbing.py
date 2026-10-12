@@ -62,7 +62,7 @@ class TestATemplateKnowsWhoseItIs:
     """Filling one as the wrong language ran, and answered a different row."""
 
     def test_a_foreign_template_is_refused(self) -> None:
-        """It substituted RAM0's setter into a Minifuck program and answered 0."""
+        """A mismatched setter silently answered 0."""
         template = esolangs.generate(TEMPLATED, "0110")
         with pytest.raises(esolangs.TemplateError, match="came from generate"):
             esolangs.instantiate(OTHER_TEMPLATED, template, [0, 1])
@@ -112,7 +112,7 @@ class TestATemplateCarriesItsSetters:
             fill_runs("$$", "$", (("a", "b"), ("c", "d")), [1])
 
     def test_marks_are_read_off_the_languages_own_char(self) -> None:
-        """The regression: ``$`` is INTERCAL's mingle operator, not its slot."""
+        """The regression: ``$`` can be an operator rather than a template slot."""
         from esolangs.tools.helpers import mark, mark_runs
 
         pairs = (("xx", "yy"), ("p", "q"))

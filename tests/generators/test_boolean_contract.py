@@ -328,6 +328,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
     )
 
 
+# language-owners: ["Polynomial"]
 # The two table shapes every generator is built against.  A dense
 # pseudo-random table and parity fail *differently*: factor's retired digit
 # budget ran out a rung earlier on parity than on dense, and Polynomial's
@@ -359,6 +360,7 @@ def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
     assert built, f"{name} never built a positive control"
 
 
+# language-owners: ["Grapheme"]
 # The build sweep above proves every generator *returns* a program up to five
 # inputs.  It never runs one, and nothing else ran one past
 # four inputs either.  Grapheme's variable keys collided with two of its own
@@ -520,6 +522,7 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         and LANGUAGES[name].boolean is not None
         and esolangs.describe(name)["source_kind"] == "text"
     )
+    # language-owners: ["Boolfuck", "SLOW ACV MAMMALIAN", "thisthat"]
     # thisthat leads at 114637 characters; SLOW ACV MAMMALIAN led at 115707
     # until its modulo-255 I/O default (101931), and Boolfuck led at 194026
     # after its admission, until its native bit-cell tree replaced the

@@ -55,7 +55,7 @@ class TestTruthMachine:
     def test_zero_prints_once_and_halts(self, byte: str) -> None:
         """A low zero bit takes the right branch, prints one bit, and ends.
 
-        Boolfuck pads the partial byte at halt, so that bit is a NUL.
+        A partial byte is padded at halt, so that bit is a NUL.
         """
         assert run_program(TRUTH_MACHINE, byte) == "\x00"
 
@@ -160,7 +160,7 @@ class TestParsing:
 
     @pytest.mark.parametrize("name", ["parallel", "serial"])
     def test_the_wiki_hello_worlds(self, name: str) -> None:
-        """Both stack nodes in adjacent rows; Boolfuck output packs the bytes.
+        """Both stack nodes in adjacent rows; output packs the bytes.
 
         The eight-pointer version also needs the spec's pointer order and
         its left-most start, and paths that take no time.
@@ -303,7 +303,7 @@ class TestNodes:
         assert run_program([f"( )─{body}─(( ))"], "AC") == "A\x01"
 
     def test_reads_past_eof_are_empty(self) -> None:
-        """EOF empties the register, rather than supplying Boolfuck's zeros."""
+        """EOF empties the register, rather than supplying zeros."""
         machine = _Machine(["( )─/ /─/ /─(( ))"], ScriptedIO(""))
         while not machine.halted:
             machine.step()

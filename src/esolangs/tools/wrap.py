@@ -255,7 +255,7 @@ def _jaune(program: str, width: int) -> str:
 
 
 def _bracket_literal(program: str, width: int) -> str:
-    """Wrap 3x, keeping a bracketed group whole.
+    """Wrap bracket literals, keeping a bracketed group whole.
 
     A newline inside its bracketed literal prints.
     """

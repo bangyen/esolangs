@@ -8,10 +8,10 @@ import pytest
 import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.languages.piet.generator import piet as generate
-from esolangs.languages.piet.generator.balance import _bounded_operations
 from esolangs.languages.piet.tests.test_boolean_piet_raster_balance import TABLES, score
 from esolangs.raster import Raster
 from esolangs.tools.helpers import essential_inputs, read_at
+from esolangs.tools.raster_lookup.balance import _bounded_operations
 from tests.support.generator_support import verify_generated
 
 
@@ -205,7 +205,7 @@ def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
 
 @pytest.mark.medium
 def test_piet_keeps_an_already_better_layout() -> None:
-    from esolangs.languages.piet.generator.balance import balance
+    from esolangs.tools.raster_lookup.balance import balance
 
     source = esolangs.generate("Piet", "0001", balance=True)
     assert isinstance(source, Raster)
@@ -215,7 +215,7 @@ def test_piet_keeps_an_already_better_layout() -> None:
 
 @pytest.mark.medium
 def test_compact_folds_execute_without_growing() -> None:
-    from esolangs.languages.piet.generator.balance import _balanced_plan
+    from esolangs.tools.raster_lookup.balance import _balanced_plan
 
     total = 0
     for inputs in range(1, 4):

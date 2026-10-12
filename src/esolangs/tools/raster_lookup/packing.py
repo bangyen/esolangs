@@ -3,10 +3,10 @@
 from math import isqrt
 from typing import NamedTuple
 
-from esolangs.languages.piet.interpreter import BLACK, WHITE
+from esolangs.tools.raster_lookup.palette import BLACK, WHITE
 from esolangs.raster import Raster
 
-from . import _INITIAL, _POP, Pixel, _next_colour, _Operation, _push
+from esolangs.tools.raster_lookup import _INITIAL, _POP, Pixel, _next_colour, _Operation, _push
 
 _POINTER = (3, 1)
 _DUPLICATE = (4, 0)
@@ -40,7 +40,7 @@ def _lanes(
             used += operations[at].size
             at += 1
         if at == first:
-            raise AssertionError("Piet packed lane has no room for a bounded block")
+            raise AssertionError("Raster packed lane has no room for a bounded block")
         lanes.append(_Lane(first, at, x, direction))
         end = x + direction * used
         edge = end + 3 if direction == 1 and at < len(operations) else x
@@ -61,7 +61,7 @@ def _put(
     colour: Pixel,
 ) -> None:
     if (x, y) in cells or (x, y) in placed:
-        raise AssertionError("Piet packed lanes overlap")
+        raise AssertionError("Raster packed lanes overlap")
     cells[x, y] = colour, owner
 
 
@@ -168,7 +168,7 @@ def _layout(
                 break
             y += 1
             if y - old_y > 4:
-                raise AssertionError("Piet packed lane cannot isolate its blocks")
+                raise AssertionError("Raster packed lane cannot isolate its blocks")
         placed.update(cells)
         identity, previous, old_y = owner, lane, y
         end_colour, corner = colour, x - lane.direction

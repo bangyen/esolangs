@@ -51,12 +51,16 @@ python -m pip install esolangs
 
 esolangs --help
 esolangs list
-esolangs generate Suffolk 0110 > program.txt
-printf '01' | esolangs run Suffolk program.txt
-
 esolangs generate brainfuck 0110 > bf.txt
 printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 ```
+
+- Suffolk:
+
+  ```bash
+  esolangs generate Suffolk 0110 > program.txt
+  printf '01' | esolangs run Suffolk program.txt
+  ```
 
 - Polynomial needs the optional mathematics extra:
   `pip install 'esolangs[math]'`.
@@ -77,8 +81,9 @@ assert esolangs.read_answer("brainfuck", output) == "1"
 
 Use `isolated=True` for a bounded run on Windows or worker threads.
 
-Use the intended language: Suffolk source may run as brainfuck with a wrong
-answer. Use
+- Suffolk source may run as brainfuck with a wrong answer.
+
+Use
 [`encode_inputs`](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program)
 to build stdin.
 

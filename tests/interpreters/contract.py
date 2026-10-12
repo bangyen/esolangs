@@ -166,6 +166,7 @@ class StateViewContract:
 
     machine: ClassVar[Any]
 
+    # language-owners: ["RAM0", "Unsquare"]
     #: The names to read off the machine.  Per file, because each language
     #: spells its own state -- ``acc``/``jumps`` in Unsquare, ``z``/``n`` in
     #: RAM0 -- and a name absent here is simply not part of that view.

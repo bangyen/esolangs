@@ -12,7 +12,10 @@ from __future__ import annotations
 from functools import cache
 from math import isqrt
 
-from esolangs.languages.piet.generator import (
+from esolangs.raster import Raster
+from esolangs.registry._language import Language, SourceKind
+from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.raster_lookup import (
     _ADD,
     _IN_NUMBER,
     _MULTIPLY,
@@ -27,16 +30,13 @@ from esolangs.languages.piet.generator import (
     _operations,
     strip,
 )
-from esolangs.languages.piet.generator.balance import (
+from esolangs.tools.raster_lookup.balance import (
     _MIN_COLUMNS,
     _POINTER,
     _bounded_operations,
     _emit,
     _plan,
 )
-from esolangs.raster import Raster
-from esolangs.registry._language import Language, SourceKind
-from esolangs.tools.helpers import _validate_truth_table
 
 # Piet (hue, lightness) change -> Piet++ (red, green, blue) level delta.
 _DELTAS = {

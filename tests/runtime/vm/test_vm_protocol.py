@@ -43,6 +43,7 @@ def _drive(vm: VM) -> str:
     return vm.output
 
 
+# language-owners: ["A Painter Ant", "Suffolk"]
 # The prefix the never-halting languages are compared over instead of a
 # halt.  They have no halt to drive to, so "the same run" has to mean "the
 # same state after the same number of steps".

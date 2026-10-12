@@ -229,6 +229,7 @@ def _fails(row: Growth) -> str:
     return ""
 
 
+# language-owners: ["Factor"]
 #: Controls: label, whether the bound must reject it, and the series.  The
 #: three linear ones differ only in prologue and must read *exactly* four --
 #: that is the property the retired size ratio lacked, and it is asserted
@@ -334,7 +335,7 @@ def main() -> int:
         print(f"  {name:30s} {why}")
     print(
         f"\n{len(xpass)} of those fit inside the bound anyway -- expected, and "
-        "not evidence of\nlinearity (see the module docstring on Factor):"
+        "not evidence of\nlinearity (see the scaling analysis):"
     )
     print(f"  {', '.join(xpass)}")
 

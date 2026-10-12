@@ -155,8 +155,8 @@ def _cites(line: str, name: re.Pattern[str], phrase: re.Pattern[str]) -> bool:
 def _citations() -> list[str]:
     """Return each docstring, comment or text line that cites a language.
 
-    A file's own language is skipped: its prose is free to say "Alight's
-    dialect".  Only the names it does not own count, which is what lets the
+    A file's own language is skipped: its prose is free to describe its
+    dialect.  Only the names it does not own count, which is what lets the
     possessive suffix above stand without flagging every language's own
     documentation.
     """

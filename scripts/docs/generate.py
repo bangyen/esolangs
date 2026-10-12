@@ -100,6 +100,7 @@ _SIZE_END = "<!-- COLLECTION-SIZE:END -->"
 _CENSUS_START = "<!-- CURATION-CENSUS:START -->"
 _CENSUS_END = "<!-- CURATION-CENSUS:END -->"
 
+# language-owners: ["Fargo", "Taglate"]
 #: The bit vector the stdin table is rendered for.  Three bits, because an
 #: odd count is what makes Taglate's padding visible -- at two it encodes
 #: like everything else, and Fargo's decimal and binary readings coincide
@@ -241,7 +242,7 @@ def render_input_shapes_section() -> str:
     Every cell is ``repr(encode_inputs(language, [1, 0, 1]))``, so the table
     is the encoder's own output rather than a description of it.  This
     replaced three hand-written prose copies of the same four exceptions;
-    one of them called Fargo's row index a bits-on-one-line input, returned
+    one of them called an integer row index a bits-on-one-line input, returned
     0 where the answer was 1, and was believed because it read plausibly.
     """
     reading = _reads_stdin()
@@ -528,6 +529,7 @@ def render(root: pathlib.Path = ROOT) -> str:
     pairs = declared(root)
     lines = []
     for m, g in pairs:
+        # language-owners: ["Eval"]
         # A generator named for its language may shadow a builtin (Eval).
         comment = "  # noqa: A004 - the language's name" if hasattr(builtins, g) else ""
         line = f"from {m} import {g}"

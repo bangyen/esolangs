@@ -44,6 +44,7 @@ from verify.scope import (  # noqa: E402
     local_tooling_deselections,
 )
 
+# language-owners: ["Line"]
 # Git runs this hook with its stdout attached to a pipe, not the terminal, so
 # Python block-buffers our own prints while the steps -- which inherit the
 # same pipe and write to it directly -- stream straight through.  The result
@@ -158,6 +159,7 @@ STEPS = [
             "checks",
         ],
     ),
+    # language-owners: ["ArrowQueue", "BIO"]
     # The deep proofs cheap enough to gate locally: ArrowQueue's twelve named
     # lemmas and BIO's telescoping lookup, each pinning finite facts their
     # total-over-every-arity proofs rest on.  2.2s together.  Which proofs
@@ -569,6 +571,7 @@ def main() -> int:
         # everything -- a tooling change, an unreadable diff -- should still
         # not pay for them.
         #
+        # language-owners: ["Line"]
         # The tests/interpreters suites carry the same marker on their two 5.2s tests
         # (the eight-level nesting round trip and the n=5 parity table), which
         # are 10.4s of that step's 12.8s.  CI's `line` job runs that suite

@@ -218,6 +218,7 @@ def test_boolean_example(name: str) -> None:
             vm.step()
         got = vm._machine.render()  # type: ignore[attr-defined]  # noqa: SLF001
     elif isinstance(program, str):
+        # language-owners: ["Suffolk"]
         # Suffolk used to need a branch here: its reading programs stopped
         # on an escaping ``EOFError`` rather than halting, so the prover had
         # to be wrapped in ``pytest.raises``.  The exhausted read is a halt

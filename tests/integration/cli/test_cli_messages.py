@@ -301,7 +301,7 @@ _REFUSALS = {
     ),
     "encode_refuses_a_language_that_reads_nothing": ("encode 123 01", "reads no stdin"),
     "a_repeated_option_is_refused": (
-        "generate --bits 10 --bits 01 Minifuck 0110",
+        "generate --bits 10 --bits 01 brainfuck 0110",
         "more than once",
     ),
     "encode_refuses_a_non_binary_bit_string": ("encode brainfuck 2x", "0s and 1s"),

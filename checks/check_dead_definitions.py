@@ -2,9 +2,8 @@
 
 A top-level def, class or constant is *dead* when no ``ast.Name`` or
 ``ast.Attribute`` outside its own definition, and outside import
-statements, names it.  Two routes (Minifuck's staged and sculpted) and the
-Eval reorder catalog sat that way, each with a test suite of
-its own, because a replaced construction keeps its tests green.
+statements, names it. Replaced constructions can keep their own tests green
+while no production code reaches them.
 
 The rule is deliberately narrow:
 

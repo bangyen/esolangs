@@ -73,8 +73,8 @@ INTERPRETERS = {
 def example_stems() -> dict[str, str]:
     """Return canonical id -> the ``examples/`` filename stem, per language.
 
-    The stems are dash-separated display names (``a-painter-ant``); every
-    internal reference is the underscored slug (``a_painter_ant``), and a few
+    The stems are dash-separated display names; every
+    internal reference is the canonical ID, and a few
     match neither by hand.  Deriving the map from the same example table
     :meth:`~esolangs.tools.examples.BooleanExample.build` uses keeps the two
     from drifting: a mismatch is a missing key, not a silently empty example

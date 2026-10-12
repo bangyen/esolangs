@@ -45,7 +45,7 @@ rather than invented, and every one of the three examples on the page
 * **I/O is byte-oriented, low bit first, as the spec says.**  ``/ /``
   takes the next bit of the current input byte and ``\ \`` buffers one
   bit of an output byte; a partial byte is zero-padded and written at
-  halt, as in :mod:`esolangs.languages.boolfuck.interpreter`.  Both wiki
+  halt. Both wiki
   Hello Worlds then print ``Hello, world!`` itself, and the truth machine
   given ``0`` prints one zero bit, padded to a NUL byte.  EOF leaves the
   register empty rather than raising -- the spec's "empty if there are no

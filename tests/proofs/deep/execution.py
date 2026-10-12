@@ -38,6 +38,7 @@ MAX_GROWTH = 2.15
 #: down, which is why a ``poly n`` cell also names its reason.
 POLY_GROWTH = 1.5
 
+# language-owners: ["NoComment", "SLOW ACV MAMMALIAN"]
 #: Most growth the increments of a ``poly n`` row's dense series may show
 #: (``_step_growth``).  ``n**3`` reads x1.25 at n=6..12 and a constant plus
 #: ``T`` x2; NoComment read x1.99 and SLOW ACV MAMMALIAN x1.43.
@@ -64,6 +65,7 @@ STEP_CAP = 2_000_000
 #: and their measured jumps are recorded beside the override rows.
 MAX_ARITY = 9
 
+# language-owners: ["Factor", "Line", "Sophie"]
 #: The dense pass of a ``poly n`` row climbs further: Sophie passed it at
 #: n <= 9 and only diverged past 10 (dense 81 -> 455 commands at n=10..16,
 #: parity 68 -> 115).  A poly n row is cheap by its own claim; n=10..12 cost
@@ -72,6 +74,7 @@ MAX_ARITY = 9
 DENSE_ARITY = 12
 ARITY_OVERRIDE = deep_arities("execution")
 
+# language-owners: ["A Painter Ant"]
 #: Generators this contract cannot measure at all, with the reason.
 #:
 #: Command cost is separate from command count: a quadratic per-command
@@ -127,10 +130,8 @@ def run_to_answer(
 ) -> int | None:
     """Steps to the answer, or ``None`` at ``cap``.
 
-    The answer is a halt, except where stepping never reaches it (A Painter
-    Ant): there the run ends as its ``run`` does, at the pass start whose
-    state repeats, found by Brent's over pass starts.  Suffolk's EOF on the
-    wrap to a read is the same kind of end, already spelled ``halted``.
+    The answer is a halt or a repeated pass-start state, found by Brent's
+    over pass starts. EOF on a wrapped read is already spelled ``halted``.
     """
     tortoise, power, passes, steps = machine.snapshot(), 1, 0, 0
     while not machine.halted:
@@ -174,7 +175,7 @@ def _commands(name: str, table: str) -> int | None:
 
 
 def _dense(n: int) -> str:
-    """A seeded random table: parity has n ANF terms, so it hides Fargo's T."""
+    """A seeded random table: parity has n ANF terms, hiding table-sized work."""
     width = 1 << n
     return f"{random.Random(n).getrandbits(width):0{width}b}"
 
@@ -210,11 +211,11 @@ def _step_growth(series: list[tuple[int, int]]) -> float | None:
     """Per-input growth of the increments: summed last window over the one before.
 
     Differencing cancels a fixed overhead that ``_growth`` cannot see past:
-    NoComment's T/32-byte stack behind a 32,768-bit tape read x1.00 on the
+    a T/32-byte stack behind a 32,768-bit tape read x1.00 on the
     ratio and x1.99 here.  Windows of three increments, two when the series is
     short.  ``None`` (no judgement; the ratio still applies) when too short or
     when any increment is not positive: a hidden term grows every rung, while
-    CV(N)(C)'s 86 -> 60 -> 81 noise read x1.55 on raw windows.
+    the 86 -> 60 -> 81 noise read x1.55 on raw windows.
     """
     width = min(3, (len(series) - 1) // 2)
     if width < 2:

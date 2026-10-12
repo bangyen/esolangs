@@ -40,6 +40,7 @@ def _public(lang: object, table: str) -> str:
     return text
 
 
+# language-owners: ["Bitdeque", "Jaune", "RAM0"]
 # A third width, narrower than any a reader would ask for, because a broken
 # wrapper is not broken at every width.  Whether a break lands inside a
 # multi-character token depends on where the width happens to put it, so a
@@ -51,6 +52,7 @@ def _public(lang: object, table: str) -> str:
 # width in the suite is what keeps the class from coming back.
 NARROW_WIDTH = 13
 
+# language-owners: ["Alight", "Line", "Super SNUSP"]
 # Languages that must never be *reflowed*, and why: each ``LANGUAGE``'s
 # ``no_wrap=``.  Not a restatement of
 # the implementation: each was verified to break (or to be meaningless) when
@@ -78,6 +80,7 @@ NARROW_WIDTH = 13
 # destructive, and those hold whatever the generator learns to do.
 UNWRAPPABLE = {lang.id: lang.no_wrap for lang in LANGUAGES.values() if lang.no_wrap}
 
+# language-owners: ["Dig", "LaserFuck", "Streetcode"]
 # These are 2D too, and wrap_program must not touch them either -- but each
 # honours a width itself by *laying its program out* to fit rather than by
 # ignoring it, so they belong here rather than in UNWRAPPABLE.  LaserFuck's
@@ -99,6 +102,7 @@ WIDTH_HONOURING = sorted(
     if lang.boolean is not None and takes_width(lang.boolean)
 )
 
+# language-owners: ["6-5"]
 # The boolean example for each language, keyed by the language id rather
 # than the example's stem.  The two differ ("6-5" against ``six_five``), and
 # a lookup by id against a stem-keyed table silently misses -- which is a
@@ -262,6 +266,7 @@ def _grown(name: str, table: str, width: int | None) -> str:
     return esolangs.instantiate(name, generate(name, table), [0] * arity, width=width)
 
 
+# language-owners: ["Polynomial"]
 # Long enough that a run which has not finished is looping, short enough
 # that eight of them are not a wait.  123 answers by *looping forever* for a
 # one, so a timeout is one of the behaviours being compared rather than a

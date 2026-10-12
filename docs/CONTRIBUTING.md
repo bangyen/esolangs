@@ -223,6 +223,11 @@ by size, breaking ties by steps. Bound the per-piece upside before choosing.
    still lists don't stop it: it reports them, runs the gate anyway, and
    fails.
 
+A comment cohort can declare `# language-owners: ["Name", "Other"]`.
+Removal drops that contiguous comment block when any owner goes; keep shared
+invariants outside it. Language-specific Markdown belongs in canonical-name
+bullets with indented continuations.
+
 To take a language out, `just remove-language "Name"` deletes what `check`
 asks for and every test file `tests/integration/api/test_language_coupling.py` counts as
 the language's own (committed or not), prunes the helper modules only it

@@ -2,6 +2,7 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # language-owners: ["Alight"]
       # The recorded output matches its generator exactly, trailing spaces
       # included -- Alight pads a turn's column and the generator emits it.
       # Both paths: the files live under src/ so they ship in the wheel, and
