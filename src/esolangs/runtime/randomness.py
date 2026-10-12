@@ -39,11 +39,11 @@ class Seeded:
 
     def __init__(self, seed: int = 0) -> None:
         """Start the generator at ``seed``, so two runs agree."""
-        # bandit flags ``random`` as unfit for cryptography, which is true
-        # and beside the point: reproducibility is the whole requirement
-        # here, and only a seedable generator provides it.  ``secrets``
-        # remains the default for a real run, above.
-        self._random = random.Random(seed)  # nosec B311
+        # ``random`` is unfit for cryptography, which is true and beside the
+        # point: reproducibility is the whole requirement here, and only a
+        # seedable generator provides it.  ``secrets`` remains the default
+        # for a real run, above.
+        self._random = random.Random(seed)
 
     def randbelow(self, upper: int) -> int:
         """Return a value in ``range(upper)``; an empty range raises."""

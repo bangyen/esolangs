@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import os
-import subprocess  # nosec B404 -- fixed Python worker; source travels over stdin.
+import subprocess  # fixed Python worker; source travels over stdin.
 import sys
 from functools import lru_cache
 from itertools import chain, groupby, repeat
@@ -220,7 +220,7 @@ def _launch(request: str, timeout: float, *, max_output: int | None = None) -> s
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(sys.path)
     deadline = monotonic() + timeout
-    with subprocess.Popen(  # nosec B603 -- fixed executable and code, no shell.
+    with subprocess.Popen(  # fixed executable and code, no shell.
         [
             sys.executable,
             "-c",

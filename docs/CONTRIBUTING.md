@@ -201,8 +201,8 @@ by size, breaking ties by steps. Bound the per-piece upside before choosing.
    so the list matches what the suite enforces. It then runs the
    seconds-long checks `finish` would otherwise fail late: the language's
    own tests, its committed example, the generator's shape, the ledger's
-   word limits and fold measure, its formula rows, and bandit on its
-   sources. It lists the generated files it refreshed.
+   word limits and fold measure, and its formula rows. It lists the generated
+   files it refreshed.
    Optional: the wiki page's own examples, with their stated output, go in
    `src/esolangs/languages/<id>/tests/fixtures/wiki_examples.toml` (schema in
    `tests/interpreters/test_published_programs.py`).

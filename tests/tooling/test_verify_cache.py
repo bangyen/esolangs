@@ -36,11 +36,10 @@ class TestCertificates:
         "change",
         ["source", "config", "command", "environment", "runtime", "unrelated", None],
     )
-    @pytest.mark.parametrize("step", ["generator size baseline", "bandit"])
-    def test_certificate_inputs(self, cache_repo, change, step) -> None:
+    def test_certificate_inputs(self, cache_repo, change) -> None:
         module, root, cache, runtime = cache_repo
-        command = "uv run --no-sync --with bandit bandit -r src -q"
-        cmd = command.split() if step == "bandit" else ["python", "check.py"]
+        step = "generator size baseline"
+        cmd = ["python", "check.py"]
         env = {}
         key = cache.key(step, cmd, env)
         cache.remember(key, "failed", 1)
@@ -48,7 +47,7 @@ class TestCertificates:
         assert cache.load(key) is None
         cache.remember(key, "passed", 0)
         if change in ("source", "config", "unrelated"):
-            paths = ["src/input.py", "src/.bandit", "script.py"]
+            paths = ["src/input.py", ".pylintrc", "script.py"]
             index = ["source", "config", "unrelated"].index(change)
             (root / paths[index]).write_text("changed\n")
         elif change == "command":
@@ -61,8 +60,7 @@ class TestCertificates:
         assert cache.finish() is stable
         assert cache.load(key) == ("passed" if stable else None)
         fresh = module.VerifiedCache(root).key(step, cmd, env)
-        reused = change is None or (step == "bandit" and change == "unrelated")
-        assert (fresh == key) is reused
+        assert (fresh == key) is (change is None)
 
     @pytest.mark.parametrize(
         "entry", ["invalid", {"returncode": 1}, {"returncode": False}]

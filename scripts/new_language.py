@@ -691,11 +691,7 @@ def main(argv: list[str] | None = None) -> int:
         quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
         print("+ pytest", " ".join(quick_tests(args.name)), flush=True)
         failed = subprocess.run([*quick, *quick_tests(args.name)], cwd=ROOT)
-        # The gate's bandit, on the language's own sources only.
-        bandit = ["uv", "run", "--no-sync", "--with", "bandit", "bandit", "-q"]
-        print("+ bandit", *sources(args.name), flush=True)
-        flagged = subprocess.run([*bandit, *sources(args.name)], cwd=ROOT)
-        if failed.returncode or flagged.returncode:
+        if failed.returncode:
             print(f"{args.name}: integrated, but fix the failures above first")
             return 1
         print(

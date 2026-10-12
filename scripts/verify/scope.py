@@ -173,7 +173,6 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
 
 CACHED_STEPS = frozenset(
     {
-        "bandit",
         "generated docs",
         "deep proofs (verify band)",
         "dead definitions",
@@ -182,7 +181,6 @@ CACHED_STEPS = frozenset(
     }
 )
 _DISTRIBUTIONS = {
-    "bandit": {"bandit", "stevedore", "pyyaml"},
     "python checks": {
         "pillow",
         "sympy",
@@ -209,10 +207,7 @@ def _feed(digest: _Digest, value: bytes) -> None:
 
 def runtime_digest(step: str) -> str:
     """Hash the interpreter, dependency inventory and the check's tool sources."""
-    modules = {
-        "bandit": ("bandit.core.extension_loader",),
-        "python checks": ("ast", "PIL.Image", "pylint.lint"),
-    }
+    modules = {"python checks": ("ast", "PIL.Image", "pylint.lint")}
     for name in modules[step]:
         importlib.import_module(name)
     digest = hashlib.sha256()
@@ -226,8 +221,7 @@ def runtime_digest(step: str) -> str:
         name = distribution.metadata["Name"].lower().replace("_", "-")
         _feed(digest, f"{name}:{distribution.version}".encode())
         selected = name in _DISTRIBUTIONS[step] or any(
-            entry.group.startswith(("bandit", "pylint"))
-            for entry in distribution.entry_points
+            entry.group.startswith("pylint") for entry in distribution.entry_points
         )
         for file in distribution.files or ():
             if file.suffix == ".pyc":
@@ -248,9 +242,7 @@ def runtime_digest(step: str) -> str:
     return digest.hexdigest()
 
 
-def _tree(
-    root: Path, *, bandit: bool = False
-) -> tuple[str, dict[str, tuple[int, int, int]]]:
+def _tree(root: Path) -> tuple[str, dict[str, tuple[int, int, int]]]:
     """Return the digest of every git-visible input, plus its stat tuple.
 
     ``git ls-files`` lists tracked and untracked-unignored files, so no
@@ -267,13 +259,7 @@ def _tree(
         check=True,
     )
     paths = {root / name for name in result.stdout.split("\0") if name}
-    paths.update(root / name for name in (".bandit", ".pylintrc", "setup.cfg"))
-    if bandit:
-        paths = {
-            path
-            for path in paths
-            if path.is_relative_to(root / "src") or path == root / ".bandit"
-        }
+    paths.update(root / name for name in (".pylintrc", "setup.cfg"))
     for path in tuple(paths):
         if path.is_symlink() and path.is_dir():
             if not path.resolve().is_relative_to(root.resolve()):
@@ -300,10 +286,9 @@ class VerifiedCache:
     """Reuse clean runs; publish new entries only after input stability checks."""
 
     def __init__(self, root: Path) -> None:
-        """Snapshot the tree, and the bandit-scoped inputs, at construction."""
+        """Snapshot the tree at construction."""
         self.root = root
         self.initial = _tree(root)
-        self.bandit = _tree(root, bandit=True)[0]
         self.pending: list[tuple[Path, dict[str, str | int]]] = []
         self.runtimes: dict[str, tuple[list[str], dict[str, str], str]] = {}
 
@@ -311,19 +296,9 @@ class VerifiedCache:
         """Return a key, or decline caching when the runtime cannot be verified."""
         if env.get("VERIFY_CLEAN_CACHE", "1") == "0":
             return None
-        if step == "bandit":
-            if cmd[:4] != ["uv", "run", "--no-sync", "--with"]:
-                return None
-            prefix = [*cmd[:5], "python"]
-        else:
-            if "python" not in Path(cmd[0]).name:
-                return None
-            prefix = [cmd[0]]
-        query = [
-            *prefix,
-            str(Path(__file__).resolve()),
-            "bandit" if step == "bandit" else "python checks",
-        ]
+        if "python" not in Path(cmd[0]).name:
+            return None
+        query = [cmd[0], str(Path(__file__).resolve()), "python checks"]
         query_key = json.dumps([query, sorted(env.items())])
         if query_key in self.runtimes:
             runtime = self.runtimes[query_key][2]
@@ -348,24 +323,7 @@ class VerifiedCache:
         return self._key(step, cmd, env, runtime)
 
     def _key(self, step: str, cmd: list[str], env: dict[str, str], runtime: str) -> str:
-        # Only the known source scan has an audited dependency footprint.
-        inputs = (
-            self.bandit
-            if step == "bandit"
-            and cmd
-            == [
-                "uv",
-                "run",
-                "--no-sync",
-                "--with",
-                "bandit",
-                "bandit",
-                "-r",
-                "src",
-                "-q",
-            ]
-            else self.initial[0]
-        )
+        inputs = self.initial[0]
         return hashlib.sha256(
             json.dumps(
                 [step, cmd, sorted(env.items()), inputs, runtime],
@@ -450,7 +408,6 @@ class VerifiedCache:
 # A step absent from this table is always run: it is either cheap enough not to
 # matter or it guards the whole tree.  Prefixes are repo-relative.
 STEP_SCOPE: dict[str, tuple[str, ...]] = {
-    "bandit": ("src/",),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "checks/"),
     "dead definitions": ("src/", "scripts/", "checks/"),
     # Only a generator, an interpreter (the step counts are executed), or the

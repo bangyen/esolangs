@@ -275,7 +275,7 @@ def _assembly(code: str) -> list[int]:
         address += len(operands) if data else 4
 
     def value(token: str, next_ip: int) -> int:
-        if token == "?":  # nosec B105 - assembly punctuation, not a password
+        if token == "?":  # assembly punctuation, not a password
             return next_ip
         try:
             return _integer(token)

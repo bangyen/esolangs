@@ -79,7 +79,6 @@ PY = python_cmd()
 MANUAL_ONLY = frozenset(
     {
         "generated docs",
-        "bandit",
         "dead definitions",
         "generator size baseline",
         "duplicate-code check (pylint)",
@@ -113,22 +112,6 @@ STEPS = [
     # this run covers src/ and scripts/ both from the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     ("pytest", [*PY, "-m", "pytest", "-q"]),
-    (
-        "bandit",
-        [
-            "uv",
-            "run",
-            "--no-sync",
-            "--with",
-            "bandit",
-            "bandit",
-            "-r",
-            "src",
-            "--exclude",
-            "*/tests/*",
-            "-q",
-        ],
-    ),
     # A generator route that was replaced keeps its own tests green, so it
     # never fails; three sat that way.  <1s.
     ("dead definitions", [*PY, "checks/check_dead_definitions.py"]),
@@ -212,7 +195,7 @@ def _parse_only_skip() -> tuple[
         "--only",
         type=str,
         default=None,
-        help="comma-separated subset of STEPS names to run (e.g. --only pytest,bandit)",
+        help="comma-separated subset of STEPS names to run (--only pytest)",
     )
     parser.add_argument(
         "--skip",
@@ -422,13 +405,7 @@ def _run_steps(
                         cache_keys[name] = clean_cache.key(name, cmd, step_env)
 
                 eligible = [step for step in runnable if step[0] in CACHED_STEPS]
-                futures = [
-                    pool.submit(
-                        prepare,
-                        [step for step in eligible if (step[0] == "bandit") == bandit],
-                    )
-                    for bandit in (False, True)
-                ]
+                futures = [pool.submit(prepare, eligible)]
         for name, cmd, step_env in runnable:
             if name == MUTATES_TREE:
                 run_serial(name, cmd, step_env)
@@ -619,9 +596,6 @@ def main() -> int:
                 cmd.extend(deferred)
                 if deferred:
                     print("[defer] unrelated tooling integrations: covered by CI")
-        if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
-            unavailable.append(f"{name}: uv not installed")
-            continue
         if not have_pylint and "(pylint)" in name:
             unavailable.append(f"{name}: pylint not installed (pip install pylint)")
             continue

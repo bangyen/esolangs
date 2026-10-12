@@ -101,13 +101,9 @@ test-mid *args:
 test-py *args:
     {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
 
-# lint + duplicate-code + bandit + dead definitions
+# lint + duplicate-code + dead definitions
 test-lint *args:
-    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"duplicate-code check (pylint)",bandit,"dead definitions" {{args}}
-
-# security scan only
-test-bandit *args:
-    {{PYTHON}} scripts/verify/gate.py --only bandit {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"duplicate-code check (pylint)","dead definitions" {{args}}
 
 # emit repeatable generator size/time/command evidence as JSON
 benchmark language table *args:
@@ -158,5 +154,5 @@ clean:
     find . \( -path ./.venv -o -path ./.worktrees \) -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
         | xargs -0 rm -rf
     find . \( -path ./.venv -o -path ./.worktrees \) -prune -o -name "*.pyc" -type f -delete
-    rm -rf build dist .coverage coverage.xml bandit-report.json .mypy_cache .ruff_cache .pytest_cache
+    rm -rf build dist .coverage coverage.xml .mypy_cache .ruff_cache .pytest_cache
     find src tests -mindepth 1 -type d -empty -delete

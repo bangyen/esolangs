@@ -149,13 +149,12 @@ class TestZeroStepsIsNotAPass:
         assert "zero steps" in out
 
 
-@pytest.mark.parametrize("tool", ["uv", "pylint"])
 @pytest.mark.parametrize("allow", [False, True])
 def test_missing_tools_never_report_complete_verification(
-    tool, allow, monkeypatch, capsys
+    allow, monkeypatch, capsys
 ) -> None:
     verify = load_script()
-    step = "bandit" if tool == "uv" else "duplicate-code check (pylint)"
+    step = "duplicate-code check (pylint)"
     monkeypatch.setattr(
         verify, "STEPS", [(step, ["unused"]), ("available", ["unused"])]
     )
@@ -165,14 +164,9 @@ def test_missing_tools_never_report_complete_verification(
         argv.append("--allow-incomplete")
     monkeypatch.setattr(sys, "argv", argv)
     monkeypatch.setattr(
-        verify.shutil, "which", lambda _: None if tool == "uv" else "/uv"
-    )
-    monkeypatch.setattr(
         verify,
         "run_bounded",
-        lambda *_args, **_kwargs: subprocess.CompletedProcess(
-            [], int(tool == "pylint")
-        ),
+        lambda *_args, **_kwargs: subprocess.CompletedProcess([], 1),
     )
     runs = []
 
@@ -184,7 +178,7 @@ def test_missing_tools_never_report_complete_verification(
     assert verify.main() == (0 if allow else 1)
     text = capsys.readouterr().out
     assert "all local checks passed" not in text
-    assert f"{tool} not installed" in text
+    assert "pylint not installed" in text
     assert runs == (["available"] if allow else [])
     assert ("incomplete verification" if allow else "verification failed") in text
 
@@ -223,14 +217,6 @@ def test_shared_changes_keep_all_tests_without_local_coverage(
         "mypy (src + scripts)",
         "pytest",
     }
-
-
-def test_shadow_uv_command_cannot_resync_the_active_test_environment() -> None:
-    verify = load_script()
-    cmd = next(cmd for name, cmd in verify.STEPS if name == "bandit")
-    assert cmd[:3] == ["uv", "run", "--no-sync"]
-    assert "--with" in cmd
-    assert "bandit" in cmd
 
 
 @pytest.mark.medium
