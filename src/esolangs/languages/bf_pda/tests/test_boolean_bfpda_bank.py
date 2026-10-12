@@ -4,8 +4,15 @@ import random
 
 import pytest
 
-from esolangs.languages.bf_pda.generator import _bfpda_tree, _prepare, _reflected, bfpda
-from esolangs.languages.bf_pda.generator._bank import _body_metrics, _price, best_bank
+from esolangs.languages.bf_pda.generator import (
+    _bfpda_tree,
+    _body_metrics,
+    _prepare,
+    _price,
+    _reflected,
+    best_bank,
+    bfpda,
+)
 from esolangs.languages.bf_pda.tests.test_boolean_bfpda import _execute_bank
 
 
