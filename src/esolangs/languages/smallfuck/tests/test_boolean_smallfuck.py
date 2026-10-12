@@ -1,6 +1,5 @@
 """Executed tests for the Smallfuck banded-result tree."""
 
-import random
 from itertools import pairwise
 
 import pytest
@@ -10,7 +9,7 @@ from esolangs.languages.smallfuck.generator import PAIR, smallfuck
 from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from tests.support.generator_support import run_filled
+from tests.support.generator_support import multiple_tables, run_filled
 
 
 def _run(table: str, row: int) -> str:
@@ -132,24 +131,8 @@ def test_complemented_shared_arm_contributes_its_constant_first() -> None:
     )
 
 
-def _multiple_tables():
-    rng = random.Random(88417)
-    a, b = "00010111", "01101001"
-    four = (
-        "0001011101101001",
-        "0110100100010111",
-        "1010110010001101",
-        "1101001010010010",
-    )
-    return [
-        a + b + b + a + a + b + a + b,
-        "".join(four[(row // 4 + row % 4) % 4] for row in range(16)),
-        *("".join(str(rng.randrange(2)) for _ in range(128)) for _ in range(6)),
-    ]
-
-
 @pytest.mark.medium
-@pytest.mark.parametrize("table", _multiple_tables())
+@pytest.mark.parametrize("table", multiple_tables())
 @pytest.mark.parametrize("reverse", [False, True])
 @pytest.mark.parametrize("kind", ["levels", "first", "ranked"])
 @pytest.mark.parametrize("half", [0, 1])

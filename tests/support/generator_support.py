@@ -1,5 +1,6 @@
 """Generator round-trip checks for the development suite."""
 
+import random
 from itertools import pairwise
 
 import esolangs
@@ -8,6 +9,27 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.support.stdin_check import _validate_shape_for_evaluate
 from tests.support.witness_tables import parity, row_bits
+
+
+def multiple_tables() -> list[str]:
+    """A fixed corpus of 128-bit truth tables for residual-structure tests.
+
+    Two structured tables plus six seeded random ones, so the medium-marked
+    parametrized tests exercise repeated bands across identical inputs.
+    """
+    rng = random.Random(88417)
+    a, b = "00010111", "01101001"
+    four = (
+        "0001011101101001",
+        "0110100100010111",
+        "1010110010001101",
+        "1101001010010010",
+    )
+    return [
+        a + b + b + a + a + b + a + b,
+        "".join(four[(row // 4 + row % 4) % 4] for row in range(16)),
+        *("".join(str(rng.randrange(2)) for _ in range(128)) for _ in range(6)),
+    ]
 
 
 def evaluate_generated(
