@@ -213,7 +213,7 @@ class TestSlowAcvMammalian:
             banked.add(st.nw - before)
         assert banked == {32}
 
-    @pytest.mark.parametrize("amount", [0, 100, 256, 600, 2000])
+    @pytest.mark.parametrize("amount", [0, 100, 255, 256, 600, 2000])
     def test_a_weight_raise_is_exact_on_the_machine(self, amount: int) -> None:
         """``_w_raise`` moves array 16's non-head sum by exactly its ask."""
         import importlib
@@ -230,8 +230,11 @@ class TestSlowAcvMammalian:
         machine = _Machine(" ".join(tokens), ScriptedIO(""), io_modulus=256)
         machine.ptr = 16
         machine.lst = tuple((9, 200, 55) if k == 16 else (0,) for k in range(23))
+        commands = 0
         while not machine.halted:
             machine.step()
+            commands += 1
+        assert commands == module._w_raise_len(9, 255, amount)[0]  # noqa: SLF001
         array = machine.lst[16]
         assert sum(array) - array[0] == 255 + amount
         assert (st.nw, st.hw) == (255 + amount, array[0])
