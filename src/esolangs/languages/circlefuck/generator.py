@@ -20,7 +20,13 @@ _DIGIT_BITS = 7
 #: One input: read, subtract ``"0"``, clamp to 0 or 1, bank.  The clamp is
 #: load-bearing: an underfed ``,`` is a no-op, so the cell keeps the source
 #: character and the index would delete past the table.
-_READ = "," + "-" * _ASCII_ZERO + ">[-]<[[-]>+<]>[-<+>]"
+#:
+#: The 48 is not spelled out: a 6-count loop subtracts 8 from the read cell
+#: per pass (the scratch cell is cleared first -- the tape holds program
+#: text, not zeros).  This ends exactly where the straight version did
+#: (bit banked, scratch zero, pointer one right), at 40 commands a read
+#: instead of 69.
+_READ = ",>[-]++++++[<-------->-]<[[-]>+<]>[-<+>]"
 
 
 def circlefuck(truth_table: str) -> str:
