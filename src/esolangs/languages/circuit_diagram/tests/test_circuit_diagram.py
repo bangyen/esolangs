@@ -257,6 +257,20 @@ class TestSpecifiedSourcesAndRemoval:
 class TestWiring:
     """The connection rules that turn ASCII into a graph."""
 
+    @pytest.mark.parametrize(
+        ("rows", "cell", "expected"),
+        [
+            (["---"], (0, 1), [(0, 0), (0, 2)]),
+            (["|-|"], (0, 1), []),
+            ([".=.-"], (0, 0), [(0, 2)]),
+            (["=."], (0, 1), []),
+            (["\\  ", " = ", "  \\"], (0, 0), [(2, 2)]),
+            (["|"], (0, 0), []),
+        ],
+    )
+    def test_neighbours_require_mutual_directions(self, rows, cell, expected):
+        assert _Connections(_Grid(rows)).neighbours(*cell) == expected
+
     def test_a_crossover_chain_off_any_edge_connects_to_nothing(self) -> None:
         """``through`` rejects the cell it lands on, off *any* of the four."""
         conn = _Connections(_Grid(["-=", "  "]))
