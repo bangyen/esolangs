@@ -1,25 +1,52 @@
-# Boolean generators that do not reference the canonical helper for a piece,
-# with the native mechanism that carries it instead.  Every other generator
-# references essential_inputs/read_at (ignored inputs) or constant_span_test
-# (constant subtrees); this file names the exceptions, enforced by
-# tests/generators/test_boolean_canonical_catalogue.py.  Folding also drops an
-# ignored input, so the ignored piece is satisfied by any of the three
-# helpers.
+# Folding mechanisms not expressed by canonical span or residual helpers.
+# Local entries name reachable native constructors; exemptions state the
+# construction's limit. Enforced by test_boolean_canonical_catalogue.py.
 
 [ignored]
-"Alight" = "Horner index over the essential inputs; no branch to drop"
 "Malbolge" = "fixed-size source; an extra input port adds no cells"
-"Qoibl" = "index built from squaring statements, one per input"
 
 [constant]
 "123" = "constant tables skip the separation geometry"
 "Alight" = "a constant table is a one-entry literal"
 "Malbolge" = "fixed-size source; a constant table is no smaller"
-"Minifuck" = "a constant needs no byte accumulator"
 "Qoibl" = "a constant table is a one-bit literal"
 "Circuit Diagram" = "both constants are one self-fed gate"
-"Line" = "a constant tests nothing; it folds to a leaf"
 "Piet" = "literal products collapse a constant"
 "Polynomial" = "a constant table is the k=0 state machine"
-"thisthat" = "folding gated to the essential inputs"
-"Suffolk" = "the bistack holds the constant; countdown fallback"
+
+[ignored_local]
+"Fargo" = "_arm_expression" # zero ANF arms omit their variable
+"INTERCAL" = "_diagram" # equal children replace their selector
+"Vandevelo" = "_constraints" # affine guards retain independent tests
+
+[constant_local]
+"///" = "_CONSTANT" # delete inputs and print the literal answer
+"A Painter Ant" = "_program" # restore inputs and leave one answer cell
+"ArrowQueue" = "_program" # direct halt or circulating heading
+"B-tapemark" = "b_tapemark" # direct read-and-print constant
+"BIO" = "_bio" # no index saves for a zero-input projection
+"Befunge" = "input_weights" # one projected table cell
+"Bitwise Cyclic Tag" = "_program" # delete inputs and a literal bit
+"BrainIf" = "_brainif_dag" # constant residual output tail
+"Circlefuck" = "_program" # read into an executed cell and print the tail
+"Clockwise" = "_constant_ring" # read rotation and literal output
+"Collatz Multiverse" = "_cm_constant_program" # reads followed by literal output
+"Cyclic tag" = "_program" # empty production deletes inputs and a literal bit
+"Dimensional" = "_program" # reads and literal output
+"EGL" = "_program" # scratch reads beside a literal answer cell
+"Eval" = "_eval_ordered" # one projected table entry
+"Fargo" = "_arm_expression" # literal zero or one ANF coefficient
+"Fish" = "input_weights" # one projected grid cell
+"Grapheme" = "_program" # one-entry integer lookup
+"Home Row" = "_program" # direct constant input-discard sequence
+"INTERCAL" = "_diagram" # equal-child reduction to a constant id
+"Minsky Swap" = "input_weights" # zero projected index weights
+"Modulous" = "input_weights" # one projected table entry
+"NoComment" = "_nocomment_chain" # one projected answer group
+"Piet++" = "_operations" # literal products over essential inputs
+"ROTfuck" = "_program" # one-entry rotated lookup
+"SLOW ACV MAMMALIAN" = "_constant_read" # scratch reads and coprime answer array
+"Super SNUSP" = "_emit_lookup" # projected literal table
+"Taglate" = "_taglate_raw" # smallest valid constant table
+"Vandevelo" = "_affine_coset" # a full or empty guard set
+"bit~" = "_program" # one planted projected answer

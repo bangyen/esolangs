@@ -3,8 +3,12 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.languages.suffolk.generator import _suffolk_lookup, suffolk
-from esolangs.languages.suffolk.generator._shared import _nor, shared_dag
+from esolangs.languages.suffolk.generator import (
+    _nor,
+    _suffolk_lookup,
+    shared_dag,
+    suffolk,
+)
 from esolangs.languages.suffolk.interpreter import _Machine
 from scripts.benchmark import WrittenState
 
