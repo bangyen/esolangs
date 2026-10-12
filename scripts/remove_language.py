@@ -1031,7 +1031,11 @@ def remove(name: str) -> list[str]:
     if wrapper is not None and not any(
         other is not lang and other.wrap is lang.wrap for other in LANGUAGES.values()
     ):
-        exclusive = wrapper not in external_for("src/esolangs/tools/wrap.py")
+        exclusive = not any(
+            wrapper in used
+            for relative, used in used_by_file.items()
+            if relative.startswith("src/") and relative != "src/esolangs/tools/wrap.py"
+        )
         _drop_name_items(ROOT / "src/esolangs/tools/wrap.py", {wrapper})
     for relative in shared:
         _drop_dead_code(ROOT / relative, external_for(relative))

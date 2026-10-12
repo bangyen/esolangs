@@ -7,8 +7,7 @@ from typing import NamedTuple
 from esolangs._validate import check_width
 from esolangs.raster import Raster
 from esolangs.tools.helpers import _validate_truth_table
-
-from . import (
+from esolangs.tools.raster_lookup import (
     _INITIAL,
     _MULTIPLY,
     _POP,
@@ -21,7 +20,7 @@ from . import (
     _push,
 )
 from esolangs.tools.raster_lookup.packing import pack
-from .palette import BLACK
+from esolangs.tools.raster_lookup.palette import BLACK
 
 _POINTER = (3, 1)
 

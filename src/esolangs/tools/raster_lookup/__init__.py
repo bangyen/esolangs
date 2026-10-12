@@ -13,8 +13,7 @@ from dataclasses import dataclass
 
 from esolangs.raster import Raster
 from esolangs.tools.helpers import essential_inputs, read_at
-
-from .palette import _COLOURS, BLACK
+from esolangs.tools.raster_lookup.palette import _COLOURS, BLACK
 
 Change = tuple[int, int]
 Pixel = tuple[int, int, int]

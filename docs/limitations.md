@@ -454,7 +454,7 @@ These languages were implemented elsewhere before the curation rule of 2026-09-2
 - Sophie: its author's implementation.
 - Jaune: two other implementations.
 
-Befunge-98 (Funge-98, 31, two dozen implementations) came after and was
+Funge-98 (31, two dozen implementations) came after and was
 removed on 2026-10-06.
 
 A route admits a language only when its specification fixes the core
