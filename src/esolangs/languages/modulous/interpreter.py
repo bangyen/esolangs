@@ -58,8 +58,8 @@ _QUOTED = r'"([^"]*)"|“([^”]*)”'
 _TOKEN = re.compile(rf'\[([^\[\]"“]*(?:{_QUOTED})?\s*)]')
 
 
-def _reject_stray_text(code: str) -> None:
-    """Refuse anything outside a bracketed command.
+def _parse_tokens(code: str) -> tuple[str, ...]:
+    """Parse bracketed commands and refuse stray text.
 
     ``findall`` skips whatever does not match, so an unbalanced bracket
     simply vanished: ``[PSH INT 1[END]`` lost its first half and ran
@@ -70,10 +70,12 @@ def _reject_stray_text(code: str) -> None:
     """
     end = 0
     stray: list[str] = []
+    tokens: list[str] = []
     for match in _TOKEN.finditer(code):
         gap = code[end : match.start()].strip()
         if gap:
             stray.append(gap)
+        tokens.append(match.group(1))
         end = match.end()
     if tail := code[end:].strip():
         stray.append(tail)
@@ -86,6 +88,7 @@ def _reject_stray_text(code: str) -> None:
                 "example [PSH INT 1]"
             ),
         )
+    return tuple(tokens)
 
 
 #: One instant of a run: ``(stk, var, ind)`` -- the data stack, the four
@@ -148,8 +151,7 @@ class _Machine:
         self.var = {f"VAR{k}": 0 for k in range(1, 5)}
         self.ind = 0
         self.io = io
-        self.tokens = tuple(k.group(1) for k in _TOKEN.finditer(code))
-        _reject_stray_text(code)
+        self.tokens = _parse_tokens(code)
         self._halted = False
         self.rng = rng
         self._input_reads = 0
@@ -226,11 +228,7 @@ class _Machine:
         if not arg:
             return (_freeze((advanced, halted)),)
 
-        handler = _DISPATCH.get(arg[0])
-        if handler is None:
-            if "+" in mod or "-" in mod:
-                return (_freeze((_var_arith(advanced, mod), halted)),)
-            _reject_unknown(mod, arg[0])
+        handler = _handler(mod, arg)
 
         if arg[0] == "PRT":
             n = _print_value(stk, var, mod, arg)
@@ -300,17 +298,7 @@ class _Machine:
         if not arg:
             return
 
-        handler = _DISPATCH.get(arg[0])
-        if handler is None:
-            if "+" in mod or "-" in mod:
-                core, halted = self._state
-                self._restore((_var_arith(core, mod), halted))
-                return
-            # Not a command and not variable arithmetic.  This used to
-            # ``return``, so ``[PRTINT]`` -- a plausible slip for ``[PRT
-            # INT]`` -- ran as nothing at all: the program exited 0 having
-            # printed nothing, which is the worst answer to a typo.
-            _reject_unknown(mod, arg[0])
+        handler = _handler(mod, arg)
 
         value: str | int | None = None
         if arg[0] == "PRT":
@@ -333,6 +321,22 @@ class _Machine:
             self.io.print_num(n)
         else:
             self.io.print_char(chr(n))
+
+
+type _Handler = Callable[[_Core, str, list[str], str | int | None], _Core]
+
+
+def _handler(mod: str, arg: list[str]) -> _Handler:
+    """Resolve execution and branching commands by the same rules."""
+    if (handler := _DISPATCH.get(arg[0])) is not None:
+        return handler
+    if "+" in mod or "-" in mod:
+        return _var_arith
+    # Not a command and not variable arithmetic.  This used to
+    # ``return``, so ``[PRTINT]`` -- a plausible slip for ``[PRT
+    # INT]`` -- ran as nothing at all: the program exited 0 having
+    # printed nothing, which is the worst answer to a typo.
+    return _reject_unknown(mod, arg[0])
 
 
 def _reject_unknown(mod: str, command: str) -> Never:
@@ -526,7 +530,12 @@ def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Co
     return ((*stk, int(value) if value is not None else 0), var, ind)
 
 
-def _var_arith(core: _Core, mod: str) -> _Core:
+def _var_arith(
+    core: _Core,
+    mod: str,
+    _arg: list[str] | None = None,
+    _value: str | int | None = None,
+) -> _Core:
     """Add to or subtract from a named variable, in place in the token."""
     stk, var, ind = core
     if "+" in mod and ("-" not in mod or mod.index("+") < mod.index("-")):
@@ -538,7 +547,7 @@ def _var_arith(core: _Core, mod: str) -> _Core:
     return (stk, {**var, lhs: _named(var, lhs) - int(rhs)}, ind)
 
 
-_DISPATCH: dict[str, Callable[[_Core, str, list[str], str | int | None], _Core]] = {
+_DISPATCH: dict[str, _Handler] = {
     "JMP": _jmp,
     "ADD": _add,
     "SUB": _sub,

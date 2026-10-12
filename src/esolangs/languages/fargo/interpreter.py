@@ -343,17 +343,21 @@ class _Machine:
         if name in _BUILTINS:
             return _BUILTINS[name]
         if name in self.defs:
-            definition = self.defs[name]
-            raw = tuple(
-                index
-                for index, parameter in enumerate(definition.params)
-                if _bare_name(parameter) != parameter
-            )
-            return _Func(name, len(definition.params), raw)
+            return self._defined(name)
         raise HaltError(
             f"calling undefined function {name!r}",
             hint="define the function before calling it; check its spelling",
         )
+
+    def _defined(self, name: str) -> _Func:
+        """Return a definition's arity and unevaluated argument positions."""
+        definition = self.defs[name]
+        raw = tuple(
+            index
+            for index, parameter in enumerate(definition.params)
+            if _bare_name(parameter) != parameter
+        )
+        return _Func(name, len(definition.params), raw)
 
     def _check_outer_call(
         self, definition: _Def, binds: dict[str, _Value] | None = None
@@ -405,16 +409,7 @@ class _Machine:
             elif bare in _BUILTINS:
                 fn = _BUILTINS[bare]
             elif bare in self.defs:
-                target = self.defs[bare]
-                fn = _Func(
-                    bare,
-                    len(target.params),
-                    tuple(
-                        i
-                        for i, parameter in enumerate(target.params)
-                        if _bare_name(parameter) != parameter
-                    ),
-                )
+                fn = self._defined(bare)
             else:
                 continue
             pending.extend(i in fn.raw for i in reversed(range(fn.arity)))
