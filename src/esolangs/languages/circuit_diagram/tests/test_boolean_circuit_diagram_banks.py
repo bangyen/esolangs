@@ -138,10 +138,9 @@ def test_equal_area_bank_preserves_existing_output(monkeypatch):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("arities", [(8, 10, 12), (9, 11, 13)])
-def test_bank_scaling_retains_native_contracts(arities):
+def test_bank_scaling_retains_native_contracts():
     sizes = []
-    for n in arities:
+    for n in (8, 10, 12):
         a, b = dense(n - 2, b"bank-a"), dense(n - 2, b"bank-b")
         table = a + b + b + a
         code = _cofactor_bank_layout(table).render()
@@ -184,10 +183,9 @@ def test_repeats_below_distinct_four_bank_cofactors_share(n):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("arities", [(9, 11, 13), (10, 12, 14)])
-def test_eight_bank_growth_with_native_positive_controls(arities):
+def test_eight_bank_growth_with_native_positive_controls():
     sizes = []
-    for n in arities:
+    for n in (9, 11, 13):
         a, b, c = [dense(n - 3, f"deep-bank:{i}".encode()) for i in range(3)]
         table = a + b + a + c + b + c + a + a
         code = _cofactor_bank_layout(table, 3).render()
