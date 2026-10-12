@@ -3,8 +3,14 @@
 import pytest
 
 from esolangs.languages import generators as boolean
-from esolangs.languages.clockwise.tests.runners import run_clockwise
 from tests.support.witness_tables import parity, row_bits, witnesses
+
+
+def run_clockwise(program: str, inputs: list[str] | list[int]) -> str:
+    import esolangs
+
+    # Clockwise loads the complete character stream (7 bits per char).
+    return esolangs.run("Clockwise", program, stdin="".join(map(str, inputs)))
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])

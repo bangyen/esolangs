@@ -1,6 +1,7 @@
 """polynomial generator tests."""
 
 import random
+from collections.abc import Iterator
 
 import pytest
 
@@ -16,13 +17,17 @@ from esolangs.languages.polynomial.generator import _polynomial_dag, _polynomial
 from esolangs.languages.polynomial.tests.polynomial_support import (
     _polynomial_tree,
 )
-from esolangs.languages.polynomial.tests.runners import (
-    run_polynomial,
-    run_polynomial_from,
-)
 from esolangs.languages.polynomial.wrapping import _polynomial
 from esolangs.runtime._evaluate import _evaluate
+from tests.generators.boolean_runners import _run_from, _runner
 from tests.support.witness_tables import row_bits
+
+run_polynomial = _runner("polynomial")
+
+
+def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
+    """Run a Polynomial program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.languages.polynomial.interpreter", program, feed)
 
 
 @pytest.mark.medium

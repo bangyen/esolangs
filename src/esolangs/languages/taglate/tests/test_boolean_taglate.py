@@ -4,9 +4,14 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.taglate.tests.runners import run_taglate
 from esolangs.languages.taglate.wrapping import _taglate
 from tests.support.witness_tables import row_bits, witnesses
+
+
+def run_taglate(program: str, inputs: list[str]) -> str:
+    import esolangs
+
+    return esolangs.run("Taglate", program, stdin="".join(inputs))
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])

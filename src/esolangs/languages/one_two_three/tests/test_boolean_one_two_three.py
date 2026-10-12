@@ -7,8 +7,17 @@ import pytest
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, runs
 from esolangs.languages.one_two_three.generator import ONE, ZERO
 from esolangs.languages.one_two_three.generator.construction import _RING
-from esolangs.languages.one_two_three.tests.runners import one_two_three_result
 from tests.support.witness_tables import row_bits, witnesses
+
+
+def one_two_three_result(program: str) -> str:
+    """Run a 123 program; return "0" if it halts and "1" if it loops."""
+    from esolangs.languages.one_two_three.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from esolangs.vm import run_until_halt_or_cycle
+
+    machine = _Machine(program, ScriptedIO(""))
+    return "0" if run_until_halt_or_cycle(machine) else "1"
 
 
 def _mask(cells: Iterable[int]) -> int:

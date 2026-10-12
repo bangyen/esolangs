@@ -73,13 +73,19 @@ from esolangs.languages.alight.interpreter._dialect import (
 from esolangs.languages.alight.interpreter._dialect import (
     list_update as validate_list_update,
 )
-from esolangs.languages.alight.interpreter._helpers import _grid
 from esolangs.languages.alight.interpreter._hints import Hint
 from esolangs.languages.alight.interpreter._state import _equal, _freeze
 from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
+
+
+def _grid(code: list[str]) -> list[str]:
+    """Pad ragged source to a rectangle for in-bounds indexing."""
+    width = max((len(line) for line in code), default=0)
+    return [line.ljust(width) for line in code]
+
 
 #: Headings as ``(drow, dcol)`` in screen coordinates -- row grows downward,
 #: so a *left* turn (counter-clockwise on the page) takes east to north.

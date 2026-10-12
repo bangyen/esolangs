@@ -1,6 +1,7 @@
 """addsubjump generator tests."""
 
 import random
+from collections.abc import Iterator
 
 import pytest
 
@@ -13,12 +14,16 @@ from esolangs.languages.addsubjump.generator import (
     _addsubjump_packed,
     addsubjump,
 )
-from esolangs.languages.addsubjump.tests.runners import (
-    run_addsubjump,
-    run_addsubjump_from,
-)
+from tests.generators.boolean_runners import _run_from, _runner
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits, witnesses
+
+run_addsubjump = _runner("addsubjump")
+
+
+def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
+    """Run an AddSubJump program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.languages.addsubjump.interpreter", program, feed)
 
 
 @pytest.mark.medium

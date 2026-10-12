@@ -1,6 +1,7 @@
 """Covers :mod:`esolangs.languages.six_five.generator`."""
 
 import importlib
+from collections.abc import Iterator
 from itertools import permutations
 
 import pytest
@@ -26,10 +27,17 @@ from esolangs.languages.six_five.generator import (
     _six_five_stream_ordered,
     _six_five_walk,
 )
-from esolangs.languages.six_five.tests.runners import run_six_five, run_six_five_from
+from tests.generators.boolean_runners import _run_from, _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.witness_tables import dense as _dense
 from tests.support.witness_tables import row_bits, witnesses
+
+run_six_five = _runner("six_five")
+
+
+def run_six_five_from(program: str, feed: Iterator[str]) -> str:
+    """Run a 6-5 program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.languages.six_five.interpreter", program, feed)
 
 
 def _leaves(table: str) -> int:
