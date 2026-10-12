@@ -81,7 +81,10 @@ def test_sixteen_eight_input_roots_keep_the_smaller_separate_layout():
     _execute(table, shared.render(), rows)
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "dense 129-class admission crosses the selector carry boundary"
+)
 def test_atom_mask_bound_admits_129_classes_across_carry_boundaries():
     atoms = [dense(7, f"too-many:{i}".encode()) for i in range(129)]
     table = "".join(atoms[row % 129] for row in range(256))
@@ -103,7 +106,10 @@ def test_atom_mask_bound_admits_129_classes_across_carry_boundaries():
     _execute(table, model.render(), rows)
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "sixteen-class banks retain both high-arity parity growth bounds"
+)
 @pytest.mark.parametrize("arities", [(11, 13, 15), (12, 14, 16)])
 def test_larger_class_banks_keep_both_parity_growth_bounds(arities):
     sizes = []

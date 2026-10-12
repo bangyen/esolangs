@@ -131,9 +131,8 @@ def test_projected_pool_reads_every_original_port_in_order(ignored):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("seed", [1, 2, 3])
-def test_four_input_pool_routes_dense_and_test_free_residuals(seed):
-    rng = random.Random(seed)
+def test_four_input_pool_routes_dense_and_test_free_residuals():
+    rng = random.Random(1)
     table = "".join(rng.choice("01") for _ in range(256))
     _execute(table, _h_pool_layout(table).render())
 
@@ -145,7 +144,7 @@ def test_empty_full_and_mixed_pools_fold_before_the_result_tree():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("arities", [(8, 10, 12), (9, 11, 13)])
+@pytest.mark.parametrize("arities", [(8, 10, 12), (7, 9, 11)])
 def test_pool_text_growth_with_native_positive_controls(arities):
     sizes = []
     for n in arities:

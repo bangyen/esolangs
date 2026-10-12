@@ -170,7 +170,10 @@ def test_explicit_width_never_builds_class_masks(monkeypatch):
     _execute(table, circuit_diagram(table, width=80), (0, len(table) - 1))
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "seventeen-input H masks retain their local complement drivers"
+)
 def test_large_h_masks_keep_their_local_complement_drivers():
     table = _three_classes(17)
     model = _residual_class_bank_candidate(table)

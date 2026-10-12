@@ -22,7 +22,8 @@ def _classes(tail, count):
     return "".join(atoms[row % count] for row in range(1024)), pairs
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence("public folded-mask admission beyond 256 distinct classes")
 def test_public_folded_masks_share_257_classes():
     table, pairs = _classes(7, 257)
     code = circuit_diagram(table)
@@ -33,7 +34,8 @@ def test_public_folded_masks_share_257_classes():
     assert _execute(table, code, rows) == 34
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence("eight-input atoms retain native ports beyond 512 classes")
 def test_eight_input_atoms_share_513_classes():
     table, pairs = _classes(8, 513)
     model = folded_class_bank_candidate(table, 60_000_000)
