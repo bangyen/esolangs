@@ -304,7 +304,10 @@ def _forward_canvas(
         # programs pass 37 rows with the same 98-command maximum.
         # In the original mode, all 81 adjacent arm-shape pairs at pitch 20 keep
         # opcode ink at least one unit apart (20px > the 15px star probe).
-        # Entry/join lanes contain no opcodes and use two-unit spacing.
+        # Entry/join lanes contain no opcodes and use two-unit spacing: at a
+        # one-unit pitch a join's diagonal lands on the next lane's row even
+        # with the own-arrival gap widened to four units, reading 0xFAC748EF
+        # row 01010 as 1 not 0 (see tests/test_boolean_line_landing.py).
         for residual in level:
             state = depth, residual
             entry[state] = (
