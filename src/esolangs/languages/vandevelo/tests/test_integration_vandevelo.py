@@ -77,13 +77,19 @@ def test_finite_timeout_has_no_boolean_verdict(capsys, monkeypatch) -> None:
     from tests.cli.test_cli import call_main
     from tests.support import divergence
 
-    finite = "a ~> Nil?\n" * 20000
-    assert esolangs.run("Vandevelo", finite, timeout=1) == ""
+    finite = "a ~> Nil?\n" * 16
+    assert esolangs.run("Vandevelo", finite, max_steps=16) == ""
     monkeypatch.setattr(divergence, "_CYCLE_STEPS", 8)
     assert divergence.diverges("Vandevelo", finite, "") is None
+
+    def expired(_runner, _program, _io, timeout):
+        assert timeout == 0.001
+        raise esolangs.ExecutionTimeoutError("forced timeout")
+
+    monkeypatch.setattr(esolangs, "_run", expired)
     with pytest.raises(esolangs.ExecutionTimeoutError):
         divergence.terminates("Vandevelo", finite, "", 0.001)
-    # CI hit the 1ms source-read deadline before execution; test its verdict.
+    # Classification uses an expired run; file loading is outside that boundary.
     monkeypatch.setattr(cli_run, "_read_program", lambda *_args, **_kwargs: finite)
     monkeypatch.setattr(cli_run, "_read_stdin", lambda *_args, **_kwargs: "")
     with pytest.raises(SystemExit) as exc:

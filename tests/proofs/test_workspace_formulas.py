@@ -351,7 +351,8 @@ _ARITIES: dict[str, tuple[int, ...]] = {
     "FALSE": (3, 5),
     "Sophie": (3, 6),
     "NoComment": (5,),
-    "6-5": (7,),
+    # Seven-input witnesses now use shared trees; eight exercises the walk.
+    "6-5": (8,),
     "Circlefuck": (3,),
     "Bitdeque": (5,),
     "ArrowQueue": (1, 6),
@@ -389,10 +390,11 @@ FORMULAS = ledger_formulas(
 
 # language-owners: ["6-5", "Container", "Fargo"]
 #: Smallest-arity cases that still measure past the medium band run alone
-#: (Container-7 5.7s; 6-5-7 4.9s and Fargo-6 4.6s overrun under load): the
+#: (Container-7 5.7s and Fargo-6 4.6s overrun under load; the 6-5 walk
+#: now starts in the eight-input witness corpus): the
 #: per-step state measurement dominates, so they run in the slow band.
 _SLOW_AT_MIN: frozenset[tuple[str, int]] = frozenset(
-    {("Container", 7), ("6-5", 7), ("Fargo", 6)}
+    {("Container", 7), ("6-5", 8), ("Fargo", 6)}
 )
 
 
