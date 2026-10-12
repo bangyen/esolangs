@@ -1,5 +1,32 @@
-"""Interpreter suite for nope."""
+"""Nope. ignores arbitrary source and all input, including empty source."""
 
-from tests.support.language_suite import load_suite
+import pytest
 
-load_suite(globals(), "nope", "interpreter")
+from esolangs.languages.nope.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
+
+
+@pytest.mark.parametrize("code", ["", "Nope.", "[,☃\x00"])
+@pytest.mark.parametrize("stdin", ["", "☃\n0 1"])
+def test_constant_output(code: str, stdin: str) -> None:
+    io = ScriptedIO(stdin)
+    run(code, io)
+    assert io.getvalue() == "Nope."
+    assert io.position() == 0
+
+
+def test_empty_source_has_one_output_transition() -> None:
+    io = ScriptedIO()
+    machine = _Machine("", io)
+    before = machine.snapshot()
+    assert not machine.halted
+    machine.step()
+    assert machine.halted
+    assert machine.snapshot() != before
+    assert machine.ip == 1
+    assert not hasattr(machine, "memory")
+    assert not hasattr(machine, "stack")
+    after = machine.snapshot()
+    machine.step()
+    assert machine.snapshot() == after
+    assert io.getvalue() == "Nope."

@@ -29,23 +29,7 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
         == generator.parent
         == new_language.ROOT / "src/esolangs/languages/tiny_lang"
     )
-    assert {path.name for path in packages} == {
-        "__init__.py",
-        "interpreter_cases.py",
-        "generator_cases.py",
-    }
-    assert 'load_suite(globals(), "tiny_lang", "interpreter")' in test.read_text()
-    assert (
-        'load_suite(globals(), "tiny_lang", "generator")' in generator_test.read_text()
-    )
-    assert (
-        "def test_placeholder_increment_and_write"
-        in (test.parent / "interpreter_cases.py").read_text()
-    )
-    assert (
-        "def test_every_row_prints_its_answer"
-        in (test.parent / "generator_cases.py").read_text()
-    )
+    assert {path.name for path in packages} == {"__init__.py"}
     assert test.parent == generator_test.parent == source.parent / "tests"
     assert (test.name, generator_test.name) == (
         "test_tiny_lang.py",
@@ -205,7 +189,7 @@ def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
     (fixtures / "curation.toml").write_text("[languages]\n")
     gaps = new_language._common_gaps("Tiny", "tiny")  # noqa: SLF001
     assert (
-        "src/esolangs/languages/tiny/tests/interpreter_cases.py",
+        "src/esolangs/languages/tiny/tests/test_tiny.py",
         "replace the placeholder test",
     ) in {(gap.where, gap.fix) for gap in gaps}
 

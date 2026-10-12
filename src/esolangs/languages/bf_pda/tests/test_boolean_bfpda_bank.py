@@ -13,7 +13,7 @@ from esolangs.languages.bf_pda.generator import (
     best_bank,
     bfpda,
 )
-from esolangs.languages.bf_pda.tests.generator_cases import _execute_bank
+from esolangs.languages.bf_pda.tests.test_boolean_bfpda import _execute_bank
 
 
 def _fixture(words, pattern, core_bits):

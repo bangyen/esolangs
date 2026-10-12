@@ -4,9 +4,7 @@ from collections.abc import Callable
 
 import pytest
 
-from esolangs.languages.forbin.tests.interpreter_cases import (
-    walk_until_halt_or_ancestor,
-)
+from esolangs.languages.forbin.tests.test_forbin import walk_until_halt_or_ancestor
 from esolangs.vm import run_until_halt_or_ancestor
 
 

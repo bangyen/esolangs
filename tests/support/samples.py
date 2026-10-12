@@ -4,7 +4,7 @@
 # tests: the mutation bundle does not inline this module, so a test file
 # importing the program from here would fail collection there before any
 # mutant ran.  Defined there, imported here.
-from esolangs.languages.inject.tests.interpreter_cases import INJECT_TRUTH_MACHINE
+from esolangs.languages.inject.tests.test_inject import INJECT_TRUTH_MACHINE
 from esolangs.languages.line.generator import line as _line_sample
 from esolangs.languages.piet.generator import piet as _piet_sample
 from esolangs.languages.piet_plus_plus.generator import piet_plus_plus as _pp_sample

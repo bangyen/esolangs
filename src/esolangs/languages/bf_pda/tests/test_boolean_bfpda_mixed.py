@@ -13,7 +13,7 @@ from esolangs.languages.bf_pda.generator import (
     bfpda,
 )
 from esolangs.languages.bf_pda.interpreter import _Machine
-from esolangs.languages.bf_pda.tests.generator_cases import _execute_bank
+from esolangs.languages.bf_pda.tests.test_boolean_bfpda import _execute_bank
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.fills import fill
 
