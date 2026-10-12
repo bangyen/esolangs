@@ -1,6 +1,6 @@
 """An input source with no cursor, for snapshot-progress regressions."""
 
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO
 
 
 class CursorlessIO(IO):

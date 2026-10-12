@@ -2,8 +2,8 @@
 
 
 def test_settled_embed_matches_the_interpreter() -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.minifuck.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
     from tests.generators.fills import fill
 
     _fill_minifuck = fill("Minifuck")

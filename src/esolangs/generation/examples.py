@@ -23,15 +23,15 @@ from typing import cast
 
 from esolangs._program import Program
 from esolangs.compressed import CompressedText
-from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, Language, SourceKind, canonical_id, resolve
-from esolangs.registry._contracts import AnswerMode, BooleanContract, InputShape
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     Setters,
     fill_runs,
 )
-from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
+from esolangs.generation.wrap import DEFAULT_WIDTH, takes_width, wrap_program
+from esolangs.raster import Raster
+from esolangs.registry import LANGUAGES, Language, SourceKind, canonical_id, resolve
+from esolangs.registry._contracts import AnswerMode, BooleanContract, InputShape
 
 # Examples use AND2 on 0,1 unless the source budget requires a smaller
 # witness. Generator suites cover the other tables and rows.
@@ -189,8 +189,8 @@ def _contract_for(interpreter: str) -> BooleanContract:
             return lang.contract
     raise LookupError(
         f"no registered language runs interpreter {interpreter!r}; the second "
-        "argument of an example in src/esolangs/tools/examples.py is the "
-        "module under esolangs.interpreters, e.g. 'brainfuck'"
+        "argument of an example in src/esolangs/generation/examples.py is the "
+        "module under esolangs.runtime, e.g. 'brainfuck'"
     )
 
 

@@ -15,9 +15,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import match_brackets as matches
-from esolangs.interpreters.io import IO
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.brackets import match_brackets as matches
+from esolangs.runtime.io import IO
 
 #: ``(ind, ptr, tape, acc, dirty)``: an immutable value, rebound per step.
 #: ``acc`` is the true cell under the pointer; while ``dirty``, ``tape[ptr]``

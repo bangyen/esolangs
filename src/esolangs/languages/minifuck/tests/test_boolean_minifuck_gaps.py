@@ -96,7 +96,7 @@ def test_balanced_reduced_lookups_keep_their_floor(
 ) -> None:
     from esolangs import generate
     from esolangs._evaluate import _evaluate
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     template = generate("Minifuck", table, balance=True)
     assert balance_score(template) <= (0, characters, width)

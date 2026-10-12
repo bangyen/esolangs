@@ -3,8 +3,8 @@
 import io
 from contextlib import redirect_stdout
 
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.suffolk.interpreter import _Machine, run
+from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
 

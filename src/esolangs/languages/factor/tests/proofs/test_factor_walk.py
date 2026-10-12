@@ -6,7 +6,6 @@ from collections.abc import Callable
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import _Machine
 from esolangs.languages.factor.interpreter import run
 from esolangs.languages.factor.tests.proofs._factor_walk import (
@@ -14,6 +13,7 @@ from esolangs.languages.factor.tests.proofs._factor_walk import (
     walked_program,
 )
 from esolangs.languages.factor.tests.proofs.test_factor_print import _render
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import witnesses
 
 

@@ -47,6 +47,12 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 
 from collections.abc import Sequence
 
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    essential_inputs,
+)
 from esolangs.languages.slow_acv_mammalian.interpreter import (
     DEFAULT_MODULI,
     MODULI,
@@ -59,8 +65,6 @@ from esolangs.languages.slow_acv_mammalian.wrapping import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, essential_inputs
 
 __all__ = ["slow_acv_mammalian"]
 
@@ -1101,7 +1105,7 @@ def balance_slow_acv_mammalian(
     io_modulus: int = DEFAULT_MODULI.io_modulus,
 ) -> str:
     """Retain the legacy weighted dispatch when its layout balances better."""
-    from esolangs.tools.wrap import balance_program
+    from esolangs.generation.wrap import balance_program
 
     if len(set(truth_table)) > 1:
         if cell_modulus == 255:

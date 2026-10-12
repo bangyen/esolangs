@@ -28,9 +28,9 @@ ROOT = Path(__file__).resolve().parents[2]
 # Changing any of these changes how *every* interpreter reads, steps, or
 # reports, so touching one sweeps the whole registry rather than nothing.
 SHARED_INTERPRETER = (
-    "interpreters/io.py",
-    "interpreters/memory.py",
-    "interpreters/brackets.py",
+    "runtime/io.py",
+    "runtime/memory.py",
+    "runtime/brackets.py",
     "exceptions.py",
     "vm.py",
     "raster/__init__.py",
@@ -459,8 +459,8 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # baseline itself can move these numbers.
     "generator size baseline": (
         "src/esolangs/languages/",
-        "src/esolangs/tools/",
-        "src/esolangs/interpreters/",
+        "src/esolangs/generation/",
+        "src/esolangs/runtime/",
         "checks/check_generator_sizes.py",
         "scripts/benchmark.py",
         "tests/support/fixtures/generator_sizes.json",
@@ -473,7 +473,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "deep proofs (verify band)": (
         "src/esolangs/languages/bio/generator.py",
         "src/esolangs/languages/arrowqueue/generator.py",
-        "src/esolangs/tools/examples.py",
+        "src/esolangs/generation/examples.py",
         "tests/proofs/deep/",
         "src/esolangs/languages/",
     ),
@@ -577,7 +577,7 @@ def _generator_test_scope(module: str) -> list[str] | None:
     needles = {name for name, owner in owners.items() if owner == module}
     # A generator importing this one makes its language suite relevant too.
     dependents = {module}
-    tools_root = ROOT / "src/esolangs/tools"
+    tools_root = ROOT / "src/esolangs/generation"
     sources = {
         source: source.read_text(encoding="utf-8")
         for source in (

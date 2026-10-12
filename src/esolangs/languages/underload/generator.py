@@ -14,16 +14,16 @@ from collections.abc import Callable
 from functools import cache
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     SubtreeDiagram,
     _validate_truth_table,
     same_up_to_wrapping,
 )
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import balance_score, wrap_tokens
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import balance_score, wrap_tokens
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 # ()! and :! are neutral, padding both selectors to _NODE space-free characters.
 PAIR = ("(()!!^)", "(~:!!^)")
@@ -47,7 +47,7 @@ def _reflected(truth_table: str, n: int) -> str:
 def _shared(truth_table: str, *, short: bool = False) -> str:
     """Return the tree over the reduced diagram, carrying repeated subtrees.
 
-    Subtrees are named by :class:`~esolangs.tools.helpers.SubtreeDiagram`.  A
+    Subtrees are named by :class:`~esolangs.generation.helpers.SubtreeDiagram`.  A
     node whose halves agree is ``!`` and the half, a leaf pushes its bit and
     one ``S`` after the tree prints it, and each node carries the one
     subtree within :data:`_REACH` levels that shortens it most, if any does.

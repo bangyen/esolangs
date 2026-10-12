@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _span, _wrap_grid, balance_score
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _span, _wrap_grid, balance_score
 
 
 def _mammalian(program: str, width: int) -> str:

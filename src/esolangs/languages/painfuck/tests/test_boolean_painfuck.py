@@ -44,9 +44,9 @@ def test_shared_residual_executes_within_ledger() -> None:
 def test_multiple_flags_execute_with_their_native_command_price(table):
     import esolangs
     from esolangs.debugger import make_vm
+    from esolangs.generation.helpers import permute_truth_table
+    from esolangs.generation.shared_block import repeated_bank, repeated_blocks
     from esolangs.languages.painfuck.generator import _painfuck_shared
-    from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.shared_block import repeated_bank, repeated_blocks
     from scripts.benchmark import WrittenState
 
     n = len(table).bit_length() - 1
@@ -83,8 +83,8 @@ def test_multiple_flags_execute_with_their_native_command_price(table):
 # shard pushed it past the 15s scaled limit.
 @pytest.mark.slow
 def test_multiple_flags_reduce_dense_cap_program_within_ledger():
+    from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.painfuck.generator import _painfuck_tree
-    from esolangs.tools.shared_block import repeated_block
     from tests.support.generator_support import assert_shared_program
 
     n = 16

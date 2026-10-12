@@ -44,10 +44,10 @@ from difflib import get_close_matches
 from typing import Never, cast
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import keyword_hint, syntax_error, with_hint
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.randomness import Randomness, draw
+from esolangs.runtime.source_hints import keyword_hint, syntax_error, with_hint
 
 #: A quoted string: straight quotes, or the typographic pair the wiki's own
 #: Hello World is written with (``[PSH STR “Hello, World!”]``).

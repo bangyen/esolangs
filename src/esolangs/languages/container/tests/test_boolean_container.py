@@ -16,8 +16,8 @@ from tests.support.witness_tables import row_bits, witnesses
 
 def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:
     """Run a Container program under a hard tick budget and return its output."""
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.container.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     stream = ScriptedIO("".join(f"{line}" for line in inputs))
     machine = _Machine(program.splitlines(), stream)
@@ -49,9 +49,9 @@ class TestContainer:
         "original", ["A:\n+9 A<=18\nEXIT:", "A=27:\n-9 A>=9\nEXIT:"]
     )
     def test_exact_delta_chunks_preserve_each_tick(self, original: str) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.container.generator import _narrow_rules
         from esolangs.languages.container.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         before = _Machine(original.splitlines(), ScriptedIO(""))
         after = _Machine(_narrow_rules(original, 1).splitlines(), ScriptedIO(""))
@@ -74,12 +74,12 @@ class TestContainer:
 
     @pytest.mark.medium
     def test_factored_rules_preserve_synchronous_state(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.container.generator import (
             _container_threshold,
             _narrow_rules,
         )
         from esolangs.languages.container.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         original = _container_threshold("01101001")
         narrow = _narrow_rules(original, 7)

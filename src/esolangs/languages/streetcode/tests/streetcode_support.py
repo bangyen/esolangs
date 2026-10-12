@@ -2,11 +2,11 @@
 
 from unittest.mock import patch
 
-from esolangs.interpreters.io import IO
 from esolangs.languages.streetcode.interpreter import (
     _Machine,
     run,
 )
+from esolangs.runtime.io import IO
 from tests.interpreters.runner import run_lines
 
 

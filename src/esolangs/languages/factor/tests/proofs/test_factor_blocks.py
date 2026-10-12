@@ -4,7 +4,6 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import _Machine
 from esolangs.languages.factor.interpreter import run
 from esolangs.languages.factor.tests.proofs._factor_blocks import (
@@ -16,6 +15,7 @@ from esolangs.languages.factor.tests.proofs._factor_blocks import (
 )
 from esolangs.languages.factor.tests.proofs._factor_counter import _counter
 from esolangs.languages.factor.tests.proofs.test_factor_print import _render
+from esolangs.runtime.io import ScriptedIO
 
 
 def test_ball_codec() -> None:

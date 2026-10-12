@@ -6,13 +6,13 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.languages.intercal.generator import PAIR, TEMPLATE_CHAR, intercal
-from esolangs.languages.intercal.interpreter import run
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     best_input_order,
     constant_span_test,
 )
+from esolangs.languages.intercal.generator import PAIR, TEMPLATE_CHAR, intercal
+from esolangs.languages.intercal.interpreter import run
 from tests.support.generator_support import run_filled
 
 

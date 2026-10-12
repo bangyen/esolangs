@@ -6,7 +6,6 @@ import hashlib
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
@@ -22,6 +21,7 @@ from esolangs.languages.circuit_diagram.interpreter import _Machine
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import nested_dense
 
 

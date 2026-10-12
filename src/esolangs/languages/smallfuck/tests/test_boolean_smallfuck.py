@@ -5,10 +5,10 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.smallfuck.generator import PAIR, smallfuck
 from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.support.generator_support import multiple_tables, run_filled
 
 
@@ -140,9 +140,9 @@ def test_multiple_residuals_preserve_bands_and_native_bounds(
     table, reverse, kind, half
 ):
     from esolangs.debugger import make_vm
+    from esolangs.generation.helpers import permute_truth_table
+    from esolangs.generation.shared_block import repeated_bank, repeated_blocks
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
-    from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.shared_block import repeated_bank, repeated_blocks
     from scripts.benchmark import WrittenState
 
     n = len(table).bit_length() - 1
@@ -203,8 +203,8 @@ def test_invalid_multiple_definitions_abort(blocks, flags, message):
 
 @pytest.mark.medium
 def test_multiple_residuals_reduce_tiled_cap_program_within_ledger():
+    from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
-    from esolangs.tools.shared_block import repeated_block
     from tests.support.generator_support import assert_shared_program
 
     n = 16
@@ -239,9 +239,9 @@ def test_multiple_residuals_reduce_tiled_cap_program_within_ledger():
 @pytest.mark.parametrize("half", [0, 1])
 def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half):
     from esolangs.debugger import make_vm
+    from esolangs.generation.helpers import permute_truth_table
+    from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.smallfuck.generator import _paired_roots, _smallfuck_tree
-    from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.shared_block import repeated_block
     from scripts.benchmark import WrittenState
 
     table = "".join(f"{code:04b}" for code in range(16)) * 4

@@ -2,10 +2,10 @@
 
 from math import isqrt
 
+from esolangs.generation.helpers import _validate_truth_table, input_weights
+from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import _validate_truth_table, input_weights
-from esolangs.tools.wrap import balance_score
 
 
 def egl(truth_table: str, width: int | None = None) -> str:

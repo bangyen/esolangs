@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Self
 if TYPE_CHECKING:
     from esolangs.settings import DialectSettings
 
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     Setters,
     check_setters,

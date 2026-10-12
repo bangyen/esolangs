@@ -5,6 +5,8 @@ from itertools import pairwise
 from math import isqrt
 from typing import NamedTuple
 
+from esolangs.generation.helpers import _validate_truth_table, input_weights
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight.generator import (
     _ALIGHT_EAST_TURN,
     _ALIGHT_OVERHEAD,
@@ -18,8 +20,6 @@ from esolangs.languages.alight.generator import (
     _postfix_units,
     _program,
 )
-from esolangs.tools.helpers import _validate_truth_table, input_weights
-from esolangs.tools.wrap import balance_score
 
 _Affine = tuple[int, int]
 _EAST = len(_ALIGHT_EAST_TURN)

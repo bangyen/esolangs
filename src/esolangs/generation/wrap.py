@@ -21,8 +21,8 @@ from collections.abc import Callable
 from math import isqrt
 from typing import Any
 
-from esolangs.tools.helpers import MARK, MOST_INPUTS, mark
-from esolangs.tools.token_balance import balanced_token_width
+from esolangs.generation.helpers import MARK, MOST_INPUTS, mark
+from esolangs.generation.token_balance import balanced_token_width
 
 # 80: the conventional review/diff width, close to the repo's 88 for Python.
 DEFAULT_WIDTH = 80
@@ -113,7 +113,7 @@ def _span(length: int, cell: int) -> int:
     return max(1, cells)
 
 
-#: One input's mark run (:func:`~esolangs.tools.helpers.mark`), one token:
+#: One input's mark run (:func:`~esolangs.generation.helpers.mark`), one token:
 #: a break inside would land inside the setter.  Adjacent runs are two tokens.
 _RUN = "|".join(f"{re.escape(mark(i))}+" for i in range(MOST_INPUTS))
 _MARK_PATTERN = re.compile(f"[{chr(MARK)}-{chr(MARK + MOST_INPUTS - 1)}]")

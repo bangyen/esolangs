@@ -141,9 +141,9 @@ def test_shared_residual_executes_within_ledger() -> None:
 @pytest.mark.parametrize("branching", [False, True])
 def test_multiple_definitions_preserve_inputs_commands_and_workspace(branching):
     from esolangs.debugger import make_vm
+    from esolangs.generation.shared_block import repeated_definitions
     from esolangs.languages.sstack.generator import _sstack_shared
     from esolangs.languages.sstack.interpreter import _parse
-    from esolangs.tools.shared_block import repeated_definitions
     from scripts.benchmark import WrittenState
 
     n = 8
@@ -174,9 +174,9 @@ def test_multiple_definitions_preserve_inputs_commands_and_workspace(branching):
 @pytest.mark.medium
 def test_six_bit_labels_include_the_ascii_constants_and_last_label():
     from esolangs.debugger import make_vm
+    from esolangs.generation.shared_block import repeated_definitions
     from esolangs.languages.sstack.generator import _sstack_shared
     from esolangs.languages.sstack.interpreter import _parse
-    from esolangs.tools.shared_block import repeated_definitions
     from scripts.benchmark import WrittenState
 
     n = 11
@@ -230,9 +230,9 @@ def test_invalid_shared_definitions_abort(table, blocks, message):
 
 @pytest.mark.medium
 def test_multiple_definitions_reduce_cap_program_within_ledger():
+    from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.sstack.generator import _sstack_tree
     from esolangs.languages.sstack.interpreter import _parse
-    from esolangs.tools.shared_block import repeated_block
     from tests.support.generator_support import assert_shared_program
 
     n = 16
@@ -264,11 +264,11 @@ def _binary_bank_table() -> str:
 
 @pytest.mark.medium
 def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger():
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.generation.shared_block import _repeated_blocks
     from esolangs.languages.sstack.generator import _sstack_tree
     from esolangs.languages.sstack.generator._binary import binary_bank
     from esolangs.languages.sstack.interpreter import _Machine, _parse
-    from esolangs.tools.shared_block import _repeated_blocks
+    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
     table = _binary_bank_table()
@@ -378,9 +378,9 @@ def test_binary_selector_rejects_inadmissible_or_unprofitable_banks():
 
 
 def test_binary_selector_skips_a_bank_whose_word_exceeds_the_workspace_budget():
+    from esolangs.generation.shared_block import _repeated_blocks
     from esolangs.languages.sstack.generator import _sstack_tree
     from esolangs.languages.sstack.generator._binary import best_binary_bank
-    from esolangs.tools.shared_block import _repeated_blocks
 
     sequence = [*range(256), *range(255, -1, -1)]
     table = "".join(f"{code:08b}" for code in sequence)

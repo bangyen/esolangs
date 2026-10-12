@@ -8,9 +8,9 @@ import pytest
 import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.exceptions import TruthTableError
+from esolangs.generation.helpers import TEMPLATE_CHAR, best_input_order, runs
 from esolangs.languages.crement.generator import PAIR, _crement_ordered, crement
 from esolangs.languages.crement.interpreter import _Machine
-from esolangs.tools.helpers import TEMPLATE_CHAR, best_input_order, runs
 from esolangs.vm import run_until_halt_or_cycle
 from tests.generators.fills import fill
 from tests.generators.sample_tables import five_input_sample

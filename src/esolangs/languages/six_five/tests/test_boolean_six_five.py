@@ -7,6 +7,11 @@ import pytest
 
 import esolangs
 from esolangs import run
+from esolangs.generation.examples import BOOLEAN_EXAMPLES
+from esolangs.generation.helpers import permute_truth_table
+from esolangs.generation.wrap import (
+    _six_five,
+)
 from esolangs.languages import generators as boolean
 from esolangs.languages.six_five.generator import (
     _SIX_FIVE_TEST,
@@ -22,11 +27,6 @@ from esolangs.languages.six_five.generator import (
     _six_five_walk,
 )
 from esolangs.languages.six_five.tests.runners import run_six_five, run_six_five_from
-from esolangs.tools.examples import BOOLEAN_EXAMPLES
-from esolangs.tools.helpers import permute_truth_table
-from esolangs.tools.wrap import (
-    _six_five,
-)
 from tests.generators.sample_tables import five_input_sample
 from tests.support.witness_tables import dense as _dense
 from tests.support.witness_tables import row_bits, witnesses

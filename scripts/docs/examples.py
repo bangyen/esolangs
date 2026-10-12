@@ -9,9 +9,9 @@ from itertools import zip_longest
 
 from esolangs._program import Program
 from esolangs.compressed import CompressedText
+from esolangs.generation.examples import BOOLEAN_EXAMPLES, BooleanExample
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
-from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 

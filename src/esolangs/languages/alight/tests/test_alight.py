@@ -5,10 +5,10 @@ from typing import ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import essential_inputs
 from esolangs.languages.alight.generator import alight
 from esolangs.languages.alight.interpreter import _Machine, _replace_first, run
-from esolangs.tools.helpers import essential_inputs
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,

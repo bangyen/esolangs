@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 
 class Mask:

@@ -12,8 +12,8 @@ from tests.support.witness_tables import row_bits
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_setters_leave_scratch_zero(n: int, bit: str) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.home_row.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     table = bit * (1 << n)
     programs = [esolangs.generate("Home Row", table, width=w) for w in (None, 1, 20)]
@@ -36,8 +36,8 @@ class TestParameterizedHomeRow:
     """Input-by-substitution boolean generator for the no-input language Home Row."""
 
     def run_home_row(self, prog: str) -> str:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.home_row.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         io_ = ScriptedIO("")
         run(prog, io_)
@@ -85,9 +85,9 @@ class TestParameterizedHomeRow:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
+        from esolangs.generation.helpers import runs
         from esolangs.languages import generators
         from esolangs.languages.home_row.generator import HOME_ROW_PAIR
-        from esolangs.tools.helpers import runs
 
         template = generators.home_row("0110")
         assert "{X" not in template

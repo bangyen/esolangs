@@ -7,16 +7,16 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
+from esolangs.generation import wrap as _wrap
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import balance_score, wrap_chars, wrap_program
 from esolangs.registry import LANGUAGES, SourceKind
-from esolangs.tools import wrap as _wrap
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import balance_score, wrap_chars, wrap_program
 from tests.support.witness_tables import witnesses
 
 
 @pytest.mark.parametrize(("minimum", "maximum"), [(1, 5), (2, 9), (6, 15)])
 def test_token_fit_lattice_respects_width_regimes(minimum, maximum):
-    from esolangs.tools.wrap import _join_tokens
+    from esolangs.generation.wrap import _join_tokens
 
     rng = random.Random(1013)
     for _ in range(100):
@@ -32,7 +32,7 @@ def test_token_fit_lattice_respects_width_regimes(minimum, maximum):
 
 @pytest.mark.parametrize("separator", ["", " "])
 def test_long_token_dominates_packed_row_count(separator):
-    from esolangs.tools.wrap import _join_tokens
+    from esolangs.generation.wrap import _join_tokens
 
     tokens = ["x" * 80, *(["x", "xx"] * 80)]
     width = balanced_token_width(tokens, separator, minimum=80)
@@ -47,7 +47,7 @@ def test_long_token_dominates_packed_row_count(separator):
 
 
 def test_trimmed_row_ends_keep_the_width_lattice():
-    from esolangs.tools.wrap import _join_tokens
+    from esolangs.generation.wrap import _join_tokens
 
     tokens = [
         "xxxxx   ",
@@ -160,8 +160,8 @@ def test_balance_reaches_the_supported_minimum(language, table):
 
 
 def test_native_width_generators_have_balance_rules():
+    from esolangs.generation.wrap import takes_width
     from esolangs.registry import LANGUAGES
-    from esolangs.tools.wrap import takes_width
 
     assert not [
         name

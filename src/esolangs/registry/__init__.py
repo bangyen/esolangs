@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from esolangs.exceptions import TemplateError, UnknownLanguageError
+from esolangs.generation.helpers import MOST_INPUTS, Setters
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
 from esolangs.registry._table import LANGUAGES, Generator, Language, SourceKind
-from esolangs.tools.helpers import MOST_INPUTS, Setters
 
 if TYPE_CHECKING:
-    from esolangs.tools.examples import BooleanExample
+    from esolangs.generation.examples import BooleanExample
 
 
 __all__ = [
@@ -76,12 +76,12 @@ def example_stems() -> dict[str, str]:
     The stems are dash-separated display names; every
     internal reference is the canonical ID, and a few
     match neither by hand.  Deriving the map from the same example table
-    :meth:`~esolangs.tools.examples.BooleanExample.build` uses keeps the two
+    :meth:`~esolangs.generation.examples.BooleanExample.build` uses keeps the two
     from drifting: a mismatch is a missing key, not a silently empty example
     list, which once left a fifth of the registry reporting none.  The import
     is deferred because ``examples`` imports this module.
     """
-    from esolangs.tools import examples as _examples
+    from esolangs.generation import examples as _examples
 
     return {
         canonical_id(stem.replace("-", " ")): stem
@@ -90,7 +90,7 @@ def example_stems() -> dict[str, str]:
 
 
 def _examples_by_id() -> dict[str, BooleanExample]:
-    from esolangs.tools import examples as _examples
+    from esolangs.generation import examples as _examples
 
     return {
         canonical_id(stem.replace("-", " ")): example
@@ -142,8 +142,8 @@ def render_template(
     wrapper breaks every run of the same length the same way, so the wrapped
     template is the wrapped form of every program it fills to.
     """
-    from esolangs.tools.helpers import mark_runs, unmark
-    from esolangs.tools.wrap import wrap_program
+    from esolangs.generation.helpers import mark_runs, unmark
+    from esolangs.generation.wrap import wrap_program
 
     char = template_char(language_id)
     if char is None:
@@ -172,7 +172,7 @@ def recover_setters(language_id: str, template: str) -> Setters:
     is the one value at which the widths sum to what the text holds.  The
     runs are then checked against it like any other template.
     """
-    from esolangs.tools.helpers import runs
+    from esolangs.generation.helpers import runs
 
     char = template_char(language_id)
     if char is None:

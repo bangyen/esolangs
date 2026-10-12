@@ -3,14 +3,14 @@
 import pytest
 
 from esolangs import generate
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.wrap import (
+    wrap_program,
+)
 from esolangs.languages import generators as boolean
 from esolangs.languages.dimensional.generator import dimensional
 from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.languages.dimensional.tests.runners import run_dimensional
-from esolangs.tools.wrap import (
-    wrap_program,
-)
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import witnesses
 
 
@@ -57,7 +57,7 @@ def test_bare_axis_leaves_execute_all_small_tables() -> None:
 
 @pytest.mark.parametrize("width", [None, 2, 3, 8, 80])
 def test_other_widths_preserve_the_established_build(width: int | None) -> None:
-    from esolangs.tools.wrap import wrap_program
+    from esolangs.generation.wrap import wrap_program
 
     for table in ("00", "11", "0110", "0001", "10010110"):
         assert dimensional(table, width) == wrap_program(

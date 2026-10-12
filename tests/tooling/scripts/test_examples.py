@@ -8,9 +8,9 @@ import pytest
 
 import esolangs
 from esolangs.compressed import CompressedText
+from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
-from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.vm import (
     _BranchingStepMachine,
     _FramedMachine,
@@ -129,7 +129,7 @@ def test_boolean_examples_cover_every_committed_file() -> None:
     unregistered = sorted(on_disk - expected)
     assert not unregistered, (
         f"language directories hold {unregistered} with no BooleanExample; delete them "
-        "or register them in src/esolangs/tools/examples.py"
+        "or register them in src/esolangs/generation/examples.py"
     )
     missing = sorted(expected - on_disk)
     assert not missing, f"language directories lack {missing}; run {REGENERATE}"
@@ -167,7 +167,7 @@ def test_every_boolean_generator_has_an_example() -> None:
 
 # The boolean examples demonstrate a language's boolean-function capability
 # that is not an I/O truth machine (see the limitations ledger).  They are derived
-# from ``esolangs.tools.examples``, which records for each committed
+# from ``esolangs.generation.examples``, which records for each committed
 # program the generator, truth table, and input combination that produced it
 # -- so the files stay in sync with the generators.
 #
@@ -310,9 +310,9 @@ class TestTheWritersWriteWhatTheBuildersBuild:
 
 
 def test_an_unknown_interpreter_names_the_file_to_fix() -> None:
-    from esolangs.tools.examples import _contract_for
+    from esolangs.generation.examples import _contract_for
 
-    with pytest.raises(LookupError, match=r"src/esolangs/tools/examples\.py"):
+    with pytest.raises(LookupError, match=r"src/esolangs/generation/examples\.py"):
         _contract_for("no_such_module")
 
 

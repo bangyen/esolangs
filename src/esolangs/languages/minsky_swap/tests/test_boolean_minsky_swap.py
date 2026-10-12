@@ -11,8 +11,8 @@ class TestParameterizedMinskySwap:
     """Input-by-substitution boolean generator for the no-input language Minsky Swap."""
 
     def run_minsky_swap(self, prog: str) -> str:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.minsky_swap.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO()
         run(prog, io)
@@ -30,8 +30,8 @@ class TestParameterizedMinskySwap:
     def test_rmsn_templates_preserve_command_targets(self, width: int) -> None:
         """Public and example fills use the notation's one equal-width pair."""
         import esolangs
+        from esolangs.generation.examples import BOOLEAN_EXAMPLES
         from esolangs.languages.minsky_swap.generator import minsky_swap_setters
-        from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
         example = BOOLEAN_EXAMPLES["minsky-swap"]
         assert example.fill is not None
@@ -103,8 +103,8 @@ class TestParameterizedMinskySwap:
         self, bits: tuple[int, int]
     ) -> None:
         """``_fill_minsky_swap`` spells a set bit above the LSB too."""
+        from esolangs.generation.examples import AND2
         from esolangs.languages.minsky_swap.generator import minsky_swap
-        from esolangs.tools.examples import AND2
         from tests.generators.fills import fill
 
         _fill_minsky_swap = fill("Minsky Swap")

@@ -29,12 +29,12 @@ from contextlib import suppress
 
 from esolangs._drive import drive
 from esolangs._source import raster_source as load_source
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.codels import DIRECTIONS, find_block, leave, slide
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import parse_integer
+from esolangs.generation.raster_lookup.palette import _COLOURS, BLACK, WHITE
 from esolangs.raster import Raster
-from esolangs.tools.raster_lookup.palette import _COLOURS, BLACK, WHITE
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.codels import DIRECTIONS, find_block, leave, slide
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
 
 __all__ = ["load_source", "run"]
 

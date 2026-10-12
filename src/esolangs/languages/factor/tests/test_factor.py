@@ -4,9 +4,9 @@ import sys
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.factor.interpreter import _Machine as Factor
 from esolangs.languages.factor.interpreter import decode, run
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
@@ -104,15 +104,15 @@ class TestRun:
 class TestStepMachine:
     def test_a_program_with_no_digits_is_the_number_one(self) -> None:
         """No digits means 1, which factors to nothing and runs no commands."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.factor.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         assert _Machine("", ScriptedIO()).bf.code == ""
         assert _Machine("no digits here", ScriptedIO()).bf.code == ""
 
     def test_step_tracks_the_decoded_tape(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.factor.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("15", ScriptedIO())
         assert (machine.bf.ind, list(machine.bf.tape)) == (0, [0])
@@ -191,8 +191,8 @@ class TestFactorint:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.factor.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 

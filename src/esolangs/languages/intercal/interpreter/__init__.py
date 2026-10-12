@@ -16,7 +16,7 @@ Unparsable statements are E000 syntax errors raised only when executed. Errors
 raise ``HaltError`` naming their E-number; program-wide checks (labels,
 politeness, NEXT/ABSTAIN/COME FROM targets) raise at load. Numeric ``WRITE IN``
 at EOF raises ``EOFError``; Turing Tape input stores 256 at EOF. A ``%n`` draws
-from the ``rng`` hook (:mod:`esolangs.interpreters.randomness`).
+from the ``rng`` hook (:mod:`esolangs.runtime.randomness`).
 
 Judgment calls where the manual or C-INTERCAL leave a gap:
 
@@ -51,8 +51,6 @@ from typing import Any
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.randomness import Randomness, draw
 from esolangs.languages.intercal.interpreter._parse import (
     _SELF_ABSTAIN,
     _SELF_REINSTATE,
@@ -65,6 +63,8 @@ from esolangs.languages.intercal.interpreter._parse import (
     _statements,
     _unary,
 )
+from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.runtime.randomness import Randomness, draw
 
 type _Value = tuple[int, int]
 type _Array = tuple[tuple[int, ...], dict[int, int]]

@@ -8,10 +8,10 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.packlang.interpreter import _get, _Machine, _node, run
 from esolangs.languages.packlang.interpreter._parse import _Parser
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,

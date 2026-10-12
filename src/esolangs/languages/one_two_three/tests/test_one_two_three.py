@@ -5,7 +5,7 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters import runner
 
 run = importlib.import_module("esolangs.languages.one_two_three.interpreter").run

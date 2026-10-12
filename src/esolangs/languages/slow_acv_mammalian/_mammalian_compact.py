@@ -3,8 +3,8 @@
 from dataclasses import dataclass, field, replace
 from math import gcd, lcm
 
+from esolangs.generation.helpers import essential_inputs, read_at
 from esolangs.languages.slow_acv_mammalian.interpreter import MammalianModuli
-from esolangs.tools.helpers import essential_inputs, read_at
 
 
 @dataclass

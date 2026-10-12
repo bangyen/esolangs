@@ -7,11 +7,11 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.alight.generator.balance import _balance_postfix
 from esolangs.languages.alight.interpreter import run as alight_run
-from esolangs.tools.wrap import balance_score
+from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import assert_an_ignored_input_costs
 
 
@@ -263,9 +263,9 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit):
 def test_constant_lookup_executes_every_layout(syntax, bit, width, n):
     import esolangs
     from esolangs._evaluate import _evaluate
+    from esolangs.generation.wrap import balance_score
     from esolangs.languages.alight.generator import _program
     from esolangs.languages.alight.generator.balance import balance_alight
-    from esolangs.tools.wrap import balance_score
 
     table = bit * (1 << n)
     settings = esolangs.DialectSettings(expression_syntax=syntax)

@@ -34,7 +34,7 @@ from esolangs.cli.io import (
 )
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
-from esolangs.interpreters.source_hints import error_text
+from esolangs.runtime.source_hints import error_text
 from esolangs.settings import dialect_options
 
 

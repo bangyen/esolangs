@@ -21,10 +21,10 @@ def _rows(program: str, table: str, n: int) -> None:
 def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit):
     import esolangs
     from esolangs._evaluate import _evaluate
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.generation.wrap import balance_program, balance_score
     from esolangs.languages.circlefuck.generator import _program
     from esolangs.languages.circlefuck.interpreter import _Machine
-    from esolangs.tools.wrap import balance_program, balance_score
+    from esolangs.runtime.io import ScriptedIO
 
     table = bit * (1 << n)
     program = esolangs.generate("Circlefuck", table)

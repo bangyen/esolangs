@@ -6,7 +6,6 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.circuit_diagram.interpreter import (
     _compile,
     _functions,
@@ -22,6 +21,7 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
     _Grid,
     _Parser,
 )
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
 from tests.support.fixtures import grid

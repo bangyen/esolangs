@@ -10,11 +10,11 @@ import pytest
 
 import esolangs
 import esolangs.languages.generators as boolean
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import essential_inputs
 from esolangs.raster import Raster
 from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
 from esolangs.registry._language import Shape
-from esolangs.tools.helpers import essential_inputs
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _BranchingStepMachine, run_until_halt, run_until_halt_or_cycle
 from tests.support.generator_support import (
     assert_proved_resource_cap,
@@ -153,7 +153,7 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 
 def test_reorder_permutation_preserves_the_function() -> None:
     """Permuting the table renames the inputs without changing the function."""
-    from esolangs.tools.helpers import permute_truth_table
+    from esolangs.generation.helpers import permute_truth_table
 
     table = "01101001"
     n = 3
@@ -176,7 +176,7 @@ def test_greedy_order_never_grows_a_wide_program() -> None:
 
 def test_order_selection_builds_at_most_two_candidates() -> None:
     """Small arities no longer trigger an exhaustive permutation contest."""
-    from esolangs.tools.helpers import best_input_order
+    from esolangs.generation.helpers import best_input_order
 
     built: list[tuple[int, ...]] = []
 
@@ -191,7 +191,7 @@ def test_order_selection_builds_at_most_two_candidates() -> None:
 
 def test_wide_order_selection_builds_only_identity() -> None:
     """The optional greedy scorer stays off the asymptotic build path."""
-    from esolangs.tools.helpers import best_input_order
+    from esolangs.generation.helpers import best_input_order
 
     built = 0
 
@@ -207,8 +207,8 @@ def test_wide_order_selection_builds_only_identity() -> None:
 
 def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     """A greedily-ordered program still computes its table."""
+    from esolangs.generation.helpers import _greedy_input_order
     from esolangs.languages.brainfuck.interpreter import run
-    from esolangs.tools.helpers import _greedy_input_order
     from tests.interpreters.runner import run_program
 
     n = 7
@@ -226,7 +226,7 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
 
 def test_the_greedy_order_is_the_documented_one() -> None:
     """What the heuristic picks, per table, not merely that it is valid."""
-    from esolangs.tools.helpers import _greedy_input_order
+    from esolangs.generation.helpers import _greedy_input_order
 
     # Tables the heuristic reorders, and the order it picks.
     assert _greedy_input_order("00000101", 3) == (0, 2, 1)

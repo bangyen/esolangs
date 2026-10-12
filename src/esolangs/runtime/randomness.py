@@ -13,7 +13,7 @@ import random
 import secrets
 from typing import Protocol
 
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 
 class Randomness(Protocol):

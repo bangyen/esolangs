@@ -6,7 +6,7 @@ import random
 
 import pytest
 
-from esolangs.interpreters.persistent import (
+from esolangs.runtime.persistent import (
     CHUNK,
     Chunked,
     append,

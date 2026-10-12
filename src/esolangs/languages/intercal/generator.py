@@ -9,14 +9,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     in_input_order,
     layout_width,
     same_up_to_wrapping,
 )
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 TEMPLATE_CHAR = "@"
 PAIR = ("#0", "#1")
@@ -82,7 +82,7 @@ def _intercal_tokens(program: str) -> list[str]:
 
 def balance_intercal(_table: str, default: str) -> str:
     """Return the lowest-``balance_score`` wrap of ``default`` over fit widths."""
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     maximum = _span(default) - 1
     widths = {1}
@@ -105,7 +105,7 @@ def balance_intercal(_table: str, default: str) -> str:
 
 def _wrap_intercal(program: str, width: int) -> str:
     """Break over-wide statements only at C-INTERCAL token boundaries."""
-    from esolangs.tools.wrap import _join_tokens
+    from esolangs.generation.wrap import _join_tokens
 
     return "\n".join(
         line

@@ -13,8 +13,8 @@ from esolangs._input import read_input as read_input
 from esolangs._program import Program
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
-from esolangs.interpreters.source_hints import syntax_error, with_hint
 from esolangs.raster import Raster
+from esolangs.runtime.source_hints import syntax_error, with_hint
 
 type ProgramSource = Program | bytes | os.PathLike[str] | IO[str] | IO[bytes]
 

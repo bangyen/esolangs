@@ -22,7 +22,7 @@ one on random programs.
 
 from __future__ import annotations
 
-from esolangs.tools.helpers import TEMPLATE_CHAR
+from esolangs.generation.helpers import TEMPLATE_CHAR
 
 __all__ = ["ConstructError", "construct"]
 

@@ -16,9 +16,7 @@ past their selector. Nonadjacent repeats still have separate drawings.
 from collections.abc import Callable
 from functools import cache
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     grid_width,
@@ -28,7 +26,9 @@ from esolangs.tools.helpers import (
     move_text,
     permute_truth_table,
 )
-from esolangs.tools.wrap import balance_score, shortest
+from esolangs.generation.wrap import balance_score, shortest
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 __all__ = ["streetcode"]
 

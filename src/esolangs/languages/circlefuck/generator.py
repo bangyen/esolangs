@@ -2,16 +2,16 @@
 
 from itertools import pairwise
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import (
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
-from esolangs.tools.wrap import balance_program, wrap_chars
+from esolangs.generation.wrap import balance_program, wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 
 #: Bits an index digit carries: seven is the widest power of two a byte can
 #: also count out (:func:`_deleter` plants that many in the digit below).

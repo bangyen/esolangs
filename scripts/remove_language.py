@@ -1036,7 +1036,7 @@ def remove(name: str) -> list[str]:
         encoding="utf-8",
     )
     # A cut entry can leave its import unused; the linter knows which.
-    shared = ["src/esolangs/tools/wrap.py"]
+    shared = ["src/esolangs/generation/wrap.py"]
     touched = [
         *[str(p.relative_to(ROOT)) for p in module_paths - doomed],
         *edited,
@@ -1060,9 +1060,10 @@ def remove(name: str) -> list[str]:
         exclusive = not any(
             wrapper in used
             for relative, used in used_by_file.items()
-            if relative.startswith("src/") and relative != "src/esolangs/tools/wrap.py"
+            if relative.startswith("src/")
+            and relative != "src/esolangs/generation/wrap.py"
         )
-        _drop_name_items(ROOT / "src/esolangs/tools/wrap.py", {wrapper})
+        _drop_name_items(ROOT / "src/esolangs/generation/wrap.py", {wrapper})
     for relative in shared:
         _drop_dead_code(ROOT / relative, external_for(relative))
     subprocess.run(

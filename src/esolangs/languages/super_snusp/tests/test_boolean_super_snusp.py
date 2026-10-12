@@ -72,9 +72,9 @@ class TestSuperSNUSP:
     @staticmethod
     def run_table(table: str) -> str:
         """Return the generated program's output for every input, in order."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.super_snusp.generator import super_snusp
         from esolangs.languages.super_snusp.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         n = len(table).bit_length() - 1
         program = super_snusp(table).splitlines()

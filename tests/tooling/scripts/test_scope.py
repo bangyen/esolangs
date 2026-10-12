@@ -46,7 +46,7 @@ class TestWidensToEverything:
     def test_shared_interpreter_machinery_widens(self) -> None:
         """The shared IO layer can move every interpreter at once."""
         scope = load_script()
-        changed = ["src/esolangs/interpreters/io.py"]
+        changed = ["src/esolangs/runtime/io.py"]
         assert scope.widens_to_everything(changed) is not None  # type: ignore[attr-defined]
 
     def test_every_registry_module_widens(self) -> None:
@@ -69,7 +69,7 @@ class TestWidensToEverything:
     def test_ordinary_interpreter_does_not_widen(self) -> None:
         """A single interpreter is the case scoping exists to narrow."""
         scope = load_script()
-        changed = ["src/esolangs/interpreters/brainfuck.py"]
+        changed = ["src/esolangs/runtime/brainfuck.py"]
         assert scope.widens_to_everything(changed) is None  # type: ignore[attr-defined]
 
 
@@ -78,11 +78,11 @@ def test_empty_branch_diff_does_not_fall_back_to_previous_commit() -> None:
     responses = [
         subprocess.CompletedProcess([], 0, stdout=b"", stderr=""),
         subprocess.CompletedProcess(
-            [], 0, stdout=b" M src/esolangs/tools/vandevelo.py\0", stderr=""
+            [], 0, stdout=b" M src/esolangs/generation/vandevelo.py\0", stderr=""
         ),
     ]
     with mock.patch.object(scope.subprocess, "run", side_effect=responses) as run:
-        assert scope.changed_files() == ["src/esolangs/tools/vandevelo.py"]
+        assert scope.changed_files() == ["src/esolangs/generation/vandevelo.py"]
     assert run.call_count == 2
     assert run.call_args_list[0].args[0][-1] == "main...HEAD"
 

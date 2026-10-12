@@ -6,15 +6,15 @@ Each word is its own definition: its greatest repeated residual defers inside
 the body, so a nested definition shares like a top-level one.
 """
 
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
     subtree_ids,
 )
-from esolangs.tools.shared_block import ContinuationCost as _Cost
-from esolangs.tools.shared_block import _repeated_blocks, repeated_block
-from esolangs.tools.shared_flag import flag_tree_body
+from esolangs.generation.shared_block import ContinuationCost as _Cost
+from esolangs.generation.shared_block import _repeated_blocks, repeated_block
+from esolangs.generation.shared_flag import flag_tree_body
 
 
 def binary_bank(

@@ -2,10 +2,10 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.polynomial.generator import _polynomial_assemble
 from esolangs.languages.polynomial.interpreter import _Machine as Polynomial
 from esolangs.languages.polynomial.tests.polynomial_support import _polynomial_tree
+from esolangs.runtime.io import ScriptedIO
 
 
 @pytest.mark.parametrize("oracle", ["polynomial_tree"])

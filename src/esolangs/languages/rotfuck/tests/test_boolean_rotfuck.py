@@ -89,8 +89,8 @@ class TestRotfuck:
     @pytest.mark.parametrize("trips", range(7))
     def test_a_loop_leaves_the_rotation_where_it_found_it(self, trips: int) -> None:
         """The invariant every loop rests on, checked by running one."""
+        from esolangs.generation.helpers import _ASCII_ZERO
         from esolangs.languages.rotfuck.generator import _Builder, _parse
-        from esolangs.tools.helpers import _ASCII_ZERO
 
         out = _Builder()
         out.emit(_parse("+" * trips + "[->+<]>" + "+" * _ASCII_ZERO + "."))
@@ -99,8 +99,8 @@ class TestRotfuck:
     @pytest.mark.parametrize("body", ["-", "-+-", ">+<-", "[-]"])
     def test_a_body_of_either_parity_closes_at_its_phase(self, body: str) -> None:
         """An even body opens with a ``[`` that cannot fire; an odd one does not."""
+        from esolangs.generation.helpers import _ASCII_ZERO
         from esolangs.languages.rotfuck.generator import _Builder, _parse
-        from esolangs.tools.helpers import _ASCII_ZERO
 
         out = _Builder()
         out.emit(_parse(f"+++[{body}]" + "+" * _ASCII_ZERO + "."))

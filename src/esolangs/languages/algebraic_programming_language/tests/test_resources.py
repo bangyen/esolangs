@@ -6,7 +6,6 @@ import pytest
 
 import esolangs
 from esolangs._answers import read_answer
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.algebraic_programming_language.generator import (
     _apl_reduced_ordered,
     _apl_repeated_expressions,
@@ -17,6 +16,7 @@ from esolangs.languages.algebraic_programming_language.tests.formulas import (
     execution,
     workspace,
 )
+from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 
 NAME = "Algebraic Programming Language"

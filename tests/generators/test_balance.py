@@ -2,15 +2,15 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import ArgumentError
-from esolangs.registry import LANGUAGES, SourceKind
-from esolangs.tools.helpers import mark
-from esolangs.tools.wrap import (
+from esolangs.generation.helpers import mark
+from esolangs.generation.wrap import (
     balance_program,
     balance_score,
     wrap_grid,
     wrap_program,
     wrap_space_delimited,
 )
+from esolangs.registry import LANGUAGES, SourceKind
 from tests.integration.cli.test_cli import call_main
 from tests.reference import REFERENCE
 from tests.support.pick import first

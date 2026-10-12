@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from esolangs.tools.helpers import subtree_ids
-from esolangs.tools.shared_block import _repeated_blocks
+from esolangs.generation.helpers import subtree_ids
+from esolangs.generation.shared_block import _repeated_blocks
 
 _PROLOGUE = '"49/b""48/c"'
 _REFERENCES = '"1/f""2/g"'

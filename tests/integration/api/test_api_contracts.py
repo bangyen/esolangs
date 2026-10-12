@@ -22,8 +22,8 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
+from esolangs.generation.wrap import takes_width
 from esolangs.registry import LANGUAGES
-from esolangs.tools.wrap import takes_width
 from tests.reference import REFERENCE
 from tests.support.generator_support import CHECK, evaluate_generated
 from tests.support.pick import languages

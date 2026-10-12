@@ -12,8 +12,8 @@ class TestParameterizedBitdeque:
     """Input-by-substitution boolean generator for the no-input language Bitdeque."""
 
     def run_bitdeque(self, prog: str) -> str:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.bitdeque.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO()
         run(prog, io)
@@ -32,9 +32,9 @@ class TestParameterizedBitdeque:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
+        from esolangs.generation.helpers import runs
         from esolangs.languages import generators
         from esolangs.languages.bitdeque.generator import BITDEQUE_PAIR
-        from esolangs.tools.helpers import runs
 
         for n in (2, 5):
             template = generators.bitdeque("0110" * 2 ** (n - 2))
@@ -45,9 +45,9 @@ class TestParameterizedBitdeque:
 
     def test_odd_inputs_are_pushed_complemented(self) -> None:
         """The load flips the register per block; the tree's table absorbs it."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages import generators
         from esolangs.languages.bitdeque.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         template = generators.bitdeque("0101")
         prelude_and_load = " ".join(self.instantiate(template, [0, 1]).split()[:12])

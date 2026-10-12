@@ -5,7 +5,7 @@ import io
 from collections.abc import Callable, Iterator
 from contextlib import redirect_stdout
 
-from esolangs.interpreters.io import IO
+from esolangs.runtime.io import IO
 from tests.interpreters.runner import run_program
 
 Runner = Callable[[str, list[str]], str]

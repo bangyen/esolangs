@@ -8,9 +8,9 @@ import sys
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.fractran.interpreter import _choose, _Machine, _parse, run
 from esolangs.languages.fractran.interpreter import index as fractran_index
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
 

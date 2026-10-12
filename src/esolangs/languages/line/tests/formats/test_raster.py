@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.line.generator import line_boolean
 from esolangs.languages.line.generator.render import render
 from esolangs.languages.line.interpreter import run as run_line
 from esolangs.raster import Raster
+from esolangs.runtime.io import ScriptedIO
 
 
 def test_png_round_trip_preserves_rgb() -> None:

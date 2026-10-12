@@ -92,8 +92,8 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 def test_qoibl_affine_row_envelope_minima():
     from itertools import product
 
+    from esolangs.generation.wrap import balance_score
     from esolangs.languages.qoibl.generator import _best_width
-    from esolangs.tools.wrap import balance_score
 
     for negative, constant, positive, extra in product(
         [32, 45, 60], [1, 5, 15], [-1, 4, 12], [0, 10, 30]

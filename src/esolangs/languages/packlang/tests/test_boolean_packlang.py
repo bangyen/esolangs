@@ -6,15 +6,15 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.wrap import (
+    balance_score,
+    wrap_program,
+)
 from esolangs.languages import generators as boolean
 from esolangs.languages.packlang.generator import _folded
 from esolangs.languages.packlang.interpreter import run as packlang_run
 from esolangs.languages.packlang.wrapping import _packlang
-from esolangs.tools.wrap import (
-    balance_score,
-    wrap_program,
-)
+from esolangs.runtime.io import ScriptedIO
 
 
 class TestPacklangPaintedArray:

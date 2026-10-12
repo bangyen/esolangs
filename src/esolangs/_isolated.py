@@ -19,9 +19,9 @@ from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource, read_input
 from esolangs._validate import check_timeout, check_whole
 from esolangs.compressed import CompressedText
-from esolangs.interpreters.source_hints import with_hint
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
+from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 type _RasterRuns = tuple[tuple[int, tuple[tuple[int, Pixel], ...]], ...]
@@ -370,7 +370,7 @@ def termination_isolated(
 def _worker() -> None:
     """Stream output and a structured verdict to the parent."""
     import esolangs
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.runtime.io import ScriptedIO
 
     def send(message: dict[str, Any]) -> None:
         print(json.dumps(message), flush=True)

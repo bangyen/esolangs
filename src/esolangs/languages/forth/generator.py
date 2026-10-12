@@ -1,7 +1,6 @@
 """Boolean program generator for Forþ."""
 
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     constant_span_test,
@@ -9,7 +8,8 @@ from esolangs.tools.helpers import (
     permute_truth_table,
     subtree_ids,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._language import Language
 
 
 def _forth_const(value: int) -> str:

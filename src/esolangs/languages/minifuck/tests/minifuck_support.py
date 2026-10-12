@@ -1,5 +1,6 @@
 """The Minifuck suites' shared harness: run a program, fill a template."""
 
+from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.minifuck.generator.pool import _BASE, _SEP
 from esolangs.languages.minifuck.generator.sim import (
     PAIR,
@@ -8,7 +9,6 @@ from esolangs.languages.minifuck.generator.sim import (
     _Sim,
     _walk_to,
 )
-from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 
 
 def _copy(sim: _Sim) -> _Sim:
@@ -76,8 +76,8 @@ class _MinifuckCase:
     """Input-by-substitution boolean generator for Minifuck."""
 
     def run_minifuck(self, prog: str) -> str:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.minifuck.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         io_ = ScriptedIO("")
         run(prog, io_)

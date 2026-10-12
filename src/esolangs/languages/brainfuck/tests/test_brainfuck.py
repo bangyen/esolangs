@@ -4,8 +4,8 @@ import importlib
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle, run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.cursorless_io import PositionlessIO
@@ -22,8 +22,8 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
 
 
 def _machine(code: str) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.brainfuck.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 
@@ -83,8 +83,8 @@ class TestBrainfuck:
 
     def test_machine_exposes_its_state(self) -> None:
         """``ind``/``ptr``/``tape`` track the run and stay in step."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.brainfuck.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(">+>++", ScriptedIO())
         assert (machine.ind, machine.ptr, machine.tape) == (0, 0, (0,))

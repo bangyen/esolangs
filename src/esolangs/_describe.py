@@ -5,6 +5,7 @@ from typing import TypedDict
 
 from esolangs._execution import interpreter_module
 from esolangs.exceptions import ProgramError
+from esolangs.generation.wrap import takes_width as _takes_width
 from esolangs.registry import (
     LANGUAGES,
     Language,
@@ -16,7 +17,6 @@ from esolangs.registry import (
 from esolangs.registry._contracts import AnswerMode, InputShape, WidthEffect
 from esolangs.registry._language import Shape
 from esolangs.settings import DialectOption, dialect_choices
-from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import machine_traits
 
 #: The committed examples, inside the package so the wheel ships them.

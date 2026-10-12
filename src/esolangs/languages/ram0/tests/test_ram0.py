@@ -3,8 +3,8 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
 from esolangs.languages.ram0.interpreter import run
+from esolangs.runtime.io import IO
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
@@ -101,8 +101,8 @@ class TestStepMachine:
 
     def test_state_is_dumped_only_once(self) -> None:
         """Stepping a halted machine again does not repeat the dump."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.ram0.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("A", ScriptedIO(""))
         while not machine.halted:
@@ -113,8 +113,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
     from esolangs.languages.ram0.interpreter import _Machine
+    from esolangs.runtime.io import IO
 
     return _Machine(code, IO())
 

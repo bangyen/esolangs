@@ -5,8 +5,8 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.eval.interpreter import _Machine, run
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_printing
 

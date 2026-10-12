@@ -36,8 +36,8 @@ class TestPytestScopeCollects:
         [
             ("src/esolangs/languages/polynomial/tests/polynomial_support.py", False),
             ("tests/runtime/vm/test_vm.py", True),
-            ("src/esolangs/interpreters/demo/brainfuck.py", False),
-            ("src/esolangs/interpreters/io.py", False),
+            ("src/esolangs/runtime/demo/brainfuck.py", False),
+            ("src/esolangs/runtime/io.py", False),
         ],
     )
     def test_only_collected_leaf_modules_are_scoped(self, path, scoped):
@@ -205,7 +205,7 @@ def test_shared_changes_keep_all_tests_without_local_coverage(
     monkeypatch.setattr(
         verify,
         "_scope_changed_files",
-        lambda: ("scripts/verify/gate.py", "src/esolangs/tools/vandevelo.py"),
+        lambda: ("scripts/verify/gate.py", "src/esolangs/generation/vandevelo.py"),
     )
     monkeypatch.setattr(
         verify,
@@ -299,7 +299,7 @@ class TestGeneratorScope:
         verify = load_scope()
         assert (
             verify._pytest_scope(  # noqa: SLF001
-                [f"src/esolangs/tools/{module}"]
+                [f"src/esolangs/generation/{module}"]
             )
             == verify.WHOLE_SUITE
         )
@@ -340,10 +340,10 @@ def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch, *, p
     )
     for path, text in {
         "src/esolangs/languages/target/generator.py": "",
-        "src/esolangs/tools/dependency.py": (
+        "src/esolangs/generation/dependency.py": (
             "from esolangs.languages.target.generator import build\n"
         ),
-        consumer: "from esolangs.tools import dependency\n",
+        consumer: "from esolangs.generation import dependency\n",
         "src/esolangs/languages/target/tests/test_boolean_target.py": "",
         "src/esolangs/languages/consumer/tests/test_boolean_consumer.py": "",
         "src/esolangs/languages/unrelated/tests/test_boolean_unrelated.py": "",

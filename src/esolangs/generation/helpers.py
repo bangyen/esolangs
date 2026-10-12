@@ -8,7 +8,7 @@ from collections.abc import Callable, Sequence
 from itertools import pairwise
 
 from esolangs.exceptions import TruthTableError
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.runtime.source_hints import with_hint
 
 # ``ord("0")``.  Input digits arrive as 48/49 from a byte-oriented read, and a
 # result prints as ``_ASCII_ZERO + bit``, so this offset appears in every

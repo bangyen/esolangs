@@ -1,5 +1,6 @@
 """Alternating tree layouts and bounded sharing routes for Dig."""
 
+from esolangs.generation.helpers import constant_span_test, essential_inputs, read_at
 from esolangs.languages.dig.generator._leaf import (
     _DIG_DIGITS,
     _DIG_OPAQUE,
@@ -10,7 +11,6 @@ from esolangs.languages.dig.generator._leaf import (
     _Reads,
     _render,
 )
-from esolangs.tools.helpers import constant_span_test, essential_inputs, read_at
 
 _DIG_DIRECTIONS = ((-1, 0), (0, 1), (1, 0), (0, -1))
 

@@ -2,10 +2,8 @@
 
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import (
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _residual_ids,
@@ -15,7 +13,9 @@ from esolangs.tools.helpers import (
     input_weights,
     stored_inputs,
 )
-from esolangs.tools.wrap import balance_program, wrap_grid
+from esolangs.generation.wrap import balance_program, wrap_grid
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 #: The ``d`` operand of every instruction: cell 7, the last word of the
 #: first data block, which nothing writes, so ``*d > 0`` never holds and the

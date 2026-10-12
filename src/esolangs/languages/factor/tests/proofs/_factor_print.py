@@ -1,6 +1,6 @@
 """Full decision-tree witnesses for Factor's leading-constant bound."""
 
-from esolangs.tools.helpers import _validate_truth_table, move_text
+from esolangs.generation.helpers import _validate_truth_table, move_text
 
 _SPAN = 6
 _STEP = 8

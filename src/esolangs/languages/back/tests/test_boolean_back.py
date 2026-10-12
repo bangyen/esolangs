@@ -4,8 +4,8 @@ from itertools import pairwise
 
 import pytest
 
+from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from esolangs.languages.back.generator import _back_ordered
-from esolangs.tools.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from tests.generators.test_boolean_parameterized_contract import _drawing
 from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import row_bits, witnesses
@@ -19,8 +19,8 @@ class TestParameterizedBack:
         # The generator puts the answer in cell n, so the dump's (n+1)th
         # field is the result -- no need to track the head, which the dump
         # does not report.
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.back.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO()
         run(prog.splitlines(), io)
@@ -213,8 +213,8 @@ def test_descending_loader_rendered_size_stays_linear() -> None:
 
 
 def test_descending_loader_walks_permuted_cells_in_name_order() -> None:
+    from esolangs.generation.helpers import permute_truth_table
     from esolangs.languages.back.generator import _back_ordered
-    from esolangs.tools.helpers import permute_truth_table
 
     table = "00010011"
     order = (2, 0, 1)
@@ -281,7 +281,7 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
     """A generator that permutes its slots must emit a different *drawing*."""
     from itertools import permutations
 
-    from esolangs.tools.helpers import permute_truth_table
+    from esolangs.generation.helpers import permute_truth_table
 
     checked = 0
     for name in ("back",):
@@ -326,9 +326,9 @@ def test_selective_bend_preserves_the_command_bound(n: int, seed: int) -> None:
     """Every input executes; admission compares with both original layouts."""
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.back.generator import back
     from esolangs.languages.back.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
     from tests.generators.fills import fill
 
     _fill_back = fill("Back")

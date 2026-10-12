@@ -13,8 +13,8 @@ from esolangs.exceptions import (
     ProgramError,
     TruthTableError,
 )
-from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.runtime.source_hints import with_hint
 
 
 def encode_inputs(
@@ -45,7 +45,7 @@ def encode_inputs(
     # no sign that anything went astray.
     bits = check_bits(bits, "bits")
     if truth_table is not None and LANGUAGES[name].boolean is not None:
-        from esolangs.tools.helpers import _validate_truth_table
+        from esolangs.generation.helpers import _validate_truth_table
 
         if not isinstance(truth_table, str):
             raise with_hint(

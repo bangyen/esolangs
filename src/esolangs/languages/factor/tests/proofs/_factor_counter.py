@@ -1,6 +1,6 @@
 """Factor witness using a traveling binary counter beside packed truth pairs."""
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.generation.helpers import _validate_truth_table
 
 
 class _Code:

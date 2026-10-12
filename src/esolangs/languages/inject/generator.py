@@ -27,9 +27,7 @@ agree is passed over.
 
 import string
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     best_input_order,
     essential_inputs,
@@ -37,7 +35,9 @@ from esolangs.tools.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 __all__ = ["inject"]
 
@@ -182,7 +182,7 @@ def inject(truth_table: str, width: int | None = None) -> str:
     """Build an Inject program computing ``truth_table``.
 
     Reads ``n`` lines and writes the entry plus a newline.  The split order
-    is whichever is shortest (:func:`~esolangs.tools.helpers.best_input_order`);
+    is whichever is shortest (:func:`~esolangs.generation.helpers.best_input_order`);
     the ``readto`` block stays in input order.  Width selects a chunked
     lookup with an O(n) floor; complete commands never split.
     """

@@ -31,8 +31,8 @@ from dataclasses import dataclass
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 
 def _wrap32(value: int) -> int:

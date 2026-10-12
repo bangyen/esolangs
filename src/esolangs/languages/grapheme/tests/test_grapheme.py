@@ -5,9 +5,9 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.grapheme.interpreter import _Machine as Grapheme
 from esolangs.languages.grapheme.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
     CycleContract,

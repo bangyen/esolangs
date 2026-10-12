@@ -4,8 +4,6 @@ import re
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw, Seeded
 from esolangs.languages.thue import interpreter as thue
 from esolangs.languages.thue.interpreter import (
     _advance,
@@ -14,6 +12,8 @@ from esolangs.languages.thue.interpreter import (
     _parse,
     run,
 )
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.randomness import FirstDraw, Seeded
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
 

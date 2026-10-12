@@ -14,8 +14,8 @@ from tests.support.witness_tables import row_bits, witnesses
 def test_constant_reads_the_ghost_and_real_inputs_before_printing(
     n: int, bit: str
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.taglate.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     table = bit * (1 << n)
     programs = [esolangs.generate("Taglate", table, width=w) for w in (None, 1, 20)]

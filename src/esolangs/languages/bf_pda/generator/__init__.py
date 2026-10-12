@@ -3,15 +3,13 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
     subtree_ids,
 )
-from esolangs.tools.shared_block import (
+from esolangs.generation.shared_block import (
     BranchCost,
     add_cost,
     dispatch_cost,
@@ -19,7 +17,9 @@ from esolangs.tools.shared_block import (
     normal_cost,
     repeated_block,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 __all__ = ["BFPDA_PAIR", "bfpda"]
 

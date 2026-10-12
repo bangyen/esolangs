@@ -36,8 +36,6 @@ from typing import Literal, Self, assert_never
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.streetcode.interpreter.geometry import (
     _DELTA,
     _NO_LATCHES,
@@ -55,6 +53,8 @@ from esolangs.languages.streetcode.interpreter.geometry import (
 from esolangs.languages.streetcode.interpreter.geometry import (
     _State as _GeometryState,
 )
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 
 class _State(_GeometryState):

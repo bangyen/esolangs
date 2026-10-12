@@ -12,7 +12,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
 
-from esolangs.interpreters.io import IO
+from esolangs.runtime.io import IO
 
 #: How ``run`` wants the source: the whole string, the lines with newlines
 #: (``readlines()``), or without (``splitlines()``).  A grid language handed

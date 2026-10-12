@@ -4,13 +4,13 @@ import re
 from collections import Counter
 from collections.abc import Iterable
 
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
+from esolangs.registry._language import Language
 
 __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
 
@@ -312,7 +312,7 @@ def _cm_layout_versions(program: str) -> tuple[str, ...]:
 
 def balance_collatz_multiverse(truth_table: str, default: str) -> str:
     """Balance the finite statement-spelling regimes at their fit thresholds."""
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     n = _validate_truth_table(truth_table)
     wide = collatz_multiverse(truth_table, len(default))

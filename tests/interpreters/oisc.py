@@ -2,7 +2,7 @@
 
 import contextlib
 
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.runtime.io import ScriptedIO
 
 
 def memory(instructions, cells=None):

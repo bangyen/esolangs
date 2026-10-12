@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.circuit_diagram.generator import _dag
 from esolangs.languages.circuit_diagram.generator.sparse_masks import (
     _sparse_mask_dag,
@@ -12,6 +11,7 @@ from esolangs.languages.circuit_diagram.generator.sparse_masks import (
     sparse_mask_model,
 )
 from esolangs.languages.circuit_diagram.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import dense, parity
 
 

@@ -5,14 +5,14 @@ from itertools import pairwise
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.languages.underload.generator import PAIR, underload, underload_setters
-from esolangs.languages.underload.interpreter import run
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
 )
+from esolangs.languages.underload.generator import PAIR, underload, underload_setters
+from esolangs.languages.underload.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import run_filled, verify_generated
 from tests.support.witness_tables import witnesses

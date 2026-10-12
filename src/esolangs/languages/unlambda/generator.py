@@ -24,13 +24,13 @@ from __future__ import annotations
 
 from functools import cache
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     SubtreeDiagram,
     _validate_truth_table,
 )
-from esolangs.tools.wrap import _unlambda
+from esolangs.generation.wrap import _unlambda
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 #: ``@`` reads a character and applies its argument -- the promise of everything
 #: after the read -- to ``i``, or to ``v`` at end of input.
@@ -70,7 +70,7 @@ def unlambda(truth_table: str) -> str:
 
     Reads ``n`` characters, one ``0``/``1`` per input in table order, and
     prints the answer digit.  The tree is of share-taking nodes; subtrees are
-    named by :class:`~esolangs.tools.helpers.SubtreeDiagram`.
+    named by :class:`~esolangs.generation.helpers.SubtreeDiagram`.
     A node whose halves agree reads and runs the half, and each node binds
     the one subtree within :data:`_REACH` levels that shortens it most, if
     any does; a bound node's subtree sees only its own share.

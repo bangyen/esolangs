@@ -20,10 +20,10 @@ from typing import cast
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import syntax_error, with_hint
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.randomness import Randomness, draw
+from esolangs.runtime.source_hints import syntax_error, with_hint
 
 _DIRECTIONS = ((0, 1), (1, 0), (0, -1), (-1, 0))
 _RULD = (3, 2, 1, 0)

@@ -33,8 +33,8 @@ def test_trailing_inputs_are_read_after_the_two_entry_lookup(width: int | None) 
 
 @pytest.mark.parametrize("width", [None, 1, 20])
 def test_return_reads_complete_exactly_one_rotation(width: int | None) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.clockwise.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     n = 8
     table = "".join(str(((row >> 7) ^ (row >> 6)) & 1) for row in range(256))
@@ -74,8 +74,8 @@ class TestClockwise:
     @pytest.mark.parametrize("width", [None, 1])
     def test_every_run_reads_each_input_exactly_once(self, width: int | None) -> None:
         """Clockwise's input queue rotates, so a run must consume 7n bits."""
-        from esolangs.interpreters.io import IO
         from esolangs.languages.clockwise.interpreter import _Machine
+        from esolangs.runtime.io import IO
 
         class _Quiet(IO):
             def __init__(self, text: str) -> None:
@@ -160,8 +160,8 @@ def test_entry_digit_prefix_executes_every_small_table() -> None:
 
 def test_single_column_cannot_close_a_clockwise_ring() -> None:
     """A downward beam's next clockwise turn leaves the only column."""
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.clockwise.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine(["R", "R"], ScriptedIO(""))
     machine.step()

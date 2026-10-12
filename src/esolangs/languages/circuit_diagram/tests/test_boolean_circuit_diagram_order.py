@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs.generation.helpers import permute_truth_table
 from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
@@ -11,7 +12,6 @@ from esolangs.languages.circuit_diagram.generator import (
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
-from esolangs.tools.helpers import permute_truth_table
 
 
 def _margulis_cofactors(log_side):

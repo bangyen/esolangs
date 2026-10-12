@@ -7,13 +7,13 @@ Tables use a linear packed-integer lookup, and never the language's random
 import re
 from math import isqrt
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 
 __all__ = ["super_snusp"]
 

@@ -6,8 +6,8 @@ from math import isfinite
 from typing import Literal
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.memory import parse_integer
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.memory import parse_integer
+from esolangs.runtime.source_hints import syntax_error
 
 # The only datatype is a number, but a *function* reaches an expression
 # slot too: the wiki's ``WHILE(x, c)`` takes its condition and body as

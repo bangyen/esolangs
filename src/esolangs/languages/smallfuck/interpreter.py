@@ -9,9 +9,9 @@ the source is too short to allocate it).
 from __future__ import annotations
 
 from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import match_brackets
-from esolangs.interpreters.io import IO
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.brackets import match_brackets
+from esolangs.runtime.io import IO
 
 type _State = tuple[int, int, tuple[int, ...], bool]
 

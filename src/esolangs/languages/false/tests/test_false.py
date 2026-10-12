@@ -5,12 +5,12 @@ import re
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.false.interpreter import (
     _advance,
     _Machine,
     run,
 )
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 

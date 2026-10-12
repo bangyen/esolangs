@@ -325,7 +325,7 @@ class TestDivergenceIsProvenNotWaitedOut:
 def test_nested_signal_guard_keeps_the_outer_deadline():
     import time
 
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.runtime.io import ScriptedIO
 
     def inner(*_args):
         time.sleep(0.1)
@@ -341,7 +341,7 @@ def test_signal_guard_deducts_elapsed_time_from_pending_alarm(monkeypatch):
     import signal
     import time
 
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.runtime.io import ScriptedIO
 
     clock = [0.0]
     monkeypatch.setattr(time, "monotonic", lambda: clock[0])
@@ -365,7 +365,7 @@ def test_periodic_caller_alarm_fires_during_guard():
     import signal
     import time
 
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.runtime.io import ScriptedIO
 
     calls = []
     previous = signal.signal(signal.SIGALRM, lambda *_args: calls.append(1))
@@ -390,7 +390,7 @@ def test_ignored_caller_alarm_does_not_cancel_execution():
     import signal
     import time
 
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.runtime.io import ScriptedIO
 
     previous = signal.signal(signal.SIGALRM, signal.SIG_IGN)
     saved = signal.setitimer(signal.ITIMER_REAL, 0.01)
@@ -413,7 +413,7 @@ def test_default_caller_alarm_keeps_its_termination_behavior():
 import signal
 import time
 from esolangs import _run
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.runtime.io import ScriptedIO
 signal.signal(signal.SIGALRM, signal.SIG_DFL)
 signal.setitimer(signal.ITIMER_REAL, 0.02)
 _run(lambda *_args: time.sleep(0.1), '', ScriptedIO(''), 1)
@@ -426,7 +426,7 @@ def test_default_alarm_is_forwarded_to_the_restored_disposition(monkeypatch):
     import signal
     import time
 
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.runtime.io import ScriptedIO
 
     clock = [0.0]
     forwarded = []
@@ -455,7 +455,7 @@ def test_caller_handler_time_counts_against_execution_deadline(monkeypatch):
     import signal
     import time
 
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.runtime.io import ScriptedIO
 
     clock = [0.0]
     monkeypatch.setattr(time, "monotonic", lambda: clock[0])

@@ -3,15 +3,15 @@
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
     same_up_to_wrapping,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language, Shape
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 

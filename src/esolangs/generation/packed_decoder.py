@@ -1,6 +1,10 @@
 """Shared packed subtract-and-branch decoder with constant and payload folding."""
 
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
+from esolangs.generation.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    input_weights,
+)
 
 
 def _sbleq_constant(inputs: int, bit: str, *, direct: bool = False) -> str:

@@ -3,15 +3,15 @@
 from itertools import chain, count
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Payload
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _residual_ids,
     _validate_truth_table,
 )
-from esolangs.tools.wrap import _sophie
+from esolangs.generation.wrap import _sophie
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Payload
 
 __all__ = ["sophie", "sophie_labels"]
 

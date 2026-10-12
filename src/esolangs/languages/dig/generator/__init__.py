@@ -3,6 +3,14 @@
 from itertools import pairwise
 from typing import cast
 
+from esolangs.generation.helpers import (
+    _validate_truth_table,
+    constant_span_test,
+    essential_inputs,
+    grid_width,
+    read_at,
+)
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.dig.generator._layout import _DIG_ALT_BRANCH, _DIG_DIRECTIONS
 from esolangs.languages.dig.generator._layout import _dig_alt_clear as _dig_alt_clear
 from esolangs.languages.dig.generator._layout import _dig_layout as _dig_layout
@@ -26,14 +34,6 @@ from esolangs.languages.dig.generator._leaf import (
 )
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
 from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
-    _validate_truth_table,
-    constant_span_test,
-    essential_inputs,
-    grid_width,
-    read_at,
-)
-from esolangs.tools.wrap import balance_score
 
 # Dig blocks for one level of the decision tree.  ``$`` takes its count
 # from the digit beside it and looks up, right, down, left for one, so the

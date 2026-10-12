@@ -6,8 +6,8 @@ import sys
 import pytest
 
 import esolangs
+from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.registry import LANGUAGES, parameterized_ids, resolve
-from esolangs.tools.examples import BOOLEAN_EXAMPLES
 from tests.support.pick import spread
 
 

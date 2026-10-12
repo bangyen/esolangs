@@ -83,7 +83,7 @@ def test_an_incorrect_contributor_path_is_rejected(tmp_path: Path) -> None:
     module = load_script()
     path = tmp_path / "docs" / "CONTRIBUTING.md"
     path.parent.mkdir()
-    path.write_text("| `src/esolangs/tools/boolean/` | generators |\n")
+    path.write_text("| `src/esolangs/generation/boolean/` | generators |\n")
     module.render_contributor_tools_section = lambda: "correct row"
     with pytest.raises(ValueError, match="does not name"):
         module.update_contributing(tmp_path)
@@ -257,7 +257,7 @@ def test_missing_canonical_interpreter_does_not_link_to_an_old_path(tmp_path):
     module = load_script()
     module.ROOT = tmp_path
     language = next(iter(module.LANGUAGES.values()))
-    old = tmp_path / "src/esolangs/interpreters" / f"{language.interpreter}.py"
+    old = tmp_path / "src/esolangs/runtime" / f"{language.interpreter}.py"
     old.parent.mkdir(parents=True)
     old.write_text("owned")
     with pytest.raises(FileNotFoundError, match="no canonical interpreter"):
@@ -267,7 +267,7 @@ def test_missing_canonical_interpreter_does_not_link_to_an_old_path(tmp_path):
 def test_exports_use_the_canonical_generator_module(tmp_path):
     from scripts.docs.generate import declared
 
-    tools = tmp_path / "src/esolangs/tools"
+    tools = tmp_path / "src/esolangs/generation"
     tools.mkdir(parents=True)
     (tools / "different.py").write_text(
         "if TYPE_CHECKING:\n"

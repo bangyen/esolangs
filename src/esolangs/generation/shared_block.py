@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from esolangs.tools.helpers import subtree_ids
+from esolangs.generation.helpers import subtree_ids
 
 
 @dataclass(frozen=True, slots=True)

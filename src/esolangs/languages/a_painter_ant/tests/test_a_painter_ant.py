@@ -2,8 +2,8 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.a_painter_ant.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import EmptyProgramContract
 
 

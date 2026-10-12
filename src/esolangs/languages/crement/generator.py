@@ -23,9 +23,7 @@ five-input tables, 114,791 to 83,070 (27.6%).
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     grid_width,
@@ -35,8 +33,10 @@ from esolangs.tools.helpers import (
     same_up_to_wrapping,
     subtree_ids,
 )
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 __all__ = ["crement"]
 
@@ -89,7 +89,7 @@ def _narrow(template: str, width: int) -> str:
             TEMPLATE_CHAR * len(PAIR[0]), f"+J 0 {TEMPLATE_CHAR}"
         )
     if max(map(len, narrowed.splitlines())) > width:
-        from esolangs.tools.wrap import wrap_space_delimited
+        from esolangs.generation.wrap import wrap_space_delimited
 
         return wrap_space_delimited(narrowed, width)
     return narrowed

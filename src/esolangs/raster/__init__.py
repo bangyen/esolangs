@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from esolangs.settings import DialectSettings
 
 from esolangs.exceptions import MissingDependencyError, ProgramError
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 from . import png
 

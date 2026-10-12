@@ -43,9 +43,9 @@ class TestThreeX:
     def test_every_input_order_computes_the_table(self) -> None:
         """The permuted build computes the original table on the original stream."""
 
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.three_x.generator import _three_x_ordered
         from esolangs.languages.three_x.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         def permuted(table: str, perm: tuple[int, ...]) -> str:
             out = []
@@ -104,9 +104,9 @@ class TestThreeX:
 
     def test_constant_ladder_is_the_grammar_shortest_first(self) -> None:
         """Keys are the shortest ``C ::= 3 | C C C x`` programs, by length."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.three_x.generator import _constants
         from esolangs.languages.three_x.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         codes = _constants(13)
         assert [len(c) for c in codes] == [1, 4, 7, 7] + [10] * 4 + [13] * 5
@@ -135,9 +135,9 @@ class TestThreeX:
 
     def test_repeated_blocks_are_written_once(self) -> None:
         """Three copies of one block cost one block, and the program still runs."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.three_x.generator import _three_x_emit
         from esolangs.languages.three_x.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         a, b = "0010110111010001", "1101001000101110"
         table = a + a + b + a

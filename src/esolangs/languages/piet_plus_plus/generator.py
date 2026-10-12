@@ -12,10 +12,8 @@ from __future__ import annotations
 from functools import cache
 from math import isqrt
 
-from esolangs.raster import Raster
-from esolangs.registry._language import Language, SourceKind
-from esolangs.tools.helpers import _validate_truth_table
-from esolangs.tools.raster_lookup import (
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.raster_lookup import (
     _ADD,
     _IN_NUMBER,
     _MULTIPLY,
@@ -30,13 +28,15 @@ from esolangs.tools.raster_lookup import (
     _operations,
     strip,
 )
-from esolangs.tools.raster_lookup.balance import (
+from esolangs.generation.raster_lookup.balance import (
     _MIN_COLUMNS,
     _POINTER,
     _bounded_operations,
     _emit,
     _plan,
 )
+from esolangs.raster import Raster
+from esolangs.registry._language import Language, SourceKind
 
 # Piet (hue, lightness) change -> Piet++ (red, green, blue) level delta.
 _DELTAS = {

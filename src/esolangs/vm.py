@@ -30,9 +30,9 @@ from esolangs._validate import check_whole
 from esolangs._vm_views import (
     machine_views,
 )
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import resolve
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 

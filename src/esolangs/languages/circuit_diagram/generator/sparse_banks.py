@@ -10,6 +10,7 @@ With G gates, n+G wire bits, at most 2G+1 latch bits and halt give
 
 from __future__ import annotations
 
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
     _online_bank_area_floor,
@@ -23,7 +24,6 @@ from esolangs.languages.circuit_diagram.generator.sparse_masks import (
     _SparseWork,
     sparse_mask_model,
 )
-from esolangs.tools.helpers import _validate_truth_table
 
 
 def sparse_class_bank_candidate(

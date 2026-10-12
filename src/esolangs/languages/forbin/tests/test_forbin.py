@@ -3,10 +3,10 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.forbin.interpreter import _Machine as Forbin
 from esolangs.languages.forbin.interpreter import run
 from esolangs.languages.forbin.tests.forbin_support import run_program
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
 
@@ -65,8 +65,8 @@ class TestStepMachine:
     def test_main_with_parameters_defaults_to_zero(self) -> None:
         # main's own parameters are set to 0 (per the wiki), same as any
         # other function's unpassed arguments
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.forbin.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("main a { out 0,0,0,0,0,0,0,a; }", ScriptedIO())
         while not machine.halted:
@@ -74,8 +74,8 @@ class TestStepMachine:
         assert machine.io.getvalue() == "\x00"
 
     def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.forbin.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("main { out 0,0,0,0,0,0,0,1; }", ScriptedIO())
         assert hash(machine.snapshot()) is not None
@@ -89,8 +89,8 @@ class TestForbinMutationSurvivors:
     @staticmethod
     def _drive(code: str, stdin: str = "") -> tuple[int, str, int]:
         """Run ``code`` to a halt; return (steps, output, deepest frame stack)."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.forbin.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(code, ScriptedIO(stdin))
         steps, deepest = 0, 0

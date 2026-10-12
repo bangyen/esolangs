@@ -4,7 +4,6 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import _Machine
 from esolangs.languages.brainfuck.interpreter import run as run_bf
 from esolangs.languages.factor.tests.proofs._factor_counter import (
@@ -12,6 +11,7 @@ from esolangs.languages.factor.tests.proofs._factor_counter import (
     _decoder,
     counter_program,
 )
+from esolangs.runtime.io import ScriptedIO
 
 
 @pytest.mark.parametrize("width", range(6))

@@ -1,7 +1,7 @@
 """Project constants to one row while retaining their old balanced shape."""
 
-from esolangs.tools.helpers import essential_inputs
-from esolangs.tools.wrap import balance_program, balance_score
+from esolangs.generation.helpers import essential_inputs
+from esolangs.generation.wrap import balance_program, balance_score
 
 
 def projected_inputs(table: str, n: int, *, keep_constant_input: bool) -> list[int]:

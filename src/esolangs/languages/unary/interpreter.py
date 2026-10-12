@@ -13,10 +13,10 @@ wiki's cat example.
 from esolangs._drive import drive
 from esolangs._source import ProgramSource, _read_container, text_source
 from esolangs.compressed import CompressedText
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.brainfuck.interpreter import _Machine as _BFMachine
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 
 class _UnaryBFMachine(_BFMachine):

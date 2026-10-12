@@ -4,11 +4,11 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, mark_runs, unmark
+from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.languages.cyclic_tag.generator import PAIR, _program
 from esolangs.languages.cyclic_tag.interpreter import _Machine
-from esolangs.tools.helpers import TEMPLATE_CHAR, mark_runs, unmark
-from esolangs.tools.wrap import balance_program, balance_score
+from esolangs.runtime.io import ScriptedIO
 
 
 @pytest.mark.medium

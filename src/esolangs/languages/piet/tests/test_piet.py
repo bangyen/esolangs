@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.piet.interpreter import _command, _Machine, run
 from esolangs.raster import Raster
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.cursorless_io import PositionlessIO
 
 LIGHT_RED = (255, 192, 192)

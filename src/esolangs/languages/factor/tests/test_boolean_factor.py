@@ -26,9 +26,9 @@ class TestFactor:
         """The integer's factorization is a brainfuck program for the table."""
         import sympy
 
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.brainfuck.interpreter import run as run_bf
         from esolangs.languages.factor.generator import _BF_RESIDUE
+        from esolangs.runtime.io import ScriptedIO
 
         table = "0110"
         n = 2
@@ -44,7 +44,7 @@ class TestFactor:
 
     def test_builds_above_the_greedy_order_cap(self) -> None:
         """Past ``_GREEDY_ORDER_MAX_ARITY`` only the identity order is built."""
-        from esolangs.tools.helpers import _GREEDY_ORDER_MAX_ARITY
+        from esolangs.generation.helpers import _GREEDY_ORDER_MAX_ARITY
 
         n = _GREEDY_ORDER_MAX_ARITY + 1
         table = "0" * (2**n - 1) + "1"

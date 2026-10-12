@@ -5,10 +5,10 @@ import random
 import pytest
 
 import esolangs
+from esolangs.generation.examples import BOOLEAN_EXAMPLES
+from esolangs.generation.wrap import wrap_program
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.packlang.interpreter._lex import _tokenize
-from esolangs.tools.examples import BOOLEAN_EXAMPLES
-from esolangs.tools.wrap import wrap_program
 from tests.support.generator_support import evaluate_generated
 from tests.support.witness_tables import witnesses
 

@@ -24,11 +24,11 @@ from typing import cast
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.memory import format_integer
-from esolangs.interpreters.randomness import FirstDraw, Randomness, draw
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.runtime.memory import format_integer
+from esolangs.runtime.randomness import FirstDraw, Randomness, draw
+from esolangs.runtime.source_hints import syntax_error
 
 type Number = int | float
 type _State = tuple[object, ...]

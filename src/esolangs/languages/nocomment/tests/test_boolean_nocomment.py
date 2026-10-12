@@ -8,9 +8,9 @@ from itertools import pairwise
 
 import pytest
 
-from esolangs.interpreters.io import IO
+from esolangs.generation.helpers import TEMPLATE_CHAR
 from esolangs.languages.nocomment.generator import PAIR
-from esolangs.tools.helpers import TEMPLATE_CHAR
+from esolangs.runtime.io import IO
 from tests.support.witness_tables import row_bits
 
 

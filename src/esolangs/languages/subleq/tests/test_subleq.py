@@ -5,9 +5,9 @@ import random
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.subleq.interpreter import _Machine
 from esolangs.languages.subleq.interpreter import run as run_subleq
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import subleq as oracle
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint

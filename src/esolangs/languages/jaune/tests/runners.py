@@ -2,8 +2,8 @@
 
 
 def run_jaune(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.jaune.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     io = ScriptedIO("\n".join(inputs) + "\n")
     run(program, io)

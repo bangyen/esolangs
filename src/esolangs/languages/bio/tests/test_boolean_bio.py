@@ -6,21 +6,21 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.languages.bio.wrapping import _bio
-from esolangs.registry import LANGUAGES
-from esolangs.tools.wrap import (
+from esolangs.generation.wrap import (
     DEFAULT_WIDTH,
     balance_program,
     balance_score,
 )
+from esolangs.languages.bio.wrapping import _bio
+from esolangs.registry import LANGUAGES
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_root_keeps_setters_without_index_save_loops(bit):
     from esolangs.debugger import make_vm
+    from esolangs.generation.helpers import input_weights, mark_runs, unmark
     from esolangs.languages.bio.generator import BIO_PAIR, _bio
-    from esolangs.tools.helpers import input_weights, mark_runs, unmark
 
     table = bit * 256
     template = esolangs.generate("BIO", table)
@@ -51,9 +51,9 @@ class TestParameterizedBIO:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
+        from esolangs.generation.helpers import runs
         from esolangs.languages import generators
         from esolangs.languages.bio.generator import BIO_PAIR
-        from esolangs.tools.helpers import runs
 
         template = generators.bio("0110")
         # one four-character unit per input; the doubling between them

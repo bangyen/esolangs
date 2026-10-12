@@ -3,9 +3,9 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.forbin.interpreter import run
 from esolangs.languages.forbin.tests.forbin_support import run_program
+from esolangs.runtime.io import ScriptedIO
 
 
 class TestDiscardTarget:

@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
 )

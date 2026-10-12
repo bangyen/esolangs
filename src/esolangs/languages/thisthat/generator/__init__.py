@@ -3,16 +3,16 @@
 from itertools import pairwise
 from typing import Literal
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     grid_width,
     narrowest_grid,
     read_at,
     subtree_ids,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
 _OPPOSITE = {"E": "W", "W": "E", "N": "S", "S": "N"}

@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.vandevelo.interpreter import (
     _advance,
     _Expr,
@@ -12,6 +11,7 @@ from esolangs.languages.vandevelo.interpreter import (
     _statement,
     run,
 )
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
 

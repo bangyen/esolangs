@@ -1,12 +1,6 @@
 """Build brainfuck Boolean programs with folded trees or affine streams."""
 
-from esolangs.languages.brainfuck.generator._binary import (
-    binary_bank,
-    larger_suffix_bank,
-)
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     decision_tree_body,
@@ -14,8 +8,14 @@ from esolangs.tools.helpers import (
     in_input_order,
     move_text,
 )
-from esolangs.tools.shared_flag import shared_flag_tree
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.shared_flag import shared_flag_tree
+from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.brainfuck.generator._binary import (
+    binary_bank,
+    larger_suffix_bank,
+)
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 __all__ = ["bf_tree", "brainfuck"]
 

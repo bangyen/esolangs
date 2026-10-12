@@ -90,7 +90,7 @@ class TestStdinCannotHangTheCommandForever:
 @pytest.mark.medium
 def test_execution_does_not_require_examples_or_docstrings(monkeypatch) -> None:
     from esolangs import _describe
-    from esolangs.tools import examples
+    from esolangs.generation import examples
 
     def refuse_documentation(_language):
         raise AssertionError("execution requested documentation")

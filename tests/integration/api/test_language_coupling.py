@@ -64,7 +64,7 @@ def _mentions(path: str) -> Counter[str]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             # A module, or a module imported from its package by name.
             found["." + node.module.rsplit(".", 1)[-1]] += 1
-            if node.module.startswith(("esolangs.tools", "esolangs.interpreters")):
+            if node.module.startswith(("esolangs.generation", "esolangs.runtime")):
                 found.update("." + alias.name for alias in node.names)
         elif isinstance(node, ast.Import):
             found.update("." + alias.name.rsplit(".", 1)[-1] for alias in node.names)

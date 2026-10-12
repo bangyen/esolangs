@@ -10,8 +10,8 @@ from pathlib import Path
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
+from esolangs.generation.helpers import _ASCII_ZERO, input_weights, runs
 from esolangs.languages.bio.generator import _BIO_SKIP, BIO_PAIR, bio
-from esolangs.tools.helpers import _ASCII_ZERO, input_weights, runs
 
 #: Cost band; see ``__main__.py``. Telescoping-lookup lemmas, cheap enough that
 #: scoping them is the only reason they are ever skipped.
@@ -119,8 +119,8 @@ def check_l1(max_n: int = 7) -> list[str]:
 
 def _executed_answer(program: str, n: int, index: int) -> int:
     """Run ``program`` for input ``index`` and read the register it leaves."""
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.bio.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     bits = format(index, f"0{n}b")
     filled = _fill(program, bits)

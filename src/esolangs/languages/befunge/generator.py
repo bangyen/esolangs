@@ -13,10 +13,14 @@ from __future__ import annotations
 from math import isqrt
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.generation.helpers import (
+    _parity_bias,
+    _validate_truth_table,
+    input_weights,
+)
+from esolangs.generation.wrap import balance_score
 from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.helpers import _parity_bias, _validate_truth_table, input_weights
-from esolangs.tools.wrap import balance_score
+from esolangs.runtime.source_hints import with_hint
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
 _ASCII_ZERO = "68*"

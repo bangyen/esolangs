@@ -18,8 +18,8 @@ Input framing is unspecified; this interpreter reads consecutive Unicode
 character codes, narrowing to its byte cells.
 """
 
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 #: Width of the print window: ``.`` reads cells 0-7 as one binary byte.
 _WIDTH = 8

@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.circuit_diagram.generator import circuit_diagram
 from esolangs.languages.circuit_diagram.generator.banks import (
     _class_bank_layout,
@@ -13,6 +12,7 @@ from esolangs.languages.circuit_diagram.interpreter import _Machine
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import dense
 
 

@@ -5,8 +5,8 @@ from contextlib import redirect_stdout
 
 import pytest
 
-from esolangs.interpreters.io import IO
 from esolangs.languages.minsky_swap.interpreter import _Machine, run
+from esolangs.runtime.io import IO
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,

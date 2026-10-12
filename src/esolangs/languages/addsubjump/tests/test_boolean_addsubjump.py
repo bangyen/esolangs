@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs.generation.helpers import in_input_order
 from esolangs.languages import generators as boolean
 from esolangs.languages.addsubjump.generator import (
     _addsubjump_ordered,
@@ -16,7 +17,6 @@ from esolangs.languages.addsubjump.tests.runners import (
     run_addsubjump,
     run_addsubjump_from,
 )
-from esolangs.tools.helpers import in_input_order
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -38,10 +38,10 @@ def test_packed_projection_executes_every_three_input_table():
 @pytest.mark.parametrize("kind", ["zero", "one", "first", "last", "ends"])
 def test_wide_packed_projection_keeps_reads_and_old_balanced_score(kind):
     from esolangs._evaluate import _evaluate
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.generation.wrap import balance_program, balance_score
     from esolangs.languages.addsubjump.generator import _addsubjump_packed
     from esolangs.languages.addsubjump.interpreter import _Machine
-    from esolangs.tools.wrap import balance_program, balance_score
+    from esolangs.runtime.io import ScriptedIO
     from esolangs.vm import run_until_halt_or_cycle
 
     table = (

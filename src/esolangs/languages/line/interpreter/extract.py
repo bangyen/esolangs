@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.raster import png
+from esolangs.runtime.source_hints import syntax_error
 
 from . import lattice
 from . import mask as mask_module

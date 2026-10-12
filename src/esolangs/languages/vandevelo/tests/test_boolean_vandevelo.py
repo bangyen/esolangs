@@ -5,7 +5,6 @@ from itertools import product
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.vandevelo.generator import (
     _SAMPLES,
     _best,
@@ -15,6 +14,7 @@ from esolangs.languages.vandevelo.generator import (
     vandevelo,
 )
 from esolangs.languages.vandevelo.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
 
@@ -351,8 +351,8 @@ def test_a_full_bank_respells_its_least_recently_used_register(monkeypatch) -> N
 
 def test_short_names_are_unique_and_skip_builtins() -> None:
     """The compact namespace does not shadow input, nil, or the loop."""
+    from esolangs.generation.helpers import short_name
     from esolangs.languages.vandevelo.generator import _ALPHABET, _RESERVED
-    from esolangs.tools.helpers import short_name
 
     names = [short_name(index, _ALPHABET) for index in range(500)]
     assert len(set(names)) == len(names)
@@ -523,10 +523,10 @@ def test_identifier_charge_on_a_rendered_wide_program() -> None:
     import random
     import re
 
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.generation.helpers import short_name
     from esolangs.languages.vandevelo.generator import _ALPHABET, _bank_cap, vandevelo
     from esolangs.languages.vandevelo.interpreter import _Machine
-    from esolangs.tools.helpers import short_name
+    from esolangs.runtime.io import ScriptedIO
     from esolangs.vm import run_until_halt_or_cycle
 
     n = 13

@@ -29,7 +29,7 @@ def _argument_repr(value: object) -> str:
 def check_whole(value: object, name: str) -> int:
     """Return ``value`` as a non-negative index, or refuse it by name."""
     from esolangs.exceptions import ArgumentError
-    from esolangs.interpreters.source_hints import with_hint
+    from esolangs.runtime.source_hints import with_hint
 
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise with_hint(
@@ -49,7 +49,7 @@ def check_seed(seed: object) -> None:
     both, so ``seed=1.5`` ran instead of failing like ``max_steps=1.5``.
     """
     from esolangs.exceptions import ArgumentError
-    from esolangs.interpreters.source_hints import with_hint
+    from esolangs.runtime.source_hints import with_hint
 
     if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
         raise with_hint(
@@ -63,7 +63,7 @@ def check_seed(seed: object) -> None:
 def check_timeout(timeout: object) -> None:
     """Refuse invalid timeouts; ``None`` is allowed."""
     from esolangs.exceptions import ArgumentError
-    from esolangs.interpreters.source_hints import with_hint
+    from esolangs.runtime.source_hints import with_hint
 
     if timeout is None:
         return
@@ -119,7 +119,7 @@ def check_timeout(timeout: object) -> None:
 def check_width(width: object) -> None:
     """Refuse a width that is not a positive integer."""
     from esolangs.exceptions import ArgumentError
-    from esolangs.interpreters.source_hints import with_hint
+    from esolangs.runtime.source_hints import with_hint
 
     if width is None:
         return
@@ -140,7 +140,7 @@ def check_width(width: object) -> None:
 def check_bits(bits: object, what: str = "bits") -> list[int]:
     """Return a nonempty list or tuple of integer bits, or refuse it."""
     from esolangs.exceptions import ArgumentError
-    from esolangs.interpreters.source_hints import with_hint
+    from esolangs.runtime.source_hints import with_hint
 
     if isinstance(bits, str) or not isinstance(bits, list | tuple):
         raise with_hint(
@@ -211,7 +211,7 @@ def check_address(addr: int, language: str) -> int:
 def check_scale(scale: object) -> int:
     """Return a positive integer pixel replication factor."""
     from esolangs.exceptions import ArgumentError
-    from esolangs.interpreters.source_hints import with_hint
+    from esolangs.runtime.source_hints import with_hint
 
     if isinstance(scale, bool) or not isinstance(scale, int) or scale < 1:
         raise with_hint(

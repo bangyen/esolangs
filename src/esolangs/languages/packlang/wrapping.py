@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.tools.wrap import _join_tokens
+from esolangs.generation.wrap import _join_tokens
 
 _PACKLANG_LEXEME = r"[A-Za-z_][A-Za-z_0-9]*|\d+|[{}();:,^!]"
 

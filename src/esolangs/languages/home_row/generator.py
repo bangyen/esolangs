@@ -2,15 +2,15 @@
 
 from itertools import groupby
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
-from esolangs.tools.wrap import balance_program, balance_score, wrap_chars
+from esolangs.generation.wrap import balance_program, balance_score, wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language, Shape
 
 __all__ = ["HOME_ROW_PAIR", "home_row"]
 

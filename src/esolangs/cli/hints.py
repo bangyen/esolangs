@@ -7,8 +7,8 @@ from difflib import get_close_matches
 
 from esolangs import LanguageInfo
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
-from esolangs.interpreters.source_hints import error_text
 from esolangs.registry import SUGGESTION_CUTOFF
+from esolangs.runtime.source_hints import error_text
 
 # A watched cell's history longer than this is printed abridged: the whole
 # thing was one line of 486 comma-separated values for a 486-step program,

@@ -1,8 +1,8 @@
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.slow_acv_mammalian.wrapping import (
     _balance_mammalian,
     _mammalian,
 )
-from esolangs.tools.wrap import balance_score
 
 
 def test_equal_cells_reach_the_global_minimum() -> None:

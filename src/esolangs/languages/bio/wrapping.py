@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _RUN, _join_tokens, balance_score
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _RUN, _join_tokens, balance_score
 
 # ``[01][oi][xyz]`` plus ``;`` or ``{``, or ``};``, or the separating
 # space.  Varying width is why neither a character wrap nor a fixed stride

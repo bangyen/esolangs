@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
 
 
 def _taglate(program: str, width: int) -> str:

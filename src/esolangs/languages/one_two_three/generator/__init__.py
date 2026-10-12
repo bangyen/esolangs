@@ -42,6 +42,14 @@ from __future__ import annotations
 
 from functools import cache
 
+from esolangs.generation.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    essential_inputs,
+    read_at,
+    runs,
+)
+from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.one_two_three.generator.construction import (
     _INPUT,
     _ONE,
@@ -61,14 +69,6 @@ from esolangs.languages.one_two_three.generator.construction import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.helpers import (
-    TEMPLATE_CHAR,
-    _validate_truth_table,
-    essential_inputs,
-    read_at,
-    runs,
-)
-from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["one_two_three"]
 

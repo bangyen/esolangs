@@ -63,8 +63,8 @@ axes never remove a language; a stalled row moves to the
 
 | Path | Holds |
 | --- | --- |
-| `src/esolangs/interpreters/` | shared runtime machinery |
-| `src/esolangs/tools/` | shared generator helpers |
+| `src/esolangs/runtime/` | shared runtime machinery |
+| `src/esolangs/generation/` | shared generator helpers |
 | `src/esolangs/languages/<id>/` | interpreter, generator, tests, fixtures and examples |
 | `src/esolangs/registry/` | the source of truth for public integration |
 | `tests/` | shared contracts, infrastructure and proof runners |
@@ -96,7 +96,7 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   the declarations (`scripts/docs/generate.py`, run by `generate.py docs`
   and by `check`).
 - Interpreters and generators live in `src/esolangs/languages/<id>/`, each
-  as a module or package. Shared generator helpers live in `src/esolangs/tools/`.
+  as a module or package. Shared generator helpers live in `src/esolangs/generation/`.
   Most generators return runnable source;
   input-embedding languages return a `$`-run template for `instantiate`.
   `encode_inputs` handles stdin conventions, and `read_answer` reads printed
@@ -111,7 +111,7 @@ interpreter module ◄──── source + encoded stdin ◄──┘
 
 ## Interpreter conventions
 
-Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
+Start from `src/esolangs/runtime/_template.py`. Every interpreter:
 
 - Exposes `run(code, io)` with required `IO`; uses `io` for all I/O.
   Most grids receive lines via registry `split=True`.

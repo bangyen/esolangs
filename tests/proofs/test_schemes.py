@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 import esolangs.languages.generators as boolean
+from esolangs.generation.helpers import runs
 from esolangs.registry import BY_BOOLEAN
-from esolangs.tools.helpers import runs
 from tests.proofs._ledger import Ledger, Row, load
 from tests.support.source_support import source_units
 

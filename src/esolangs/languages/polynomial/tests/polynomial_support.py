@@ -3,7 +3,7 @@
 # These independent construction oracles deliberately mirror generated programs.
 # pylint: disable=duplicate-code
 
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
 
 
 def _polynomial_tree(truth_table: str) -> list[list[int]]:

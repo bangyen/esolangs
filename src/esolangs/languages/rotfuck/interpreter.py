@@ -25,8 +25,8 @@ text rewritten. Invalid rotation settings raise :class:`ValueError`.
 """
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 #: The rotation cycle per direction, each read as "turns into the next":
 #: backward is the prose's ``+-><,.[]`` reversed.

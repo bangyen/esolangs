@@ -4,9 +4,9 @@ from importlib import import_module
 
 import pytest
 
+from esolangs.generation.wrap import shortest
 from esolangs.languages import generators as boolean
 from esolangs.languages.streetcode.tests.runners import run_streetcode
-from esolangs.tools.wrap import shortest
 from tests.support.witness_tables import row_bits
 
 
@@ -205,7 +205,7 @@ class TestStreetcode:
 
     def test_only_identity_and_greedy_orders_are_offered(self) -> None:
         """Streetcode never renders more than two order candidates."""
-        from esolangs.tools.helpers import input_orders
+        from esolangs.generation.helpers import input_orders
 
         table = "01011010"
         assert input_orders(table)[0] == (0, 1, 2)
@@ -223,8 +223,8 @@ def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
 @pytest.mark.parametrize("n", [1, 3, 6])
 @pytest.mark.parametrize("row", [0, 1, -1])
 def test_quarter_turned_lookup_preserves_input_order(n: int, row: int) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.streetcode.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(1 << n))
     row %= len(table)

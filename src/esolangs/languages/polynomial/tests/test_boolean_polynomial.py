@@ -7,6 +7,11 @@ import pytest
 import esolangs
 from esolangs import generate
 from esolangs._evaluate import _evaluate
+from esolangs.generation.wrap import (
+    DEFAULT_WIDTH,
+    balance_score,
+    wrap_program,
+)
 from esolangs.languages import generators as boolean
 from esolangs.languages.polynomial.generator import _polynomial_dag, _polynomial_states
 from esolangs.languages.polynomial.tests.polynomial_support import (
@@ -17,11 +22,6 @@ from esolangs.languages.polynomial.tests.runners import (
     run_polynomial_from,
 )
 from esolangs.languages.polynomial.wrapping import _polynomial
-from esolangs.tools.wrap import (
-    DEFAULT_WIDTH,
-    balance_score,
-    wrap_program,
-)
 from tests.support.witness_tables import row_bits
 
 

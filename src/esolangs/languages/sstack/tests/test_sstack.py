@@ -5,8 +5,8 @@ import re
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.sstack.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 
 
 def _out(code: str, stdin: str = "") -> str:

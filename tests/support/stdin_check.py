@@ -1,9 +1,9 @@
 """Test oracle for the stdin half of the Boolean I/O contract."""
 
 from esolangs.exceptions import ArgumentError, TruthTableError
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry import LANGUAGES, resolve
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.runtime.source_hints import with_hint
 
 
 def _validate_shape_for_evaluate(truth_table: str) -> int:

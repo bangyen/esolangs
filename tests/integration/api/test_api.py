@@ -9,8 +9,8 @@ from esolangs import _check_program, debugger
 from esolangs._evaluate import _evaluate
 from esolangs._validate import check_bits, check_scale, check_timeout, check_whole
 from esolangs.exceptions import EsolangError, UnknownLanguageError
-from esolangs.interpreters.source_hints import error_text
 from esolangs.registry import LANGUAGES
+from esolangs.runtime.source_hints import error_text
 from esolangs.vm import machine_traits
 from tests.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
@@ -70,7 +70,7 @@ def test_missing_dependency_error_is_public() -> None:
 
 
 def test_deliberate_error_keeps_partial_output(monkeypatch: pytest.MonkeyPatch) -> None:
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.runtime.io import ScriptedIO
 
     error = EsolangError("stop")
 

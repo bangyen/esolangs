@@ -35,9 +35,9 @@ import re
 from typing import cast
 
 from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 #: The registers, as an immutable name->value mapping.
 type _Regs = tuple[tuple[str, int], ...]

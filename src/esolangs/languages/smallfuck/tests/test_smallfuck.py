@@ -6,8 +6,8 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.smallfuck.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import smallfuck as oracle

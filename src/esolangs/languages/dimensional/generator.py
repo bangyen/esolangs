@@ -13,15 +13,19 @@ loop where that is shorter, any other entry is painted one by one.
 import re
 from itertools import groupby
 
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import (
+from esolangs.generation.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    input_weights,
+)
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import (
     _DIMENSIONAL_COMMAND,
     _dimensional,
     balance_score,
     wrap_program,
 )
+from esolangs.registry._language import Language, Shape
 
 __all__ = ["dimensional"]
 

@@ -5,8 +5,8 @@ import itertools
 import pytest
 import sympy
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from tests.proofs._research_dag import read_prune
 
 

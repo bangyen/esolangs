@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
@@ -15,7 +16,6 @@ from esolangs.languages.circuit_diagram.generator.hpool import (
     _large_pool_layout,
 )
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
-from esolangs.tools.helpers import _validate_truth_table
 
 
 def _folded_class_masks(

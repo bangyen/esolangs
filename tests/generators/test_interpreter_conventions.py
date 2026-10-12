@@ -9,8 +9,8 @@ import re
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.registry import LANGUAGES
+from esolangs.runtime.io import IO, ScriptedIO
 
 # The interpreter tree, anchored to this file rather than the working
 # directory, so the sweep finds the same modules wherever pytest was

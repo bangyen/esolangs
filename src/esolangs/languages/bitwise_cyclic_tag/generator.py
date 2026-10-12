@@ -12,17 +12,17 @@ Emission is ``program,data``; the count and why a cell needs four bits:
 
 from __future__ import annotations
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import (
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
     mark_runs,
     unmark,
 )
-from esolangs.tools.wrap import balance_program, wrap_chars
+from esolangs.generation.wrap import balance_program, wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language, Shape
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 PAIR = ("0", "1")

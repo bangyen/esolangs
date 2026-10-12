@@ -439,7 +439,7 @@ def _sources(
         imports = {}
     if not module.startswith("esolangs."):
         module = "esolangs." + (
-            module if module.startswith("interpreters.") else "interpreters." + module
+            module if module.startswith("runtime.") else "runtime." + module
         )
     entry = _module_path(module)
     if entry is None:
@@ -466,7 +466,7 @@ def _sources(
         # Shared inputs already invalidate every language; expanding registry
         # imports here would also pull in every unrelated generator.
         if (path in shared and path.is_relative_to(pkg / "registry")) or path == (
-            pkg / "tools" / "__init__.py"
+            pkg / "generation" / "__init__.py"
         ):
             continue
         if path not in imports:

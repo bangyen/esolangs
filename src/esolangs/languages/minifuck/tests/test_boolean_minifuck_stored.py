@@ -6,7 +6,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.minifuck.generator import (
     _lookup_balance,
     _lookup_layout,
@@ -15,7 +15,7 @@ from esolangs.languages.minifuck.generator import (
 from esolangs.languages.minifuck.generator.sim import PAIR
 from esolangs.languages.minifuck.generator.stored import _Plan, plan
 from esolangs.languages.minifuck.interpreter import _Machine
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime.io import ScriptedIO
 
 
 @pytest.mark.medium

@@ -9,7 +9,7 @@ from tests.generators.source_support import construction_symbols
 
 @pytest.fixture
 def sources(tmp_path: Path) -> Path:
-    tools = tmp_path / "esolangs/tools"
+    tools = tmp_path / "esolangs/generation"
     tools.mkdir(parents=True)
     (tools / "helpers.py").write_text(
         "def constant_span_test(table):\n    return table[0]\n"
@@ -27,7 +27,7 @@ def sources(tmp_path: Path) -> Path:
 
 def test_module_and_package_have_the_same_evidence(sources: Path) -> None:
     code = (
-        "from esolangs.tools.export import builder\n"
+        "from esolangs.generation.export import builder\n"
         "def generate(table):\n    return builder(table)\n"
     )
     module = sources / "generator.py"
@@ -44,7 +44,7 @@ def test_module_and_package_have_the_same_evidence(sources: Path) -> None:
 def test_module_alias_reaches_the_called_helper(sources: Path) -> None:
     path = sources / "generator.py"
     path.write_text(
-        "import esolangs.tools.emit as emitter\n"
+        "import esolangs.generation.emit as emitter\n"
         "def generate(table):\n    return emitter.emit(table)\n"
     )
     assert construction_symbols(path, sources, "generate") == {
@@ -67,7 +67,7 @@ def test_shadowed_or_annotated_helpers_are_not_evidence(
 ) -> None:
     path = sources / "generator.py"
     path.write_text(
-        "from esolangs.tools.helpers import constant_span_test as fold\n" + code
+        "from esolangs.generation.helpers import constant_span_test as fold\n" + code
     )
     assert construction_symbols(path, sources, "generate") == {"generate"}
 
@@ -75,7 +75,7 @@ def test_shadowed_or_annotated_helpers_are_not_evidence(
 def test_dependency_detection_does_not_establish_emitted_sharing(sources: Path) -> None:
     path = sources / "generator.py"
     path.write_text(
-        "from esolangs.tools.helpers import essential_inputs\n"
+        "from esolangs.generation.helpers import essential_inputs\n"
         "def generate(table):\n    return essential_inputs(table)\n"
     )
     assert construction_symbols(path, sources, "generate") == {
@@ -87,11 +87,13 @@ def test_dependency_detection_does_not_establish_emitted_sharing(sources: Path) 
 def test_removing_a_called_helper_changes_the_evidence(sources: Path) -> None:
     path = sources / "generator.py"
     path.write_text(
-        "from esolangs.tools.emit import emit\n"
+        "from esolangs.generation.emit import emit\n"
         "def generate(table):\n    return emit(table)\n"
     )
     assert "constant_span_test" in construction_symbols(path, sources, "generate")
-    (sources / "esolangs/tools/emit.py").write_text("def emit(table): return table\n")
+    (sources / "esolangs/generation/emit.py").write_text(
+        "def emit(table): return table\n"
+    )
     assert "constant_span_test" not in construction_symbols(path, sources, "generate")
 
 
@@ -100,7 +102,7 @@ def test_package_member_module_reaches_only_the_selected_function(
 ) -> None:
     path = sources / "generator.py"
     path.write_text(
-        "from esolangs.tools import emit as emitter\n"
+        "from esolangs.generation import emit as emitter\n"
         "def generate(table):\n    return emitter.emit(table)\n"
     )
     assert construction_symbols(path, sources, "generate") == {

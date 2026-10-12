@@ -2,9 +2,7 @@
 
 from dataclasses import dataclass
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
@@ -13,7 +11,9 @@ from esolangs.tools.helpers import (
     input_weights,
     read_at,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 
 @dataclass
@@ -490,7 +490,7 @@ def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
     the interpreter matches by substring.
 
     ``weights`` gives each input's row weight (see
-    :func:`~esolangs.tools.helpers.input_weights`); an ignored input, weight 0,
+    :func:`~esolangs.generation.helpers.input_weights`); an ignored input, weight 0,
     is read and stepped past, and ``truth_table`` is then its projection.
     The default is every input essential.
     """

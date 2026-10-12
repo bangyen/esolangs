@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.cursorless_io import PositionlessIO
 
 

@@ -35,8 +35,8 @@ def test_emitted_pixels_are_linear_in_the_table() -> None:
 
 @pytest.mark.medium
 def test_every_small_function_executes_without_growing() -> None:
+    from esolangs.generation.raster_lookup import _operations, strip
     from esolangs.languages.piet_plus_plus.generator import _next_colour
-    from esolangs.tools.raster_lookup import _operations, strip
 
     total = 0
     for inputs in range(1, 4):
@@ -68,8 +68,8 @@ def test_folded_functions_execute_through_png(inputs: int) -> None:
 
 
 def test_large_function_uses_a_smaller_fold() -> None:
+    from esolangs.generation.raster_lookup import _operations, strip
     from esolangs.languages.piet_plus_plus.generator import _next_colour
-    from esolangs.tools.raster_lookup import _operations, strip
 
     rng = random.Random(20261009)
     table = "".join(rng.choice("01") for _ in range(256))

@@ -2,9 +2,9 @@
 
 import random
 
+from esolangs.generation.wrap import balance_program, balance_score, wrap_program
 from esolangs.languages import generators as boolean
 from esolangs.languages.decleq.tests.runners import run_decleq
-from esolangs.tools.wrap import balance_program, balance_score, wrap_program
 from tests.support.witness_tables import parity as _parity
 from tests.support.witness_tables import row_bits
 

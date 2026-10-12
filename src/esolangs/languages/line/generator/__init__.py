@@ -31,18 +31,18 @@ import re
 from functools import lru_cache
 from typing import cast
 
-from esolangs.languages.line.generator.render import Canvas, Node, _check_unit, chain
-from esolangs.languages.line.generator.small_tree import small_tree_canvas
-from esolangs.languages.line.generator.tree_layout import tree_extents
-from esolangs.raster import Pixel, Raster, Rows, lazy_raster
-from esolangs.registry._language import Language, SourceKind
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _residual_ids,
     _validate_truth_table,
     essential_inputs,
     permute_truth_table,
     read_at,
 )
+from esolangs.languages.line.generator.render import Canvas, Node, _check_unit, chain
+from esolangs.languages.line.generator.small_tree import small_tree_canvas
+from esolangs.languages.line.generator.tree_layout import tree_extents
+from esolangs.raster import Pixel, Raster, Rows, lazy_raster
+from esolangs.registry._language import Language, SourceKind
 
 
 def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:

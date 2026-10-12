@@ -4,12 +4,12 @@ from collections.abc import Callable
 from functools import lru_cache
 from math import comb
 
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.factor.tests.proofs._factor_counter import (
     _Code,
     _counter,
     counter_program,
 )
-from esolangs.tools.helpers import _validate_truth_table
 
 _CELLS = 14
 _BUDGET = 14

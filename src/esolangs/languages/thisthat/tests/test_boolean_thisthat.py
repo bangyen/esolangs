@@ -8,9 +8,9 @@ from math import comb
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.thisthat.generator import _Builder, _deque_plan, _tree, thisthat
 from esolangs.languages.thisthat.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import (
     evaluate_generated,
     run_lines,
@@ -268,8 +268,8 @@ def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:
 
 @pytest.mark.medium
 def test_shared_area_envelope_admits_more_than_old_node_cap() -> None:
+    from esolangs.generation.helpers import subtree_ids
     from esolangs.languages.thisthat.generator._shared import shared_tree
-    from esolangs.tools.helpers import subtree_ids
 
     rng = random.Random(15)
     table = "".join(rng.choice("01") for _ in range(64))

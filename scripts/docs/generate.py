@@ -219,7 +219,7 @@ def render_contributor_tools_section() -> str:
             or source == colocated.with_suffix(".py").resolve()
         ):
             raise ValueError(f"{language.name}'s generator is outside {colocated}")
-    return "| `src/esolangs/tools/` | shared generator helpers |"
+    return "| `src/esolangs/generation/` | shared generator helpers |"
 
 
 def _reads_stdin() -> list[str]:

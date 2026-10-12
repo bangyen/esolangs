@@ -5,9 +5,9 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw
 from esolangs.languages.intercal.interpreter import _expression, _Machine, run
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import run_until_halt_or_all_branches_cycle
 from tests.interpreters.runner import run_program
 from tests.support.paths import ROOT

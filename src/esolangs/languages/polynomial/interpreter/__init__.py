@@ -34,8 +34,6 @@ from typing import cast
 from esolangs._digits import digit_limit_for
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.polynomial.interpreter.roots import (
     _PEEL_MAX_EXPONENT,
     _PEEL_MAX_IMAGINARY_EXPONENT,
@@ -48,6 +46,8 @@ from esolangs.languages.polynomial.interpreter.roots import (
 from esolangs.languages.polynomial.interpreter.roots import (
     prime as prime,
 )
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 
 def _bracket_pairs(string: list[list[int]]) -> dict[int, int]:

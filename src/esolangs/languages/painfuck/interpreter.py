@@ -50,10 +50,10 @@ from typing import cast
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.randomness import Randomness, draw
+from esolangs.runtime.source_hints import with_hint
 
 # The two substitution cycles, in the order the cross-check scans them.
 _CYCLES = ("pevkjzwr", "yuctsobqihald")

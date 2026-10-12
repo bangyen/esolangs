@@ -17,10 +17,10 @@ I/O and the malformed-line rejection are the shell's.
 
 from __future__ import annotations
 
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import parse_integer
-from esolangs.interpreters.persistent import (
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
+from esolangs.runtime.persistent import (
     Chunked,
     append,
     chunked,
@@ -30,7 +30,7 @@ from esolangs.interpreters.persistent import (
     prepend,
     put,
 )
-from esolangs.interpreters.source_hints import keyword_hint, syntax_error
+from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
 #: ``(ind, ptr, cells)``: an immutable value, rebound per step.  The
 #: parsed line is a parameter, not a field.
@@ -117,7 +117,7 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
     current = get(cells, ptr)
     if current == value:
         if command in ("increment", "inc"):
-            # The tape is chunked (:mod:`esolangs.interpreters.persistent`),
+            # The tape is chunked (:mod:`esolangs.runtime.persistent`),
             # so a write rebuilds one chunk rather than the whole tape.
             cells = put(cells, ptr, (current + 1) % 256)
         elif command == "right":

@@ -5,12 +5,12 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.packlang.interpreter import (
     _Machine,
     run,
 )
 from esolangs.languages.packlang.interpreter._parse import _Parser
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 
 _run = partial(run_program, run)

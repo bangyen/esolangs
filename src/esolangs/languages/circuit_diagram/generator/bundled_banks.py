@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.circuit_diagram.generator import _circuit_diagram_model
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
@@ -13,7 +14,6 @@ from esolangs.languages.circuit_diagram.generator.folded_banks import (
 from esolangs.languages.circuit_diagram.generator.forest import _suffix_forest
 from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_area_floor
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
-from esolangs.tools.helpers import _validate_truth_table
 
 
 def bundled_class_bank_candidate(

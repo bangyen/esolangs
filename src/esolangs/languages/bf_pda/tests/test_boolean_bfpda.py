@@ -56,8 +56,8 @@ def test_shared_residual_executes_within_ledger() -> None:
 
 
 def _execute_bank(table, template, rows):
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.bf_pda.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
     from tests.generators.fills import fill
 

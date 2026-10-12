@@ -57,10 +57,10 @@ class TestLaserFuck:
         assert vm.output == "\x01"
 
     def test_dump_output_matches_interpreter(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.randomness import Seeded
         from esolangs.languages.laserfuck.interpreter import _Machine as _LFMachine
         from esolangs.languages.laserfuck.interpreter import run as lf_run
+        from esolangs.runtime.io import ScriptedIO
+        from esolangs.runtime.randomness import Seeded
 
         program = "\u00ff   x\n    +\n    o"
         io_obj = ScriptedIO()

@@ -2,9 +2,9 @@
 
 import pytest
 
-from esolangs.interpreters.io import IO
 from esolangs.languages.streetcode.interpreter import _Machine, run
 from esolangs.languages.streetcode.tests.streetcode_support import run_street
+from esolangs.runtime.io import IO
 from tests.support.paths import ROOT
 
 

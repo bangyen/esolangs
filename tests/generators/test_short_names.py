@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs.tools.helpers import short_name
+from esolangs.generation.helpers import short_name
 
 
 @pytest.mark.parametrize(

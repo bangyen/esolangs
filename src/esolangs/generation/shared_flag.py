@@ -6,14 +6,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import pairwise
 
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     move_text,
     subtree_ids,
 )
-from esolangs.tools.shared_block import ContinuationCost as _Cost
-from esolangs.tools.shared_block import (
+from esolangs.generation.shared_block import ContinuationCost as _Cost
+from esolangs.generation.shared_block import (
     repeated_bank,
     repeated_block,
     repeated_blocks,

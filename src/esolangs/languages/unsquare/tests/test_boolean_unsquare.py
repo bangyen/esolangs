@@ -65,8 +65,8 @@ class TestUnsquare:
 
 @pytest.mark.medium
 def test_shared_push_body_executes_within_ledger() -> None:
+    from esolangs.generation.helpers import essential_inputs, read_at
     from esolangs.languages.unsquare.generator import _runs, _shared_pushes, unsquare
-    from esolangs.tools.helpers import essential_inputs, read_at
     from tests.support.generator_support import assert_shared_program
 
     first = "0001011101101001" * 4

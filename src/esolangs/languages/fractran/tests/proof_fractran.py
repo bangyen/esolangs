@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import random
 
-from esolangs.languages.fractran.generator import PAIR, _primes, _tree, fractran
-from esolangs.languages.fractran.interpreter import _choose, _parse
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     constant_span_test,
     fill_runs,
 )
+from esolangs.languages.fractran.generator import PAIR, _primes, _tree, fractran
+from esolangs.languages.fractran.interpreter import _choose, _parse
 from tests.support.witness_tables import row_bits
 
 #: Cost band; see ``__main__.py``.  Cheap because a run is a firing a level:

@@ -16,9 +16,9 @@ proves it.
 from collections.abc import Mapping
 from typing import Literal
 
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 # ``(dx, dy)``; named so a heading stays distinct from its character.
 _Heading = Literal["n", "e", "s", "w"]

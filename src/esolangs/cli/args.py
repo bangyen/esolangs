@@ -21,8 +21,8 @@ from esolangs.cli.hints import (
     _did_you_mean,
 )
 from esolangs.exceptions import EsolangError
+from esolangs.generation.wrap import DEFAULT_WIDTH
 from esolangs.settings import DialectSettings, dialect_choices
-from esolangs.tools.wrap import DEFAULT_WIDTH
 
 #: Flags every subcommand accepts, so a near miss on one of them is
 #: suggested by whichever subcommand it was typed after.

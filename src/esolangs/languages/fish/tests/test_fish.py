@@ -3,9 +3,9 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw
 from esolangs.languages.fish.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.randomness import FirstDraw
 from tests.support.raises import assert_halts_with_hint
 
 

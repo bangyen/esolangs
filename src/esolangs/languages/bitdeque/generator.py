@@ -4,9 +4,7 @@ import re
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     best_input_order,
@@ -15,8 +13,10 @@ from esolangs.tools.helpers import (
     same_tokens,
     subtree_ids,
 )
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _join_tokens, balance_score
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _join_tokens, balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 
@@ -36,7 +36,7 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     the one-subtree; a leaf drains with ``n+1`` ``POP``s, pushes the answer,
     restores the register with ``INVERT``, and uses a low-address halt
     trampoline.  The split order is whichever is shortest
-    (:func:`~esolangs.tools.helpers.best_input_order`): a deque's
+    (:func:`~esolangs.generation.helpers.best_input_order`): a deque's
     ``EJECT``/``INJECT`` work the head, so any bit can be brought to an end
     at two commands per position, measured not modelled.  Rotations happen
     inside the tree; the load is byte-identical under every order.

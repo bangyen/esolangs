@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.generation.helpers import _validate_truth_table
 
 from . import _Builder, _dag, _mux, _Value
 from .layout import _Layout

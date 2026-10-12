@@ -114,7 +114,10 @@ def construction_symbols(path: Path, root: Path, symbol: str) -> set[str]:
         references = _References()
         if selected is not None:
             reached.add(name)
-            if file.is_relative_to(root / "esolangs/tools") and name in _PRIMITIVES:
+            if (
+                file.is_relative_to(root / "esolangs/generation")
+                and name in _PRIMITIVES
+            ):
                 continue
             references.visit(selected)
         else:
@@ -144,9 +147,11 @@ def construction_symbols(path: Path, root: Path, symbol: str) -> set[str]:
                 continue
             module, target = imports[reference]
             if module not in {
-                "esolangs.tools",
+                "esolangs.generation",
                 "esolangs.languages",
-            } and not module.startswith(("esolangs.tools.", "esolangs.languages.")):
+            } and not module.startswith(
+                ("esolangs.generation.", "esolangs.languages.")
+            ):
                 continue
             base = root.joinpath(*module.split("."))
             dependency = base.with_suffix(".py")

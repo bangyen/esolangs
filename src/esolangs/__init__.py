@@ -73,8 +73,17 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.generation.helpers import mark_runs, same_up_to_wrapping, unmark
+
+# Imported private: it takes a *generator function*, not a language name, so
+# a caller reaching for ``esolangs.takes_width(language)`` got False for
+# every language in the registry, contradicting both its own docstring and
+# ``describe(...)["width_aware"]`` -- which is the question they were asking.
+from esolangs.generation.wrap import (
+    balance_program,
+    wrap_program,
+)
+from esolangs.generation.wrap import takes_width as _takes_width
 from esolangs.portable import dump_program, load_program
 from esolangs.raster import Raster
 from esolangs.registry import (
@@ -88,19 +97,10 @@ from esolangs.registry import (
     template_body,
     template_char,
 )
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
-from esolangs.tools.helpers import mark_runs, same_up_to_wrapping, unmark
-
-# Imported private: it takes a *generator function*, not a language name, so
-# a caller reaching for ``esolangs.takes_width(language)`` got False for
-# every language in the registry, contradicting both its own docstring and
-# ``describe(...)["width_aware"]`` -- which is the question they were asking.
-from esolangs.tools.wrap import (
-    balance_program,
-    wrap_program,
-)
-from esolangs.tools.wrap import takes_width as _takes_width
 
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);

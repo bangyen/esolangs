@@ -46,8 +46,8 @@ def test_id_matches_the_generator_function() -> None:
 
 
 def test_a_language_cannot_both_wrap_and_refuse_to() -> None:
+    from esolangs.generation.wrap import wrap_chars
     from esolangs.registry._language import Language
-    from esolangs.tools.wrap import wrap_chars
 
     with pytest.raises(ValueError, match="exclude each other"):
         Language("X", wrap=wrap_chars, no_wrap="a break changes it")

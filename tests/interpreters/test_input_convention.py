@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.reference import REFERENCE
 
 
@@ -53,8 +53,8 @@ def assert_reads_tokens_on_one_line(language: str) -> None:
 # ``LANGUAGE``'s ``eof=``: a statement about it, not an exception to ignore.
 def _reading_languages() -> list[str]:
     """The examples whose programs read their inputs from the stream."""
+    from esolangs.generation.examples import BOOLEAN_EXAMPLES
     from esolangs.registry import LANGUAGES
-    from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     eof = {lang.interpreter for lang in LANGUAGES.values() if lang.eof}
     return sorted(
@@ -69,7 +69,7 @@ def _reading_languages() -> list[str]:
 @pytest.mark.parametrize("name", _reading_languages())
 def test_running_out_of_input_reaches_the_caller(name: str) -> None:
     """A program that reads, handed nothing, raises rather than inventing."""
-    from esolangs.tools.examples import BOOLEAN_EXAMPLES
+    from esolangs.generation.examples import BOOLEAN_EXAMPLES
 
     example = BOOLEAN_EXAMPLES[name]
     from esolangs.raster import Raster

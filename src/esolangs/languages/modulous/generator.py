@@ -7,10 +7,14 @@ import re
 from itertools import pairwise
 from math import isqrt
 
+from esolangs.generation.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    input_weights,
+)
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _BRACKET_LITERAL, balance_score
 from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _BRACKET_LITERAL, balance_score
 
 
 def modulous(truth_table: str, width: int | None = None) -> str:
@@ -38,7 +42,7 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     program = f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
     if width is None or width <= 0:
         return program
-    from esolangs.tools.wrap import _bracket_literal, wrap_space_delimited
+    from esolangs.generation.wrap import _bracket_literal, wrap_space_delimited
 
     wrapped = _bracket_literal(program, width)
     if max(map(len, wrapped.splitlines())) <= width:

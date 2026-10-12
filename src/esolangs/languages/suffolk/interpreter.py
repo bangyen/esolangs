@@ -15,9 +15,9 @@ The transition :func:`_advance` is pure over an immutable ``_State``
 
 from __future__ import annotations
 
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 #: ``(ind, ptr, acc, tape)``: an immutable value, rebound per step.  No
 #: halted flag: Suffolk has no instruction-level halt.

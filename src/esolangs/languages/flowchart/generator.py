@@ -15,9 +15,7 @@ sets the register once), so it has no subtrees to share.
 from collections import Counter
 from itertools import pairwise
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
@@ -26,7 +24,9 @@ from esolangs.tools.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 
 # Fewest table rows a subtree must span for the stacked layout to draw it once.
 _SHARE_ROWS = 8

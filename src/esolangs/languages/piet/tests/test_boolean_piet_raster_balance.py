@@ -3,13 +3,13 @@
 import pytest
 
 import esolangs
-from esolangs.raster import Raster
-from esolangs.tools.raster_lookup.balance import (
+from esolangs.generation.raster_lookup.balance import (
     _bounded_operations,
     _emit,
     _plan,
     _tight_plan,
 )
+from esolangs.raster import Raster
 from tests.support.witness_tables import witnesses
 
 pytestmark = pytest.mark.medium
@@ -89,7 +89,7 @@ def test_tight_routing_never_grows_and_executes(width: int) -> None:
 def test_white_bridge_lanes_execute_exhaustively(
     *, duplicate: bool, short: bool, width: int
 ) -> None:
-    from esolangs.tools.raster_lookup.packing import _layout
+    from esolangs.generation.raster_lookup.packing import _layout
 
     for inputs in (1, 2, 3):
         for encoded in range(2 ** (2**inputs)):
@@ -123,9 +123,9 @@ def test_white_bridge_lanes_execute_exhaustively(
     ],
 )
 def test_white_bridge_turn_colors_and_halt_execute(table: str) -> None:
+    from esolangs.generation.raster_lookup.balance import _balanced_plan
+    from esolangs.generation.raster_lookup.packing import pack
     from esolangs.languages.piet.interpreter import BLACK, WHITE
-    from esolangs.tools.raster_lookup.balance import _balanced_plan
-    from esolangs.tools.raster_lookup.packing import pack
 
     operations = _bounded_operations(table)
     default = esolangs.generate("Piet", table)
@@ -154,8 +154,8 @@ def test_white_bridge_turn_colors_and_halt_execute(table: str) -> None:
 def test_packed_routing_invariant_failures_abort(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from esolangs.tools.raster_lookup import _INITIAL, packing
-    from esolangs.tools.raster_lookup.packing import _lanes, _layout, _put
+    from esolangs.generation.raster_lookup import _INITIAL, packing
+    from esolangs.generation.raster_lookup.packing import _lanes, _layout, _put
 
     with pytest.raises(AssertionError, match="no room"):
         _lanes(_bounded_operations("01101001"), 5)

@@ -5,7 +5,7 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.fractran.generator import PAIR
 from esolangs.languages.fractran.interpreter import _Machine
 from esolangs.languages.fractran.tests.proofs import _fractran_order
@@ -15,7 +15,7 @@ from esolangs.languages.fractran.tests.proofs._fractran_order import (
     capacity,
     stream_template,
 )
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import row_bits
 
 

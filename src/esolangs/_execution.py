@@ -19,10 +19,10 @@ from esolangs.exceptions import (
     InterpreterLimitError,
     ProgramError,
 )
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import Seeded
-from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import INTERPRETERS, LANGUAGES
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.randomness import Seeded
+from esolangs.runtime.source_hints import with_hint
 
 
 def check_signal_timeout(timeout: float | None, message: str) -> None:

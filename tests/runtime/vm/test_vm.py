@@ -17,7 +17,7 @@ def assert_random_steps_reproduce(language: str, program: str) -> None:
     Each random language calls this from its own test file with a program
     that reaches its random instruction.
     """
-    from esolangs.interpreters import randomness
+    from esolangs.runtime import randomness
 
     def trace() -> list[object]:
         vm = debugger_api.make_vm(language, program)
@@ -115,7 +115,7 @@ class TestEveryLanguageIsSteppable:
 
     def test_the_stub_sources_reject_an_empty_range(self) -> None:
         """``randbelow`` checks its bound instead of ignoring it."""
-        from esolangs.interpreters.randomness import FirstDraw, Seeded
+        from esolangs.runtime.randomness import FirstDraw, Seeded
 
         for source in (Seeded(0), FirstDraw(1)):
             for bad in (0, -1):

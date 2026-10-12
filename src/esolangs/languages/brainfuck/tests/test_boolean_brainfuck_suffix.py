@@ -4,13 +4,13 @@ import random
 
 import pytest
 
+from esolangs.generation.helpers import essential_inputs
 from esolangs.languages.brainfuck.generator import _bf_ordered
 from esolangs.languages.brainfuck.generator._binary import (
     binary_bank,
     larger_suffix_bank,
 )
 from esolangs.languages.brainfuck.tests.test_boolean_brainfuck_binary import _execute
-from esolangs.tools.helpers import essential_inputs
 
 
 def _fixture(remaining, classes):

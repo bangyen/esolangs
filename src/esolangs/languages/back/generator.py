@@ -4,9 +4,7 @@ from collections.abc import Callable
 from itertools import pairwise
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
@@ -17,7 +15,9 @@ from esolangs.tools.helpers import (
     same_up_to_wrapping,
     subtree_ids,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 _Node = tuple[int, int]
 _Grid = dict[tuple[int, int], str]

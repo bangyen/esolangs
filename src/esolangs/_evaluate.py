@@ -26,11 +26,11 @@ from esolangs.exceptions import (
     ExecutionTimeoutError,
     InterpreterLimitError,
 )
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.generation.helpers import MOST_INPUTS
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.tools.helpers import MOST_INPUTS
 from esolangs.vm import make_vm
 
 

@@ -27,11 +27,11 @@ def test_a_planted_unread_name_is_reported(tmp_path: Path) -> None:
     root = _tree(
         tmp_path,
         {
-            "src/esolangs/tools/gen.py": (
+            "src/esolangs/generation/gen.py": (
                 "def gen(t):\n    return t\n\n\ndef _old_route(t):\n    return t * 2\n"
             ),
             "src/esolangs/registry.py": (
-                "from esolangs.tools.gen import gen\nLANGS = {'g': gen}\n"
+                "from esolangs.generation.gen import gen\nLANGS = {'g': gen}\n"
             ),
         },
     )
@@ -44,9 +44,9 @@ def test_an_import_alias_counts_as_a_read(tmp_path: Path) -> None:
     root = _tree(
         tmp_path,
         {
-            "src/esolangs/tools/gen.py": "def _parse(t):\n    return t\n",
+            "src/esolangs/generation/gen.py": "def _parse(t):\n    return t\n",
             "src/esolangs/other.py": (
-                "from esolangs.tools.gen import _parse as _p\n\n\n"
+                "from esolangs.generation.gen import _parse as _p\n\n\n"
                 "def run(t):\n    return _p(t)\n"
             ),
         },
@@ -59,14 +59,14 @@ def test_a_forward_reference_counts_as_a_read(tmp_path: Path) -> None:
     root = _tree(
         tmp_path,
         {
-            "src/esolangs/tools/gen.py": (
+            "src/esolangs/generation/gen.py": (
                 "from typing import Literal\n"
                 "_Halt = Literal['halt']\n\n\n"
                 "def step(s) -> '_State | _Halt | None':\n    return None\n\n\n"
                 "class _State:\n    pass\n"
             ),
             "src/esolangs/other.py": (
-                "from esolangs.tools.gen import step\nRUN = step\n"
+                "from esolangs.generation.gen import step\nRUN = step\n"
             ),
         },
     )

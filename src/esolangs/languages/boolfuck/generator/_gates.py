@@ -2,12 +2,12 @@
 
 from typing import Literal
 
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     subtree_ids,
 )
-from esolangs.tools.shared_block import ContinuationCost as _Cost
+from esolangs.generation.shared_block import ContinuationCost as _Cost
 
 type _Kind = Literal["and", "xor"]
 type _Normal = tuple[_Kind | None, int, bool, bool, int | None]

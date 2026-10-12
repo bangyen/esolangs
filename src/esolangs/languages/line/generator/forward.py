@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _residual_ids,
     _validate_truth_table,
     essential_inputs,

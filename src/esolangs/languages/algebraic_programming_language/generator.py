@@ -4,9 +4,7 @@ from collections.abc import Callable
 from itertools import pairwise
 from string import ascii_uppercase
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
@@ -15,6 +13,8 @@ from esolangs.tools.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 #: Input variable names in harness order; a variable is bound by being
 #: named on an executed line, so these must be codepoint-ascending
@@ -192,7 +192,7 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     agree is that half -- the reads prefix binds every input, so dropping a
     test drops no read -- and a node that complements one already built at
     its level is ``!`` of it.  Nodes are interned bottom-up from
-    :func:`~esolangs.tools.helpers.subtree_ids`, a dict lookup a node, and
+    :func:`~esolangs.generation.helpers.subtree_ids`, a dict lookup a node, and
     each piece is emitted once per use as the inline tree emits it: O(T).
     """
     n = _validate_truth_table(truth_table)
@@ -503,7 +503,7 @@ def balance_apl(table: str, default: str) -> str:
         ]
         candidates.append(min((program for program, _ in layouts), key=len))
         width = min((point for _, point in layouts if point is not None), default=None)
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     return min(candidates, key=balance_score)
 

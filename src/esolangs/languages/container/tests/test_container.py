@@ -6,8 +6,8 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.interpreters.io import IO
 from esolangs.languages.container.interpreter import run
+from esolangs.runtime.io import IO
 from tests.interpreters.contract import SnapshotContract, StateViewContract
 from tests.support.fixtures import grid
 from tests.support.raises import raises_message
@@ -117,8 +117,8 @@ class TestStepMachine:
 
     def test_the_read_container_takes_one_character_per_firing(self) -> None:
         """The empty-named container reads one character each time it turns on."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.container.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         code = [":", "+1 <=0", "-1 >=1", "", "IN:"]
         machine = _Machine(code, ScriptedIO("AB"))
@@ -130,8 +130,8 @@ class TestStepMachine:
 
     def test_a_read_at_eof_sets_in_to_zero(self) -> None:
         """Wiki rev 135848: the read sets IN "with EOF returning 0"."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.container.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine([":", "+1 <=0", "-1 >=1", "", "IN:"], ScriptedIO("A"))
         seen = []
@@ -154,8 +154,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
     from esolangs.languages.container.interpreter import _Machine
+    from esolangs.runtime.io import IO
 
     return _Machine(code, IO())
 

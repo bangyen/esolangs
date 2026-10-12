@@ -3,7 +3,7 @@
 from collections import defaultdict
 from math import isqrt
 
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     read_at,
     subtree_ids,

@@ -11,10 +11,7 @@ import string
 from collections.abc import Callable
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.interpreters.source_hints import with_hint
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _GREEDY_ORDER_MAX_ARITY,
     _greedy_input_order,
@@ -26,7 +23,10 @@ from esolangs.tools.helpers import (
     subtree_ids,
     subtree_slot,
 )
-from esolangs.tools.wrap import _six_five
+from esolangs.generation.wrap import _six_five
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
+from esolangs.runtime.source_hints import with_hint
 
 __all__ = ["six_five"]
 

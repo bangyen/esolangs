@@ -31,15 +31,15 @@ import math
 from collections import Counter
 from functools import partial
 
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     in_input_order,
     input_weights,
     subtree_ids,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._language import Language
 
 __all__ = ["cvnc"]
 

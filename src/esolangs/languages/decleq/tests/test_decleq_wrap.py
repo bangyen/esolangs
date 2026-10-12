@@ -1,6 +1,6 @@
 import pytest
 
-from esolangs.tools.wrap import wrap_program
+from esolangs.generation.wrap import wrap_program
 
 
 @pytest.mark.parametrize("width", [0, -1])

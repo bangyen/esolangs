@@ -5,10 +5,10 @@ import itertools
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import _Machine as BFMachine
 from esolangs.languages.unary.generator import _decoded, unary
 from esolangs.languages.unary.interpreter import _Machine, decode
+from esolangs.runtime.io import ScriptedIO
 
 
 def _answer(machine: BFMachine | _Machine) -> tuple[str, int]:

@@ -7,10 +7,14 @@ from itertools import combinations
 from math import isqrt
 from typing import Any
 
+from esolangs.generation.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    input_weights,
+)
+from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
-from esolangs.tools.wrap import balance_score, wrap_space_delimited
 
 __all__ = ["qoibl"]
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _residual_ids,
     _validate_truth_table,
     permute_truth_table,

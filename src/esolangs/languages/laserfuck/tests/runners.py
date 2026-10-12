@@ -3,8 +3,8 @@
 import io
 from contextlib import redirect_stdout
 
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import FirstDraw
+from esolangs.runtime.io import IO
+from esolangs.runtime.randomness import FirstDraw
 
 
 def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:

@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 import shlex
 
+from esolangs.generation.wrap import DEFAULT_WIDTH
 from esolangs.registry import LANGUAGES, SourceKind
-from esolangs.tools.wrap import DEFAULT_WIDTH
 
 
 def _capability_examples() -> tuple[str, str]:

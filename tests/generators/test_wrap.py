@@ -5,10 +5,9 @@ import pytest
 
 import esolangs
 from esolangs import generate, run
-from esolangs.registry import LANGUAGES, canonical_id
-from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
-from esolangs.tools.examples import BooleanExample
-from esolangs.tools.wrap import (
+from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
+from esolangs.generation.examples import BooleanExample
+from esolangs.generation.wrap import (
     MULTILINE,
     WRAPPERS,
     _cell_width,
@@ -20,6 +19,7 @@ from esolangs.tools.wrap import (
     wrap_space_delimited,
     wrap_tokens,
 )
+from esolangs.registry import LANGUAGES, canonical_id
 from tests.support.divergence import diverges, terminates
 from tests.support.generator_support import CHECK
 from tests.support.witness_tables import parity

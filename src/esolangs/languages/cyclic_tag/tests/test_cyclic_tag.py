@@ -2,10 +2,10 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, essential_inputs, fill_runs
 from esolangs.languages.cyclic_tag.generator import cyclic_tag
 from esolangs.languages.cyclic_tag.interpreter import _Machine, run
-from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, fill_runs
+from esolangs.runtime.io import ScriptedIO
 from tests.support.raises import assert_rejected_with_hint
 from tests.support.witness_tables import witnesses
 

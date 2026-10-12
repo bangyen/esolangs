@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from decimal import Decimal
 
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 
 def parse_integer(source: str) -> int:

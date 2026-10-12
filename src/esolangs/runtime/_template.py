@@ -11,8 +11,8 @@ are listed under "Interpreter conventions" in ``docs/CONTRIBUTING.md``.
 """
 
 from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 #: The whole run state as an immutable value, so ``snapshot`` can hand it
 #: out and the transition returns a new one.

@@ -9,10 +9,10 @@ import pytest
 
 from esolangs import generate
 from esolangs.exceptions import GeneratorCapError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages import generators as boolean
 from esolangs.languages.malbolge.generator.core import _cascade
 from esolangs.languages.malbolge.interpreter import _XLAT1, _load, run
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import dense, parity, row_bits
 
 _module = importlib.import_module("esolangs.languages.malbolge.generator")

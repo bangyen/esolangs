@@ -5,7 +5,6 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.circuit_diagram.generator import circuit_diagram
 from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
 from esolangs.languages.circuit_diagram.generator.hpool import (
@@ -13,6 +12,7 @@ from esolangs.languages.circuit_diagram.generator.hpool import (
     _h_pool_size,
 )
 from esolangs.languages.circuit_diagram.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.witness_tables import dense, nested_dense, parity
 

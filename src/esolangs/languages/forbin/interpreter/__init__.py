@@ -60,8 +60,6 @@ from typing import Literal
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.forbin.interpreter._parse import (
     _ForSpec,
     _Function,
@@ -69,6 +67,8 @@ from esolangs.languages.forbin.interpreter._parse import (
     _Statement,
     _ValueNode,
 )
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 #: Functions here that call an IO effect outside the ``run``/``_Machine``
 #: shells, read by the interpreter-convention sweep.  ``_call`` is a

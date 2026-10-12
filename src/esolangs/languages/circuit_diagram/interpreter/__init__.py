@@ -73,7 +73,6 @@ from functools import lru_cache
 from typing import cast
 
 from esolangs._drive import drive
-from esolangs.interpreters.io import IO
 from esolangs.languages.circuit_diagram.interpreter._functions import (
     _ClockStream,
     _evaluate_function,
@@ -93,6 +92,7 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
     _split_definitions,
     _Wiring,
 )
+from esolangs.runtime.io import IO
 
 
 @lru_cache(maxsize=16)

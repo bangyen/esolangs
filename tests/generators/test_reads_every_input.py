@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import vm
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.runtime.io import ScriptedIO
 from tests.reference import REFERENCE
 from tests.support.generator_support import assert_proved_resource_cap
 

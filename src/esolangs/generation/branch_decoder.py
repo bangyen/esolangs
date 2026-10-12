@@ -1,6 +1,6 @@
 """Hoisted subtract-and-branch trees with direct or indirect jump targets."""
 
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,

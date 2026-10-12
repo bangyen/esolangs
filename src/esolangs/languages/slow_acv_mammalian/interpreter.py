@@ -18,9 +18,9 @@ import functools
 import operator
 from dataclasses import dataclass
 
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import keyword_hint, syntax_error
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
 MODULI = (255, 256)
 

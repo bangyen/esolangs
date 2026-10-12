@@ -6,15 +6,15 @@ from itertools import count, pairwise
 from string import ascii_letters
 from typing import NamedTuple
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     input_weights,
     short_name,
     subtree_ids,
 )
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 #: The names Container gives its own meaning, which a generated container
 #: may not take.  The names draw from a mixed-case alphabet and so reach
@@ -492,7 +492,7 @@ def container(truth_table: str, width: int | None = None) -> str:
 
 def balance_container(table: str, default: str) -> str:
     """Compare rule-fit and decimal-delta budget transitions."""
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     n = _validate_truth_table(table)
     span = max(map(len, default.splitlines()))

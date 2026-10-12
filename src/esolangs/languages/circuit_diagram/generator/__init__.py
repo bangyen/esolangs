@@ -75,6 +75,13 @@ a run prints exactly one character.
 from collections.abc import Iterator
 from typing import Any, Literal
 
+from esolangs.generation.helpers import (
+    _validate_truth_table,
+    essential_inputs,
+    grid_width,
+    narrowest_grid,
+    read_at,
+)
 from esolangs.languages.circuit_diagram.generator.columns import _FreeColumns
 from esolangs.languages.circuit_diagram.generator.hlayout import (
     _h_minterm_sites,
@@ -84,13 +91,6 @@ from esolangs.languages.circuit_diagram.generator.hlayout import (
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
-    _validate_truth_table,
-    essential_inputs,
-    grid_width,
-    narrowest_grid,
-    read_at,
-)
 
 # Gate characters used by muxes and the two self-fed constant forms.
 _GateGlyph = Literal["a", "o", "x", "X"]

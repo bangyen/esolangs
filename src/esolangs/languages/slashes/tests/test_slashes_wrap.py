@@ -1,4 +1,4 @@
-from esolangs.tools.wrap import wrap_program
+from esolangs.generation.wrap import wrap_program
 
 
 def test_unwrappable_source_is_untouched() -> None:

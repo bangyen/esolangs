@@ -23,10 +23,10 @@ import re
 from collections.abc import Callable, Mapping, Sequence
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import format_integer
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
+from esolangs.runtime.source_hints import syntax_error
 
 INSTRUCTIONS = frozenset({"tt", "we", "qe", "et", "yr", "ry", "rr"})
 OPERATORS = frozenset({"ee", "ey", "ye", "yy"})

@@ -8,7 +8,7 @@ right-hand side substitutes a line of input; a ``~`` prefix prints the rest.
 
 Which occurrence of which rule is the spec's choice, and it is random, so this
 interpreter *draws* it through the shared
-:mod:`~esolangs.interpreters.randomness` hook rather than pinning a tie-break:
+:mod:`~esolangs.runtime.randomness` hook rather than pinning a tie-break:
 pinned, overlapping rules would compute whatever this file preferred.  ``rng``
 fixes the draw for reproducibility, and the branching protocol below lets the
 hang proof search *every* draw, as a random-branch language does.  A program whose
@@ -36,10 +36,10 @@ from bisect import bisect_left, bisect_right
 from itertools import accumulate
 
 from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.randomness import Randomness, draw
+from esolangs.runtime.source_hints import syntax_error
 
 _SEPARATOR = "::="
 #: The right-hand side that reads a line of input instead of text.

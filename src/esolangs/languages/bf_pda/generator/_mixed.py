@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from esolangs.generation.helpers import TEMPLATE_CHAR
+from esolangs.generation.shared_block import repeated_definitions
 from esolangs.languages.bf_pda.generator._bank import _body_metrics, _Metric
-from esolangs.tools.helpers import TEMPLATE_CHAR
-from esolangs.tools.shared_block import repeated_definitions
 
 if TYPE_CHECKING:
     from esolangs.languages.bf_pda.generator import _TreeContext

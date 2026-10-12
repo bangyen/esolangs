@@ -3,9 +3,7 @@
 from functools import cache
 from typing import NamedTuple
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     grid_width,
@@ -17,6 +15,8 @@ from esolangs.tools.helpers import (
     permute_truth_table,
     subtree_ids,
 )
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 __all__ = ["laserfuck"]
 
@@ -813,7 +813,7 @@ def balance_laserfuck(table: str, default: str) -> str:
             span for span in spans if start < span and (stop is None or span < stop)
         )
     # Local: a module-level import changes the dump's callable keys.
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     return min(
         default,

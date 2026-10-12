@@ -12,6 +12,11 @@ no subtrees to fold or share.  The reads are unconditional and first.
 from math import prod
 from typing import Any
 
+from esolangs.generation.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    input_weights,
+)
 from esolangs.languages.alight.interpreter._dialect import (
     EXPRESSION_SYNTAXES,
     LIST_UPDATES,
@@ -24,7 +29,6 @@ from esolangs.languages.alight.interpreter._dialect import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 
 __all__ = ["alight"]
 

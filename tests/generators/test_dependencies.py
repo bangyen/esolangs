@@ -2,7 +2,7 @@
 
 import random
 
-from esolangs.tools import helpers
+from esolangs.generation import helpers
 from tests.support.witness_tables import witnesses
 
 

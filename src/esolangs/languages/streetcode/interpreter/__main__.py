@@ -1,6 +1,6 @@
 """Run a Streetcode program file."""
 
-from esolangs.interpreters._entry import script_main
+from esolangs.runtime._entry import script_main
 
 from . import run
 

@@ -1,8 +1,6 @@
 """Boolean generator for Suffolk: shared NOR cofactors or a countdown sweep."""
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
@@ -10,7 +8,9 @@ from esolangs.tools.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 
 #: The cell plan.  Cost here is a cell's *index* -- every read spends one
 #: ``>`` per cell crossed -- so the countdown, which every sweep op reads,

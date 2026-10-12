@@ -6,17 +6,20 @@ has no subtree to fold or share.
 
 from collections.abc import Callable
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.constant_projection import balanced_projection, projected_inputs
-from esolangs.tools.helpers import (
+from esolangs.generation.constant_projection import (
+    balanced_projection,
+    projected_inputs,
+)
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     TEMPLATE_CHAR,
     _validate_truth_table,
     move_text,
     read_at,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language, Shape
 
 #: How each input is set: ``c`` clears the cell for a zero, ``i`` increments
 #: it to one.  The template spells each input as a run of

@@ -127,9 +127,9 @@ from dataclasses import dataclass, field, replace
 from typing import Literal, assert_never
 
 from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 # Headings, as (d_row, d_col) with rows growing downward.
 _UP = (-1, 0)

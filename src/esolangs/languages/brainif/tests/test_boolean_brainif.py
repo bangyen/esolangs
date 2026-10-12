@@ -45,8 +45,8 @@ class TestBrainIf:
     @staticmethod
     def _reads(program: str, stdin: str) -> tuple[str, int]:
         """Run ``program`` and return its answer and how many inputs it read."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.brainif.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO(stdin)
         run(program.splitlines(), io)
@@ -128,8 +128,8 @@ class TestBrainIf:
 # 1, 11 and 12 build the same programs, as do 40 and 80.
 @pytest.mark.parametrize("width", [1, 13, 40])
 def test_brainif_zero_landing_executes_all_small_tables(width: int) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.brainif.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     for n in range(1, 4):
         for table in witnesses(n):

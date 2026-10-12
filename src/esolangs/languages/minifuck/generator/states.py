@@ -1,8 +1,8 @@
 """Two-residual Minifuck diagrams, accumulated in output bit 7."""
 
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.languages.minifuck.generator.pool import _READS
 from esolangs.languages.minifuck.generator.sim import _MINIFUCK_INPUT, PAIR
-from esolangs.tools.helpers import _validate_truth_table, subtree_ids
 
 
 def two_state(truth_table: str) -> str | None:

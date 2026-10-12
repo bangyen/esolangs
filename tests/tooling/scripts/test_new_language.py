@@ -11,7 +11,7 @@ from tests.reference import REFERENCE
 
 @pytest.fixture
 def root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    template = tmp_path / "src/esolangs/interpreters/_template.py"
+    template = tmp_path / "src/esolangs/runtime/_template.py"
     template.parent.mkdir(parents=True)
     template.write_text('"""Template for a new esolang interpreter.\n"""\n')
     monkeypatch.setattr(new_language, "ROOT", tmp_path)
@@ -45,7 +45,7 @@ def test_an_interpreter_only_language_gets_no_generator() -> None:
     assert [path.name for path in paths[:2]] == ["interpreter.py", "test_tiny.py"]
     assert paths[1].parent == paths[0].parent / "tests"
     assert not any(path.name == "generator.py" for path in paths)
-    assert not (new_language.ROOT / "src/esolangs/tools/tiny.py").exists()
+    assert not (new_language.ROOT / "src/esolangs/generation/tiny.py").exists()
 
 
 def test_scaffold_records_the_language_as_unassessed(root: Path) -> None:
@@ -83,7 +83,7 @@ def test_start_requires_an_explicit_command(root: Path, argv: list[str]) -> None
 
 
 def test_registration_ignores_old_generator_locations(root: Path) -> None:
-    old = root / "src/esolangs/tools/tiny.py"
+    old = root / "src/esolangs/generation/tiny.py"
     old.parent.mkdir(parents=True)
     old.write_text("owned")
     (gap,) = new_language._unregistered("Tiny", "tiny")  # noqa: SLF001
@@ -103,17 +103,17 @@ def test_the_slug_is_the_registry_id() -> None:
 def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
     path = tmp_path / "table.py"
     path.write_text(
-        "from esolangs.tools.gone import gone\n"
-        "from esolangs.tools.gone import PAIR\n"
+        "from esolangs.generation.gone import gone\n"
+        "from esolangs.generation.gone import PAIR\n"
         'T = {\n    "kept": PAIR,\n    # gone\'s note\n    "gone": 1,\n}\n'
         'L = ["gone", "kept"]\n'
         'run_gone = _runner("gone")\n'
     )
-    modules = {"esolangs.tools.gone"}
+    modules = {"esolangs.generation.gone"}
     assert remove_language._drop_entries(path, {"gone"}, modules) == 3  # noqa: SLF001
     # The import another entry still uses stays.
     assert path.read_text() == (
-        "from esolangs.tools.gone import PAIR\n"
+        "from esolangs.generation.gone import PAIR\n"
         'T = {\n    "kept": PAIR,\n}\nL = ["gone", "kept"]\n'
     )
 
@@ -359,21 +359,23 @@ def test_stale_timing_matches_any_parametrize_component() -> None:
 def test_dead_test_files_catch_a_submodule_import(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, test_root: str
 ) -> None:
-    pkg = tmp_path / "src/esolangs/tools/pkg"
+    pkg = tmp_path / "src/esolangs/generation/pkg"
     pkg.mkdir(parents=True)
     (pkg / "__init__.py").write_text("")
     (pkg / "sub.py").write_text("thing = 1\n")
     tests = tmp_path / test_root
     tests.mkdir(parents=True)
-    (tests / "test_sub.py").write_text("from esolangs.tools.pkg.sub import thing\n")
+    (tests / "test_sub.py").write_text(
+        "from esolangs.generation.pkg.sub import thing\n"
+    )
     (tests / "test_shared.py").write_text(
-        "import esolangs.tools.pkg.sub\nimport esolangs\n"
+        "import esolangs.generation.pkg.sub\nimport esolangs\n"
     )
     monkeypatch.setattr(remove_language, "ROOT", tmp_path)
     doomed = {pkg}
     gone = remove_language._gone_modules(doomed)  # noqa: SLF001
     users = {
-        "esolangs.tools.pkg.sub": {
+        "esolangs.generation.pkg.sub": {
             f"{test_root}/test_sub.py",
             f"{test_root}/test_shared.py",
         }
@@ -386,20 +388,20 @@ def test_dead_test_files_catch_a_submodule_import(
 def test_orphans_drop_a_helper_only_the_language_imports(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    tools = tmp_path / "src/esolangs/tools"
+    tools = tmp_path / "src/esolangs/generation"
     tools.mkdir(parents=True)
-    (tools / "gone.py").write_text("from esolangs.tools.helper import h\n")
+    (tools / "gone.py").write_text("from esolangs.generation.helper import h\n")
     (tools / "helper.py").write_text("h = 1\n")
     monkeypatch.setattr(remove_language, "ROOT", tmp_path)
     doomed = {tools / "gone.py"}
-    private = {"esolangs.tools.helper": {"src/esolangs/tools/gone.py"}}
+    private = {"esolangs.generation.helper": {"src/esolangs/generation/gone.py"}}
     assert remove_language._orphans(doomed, private) == {  # noqa: SLF001
         tools / "helper.py"
     }
     shared = {
-        "esolangs.tools.helper": {
-            "src/esolangs/tools/gone.py",
-            "src/esolangs/tools/keeper.py",
+        "esolangs.generation.helper": {
+            "src/esolangs/generation/gone.py",
+            "src/esolangs/generation/keeper.py",
         }
     }
     assert remove_language._orphans(doomed, shared) == set()  # noqa: SLF001
@@ -453,7 +455,7 @@ def test_scaffold_collision_is_atomic(root: Path) -> None:
     with pytest.raises(FileExistsError, match="refusing to overwrite"):
         new_language.scaffold("Tiny", "other")
     assert not (package / "interpreter.py").exists()
-    assert not (root / "src/esolangs/interpreters/tiny.py").exists()
+    assert not (root / "src/esolangs/runtime/tiny.py").exists()
     assert (package / "__init__.py").read_text() == "owned"
 
 
@@ -483,7 +485,7 @@ def test_remove_cleans_language_package(
         "tests/support/fixtures/deep_arities.toml",
         "docs/limitations.md",
         "docs/proofs/index.md",
-        "src/esolangs/tools/wrap.py",
+        "src/esolangs/generation/wrap.py",
     ):
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)

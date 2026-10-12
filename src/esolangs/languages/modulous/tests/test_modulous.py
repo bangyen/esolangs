@@ -3,9 +3,9 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.modulous.interpreter import _Machine as Modulous
 from esolangs.languages.modulous.interpreter import _named, run
+from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import (
     run_until_halt,
     run_until_halt_or_all_branches_cycle,

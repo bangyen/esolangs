@@ -1,6 +1,5 @@
 """How the car steers: the ambiguous-turn rule, and the two-phase lane merge."""
 
-from esolangs.interpreters.io import IO
 from esolangs.languages.streetcode.interpreter import _Machine
 from esolangs.languages.streetcode.interpreter.geometry import (
     _NO_LATCHES,
@@ -21,6 +20,7 @@ from esolangs.languages.streetcode.tests.streetcode_support import (
     machine_unvalidated,
     run_and_capture,
 )
+from esolangs.runtime.io import IO
 from tests.support.paths import ROOT
 
 

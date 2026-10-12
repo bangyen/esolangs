@@ -5,17 +5,17 @@ runs once a cycle, so none is shared.
 Constant roots use one empty production to delete the inputs and a literal answer.
 """
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import (
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
     mark_runs,
     unmark,
 )
-from esolangs.tools.wrap import balance_program, wrap_chars
+from esolangs.generation.wrap import balance_program, wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language, Shape
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 PAIR = ("0", "1")

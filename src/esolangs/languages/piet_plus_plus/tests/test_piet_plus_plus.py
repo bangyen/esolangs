@@ -2,9 +2,9 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.piet_plus_plus.interpreter import _COMMANDS, run
 from esolangs.raster import Raster
+from esolangs.runtime.io import ScriptedIO
 
 _DELTA = {name: delta for delta, name in _COMMANDS.items()}
 BLACK = (0, 0, 0)

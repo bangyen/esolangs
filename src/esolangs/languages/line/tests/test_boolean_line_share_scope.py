@@ -7,14 +7,14 @@ import random
 import pytest
 
 import esolangs
-from esolangs.languages.line.generator.render import _has_goto
-from esolangs.languages.line.generator.shared import shared_tree
-from esolangs.languages.line.tests.test_boolean_line_projection import _execute
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _residual_ids,
     _validate_truth_table,
     permute_truth_table,
 )
+from esolangs.languages.line.generator.render import _has_goto
+from esolangs.languages.line.generator.shared import shared_tree
+from esolangs.languages.line.tests.test_boolean_line_projection import _execute
 from tests.support.witness_tables import parity
 
 

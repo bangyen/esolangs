@@ -11,7 +11,6 @@ import pytest
 import sympy as sp
 import z3
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.polynomial.generator import polynomial
 from esolangs.languages.polynomial.generator.algebra import format_coeffs, multiply
 from esolangs.languages.polynomial.interpreter import (
@@ -19,6 +18,7 @@ from esolangs.languages.polynomial.interpreter import (
     run,
     sanitize,
 )
+from esolangs.runtime.io import ScriptedIO
 
 # --------------------------------------------------------------------------
 # Polynomial cannot ship a factored program

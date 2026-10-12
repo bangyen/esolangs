@@ -4,8 +4,8 @@ import random
 
 import pytest
 
+from esolangs.generation.helpers import essential_inputs, permute_truth_table
 from esolangs.languages import generators as boolean
-from esolangs.tools.helpers import essential_inputs, permute_truth_table
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
@@ -15,8 +15,8 @@ from tests.support.generator_support import (
 
 def _forth_scope_keys(table: str) -> set[int]:
     """The heap indices a Forþ program's definitions actually reach."""
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.forth.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine(boolean.forth(table).split(",")[0], ScriptedIO(""))
     while not machine.halted:
@@ -95,7 +95,7 @@ class TestForth:
 
     def test_subtree_ids_intern_each_level(self) -> None:
         """Equal subtables at a level share an id; constants are 0 and 1."""
-        from esolangs.tools.helpers import subtree_ids
+        from esolangs.generation.helpers import subtree_ids
 
         assert subtree_ids("01101001") == [
             [6],

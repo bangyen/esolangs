@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.suffolk.generator import (
     _nor,
     _suffolk_lookup,
@@ -10,6 +9,7 @@ from esolangs.languages.suffolk.generator import (
     suffolk,
 )
 from esolangs.languages.suffolk.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 
 

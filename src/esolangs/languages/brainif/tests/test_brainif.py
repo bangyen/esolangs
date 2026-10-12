@@ -43,8 +43,8 @@ class TestBrainIfBasicCommands:
 
     def test_left_of_zero_and_back_keeps_both_cells(self) -> None:
         """The grown cell and the start cell are distinct, in both engines."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.brainif.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         code = [
             "if 0 increment",  # start cell -> 1
@@ -144,8 +144,8 @@ class TestBrainIfGeneratedHelloWorld:
 
 class TestStepMachine:
     def test_step_tracks_cells_and_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.brainif.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(["if 0 increment", "if 1 output"], ScriptedIO())
         assert (machine.ind, machine.cells) == (0, (0,))
@@ -158,8 +158,8 @@ class TestStepMachine:
         assert machine.ind == 2
 
     def test_machine_steps_over_a_blank_line(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.brainif.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(["", "if 0 output"], ScriptedIO())
         machine.step()
@@ -167,8 +167,8 @@ class TestStepMachine:
 
     def test_the_read_lands_in_the_cell(self) -> None:
         """``input`` puts the byte where the language says it goes."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.brainif.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(["if 0 input"], ScriptedIO("A"))
         machine.step()
@@ -187,15 +187,15 @@ def test_run_reuses_a_parsed_line_after_a_backward_goto() -> None:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.brainif.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 
 
 def _reader(code: object, stdin: str) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.brainif.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO(stdin))
 
@@ -286,8 +286,8 @@ def test_goto_without_a_target_is_rejected() -> None:
 
 
 def test_moving_right_over_an_existing_cell_does_not_grow_the_tape() -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.brainif.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine(["if 0 right", "if 0 left", "if 0 right"], ScriptedIO())
     for _ in range(3):

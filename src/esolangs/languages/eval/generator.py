@@ -5,16 +5,16 @@ Named ``eval_lang`` so the module does not read as the builtin ``eval``.
 The table is a literal halved by position: no subtrees to fold or share.
 """
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     essential_inputs,
     permute_truth_table,
     read_at,
 )
-from esolangs.tools.wrap import _quote_literal
+from esolangs.generation.wrap import _quote_literal
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 # ``~`` swaps the active stack, ``*`` reverses it, ``=`` pops it onto the
 # other.  Moving values across reverses them (tests/eval_support.py).

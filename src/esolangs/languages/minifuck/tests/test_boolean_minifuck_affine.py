@@ -3,13 +3,13 @@
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.minifuck.generator import (
     _affine_mask,
     _parity_columns,
     minifuck_setters,
 )
 from esolangs.languages.minifuck.tests.minifuck_support import _MinifuckCase
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 
 
 @pytest.mark.medium

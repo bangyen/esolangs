@@ -3,10 +3,10 @@
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages.subleq.generator import subleq
 from esolangs.languages.subleq.interpreter import _Machine
-from esolangs.tools.packed_decoder import packed_decoder
+from esolangs.runtime.io import ScriptedIO
 
 
 def _execute_count(program: str, text: str) -> tuple[str, int, int]:

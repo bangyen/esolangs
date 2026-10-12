@@ -32,8 +32,6 @@ import re
 from typing import cast
 
 from esolangs._drive import drive
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.fractran.interpreter.index import (
     Cursor,
     Factors,
@@ -42,6 +40,8 @@ from esolangs.languages.fractran.interpreter.index import (
     compile_index,
     integer,
 )
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 #: A fraction, as the numerator and denominator it was written with.
 type _Fraction = tuple[int, int]

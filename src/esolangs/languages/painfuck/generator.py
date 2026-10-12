@@ -9,15 +9,13 @@ pointer, so returning to the reads costs one character instead of one
 per cell.
 """
 
-from esolangs.languages.painfuck.interpreter import _CYCLES
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     in_input_order,
     subtree_ids,
 )
-from esolangs.tools.shared_block import (
+from esolangs.generation.shared_block import (
     BranchCost,
     add_cost,
     dispatch_cost,
@@ -28,8 +26,10 @@ from esolangs.tools.shared_block import (
     repeated_blocks,
     repeated_mixed_bank,
 )
-from esolangs.tools.shared_flag import FlagDialect, flag_tree_body
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
+from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.painfuck.interpreter import _CYCLES
+from esolangs.registry._language import Language
 
 __all__ = ["painfuck"]
 

@@ -429,11 +429,11 @@ def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
 def test_vertical_tree_places_permuted_inputs_in_stream_order(
     table: str, perm: tuple[int, ...]
 ) -> None:
+    from esolangs.generation.helpers import permute_truth_table
     from esolangs.languages.laserfuck.generator import (
         _laserfuck_build,
         _laserfuck_raise_funnel,
     )
-    from esolangs.tools.helpers import permute_truth_table
 
     source = _laserfuck_build(
         permute_truth_table(table, perm), perm, 1, vertical_tree=True

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.generation.helpers import _validate_truth_table
 
 from .hcells import _HCellLayout
 from .hlayout import (

@@ -83,9 +83,6 @@ from dataclasses import dataclass
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import format_integer
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.algebraic_programming_language.interpreter._parse import (
     _as_number,
     _Bin,
@@ -104,6 +101,9 @@ from esolangs.languages.algebraic_programming_language.interpreter._parse import
     _split_definition,
     _tokens,
 )
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
+from esolangs.runtime.source_hints import syntax_error
 
 
 class _Frame:

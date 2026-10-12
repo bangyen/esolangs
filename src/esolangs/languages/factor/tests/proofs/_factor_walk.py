@@ -1,6 +1,6 @@
 """Factor witness with an input-directed walk through literal truth bits."""
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.generation.helpers import _validate_truth_table
 
 
 def walked_program(truth_table: str) -> str:

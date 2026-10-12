@@ -5,8 +5,8 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.unsquare.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
@@ -155,15 +155,15 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.unsquare.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 
 
 def _reader(code: object, stdin: str) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.unsquare.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO(stdin))
 

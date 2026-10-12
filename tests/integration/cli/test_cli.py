@@ -117,7 +117,7 @@ def test_width_option(
     runs: bool,
 ) -> None:
     """``--width`` in all the spellings the parser accepts."""
-    from esolangs.tools.wrap import DEFAULT_WIDTH
+    from esolangs.generation.wrap import DEFAULT_WIDTH
 
     out = call_main(["generate", *args], capsys)
     assert out.strip()

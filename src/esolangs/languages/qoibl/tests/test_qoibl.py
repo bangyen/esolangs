@@ -10,9 +10,9 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.qoibl import interpreter as qoibl
 from esolangs.languages.qoibl.interpreter import _Machine, run, tokenize
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import EmptyProgramContract, SnapshotContract
 from tests.interpreters.runner import run_printing
 
@@ -227,8 +227,8 @@ class TestQoiblIncompleteTokens:
 
     def test_stepping_an_empty_statement_advances_the_cursor(self) -> None:
         """An empty statement is a no-op, not a parse of nothing."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.qoibl.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         state = _Machine("w", ScriptedIO(""))
         assert state.code == ([],)

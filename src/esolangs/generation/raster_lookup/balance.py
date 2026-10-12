@@ -5,9 +5,8 @@ from math import isqrt
 from typing import NamedTuple
 
 from esolangs._validate import check_width
-from esolangs.raster import Raster
-from esolangs.tools.helpers import _validate_truth_table
-from esolangs.tools.raster_lookup import (
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.raster_lookup import (
     _INITIAL,
     _MULTIPLY,
     _POP,
@@ -19,8 +18,9 @@ from esolangs.tools.raster_lookup import (
     _Operation,
     _push,
 )
-from esolangs.tools.raster_lookup.packing import pack
-from esolangs.tools.raster_lookup.palette import BLACK
+from esolangs.generation.raster_lookup.packing import pack
+from esolangs.generation.raster_lookup.palette import BLACK
+from esolangs.raster import Raster
 
 _POINTER = (3, 1)
 

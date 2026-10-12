@@ -1,8 +1,6 @@
 """Boolean generator for decleq."""
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
@@ -11,7 +9,9 @@ from esolangs.tools.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.tools.wrap import wrap_grid
+from esolangs.generation.wrap import wrap_grid
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 __all__ = ["decleq"]
 

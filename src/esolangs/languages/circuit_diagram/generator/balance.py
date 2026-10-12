@@ -1,5 +1,6 @@
 """Circuit Diagram affine chains and exact width transitions."""
 
+from esolangs.generation.helpers import _validate_truth_table, grid_width
 from esolangs.languages.circuit_diagram.generator import (
     _Builder,
     _circuit_diagram_at,
@@ -7,7 +8,6 @@ from esolangs.languages.circuit_diagram.generator import (
 )
 from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
-from esolangs.tools.helpers import _validate_truth_table, grid_width
 
 # Width of the 2-input all-XOR flat drawing below (``-.X.-:``).
 _XOR2_FLAT_WIDTH = 6
@@ -97,6 +97,6 @@ def balance_circuit_diagram(table: str, default: str) -> str:
         # Until a failed column comparison becomes true, the drawing and its
         # band decisions stay fixed. A drawing's own span can also start fitting.
         width = min(events)
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     return min(candidates, key=balance_score)

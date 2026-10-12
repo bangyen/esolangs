@@ -5,9 +5,13 @@ cannot be trimmed: the cursor ``>`` is left undecoded (116 of 126 wrong).
 Constants delete the input letters and print their literal answer.
 """
 
+from esolangs.generation.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    input_weights,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
 _UNARY = "/b/a*//*a/a**//a//"
 _SWEEP = "/*\\>qA/>//*\\>qB/>/"

@@ -6,11 +6,11 @@ import random
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.minifuck.generator import _affine_mask, minifuck_setters
 from esolangs.languages.minifuck.generator.states import _emit, state_setters, two_state
 from esolangs.languages.minifuck.interpreter import _Machine
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime.io import ScriptedIO
 
 
 @pytest.mark.medium

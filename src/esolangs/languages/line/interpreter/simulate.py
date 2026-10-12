@@ -36,7 +36,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 from .extract import OpCall, Stroke, Vertex, classify_ops
 

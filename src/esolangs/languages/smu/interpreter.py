@@ -44,9 +44,9 @@ from collections.abc import Mapping, Sequence
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import unmatched
-from esolangs.interpreters.io import IO
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.brackets import unmatched
+from esolangs.runtime.io import IO
 
 #: New program counter, strings popped, strings pushed, and an assignment.
 type _Effect = tuple[int, int, tuple[str, ...], tuple[str, str] | None]

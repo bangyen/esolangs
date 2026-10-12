@@ -15,12 +15,12 @@ def source_tree(tmp_path, monkeypatch):
     files = {
         "scripts/verify/scope.py": "",
         "src/esolangs/__init__.py": "",
-        "src/esolangs/interpreters/__init__.py": "",
-        "src/esolangs/interpreters/fixture.py": "from . import helper\n",
-        "src/esolangs/interpreters/helper.py": "from .shared import aux\n",
-        "src/esolangs/interpreters/shared/__init__.py": "",
-        "src/esolangs/interpreters/shared/aux.py": "from .. import helper\n",
-        "src/esolangs/interpreters/unrelated.py": "",
+        "src/esolangs/runtime/__init__.py": "",
+        "src/esolangs/runtime/fixture.py": "from . import helper\n",
+        "src/esolangs/runtime/helper.py": "from .shared import aux\n",
+        "src/esolangs/runtime/shared/__init__.py": "",
+        "src/esolangs/runtime/shared/aux.py": "from .. import helper\n",
+        "src/esolangs/runtime/unrelated.py": "",
     }
     for name, text in files.items():
         path = tmp_path / name
@@ -33,21 +33,21 @@ def source_tree(tmp_path, monkeypatch):
     "module",
     [
         "fixture",
-        "interpreters.fixture",
-        "esolangs.interpreters.fixture",
+        "runtime.fixture",
+        "esolangs.runtime.fixture",
     ],
 )
 def test_relative_transitive_and_cyclic_imports_are_hashed(source_tree, module) -> None:
     sources = leaks._sources(module)  # noqa: SLF001
-    assert source_tree / "src/esolangs/interpreters/helper.py" in sources
-    assert source_tree / "src/esolangs/interpreters/shared/aux.py" in sources
-    assert source_tree / "src/esolangs/interpreters/unrelated.py" not in sources
+    assert source_tree / "src/esolangs/runtime/helper.py" in sources
+    assert source_tree / "src/esolangs/runtime/shared/aux.py" in sources
+    assert source_tree / "src/esolangs/runtime/unrelated.py" not in sources
     assert len(sources) == len(set(sources))
 
 
 @pytest.mark.usefixtures("source_tree")
 def test_helper_change_selects_its_importer() -> None:
-    changed = "src/esolangs/interpreters/shared/aux.py"
+    changed = "src/esolangs/runtime/shared/aux.py"
     runners = {
         "fixture": ("fixture", False),
         "unrelated": ("unrelated", False),
@@ -59,7 +59,7 @@ def test_helper_change_selects_its_importer() -> None:
 
 def test_helper_change_invalidates_a_cached_fingerprint(source_tree) -> None:
     before = leaks._fingerprint("fixture", [])  # noqa: SLF001
-    helper = source_tree / "src/esolangs/interpreters/shared/aux.py"
+    helper = source_tree / "src/esolangs/runtime/shared/aux.py"
     helper.write_text(helper.read_text() + "value = 1\n")
     assert leaks._fingerprint("fixture", []) != before  # noqa: SLF001
 
@@ -77,7 +77,7 @@ def test_shared_scans_preserve_fingerprints(monkeypatch) -> None:
 
     monkeypatch.setattr(leaks, "_imports", scan)
     monkeypatch.setattr(
-        leaks, "_changed_files", lambda: ["src/esolangs/interpreters/shared/aux.py"]
+        leaks, "_changed_files", lambda: ["src/esolangs/runtime/shared/aux.py"]
     )
     imports = {}
     picked, _ = leaks._select(  # noqa: SLF001
@@ -90,10 +90,10 @@ def test_shared_scans_preserve_fingerprints(monkeypatch) -> None:
 
 def test_a_new_scan_finds_new_transitive_imports(source_tree) -> None:
     before = leaks._fingerprint("fixture", [], {})  # noqa: SLF001
-    helper = source_tree / "src/esolangs/interpreters/shared/aux.py"
+    helper = source_tree / "src/esolangs/runtime/shared/aux.py"
     helper.write_text("from .. import unrelated\n")
     assert leaks._fingerprint("fixture", [], {}) != before  # noqa: SLF001
-    unrelated = source_tree / "src/esolangs/interpreters/unrelated.py"
+    unrelated = source_tree / "src/esolangs/runtime/unrelated.py"
     changed = leaks._fingerprint("fixture", [], {})  # noqa: SLF001
     unrelated.write_text("value = 1\n")
     assert leaks._fingerprint("fixture", [], {}) != changed  # noqa: SLF001
@@ -101,7 +101,7 @@ def test_a_new_scan_finds_new_transitive_imports(source_tree) -> None:
 
 def test_package_children_are_included(source_tree) -> None:
     sources = leaks._sources("shared")  # noqa: SLF001
-    assert source_tree / "src/esolangs/interpreters/shared/aux.py" in sources
+    assert source_tree / "src/esolangs/runtime/shared/aux.py" in sources
 
 
 @pytest.mark.usefixtures("source_tree")
@@ -111,7 +111,7 @@ def test_missing_interpreter_is_not_a_clean_fingerprint() -> None:
 
 
 def test_external_and_attribute_imports_do_not_become_files(source_tree) -> None:
-    path = source_tree / "src/esolangs/interpreters/fixture.py"
+    path = source_tree / "src/esolangs/runtime/fixture.py"
     path.write_text(
         "import json\nfrom pathlib import Path\nfrom .helper import value\n"
     )
@@ -119,13 +119,13 @@ def test_external_and_attribute_imports_do_not_become_files(source_tree) -> None
 
 
 def test_package_initializers_are_cache_inputs(source_tree) -> None:
-    init = source_tree / "src/esolangs/interpreters/__init__.py"
+    init = source_tree / "src/esolangs/runtime/__init__.py"
     init.write_text("value = 1\n")
     assert init in leaks._sources("fixture")  # noqa: SLF001
 
 
 def test_removed_helper_cannot_skip_the_sweep(source_tree) -> None:
-    helper = source_tree / "src/esolangs/interpreters/shared/aux.py"
+    helper = source_tree / "src/esolangs/runtime/shared/aux.py"
     helper.unlink()
     with patch.object(
         leaks, "_changed_files", return_value=[str(helper.relative_to(source_tree))]
@@ -135,8 +135,8 @@ def test_removed_helper_cannot_skip_the_sweep(source_tree) -> None:
 
 
 def test_missing_imported_module_fails_closed(source_tree) -> None:
-    source = source_tree / "src/esolangs/interpreters/fixture.py"
-    source.write_text("from esolangs.interpreters.missing import value\n")
+    source = source_tree / "src/esolangs/runtime/fixture.py"
+    source.write_text("from esolangs.runtime.missing import value\n")
     with pytest.raises(FileNotFoundError, match="imported source"):
         leaks._sources("fixture")  # noqa: SLF001
 

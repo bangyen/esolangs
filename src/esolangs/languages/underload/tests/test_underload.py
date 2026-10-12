@@ -5,8 +5,8 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.underload.interpreter import _advance, _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 
 _run = partial(run_program, run, suppress_eof=False)

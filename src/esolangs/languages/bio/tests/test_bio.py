@@ -5,8 +5,8 @@ from contextlib import redirect_stdout
 
 import pytest
 
-from esolangs.interpreters.io import IO
 from esolangs.languages.bio.interpreter import run
+from esolangs.runtime.io import IO
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_printing
 from tests.support.raises import raises_message
@@ -104,8 +104,8 @@ class TestBIOEdgeCases:
 
 class TestStepMachine:
     def test_step_tracks_registers_stack_and_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.bio.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("0ox;0ix{1ox;};", ScriptedIO())
         assert (machine.reg, machine.stk, machine.ind) == ((0, 0, 0), (), 0)
@@ -125,8 +125,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.bio.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 

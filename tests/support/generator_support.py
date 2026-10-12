@@ -5,8 +5,8 @@ from itertools import pairwise
 
 import esolangs
 from esolangs._evaluate import _DEFAULT, _Default, _evaluate
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime.io import ScriptedIO
 from tests.support.stdin_check import _validate_shape_for_evaluate
 from tests.support.witness_tables import parity, row_bits
 
@@ -146,7 +146,7 @@ def run_lines(run, program: str, bits: str) -> tuple[str, int]:
 
 def assert_constant_balanced_shape(language, language_id, table, legacy):
     """Check that a projected constant retains its legacy balanced shape."""
-    from esolangs.tools.wrap import balance_program, balance_score
+    from esolangs.generation.wrap import balance_program, balance_score
 
     assert balance_score(
         esolangs.generate(language, table, balance=True)

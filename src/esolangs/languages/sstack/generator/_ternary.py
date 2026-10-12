@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from esolangs.generation.helpers import subtree_ids
+from esolangs.generation.shared_block import repeated_definitions
 from esolangs.languages.sstack.generator._binary import _inline_metrics, _Metric
-from esolangs.tools.helpers import subtree_ids
-from esolangs.tools.shared_block import repeated_definitions
 
 _PROLOGUE = '"49/b""48/c""1/f""2/g""3/a"'
 type _Emit = Callable[[str | int], None]

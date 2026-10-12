@@ -12,7 +12,7 @@ itself; all build a table once at load, never a scan per jump.
 
 from __future__ import annotations
 
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 
 def unmatched(char: str, position: int, hint: str | None = None) -> ValueError:

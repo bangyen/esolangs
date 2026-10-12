@@ -5,9 +5,7 @@ from collections.abc import Callable
 from itertools import pairwise
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
@@ -18,15 +16,17 @@ from esolangs.tools.helpers import (
     subtree_ids,
     unmark,
 )
-from esolangs.tools.shared_block import ContinuationCost as _Cost
-from esolangs.tools.shared_block import (
+from esolangs.generation.shared_block import ContinuationCost as _Cost
+from esolangs.generation.shared_block import (
     _repeated_blocks,
     repeated_bank,
     repeated_block,
     repeated_blocks,
 )
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _RUN, balance_score, wrap_chars
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _RUN, balance_score, wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
@@ -82,7 +82,7 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     if width < len(PAIR[0]):
         natural = (TEMPLATE_CHAR + ">>>") * n + natural[len(PAIR[0]) * n :]
-    from esolangs.tools.wrap import wrap_program
+    from esolangs.generation.wrap import wrap_program
 
     marked = mark_runs(natural, TEMPLATE_CHAR, smallfuck_setters(natural, n))
     return unmark(wrap_program(marked, "smallfuck", width), TEMPLATE_CHAR, n)

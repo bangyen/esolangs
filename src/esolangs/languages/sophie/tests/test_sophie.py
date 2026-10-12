@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
 from esolangs.languages.sophie.interpreter import run
+from esolangs.runtime.io import IO
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -96,7 +96,7 @@ def test_console_input(code: str, line: str, expected: str) -> None:
 
 class TestSophieExamples:
     def test_cat_program_halts_at_eof(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.runtime.io import ScriptedIO
 
         source = ScriptedIO("ab")
         run("[;@$0{&}{,}]", io=source)
@@ -104,7 +104,7 @@ class TestSophieExamples:
 
     @pytest.mark.parametrize("read", [";", ":"])
     def test_a_read_at_eof_is_zero(self, read: str) -> None:
-        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.runtime.io import ScriptedIO
 
         source = ScriptedIO("")
         run(f"#$42{read}.&", io=source)
@@ -114,8 +114,8 @@ class TestSophieExamples:
 class TestStepMachine:
     def test_a_read_loop_is_not_a_cycle(self) -> None:
         """The snapshot holds the input cursor (a85db79a)."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.sophie.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
         from esolangs.vm import run_until_halt_or_cycle
 
         io_ = ScriptedIO("AAB\x00")
@@ -124,8 +124,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
     from esolangs.languages.sophie.interpreter import _Machine
+    from esolangs.runtime.io import IO
 
     return _Machine(code, IO())
 

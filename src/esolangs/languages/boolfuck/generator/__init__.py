@@ -35,21 +35,21 @@ cleared flag cell, bits 4..5 after flipping it, bits 6..7 cleared
 again -- the ASCII ``'0'``/``'1'`` byte in exactly 8 prints.
 """
 
-from esolangs.languages.boolfuck.generator._gates import affine_stream, normal_gates
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     move_text,
 )
-from esolangs.tools.shared_block import (
+from esolangs.generation.shared_block import (
     repeated_bank,
     repeated_block,
     repeated_blocks,
     repeated_mixed_bank,
 )
-from esolangs.tools.shared_flag import flag_tree_body
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.shared_flag import flag_tree_body
+from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.boolfuck.generator._gates import affine_stream, normal_gates
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 _SCRATCH = -1
 

@@ -2,8 +2,8 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.clockwise.interpreter import run
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -140,7 +140,7 @@ class TestStepMachine:
 
 def test_reading_with_no_input_is_eof() -> None:
     """Bits are read up front, so an empty queue is exhausted input."""
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.runtime.io import ScriptedIO
 
     with pytest.raises(EOFError) as caught:
         run(".", ScriptedIO(""))

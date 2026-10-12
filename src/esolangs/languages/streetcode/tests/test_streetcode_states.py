@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.streetcode.interpreter import _Machine, _State
 from esolangs.languages.streetcode.interpreter.geometry import (
     _NO_LATCHES,
@@ -14,6 +13,7 @@ from esolangs.languages.streetcode.interpreter.geometry import (
     _Merge,
 )
 from esolangs.languages.streetcode.tests.streetcode_support import _RING_PROGRAM
+from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import _StepMachine, run_until_halt_or_cycle
 from tests.interpreters.contract import InputCursorContract
 from tests.support.paths import ROOT

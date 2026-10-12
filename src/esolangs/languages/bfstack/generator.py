@@ -12,16 +12,16 @@ has no range test, so each listed row is its own nested loop.
 from functools import cache
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Payload, Shape
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
     input_weights,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Payload, Shape
 
 
 def _bfstack_encoder(weights: list[int], *, preset: bool) -> str:

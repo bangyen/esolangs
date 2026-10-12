@@ -13,7 +13,14 @@ renders 1.9x shorter than the ``-= 1; if == 0`` builder, n == 7 2.1x.
 from typing import Any
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    essential_inputs,
+    read_at,
+)
+from esolangs.generation.wrap import balance_program
 from esolangs.languages.polynomial.generator.algebra import primes, render_product
 from esolangs.languages.polynomial.generator.resources import estimate_generation
 from esolangs.languages.polynomial.wrapping import (
@@ -23,14 +30,7 @@ from esolangs.languages.polynomial.wrapping import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import (
-    _ASCII_ZERO,
-    _validate_truth_table,
-    essential_inputs,
-    read_at,
-)
-from esolangs.tools.wrap import balance_program
+from esolangs.runtime.source_hints import with_hint
 
 # Instruction cap.  Analytic n=10 worst case is 1659
 # (``test_polynomial_cap_admits_every_n10_table``); kept at the old 1934,

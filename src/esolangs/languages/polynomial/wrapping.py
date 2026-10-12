@@ -7,7 +7,7 @@ from itertools import pairwise
 from math import isqrt
 from typing import Any
 
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
 
 
 def _polynomial(program: str, width: int) -> str:

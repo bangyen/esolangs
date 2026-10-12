@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import IO
 
 from esolangs.exceptions import ArgumentError
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.runtime.source_hints import with_hint
 
 #: A stream is consumed from its current position.  Spelled with ``typing.IO``
 #: so the public alias names no private type; at runtime any ``.read()`` does.

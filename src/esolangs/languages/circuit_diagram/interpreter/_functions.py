@@ -7,8 +7,8 @@ from contextvars import ContextVar
 from threading import Lock
 from typing import TYPE_CHECKING
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.circuit_diagram.interpreter._hints import Hint
+from esolangs.runtime.io import ScriptedIO
 
 if TYPE_CHECKING:
     from esolangs.languages.circuit_diagram.interpreter._parse import _Gate

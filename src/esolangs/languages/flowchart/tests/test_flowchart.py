@@ -4,8 +4,8 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.flowchart.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.runner import run_program as _run_program
 from tests.support.fixtures import grid

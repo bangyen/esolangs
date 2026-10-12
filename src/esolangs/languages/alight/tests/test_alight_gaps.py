@@ -3,8 +3,8 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.alight.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 
 _ID = "func f{a};end a;"

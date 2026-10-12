@@ -415,8 +415,8 @@ def test_shared_return_retains_unshared_balance_and_scale() -> None:
 
 def test_shared_return_extends_an_interior_tip() -> None:
     """A clear straight exit joins the perimeter without exceeding the ledger."""
+    from esolangs.generation.helpers import permute_truth_table
     from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
-    from esolangs.tools.helpers import permute_truth_table
 
     residual = "01" * 16
     other = "0110" * 8

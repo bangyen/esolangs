@@ -4,7 +4,6 @@ import importlib
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages import generators as boolean
 from esolangs.languages.grapheme.generator import (
     _grapheme_literal,
@@ -12,6 +11,7 @@ from esolangs.languages.grapheme.generator import (
     _grapheme_table,
 )
 from esolangs.languages.grapheme.interpreter import GraphemeDialect, run
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.test_boolean_contract import _one_minterm
 from tests.support.generator_support import evaluate_generated
 

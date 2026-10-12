@@ -80,7 +80,6 @@ from collections.abc import Callable
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
 from esolangs.languages.packlang.interpreter._parse import (
     _DECR,
     _INCR,
@@ -104,6 +103,7 @@ from esolangs.languages.packlang.interpreter._values import (
     _set,
     _truth,
 )
+from esolangs.runtime.io import IO
 
 # There is no recursion ceiling.  A call pushes a frame rather than
 # recursing natively, so a runaway program grows the frame list on the

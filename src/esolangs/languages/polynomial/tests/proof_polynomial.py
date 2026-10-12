@@ -386,13 +386,13 @@ def _check_routing(failures: list[str]) -> int:
 
 def _check_routing_bound(failures: list[str]) -> int:
     """Pin the facts around the sharpened routing bound."""
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.polynomial.interpreter import (
         _COND,
         _advance,
         _bracket_pairs,
         _Machine,
     )
+    from esolangs.runtime.io import ScriptedIO
 
     count = 0
     # Code 6 as a loop opener indexes _COND[1], which is absent: only 5, 7, 8

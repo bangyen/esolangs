@@ -4,9 +4,9 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.line.generator import balance, line, projected_boolean
 from esolangs.languages.line.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 
 
@@ -106,10 +106,10 @@ def test_compact_loader_admits_a_shared_return_within_the_original_input_budget(
 
 @pytest.mark.medium
 def test_multiple_returns_share_a_native_trunk_within_projected_ledger():
+    from esolangs.generation.helpers import permute_truth_table
     from esolangs.languages.line.generator import _grey_rows, _project_loader
     from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
     from esolangs.raster import Raster
-    from esolangs.tools.helpers import permute_truth_table
 
     rng = random.Random(15)
     a, b, c = ["".join(rng.choice("01") for _ in range(16)) for _ in range(3)]
@@ -130,7 +130,7 @@ def test_multiple_returns_share_a_native_trunk_within_projected_ledger():
 
 @pytest.mark.medium
 def test_public_multiple_returns_reduce_mixed_residual_area():
-    from esolangs.tools.helpers import permute_truth_table
+    from esolangs.generation.helpers import permute_truth_table
 
     rng = random.Random(15)
     a = "".join(rng.choice("01") for _ in range(64))

@@ -106,14 +106,14 @@ class TestATemplateCarriesItsSetters:
             _Template("a$$b", TEMPLATED, setters=[("aa", "bb"), ("c", "d")])
 
     def test_a_fill_with_the_wrong_number_of_bits_is_refused(self) -> None:
-        from esolangs.tools.helpers import fill_runs
+        from esolangs.generation.helpers import fill_runs
 
         with pytest.raises(ValueError, match="expected 2 bits"):
             fill_runs("$$", "$", (("a", "b"), ("c", "d")), [1])
 
     def test_marks_are_read_off_the_languages_own_char(self) -> None:
         """The regression: ``$`` can be an operator rather than a template slot."""
-        from esolangs.tools.helpers import mark, mark_runs
+        from esolangs.generation.helpers import mark, mark_runs
 
         pairs = (("xx", "yy"), ("p", "q"))
         # ``$`` here is ordinary text, exactly as a mingle operator would be.
@@ -123,7 +123,7 @@ class TestATemplateCarriesItsSetters:
 
     def test_a_zero_width_setter_has_an_empty_run(self) -> None:
         """An input spelled as nothing on both branches fills to nothing."""
-        from esolangs.tools.helpers import fill_runs, runs
+        from esolangs.generation.helpers import fill_runs, runs
 
         pairs = (("", ""), ("xx", "yy"), ("", ""))
         assert runs("a$$b", "$", pairs) == [(0, 0), (1, 3), (3, 3)]

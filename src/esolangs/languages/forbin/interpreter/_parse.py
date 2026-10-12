@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, NoReturn
 
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 # The parse tree, as tuples discriminated by their first element.  Four
 # families, because the grammar has four: a value, a for-loop pattern, the

@@ -4,7 +4,6 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainif.generator import (
     _brainif_dag,
     _brainif_tree,
@@ -12,6 +11,7 @@ from esolangs.languages.brainif.generator import (
     brainif,
 )
 from esolangs.languages.brainif.interpreter import _Machine as BrainIf
+from esolangs.runtime.io import ScriptedIO
 
 
 def test_residual_dag_worst_case_width_and_size() -> None:
