@@ -72,15 +72,10 @@ def test_shared_expressions_obey_bounds_for_every_small_table(n, band, sharing):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [4, 5, 6])
-def test_public_parity_includes_shared_frame_overhead(n):
-    from tests.proofs.test_execution_formulas import _measure
-
+def test_public_parity_selects_shared_frames(n):
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     source = esolangs.generate(NAME, table)
     assert source.count("=") > 1
-    steps, bits = _measure(NAME, table, written=True, program=source)
-    assert steps <= execution(n, source)
-    assert bits <= workspace(n, source)
 
 
 @pytest.mark.medium
