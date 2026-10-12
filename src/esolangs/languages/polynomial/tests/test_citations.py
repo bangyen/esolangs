@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-SUMMARY = Path(__file__).resolve().parents[6] / "docs" / "proofs" / "index.md"
+SUMMARY = Path(__file__).resolve().parents[5] / "docs" / "proofs" / "index.md"
 TAG = "v1"
 REPO = "https://github.com/bangyen/coefficient-mass/blob/"
 CITATIONS = {
