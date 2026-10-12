@@ -109,3 +109,13 @@ class TestSteppingWarnsAboutStdinToo:
             and not esolangs.describe(name)["parameterized"]
             and not LANGUAGES[name].underfed_raises
         ]
+
+
+class TestPointerFallback:
+    """A tape machine that names no state still shows where it points."""
+
+    def test_the_debugger_mirrors_the_pointer(self) -> None:
+        dbg = debugger_api.make_debugger(REFERENCE, ">>,", stdin="")
+        assert dbg.ptr == 0
+        dbg.step()
+        assert dbg.ptr == 1

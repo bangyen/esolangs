@@ -94,3 +94,11 @@ def test_weekly_cost_requires_a_named_unique_regression() -> None:
     assert evidence_violation({"weekly"}, ("n=16 row outside the sample",)) is None
     assert "cost_evidence" in str(evidence_violation({"weekly"}, ()))
     assert "cost_evidence" in str(evidence_violation({"weekly"}, ("",)))
+
+
+@pytest.mark.parametrize("value", ["", "0", "false"])
+def test_an_unset_or_falsey_ci_keeps_the_local_ceiling(
+    monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("CI", value)
+    assert limits() == (1.0, 5.0)

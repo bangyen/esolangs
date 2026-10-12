@@ -4,6 +4,7 @@ import importlib
 
 import pytest
 
+import esolangs.debugger as debugger_api
 from esolangs.languages.dimensional.interpreter import _Machine as Dimensional
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -237,3 +238,15 @@ def test_dimensional_looping_run_is_detected_as_a_cycle() -> None:
     # cell starts nonzero and the loop body never changes it
     machine = Dimensional("+[]", ScriptedIO())
     assert run_until_halt_or_cycle(machine) is False
+
+
+class TestDimensionalVM:
+    def test_byte_value_exposed(self) -> None:
+        vm = debugger_api.make_vm("Dimensional", "++.")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()
+        assert vm.memory == [1]
+        vm.step()
+        assert vm.memory == [2]
+        vm.step()
+        assert vm.output == "\x02"
