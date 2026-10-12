@@ -20,7 +20,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from removal_mentions import mention_edit
+
     from esolangs.registry import Language
+else:
+    mention_edit = importlib.import_module(
+        f"{__package__ + '.' if __package__ else ''}removal_mentions"
+    ).mention_edit
 
 ROOT = Path(__file__).parents[1]
 #: Where a language's own test and script files live.
@@ -824,20 +830,9 @@ _EDITED = (
 )
 
 
-def _mention_edit(mention: str) -> str:
-    """Label a leftover mention by the edit it needs.
-
-    ``git grep -n`` prints ``path:line:text`` and the path decides the kind.
-    The tool never rewrites these itself: a runnable example needs a
-    replacement language (Alight's ``expression_syntax`` has no successor),
-    and a comment or prose line needs a sentence a human stands behind.
-    """
-    path = mention.split(":", 1)[0]
-    if path == "src/esolangs/cli/help.py":
-        return "example: choose a replacement language"
-    if path.startswith("docs/") or path.endswith(".md"):
-        return "prose: reword or drop the mention"
-    return "comment: reword or drop the mention"
+def _mention_edit(mention: str, name: str | None = None) -> str:
+    """Classify a raw hit from this checkout."""
+    return mention_edit(ROOT, mention, name)
 
 
 def remove(name: str) -> list[str]:
@@ -1106,7 +1101,7 @@ def remove(name: str) -> list[str]:
     # needs: the tool cannot rewrite prose or a runnable example without
     # inventing a claim, so the edit stays with the caller.
     mentions = [
-        f"[{_mention_edit(line)}] {line}"
+        f"[{_mention_edit(line, name)}] {line}"
         for line in grep.stdout.splitlines()
         if not line.startswith(("scripts/remove_language.py:", "docs/CHANGELOG.md:"))
     ]

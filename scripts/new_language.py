@@ -712,7 +712,7 @@ def main(argv: list[str] | None = None) -> int:
             leftover = removal.remove(args.name)
         except ValueError as exc:
             parser.error(str(exc))
-        print(f"removed {args.name}; {len(leftover)} mention(s) left to edit by hand")
+        print(f"removed {args.name}; {len(leftover)} mention(s) to review")
         print("\n".join(leftover))
         return 0
     try:
