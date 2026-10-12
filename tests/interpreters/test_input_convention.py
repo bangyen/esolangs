@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 from esolangs.runtime.io import IO, ScriptedIO
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 
 def assert_echoes_a_newline(language: str, program: str) -> None:

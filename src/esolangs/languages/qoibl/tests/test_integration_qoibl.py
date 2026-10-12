@@ -3,8 +3,8 @@
 import pytest
 
 import esolangs
-from tests.reference import REFERENCE
 from tests.support.generator_support import verify_generated
+from tests.support.reference import REFERENCE
 
 
 class TestAnInterpreterLimitIsStillAnEsolangError:

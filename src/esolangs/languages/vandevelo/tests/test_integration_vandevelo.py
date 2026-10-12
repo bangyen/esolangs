@@ -8,8 +8,8 @@ import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.runtime import _isolated
 from esolangs.runtime._evaluate import _evaluate
-from tests.reference import REFERENCE
 from tests.runtime.vm.test_memory_budget import _BUDGET, _LINUX
+from tests.support.reference import REFERENCE
 
 
 @pytest.mark.medium
@@ -74,7 +74,7 @@ def test_evaluation_forwards_budget_without_changing_answers(
 @pytest.mark.medium
 def test_finite_timeout_has_no_boolean_verdict(capsys, monkeypatch) -> None:
     from esolangs.cli import run as cli_run
-    from tests.integration.cli.test_cli import call_main
+    from tests.cli.test_cli import call_main
     from tests.support import divergence
 
     finite = "a ~> Nil?\n" * 20000

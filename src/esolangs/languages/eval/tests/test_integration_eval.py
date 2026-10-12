@@ -1,7 +1,7 @@
 """Eval through the shared API, CLI and machinery."""
 
 import esolangs.debugger as debugger_api
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 
 class TestBreakpoints:

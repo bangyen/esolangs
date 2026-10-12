@@ -14,9 +14,9 @@ from esolangs.debugger import complete_vm
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.registry import INTERPRETERS
 from esolangs.vm import VM, _climbs_forever, make_vm, run_until_halt
-from tests.reference import REFERENCE
 from tests.support.generator_support import CHECK
 from tests.support.pick import languages
+from tests.support.reference import REFERENCE
 from tests.support.samples import (
     DUMPS_ON_THE_POST_HALT_STEP,
     NEVER_SELF_HALTS,

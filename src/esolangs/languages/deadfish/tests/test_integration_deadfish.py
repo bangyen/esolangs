@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 from esolangs.runtime._evaluate import _evaluate
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 
 def test_generate_refuses_a_language_with_no_generator() -> None:

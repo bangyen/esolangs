@@ -5,8 +5,8 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.registry import LANGUAGES
-from tests.reference import REFERENCE
 from tests.support.pick import one
+from tests.support.reference import REFERENCE
 
 
 class TestRun:

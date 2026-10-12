@@ -128,7 +128,7 @@ def widens_to_everything(changed: list[str]) -> str | None:
 
 
 TOOLING_INTEGRATIONS = {
-    "tests/tooling/scripts/test_ci_coverage.py": (
+    "tests/tooling/test_ci_coverage.py": (
         ("test_combining_shards_retains_every_branch",),
         (
             ".github/workflows/",
@@ -149,16 +149,13 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
             ".coveragerc",
             "conftest.py",
             "tests/__init__.py",
-            "tests/tooling/scripts/script_support.py",
+            "tests/tooling/script_support.py",
             "setup.cfg",
             "pytest.ini",
             "tox.ini",
         }
         or path.startswith("tests/support/fixtures/")
-        or (
-            path.startswith("tests/tooling/scripts/")
-            and Path(path).name == "conftest.py"
-        )
+        or (path.startswith("tests/tooling/") and Path(path).name == "conftest.py")
         for path in changed
     ):
         return []
@@ -167,7 +164,7 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
         for suite, (tests, dependencies) in TOOLING_INTEGRATIONS.items()
         if not any(
             path == suite
-            or path.startswith((*dependencies, "tests/tooling/scripts/__init__.py"))
+            or path.startswith((*dependencies, "tests/tooling/__init__.py"))
             for path in changed
         )
         for test in tests
@@ -539,8 +536,8 @@ def _is_collected(path: str) -> bool:
 INTERPRETER_CONTRACT_TESTS = (
     "tests/runtime/vm/test_vm_protocol.py",
     "tests/runtime/vm/test_stepping_parity.py",
-    "tests/integration/api/test_api_contracts.py",
-    "tests/generators/test_interpreter_conventions.py",
+    "tests/api/test_api_contracts.py",
+    "tests/interpreters/test_interpreter_conventions.py",
     "tests/interpreters/test_io.py",
     "tests/interpreters/test_input_convention.py",
 )

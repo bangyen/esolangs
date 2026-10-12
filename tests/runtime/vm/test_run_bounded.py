@@ -5,8 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
-from tests.reference import REFERENCE
 from tests.support.pick import languages
+from tests.support.reference import REFERENCE
 from tests.support.samples import SAMPLES
 
 pytestmark = pytest.mark.medium

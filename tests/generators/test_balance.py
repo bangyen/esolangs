@@ -11,9 +11,9 @@ from esolangs.generation.wrap import (
     wrap_space_delimited,
 )
 from esolangs.registry import LANGUAGES, SourceKind
-from tests.integration.cli.test_cli import call_main
-from tests.reference import REFERENCE
+from tests.cli.test_cli import call_main
 from tests.support.pick import first
+from tests.support.reference import REFERENCE
 from tests.support.witness_tables import row_bits
 
 _TEXT = [

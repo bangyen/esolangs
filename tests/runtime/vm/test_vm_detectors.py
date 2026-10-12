@@ -13,7 +13,7 @@ from esolangs.vm import (
     run_until_halt_or_growth,
     run_until_halt_or_value_growth,
 )
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 
 def _bf(code: str, stdin: str = "") -> Brainfuck:

@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 
 import esolangs
-from tests.reference import REFERENCE
 from tests.support.divergence import terminates
 from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages
+from tests.support.reference import REFERENCE
 from tests.support.witness_tables import row_bits
 
 #: One two-input table, one asymmetric two-input table, and two three-input

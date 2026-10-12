@@ -848,7 +848,7 @@ _EDITED = (
     "tests/proofs/test_execution_formulas.py",
     "tests/proofs/test_workspace_formulas.py",
     "tests/proofs/test_schemes.py",
-    "tests/integration/api/test_interpreter_only_admissions.py",
+    "tests/api/test_interpreter_only_admissions.py",
     "tests/proofs/test_bands.py",
 )
 
@@ -862,7 +862,7 @@ def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
 
-    reference = tests_attr("integration.api.test_language_coupling", "REFERENCE")
+    reference = tests_attr("api.test_language_coupling", "REFERENCE")
     if name == reference:
         raise ValueError(
             f"{reference} is the reference language: shared tests, the example "
@@ -1085,7 +1085,7 @@ def remove(name: str) -> list[str]:
         [
             sys.executable,
             "-c",
-            "from tests.integration.api.test_language_coupling import lower_recorded; "
+            "from tests.api.test_language_coupling import lower_recorded; "
             "lower_recorded()",
         ],
         cwd=ROOT,

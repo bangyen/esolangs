@@ -5,7 +5,7 @@ import pytest
 import esolangs
 from esolangs import DialectSettings
 from esolangs.registry import LANGUAGES
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 
 def foreign_settings() -> DialectSettings:

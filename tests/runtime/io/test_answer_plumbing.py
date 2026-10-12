@@ -9,9 +9,9 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.reference import REFERENCE
 from tests.support.generator_support import evaluate_generated, probe_table
 from tests.support.pick import first, languages
+from tests.support.reference import REFERENCE
 
 ROOT = pathlib.Path(__file__).parents[3]
 

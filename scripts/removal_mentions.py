@@ -128,7 +128,7 @@ def mention_edit(root: Path, mention: str, name: str | None = None) -> str:
         )
     ):
         return "identifier: arithmetic coefficient in source; retain it"
-    if tree is not None and path == "tests/tooling/scripts/test_new_language.py":
+    if tree is not None and path == "tests/tooling/test_new_language.py":
         helpers = {
             "_owner_id",
             "_stale_timing",

@@ -9,10 +9,10 @@ import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs.debugger import make_debugger
 from esolangs.runtime._evaluate import _evaluate
-from tests.integration.api.test_api_contracts import XOR
-from tests.integration.cli.test_cli import call_main
-from tests.reference import REFERENCE
+from tests.api.test_api_contracts import XOR
+from tests.cli.test_cli import call_main
 from tests.support.cli_support import call_both
+from tests.support.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 from tests.support.witness_tables import witnesses
 

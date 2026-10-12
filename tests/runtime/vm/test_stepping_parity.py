@@ -10,8 +10,8 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.vm import machine_traits, run_until_halt
-from tests.reference import REFERENCE
 from tests.support.pick import first
+from tests.support.reference import REFERENCE
 
 #: Enough for every generated boolean program in the suite to finish; the
 #: slowest needs a few hundred thousand.

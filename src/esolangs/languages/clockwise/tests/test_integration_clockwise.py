@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 
 

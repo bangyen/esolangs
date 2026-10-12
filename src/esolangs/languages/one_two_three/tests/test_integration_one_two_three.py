@@ -11,10 +11,10 @@ import esolangs
 from esolangs.exceptions import ArgumentError
 from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime._isolated import _worker
-from tests.integration.cli.test_cli import _program, call_main
-from tests.reference import REFERENCE
+from tests.cli.test_cli import _program, call_main
 from tests.support.cli_support import _LOOPS, call_both
 from tests.support.generator_support import evaluate_generated, verify_generated
+from tests.support.reference import REFERENCE
 
 
 class TestTheTerminationProofFallsBackToTheClock:

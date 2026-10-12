@@ -7,9 +7,9 @@ import pytest
 
 import esolangs
 from esolangs.runtime._isolated import _decode, _worker
-from tests.reference import REFERENCE
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import one
+from tests.support.reference import REFERENCE
 
 #: A run that never halts by itself, and one that answers by terminating.
 _UNUSUAL = [*one(self_halts=False), *one(answer_mode="termination")]

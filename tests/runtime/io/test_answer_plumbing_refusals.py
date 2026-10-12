@@ -12,9 +12,9 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import _check_program, _run
-from tests.reference import REFERENCE
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import first, languages, one
+from tests.support.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 
 

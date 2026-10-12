@@ -9,9 +9,9 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.runtime._evaluate import _evaluate
-from tests.integration.cli.test_cli import call_main
-from tests.reference import REFERENCE
+from tests.cli.test_cli import call_main
 from tests.runtime.vm.test_stepping_parity import _STEP_BUDGET, _row
+from tests.support.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 
 

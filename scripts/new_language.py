@@ -8,7 +8,7 @@
 
 ``start`` writes the interpreter, generator and test stubs.  ``check`` lists
 every integration point the language still lacks, with the file and entry
-to add; ``tests/tooling/scripts/test_new_language.py`` runs it over the registry,
+to add; ``tests/tooling/test_new_language.py`` runs it over the registry,
 so the list cannot drift from what the suite enforces.  Once the list is
 empty it runs the seconds-long tests ``finish`` would otherwise fail late.
 ``bounds`` measures what the proof ledger's cells state.  ``finish``
@@ -458,7 +458,7 @@ def quick_tests(name: str) -> list[str]:
         )
     ]
     nodes += [
-        "tests/generators/test_interpreter_conventions.py"
+        "tests/interpreters/test_interpreter_conventions.py"
         "::test_interpreter_docstrings_follow_the_template",
         f"tests/interpreters/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
@@ -474,9 +474,7 @@ def quick_tests(name: str) -> list[str]:
         )
     stem = example_stems().get(lang.id, "")
     if stem:
-        nodes.append(
-            f"tests/tooling/scripts/test_examples.py::test_boolean_example[{stem}]"
-        )
+        nodes.append(f"tests/tooling/test_examples.py::test_boolean_example[{stem}]")
     if (
         stem
         in removal.tests_attr(

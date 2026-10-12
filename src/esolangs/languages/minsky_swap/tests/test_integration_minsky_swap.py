@@ -2,7 +2,7 @@
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 from tests.support.samples import SAMPLES
 
 

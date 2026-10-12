@@ -11,7 +11,7 @@ from esolangs.languages.piet_plus_plus.generator import piet_plus_plus as _pp_sa
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._program import Program
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 # The wiki's street shape: a two-wide road with the instructions in the
 # southern lane, walled all round.  ``C`` starts the car, ``^`` increments

@@ -8,12 +8,12 @@ import pytest
 import esolangs
 from esolangs import _check_program
 from esolangs.exceptions import TemplateError
-from tests.integration.api.test_api_contracts import (
+from tests.api.test_api_contracts import (
     XOR,
 )
-from tests.integration.cli.test_cli import call_main
-from tests.reference import REFERENCE
+from tests.cli.test_cli import call_main
 from tests.support.cli_support import _failure, call_both
+from tests.support.reference import REFERENCE
 
 
 def test_describe_template_still_hides_stdin_fields(capsys):

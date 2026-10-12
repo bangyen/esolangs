@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 
 def _bank_tables():

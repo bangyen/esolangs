@@ -9,11 +9,11 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
 from esolangs.runtime._evaluate import _evaluate
-from tests.integration.api.test_dialects import Unreadable
-from tests.reference import REFERENCE
+from tests.api.test_dialects import Unreadable
 from tests.runtime.vm.test_debug import _step_to_halt
 from tests.runtime.vm.test_vm_protocol import assert_one_row_moves_along_it
 from tests.support.cli_support import call_both
+from tests.support.reference import REFERENCE
 
 
 def test_set_pairs_match_settings_json(capsys):

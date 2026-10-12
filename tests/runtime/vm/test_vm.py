@@ -7,8 +7,8 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.vm import VM
-from tests.reference import REFERENCE
 from tests.support.pick import languages
+from tests.support.reference import REFERENCE
 
 
 def assert_random_steps_reproduce(language: str, program: str) -> None:

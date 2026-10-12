@@ -8,8 +8,8 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.exceptions import ArgumentError
-from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
+from tests.support.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 
 

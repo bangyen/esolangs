@@ -230,7 +230,7 @@ invariants outside it. Language-specific Markdown belongs in canonical-name
 bullets with indented continuations.
 
 To take a language out, `just remove-language "Name"` deletes what `check`
-asks for and every test file `tests/integration/api/test_language_coupling.py` counts as
+asks for and every test file `tests/api/test_language_coupling.py` counts as
 the language's own (committed or not), prunes the helper modules only it
 imported and the per-language code the shared generators and
 `wrap.py` no longer reference, drops its wiki fixtures, timing rows and
@@ -244,7 +244,7 @@ shared tests, the examples and `scripts/docs/generate.py` spell out, so
 A language should live in its own files: its generator module's
 `LANGUAGE`, its interpreter, and its own test files. A fact another file
 keys by a language's name (a list of names in a shared test, a branch on
-an id) is coupling, and `tests/integration/api/test_language_coupling.py` holds each
+an id) is coupling, and `tests/api/test_language_coupling.py` holds each
 file's count of them to `tests/support/fixtures/coupling.toml`, which only goes
 down. Put such a fact on `Language`, or the test in the language's own
 test file under `src/esolangs/languages/<id>/tests/`: `test_<id>.py` for
@@ -252,7 +252,7 @@ its interpreter, `test_boolean_<id>.py` for its generator, and
 `test_integration_<id>.py` for its API, CLI, VM and debugger checks. A shared file states a language's own facts, never a second
 language's: an example or comparison that names another language (`as in
 X`, `unlike X`, `X's axis`) is coupling in prose too, and
-`tests/integration/api/test_language_coupling.py` rejects it.
+`tests/api/test_language_coupling.py` rejects it.
 
 ### The Boolean I/O contract
 

@@ -11,8 +11,8 @@ import esolangs
 from esolangs import _check_program
 from esolangs.debugger import make_debugger
 from esolangs.runtime._evaluate import _evaluate
-from tests.reference import REFERENCE
 from tests.support.pick import languages
+from tests.support.reference import REFERENCE
 
 _RASTERS = languages(source_kind="raster", boolean_generator=True)
 

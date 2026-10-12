@@ -10,8 +10,8 @@ from esolangs.vm import run_until_halt_or_cycle, run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
-from tests.reference import REFERENCE
 from tests.support.raises import assert_rejected_with_hint
+from tests.support.reference import REFERENCE
 
 bf = importlib.import_module("esolangs.languages.brainfuck.interpreter")
 

@@ -9,9 +9,9 @@ import pytest
 import esolangs
 import esolangs.runtime._evaluate as evaluator
 from esolangs.runtime._evaluate import _evaluate, _iter_evaluate
-from tests.reference import REFERENCE
 from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages
+from tests.support.reference import REFERENCE
 
 
 def _kinds() -> list[str]:

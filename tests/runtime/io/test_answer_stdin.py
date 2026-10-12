@@ -6,8 +6,8 @@ import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES
-from tests.reference import REFERENCE
 from tests.support.pick import first, languages, one, one_where
+from tests.support.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 
 #: A line-per-bit reader whose bits are not spelled ``0`` and ``1``, if any.
