@@ -51,6 +51,7 @@ from __future__ import annotations
 from collections.abc import Hashable
 
 from esolangs.exceptions import HaltError
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 
@@ -312,9 +313,7 @@ class _Machine:
 
 def run(code: str, io: IO) -> None:
     """Run an Eval program."""
-    state = _Machine(code, io)
-    while not state.halted:
-        state.step()
+    drive(_Machine(code, io))
 
 
 if __name__ == "__main__":

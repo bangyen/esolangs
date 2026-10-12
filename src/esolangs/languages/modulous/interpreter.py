@@ -44,6 +44,7 @@ from difflib import get_close_matches
 from typing import Never, cast
 
 from esolangs.exceptions import HaltError
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
@@ -563,10 +564,7 @@ def run(code: str, io: IO, rng: Randomness | None = None) -> None:
     only ``run`` could not pin the draw without patching ``secrets``
     globally.  This is the signature the other random-drawing runs take.
     """
-    state = _Machine(code, io, rng)
-
-    while not state.halted:
-        state.step()
+    drive(_Machine(code, io, rng))
 
 
 if __name__ == "__main__":

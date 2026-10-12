@@ -23,6 +23,7 @@ import re
 from collections.abc import Callable, Mapping, Sequence
 
 from esolangs.exceptions import HaltError
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
@@ -462,10 +463,7 @@ def run(code: list[str] | str, io: IO) -> None:
 
     Lines or one string; the program is one character stream.
     """
-    state = _Machine(code, io)
-
-    while not state.halted:
-        state.step()
+    drive(_Machine(code, io))
 
 
 if __name__ == "__main__":

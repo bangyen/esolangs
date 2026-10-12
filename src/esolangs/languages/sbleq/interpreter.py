@@ -24,6 +24,7 @@ operands is one read, not two; any negative ``c`` raises when its
 instruction runs, jump taken or not (after a ``-3`` print).
 """
 
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._validate import check_address
 from esolangs.runtime.io import IO
@@ -228,10 +229,7 @@ def run(code: str, io: IO, store: str = "a", *, indirect: bool = False) -> None:
     ``store`` is ``"a"`` (base), ``"ab"`` (S*bl*q) or ``"b"`` (Subl*q);
     ``indirect`` gives S**bleq, S**bl**q and Subl**q respectively.
     """
-    mach = _Machine(code, io, store=store, indirect=indirect)
-
-    while not mach.halted:
-        mach.step()
+    drive(_Machine(code, io, store=store, indirect=indirect))
 
 
 if __name__ == "__main__":
