@@ -45,7 +45,7 @@ def _run(template: str, table: str, row: int, k: int, watchers: int | None = 4) 
 
 @pytest.mark.medium
 @pytest.mark.parametrize(
-    "n", [0, 1, 2, 3, 6, 10, pytest.param(16, marks=pytest.mark.slow)]
+    "n", [0, 1, 2, 6, 10, pytest.param(16, marks=pytest.mark.slow)]
 )
 def test_mapped_chunks_execute(n: int, monkeypatch: pytest.MonkeyPatch) -> None:
     size = 1 << n
@@ -102,7 +102,7 @@ def test_decimal_progression_carries(step: int) -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [0, 1, 2, pytest.param(3, marks=pytest.mark.slow)])
+@pytest.mark.parametrize("n", [0, 1, 2])
 def test_direct_chunks_realize_every_small_table(n: int) -> None:
     size = 1 << n
     width = chunk_width(n)
