@@ -22,7 +22,6 @@ repos:
       - id: check-merge-conflict
       - id: check-json
       - id: check-toml
-      - id: debug-statements
       - id: check-docstring-first
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit

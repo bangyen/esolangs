@@ -101,6 +101,7 @@ select = [
     "A",   # builtin shadowing
     "ARG", # unused arguments
     "SLF", # private member access
+    "T10", # flake8-debugger
 ]
 ignore = [
     "C901",  # too complex
