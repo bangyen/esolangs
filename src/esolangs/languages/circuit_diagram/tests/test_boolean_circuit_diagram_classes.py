@@ -61,7 +61,8 @@ def test_public_abba_class_bank_executes_every_row():
 @pytest.mark.medium
 def test_classes_cross_distinct_banks_beyond_all_fold_orders():
     table = _eight_classes(13)
-    assert _linear_shared_layout(table, 13) is None
+    complete = _linear_shared_layout(table, 13)
+    assert complete is not None
     assert _repeated_cofactor_bank(table) is None
     chunks = [table[start : start + 1024] for start in range(0, len(table), 1024)]
     assert len(set(chunks)) == 8
@@ -70,6 +71,9 @@ def test_classes_cross_distinct_banks_beyond_all_fold_orders():
     lines = code.splitlines()
     assert len(lines) * max(map(len, lines)) == 1_160_811
     rows = sorted({0, len(table) - 1, *range(0, len(table), 256)})
+    h, w = complete.bounds()
+    assert h * w >= len(lines) * max(map(len, lines))
+    _execute(table, complete.render(), rows)
     _execute(table, code, rows)
 
 
@@ -132,17 +136,21 @@ def test_public_class_admission_preserves_existing_area_ties(monkeypatch, extra_
     monkeypatch.setattr(module, "_residual_class_bank_candidate", lambda *_args: None)
     table = dense(9)
     expected = circuit_diagram(table)
-    lines = expected.splitlines()
 
     class Rejected:
+        def __init__(self, ceiling):
+            self.ceiling = ceiling
+
         def bounds(self):
-            return len(lines) + extra_height, max(map(len, lines))
+            return 1, self.ceiling + extra_height
 
         def render(self):
             pytest.fail("an equal or larger class bank must preserve the old candidate")
 
     monkeypatch.setattr(
-        module, "_residual_class_bank_candidate", lambda *_args: Rejected()
+        module,
+        "_residual_class_bank_candidate",
+        lambda _table, ceiling: Rejected(ceiling),
     )
     assert circuit_diagram(table) == expected
     _execute(table, expected, (0, len(table) - 1))

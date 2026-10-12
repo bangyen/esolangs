@@ -573,8 +573,16 @@ def _circuit_diagram_model(
     return builder.layout
 
 
-def _linear_shared_layout(table: str, inputs: int) -> _Layout | None:
-    """Admit three fixed fold orders within linear work and H-layout area."""
+def _linear_shared_layout(
+    table: str, inputs: int, _models: list[_Layout] | None = None
+) -> _Layout | None:
+    """Return a complete fixed-order fold below the H fallback area floors.
+
+    Record every model in ``_models`` for final character comparison.
+    Ordered interval work is O(M log M), with M=O(T/log T) residuals.
+    """
+    from .hpool import _h_pool_area_floor
+
     used, projected = _essential_table(table, inputs)
     candidates = [(projected, used)]
     for tail in (3, 4):
@@ -583,13 +591,6 @@ def _linear_shared_layout(table: str, inputs: int) -> _Layout | None:
             # without changing port reads or searching selector orders.
             rotated = "".join(projected[i :: 1 << tail] for i in range(1 << tail))
             candidates.append((rotated, used[-tail:] + used[:-tail]))
-    eligible = [
-        (candidate, order)
-        for candidate, order in candidates
-        if len(_dag(candidate, len(used))[0]) ** 2 <= 4 * len(table)
-    ]
-    if not eligible:
-        return None
     sites = [
         point
         for prefix, point in _h_minterm_sites(inputs).items()
@@ -598,15 +599,20 @@ def _linear_shared_layout(table: str, inputs: int) -> _Layout | None:
     floor = (max(x for x, _ in sites) - min(x for x, _ in sites) + 1) * (
         max(y for _, y in sites) - min(y for _, y in sites) + 1
     )
-    # Every H build contains these minterm sites, so their box is an O(T)
-    # area budget independent of density and the chosen candidate.
-    # The O(nodes**2) work ceiling applies to every candidate. Exact area
-    # alone admits the nested dense fold's forbidden 9.455 growth ratio.
+    if len(used) >= 6:
+        # Early admission must not suppress a smaller pooled fallback.
+        floor = min(
+            floor,
+            _h_term_area_floor(len(used), inputs),
+            _h_pool_area_floor(len(used), inputs),
+        )
     selected = None
-    for candidate, order in eligible:
+    for candidate, order in candidates:
         model = _circuit_diagram_model(
             candidate, None, input_order=order, port_inputs=inputs
         )
+        if _models is not None:
+            _models.append(model)
         height, width = model.bounds()
         area = height * width
         if area <= floor and (selected is None or area < floor):
@@ -635,13 +641,10 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
 
-    From eight inputs an unconstrained nonconstant build tries three fixed
-    shared-fold orders within linear work and area budgets, then a prefix H-layout
-    with fixed-size cofactor pools when it beats the minterm lattice. Repeated
-    complete cofactors and five-input residuals also compete through fixed
-    four/eight predicate-and-function banks. Seven/eight-input H atoms
-    share larger residual classes under the same area ceiling. Repeated suffix
-    classes share across every prefix through workspace-admitted H masks.
+    From eight inputs, three complete fixed-order folds compete by emitted
+    characters against prefix H-layouts and shared cofactor banks. Interval
+    models count characters before rendering, so a node cap cannot hide a
+    smaller complete fold. Sharing wins character ties.
 
     What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
     floor is what a band cannot reclaim -- the rails and complements, live
@@ -657,23 +660,24 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
         from .bundled_banks import bundled_class_bank_candidate
         from .folded_banks import folded_class_bank_candidate
         from .hpool import _h_pool_area_floor, _h_pool_layout, _large_pool_layout
+        from .source_size import layout_source_size
+        from .sparse_banks import sparse_class_bank_candidate
 
-        selected = _linear_shared_layout(truth_table, inputs)
+        retained: list[_Layout] = []
+        _linear_shared_layout(truth_table, inputs, retained)
+        selected: _Layout | None = None
         used, projected = _essential_table(truth_table, inputs)
         ceiling = None
-        if selected is not None:
-            height, columns = selected.bounds()
-            ceiling = height * columns
         folded = folded_class_bank_candidate(truth_table, ceiling)
         if folded is not None:
             selected = folded
             height, columns = selected.bounds()
             ceiling = height * columns
-        bundled = bundled_class_bank_candidate(truth_table, ceiling)
-        if bundled is not None:
-            height, columns = bundled.bounds()
+        sparse = sparse_class_bank_candidate(truth_table, ceiling)
+        if sparse is not None:
+            height, columns = sparse.bounds()
             if ceiling is None or height * columns < ceiling:
-                selected = bundled
+                selected = sparse
                 ceiling = height * columns
         large = _large_pool_layout(
             projected, input_order=used, port_inputs=inputs, ceiling=ceiling
@@ -714,6 +718,12 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
         if selected is None:  # both fallbacks above are construction invariants
             raise AssertionError("missing Circuit Diagram layout")
         height, columns = selected.bounds()
+        bundled = bundled_class_bank_candidate(truth_table, height * columns)
+        if bundled is not None:
+            bank_height, bank_columns = bundled.bounds()
+            if bank_height * bank_columns < height * columns:
+                selected = bundled
+                height, columns = bank_height, bank_columns
         classes = _residual_class_bank_candidate(truth_table, height * columns)
         if classes is not None:
             class_height, class_columns = classes.bounds()
@@ -728,7 +738,15 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
                 prefer_old_bank and area == height * columns
             ):
                 selected = bank
-        return selected.render()
+        # Text contracts count characters; a taller area winner can lose.
+        fallback = selected
+        code = fallback.render()
+        size = len(code)
+        for model in retained:
+            model_size = layout_source_size(model)
+            if model_size < size or (model_size == size and selected not in retained):
+                selected, size = model, model_size
+        return code if selected is fallback else selected.render()
     flat = _circuit_diagram_at(truth_table, None)
     if width is None or grid_width(flat) <= width:
         return flat
@@ -762,7 +780,7 @@ LANGUAGE = Language(
     # invariants.
     scaling_rungs=(8, 9),
     boolean=circuit_diagram,
-    documented_sizes=(147_264, 258_216, 1.8),
+    documented_sizes=(128_824, 258_216, 2.0),
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

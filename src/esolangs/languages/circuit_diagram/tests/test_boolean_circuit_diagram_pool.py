@@ -19,6 +19,8 @@ from tests.support.witness_tables import dense, nested_dense, parity
 
 @pytest.mark.medium
 def test_public_pool_admission_preserves_the_minterm_area_ceiling(monkeypatch):
+    generator = importlib.import_module("esolangs.languages.circuit_diagram.generator")
+    monkeypatch.setattr(generator, "_linear_shared_layout", lambda *_args: None)
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.hpool"
     )
@@ -103,7 +105,7 @@ def test_public_dense_candidates_beat_minterms_without_relaxing_contracts(n):
     height, width = model.bounds()
     lines = code.splitlines()
     assert len(lines) * max(map(len, lines)) <= height * width
-    assert len(code) == {8: 147_264, 9: 258_216}[n]
+    assert len(code) == {8: 128_824, 9: 258_216}[n]
     legacy = _h_term_layout(table)
     assert model.bounds()[0] * model.bounds()[1] < (
         legacy.bounds()[0] * legacy.bounds()[1]
