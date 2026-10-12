@@ -127,13 +127,7 @@ _HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
         True,
         (6,),
     ),
-    "ROTfuck": (
-        lambda n, _: 8 * 4**n + 43 * 2**n + 15 * n - 5 + 58 * n,
-        # 58n: the 48-runs in the reads are 6-count loops now,
-        # each paying loop overhead per read
-        True,
-        (3, 5),
-    ),
+    "ROTfuck": (lambda n, _: 8 * 4**n + 43 * 2**n + 15 * n - 5, True, (3, 5)),
     "Fargo": (
         lambda n, _: 5 * 2**n + 1 if n > 5 else 15 * 2**n // 2 - 4,
         False,

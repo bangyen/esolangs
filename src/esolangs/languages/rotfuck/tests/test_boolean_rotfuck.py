@@ -142,12 +142,12 @@ class TestRotfuck:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("01", 114),
-            ("10", 114),
-            ("0001", 183),
-            ("0110", 184),
-            ("11110000", 120),
-            ("01101001", 259),
+            ("01", 128),
+            ("10", 128),
+            ("0001", 211),
+            ("0110", 212),
+            ("11110000", 134),
+            ("01101001", 301),
         ],
     )
     def test_the_emitted_length_is_exact(self, table: str, length: int) -> None:
@@ -157,12 +157,12 @@ class TestRotfuck:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("01", 130),
-            ("10", 130),
-            ("0001", 207),
-            ("0110", 208),
-            ("11110000", 136),
-            ("01101001", 291),
+            ("01", 144),
+            ("10", 144),
+            ("0001", 235),
+            ("0110", 236),
+            ("11110000", 150),
+            ("01101001", 333),
         ],
     )
     def test_the_forward_length_is_exact(self, table: str, length: int) -> None:

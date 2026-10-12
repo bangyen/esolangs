@@ -826,7 +826,8 @@ qualification = """\
     trip count"""
 scaling = "linear: bounded dependency scan and canonical residual IDs"
 execution = """\
-    linear: worst 8T² + 43T + 73n - 5 commands for n = 2..6: loops replace 48-runs"""
+    linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: NAND's all-ones row, \
+    walks quadratic per digit"""
 workspace = """\
     linear: at most 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n) bits: 2T + 7 \
     cells"""
