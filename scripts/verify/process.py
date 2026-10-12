@@ -177,16 +177,17 @@ def wait_with_heartbeat(
     deadline = start + limit
     try:
         while True:
-            remaining = deadline - time.monotonic()
+            # Parent exit and output drain share one heartbeat interval.
+            interval_end = min(deadline, time.monotonic() + heartbeat)
             try:
-                wait = max(0.0, min(heartbeat, remaining))
+                wait = max(0.0, interval_end - time.monotonic())
                 if proc in _LOGS:
                     proc.wait(timeout=wait)
                     log = _LOGS[proc]
                     if log.reader is not None:
                         # An exited leader's worker can still hold stdout open;
                         # the 0.2s regression otherwise reports success at 1.1s.
-                        wait = max(0.0, min(heartbeat, deadline - time.monotonic()))
+                        wait = max(0.0, interval_end - time.monotonic())
                         log.reader.join(wait)
                         if log.reader.is_alive():
                             raise subprocess.TimeoutExpired(proc.args, wait)

@@ -532,6 +532,67 @@ def test_exited_leaders_worker_can_finish_within_the_deadline(
     assert "deadline exceeded" not in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("parent_exit", [0.0, 0.9])
+@pytest.mark.parametrize("reader_exit", [2.2, None])
+def test_logged_parent_and_reader_share_heartbeat_intervals(
+    tmp_path, monkeypatch, parent_exit, reader_exit
+):
+    verify = load_script()
+    process = sys.modules[verify.start_logged.__module__]
+    now = [0.0]
+    heartbeats = []
+    stopped = []
+
+    class Parent:
+        args = ("probe",)
+        returncode = 0
+
+        def wait(self, timeout):
+            elapsed = max(0.0, parent_exit - now[0])
+            now[0] += min(elapsed, timeout)
+            if elapsed > timeout:
+                raise subprocess.TimeoutExpired(self.args, timeout)
+            return self.returncode
+
+    class Reader:
+        done = False
+
+        def join(self, timeout):
+            if not self.done:
+                until = now[0] + timeout
+                now[0] = min(until, reader_exit) if reader_exit is not None else until
+                self.done = reader_exit is not None and now[0] >= reader_exit
+
+        def is_alive(self):
+            return not self.done
+
+    parent, reader = Parent(), Reader()
+    path = tmp_path / "log"
+    path.write_text("worker output\n")
+    monkeypatch.setattr(process, "_LOGS", {parent: process.Log(path, reader=reader)})
+    monkeypatch.setattr(process.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(
+        process, "print", lambda *_: heartbeats.append(now[0]), raising=False
+    )
+
+    def stop(_proc):
+        stopped.append(now[0])
+        reader.done = True
+
+    monkeypatch.setattr(process, "stop_process_tree", stop)
+    output, code = process.wait_with_heartbeat(parent, "probe", 0.0, 2.5, 1.0)
+    assert heartbeats == pytest.approx([1.0, 2.0])
+    assert "worker output" in output
+    if reader_exit is None:
+        assert code == 124
+        assert stopped == [2.5]
+        assert "deadline exceeded" in output
+    else:
+        assert code == 0
+        assert now[0] == reader_exit
+        assert not stopped
+
+
 @pytest.mark.skipif(os.name != "posix", reason="closes POSIX stdout descriptors")
 def test_closed_stdout_does_not_skip_heartbeats_or_the_leaders_deadline(
     tmp_path, monkeypatch, capsys
