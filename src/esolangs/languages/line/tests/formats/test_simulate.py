@@ -47,7 +47,7 @@ def test_transition_preserves_prior_states_and_requests_output() -> None:
 # Anchored to this file rather than the working directory, so the wiki
 # fixtures resolve no matter where pytest is invoked from.
 FIXTURES = str(Path(__file__).parents[1] / "fixtures")
-INVALID_FIXTURES = Path(__file__).parents[1] / "fixtures/invalid"
+INVALID_FIXTURES = Path(__file__).parents[1] / "fixtures"
 
 
 def test_lattice_probe_length_is_derived_from_unit() -> None:

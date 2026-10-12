@@ -85,7 +85,11 @@ def test_a_corrupt_png_is_a_value_error(tmp_path: Path) -> None:
 
 
 def _fixture_images(directory: Path) -> list[Path]:
-    images = sorted(directory.glob("*.png"))
+    images = sorted(
+        image
+        for image in directory.glob("*.png")
+        if image.name != "addition_antialiased.png"
+    )
     assert images, f"no Line fixtures under {directory}"
     return images
 

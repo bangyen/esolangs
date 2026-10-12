@@ -460,7 +460,7 @@ def quick_tests(name: str) -> list[str]:
     nodes += [
         "tests/generators/test_interpreter_conventions.py"
         "::test_interpreter_docstrings_follow_the_template",
-        f"tests/interpreters/fuzz/test_interpreters_robustness.py"
+        f"tests/interpreters/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
     ]
     if lang.boolean is None:
