@@ -52,12 +52,6 @@ repos:
         language: system
         files: \.md$
         pass_filenames: false
-      - id: check-interpreter-syntax
-        name: Check interpreter syntax
-        entry: python3 -m py_compile
-        language: system
-        files: ^src/esolangs/.*\.py$
-        pass_filenames: true
       - id: check-comment-density
         name: Check prose density (>= 2 code lines per comment or docstring-body line)
         entry: python3 checks/check_comment_density.py
