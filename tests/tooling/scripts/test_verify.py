@@ -1,10 +1,12 @@
 """The local gate may skip work, but only work CI is known to redo."""
 
+import errno
 import io
 import os
 import re
 import subprocess
 import sys
+import threading
 import time
 import tomllib
 from pathlib import Path
@@ -546,6 +548,101 @@ def test_closed_stdout_does_not_skip_heartbeats_or_the_leaders_deadline(
     output = capsys.readouterr().out
     assert output.count("still running") >= 2
     assert "deadline exceeded (0.2s)" in output
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("running", [False, True])
+def test_log_writer_errors_fail_the_check_and_stop_running_steps(
+    tmp_path, monkeypatch, capsys, stream, running
+):
+    verify = load_script()
+    process = sys.modules[verify.start_logged.__module__]
+    verify.ROOT = tmp_path
+    monkeypatch.setattr(verify, "STEP_DEADLINES", {"probe": 1})
+    uncaught = []
+    injected = []
+    monkeypatch.setattr(threading, "excepthook", uncaught.append)
+
+    def fail_spool(reader, path, *_args):
+        reader.read1(8192)
+        path.write_bytes(b"partial log\n")
+        injected.append(True)
+        raise OSError(errno.ENOSPC, "injected disk full")
+
+    monkeypatch.setattr(process, "spool", fail_spool)
+    script = "import time; print('first output', flush=True)"
+    if running:
+        script += "; time.sleep(2)"
+    start = time.monotonic()
+    failures, _, _ = verify._run_steps(  # noqa: SLF001
+        [("probe", [sys.executable, "-c", script], dict(os.environ))], stream=stream
+    )
+    assert injected == [True]
+    assert failures == 1
+    assert time.monotonic() - start < 0.9
+    output = capsys.readouterr().out
+    assert "partial log" in output
+    assert "injected disk full" in output
+    assert "log error" in output
+    assert "deadline exceeded" not in output
+    assert not uncaught
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("timeout", [False, True])
+def test_unreadable_log_fails_with_a_diagnostic(
+    tmp_path, monkeypatch, capsys, stream, timeout
+):
+    verify = load_script()
+    verify.ROOT = tmp_path
+    original_open = Path.open
+
+    def open_log(path, mode="r", *args, **kwargs):
+        if mode == "rb" and path.parent == tmp_path / "notes" / "verification":
+            raise PermissionError("injected unreadable log")
+        return original_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", open_log)
+    monkeypatch.setattr(verify, "STEP_DEADLINES", {"probe": 0.2})
+    script = "import time; print('output', flush=True)"
+    if timeout:
+        script += "; time.sleep(2)"
+    failures, _, _ = verify._run_steps(  # noqa: SLF001
+        [("probe", [sys.executable, "-c", script], dict(os.environ))],
+        stream=stream,
+    )
+    assert failures == 1
+    output = capsys.readouterr().out
+    assert "log error" in output
+    assert "injected unreadable log" in output
+    assert ("deadline exceeded" in output) is timeout
+
+
+def test_broken_streamed_stdout_does_not_fail_complete_logs(tmp_path, monkeypatch):
+    verify = load_script()
+    verify.ROOT = tmp_path
+    output = sys.stdout
+    injected = []
+
+    class Stream:
+        def write(self, text):
+            if text == "tee output\n":
+                injected.append(True)
+                raise BrokenPipeError("injected closed stdout")
+            return output.write(text)
+
+        def flush(self):
+            output.flush()
+
+    monkeypatch.setattr(sys, "stdout", Stream())
+    failures, _, _ = verify._run_steps(  # noqa: SLF001
+        [("probe", [sys.executable, "-c", "print('tee output')"], dict(os.environ))],
+        stream=True,
+    )
+    assert injected == [True]
+    assert failures == 0
+    logs = list((tmp_path / "notes/verification").glob("*.log"))
+    assert logs[0].read_text() == "tee output\n"
 
 
 @pytest.mark.parametrize("stream", [False, True])
