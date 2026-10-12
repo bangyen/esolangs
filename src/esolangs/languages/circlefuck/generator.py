@@ -23,7 +23,7 @@ _DIGIT_BITS = 7
 #: The 48 is not spelled out: a 6-count loop subtracts 8 from the read cell
 #: per pass (the scratch cell is cleared first -- the tape holds program
 #: text, not zeros).  This ends exactly where the straight version did
-#: (bit banked, scratch zero, pointer one right), at 40 commands a read
+#: (bit banked, scratch zero, pointer one right), at 40 source characters a read
 #: instead of 69.
 _READ = ",>[-]++++++[<-------->-]<[[-]>+<]>[-<+>]"
 
