@@ -64,30 +64,6 @@ def bfpda(truth_table: str) -> str:
         candidate, commands = _bfpda_tree(truth_table, shared, context=context)
         if commands <= 10 * n + 2:
             candidates.append(candidate)
-    # Sum of prefix spans and the two suffix bodies over all levels is O(T).
-    # Reuse residual IDs and constant-span data instead of rescanning each table.
-    for depth in range(2, n):
-        representatives: dict[int, int] = {}
-        for index, state in enumerate(context.ids[depth]):
-            representatives.setdefault(state, index)
-            if len(representatives) > 2:
-                break
-        if len(representatives) == 2:
-            span = 1 << (n - depth)
-            blocks = tuple(
-                reflected[index * span : (index + 1) * span]
-                for index in representatives.values()
-            )
-            candidate, commands = _bfpda_tree(
-                truth_table,
-                classes=(blocks[0], blocks[1]),
-                class_depth=depth,
-                class_rows=tuple(index * span for index in representatives.values()),
-                context=context,
-            )
-            if commands <= 10 * n + 2:
-                candidates.append(candidate)
-
     bank = best_bank(truth_table, context, 10 * n + 2, min(map(len, candidates)))
     if bank is not None:
         candidates.append(bank)
@@ -279,28 +255,16 @@ def _price(
     states: tuple[int, ...],
     bodies: list[dict[int, _Metric]],
 ) -> _Metric:
-    # Each label keeps its own decoder/body tail: independent prefix and
-    # body maxima can belong to different residuals and reject a valid bank.
+    # Larger banks correlate each decoder/body tail with its prefix: separate
+    # maxima can belong to different residuals and reject a valid bank.
     width = (len(states) - 1).bit_length()
-    tails: dict[int, int] = {}
-
-    def decoder(bit: int, labels: tuple[int, ...], commands: int) -> int:
-        if bit < 0:
-            label = labels[0]
-            body = bodies[depth][states[label]]
-            tails[label] = commands + body.commands
-            return body.size
-        zero = tuple(label for label in labels if not label & (1 << bit))
-        one = tuple(label for label in labels if label & (1 << bit))
-        if not zero or not one:
-            return 2 + decoder(bit - 1, zero or one, commands + 2)
-        return (
-            8
-            + decoder(bit - 1, one, commands + 6)
-            + decoder(bit - 1, zero, commands + 5)
-        )
-
-    decoder_size = decoder(width - 1, tuple(range(len(states))), 0)
+    decoder_size, tails = _decoder(
+        width, tuple(bodies[depth][state] for state in states)
+    )
+    if len(states) == 2:
+        # Preserve two-class admission: 00000100 at depth 2 costs 47 with
+        # separate prefix/body maxima, versus 46 with correlated tails.
+        tails = dict.fromkeys(tails, max(tails.values()))
     labels_by_id = {state: label for label, state in enumerate(states)}
 
     def prefix(level: int, index: int) -> _Metric:
@@ -326,9 +290,11 @@ def _price(
 def best_bank(
     table: str, context: _TreeContext, command_budget: int, size_limit: int
 ) -> str | None:
-    """Price every bank with at least three classes, emitting only its winner."""
+    """Price all banks; two-class banks precede larger banks on a size tie."""
+    # Prefixes and decoder labels sum O(T) across depths; suffix metrics
+    # are reused, and only the winning bank's bodies are emitted.
     bodies = _body_metrics(context)
-    best: tuple[int, tuple[int, ...], _Metric] | None = None
+    best: tuple[tuple[int, bool, int], tuple[int, ...], _Metric] | None = None
     n = len(context.ids) - 1
     for depth in range(2, n):
         representatives: dict[int, int] = {}
@@ -337,15 +303,20 @@ def best_bank(
         width = (len(representatives) - 1).bit_length()
         # A word uses 2w stack cells plus two return sentinels. Replacing
         # 2d consumed inputs therefore needs d >= w+1; peak stack stays 2n.
-        if len(representatives) < 3 or width + 1 > depth:
+        if len(representatives) < 2 or width + 1 > depth:
             continue
         metric = _price(context, depth, tuple(representatives), bodies)
-        if metric.commands <= command_budget and metric.size < size_limit:
-            size_limit = metric.size
-            best = depth, tuple(representatives.values()), metric
+        rank = metric.size, len(representatives) > 2, depth
+        if (
+            metric.commands <= command_budget
+            and metric.size < size_limit
+            and (best is None or rank < best[0])
+        ):
+            best = rank, tuple(representatives.values()), metric
     if best is None:
         return None
-    depth, indexes, metric = best
+    rank, indexes, metric = best
+    depth = rank[2]
     span = 1 << (n - depth)
     rows = tuple(index * span for index in indexes)
     classes = tuple(context.reflected[row : row + span] for row in rows)

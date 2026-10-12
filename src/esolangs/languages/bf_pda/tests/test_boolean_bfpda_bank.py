@@ -107,3 +107,11 @@ def test_emitter_drift_aborts(monkeypatch) -> None:
     monkeypatch.setattr(module, "_bfpda_tree", lambda *_args, **_kwargs: (".", 1))
     with pytest.raises(ValueError, match="disagrees with its price"):
         best_bank(table, _prepare(table), 162, 10000)
+
+
+def test_two_class_bank_keeps_separate_prefix_and_body_admission() -> None:
+    table = "00000100"
+    context = _prepare(table)
+    # Correlating tails prices this at 46; its former classifier admission is 47.
+    assert best_bank(table, context, 46, 10000) is None
+    assert best_bank(table, context, 47, 10000) is not None

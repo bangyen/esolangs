@@ -12,6 +12,7 @@ loop where that is shorter, any other entry is painted one by one.
 
 import re
 from itertools import groupby
+from math import isqrt
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -99,22 +100,21 @@ def _count(count: int) -> str:
 
 
 def _advance(length: int) -> str:
-    """Return the shortest commands moving ``length`` along dimension 1.
+    """Move along dimension 1 using unary, counted, or balanced-stride commands."""
 
-    ``m`` steps a pass under a counter of ``length // m``, the rest bare.
-    """
-    best = f">{_INDEX}" * length
-    for m in range(1, length // 2 + 1):
-        count, rest = divmod(length, m)
-        loop = (
+    def counted(stride: int) -> str:
+        count, rest = divmod(length, stride)
+        return (
             _count(count)
             + f"{{{_COUNTER}<{_COUNTER}"
-            + f">{_INDEX}" * m
+            + f">{_INDEX}" * stride
             + "}"
             + f">{_INDEX}" * rest
         )
-        best = min(best, loop, key=len)
-    return best
+
+    return min(
+        f">{_INDEX}" * length, counted(1), counted(max(1, isqrt(length))), key=len
+    )
 
 
 def _dimensional_bare(table: str, n: int) -> str:

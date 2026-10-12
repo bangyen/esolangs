@@ -89,48 +89,54 @@ def _constant_units(table: str, inputs: int) -> list[list[str]]:
 
 
 def _alight_units(
-    truth_table: str, n: int, chunk: int, essential: list[bool] | None = None
+    truth_table: str,
+    n: int,
+    chunk: int,
+    essential: list[bool] | None = None,
+    *,
+    postfix: bool = False,
 ) -> list[list[str]]:
-    """Build the commands, grouped into pieces a fold may not split.
+    """Build notation-specific commands grouped into indivisible fold units.
 
-    A ``skip`` guards the next command along the heading, so the pair stays
-    on one row.  The first chunk is guarded from above (``i > end``), the
-    rest from below (``i < start``); later chunks overwrite ``r`` (reading
-    past a chunk's end is ``nil``, per the wiki).  An input ``essential``
-    marks False is a bare ``inp a`` and ``truth_table`` is indexed by the rest.
+    Guards and lookups stay on one row. The first chunk's guard is an upper
+    bound, later guards are lower bounds; ignored inputs are read without
+    advancing the index. Later lookups may overwrite an out-of-range nil.
     """
     if essential is not None and not any(essential):
         return _constant_units(truth_table, n)
     units: list[list[str]] = [["begin"], ["var a"], ["var i"], ["var r"]]
+    first, fold = (
+        (f"a {_ASCII_ZERO} -", f"i 2 * a + {_ASCII_ZERO} -")
+        if postfix
+        else (f"a-{_ASCII_ZERO}", f"i*2+a-{_ASCII_ZERO}")
+    )
     folded = False
     for kept in essential or [True] * n:
         units.append(["inp a"])
-        if not kept:
-            continue
-        units.append(
-            [f"set i i*2+a-{_ASCII_ZERO}" if folded else f"set i a-{_ASCII_ZERO}"]
-        )
-        folded = True
+        if kept:
+            units.append([f"set i {fold if folded else first}"])
+            folded = True
     rows = len(truth_table)
-    if chunk >= rows:
-        # Indices run 0.5, 1.5, ... so the row number is offset by a half.
-        units.append([f'set r at{{"{truth_table}", i+0.5}}'])
-    else:
-        for start in range(0, rows, chunk):
-            piece = truth_table[start : start + chunk]
-            if start == 0:
-                units.append(
-                    [
-                        f"skip i > {_half_before(start + len(piece))}",
-                        f'set r at{{"{piece}", i+0.5}}',
-                    ]
-                )
-            else:
-                low = _half_before(start)
-                units.append([f"skip i < {low}", f'set r at{{"{piece}", i-{low}}}'])
-    units.append(["out r"])
-    units.append(["end"])
-    return units
+    # The empty literal is the planner's placeholder, with one lookup unit.
+    starts = (0,) if chunk >= rows else range(0, rows, chunk)
+    for start in starts:
+        piece = truth_table[start : start + chunk]
+        low = _half_before(start)
+        # Character positions are 0.5, 1.5, ... rather than integer indices.
+        index = (
+            ("i 0.5 +" if start == 0 else f"i {low} -")
+            if postfix
+            else ("i+0.5" if start == 0 else f"i-{low}")
+        )
+        lookup = f'set r at{{"{piece}", {index}}}'
+        if chunk >= rows:
+            units.append([lookup])
+        else:
+            bound = _half_before(len(piece)) if start == 0 else low
+            op = ">" if start == 0 else "<"
+            condition = f"i {bound} {op}" if postfix else f"i {op} {bound}"
+            units.append([f"skip {condition}", lookup])
+    return [*units, ["out r"], ["end"]]
 
 
 def _alight_flat_compact(
@@ -379,38 +385,8 @@ def _program(
 def _postfix_units(
     table: str, n: int, chunk: int, essential: list[bool] | None = None
 ) -> list[list[str]]:
-    """Emit the same row fold and guarded lookups in postfix notation.
-
-    An input ``essential`` marks False is a bare ``inp a`` the next read
-    overwrites, and ``table`` is indexed by the rest.
-    """
-    if essential is not None and not any(essential):
-        return _constant_units(table, n)
-    units = [["begin"], ["var a"], ["var i"], ["var r"]]
-    folded = False
-    for kept in essential or [True] * n:
-        units.append(["inp a"])
-        if not kept:
-            continue
-        units.append(
-            [
-                f"set i i 2 * a + {_ASCII_ZERO} -"
-                if folded
-                else f"set i a {_ASCII_ZERO} -"
-            ]
-        )
-        folded = True
-    for start in range(0, len(table), chunk):
-        piece = table[start : start + chunk]
-        index = "i 0.5 +" if start == 0 else f"i {_half_before(start)} -"
-        lookup = f'set r at{{"{piece}", {index}}}'
-        if chunk >= len(table):
-            units.append([lookup])
-        elif start == 0:
-            units.append([f"skip i {_half_before(len(piece))} >", lookup])
-        else:
-            units.append([f"skip i {_half_before(start)} <", lookup])
-    return [*units, ["out r"], ["end"]]
+    """Build the fold units in postfix notation."""
+    return _alight_units(table, n, chunk, essential, postfix=True)
 
 
 def _balance(table: str, default: Any, *, expression_syntax: str = "infix") -> Any:

@@ -1,7 +1,8 @@
 """Boolean-function generator for Forbin."""
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from itertools import count, islice
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -33,29 +34,22 @@ _FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
 _BLOCK_BITS = 7
 
 
-def _forbin_name(index: int) -> str:
-    """Return the ``index``th shortest non-keyword identifier."""
-    candidate = 0
-    while True:
+def _forbin_names() -> Iterator[str]:
+    """Yield shortest non-keyword identifiers without restarting enumeration."""
+    for candidate in count():
         name = short_name(candidate, _FORBIN_ALPHABET)
         if name not in _FORBIN_RESERVED:
-            if index == 0:
-                return name
-            index -= 1
-        candidate += 1
+            yield name
 
 
 class _Names:
     """The identifiers one program uses, shortest where they repeat most."""
 
     def __init__(self, n: int, block: int) -> None:
-        taken = 0
+        self._names = _forbin_names()
 
         def take(count: int) -> list[str]:
-            nonlocal taken
-            names = [_forbin_name(taken + k) for k in range(count)]
-            taken += count
-            return names
+            return list(islice(self._names, count))
 
         # The tree names an input bit once a node and calls ``table`` or a
         # constant printer once a leaf, so those repeat with the table
@@ -64,11 +58,10 @@ class _Names:
         self.table, self.zero, self.one = take(3)
         (self.junk,) = take(1)
         self.cells = take(block)
-        self._take = take
 
     def fresh(self) -> str:
         """Return a name no other part of the program uses."""
-        return self._take(1)[0]
+        return next(self._names)
 
 
 def _byte(bit: int) -> str:

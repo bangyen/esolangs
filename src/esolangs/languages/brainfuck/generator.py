@@ -1,5 +1,7 @@
 """Build brainfuck Boolean programs with folded trees or affine streams."""
 
+from collections.abc import Callable
+
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -101,6 +103,36 @@ def binary_bank(
         targets[key] = (code, free)
         return key
 
+    def split[Branch](
+        bit: int, one: Callable[[], Branch], zero: Callable[[], Branch]
+    ) -> tuple[Branch, int, Branch, int]:
+        """Emit both guarded arms and return their bodies and path overheads."""
+        beginning = count
+        flag = bit + 1
+        move(flag)
+        emit("+")
+        move(bit)
+        zero_entry = count - beginning + 1
+        emit("[-")
+        move(flag)
+        emit("-")
+        one_entry = count - beginning
+        one_body = one()
+        finish = count
+        move(bit)
+        emit("]")
+        one_finish = count - finish
+        zero_start = count
+        move(flag)
+        emit("[-")
+        one_finish += count - zero_start - 1
+        zero_entry += count - zero_start
+        zero_body = zero()
+        finish = count
+        move(flag)
+        emit("]")
+        return one_body, one_entry + one_finish, zero_body, zero_entry + count - finish
+
     def node(i: int, lo: int, hi: int, free: int | None) -> _Cost:
         beginning = count
         key = ids[i][lo >> (n - i)]
@@ -147,40 +179,15 @@ def binary_bank(
             cleared = clear(2 * i)
             prefix = count - beginning + cleared - 3
             return _Cost(prefix, (node(i + 1, lo, mid, 2 * i),))
-        flag = 2 * i + 1
-        bit = 2 * i
-        move(flag)
-        emit("+")
-        move(bit)
-        zero_entry = count - beginning + 1
-        emit("[-")
-        move(flag)
-        emit("-")
-        one_entry = count - beginning
         # An active one guard still tests its cleared input when it closes.
         # Only a zero arm (whose one test has finished) or an ignored input
         # can hold the high marker. With neither available, keep this copy.
-        one = node(i + 1, mid, hi, free)
-        finish = count
-        move(bit)
-        emit("]")
-        one_finish = count - finish
-        zero_start = count
-        move(flag)
-        emit("[-")
-        one_finish += count - zero_start - 1
-        zero_entry += count - zero_start
-        zero = node(i + 1, lo, mid, bit)
-        finish = count
-        move(flag)
-        emit("]")
-        return _Cost(
-            0,
-            (
-                _Cost(one_entry + one_finish, (one,)),
-                _Cost(zero_entry + count - finish, (zero,)),
-            ),
+        one, one_cost, zero, zero_cost = split(
+            2 * i,
+            lambda: node(i + 1, mid, hi, free),
+            lambda: node(i + 1, lo, mid, 2 * i),
         )
+        return _Cost(0, (_Cost(one_cost, (one,)), _Cost(zero_cost, (zero,))))
 
     prefix = node(0, 0, len(table), None)
     labels = tuple(sorted({code for code, _ in targets.values()}))
@@ -228,7 +235,6 @@ def binary_bank(
             for value in (0, 1)
         ]
         cell = scratch[bit]
-        flag = cell + 1
         if not groups[0] or not groups[1]:
             if groups[1]:
                 move(cell)
@@ -238,32 +244,14 @@ def binary_bank(
                 label: flat + cost
                 for label, cost in decode(bit - 1, groups[1] or groups[0]).items()
             }
-        move(flag)
-        emit("+")
-        move(cell)
-        zero_entry = count - beginning + 1
-        emit("[-")
-        move(flag)
-        emit("-")
-        one_entry = count - beginning
-        one = decode(bit - 1, groups[1])
-        finish = count
-        move(cell)
-        emit("]")
-        one_finish = count - finish
-        zero_start = count
-        move(flag)
-        emit("[-")
-        one_finish += count - zero_start - 1
-        zero_entry += count - zero_start
-        zero = decode(bit - 1, groups[0])
-        finish = count
-        move(flag)
-        emit("]")
-        zero_finish = count - finish
+        one, one_cost, zero, zero_cost = split(
+            cell,
+            lambda: decode(bit - 1, groups[1]),
+            lambda: decode(bit - 1, groups[0]),
+        )
         return {
-            **{label: cost + one_entry + one_finish for label, cost in one.items()},
-            **{label: cost + zero_entry + zero_finish for label, cost in zero.items()},
+            **{label: cost + one_cost for label, cost in one.items()},
+            **{label: cost + zero_cost for label, cost in zero.items()},
         }
 
     decoder = decode(width - 1, labels)
