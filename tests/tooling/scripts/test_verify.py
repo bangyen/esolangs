@@ -471,6 +471,84 @@ while True:
 
 
 @pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.skipif(os.name != "posix", reason="worker inherits a POSIX session")
+def test_deadline_includes_output_from_an_exited_leaders_worker(
+    tmp_path, monkeypatch, capsys, stream
+):
+    verify = load_script()
+    verify.ROOT = tmp_path
+    monkeypatch.setattr(verify, "STEP_DEADLINES", {"pytest": 0.2})
+    marker = tmp_path / "worker"
+    worker = f"""
+import time
+from pathlib import Path
+marker = Path({str(marker)!r})
+deadline = time.monotonic() + 1
+while time.monotonic() < deadline:
+    marker.write_text(str(time.monotonic()))
+    time.sleep(0.01)
+print('late worker output', flush=True)
+"""
+    parent = (
+        "import subprocess, sys; "
+        f"subprocess.Popen([sys.executable, '-c', {worker!r}]); "
+        "print('leader exited', flush=True)"
+    )
+    start = time.monotonic()
+    failures, _, _ = verify._run_steps(  # noqa: SLF001
+        [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=stream
+    )
+    assert failures == 1
+    assert time.monotonic() - start < 0.9
+    output = capsys.readouterr().out
+    assert "leader exited" in output
+    assert "deadline exceeded (0.2s)" in output
+    assert "late worker output" not in output
+    value = marker.read_text()
+    time.sleep(0.1)
+    assert marker.read_text() == value
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.skipif(os.name != "posix", reason="worker inherits a POSIX session")
+def test_exited_leaders_worker_can_finish_within_the_deadline(
+    tmp_path, monkeypatch, capsys, stream
+):
+    verify = load_script()
+    verify.ROOT = tmp_path
+    monkeypatch.setattr(verify, "STEP_DEADLINES", {"pytest": 1})
+    worker = "import time; time.sleep(0.1); print('worker finished', flush=True)"
+    parent = (
+        f"import subprocess, sys; subprocess.Popen([sys.executable, '-c', {worker!r}])"
+    )
+    failures, _, _ = verify._run_steps(  # noqa: SLF001
+        [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=stream
+    )
+    assert failures == 0
+    logs = list((tmp_path / "notes/verification").glob("*.log"))
+    assert logs[0].read_text() == "worker finished\n"
+    assert "deadline exceeded" not in capsys.readouterr().out
+
+
+@pytest.mark.skipif(os.name != "posix", reason="closes POSIX stdout descriptors")
+def test_closed_stdout_does_not_skip_heartbeats_or_the_leaders_deadline(
+    tmp_path, monkeypatch, capsys
+):
+    verify = load_script()
+    verify.ROOT = tmp_path
+    monkeypatch.setattr(verify, "STEP_DEADLINES", {"pytest": 0.2})
+    monkeypatch.setattr(verify, "HEARTBEAT_SECONDS", 0.05)
+    parent = "import os, time; os.close(1); os.close(2); time.sleep(1)"
+    failures, _, _ = verify._run_steps(  # noqa: SLF001
+        [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=False
+    )
+    assert failures == 1
+    output = capsys.readouterr().out
+    assert output.count("still running") >= 2
+    assert "deadline exceeded (0.2s)" in output
+
+
+@pytest.mark.parametrize("stream", [False, True])
 def test_step_logs_persist_for_streamed_and_captured_output(tmp_path, capsys, stream):
     verify = load_script()
     verify.ROOT = tmp_path

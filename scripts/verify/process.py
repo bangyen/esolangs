@@ -164,8 +164,16 @@ def wait_with_heartbeat(
                 wait = max(0.0, min(heartbeat, remaining))
                 if proc in _LOGS:
                     proc.wait(timeout=wait)
+                    log = _LOGS[proc]
+                    if log.reader is not None:
+                        # An exited leader's worker can still hold stdout open;
+                        # the 0.2s regression otherwise reports success at 1.1s.
+                        wait = max(0.0, min(heartbeat, deadline - time.monotonic()))
+                        log.reader.join(wait)
+                        if log.reader.is_alive():
+                            raise subprocess.TimeoutExpired(proc.args, wait)
                     output = excerpt(proc)
-                    return output, 125 if _LOGS[proc].overflow else proc.returncode
+                    return output, 125 if log.overflow else proc.returncode
                 output, _ = proc.communicate(timeout=wait)
                 return output or "", proc.returncode
             except subprocess.TimeoutExpired:
