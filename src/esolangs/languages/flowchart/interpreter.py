@@ -774,27 +774,10 @@ class _Machine:
             )
         order = (p.d, _turn_right(p.d), _turn_left(p.d))
         exits.sort(key=lambda step: order.index(step[2]))
-        if prefer is not None:
-            for n_row, n_col, d in exits:
-                if d == prefer:
-                    self._step_to(i, n_row, n_col, d)
-                    return
-        if prefer is not None:
-            n_row, n_col, d = exits[0]
-            self._step_to(i, n_row, n_col, d)
-            return
-        if len(exits) > 1:
-            remembered = self._remembered(p, p.row, p.col, [d for _, _, d in exits])
-            for n_row, n_col, d in exits:
-                if d == remembered:
-                    self._step_to(i, n_row, n_col, d)
-                    return
-            for n_row, n_col, d in exits:
-                if d == p.d:
-                    self._step_to(i, n_row, n_col, d)
-                    return
-        n_row, n_col, d = exits[0]
-        self._step_to(i, n_row, n_col, d)
+        if prefer is None and len(exits) > 1:
+            prefer = self._remembered(p, p.row, p.col, [d for _, _, d in exits])
+        selected = next((exit_ for exit_ in exits if exit_[2] == prefer), exits[0])
+        self._step_to(i, *selected)
 
     def _step_to(self, i: int, row: int, col: int, d: tuple[int, int]) -> None:
         """Record the exit taken from the node and move to ``(row, col)``."""

@@ -210,6 +210,15 @@ class _Machine:
             _Pointer(exit_, pointer.position, channel, value) for exit_ in exits
         )
 
+    def _pass(self, following: list[_Pointer], pointer: _Pointer) -> None:
+        self._emit(
+            following,
+            pointer,
+            self._exits(pointer, pointer.channel),
+            pointer.channel,
+            pointer.value,
+        )
+
     def _send(
         self, following: list[_Pointer], pointer: _Pointer, value: int | None
     ) -> None:
@@ -294,7 +303,7 @@ class _Machine:
     def stack(self) -> list[object]:
         return [self.cursor, *sorted(self.cells.items())]
 
-    def snapshot(self) -> tuple[object, ...]:
+    def snapshot(self) -> _State:
         return (
             self.pointers,
             tuple(sorted(self.cells.items())),
@@ -308,16 +317,7 @@ class _Machine:
 
     def branching_snapshot(self) -> _State:
         """Return immutable state for exhaustive random-merge search."""
-        return (
-            self.pointers,
-            tuple(sorted(self.cells.items())),
-            self.cursor,
-            self._halted,
-            self.io.progress(),
-            self._input_reads,
-            self.grid,
-            self._set_ended,
-        )
+        return self.snapshot()
 
     def branching_halted(self, state: object) -> bool:
         """Report whether a branch halted or lost every pointer."""
@@ -351,18 +351,8 @@ class _Machine:
             for pointer in pointers
         ):
             return None
-        groups: dict[_Point, list[_Pointer]] = defaultdict(list)
-        for pointer in pointers:
-            groups[pointer.position].append(pointer)
         radices: list[int] = []
-        for position, arrived in sorted(
-            groups.items(),
-            key=lambda item: (
-                _PRIORITY.get(self._char(item[0]), 1),
-                item[0][1],
-                item[0][0],
-            ),
-        ):
+        for position, arrived in self._ordered_groups(pointers):
             if self._char(position) != "◘":
                 continue
             for channel in ("execution", "data"):
@@ -425,13 +415,7 @@ class _Machine:
                 following.extend(arrived)
                 return
             for pointer in arrived:
-                self._emit(
-                    following,
-                    pointer,
-                    self._exits(pointer, pointer.channel),
-                    pointer.channel,
-                    pointer.value,
-                )
+                self._pass(following, pointer)
             return
         groups = (
             [p for p in arrived if p.channel == "execution"],
@@ -493,22 +477,10 @@ class _Machine:
             ]
             self._emit(following, pointer, exits, pointer.channel, pointer.value)
         elif cell == "◯":
-            self._emit(
-                following,
-                pointer,
-                self._exits(pointer, pointer.channel),
-                pointer.channel,
-                pointer.value,
-            )
+            self._pass(following, pointer)
         elif cell == "◔":
             if pointer.paused:
-                self._emit(
-                    following,
-                    pointer,
-                    self._exits(pointer, pointer.channel),
-                    pointer.channel,
-                    pointer.value,
-                )
+                self._pass(following, pointer)
             else:
                 following.append(
                     _Pointer(
@@ -568,14 +540,13 @@ class _Machine:
                 hint="use cells documented by esolangs describe --spec thisthat",
             )
 
-    def step(self) -> None:
-        if self.halted:
-            return
+    def _ordered_groups(
+        self, pointers: tuple[_Pointer, ...]
+    ) -> list[tuple[_Point, list[_Pointer]]]:
         groups: dict[_Point, list[_Pointer]] = defaultdict(list)
-        for pointer in self.pointers:
+        for pointer in pointers:
             groups[pointer.position].append(pointer)
-        following: list[_Pointer] = []
-        ordered = sorted(
+        return sorted(
             groups.items(),
             key=lambda item: (
                 _PRIORITY.get(self._char(item[0]), 1),
@@ -583,7 +554,12 @@ class _Machine:
                 item[0][0],
             ),
         )
-        for position, arrived in ordered:
+
+    def step(self) -> None:
+        if self.halted:
+            return
+        following: list[_Pointer] = []
+        for position, arrived in self._ordered_groups(self.pointers):
             cell = self._char(position)
             is_data_gate = cell in "□■▦" and any(p.channel == "data" for p in arrived)
             if cell in "◘◈" or is_data_gate:

@@ -343,3 +343,13 @@ def test_cat_and_kolakoski_wiki_examples() -> None:
     printed = machine.io.getvalue()
     assert len(printed) > 60
     assert printed == "".join(str(term - 1) for term in kolakoski)[: len(printed)]
+
+
+def test_cursor_moves_before_a_bistack_read_in_the_same_cycle() -> None:
+    machine = _Machine(["▣ ◹ ◧═◇"], ScriptedIO(""))
+    machine.cells = {(0, 0): 0, (0, 1): 1}
+    machine.pointers = (_Pointer((2, 0), None), _Pointer((4, 0), None))
+    for _ in range(3):
+        machine.step()
+    assert machine.io.getvalue() == "1"
+    assert machine.cells == {(0, 0): 0}
