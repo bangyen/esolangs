@@ -1,5 +1,6 @@
 """Catalogue evidence follows construction imports, not neighboring files."""
 
+import os
 from pathlib import Path
 
 import pytest
@@ -110,3 +111,20 @@ def test_package_member_module_reaches_only_the_selected_function(
         "emit",
         "constant_span_test",
     }
+
+
+def test_content_cache_sees_same_size_edits_with_unchanged_mtime(sources: Path) -> None:
+    path = sources / "generator.py"
+    path.write_text(
+        "from esolangs.generation.emit import emit\n"
+        "def generate(table):\n    return emit(table)\n"
+    )
+    helper = sources / "esolangs/generation/emit.py"
+    original = helper.read_text()
+    stat = helper.stat()
+    assert "constant_span_test" in construction_symbols(path, sources, "generate")
+    helper.write_text("def emit(table): return table\n".ljust(len(original)))
+    os.utime(helper, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    assert helper.stat().st_size == stat.st_size
+    assert helper.stat().st_mtime_ns == stat.st_mtime_ns
+    assert construction_symbols(path, sources, "generate") == {"generate", "emit"}

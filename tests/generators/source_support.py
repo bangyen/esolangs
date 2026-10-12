@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 import inspect
-from functools import cache
+from functools import cache, lru_cache
 from pathlib import Path
 
 from esolangs.registry import LANGUAGES
@@ -34,6 +34,21 @@ class _References(ast.NodeVisitor):
         self.names: set[str] = set()
         self.attributes: dict[str, set[str]] = {}
         self.bound: set[str] = set()
+        self.imports: list[tuple[int, ast.Import | ast.ImportFrom]] = []
+        self.depth = 0
+
+    def visit(self, node: ast.AST) -> None:
+        self.depth += 1
+        try:
+            super().visit(node)
+        finally:
+            self.depth -= 1
+
+    def visit_Import(self, node: ast.Import) -> None:
+        self.imports.append((self.depth, node))
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        self.imports.append((self.depth, node))
 
     def visit_Name(self, node: ast.Name) -> None:
         if isinstance(node.ctx, ast.Load) and node.id not in self.bound:
@@ -82,6 +97,47 @@ class _References(ast.NodeVisitor):
             self.visit(node.value)
 
 
+# Key by contents so edits are visible even when size and mtime stay fixed.
+@lru_cache(maxsize=256)
+def _parsed_source(source: str) -> tuple[ast.Module, dict[str, ast.AST]]:
+    tree = ast.parse(source)
+    definitions: dict[str, ast.AST] = {}
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef | ast.ClassDef):
+            definitions[node.name] = node
+        elif isinstance(node, ast.Assign | ast.AnnAssign):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    definitions[target.id] = node
+    return tree, definitions
+
+
+@lru_cache(maxsize=2048)
+def _symbol_references(
+    tree: ast.Module, selected: ast.AST | None, name: str
+) -> tuple[
+    frozenset[str],
+    dict[str, frozenset[str]],
+    tuple[ast.Import | ast.ImportFrom, ...],
+]:
+    """Reuse a definition's references across generator traversals."""
+    references = _References()
+    if selected is None:
+        references.names.add(name)
+    else:
+        references.visit(selected)
+    # Stable depth order matches ast.walk without a second traversal.
+    imports = tuple(
+        node for node in tree.body if isinstance(node, ast.Import | ast.ImportFrom)
+    ) + tuple(node for _, node in sorted(references.imports, key=lambda item: item[0]))
+    return (
+        frozenset(references.names),
+        {key: frozenset(values) for key, values in references.attributes.items()},
+        imports,
+    )
+
+
 def construction_symbols(path: Path, root: Path, symbol: str) -> set[str]:
     """Follow referenced definitions, excluding siblings and unused imports."""
     pending = [(path, symbol)]
@@ -90,19 +146,7 @@ def construction_symbols(path: Path, root: Path, symbol: str) -> set[str]:
 
     @cache
     def parse(file: Path) -> tuple[ast.Module, dict[str, ast.AST]]:
-        tree = ast.parse(file.read_text(encoding="utf-8"))
-        definitions: dict[str, ast.AST] = {}
-        for node in tree.body:
-            if isinstance(node, ast.FunctionDef | ast.ClassDef):
-                definitions[node.name] = node
-            elif isinstance(node, ast.Assign | ast.AnnAssign):
-                targets = (
-                    node.targets if isinstance(node, ast.Assign) else [node.target]
-                )
-                for target in targets:
-                    if isinstance(target, ast.Name):
-                        definitions[target.id] = node
-        return tree, definitions
+        return _parsed_source(file.read_text(encoding="utf-8"))
 
     while pending:
         file, name = pending.pop()
@@ -111,7 +155,6 @@ def construction_symbols(path: Path, root: Path, symbol: str) -> set[str]:
         seen.add((file, name))
         tree, definitions = parse(file)
         selected = definitions.get(name)
-        references = _References()
         if selected is not None:
             reached.add(name)
             if (
@@ -119,11 +162,8 @@ def construction_symbols(path: Path, root: Path, symbol: str) -> set[str]:
                 and name in _PRIMITIVES
             ):
                 continue
-            references.visit(selected)
-        else:
-            references.names.add(name)  # Follow a re-exported symbol.
+        names, attributes, nodes = _symbol_references(tree, selected, name)
         imports: dict[str, tuple[str, str | None]] = {}
-        nodes = [*tree.body, *(ast.walk(selected) if selected is not None else ())]
         package = file.relative_to(root).with_suffix("").parts[:-1]
         for node in nodes:
             if isinstance(node, ast.ImportFrom):
@@ -140,7 +180,7 @@ def construction_symbols(path: Path, root: Path, symbol: str) -> set[str]:
                     (alias.asname or alias.name, (alias.name, None))
                     for alias in node.names
                 )
-        for reference in sorted(references.names):
+        for reference in sorted(names):
             if reference not in imports:
                 if reference in definitions:
                     pending.append((file, reference))
@@ -168,7 +208,7 @@ def construction_symbols(path: Path, root: Path, symbol: str) -> set[str]:
             targets = (
                 {target}
                 if target is not None
-                else references.attributes.get(reference, set())
+                else attributes.get(reference, frozenset())
             )
             pending.extend((dependency, target) for target in sorted(targets))
     return reached
