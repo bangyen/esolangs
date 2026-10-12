@@ -201,9 +201,11 @@ inputs without a width (16 of 96 controls improved on the admitting run).
 Dig's shared pool is 2..10 unique 64-row classes indexed by a single decimal
 digit over 2..6 prefix bits, so a larger pool needs a multi-digit index.
 
-Circuit Diagram and Line still have a general sharing/routing gap; helper
-presence does not establish complete sharing. Circuit Diagram's bundled
-suffix forests pass native dense controls through fifteen inputs. Line's
+Circuit Diagram compares three complete residual folds against its fallback
+by exact emitted characters, without a node-count cap; sharing wins ties.
+The [construction proof](proofs/circuit-diagram-sharing.md) bounds modeling
+and emitted text by O(T), rather than claiming every shared rectangle has
+linear area. Line still has a general sharing/routing gap. Its
 partial-prefix cloning saves only 2.19% of aggregate planned area on 200
 seeded eight-input tables, below the bespoke gate; its native positive
 control passes all 256 rows, saving 33,700,800 to 32,865,600 scale-one pixels

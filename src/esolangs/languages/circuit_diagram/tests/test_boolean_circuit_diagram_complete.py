@@ -17,7 +17,7 @@ from esolangs.languages.circuit_diagram.generator.layout import _Layout
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
-from tests.support.witness_tables import dense
+from tests.support.witness_tables import dense, nested_dense
 
 
 def _trace_clash(monkeypatch: pytest.MonkeyPatch) -> list[int]:
@@ -132,3 +132,19 @@ def test_public_uncapped_models_compete_on_emitted_characters() -> None:
     best = min(len(model.render()) for model in models)
     assert len(code) <= best
     _execute(table, code, (0, 255))
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("family", [dense, nested_dense])
+def test_taller_area_winner_cannot_replace_smaller_text(family) -> None:
+    table = family(10)
+    models: list[_Layout] = []
+    _linear_shared_layout(table, 10, models)
+    area_winner = min(models, key=lambda model: model.bounds()[0] * model.bounds()[1])
+    full = area_winner.render()
+    code = circuit_diagram(table)
+    lines = code.splitlines()
+    height, width = area_winner.bounds()
+    assert height * width < len(lines) * max(map(len, lines))
+    assert len(full) > len(code)
+    _execute(table, code, (0, table.index("1"), len(table) - 1))

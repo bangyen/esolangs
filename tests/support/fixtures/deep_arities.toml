@@ -1,11 +1,12 @@
-# Per-generator tuning for tests/proofs/deep: arity ceilings below each
+# Per-generator tuning for tests/proofs/deep: arity ceilings against each
 # module's MAX_ARITY default, and exemptions.  Optional: a generator left out
 # gets the default.  Keys are language ids.
 
 [linearity]
 # Builds measured in seconds, each set to the lowest arity that still clears
 # MIN_RUNGS past its last route change.
-circuit_diagram = 10
+# Default H routing starts at eight: three rungs per parity need thirteen (6.8s).
+circuit_diagram = 13
 factor = 11
 polynomial = 9
 streetcode = 10

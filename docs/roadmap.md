@@ -31,36 +31,6 @@ exemption supported by a structural proof or the measured criterion in
   `tests/generators/test_boolean_line_streaming.py`,
   `tests/generators/test_boolean_line_join_lanes.py` and
   `tests/generators/test_boolean_line_share_scope.py`.
-- **Circuit Diagram:** fixed-size cofactor pools share locally inside
-  a prefix H recursion; cell guards and coordinate buckets give linear
-  expected work and area. Seven/eight-input atoms use fixed footer routing;
-  dense n=8 occupies 194,775 cells / 147,264 characters against the minterm lattice's
-  1,946,024 / 1,780,773; every row executes natively. Three- and four-input
-  pools and larger atoms keep both arity parities inside the measured growth gate. Global
-  complete cofactors share through four/eight predicate-and-function banks:
-  the n=10 ABBA control occupies 387,711 cells against 492,826; all 1,024
-  native rows pass. Repeated seven/eight-input classes now share across all
-  prefixes through H masks, admitted by a conservative workspace gate bound.
-  The n=13 sixteen-class witness occupies 2,453,905 cells against 35,581,224;
-  both execute 33 native rows. The n=13 eight-class witness drops
-  from 1,530,528 to 1,160,811 cells and 1,064 to 874 gates; both execute 33 native rows, with
-  all three global fold orders rejected and all eight top-level banks distinct.
-  A bounded multi-output forest now shares internal residuals between class roots.
-  Counted mask/body gates admit 202 sparse classes at n=15 in 8,749,827 cells;
-  607 native rows cover every class within 20 commands. Forest area floors
-  skip oversized assembly. Binary-carry OR returns retain one root per level.
-  Repeats beyond the fixed class cap or gate budget remain open when all three fixed
-  fold orders exceed the node-count budget. Moving three/four tail inputs first avoids the
-  expander control's original graph: n=12 drops from 221 to 60 fold nodes
-  and executes in 138,953 cells. Controls in
-  `tests/generators/test_boolean_circuit_diagram_banks.py`,
-  `tests/generators/test_boolean_circuit_diagram_classes.py`,
-  `tests/generators/test_boolean_circuit_diagram_class_budget.py`,
-  `tests/generators/test_boolean_circuit_diagram_forest.py`,
-  `tests/generators/test_boolean_circuit_diagram_hcells.py`,
-  `tests/generators/test_boolean_circuit_diagram_order.py`,
-  `tests/generators/test_boolean_circuit_diagram_pool.py` and
-  `tests/generators/test_boolean_circuit_diagram_share.py`.
 
 ## Generator linearity
 
