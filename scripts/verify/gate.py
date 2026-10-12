@@ -23,6 +23,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -596,11 +597,19 @@ def main() -> int:
             # own expression excluding all three deferred bands.
             cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else LOCAL_PYTEST_MARKS]
             if full:
+                directory = ROOT / "notes/verification"
+                directory.mkdir(parents=True, exist_ok=True)
+                timing_directory = Path(
+                    tempfile.mkdtemp(prefix="pytest-timings-", dir=directory)
+                )
+                output = timing_directory / "durations.json"
+                print(f"[timings] {output}.progress.jsonl")
                 cmd.extend(
                     [
                         "-p",
                         "scripts.ci.shard",
-                        "--duration-order",
+                        "--duration-output",
+                        str(output),
                         "--duration-input",
                         str(ROOT / "tests/support/fixtures/slow_durations.json"),
                     ]

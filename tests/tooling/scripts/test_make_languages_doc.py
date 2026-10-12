@@ -280,3 +280,16 @@ def test_exports_use_the_canonical_generator_module(tmp_path):
         "LANGUAGE = Language('Fixture', boolean=fixture)\n"
     )
     assert declared(tmp_path) == [("esolangs.languages.fixture.generator", "fixture")]
+
+
+def test_discovery_ignores_noncanonical_declarations(tmp_path):
+    from scripts.docs.generate import declared
+
+    language = tmp_path / "src/esolangs/languages/fixture"
+    package = language / "generator"
+    package.mkdir(parents=True)
+    source = "LANGUAGE = Language('Fixture', boolean=fixture)\n"
+    (package / "__init__.py").write_text(source)
+    (package / "helper.py").write_text(source)
+    (language / "interpreter.py").write_text(source)
+    assert declared(tmp_path) == [("esolangs.languages.fixture.generator", "fixture")]

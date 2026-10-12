@@ -501,7 +501,12 @@ LINE_LIMIT = 88
 def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
     """Return canonical module and function names for declared generators."""
     found = []
-    for path in sorted((root / "src/esolangs/languages").rglob("*.py")):
+    languages = root / "src/esolangs/languages"
+    paths = (
+        *languages.glob("*/generator.py"),
+        *languages.glob("*/generator/__init__.py"),
+    )
+    for path in sorted(paths):
         text = path.read_text(encoding="utf-8")
         for statement in ast.parse(text).body:
             if not (

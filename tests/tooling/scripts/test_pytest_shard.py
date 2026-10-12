@@ -130,3 +130,41 @@ def test_duration_order_uses_read_only_input_and_preserves_fixture_order(tmp_pat
         "new.py::first",
     ]
     assert source.read_text() == '{"a.py::second": 20, "b.py::first": 1}'
+
+
+def test_progress_survives_without_publishing_complete_evidence(tmp_path):
+    import json
+    from types import SimpleNamespace
+
+    shard = load_script()
+    destination = tmp_path / "durations.json"
+    recorder = shard.Recorder(destination)
+    recorder.pytest_runtest_logreport(
+        SimpleNamespace(
+            nodeid="a",
+            when="call",
+            duration=2,
+            failed=True,
+            longrepr="broken invariant",
+        )
+    )
+    recorder.pytest_runtest_logreport(
+        SimpleNamespace(nodeid="a", when="teardown", duration=0.5, failed=False)
+    )
+    entries = [json.loads(line) for line in recorder.progress.read_text().splitlines()]
+    assert entries[0]["failure"] == "broken invariant"
+    assert entries[0]["finished"] is False
+    assert entries[1] == {
+        "nodeid": "a",
+        "duration": 2.5,
+        "finished": True,
+        "failed": True,
+    }
+    assert not destination.exists()
+    assert not destination.with_suffix(".json.meta.json").exists()
+    recorder.pytest_sessionfinish(1)
+    assert json.loads(destination.read_text()) == {"a": 2.5}
+    assert (
+        json.loads(destination.with_suffix(".json.meta.json").read_text())["exitstatus"]
+        == 1
+    )

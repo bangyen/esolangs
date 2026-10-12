@@ -186,7 +186,16 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
                 + sum(map((0).__gt__, items))
             )
         except TypeError:
-            total = sum(state_bits(item, memo) for item in value)
+            # The n=8 mixed-frame profile made 15.5M calls to state_bits.
+            # Primitive fields need no recursive dispatch.
+            total = 0
+            for item in value:
+                if type(item) is int:
+                    total += (item.bit_length() or 1) + (item < 0)
+                elif type(item) is str:
+                    total += 8 * len(item)
+                else:
+                    total += state_bits(item, memo)
     elif is_dataclass(value):
         total = sum(state_bits(getattr(value, f.name), memo) for f in fields(value))
     elif hasattr(value, "__dict__"):
@@ -259,16 +268,18 @@ class WrittenState:
                 and isinstance(last, tuple)
                 and len(part) == len(last)
                 and part
-                and isinstance(part[0], tuple)
             ):
                 # language-owners: ["Malbolge", "Streetcode"]
-                # A chunked store (Malbolge's memory, a persistent tape):
-                # a tuple counts as the sum of its items, and an unwritten
-                # chunk is the same object, so recount only the new ones.
+                # Tuples count as the sum of their items: recount changed
+                # chunks or integer cells rather than the whole persistent store.
                 # A store rebuilt wholesale (Streetcode re-sorts its records)
                 # moves most items, and one count in C beats that walk.
                 changed = list(compress(range(len(part)), map(is_not, part, last)))
-                if 8 * len(changed) < len(part):
+                additive = isinstance(part[0], tuple) or all(
+                    type(part[i]) in (int, bool) and type(last[i]) in (int, bool)
+                    for i in changed
+                )
+                if additive and 8 * len(changed) < len(part):
                     for i in changed:
                         now += state_bits(part[i], memo)
                         now -= state_bits(last[i], memo)
