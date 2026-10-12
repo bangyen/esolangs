@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from esolangs._evaluate import _evaluate
+from esolangs.runtime._evaluate import _evaluate
 from esolangs.languages.line.generator import line
 from esolangs.languages.line.generator.forward import projected_streaming_canvas
 from esolangs.languages.line.tests import test_boolean_line_forward as controls
