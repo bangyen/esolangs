@@ -60,9 +60,8 @@ STEP_CAP = 2_000_000
 
 #: Arity ceilings.  Fixed rather than a time budget, for the reason
 #: ``linearity.py`` gives: a wall-clock cutoff climbs further on a fast
-#: machine than in CI and quietly changes the verdict.  Raised where the
-#: route changes late: AddSubJump jumps 39 -> 965 at n=6, so 9 left it four
-#: rungs, short of ``MIN_RUNGS``.
+#: machine than in CI and quietly changes the verdict. Late route changes
+#: and their measured jumps are recorded beside the override rows.
 MAX_ARITY = 9
 
 #: The dense pass of a ``poly n`` row climbs further: Sophie passed it at
@@ -75,13 +74,10 @@ ARITY_OVERRIDE = deep_arities("execution")
 
 #: Generators this contract cannot measure at all, with the reason.
 #:
-#: Deliberately short, and it does *not* list the quadratic-execution
-#: languages.  BIO, Jaune, Flowchart, RAM0 and BrainIf run a *linear* number
-#: of commands -- their quadratic is the cost of each command, which this
-#: contract says outright it does not price -- so they are held to the bound
-#: here like anything else, and their per-command cost is recorded in
-#: ``docs/limitations.md`` where it belongs.  Exempting them here would have
-#: been a category error that quietly stopped guarding five generators.
+#: Command cost is separate from command count: a quadratic per-command
+#: cost does not exempt a generator with linear command count. Those costs
+#: are recorded in ``docs/limitations.md``; this contract still guards the
+#: count for such generators.
 #:
 #: ``main`` asserts every name is a real generator, so a rename cannot
 #: silently deselect one.  Empty since A Painter Ant, which never halts, is

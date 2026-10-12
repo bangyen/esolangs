@@ -1,7 +1,8 @@
 # Limitations and contracts
 
 Interpreter conventions, generator constraints, and proved limits.
-See [Polynomial](proofs/polynomial.md) for its size lower bound.
+
+- Polynomial has a [size lower bound](proofs/polynomial.md).
 
 The measurement screens and the Vandevelo profiler were removed once their
 findings were recorded here; numbers attributed to them are evidence, not a
@@ -19,8 +20,8 @@ command to rerun.
   optional memory-mapped I/O is enabled.
 - AddSubJump uses Unicode character codes where input framing is unspecified.
 - Minifuck uses Unicode character codes where input framing is unspecified.
-- Explicit frame stacks are uncapped. Forbin expression calls retain their
-  documented host-recursion limit.
+- Explicit frame stacks are uncapped.
+- Forbin expression calls retain their documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
   specifies only a two-road choice.
 
@@ -33,8 +34,11 @@ codec, and `describe` reports `source_kind="raster"`.
 <!-- RASTER-SOURCES:END -->
 
 Text and raster share VM and step contracts; `RUNNERS` describes text
-bundling only. Line retains its graph for repeated generated rows, and
-stepping parses pixels; the other raster languages emit and execute pixels.
+bundling only.
+
+- Line retains its graph for repeated generated rows; stepping parses pixels.
+- Piet emits and executes pixels.
+- Piet++ emits and executes pixels.
 
 ## Source positions
 
@@ -42,17 +46,22 @@ VM instruction positions declare `ip_shape`: `offset`, `grid`, `line`, or
 `opaque`. `tests/test_vm_protocol.py` checks every language and rejects
 undeclared or misspelled values. Opaque positions have no source coordinate.
 
-Line extraction accepts anti-aliased PNGs only when strokes retain a connected
-dark core. The 3px scan fixture executes addition; a one-third-pixel shift of
-a 1px stroke is rejected with 921 unaccounted pixels rather than silently
-changing the program.
+- Line extraction accepts anti-aliased PNGs only when strokes retain a connected
+  dark core. The 3px scan fixture executes addition; a one-third-pixel shift of
+  a 1px stroke is rejected with 921 unaccounted pixels rather than silently
+  changing the program.
 
 ## Boolean generators
 
 Every path reads all n inputs in order; an ignored input is read and
 discarded, never left unread. Leaving a trailing ignored input unread would
-save 9-29% at n=7..8 on Sophie, Unlambda, Brainfuck and Factor, but would make
-a program's input consumption depend on the table.
+make input consumption depend on the table. The measured savings were 9-29%
+at n=7..8 across these generators:
+
+- Sophie was included in the trailing-input measurement.
+- Unlambda was included in the trailing-input measurement.
+- brainfuck was included in the trailing-input measurement.
+- Factor was included in the trailing-input measurement.
 
 Parameterized generators embed each input exactly once. Every emitted
 character is build work. The input text must have:
@@ -107,11 +116,11 @@ a deficit for that construction, not an impossibility bound. See
 [the latest controls](proofs/malbolge-scaling.md#native-bootstrap-progress-2026-10-11).
 The shipped cap remains sixteen.
 
-Vandevelo's fixed sparse-candidate cap forces Ω(T log n) emitted characters
-on an explicit odd-prefix family, where T = 2ⁿ. Character-level generation
-time is therefore superlinear for the shipped construction. A replacement
-with universal O(T) size and generation time remains open; no language-wide
-impossibility was proved. See [the proof](proofs/vandevelo-sparse-tail.md).
+- Vandevelo's fixed sparse-candidate cap forces Ω(T log n) emitted characters
+  on an explicit odd-prefix family, where T = 2ⁿ. Character-level generation
+  time is therefore superlinear for the shipped construction. A replacement
+  with universal O(T) size and generation time remains open; no language-wide
+  impossibility was proved. See [the proof](proofs/vandevelo-sparse-tail.md).
 
 Counting bounds each family independently of mixer quality:
 
@@ -155,14 +164,16 @@ expressible at any length.
 | Malbolge | 16 | 16 | Stubs need gap-3 readouts (none at eleven bits); the hashed cascade through fourteen resolves collisions over up to three levels and stops where their depth outruns the decoder. Fifteen and sixteen address positionally, three bits per two-trit digit, so no row collides; that positional readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell packing remains unintegrated ([scaling](proofs/malbolge-scaling.md)). |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
-Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
-instruction-root values even when roots repeat, and the slack certificate
-prices every multiple of their distinct-root product. The routing lemma that
-forces those values holds for every read count, so the language bound is
-`Theta(T**2 / log T)` for every cofactor and operand sign. See
-[polynomial](proofs/polynomial.md). Factor has a language floor
-`Omega(T log T)`, a weighted exponent-vector count on D-digit integers
-([factor](proofs/factor.md)); its worst-case generated encoding is `Theta(T log T)`.
+- Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
+  instruction-root values even when roots repeat, and the slack certificate
+  prices every multiple of their distinct-root product. The routing lemma that
+  forces those values holds for every read count, so the language bound is
+  `Theta(T**2 / log T)` for every cofactor and operand sign. See
+  [polynomial](proofs/polynomial.md).
+
+- Factor has a language floor
+  `Omega(T log T)`, a weighted exponent-vector count on D-digit integers
+  ([factor](proofs/factor.md)); its worst-case generated encoding is `Theta(T log T)`.
 
 ### Scaling
 
@@ -176,12 +187,12 @@ Loading is intentionally excluded from execution time.
 - Factor loading is dominated by integer factorization.
 - Circuit Diagram loading is dominated by parsing super-linear area.
 
-FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
-language floor. The shipped generator gives equal subtables one state, so
-it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
-most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
-versus 23.6 for the tree. The construction and the counting floor are in
-[fractran](proofs/fractran.md) and `src/esolangs/languages/fractran/tests/proofs/deep/fractran.py`.
+- FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
+  language floor. The shipped generator gives equal subtables one state, so
+  it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
+  most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
+  versus 23.6 for the tree. The construction and the counting floor are in
+  [fractran](proofs/fractran.md) and `src/esolangs/languages/fractran/tests/proofs/deep/fractran.py`.
 
 The canonical sharing piece is applied or exempt by measurement. Potential
 before a generator's own share is bounded per piece: repeated nodes,
@@ -271,9 +282,11 @@ dispatch.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
-Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
+Persistent stores use shared 32-cell chunks.
 Those choices prevent repeated scans, but command cost and source size remain
 separate axes.
+
+- RAM0 also indexes addresses.
 
 The payload benchmark checks 96 tables and all 6,120 rows through eight
 inputs. It reports UTF-8 source bits, hidden control stacks, signed integer
@@ -308,8 +321,11 @@ Its floor is 31, and all ten classics have generators. Removed: unused
 ordinary imperative entries with shared-shim generators; Nopstacle for
 incompatible embeds; ZTOALC L for a searched syntax-level lookup table. The 2D screen intersected
 1,543 unimplemented with 567 two-dimensional pages, then filtered 36 by prior
-verdicts, co-categories, I/O and branch vocabulary, and page length. It admitted
-Super SNUSP and Alight and rejected Pinyin.
+verdicts, co-categories, I/O and branch vocabulary, and page length.
+
+- Super SNUSP was admitted by the 2D screen.
+- Alight was admitted by the 2D screen.
+- Pinyin was rejected by the 2D screen.
 
 Fame admits languages with at least 60 unique esolangs linking pages. Resolve
 title redirects, exhaust `list=backlinks` continuations, include redirect links
@@ -438,37 +454,37 @@ does, so its interpreter invented the core, the invented semantics the
 2026-10-07 for the same reason: its page gives no grammar and no I/O, and
 its one loop example calls an undefined `or`.
 
-Piet++ (8) is a first implementation: the page is in the Unimplemented
-category, and the only other code is a partial C# executor (Esolang-NET/Piet)
-whose Read, Write and Roll-Context are no-ops, so it cannot arbitrate the
-conventions below.
+- Piet++ (8) is a first implementation: the page is in the Unimplemented
+  category, and the only other code is a partial C# executor (Esolang-NET/Piet)
+  whose Read, Write and Roll-Context are no-ops, so it cannot arbitrate the
+  conventions below.
 
 - Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis.
 - Deadfish (315) is interpreter-only because it has no input vocabulary.
 
-[Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
-(94) clears the fame gate despite duplicating an earlier queue language's
-consume-one-bit axis.
-The 2026-10-01 audit pins consume-one-bit semantics: append the current
-production iff the bit is one, then advance cyclically; empty data halts.
-With no specified I/O, the package adopts BCT's initial-queue embed and
-final-deleted-bit answer. Serialize productions with semicolons, then a comma
-and the initial queue; preserve empty productions and require at least one.
+- [Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
+  (94) clears the fame gate despite duplicating an earlier queue language's
+  consume-one-bit axis.
+  The 2026-10-01 audit pins consume-one-bit semantics: append the current
+  production iff the bit is one, then advance cyclically; empty data halts.
+  With no specified I/O, the package adopts BCT's initial-queue embed and
+  final-deleted-bit answer. Serialize productions with semicolons, then a comma
+  and the initial queue; preserve empty productions and require at least one.
 
-For T = 2**n, productions i = 0..n-1 append 2**(n-i) zeros; production n
-appends `1`. The remaining 2T productions alternate table bits with empty
-productions. Initial data embeds the n ordered bits with uniform `0`/`1` fills,
-then `1`. For row r, the inputs leave 2r zeros before a new sentinel; those
-zeros skip 2r productions, and the sentinel appends table[r]. The next empty
-production consumes the answer and halts.
+  For T = 2**n, productions i = 0..n-1 append 2**(n-i) zeros; production n
+  appends `1`. The remaining 2T productions alternate table bits with empty
+  productions. Initial data embeds the n ordered bits with uniform `0`/`1` fills,
+  then `1`. For row r, the inputs leave 2r zeros before a new sentinel; those
+  zeros skip 2r productions, and the sentinel appends table[r]. The next empty
+  production consumes the answer and halts.
 
-Source is exactly 5T + 2n + 1 characters; execution takes n + 3 + 2r steps.
-Emission writes 2(T-1) padding zeros and 2T table productions without search:
-O(T) build work. Tests execute 309 tables and 3,352 rows, exhaustive through
-three inputs, then constants, parity and eight seeded random tables per arity
-four through six. Probes sampled through n=14: at most 81,949 characters and
-32,783 steps. Published evolution, zero-no-append, empty-data, empty-rule and
-nontermination controls passed.
+  Source is exactly 5T + 2n + 1 characters; execution takes n + 3 + 2r steps.
+  Emission writes 2(T-1) padding zeros and 2T table productions without search:
+  O(T) build work. Tests execute 309 tables and 3,352 rows, exhaustive through
+  three inputs, then constants, parity and eight seeded random tables per arity
+  four through six. Probes sampled through n=14: at most 81,949 characters and
+  32,783 steps. Published evolution, zero-no-append, empty-data, empty-rule and
+  nontermination controls passed.
 
 - Underload (167) clears the backlink gate.
 - INTERCAL (103) clears the backlink gate.

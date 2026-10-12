@@ -22,6 +22,25 @@ def test_list_languages() -> None:
     assert names == sorted(names)
 
 
+def test_seed_hint_tracks_registered_random_languages(monkeypatch):
+    from esolangs import _execution
+    from esolangs.registry import Language
+
+    registered = {
+        REFERENCE: LANGUAGES[REFERENCE],
+        "Draws": Language("Draws", "draws", random=True),
+        "Quiet": Language("Quiet", "quiet"),
+    }
+    monkeypatch.setattr(_execution, "LANGUAGES", registered)
+    with pytest.raises(
+        esolangs.ArgumentError, match="the languages that draw are Draws"
+    ):
+        _execution.prepare_call(REFERENCE, "", lambda code: code, seed=1)
+    del registered["Draws"]
+    with pytest.raises(esolangs.ArgumentError, match="no registered language draws"):
+        _execution.prepare_call(REFERENCE, "", lambda code: code, seed=1)
+
+
 @pytest.mark.parametrize(
     "call",
     [

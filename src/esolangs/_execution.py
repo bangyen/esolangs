@@ -59,11 +59,18 @@ def prepare_call(
         options["scale"] = scale
     draws = "rng" in inspect.signature(target).parameters
     if seed is not None and not draws:
+        random_languages = ", ".join(
+            language for language, lang in sorted(LANGUAGES.items()) if lang.random
+        )
+        alternatives = (
+            f"the languages that draw are {random_languages}"
+            if random_languages
+            else "no registered language draws random values"
+        )
         raise with_hint(
             ArgumentError(
                 f"{name} draws no random values, so a seed has nothing to fix; "
-                "the languages that draw are Befunge, Fish, INTERCAL, "
-                "LaserFuck, Modulous, Painfuck, Super SNUSP, Thue and thisthat"
+                f"{alternatives}"
             ),
             ("omit seed when running a deterministic language"),
         )

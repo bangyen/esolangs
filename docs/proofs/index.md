@@ -34,8 +34,12 @@ and `test_schemes.py` checks lookup and parameterized rows (`tree` and
 `all_generators.py` checks every construction: flipping each table row
 changes the emitted program at the tested arities, and each construction
 completes an arity ladder on both table shapes. This checks the counting half
-of each scheme. A Painter Ant, ArrowQueue, Container and BIO also have
-construction-specific proofs.
+of each scheme.
+
+- A Painter Ant also has construction-specific proofs.
+- ArrowQueue also has construction-specific proofs.
+- Container also has construction-specific proofs.
+- BIO also has construction-specific proofs.
 
 `python -m tests.proofs.deep <band>` selects declared cost bands: `verify`
 for the local gate, `ci` for the registry battery, `by-hand` for expensive
@@ -50,21 +54,27 @@ characters per table entry past each generator's last route change and holds
 every generator to it except those the scaling audit or this
 document's `cap` and `exception` rows already exempt. Exceeding the bound is
 evidence against linearity; passing it is not a
-proof. Factor passes at x2.11 despite its language-level super-linear bound
-([factor](factor.md)).  Polynomial's block-incidence lemma forces
-`Omega(T/log T)` distinct real instruction-root values even when roots
-repeat, and the slack certificate prices every multiple of their distinct-root
-product, giving `Omega(T**2 / log T)` for every program, whatever its read
-count: only the last two reads before a routing position can carry a residual
-that depends on its next input and not on it alone.  The argument is in
-[polynomial](polynomial.md).
+proof.
+
+- Factor passes at x2.11 despite its language-level super-linear bound
+  ([factor](factor.md)).
+
+- Polynomial's block-incidence lemma forces
+  `Omega(T/log T)` distinct real instruction-root values even when roots
+  repeat, and the slack certificate prices every multiple of their distinct-root
+  product, giving `Omega(T**2 / log T)` for every program, whatever its read
+  count: only the last two reads before a routing position can carry a residual
+  that depends on its next input and not on it alone.  The argument is in
+  [polynomial](polynomial.md).
 
 A `linear` row is within a constant of the worst-case optimum. A language with `c`
 source characters has fewer than `c**(L+1)` programs of length at most `L`,
 against `2**T` tables of length `T`, so some table needs
 `L >= T / log2(c)` characters -- `T/3` for brainfuck's eight commands.
-Factor at `Theta(T log T)` and Polynomial at `Theta(T**2 / log T)` provably
-exceed that floor; the `open` rows may also exceed it.
+The `open` rows may exceed that floor.
+
+- Factor at `Theta(T log T)` provably exceeds the counting floor.
+- Polynomial at `Theta(T**2 / log T)` provably exceeds the counting floor.
 
 
 Fargo's build bound uses a word RAM with `Theta(log T)`-bit words; input and
@@ -166,16 +176,18 @@ smaller table and restoring the omitted, equal-width placeholders preserves
 every row.  This is only an optimization unless the cited inner construction
 is itself total.
 
-**Size dispatch.**  Some lookup rows ship two routes: a folded decision tree
-for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container;
-BrainIf's tree counts only the inputs it branches on — and the lookup above it.  Streetcode builds both at five inputs and keeps
-the shorter, so its crossover is where the two meet rather than a constant.
-BrainIf also competes with its input-forgetting residual DAG, proved below.
-Suffolk competes with a NOR cofactor DAG within its workspace ledger.
-Each route is total on its own domain and the lookup
-carries the universal claim, so the tree below the crossover is a size
-optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.
+**Size dispatch.** Some lookup rows ship a folded decision tree through a
+fixed crossover (normally `n <= 4`) and a lookup above it. Each route is total
+on its own domain; the lookup carries the universal claim, so the tree is a
+size optimization rather than part of the proof. A width-constrained build
+may take the tree at any arity.
+
+- Container uses a folded tree through `n <= 6`.
+- BrainIf's tree counts only branched-on inputs. It also competes with its
+  input-forgetting residual DAG, proved below.
+- Streetcode builds both routes at five inputs and keeps the shorter, so its
+  crossover is where the two meet rather than a constant.
+- Suffolk competes with a NOR cofactor DAG within its workspace ledger.
 
 - Befunge reads one grid cell per table entry with `g`.
 
@@ -277,18 +289,26 @@ most x1.5 an input, `linear` at most x2.15, `T log T` (T cells of `log T`-bit
 values) at most x2.5; `unmeasured` says why.  `tests/proofs/deep/execution.py`
 and `tests/proofs/deep/workspace.py` measure halting rows on parity tables,
 and a `poly n` cell on a seeded dense table too: parity has n ANF terms and
-hid Fargo's, Forþ's, INTERCAL's, Vandevelo's, S\*bleq's and 6-5's `T`.  That
-dense series runs to n=12 and its increments, which cancel a fixed overhead,
-may grow at most x1.4 an input: NoComment's `T/32`-byte stack read x1.00 on
-the ratio behind a 32,768-bit tape and x1.99 on the increments, SLOW ACV
-MAMMALIAN x1.43.  Vandevelo is exempt from the increments: its registers grow
-~sqrt(T) until an n*n cap binds at n=14, past what the band can step.  A
-`poly n` cell also names its mechanism, read from the generator.  A cell
+can hide a generator's T-dependent work. The dense series runs to n=12; its
+increments, which cancel fixed overhead, may grow at most x1.4 an input.
+A `poly n` cell also names its mechanism, read from the generator. A cell
 that opens `worst` gives a formula derived from the code and reached by some
-table; `at most`, one never exceeded.  `bl(x)` is the bit length of x, `L`
-the program's length and `T` is 2^n.  `tests/proofs/test_execution_formulas.py`
-and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
-`at most` is also proved for every n.
+table; `at most`, one never exceeded. `bl(x)` is the bit length of x, `L`
+the program's length and `T` is 2^n. `tests/proofs/test_execution_formulas.py`
+and `tests/proofs/test_workspace_formulas.py` run them at small n.
+
+- Fargo's T-dependent work was hidden by parity.
+- Forþ's T-dependent work was hidden by parity.
+- INTERCAL's T-dependent work was hidden by parity.
+- Vandevelo's T-dependent work was hidden by parity. It is exempt from the
+  increments: registers grow ~sqrt(T) until an n*n cap binds at n=14, past
+  what the band can step.
+- S*bleq's T-dependent work was hidden by parity.
+- 6-5's T-dependent work was hidden by parity.
+- NoComment's `T/32`-byte stack read x1.00 on the ratio behind a 32,768-bit
+  tape and x1.99 on the increments.
+- SLOW ACV MAMMALIAN read x1.43 on the increments.
+- Painfuck's `at most` formula is also proved for every n.
 
 <!-- PROOF-STATUS:START -->
 

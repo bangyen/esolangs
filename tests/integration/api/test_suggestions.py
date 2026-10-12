@@ -25,7 +25,7 @@ class TestPackageEntryPoint:
 
 
 class TestASuggestionIsWorthLessThanSilence:
-    """0.6 offers ``Nope.`` for ``snorey``."""
+    """A 0.6 cutoff offers a language for the unrelated word ``snorey``."""
 
     @staticmethod
     def _typos(name: str) -> list[str]:

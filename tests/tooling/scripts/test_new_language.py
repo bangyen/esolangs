@@ -91,7 +91,7 @@ def test_registration_ignores_old_generator_locations(root: Path) -> None:
 
 
 def test_the_slug_is_the_registry_id() -> None:
-    """A second slug rule refused ``123`` and gave Piet++ Piet's file."""
+    """Registry ids cover numeric names and punctuation without slug collisions."""
     from esolangs.registry import LANGUAGES
 
     for name, lang in LANGUAGES.items():
@@ -147,28 +147,28 @@ def test_remove_drops_a_link_bullet(tmp_path: Path) -> None:
 def test_remove_preserves_punctuation_prefixed_names(tmp_path: Path) -> None:
     path = tmp_path / "roadmap.md"
     path.write_text(
-        "- **Piet:** removed.\n  Its continuation.\n"
-        "- **Piet++:** kept.\n"
-        "- [Piet++](https://x/): kept.\n"
-        "- piet's own entry goes.\n"
+        "- **Gone:** removed.\n  Its continuation.\n"
+        "- **Gone++:** kept.\n"
+        "- [Gone++](https://x/): kept.\n"
+        "- gone's own entry goes.\n"
     )
-    remove_language._drop_bullets(path, "Piet")  # noqa: SLF001
-    assert path.read_text() == ("- **Piet++:** kept.\n- [Piet++](https://x/): kept.\n")
+    remove_language._drop_bullets(path, "Gone")  # noqa: SLF001
+    assert path.read_text() == ("- **Gone++:** kept.\n- [Gone++](https://x/): kept.\n")
 
 
 def test_remove_drops_only_owned_document_rows(tmp_path: Path) -> None:
     path = tmp_path / "usage.md"
     path.write_text(
         "| Language | Limit |\n| --- | --- |\n"
-        "| [Piet](https://x/) | gone |\n"
-        "| **piet** | gone |\n"
-        "| Piet++ | kept |\n"
-        "| Other | discusses Piet |\n"
+        "| [Gone](https://x/) | gone |\n"
+        "| **gone** | gone |\n"
+        "| Gone++ | kept |\n"
+        "| Other | discusses Gone |\n"
     )
-    remove_language._drop_doc_entries(path, "Piet")  # noqa: SLF001
+    remove_language._drop_doc_entries(path, "Gone")  # noqa: SLF001
     assert path.read_text() == (
         "| Language | Limit |\n| --- | --- |\n"
-        "| Piet++ | kept |\n| Other | discusses Piet |\n"
+        "| Gone++ | kept |\n| Other | discusses Gone |\n"
     )
 
 
