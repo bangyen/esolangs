@@ -97,7 +97,10 @@ def test_block_stride_preserves_payloads(width: int) -> None:
         ) == tuple(v % 256 for v in payloads)
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "native Factor decoding executes the full 147967-command block decoder"
+)
 def test_block_factor_executes() -> None:
     table = format(0xA596B47C, "032b")
     program = _render(block_program(table))

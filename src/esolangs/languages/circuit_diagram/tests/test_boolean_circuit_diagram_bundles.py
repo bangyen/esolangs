@@ -158,7 +158,23 @@ def test_large_original_prefix_ports_execute(tail):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("family", [dense, nested_dense])
-@pytest.mark.parametrize("arities", [(8, 10, 12), (9, 11, 13), (10, 12, 14)])
+@pytest.mark.parametrize(
+    "arities",
+    [
+        (8, 10, 12),
+        (9, 11, 13),
+        pytest.param(
+            (10, 12, 14),
+            marks=[
+                pytest.mark.weekly,
+                pytest.mark.cost_evidence(
+                    "public bundle selection retains its growth bound and "
+                    "native ports through fourteen inputs"
+                ),
+            ],
+        ),
+    ],
+)
 def test_public_bundle_growth_executes(family, arities):
     sizes = []
     for n in arities:

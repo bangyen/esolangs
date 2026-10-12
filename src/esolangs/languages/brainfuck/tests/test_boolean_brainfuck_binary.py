@@ -83,7 +83,22 @@ def test_narrow_words_consume_fixed_one_digits_and_completed_zero_paths(
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [14, 16])
+@pytest.mark.parametrize(
+    "n",
+    [
+        14,
+        pytest.param(
+            16,
+            marks=[
+                pytest.mark.weekly,
+                pytest.mark.cost_evidence(
+                    "maximum-arity binary bank preserves all essential rows "
+                    "under both six-bit ignored-prefix extremes"
+                ),
+            ],
+        ),
+    ],
+)
 @pytest.mark.parametrize("seed", [73017, 73018, 73019])
 @pytest.mark.parametrize("start", range(0, 1024, 128))
 def test_fourteen_class_cap_bank_executes_every_essential_row(

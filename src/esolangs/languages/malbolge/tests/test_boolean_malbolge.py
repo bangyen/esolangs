@@ -135,7 +135,10 @@ def test_thirteen_inputs_label_every_residue() -> None:
                 _module._table_char(h, label, labels)  # noqa: SLF001
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "thirteen-input sampled rows cover every second-level cascade row"
+)
 @pytest.mark.parametrize("shape", [dense, parity])
 def test_thirteen_inputs_sampled(shape: object) -> None:
     """Every thirty-second row and every second-level row of the two shapes."""
@@ -193,7 +196,10 @@ def test_fourteen_inputs_second_pass_is_nine_nops_and_a_jump() -> None:
     assert second == ["o"] * 9 + ["i"]
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "fourteen-input sampled rows exercise every third-level cascade row"
+)
 @pytest.mark.parametrize("shape", [dense, parity])
 def test_fourteen_inputs_sampled(shape: object) -> None:
     """Every 64th row, every level-3 row and every fourth level-2 row."""
@@ -241,7 +247,10 @@ def test_digit_builds_label_every_cell(n: int) -> None:
             _module._table_char(h, label, labels)  # noqa: SLF001
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "fifteen/sixteen-input digit readout samples both halves of answer pairs"
+)
 @pytest.mark.parametrize("n", [15, 16])
 @pytest.mark.parametrize("shape", [dense, parity])
 def test_digit_builds_sampled(n: int, shape: object) -> None:
