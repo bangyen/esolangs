@@ -4,8 +4,8 @@ Standalone proofs and implementation bounds:
 
 - Polynomial has a [standalone proof](polynomial.tex) and a
   [Markdown companion](polynomial.md) for implementation bounds,
-  measurements and counterexamples. Its lower bound imports Corollary 3.4
-  of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex),
+  measurements and counterexamples. Its lower bound imports
+  Corollary 3.4 of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex),
   the companion manuscript bounding the coefficient mass of a polynomial
   multiple. `tests/proofs/test_citations.py` checks the numbered
   cross-references against the labels they name.
