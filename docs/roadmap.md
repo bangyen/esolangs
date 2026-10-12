@@ -22,8 +22,9 @@ evidence, not optimization tasks.
 - Befunge has a finite-source totality exception.
 
 - **Malbolge:** settle generation at seventeen inputs and the first
-  unreachable arity. Share initialization and query control, then relocate
-  records before capture; see [the construction summary](proofs/index.md#malbolge-bound).
+  unreachable arity. Fixed-address native capture has passed scratch controls;
+  integrate the input prefix and native decoder, and derive named source-symbol
+  rules; see [the construction summary](proofs/index.md#malbolge-bound).
 - **Vandevelo:** settle generation time and structural output scaling via
   the `O(log n)` DNF-of-parities gap; see [the audit](proofs/index.md#vandevelo-identifier-and-fallback-audit).
 

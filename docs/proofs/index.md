@@ -91,8 +91,15 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   positional build. Prefix sharing makes generation `Theta(T+59049)` through
   ten inputs. Wider cold planners are separate searches; their finite-domain
   measurements do not prove an asymptotic generation bound.
-  Native seventeen-input components and unbuilt routes are not a complete
-  generator. Controls: `src/esolangs/languages/malbolge/tests/`; archived
+  A native three-field capture control ran from reset over all 4,096 legal
+  record-and-neighbor glyph combinations at one fixed record address: 59,049
+  characters, 3,187 instruction cells and at most 3,607 steps. It preserved
+  the record and neighbor; seven cases matched Python and C whole states,
+  and an omitted-fold negative control failed. These scratch measurements
+  do not establish an integrated generator. The seventeen-input prefix,
+  native Boolean decoder placement and named source-symbol rules remain
+  unverified; the shipped cap stays sixteen.
+  Controls: `src/esolangs/languages/malbolge/tests/`; archived
   seventeen-input tools are available at `09ab2fad:scripts/malbolge17/`.
 - Vandevelo: <a id="vandevelo-sparse-bound"></a> the shipped fixed-candidate
   sparse construction has worst-case `Omega(T log n)` characters, not `O(T)`.
