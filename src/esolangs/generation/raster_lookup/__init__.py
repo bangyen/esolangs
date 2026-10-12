@@ -12,11 +12,36 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from esolangs.generation.helpers import essential_inputs, read_at
-from esolangs.generation.raster_lookup.palette import _COLOURS, BLACK
 from esolangs.raster import Raster
 
 Change = tuple[int, int]
 Pixel = tuple[int, int, int]
+
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+
+# (hue, lightness), in hue and lightness cycles.
+_COLOURS: dict[Pixel, tuple[int, int]] = {
+    (255, 192, 192): (0, 0),
+    (255, 255, 192): (1, 0),
+    (192, 255, 192): (2, 0),
+    (192, 255, 255): (3, 0),
+    (192, 192, 255): (4, 0),
+    (255, 192, 255): (5, 0),
+    (255, 0, 0): (0, 1),
+    (255, 255, 0): (1, 1),
+    (0, 255, 0): (2, 1),
+    (0, 255, 255): (3, 1),
+    (0, 0, 255): (4, 1),
+    (255, 0, 255): (5, 1),
+    (192, 0, 0): (0, 2),
+    (192, 192, 0): (1, 2),
+    (0, 192, 0): (2, 2),
+    (0, 192, 192): (3, 2),
+    (0, 0, 192): (4, 2),
+    (192, 0, 192): (5, 2),
+}
+
 
 _INITIAL: Pixel = (255, 192, 192)
 

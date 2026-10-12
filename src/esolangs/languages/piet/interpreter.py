@@ -27,7 +27,7 @@ import re
 from collections.abc import Callable
 from contextlib import suppress
 
-from esolangs.generation.raster_lookup.palette import _COLOURS, BLACK, WHITE
+from esolangs.generation.raster_lookup import _COLOURS, BLACK, WHITE
 from esolangs.raster import Raster
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main

@@ -9,6 +9,7 @@ from esolangs.generation.raster_lookup import (
     _INITIAL,
     _MULTIPLY,
     _POP,
+    BLACK,
     Change,
     Pixel,
     _area,
@@ -18,7 +19,6 @@ from esolangs.generation.raster_lookup import (
     _push,
 )
 from esolangs.generation.raster_lookup.packing import pack
-from esolangs.generation.raster_lookup.palette import BLACK
 from esolangs.raster import Raster
 from esolangs.runtime._validate import check_width
 

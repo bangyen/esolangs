@@ -6,12 +6,13 @@ from typing import NamedTuple
 from esolangs.generation.raster_lookup import (
     _INITIAL,
     _POP,
+    BLACK,
+    WHITE,
     Pixel,
     _next_colour,
     _Operation,
     _push,
 )
-from esolangs.generation.raster_lookup.palette import BLACK, WHITE
 from esolangs.raster import Raster
 
 _POINTER = (3, 1)

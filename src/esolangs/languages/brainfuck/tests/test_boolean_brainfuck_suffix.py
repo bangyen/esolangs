@@ -5,8 +5,8 @@ import random
 import pytest
 
 from esolangs.generation.helpers import essential_inputs
-from esolangs.languages.brainfuck.generator import _bf_ordered
-from esolangs.languages.brainfuck.generator._binary import (
+from esolangs.languages.brainfuck.generator import (
+    _bf_ordered,
     binary_bank,
     larger_suffix_bank,
 )

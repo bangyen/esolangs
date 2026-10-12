@@ -4,8 +4,7 @@ import random
 
 import pytest
 
-from esolangs.languages.brainfuck.generator import _bf_ordered, bf_tree
-from esolangs.languages.brainfuck.generator._binary import binary_bank
+from esolangs.languages.brainfuck.generator import _bf_ordered, bf_tree, binary_bank
 from esolangs.languages.brainfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
