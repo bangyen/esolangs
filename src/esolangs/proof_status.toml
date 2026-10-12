@@ -263,10 +263,10 @@ qualification = """\
     against one `}` apiece leaves the entry it names under the pointer"""
 scaling = "linear: bounded dependency scan and canonical residual IDs"
 execution = """\
-    linear: worst (2n+13)T + 63n + 89 + 2S to n = 7, S the codes of program \
+    linear: worst (2n+13)T + 94n + 89 + 2S to n = 7, S the codes of program \
     characters 1..n"""
 workspace = """\
-    linear: worst 6L + 10n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the \
+    linear: worst 6L + 12n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the \
     tape"""
 evidence = "docs/proofs/index.md#generator-ledger"
 

@@ -107,7 +107,8 @@ _HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
     ),
     "Circlefuck": (
         lambda n, p: (
-            (2 * n + 13) * 2**n + 63 * n + 89 + 2 * sum(map(ord, p[1 : n + 1]))
+            (2 * n + 13) * 2**n + 94 * n + 89 + 2 * sum(map(ord, p[1 : n + 1]))
+            # 94n = 63n + 31n loop-based 48-normalization in _READ
         ),
         True,
         (3, 5),
