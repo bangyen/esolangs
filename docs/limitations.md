@@ -13,9 +13,12 @@ command to rerun.
 - Exhausted input raises `EOFError`; malformed programs raise `ValueError`;
   runtime failure raises `HaltError`, unless the language says otherwise.
 - Character input consumes Unicode characters, including newlines. Integer
-  input consumes whitespace-delimited signed decimal tokens. Unsquare, Decleq,
-  AddSubJump and Minifuck use Unicode character codes where input framing is
-  unspecified; Decleq’s optional memory-mapped I/O is enabled.
+  input consumes whitespace-delimited signed decimal tokens.
+- Unsquare uses Unicode character codes where input framing is unspecified.
+- Decleq uses Unicode character codes where input framing is unspecified;
+  optional memory-mapped I/O is enabled.
+- AddSubJump uses Unicode character codes where input framing is unspecified.
+- Minifuck uses Unicode character codes where input framing is unspecified.
 - Explicit frame stacks are uncapped. Forbin expression calls retain their
   documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
@@ -67,16 +70,23 @@ cost: at most four named candidates, with the generic greedy scorer stopping
 at n=10. Generators may not use BFS or DFS; test-only oracles may.
 
 The removed screen script recorded permuted tables, not admissible reorders
-under a fixed template and fill mapping. Dig, Flowchart, BrainIf, Sophie, and
-SLOW ACV MAMMALIAN must read in order; BF-PDA uses fixed stack order. No
-instruction-only wire is derived for 123 or Minifuck.
+under a fixed template and fill mapping.
+
+- Dig must read in order.
+- Flowchart must read in order.
+- BrainIf must read in order.
+- Sophie must read in order.
+- SLOW ACV MAMMALIAN must read in order.
+- BF-PDA uses fixed stack order.
+- 123 has no derived instruction-only wire.
+- Minifuck has no derived instruction-only wire.
 
 - ArrowQueue's rotations cost 19, 39, and 63 characters at k=1, 2, 3. Their
   2.1% gain misses the 10% bar, so plain order ships (d5bac32).
 - Circuit Diagram's default path builds the identity order: four orders save
   8.48% of area at n=7, under the 10% bar. Width requests still try four.
 - Factor subtree dispatch loses 1.0% at three inputs and gains 3.4% at five.
-  Brainfuck lacks a cheaper jump, call, or label.
+- brainfuck lacks a cheaper jump, call, or label.
 - 123 has one straight-line stream per row. Its table-dependent paint sweep is
   fixed by the separation laws.
 
@@ -171,45 +181,55 @@ most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
 versus 23.6 for the tree. The construction and the counting floor are in
 [fractran](proofs/fractran.md) and `src/esolangs/languages/fractran/tests/proofs/deep/fractran.py`.
 
-The canonical sharing piece is applied or exempt by measurement. The
-per-generator potential, before a generator's own share, is bounded per
-piece: the repeated-node upside, the constant-folding upside and the
-ignored-input growth. The n=5 repeated-node upside is 24.6% for SStack,
-34.1% for BF-PDA, 26.4% for thisthat, 18.3% for Back and 10.9% for Dig --
-all above the gate -- so those
-exemptions rest on the construction that cannot take the repeat, not a
-sub-gate bound. SStack's 24.6% is 82% subtables of size 2, below the
-two-unread-input depth a deferral needs, so its constructs reach the size >= 4
-repeats and save 4.8% of the plain tree
-(`tests/generators/test_boolean_sstack.py`); thisthat, Back, Dig and BF-PDA rest on
-their own admission tests. Boolfuck's is a sub-gate potential -- 2.3% of
-emitted size at n=5, below the gate, pinned in
-`tests/generators/test_boolean_boolfuck.py`. Home
-Row, ROTfuck and Dimensional are lookups that name no decision-tree node, and
-LaserFuck's path-dependent leaf code makes equal subtables unequal text.
-The sharing-helper presence proxy is enforced for the 48 tree-shaped generators by
-`tests/generators/test_boolean_sharing_catalogue.py`: 44 reference a canonical
-helper (`subtree_ids`, `SubtreeDiagram` -- Underload and Unlambda included),
-Circuit Diagram (`_dag`), Line (`shared_tree`) and Polynomial
-(`_polynomial_states`) a declared language-local one, and Piet is exempt (a
-strip has no jump, so a repeated subtable cannot be shared). thisthat's
-residual-duplicating fallbacks (`_strip_tree`, `_stream_tree`) are
-gated to at most three essential inputs (seven nodes) or two inputs, where a
-fold cannot pay. Back admits one bend: every route runs through column 1, so a second
-path meets the first's cells, and admission is bounded to 6..12 essential
-inputs without a width (16 of 96 controls improved on the admitting run).
-Dig's shared pool is 2..10 unique 64-row classes indexed by a single decimal
-digit over 2..6 prefix bits, so a larger pool needs a multi-digit index.
+The canonical sharing piece is applied or exempt by measurement. Potential
+before a generator's own share is bounded per piece: repeated nodes,
+constant folding and ignored-input growth. Above-gate repeated-node potential
+requires a construction exemption rather than a sub-gate bound.
 
-Circuit Diagram compares three complete residual folds against its fallback
-by exact emitted characters, without a node-count cap; sharing wins ties.
-The [construction proof](proofs/circuit-diagram-sharing.md) bounds modeling
-and emitted text by O(T), rather than claiming every shared rectangle has
-linear area. Line still has a general sharing/routing gap. Its
-partial-prefix cloning saves only 2.19% of aggregate planned area on 200
-seeded eight-input tables, below the bespoke gate; its native positive
-control passes all 256 rows, saving 33,700,800 to 32,865,600 scale-one pixels
-with the same 23-command maximum, so it remains unshipped.
+- SStack has 24.6% repeated-node potential at n=5; 82% is in size-2
+  subtables, below the two-unread-input depth a deferral needs. Its constructs
+  reach size >= 4 repeats and save 4.8% of the plain tree
+  (`tests/generators/test_boolean_sstack.py`).
+- BF-PDA has 34.1% repeated-node potential at n=5; its admission tests
+  support its construction exemption.
+- thisthat has 26.4% repeated-node potential at n=5; its admission tests
+  support its construction exemption. Residual-duplicating fallbacks
+  (`_strip_tree`, `_stream_tree`) are gated to at most three essential inputs
+  (seven nodes) or two inputs, where a fold cannot pay.
+- Back has 18.3% repeated-node potential at n=5; its admission tests support
+  its construction exemption. It admits one bend: every route crosses
+  column 1, so a second path meets the first's cells. Admission is bounded
+  to 6..12 essential inputs without a width (16 of 96 controls improved).
+- Dig has 10.9% repeated-node potential at n=5; its admission tests support
+  its construction exemption. Its shared pool is 2..10 unique 64-row classes
+  indexed by one decimal digit over 2..6 prefix bits; a larger pool needs a
+  multi-digit index.
+- Boolfuck has sub-gate repeated-node potential: 2.3% of emitted size at n=5,
+  pinned in `tests/generators/test_boolean_boolfuck.py`.
+- Home Row is a lookup that names no decision-tree node.
+- ROTfuck is a lookup that names no decision-tree node.
+- Dimensional is a lookup that names no decision-tree node.
+- LaserFuck's path-dependent leaf code makes equal subtables unequal text.
+
+The sharing-helper presence proxy is enforced for 48 tree-shaped generators
+by `tests/generators/test_boolean_sharing_catalogue.py`: 44 reference a
+canonical helper (`subtree_ids`, `SubtreeDiagram`), three a declared local
+helper, and one is exempt. Presence does not establish complete sharing.
+
+- Underload references a canonical sharing helper.
+- Unlambda references a canonical sharing helper.
+- Circuit Diagram compares three complete residual folds against its fallback
+  by exact emitted characters, without a node-count cap; sharing wins ties.
+  The [construction proof](proofs/circuit-diagram-sharing.md) bounds modeling
+  and emitted text by O(T), rather than claiming every shared rectangle has
+  linear area.
+- Line declares `shared_tree`. Its general sharing/routing gap remains.
+  Partial-prefix cloning saves only 2.19% of aggregate planned area on 200
+  seeded eight-input tables, below the bespoke gate. Its native positive
+  control passes all 256 rows, saving 33,700,800 to 32,865,600 scale-one
+  pixels with the same 23-command maximum, so it remains unshipped.
+- Polynomial declares `_polynomial_states`.
+- Piet is exempt: a strip has no jump, so a repeated subtable cannot be shared.
 
 The Margulis cofactor witness establishes an expander minor in the
 original-order residual graph, not a language-wide area floor. At twelve
@@ -234,10 +254,18 @@ The suffix bank defers each word's greatest repeat inside its own body, so a
 nested definition shares like a top-level one: the n=16 five-input fixture
 falls 4% (8485 -> 8131 characters) for one dispatch test.
 
-Factor, Painfuck, brainfuck and Boolfuck admit a bank at several depths: each
-block defers through a distinct unused flag at a level no shallower than its
-own (a shallower ancestor would rewrite the flag before dispatch), so one cell
-per input level is the whole pool.
+A bank block must defer through a distinct unused flag at a level no
+shallower than its own: a shallower ancestor would rewrite the flag before
+dispatch.
+
+- Factor admits a bank at several depths; one cell per input level
+  is the whole pool.
+- Painfuck admits a bank at several depths; one cell per input level
+  is the whole pool.
+- brainfuck admits a bank at several depths; one cell per input level
+  is the whole pool.
+- Boolfuck admits a bank at several depths; one cell per input level
+  is the whole pool.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
@@ -245,15 +273,17 @@ Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
 Those choices prevent repeated scans, but command cost and source size remain
 separate axes.
 
-Sophie, BFStack and Subleq are checked on 96 tables and all 6,120 rows
-through eight inputs. The benchmark reports UTF-8 source
-bits, hidden control stacks, signed integer widths and the simultaneous peak
-of data, control, cursor and machine flags. Separate peaks need not coincide.
-Python overhead, static parser indexes and I/O state are excluded. At eight
-inputs the sampled peak machine payloads are 18, 756 and 3,066 bits respectively;
-these are measurements, not language-wide space bounds. Construction bounds
-are asserted by the removed screen and controlled by executed checks in each
-language's own tests.
+The payload benchmark checks 96 tables and all 6,120 rows through eight
+inputs. It reports UTF-8 source bits, hidden control stacks, signed integer
+widths and the simultaneous peak of data, control, cursor and machine flags.
+Separate peaks need not coincide. Python overhead, static parser indexes
+and I/O state are excluded. Sampled peaks are measurements, not language-wide
+space bounds; construction bounds are asserted by the removed screen and
+controlled by executed checks in each language's own tests.
+
+- Sophie has a sampled peak machine payload of 18 bits at eight inputs.
+- BFStack has a sampled peak machine payload of 756 bits at eight inputs.
+- Subleq has a sampled peak machine payload of 3,066 bits at eight inputs.
 
 ### Malbolge sampling
 
@@ -382,9 +412,12 @@ four through six. Probes sampled through n=14: at most 81,949 characters and
 32,783 steps. Published evolution, zero-no-append, empty-data, empty-rule and
 nontermination controls passed.
 
-Underload (167) and INTERCAL (103) also clear the backlink gate.
-Emmental (43) and Prelude (13) are implemented elsewhere and fail the backlink
-gate. Neither has established an intrinsic axis.
+- Underload (167) clears the backlink gate.
+- INTERCAL (103) clears the backlink gate.
+- Emmental (43) is implemented elsewhere and fails the backlink gate;
+  no intrinsic axis is established.
+- Prelude (13) is implemented elsewhere and fails the backlink gate;
+  no intrinsic axis is established.
 
 The 2026-10-01 fame audit covered eight census candidates:
 
@@ -434,7 +467,8 @@ The 2026-09-27 audit closed these candidates:
   language's gates.
 - Bytemap leaves byte order, division faults, and optional 8bpp undefined.
 - Gifunk defines motion through APNG/GIF frames but no instructions.
-- Turing Paint and Befunk are obscure but already implemented.
+- Turing Paint is obscure but already implemented.
+- Befunk is obscure but already implemented.
 
 The 2026-10-01 non-text screen deferred [BOOMOP](https://esolangs.org/wiki/BOOMOP):
 its entry/termination brightness metric, face selection at ray-edge hits, and
@@ -474,11 +508,13 @@ languages remain rejected from the same image-source screen.
 - Bitdeque `GOTO n` counts from 1, as the wiki's "the Nth operation" reads;
   a target past the last command halts and a taken `GOTO 0` raises, both
   unstated on the wiki. The generator's labels match this.
-- Brainfuck uses wrapping bytes, a tape growing in both directions and EOF
+- brainfuck uses wrapping bytes, a tape growing in both directions and EOF
   errors; its page allows cells left of the start, and two of its Hello
   Worlds need them. Its page describes implementation conventions rather than
-  conflicting requirements. Factor retains these defaults: its cell range
-  and right growth are explicit, while its left edge and EOF are unspecified.
+  conflicting requirements.
+- Factor uses wrapping bytes, a tape growing in both directions and EOF
+  errors: its cell range and right growth are explicit, while its left edge
+  and EOF are unspecified.
 - Line leaves cell width and tape boundaries unspecified: cells are unbounded
   integers and the sparse tape extends in both directions.
 - Flowchart leaves path timing, cursor ownership and equal-distance junctions
@@ -510,9 +546,12 @@ languages remain rejected from the same image-source screen.
   `list_update="in_place"`, which the reversed cat needs (it discards the
   result); `"copy"` follows the prose's "return a copy".
 - CV(N)(C) accepts ASCII `g` as an alias for `ɡ` to run the wiki greeting.
-  CV(N)(C), Grapheme and NoComment discard LF to run line-wrapped generated
-  programs; these are source-rule deviations, not specification gaps.
-- Grapheme defaults to `integer_conversion="between_letters"`: `FAFY` prints
+  It discards LF to run line-wrapped generated programs; this is a source-rule
+  deviation, not a specification gap.
+- NoComment discards LF to run line-wrapped generated programs; this is a
+  source-rule deviation, not a specification gap.
+- Grapheme discards LF to run line-wrapped generated programs; this is a
+  source-rule deviation, not a specification gap. It defaults to `integer_conversion="between_letters"`: `FAFY` prints
   1. `"after_each_letter"` includes the prose's final multiplication and prints
   10. Both integer mode and string conversion follow this setting; generators
   adapt their literals. The same page’s truth machine requires 1 rather than

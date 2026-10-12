@@ -1,18 +1,23 @@
 # Boolean-generator coverage proofs
 
-The standalone [Polynomial proof](polynomial.tex) has a
-[Markdown companion](polynomial.md) for implementation bounds, measurements
-and counterexamples. [Factor](factor.md) proves `Theta(T log T)` text;
-[FRACTRAN](fractran.md) proves a super-linear address budget but linear
-language complexity through packing, trading characters for steps.
-[brainfuck-count](brainfuck-count.md) bounds distinct behaviours of
-`C`-character programs. [Vandevelo](vandevelo-sparse-tail.md) proves
-Ω(T log n) characters for the shipped bounded-sparse-cube construction;
-universal linear size and generation time remain open. Polynomial's lower bound imports
-Corollary 3.4 of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex), the companion
-manuscript bounding the coefficient mass of a polynomial multiple.
-`tests/proofs/test_citations.py` holds the numbered cross-references
-between them to the labels they name.
+Standalone proofs and implementation bounds:
+
+- Polynomial has a [standalone proof](polynomial.tex) and a
+  [Markdown companion](polynomial.md) for implementation bounds,
+  measurements and counterexamples. Its lower bound imports Corollary 3.4
+  of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex),
+  the companion manuscript bounding the coefficient mass of a polynomial
+  multiple. `tests/proofs/test_citations.py` checks the numbered
+  cross-references against the labels they name.
+- Factor proves `Theta(T log T)` text ([proof](factor.md)).
+- FRACTRAN proves a super-linear address budget but linear language
+  complexity through packing, trading characters for steps
+  ([proof](fractran.md)).
+- brainfuck bounds distinct behaviours of `C`-character programs
+  ([proof](brainfuck-count.md)).
+- Vandevelo proves Ω(T log n) characters for the shipped bounded-sparse-cube
+  construction; universal linear size and generation time remain open
+  ([proof](vandevelo-sparse-tail.md)).
 
 The ledger records coverage of every `2**n`-bit table for every finite `n`.
 “Total” means mathematical coverage. Ignore explicit digit, instruction,
@@ -170,50 +175,61 @@ Suffolk competes with a NOR cofactor DAG within its workspace ledger.
 Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, BIO, B-tapemark,
-bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
-Cyclic tag, ///, Subleq, Dimensional, EGL, Eval, Fish, Flowchart,
-Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
-Thue and Unsquare keep no tree route at all: A Painter
-Ant's
-answer strip is smaller than a tree at every arity, Alight indexes a string
-literal, bit~ lands the pointer on one tape cell an entry and walks the
-bit it finds home, Bitwise Cyclic Tag has no branch to fold a tree into --
-the commands it runs are a fixed cyclic sequence, so every table of a given
-arity whose inputs all matter emits the same length, Befunge and Fish read one grid cell per table
-entry with `g`, BIO's
-telescope is one nested level per row whatever the table says (a degenerate
-table only spares it the flat edges' adjustments, under the fold threshold
-once the doubling between the input runs is in the text), B-tapemark copies
-one mark per row onto the blank grid and walks the pointer to it, Circlefuck
-deletes the entries before the one the index names and prints what the
-deletions leave under the pointer, Clockwise
-writes one cell per entry in a countdown row and stops the pointer on the
-one the index names, Collatz
-Multiverse writes one cell per four table rows at every arity, Dimensional
-paints one cell an entry along dimension 1 and a bare `>` displaces the
-pointer onto it by the bit it is standing on, EGL paints one
-cell an entry and walks a pointer to it, Eval is one linear
-lookup at every arity, Flowchart pushes one deque entry a row and walks
-the cursor to it (its tree is the width-constrained route), Forbin paints a
-128-entry block as one call's argument list at every arity and its branches above seven inputs choose a block rather
-than route a table, Packlang paints one array block and indexes it at every
-arity, Minsky Swap's `~`
-cascade routes the index to one of two shared leaves with a one-digit target
-per row, Modulous pushes the whole table as one string literal and spends
-the row index popping it down to the answer, NoComment switches between two lookups at four inputs, Qoibl divides one
-literal by the power of two its reads build,
-SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
-row whatever the table says,
-Unsquare pushes the whole table onto the stack a cell a row and pops the row
-index off the top of it, Thue makes the table its starting state and rewrites
-every adjacent pair down to one per input; none has a subtree to
-fold.  Collatz Multiverse, Eval, NoComment and Unsquare fold a degenerate
-table anyway, because their lookup route is what shrinks it -- Unsquare through
-`essential_inputs`, which halves its table, and Collatz
-Multiverse because a table with few distinct nibbles needs fewer cell
-constants and a shorter decoder; that is why the fold discriminator
-in `test_schemes.py` carries them as documented exceptions.
+the tree at any arity.
+
+- Befunge reads one grid cell per table entry with `g`.
+
+These generators keep no unconstrained tree route and have no subtree to fold:
+
+- A Painter Ant: Its answer strip is smaller than a tree at every arity.
+- Alight: Indexes a string literal.
+- BIO: Its telescope has one nested level per row whatever the table says. A
+  degenerate table only spares the flat edges’ adjustments, below the fold
+  threshold once doubling between input runs is included.
+- B-tapemark: Copies one mark per row onto the blank grid and walks the pointer
+  to it.
+- bit~: Lands the pointer on one tape cell per entry and walks the bit home.
+- Bitwise Cyclic Tag: Has no branch to fold a tree into: commands run in a fixed
+  cyclic sequence. Every table of a given arity whose inputs all matter emits
+  the same length.
+- Circlefuck: Deletes entries before the indexed one and prints what remains
+  under the pointer.
+- Clockwise: Writes one cell per entry in a countdown row and stops on the
+  indexed cell.
+- Collatz Multiverse: Writes one cell per four table rows at every arity.
+  Degenerate tables with few distinct nibbles need fewer cell constants and a
+  shorter decoder; the fold discriminator in `test_schemes.py` records this
+  exception.
+- Cyclic tag: Alternating table-bit and empty productions select the indexed
+  answer.
+- ///: Fixed substitution sweeps select the indexed table entry.
+- Subleq: A packed decoder selects the indexed table bit.
+- Dimensional: Paints one cell per entry along dimension 1; a bare `>` displaces
+  the pointer by the bit it stands on.
+- EGL: Paints one cell per entry and walks a pointer to it.
+- Eval: Uses a linear lookup at every arity. Its lookup shrinks degenerate
+  tables; the fold discriminator in `test_schemes.py` records this exception.
+- Fish: Reads one grid cell per table entry with `g`.
+- Flowchart: Pushes one deque entry per row and walks the cursor to it. Its tree
+  is the width-constrained route.
+- Forbin: Paints a 128-entry block as one call’s argument list at every arity;
+  branches above seven inputs choose a block rather than route a table.
+- Minsky Swap: Its `~` cascade routes the index to two shared leaves with a one-
+  digit target per row.
+- Modulous: Pushes the whole table as a string literal and spends the row index
+  popping down to the answer.
+- NoComment: Switches between two lookups at four inputs. Its lookup shrinks
+  degenerate tables; the fold discriminator in `test_schemes.py` records this
+  exception.
+- Packlang: Paints one array block and indexes it at every arity.
+- Qoibl: Divides one literal by the power of two its reads build.
+- SLOW ACV MAMMALIAN: Its read chain emits one fixed-width leaf slot per row
+  whatever the table says.
+- Thue: Makes the table its starting state and rewrites every adjacent pair down
+  to one per input.
+- Unsquare: Pushes one stack cell per row and pops the row index off the top.
+  `essential_inputs` halves degenerate tables; the fold discriminator in
+  `test_schemes.py` records this exception.
 
 ## Generator ledger
 
