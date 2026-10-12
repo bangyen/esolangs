@@ -133,3 +133,25 @@ def test_dimensional_keeps_every_operand_with_its_command(
 ) -> None:
     """A break inside any of these changes what the program does."""
     assert token in wrap_program(program, "dimensional", 1).split("\n")
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("kind", ["parity", "sparse"])
+def test_fourteen_input_lookup_stays_within_step_cap(kind: str) -> None:
+    n = 14
+    size = 1 << n
+    table = (
+        "".join(str(row.bit_count() & 1) for row in range(size))
+        if kind == "parity"
+        else "0" * (size - 1) + "1"
+    )
+    program = dimensional(table)
+    for row in (0, size // 3, size - 1):
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(program, io)
+        for _ in range(200_000):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (table[row], n)

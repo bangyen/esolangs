@@ -31,7 +31,8 @@ from esolangs.registry._language import Language, Shape
 __all__ = ["dimensional"]
 
 _INDEX, _PLANE = 1, 3
-_DOUBLE = "{1<1>2>2}{2<2>1}"
+# Double on the return pass: 9 steps per unit instead of 13.
+_DOUBLE = "{1<1>2}{2<2>1>1}"
 _COUNTER, _SPARE = 4, 5
 _COUNT_DOUBLE = (
     f"{{{_COUNTER}<{_COUNTER}>{_SPARE}>{_SPARE}}}{{{_SPARE}<{_SPARE}>{_COUNTER}}}"
@@ -116,7 +117,7 @@ def _advance(length: int) -> str:
             + f">{_INDEX}" * rest
         )
 
-    return min(bare, counted(1), counted(max(1, isqrt(length))), key=len)
+    return min(bare, counted(max(1, isqrt(length))), key=len)
 
 
 def _dimensional_bare(table: str, n: int) -> str:
