@@ -12,6 +12,9 @@ from _pytest.reports import TestReport
 from coverage.collector import Collector
 
 from tests.support.duration_policy import evidence_violation, hard_ceiling, violation
+from tests.support.language_suite import register_case_assertions
+
+register_case_assertions()
 
 
 def _reject_stale_install() -> None:

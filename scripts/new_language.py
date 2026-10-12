@@ -155,6 +155,19 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
         files[package / "tests" / f"test_boolean_{slug}.py"] = _GENERATOR_TEST.format(
             **fields
         )
+    for kind, filename in (
+        ("interpreter", f"test_{slug}.py"),
+        ("generator", f"test_boolean_{slug}.py"),
+    ):
+        entry = package / "tests" / filename
+        if entry not in files:
+            continue
+        files[package / "tests" / f"{kind}_cases.py"] = files[entry]
+        files[entry] = (
+            f'"""{kind.capitalize()} suite for {slug}."""\n\n'
+            "from tests.support.language_suite import load_suite\n\n"
+            f'load_suite(globals(), "{slug}", "{kind}")\n'
+        )
     files[package / "tests/__init__.py"] = '"""Language-specific execution tests."""\n'
     files[package / "__init__.py"] = '"""Language implementation modules."""\n'
     namespace = package.parent / "__init__.py"
