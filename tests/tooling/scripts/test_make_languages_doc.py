@@ -210,6 +210,8 @@ def test_language_listing_only_lists_available_interpreters(
     assert f"Show all {len(module.LANGUAGES) - 1} languages" in rendered
 
 
+# Standalone coverage run: 2.64s exceeds the fast band.
+@pytest.mark.medium
 @pytest.mark.parametrize("stale", [False, True])
 def test_documentation_check_preserves_source_files(
     tmp_path: Path,
