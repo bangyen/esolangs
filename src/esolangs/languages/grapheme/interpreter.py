@@ -54,16 +54,38 @@ excluding its newline.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Final, Literal
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.source_hints import syntax_error
-from esolangs.languages.grapheme.interpreter._dialect import (
-    DEFAULT_GRAPHEME,
-    GraphemeDialect,
-)
+
+INTEGER_CONVERSIONS = ("between_letters", "after_each_letter")
+
+
+@dataclass(frozen=True)
+class GraphemeDialect:
+    """Choose when integer conversion multiplies by ten."""
+
+    integer_conversion: str = "between_letters"
+
+    def __post_init__(self) -> None:
+        """Reject an unknown conversion rule."""
+        if self.integer_conversion not in INTEGER_CONVERSIONS:
+            raise ValueError(
+                "integer_conversion must be between_letters or after_each_letter"
+            )
+
+    def finish_integer(self, value: int) -> int:
+        """Apply the selected final multiplication."""
+        return value * 10 if self.integer_conversion == "after_each_letter" else value
+
+
+DEFAULT_GRAPHEME = GraphemeDialect()
+
 
 _FUNC: Final = "func"
 
@@ -542,3 +564,7 @@ def run(
     """Run a Grapheme program to completion."""
     machine = _Machine(code, io, integer_conversion=integer_conversion)
     drive(machine)
+
+
+if __name__ == "__main__":
+    script_main(run)

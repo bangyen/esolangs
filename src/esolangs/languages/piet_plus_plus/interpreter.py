@@ -54,6 +54,7 @@ from typing import Any
 
 from esolangs._drive import drive
 from esolangs._source import raster_source as load_source
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.codels import DIRECTIONS, find_block, leave, slide
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_integer
@@ -344,3 +345,7 @@ class _Machine:
 def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
     """Execute a Piet++ image; detecting its codel scale unless ``scale`` is given."""
     drive(_Machine(program, io, scale=scale))
+
+
+if __name__ == "__main__":
+    script_main(run, loader=load_source)

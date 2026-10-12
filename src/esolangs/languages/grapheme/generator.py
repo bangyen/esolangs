@@ -3,7 +3,7 @@
 The table is one integer literal, so it has no subtrees to fold or share.
 """
 
-from esolangs.languages.grapheme.interpreter._dialect import (
+from esolangs.languages.grapheme.interpreter import (
     DEFAULT_GRAPHEME,
     INTEGER_CONVERSIONS,
     GraphemeDialect,

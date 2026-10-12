@@ -10,18 +10,38 @@ halts; SEED skips an empty array and CONSUME, FISSION and LEAPFROG ignore
 one; a CONFLAGRATE pair with a zero divisor is left alone.  Exhausted input
 raises :class:`EOFError`.  Cell operations and I/O each accept modulus 255
 or 256.  Cells default to 256 ("any value from 0-255"), I/O to 255 (the
-page says EXCRETE and PRONOUNCE are "modulo 255").
+page says EXCRETE and PRONOUNCE are "modulo 255"). Invalid moduli raise
+:class:`ValueError`.
 """
 
 import functools
 import operator
+from dataclasses import dataclass
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.source_hints import keyword_hint, syntax_error
-from esolangs.languages.slow_acv_mammalian.interpreter._dialect import (
-    DEFAULT_MODULI,
-    MammalianModuli,
-)
+
+MODULI = (255, 256)
+
+
+@dataclass(frozen=True)
+class MammalianModuli:
+    """Separate cell arithmetic from EXCRETE and PRONOUNCE reductions."""
+
+    cell_modulus: int = 256
+    io_modulus: int = 255
+
+    def __post_init__(self) -> None:
+        """Reject unsupported cell and I/O moduli."""
+        if type(self.cell_modulus) is not int or self.cell_modulus not in MODULI:
+            raise ValueError("Mammalian cell_modulus must be 255 or 256")
+        if type(self.io_modulus) is not int or self.io_modulus not in MODULI:
+            raise ValueError("Mammalian io_modulus must be 255 or 256")
+
+
+DEFAULT_MODULI = MammalianModuli()
+
 
 #: One instant of a run: ``(arrays, ptr, acc, ind, halted)`` -- the 23
 #: arrays, the pointer that picks the current one, the accumulator, the
@@ -309,3 +329,7 @@ def run(
         elif n == 9:
             io.print_char(chr(acc % moduli.io_modulus))
         ind += 1
+
+
+if __name__ == "__main__":
+    script_main(run)

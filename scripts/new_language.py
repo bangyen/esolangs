@@ -528,7 +528,7 @@ def sources(name: str) -> list[str]:
         for module in dict.fromkeys(modules)
         for base in (ROOT / "src" / module.replace(".", "/"),)
         for path in (base.with_suffix(".py"), base)
-        if path.exists()
+        if path.is_file() or (path / "__init__.py").is_file()
     ]
 
 

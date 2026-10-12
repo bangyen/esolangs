@@ -221,11 +221,28 @@ def test_a_black_start_halts_at_once() -> None:
     assert execute(Raster(((BLACK, BLACK),))) == ""
 
 
-def test_entry_point_shares_the_run() -> None:
-    from esolangs.languages.piet_plus_plus import interpreter as piet_plus_plus
-    from esolangs.languages.piet_plus_plus.interpreter import __main__ as entry
+def test_entry_point_executes_a_generated_program(tmp_path) -> None:
+    import subprocess
+    import sys
 
-    assert entry.run is piet_plus_plus.run
+    import esolangs
+
+    program = esolangs.generate("Piet++", "01", scale=1)
+    path = tmp_path / "identity.png"
+    path.write_bytes(program.to_png())
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "esolangs.languages.piet_plus_plus.interpreter",
+            str(path),
+        ],
+        input=b"1\n",
+        capture_output=True,
+        timeout=10,
+        check=True,
+    )
+    assert result.stdout == b"Input: 1"
 
 
 @pytest.mark.parametrize("scale", [1, 2, 3])

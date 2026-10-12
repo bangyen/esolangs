@@ -24,11 +24,12 @@ scanf leaves it unread.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from contextlib import suppress
 
 from esolangs._drive import drive
 from esolangs._source import raster_source as load_source
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.codels import DIRECTIONS, find_block, leave, slide
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_integer
@@ -272,3 +273,7 @@ def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
     """Execute a Piet image, detecting its codel scale."""
     machine = _Machine(program, io, scale=scale)
     drive(machine)
+
+
+if __name__ == "__main__":
+    script_main(run, loader=load_source)

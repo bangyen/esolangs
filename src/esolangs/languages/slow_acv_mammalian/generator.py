@@ -47,7 +47,7 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 
 from collections.abc import Sequence
 
-from esolangs.languages.slow_acv_mammalian.interpreter._dialect import (
+from esolangs.languages.slow_acv_mammalian.interpreter import (
     DEFAULT_MODULI,
     MODULI,
     MammalianModuli,

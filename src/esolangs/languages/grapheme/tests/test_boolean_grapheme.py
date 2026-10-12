@@ -11,8 +11,7 @@ from esolangs.languages.grapheme.generator import (
     _grapheme_push65,
     _grapheme_table,
 )
-from esolangs.languages.grapheme.interpreter import run
-from esolangs.languages.grapheme.interpreter._dialect import GraphemeDialect
+from esolangs.languages.grapheme.interpreter import GraphemeDialect, run
 from tests.generators.test_boolean_contract import _one_minterm
 from tests.support.generator_support import evaluate_generated
 

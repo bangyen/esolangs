@@ -21,17 +21,29 @@ Tape as plain Brainfuck: 8-bit, :class:`EOFError` on exhausted input, and
 ``<`` at the leftmost cell grows the tape a zero cell on the left (the spec
 says nothing about the left edge, so a cell left of the start is allowed).
 The rotation count is tracked and the effective character derived, not the
-text rewritten.
+text rewritten. Invalid rotation settings raise :class:`ValueError`.
 """
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
-from esolangs.languages.rotfuck.interpreter._dialect import (
-    ROTFUCK_CYCLES as CYCLES,
-)
-from esolangs.languages.rotfuck.interpreter._dialect import (
-    rotation as validate_rotation,
-)
+
+#: The rotation cycle per direction, each read as "turns into the next":
+#: backward is the prose's ``+-><,.[]`` reversed.
+ROTFUCK_CYCLES = {"backward": "+][.,<>-", "forward": "+-><,.[]"}
+ROTATIONS = tuple(ROTFUCK_CYCLES)
+
+
+def rotation(value: str) -> str:
+    """Validate which way the command cycle turns."""
+    if value not in ROTATIONS:
+        raise ValueError("rotation must be backward or forward")
+    return value
+
+
+CYCLES = ROTFUCK_CYCLES
+validate_rotation = rotation
+
 
 _COMMANDS = frozenset(CYCLES["forward"])
 
@@ -295,3 +307,7 @@ def run(code: str, io: IO, *, rotation: str = "backward") -> None:
         if char in _COMMANDS:
             rot += 1
         ind += 1
+
+
+if __name__ == "__main__":
+    script_main(run)
