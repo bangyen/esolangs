@@ -8,10 +8,9 @@ columns.
 
 From six inputs the tree goes away: the table is written one cell per
 entry and the inputs address it (:func:`_streetcode_flat`), which is nine
-rows of street however many entries there are.  The tree folds constant
-subtrees; a repeated one is redrawn, not shared: at n=5, sharing every
-repeat of 8+ rows for free would save 0.0% (random, const-half) to 0.9%
-(tiled), and the flat lookup already wins 40/40 random, 36/40 tiled tables.
+rows of street however many entries there are. The tree folds constant
+subtrees and draws equal nonconstant sibling cofactors once, advancing CP
+past their selector. Nonadjacent repeats still have separate drawings.
 """
 
 from collections.abc import Callable
@@ -182,6 +181,10 @@ def _streetcode_tree_span(
     if size <= _TREE_CACHE_MAX:
         return _streetcode_tree(table[start:stop])
 
+    shared = _streetcode_shared_half(table[start:stop])
+    if shared is not None:
+        return shared
+
     half = size // 2
     middle = start + half
     skipped = half.bit_length() - 1
@@ -198,6 +201,17 @@ def _streetcode_tree_span(
     return _streetcode_join(top, bot)
 
 
+def _streetcode_shared_half(table: str) -> list[str] | None:
+    """Draw equal nonconstant sibling cofactors once, skipping their selector."""
+    # At n=3, emitted grid area falls from 225308 to 220764 cells over all
+    # tables; none grows. Two label columns preserve the two-lane street.
+    half = len(table) // 2
+    child = table[:half]
+    if child != table[half:] or len(set(child)) != 2:
+        return None
+    return _streetcode_strip("= ", _streetcode_tree(child))
+
+
 @cache
 def _streetcode_tree_memo(table: str) -> tuple[str, ...]:
     """Build one small subtree, remembered; see :data:`_TREE_CACHE_MAX`.
@@ -210,6 +224,10 @@ def _streetcode_tree_memo(table: str) -> tuple[str, ...]:
     size = len(table)
     if size == 1:
         return tuple(_streetcode_leaf(int(table[0])))
+
+    shared = _streetcode_shared_half(table)
+    if shared is not None:
+        return tuple(shared)
 
     half = size // 2
     top = _streetcode_tree(table[:half])

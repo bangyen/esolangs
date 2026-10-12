@@ -51,6 +51,28 @@ class TestStreetcode:
                 shared = module._streetcode_shared_programs(table, n, tree)  # noqa: SLF001
                 assert boolean.streetcode(table) == shortest(*shared)
 
+    @pytest.mark.parametrize("table", ["01100110", "00010101"])
+    def test_equal_siblings_share_one_drawing(self, table: str) -> None:
+        """A redundant selector preserves every input row and shrinks the grid."""
+        module = import_module("esolangs.languages.streetcode.generator")
+        half = table[: len(table) // 2]
+        if table == half * 2:
+            shared = module._streetcode_tree(table)  # noqa: SLF001
+            repeated = module._streetcode_join(  # noqa: SLF001
+                module._streetcode_tree(half),  # noqa: SLF001
+                module._streetcode_tree(half),  # noqa: SLF001
+            )
+            assert len(shared) * max(map(len, shared)) < len(repeated) * max(
+                map(len, repeated)
+            )
+        program = boolean.streetcode(table)
+        n = len(table).bit_length() - 1
+        for combo in range(1 << n):
+            assert (
+                run_streetcode(program, [str(bit) for bit in row_bits(combo, n)])
+                == table[combo]
+            )
+
     def test_constant_subtrees_fold(self) -> None:
         """A subtree whose rows agree prints instead of driving down halls."""
         constant = len(boolean.streetcode("11111111"))
