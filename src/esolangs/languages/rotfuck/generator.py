@@ -287,7 +287,10 @@ def _select(n: int, used: list[int], groups: list[int]) -> str:
     the pointer has passed for good.
     """
     chosen = set(used)
-    digit = "-" * _ASCII_ZERO
+    # The 48 is not spelled out: a 6-count loop subtracts 8 from the read
+    # cell per pass.  The scratch cell is cleared first, as the tape may
+    # hold leftovers from earlier walks.
+    digit = ">[-]++++++[<-------->-]<"
     out = []
     cursor = 0
     for width, stride in zip(reversed(groups), reversed(_strides(groups)), strict=True):
