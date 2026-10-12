@@ -4,7 +4,6 @@ from itertools import pairwise
 
 from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
-    _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     read_at,
