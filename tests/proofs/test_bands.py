@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import itertools
+import tomllib
 
 import pytest
 
+from esolangs.registry import BY_BOOLEAN
+from tests.proofs.deep import _TUNING
 from tests.proofs.deep.__main__ import BANDS, BUDGET, Proof, discover, selected
 
 #: The proofs that must gate locally.  Pinned deliberately, and the one place
@@ -85,3 +88,9 @@ def test_every_proof_is_callable_with_no_arguments(proofs: list[Proof]) -> None:
             and parameter.kind not in (parameter.VAR_POSITIONAL, parameter.VAR_KEYWORD)
         ]
         assert not required, f"{proof.name}.main() requires {required}"
+
+
+def test_tuning_names_only_real_generators() -> None:
+    tuning = tomllib.loads(_TUNING.read_text(encoding="utf-8"))
+    for section, keys in tuning.items():
+        assert set(keys) <= set(BY_BOOLEAN), (section, set(keys) - set(BY_BOOLEAN))

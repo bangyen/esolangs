@@ -5,6 +5,7 @@ import pytest
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.exceptions import TemplateError
+from esolangs.generation.wrap import wrap_program
 from esolangs.languages.slashes.generator import _is_unfilled_template
 from esolangs.runtime._evaluate import _evaluate
 from scripts.benchmark import WrittenState
@@ -47,3 +48,7 @@ def test_constant_recognizer_does_not_reserve_other_literal_dollars(suffix):
 def test_partly_filled_constant_still_requires_its_remaining_input():
     assert _is_unfilled_template("/a///b//a$b1")
     assert esolangs.run("///", "$0") == "$0"
+
+
+def test_unwrappable_source_is_untouched() -> None:
+    assert wrap_program("iiiioddo", "slashes", 4) == "iiiioddo"

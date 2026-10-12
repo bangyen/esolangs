@@ -9,6 +9,7 @@ import pytest
 import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
+from esolangs.languages.circuit_diagram.generator.hlayout import _LATTICE, _h_size
 from tests.support.witness_tables import witnesses
 
 
@@ -715,3 +716,11 @@ def test_wide_layouts_preserve_execution_and_written_state_bounds(kind):
         assert vm.halted
         assert vm.output == table[row]
         assert state.bits <= 7 * 256 + 2 * 8 - 9
+
+
+def test_h_side_closed_form() -> None:
+    for k in range(64):
+        assert _h_size(2 * k) == _LATTICE * (12 * 2**k - 4 * k - 10)
+        assert _h_size(2 * k + 1) == _LATTICE * (14 * 2**k - 4 * k - 12)
+        assert _h_size(2 * k) ** 2 < 144 * _LATTICE**2 * 2 ** (2 * k)
+        assert _h_size(2 * k + 1) ** 2 < 144 * _LATTICE**2 * 2 ** (2 * k + 1)
