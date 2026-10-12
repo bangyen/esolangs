@@ -6,8 +6,10 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.bfstack.tests.runners import run_bfstack
+from tests.generators.boolean_runners import _runner
 from tests.support.generator_support import assert_an_ignored_input_costs
+
+run_bfstack = _runner("bfstack")
 
 
 class TestBfstack:

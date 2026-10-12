@@ -12,9 +12,11 @@ from esolangs.languages.cvnc.generator import (
     _direct,
     _halt,
 )
-from esolangs.languages.cvnc.tests.runners import run_cvnc
+from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.witness_tables import witnesses
+
+run_cvnc = _runner("cvnc", newline=True)
 
 
 def _leaves(program: str) -> int:

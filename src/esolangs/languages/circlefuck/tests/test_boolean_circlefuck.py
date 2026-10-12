@@ -5,7 +5,9 @@ import random
 import pytest
 
 from esolangs.languages import generators as boolean
-from esolangs.languages.circlefuck.tests.runners import run_circlefuck
+from tests.generators.boolean_runners import _runner
+
+run_circlefuck = _runner("circlefuck")
 
 
 def _rows(program: str, table: str, n: int) -> None:

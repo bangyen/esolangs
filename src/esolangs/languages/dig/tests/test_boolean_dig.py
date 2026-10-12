@@ -7,9 +7,11 @@ import pytest
 import esolangs
 from esolangs.languages import generators as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
-from esolangs.languages.dig.tests.runners import run_dig
 from esolangs.runtime._evaluate import _evaluate
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
+
+run_dig = _runner("dig", lines=True, newline=True)
 
 
 class TestDig:

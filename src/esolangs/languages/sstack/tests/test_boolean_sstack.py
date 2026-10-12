@@ -6,7 +6,9 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.sstack.tests.runners import run_sstack
+from tests.generators.boolean_runners import _runner
+
+run_sstack = _runner("sstack")
 
 
 def test_screen_sharing_potential_is_mostly_below_the_label_reach() -> None:

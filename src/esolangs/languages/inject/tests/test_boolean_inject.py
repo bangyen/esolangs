@@ -6,11 +6,13 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.inject.tests.runners import run_inject
+from tests.generators.boolean_runners import _runner
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,
 )
+
+run_inject = _runner("inject", newline=True)
 
 
 class TestInject:

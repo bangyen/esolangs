@@ -7,11 +7,13 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.container.tests.runners import run_container
 from esolangs.runtime._evaluate import _evaluate
+from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import row_bits, witnesses
+
+run_container = _runner("container", lines=True)
 
 
 def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:

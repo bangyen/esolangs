@@ -10,9 +10,11 @@ from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages import generators as boolean
 from esolangs.languages.sbleq.generator import _sbleq_hoisted
 from esolangs.languages.sbleq.interpreter import _Machine
-from esolangs.languages.sbleq.tests.runners import run_sbleq
 from esolangs.runtime.io import ScriptedIO
+from tests.generators.boolean_runners import _runner
 from tests.support.generator_support import assert_parity_at_most_doubles
+
+run_sbleq = _runner("sbleq")
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])

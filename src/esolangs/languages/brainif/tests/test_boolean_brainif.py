@@ -6,9 +6,11 @@ from itertools import pairwise
 import pytest
 
 from esolangs.languages import generators as boolean
-from esolangs.languages.brainif.tests.runners import run_brainif
+from tests.generators.boolean_runners import _runner
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import witnesses
+
+run_brainif = _runner("brainif", lines=True)
 
 
 class TestBrainIf:

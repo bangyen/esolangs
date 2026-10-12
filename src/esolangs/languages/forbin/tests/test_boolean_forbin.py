@@ -7,8 +7,10 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.forbin.tests.runners import run_forbin_boolean
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import witnesses
+
+run_forbin_boolean = _runner("forbin")
 
 
 class TestForbinBoolean:

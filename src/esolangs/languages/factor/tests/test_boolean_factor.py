@@ -5,8 +5,10 @@ import sys
 import pytest
 
 from esolangs.languages import generators as boolean
-from esolangs.languages.factor.tests.runners import run_factor
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
+
+run_factor = _runner("factor")
 
 
 class TestFactor:

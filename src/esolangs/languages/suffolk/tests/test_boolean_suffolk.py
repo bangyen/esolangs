@@ -4,8 +4,10 @@ import pytest
 
 from esolangs.languages import generators as boolean
 from esolangs.languages.suffolk.generator import _suffolk_lookup
-from esolangs.languages.suffolk.tests.runners import run_suffolk
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
+
+run_suffolk = _runner("suffolk")
 
 
 class TestSuffolk:

@@ -6,8 +6,10 @@ import pytest
 
 from esolangs.generation.wrap import shortest
 from esolangs.languages import generators as boolean
-from esolangs.languages.streetcode.tests.runners import run_streetcode
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
+
+run_streetcode = _runner("streetcode", lines=True)
 
 
 def _columns(program: str) -> int:

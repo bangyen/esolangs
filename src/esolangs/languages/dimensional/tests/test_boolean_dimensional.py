@@ -9,9 +9,11 @@ from esolangs.generation.wrap import (
 from esolangs.languages import generators as boolean
 from esolangs.languages.dimensional.generator import dimensional
 from esolangs.languages.dimensional.interpreter import _Machine
-from esolangs.languages.dimensional.tests.runners import run_dimensional
 from esolangs.runtime.io import ScriptedIO
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import witnesses
+
+run_dimensional = _runner("dimensional", newline=True)
 
 
 @pytest.mark.parametrize("n", [1, 2, 8])

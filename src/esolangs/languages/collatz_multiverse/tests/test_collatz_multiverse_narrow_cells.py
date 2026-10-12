@@ -9,8 +9,10 @@ from esolangs.languages.collatz_multiverse.generator import (
     _cm_layout,
     collatz_multiverse,
 )
-from esolangs.languages.collatz_multiverse.tests.runners import run_collatz_multiverse
+from tests.generators.boolean_runners import _runner
 from tests.support.generator_support import evaluate_generated
+
+run_collatz_multiverse = _runner("collatz_multiverse", newline=True)
 
 
 @pytest.mark.medium
