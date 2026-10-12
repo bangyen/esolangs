@@ -56,8 +56,8 @@ generator qualifies only through the fame threshold under Curation in
 - Nope. qualifies as interpreter-only.
 
 Curation also defines removal independently of admission. Generator audit
-axes never remove a language; a stalled row moves to the
-[roadmap](roadmap.md#parked)'s Parked section.
+axes never remove a language; a stalled row stays open on the
+[roadmap](roadmap.md).
 
 ## Layout
 

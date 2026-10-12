@@ -46,6 +46,12 @@ repos:
         language: system
         files: ^(\.pre-commit-config\.yaml|pyproject\.toml)$
         pass_filenames: false
+      - id: check-doc-links
+        name: Check internal Markdown links
+        entry: python3 checks/check_doc_links.py
+        language: system
+        files: \.md$
+        pass_filenames: false
       - id: check-interpreter-syntax
         name: Check interpreter syntax
         entry: python3 -m py_compile
