@@ -24,6 +24,7 @@ import threading
 import time as _time
 from collections.abc import Callable, Sequence
 from functools import cache, partial
+from math import isqrt
 from typing import Any, TypedDict, cast
 
 from esolangs._answers import encode_inputs, read_answer
@@ -56,6 +57,7 @@ from esolangs._validate import (
     check_timeout,
     check_width,
 )
+from esolangs.compressed import CompressedText
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -125,6 +127,7 @@ def __getattr__(name: str) -> str:
 #: from the outside which was which.
 __all__ = [
     "ArgumentError",
+    "CompressedText",
     "DialectSettings",
     "EsolangError",
     "ExecutionTimeoutError",
@@ -214,6 +217,8 @@ def generate(
         default = generate(language, truth_table, settings=settings)
         lang = LANGUAGES[resolve(language)]
         balancer = lang.balance
+        if isinstance(default, CompressedText):
+            return default.wrapped(max(1, isqrt(len(default))))
         if isinstance(default, Raster):
             if balancer is None:
                 return default
@@ -280,6 +285,8 @@ def generate(
         # text interpreter otherwise passed ``_check_program`` and answered '', a
         # confident garbage result rather than a refusal.
         return generated.tagged(resolved, settings=settings, scale=1)
+    if isinstance(generated, CompressedText):
+        return generated.wrapped(width).tagged(resolved, settings=settings)
     slots = str(generated)
     if lang.id not in parameterized_ids():
         program = slots if laid_out else wrap_program(slots, lang.id, width)
@@ -491,7 +498,7 @@ def _check_runnable(language: str, program: Program) -> None:
     debugger stepped a template to ``output: '0'``; the CLI's ``debug`` calls it.
     """
     name = resolve(language)
-    if isinstance(program, Raster):
+    if isinstance(program, (Raster, CompressedText)):
         return
     if not isinstance(program, str):
         # A non-source value otherwise fell through: an ``int`` leaked a

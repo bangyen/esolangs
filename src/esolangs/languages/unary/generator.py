@@ -6,6 +6,7 @@ commands; refuse before allocating more than 32 MiB of zeros. No repeated
 residual survives the admitted eight-command source budget.
 """
 
+from esolangs.compressed import CompressedText
 from esolangs.exceptions import GeneratorCapError
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -43,8 +44,8 @@ def _decoded(truth_table: str) -> str:
     return reads + body + move_text(pos, 2 * n, ">", "<") + "[]"
 
 
-def unary(truth_table: str) -> str:
-    """Return zero-count source, refusing counts above 32 MiB."""
+def unary(truth_table: str) -> CompressedText:
+    """Return compressed zero-count source, refusing more than 32 MiB expanded."""
     n = _validate_truth_table(truth_table)
     # Every path must read n inputs, so every encoding has at least n commands.
     if n > 8:
@@ -54,7 +55,7 @@ def unary(truth_table: str) -> str:
         count = 8 * count + "><+-.,[]".index(command)
         if count > _MAX_SOURCE:
             raise GeneratorCapError("Unary source exceeds the 32 MiB zero-count cap")
-    return "0" * count
+    return CompressedText.repeated("0", count)
 
 
 LANGUAGE = Language(
@@ -63,6 +64,7 @@ LANGUAGE = Language(
     category="tape_based",
     boolean=unary,
     generator_max_inputs=8,
+    compressed_source=True,
     benchmark_tables=("00", "01", "10", "11", "0001"),
     generator_restrictions="32 MiB source cap; most nontrivial tables exceed it",
     contract=BooleanContract(
@@ -74,5 +76,5 @@ LANGUAGE = Language(
     ),
     wrap=wrap_chars,
     eof="stores zero",
-    example=Example(table="01", bits=(0,), expected="", expected_compared=False),
+    example=Example(expected="", expected_compared=False),
 )

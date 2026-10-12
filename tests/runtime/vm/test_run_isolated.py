@@ -371,6 +371,7 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys):
     import sys
 
     from esolangs import vm
+    from esolangs._isolated import _source_transport
     from tests.support.pick import first
 
     language = first(
@@ -381,8 +382,7 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys):
     monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
     request = {
         "language": language,
-        "program": esolangs.generate(language, "00"),
-        "raster": False,
+        **_source_transport(esolangs.generate(language, "00")),
         "stdin": esolangs.encode_inputs(language, [0]),
         "seed": None,
         "termination": ["0", "1"],

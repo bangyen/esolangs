@@ -32,6 +32,8 @@ def test_evaluate_files(name: str, tmp_path: Path) -> None:
     path = tmp_path / "source"
     if isinstance(program, esolangs.Raster):
         path.write_bytes(program.to_png())
+    elif isinstance(program, esolangs.CompressedText):
+        path.write_bytes(program.to_gzip())
     else:
         path.write_text(program + "\n")
     assert _evaluate(name, path, inputs=len(table).bit_length() - 1) == table

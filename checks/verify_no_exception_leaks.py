@@ -58,6 +58,7 @@ sys.path.insert(0, str(_ROOT / "scripts"))
 from verify.process import write_text
 
 from esolangs._program import Program
+from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.raster import Raster
 from esolangs.registry import INTERPRETERS, LANGUAGES, example_stems
@@ -498,7 +499,13 @@ def _fingerprint(
         h.update(path.read_bytes())
         h.update(b"\0")
     for text in examples:
-        h.update(text.to_png() if isinstance(text, Raster) else text.encode())
+        h.update(
+            text.to_png()
+            if isinstance(text, Raster)
+            else text.to_gzip()
+            if isinstance(text, CompressedText)
+            else text.encode()
+        )
         h.update(b"\0")
     h.update(f"{_STEP_CAP}:{_LANG_TIMEOUT}".encode())
     return h.hexdigest()

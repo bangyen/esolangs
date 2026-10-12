@@ -117,7 +117,13 @@ def describe(language: str) -> LanguageInfo:
     # Package-relative: repository-relative paths broke a ``chdir`` away and
     # under any install, and absolute ones froze the install location into
     # the public output.  ``importlib.resources.files("esolangs")`` resolves.
-    suffix = ".png" if lang.source_kind.value == "raster" else ".txt"
+    suffix = (
+        ".png"
+        if lang.source_kind.value == "raster"
+        else ".txt.gz"
+        if lang.compressed_source
+        else ".txt"
+    )
     examples = sorted(
         f"languages/{lang.id}/examples/{p.name}"
         for p in (_LANGUAGES / lang.id / "examples").glob(f"{stem}{suffix}")

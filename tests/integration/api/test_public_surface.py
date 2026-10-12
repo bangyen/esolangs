@@ -26,6 +26,7 @@ class TestPackageSurface:
         """Adding or removing a public name is a deliberate edit here."""
         assert sorted(esolangs.__all__) == [
             "ArgumentError",
+            "CompressedText",
             "DialectSettings",
             "EsolangError",
             "ExecutionTimeoutError",

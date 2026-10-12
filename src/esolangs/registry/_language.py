@@ -81,6 +81,7 @@ class Language:
     #: Source that looks like a file path is still source.
     path_like_source: bool = False
     source_kind: SourceKind = SourceKind.TEXT
+    compressed_source: bool = False
     extra: str = ""
     # The Boolean generator, its limits, and how its programs read inputs
     # and give the answer (default: a 0/1 line per input, the bit printed).

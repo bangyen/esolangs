@@ -30,7 +30,9 @@ def probe_table(name: str, default: str = "0110") -> str:
     lang = LANGUAGES[esolangs.resolve(name)]
     if lang.benchmark_tables:
         assert_proved_resource_cap(name)
-        return lang.example.table
+        return next(
+            table for table in lang.benchmark_tables if "0" in table and "1" in table
+        )
     return default
 
 

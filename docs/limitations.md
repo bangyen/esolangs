@@ -557,6 +557,10 @@ a finite encoding for every table.
 
 The eight-command AND guard `,>,[<[]]` emits 27,452,351 zeros. All four
 rows execute: three halt, 11 cycles, and each consumes two inputs. The
-committed example uses one-input identity instead to keep the artifact small.
+committed AND example stores gzip text; program size counts expanded characters.
+Compression is streamed in 64 KiB chunks; the interpreter counts decompressed
+zeros without retaining expanded source. The default unwrapped AND occupies
+26,712 gzip bytes. `str(program)` exports plain text; `to_gzip()` and `save()`
+export files. The CLI writes gzip by default and `--plain` exports text.
 Decoded Brainfuck uses wrapping bytes, a tape growing in both directions
 and zero at EOF.

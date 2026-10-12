@@ -11,6 +11,7 @@ from esolangs._input import InputSource as InputSource
 from esolangs._input import check_input as check_input
 from esolangs._input import read_input as read_input
 from esolangs._program import Program
+from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
 from esolangs.interpreters.source_hints import syntax_error, with_hint
 from esolangs.raster import Raster
@@ -40,7 +41,7 @@ def _read_container(
             return source.read(), True
         if isinstance(source, os.PathLike):
             return Path(source).read_bytes(), True
-        if isinstance(source, (str, bytes, Raster)):
+        if isinstance(source, (str, bytes, Raster, CompressedText)):
             return source, False
         if callable(getattr(source, "read", None)):
             value = source.read()
@@ -69,6 +70,16 @@ def _read_container(
 def text_source(source: ProgramSource | _FileSource) -> str:
     """Load UTF-8 source; only Paths lose one trailing newline."""
     value, path = _read_container(source)
+    if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
+        value = CompressedText(value)
+    if isinstance(value, CompressedText):
+        from esolangs.tagged import _Tagged
+
+        value = (
+            _Tagged(str(value), value.language, settings=value.settings)
+            if value.language
+            else str(value)
+        )
     if isinstance(value, bytes):
         try:
             value = value.decode("utf-8")

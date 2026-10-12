@@ -11,6 +11,8 @@ wiki's cat example.
 """
 
 from esolangs._drive import drive
+from esolangs._source import ProgramSource, _read_container, text_source
+from esolangs.compressed import CompressedText
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.source_hints import syntax_error
@@ -30,17 +32,27 @@ class _UnaryBFMachine(_BFMachine):
 type _State = _UnaryBFMachine
 
 
-def decode(code: str) -> str:
+def load_source(source: ProgramSource) -> str | CompressedText:
+    """Keep gzip source compressed; accept the ordinary text containers too."""
+    value, _path = _read_container(source)
+    if isinstance(value, CompressedText):
+        return value
+    if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
+        return CompressedText(value)
+    return text_source(value)
+
+
+def decode(code: str | CompressedText) -> str:
     """Return decoded Brainfuck, rejecting nonzero symbols and partial triples."""
     count = 0
-    for char in code:
-        if char == "0":
-            count += 1
-        elif not char.isspace():
+    chunks = code.chunks() if isinstance(code, CompressedText) else (code,)
+    for chunk in chunks:
+        if chunk.replace("0", "").strip():
             raise syntax_error(
                 "Unary source must contain only zeros and whitespace",
                 "write only 0 characters, with optional whitespace",
             )
+        count += chunk.count("0")
     if not count:
         return ""
     bits = count.bit_length() - 1
@@ -60,7 +72,7 @@ def decode(code: str) -> str:
 class _Machine:
     """The decoded Brainfuck machine."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | CompressedText, io: IO) -> None:
         self.io = io
         self.state: _State = _UnaryBFMachine(decode(code), io)
 
@@ -94,9 +106,9 @@ class _Machine:
         self.state.step()
 
 
-def run(code: str, io: IO) -> None:
+def run(code: str | CompressedText | ProgramSource, io: IO) -> None:
     """Decode Unary and run its Brainfuck program."""
-    drive(_Machine(code, io))
+    drive(_Machine(load_source(code), io))
 
 
 if __name__ == "__main__":

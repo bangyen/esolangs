@@ -147,6 +147,7 @@ options:
   -s, --settings JSON  dialect overrides, e.g. '{{"expression_syntax":"postfix"}}'.
   --set KEY=VALUE  one dialect override without JSON, repeatable and applied
                after --settings, e.g. --set expression_syntax=postfix.
+  --plain            export compressed text as ordinary source text.
   --balance    minimize the rendered width/height difference across supported
                layouts. Ties prefer shorter source, then smaller width. Tokens
                and routing can prevent a square; excludes --width.

@@ -22,6 +22,7 @@ from dataclasses import dataclass, replace
 from typing import cast
 
 from esolangs._program import Program
+from esolangs.compressed import CompressedText
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, Language, SourceKind, canonical_id, resolve
 from esolangs.registry._contracts import AnswerMode, BooleanContract, InputShape
@@ -128,7 +129,14 @@ class BooleanExample:
     def filename(self) -> str:
         """Return the example filename in the language's source format."""
         kind = LANGUAGES[resolve(self.stem.replace("-", " "))].source_kind
-        return self.stem + (".png" if kind is SourceKind.RASTER else ".txt")
+        lang = LANGUAGES[resolve(self.stem.replace("-", " "))]
+        return self.stem + (
+            ".png"
+            if kind is SourceKind.RASTER
+            else ".txt.gz"
+            if lang.compressed_source
+            else ".txt"
+        )
 
     def build(
         self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False
@@ -154,6 +162,8 @@ class BooleanExample:
             program = self.generator(self.table, width)
         else:
             program = self.generator(self.table)
+        if isinstance(program, CompressedText):
+            return program.wrapped(width)
         if isinstance(program, Raster):
             return program.upscaled(self.scale)
         if self.fill is not None:

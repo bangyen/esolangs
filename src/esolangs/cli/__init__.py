@@ -85,6 +85,7 @@ from esolangs.cli.io import (
     _read_stdin,
 )
 from esolangs.cli.run import _run
+from esolangs.compressed import CompressedText
 from esolangs.exceptions import (
     EsolangError,
 )
@@ -227,7 +228,7 @@ def _generate(rest: list[str]) -> None:
     rest, set_pairs = _pop_set_pairs(rest)
     rest, options = _pop_options(rest, {"--bits", "--scale", "--settings"})
     rest, portable = _pop_portable(rest)
-    rest, flags = _pop_flags(rest, {"--balance"})
+    rest, flags = _pop_flags(rest, {"--balance", "--plain"})
     balance = "--balance" in flags
     scale = _scale_of(options)
     before = list(rest)
@@ -245,6 +246,7 @@ def _generate(rest: list[str]) -> None:
             "--settings",
             "--set",
             "--portable",
+            "--plain",
         },
     )
     # `--width` takes an *optional* N, so a truth table typed straight after
@@ -298,7 +300,13 @@ def _generate(rest: list[str]) -> None:
             f"{describe(rest[0])['name']} -- "
             f"the generator retains its original layout\n"
         )
-    if isinstance(program, Raster):
+    if isinstance(program, CompressedText):
+        if "--plain" in flags:
+            for chunk in program.chunks():
+                sys.stdout.write(chunk)
+        else:
+            sys.stdout.buffer.write(program.to_gzip())
+    elif isinstance(program, Raster):
         sys.stdout.buffer.write(program.to_png())
     else:
         print(program)

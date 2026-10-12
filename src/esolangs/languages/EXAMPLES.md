@@ -87,7 +87,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `taglate/examples/taglate.txt` | Taglate | `0001` | `01` | 01 | '0' |
 | `thisthat/examples/thisthat.txt` | thisthat | `0001` | `01` | 01 | '0' |
 | `thue/examples/thue.txt` | Thue | `0001` | `01` | 0 1 | '0' |
-| `unary/examples/unary.txt` | Unary | `01` | `0` | '\x00' | not the answer -- see note |
+| `unary/examples/unary.txt.gz` | Unary | `0001` | `01` | '\x00ÿ' | not the answer -- see note |
 | `underload/examples/underload.txt` | Underload | `0001` | `01` | embedded 01 | '0' |
 | `unlambda/examples/unlambda.txt` | Unlambda | `0001` | `01` | 01 | '0' |
 | `unsquare/examples/unsquare.txt` | Unsquare | `0001` | `01` | 01 | '0' |

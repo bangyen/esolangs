@@ -58,7 +58,11 @@ def _reads(entry: tuple, table: str) -> int:
     fn, lang, _run = entry
     try:
         emitted = fn(table)
-        program = emitted if isinstance(emitted, Raster) else str(emitted)
+        program = (
+            emitted
+            if isinstance(emitted, (Raster, esolangs.CompressedText))
+            else str(emitted)
+        )
     except ValueError:
         # A generator that does not cover this table emits no program, and a
         # program that does not exist reads nothing.  Reporting 0 routes the

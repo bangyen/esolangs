@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs.compressed import CompressedText
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
@@ -72,7 +73,9 @@ def test_boolean_example_matches_generator(name: str) -> None:
     path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
     program = example.build(balance=True)
     stale = f"{path.relative_to(BASE_DIR)} is stale; run {REGENERATE}"
-    if isinstance(program, Raster):
+    if isinstance(program, CompressedText):
+        assert path.read_bytes() == program.to_gzip(), stale
+    elif isinstance(program, Raster):
         # PNG compression differs across platforms; the pixels are the program.
         assert Raster.from_png(path.read_bytes()) == program, stale
     else:
@@ -113,7 +116,7 @@ def test_boolean_examples_cover_every_committed_file() -> None:
     on_disk = {
         p.relative_to(BASE_DIR / "src/esolangs/languages").as_posix()
         for p in (BASE_DIR / "src/esolangs/languages").glob("*/examples/*")
-        if p.suffix in (".txt", ".png")
+        if p.suffix in (".txt", ".png", ".gz")
     }
     expected = {
         f"{canonical_id(stem.replace('-', ' '))}/examples/{example.filename}"
@@ -131,10 +134,11 @@ def test_boolean_examples_cover_every_committed_file() -> None:
 @pytest.mark.parametrize("name", sorted(HALT_CONVENTION))
 def test_halt_convention_examples_halt(name: str) -> None:
     """The committed program of a halt-convention language terminates."""
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
     program = (
-        (BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0])
-        .read_text(encoding="utf-8")
-        .rstrip("\n")
+        CompressedText(path.read_bytes())
+        if path.suffix == ".gz"
+        else path.read_text(encoding="utf-8").rstrip("\n")
     )
     assert _halts(name, program, list(BOOLEAN_GENERATED[name].inputs)), (
         f"examples/{name}.txt holds the looping branch; the committed "
@@ -197,6 +201,8 @@ def test_boolean_example(name: str) -> None:
     program = (
         Raster.from_png(path.read_bytes())
         if path.suffix == ".png"
+        else CompressedText(path.read_bytes())
+        if path.suffix == ".gz"
         else path.read_text(encoding="utf-8").rstrip("\n")
     )
     if isinstance(program, Raster):

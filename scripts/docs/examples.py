@@ -7,6 +7,7 @@ import pathlib
 from collections.abc import Iterator
 
 from esolangs._program import Program
+from esolangs.compressed import CompressedText
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
@@ -161,12 +162,20 @@ def write_set(name: str) -> None:
     for stem, generated in SETS[name]():
         directory = LANGUAGES_DIR / canonical_id(stem.replace("-", " ")) / "examples"
         directory.mkdir(parents=True, exist_ok=True)
-        suffix = ".png" if isinstance(generated, Raster) else ".txt"
+        suffix = (
+            ".png"
+            if isinstance(generated, Raster)
+            else ".txt.gz"
+            if isinstance(generated, CompressedText)
+            else ".txt"
+        )
         path = directory / f"{stem}{suffix}"
         # Text files retain a final POSIX newline; PNGs retain their bytes.
         program = (
             generated.to_png()
             if isinstance(generated, Raster)
+            else generated.to_gzip()
+            if isinstance(generated, CompressedText)
             else (generated.rstrip("\n") + "\n").encode("utf-8")
         )
         existing = path.read_bytes() if path.exists() else None
