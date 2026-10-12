@@ -70,7 +70,7 @@ def test_bitwise_cyclic_tag_walks_forward_in_a_fixed_number_of_steps() -> None:
 
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_deletes_inputs_and_literal_answer(n, bit):
+def test_constant_deletes_inputs_and_literal_answer(n, bit) -> None:
     table = bit * (1 << n)
     template = esolangs.generate("Bitwise Cyclic Tag", table)
     assert template == "0," + "$" * n + bit

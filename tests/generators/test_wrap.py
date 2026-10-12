@@ -1,3 +1,5 @@
+"""Program wrapping and width handling."""
+
 from dataclasses import replace
 from functools import cache
 
@@ -420,7 +422,7 @@ def test_unwrappable_languages_have_no_wrapper() -> None:
 
 
 @pytest.mark.parametrize("structural", [False, True])
-def test_multiline_reflow_follows_registry_metadata(monkeypatch, structural):
+def test_multiline_reflow_follows_registry_metadata(monkeypatch, structural) -> None:
     from esolangs import registry
 
     def wrapper(program: str, _width: int) -> str:

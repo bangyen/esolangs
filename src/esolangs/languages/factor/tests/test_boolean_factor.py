@@ -113,7 +113,7 @@ def test_one_input_not_stays_within_the_command_ledger(bit, expected) -> None:
 
 
 @pytest.mark.medium
-def test_multiple_residuals_reduce_encoded_size_within_ledger():
+def test_multiple_residuals_reduce_encoded_size_within_ledger() -> None:
     from esolangs.languages.factor.generator import _encode, _program
     from esolangs.runtime._digits import digit_limit_for
     from tests.support.generator_support import assert_shared_program
@@ -147,7 +147,7 @@ def test_multiple_residuals_reduce_encoded_size_within_ledger():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_projection_skips_ascii_normalization(bit):
+def test_constant_projection_skips_ascii_normalization(bit) -> None:
     from esolangs.languages.factor.generator import _factor
     from tests.support.generator_support import assert_shared_program
 
@@ -169,7 +169,7 @@ def test_constant_projection_skips_ascii_normalization(bit):
 
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_projection_retains_balanced_encoding(n, bit):
+def test_constant_projection_retains_balanced_encoding(n, bit) -> None:
     from esolangs.languages.factor.generator import _factor
     from tests.support.generator_support import assert_constant_balanced_shape
 
@@ -180,7 +180,7 @@ def test_constant_projection_retains_balanced_encoding(n, bit):
 
 
 @pytest.mark.medium
-def test_factor_bank_compares_decimal_encodings_and_executes_within_ledger():
+def test_factor_bank_compares_decimal_encodings_and_executes_within_ledger() -> None:
     from esolangs.languages.factor.generator import _encode, _program
     from tests.support.generator_support import assert_shared_program
 

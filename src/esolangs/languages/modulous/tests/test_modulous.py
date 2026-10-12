@@ -303,7 +303,7 @@ class TestBranchingMachine:
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_rejected_with_hint("Modulous", "[PSH INT nope]", "decimal integer")
     assert_rejected_with_hint("Modulous", "[PSH INT -1][PRT]", "between 0 and 1114111")
     assert_halts_with_hint(
@@ -312,7 +312,7 @@ def test_hints_for_bad_programs_and_input():
     assert_halts_with_hint("Modulous", "[RND 0]", "upper bound", "at least 1")
 
 
-def test_variable_suggestions_use_the_live_scope():
+def test_variable_suggestions_use_the_live_scope() -> None:
     with pytest.raises(HaltError) as caught:
         _named({"COUNT": 1}, "COUTN")
     assert caught.value.__notes__ == ["hint: did you mean 'COUNT'?"]

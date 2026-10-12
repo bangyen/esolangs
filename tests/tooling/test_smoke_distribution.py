@@ -43,7 +43,7 @@ def test_missing_math_is_only_allowed_without_the_extra(
 @pytest.mark.parametrize("extra", [False, True])
 def test_generator_process_keeps_the_deadline_and_propagates_failure(
     monkeypatch, extra
-):
+) -> None:
     def run(args, **kwargs):
         assert "-I" in args
         assert args[args.index("--language") + 1] == "Brainfuck"
@@ -57,7 +57,9 @@ def test_generator_process_keeps_the_deadline_and_propagates_failure(
         smoke._generator_process("Brainfuck", math_extra=extra, image_extra=extra)  # noqa: SLF001
 
 
-def test_the_generator_self_invocation_is_accepted_by_the_dispatcher(monkeypatch):
+def test_the_generator_self_invocation_is_accepted_by_the_dispatcher(
+    monkeypatch,
+) -> None:
     """The batch child must name the ``smoke`` subcommand.
 
     ``main`` dispatches on the first argument, so a bare ``--language`` reads
@@ -77,7 +79,7 @@ def test_the_generator_self_invocation_is_accepted_by_the_dispatcher(monkeypatch
     assert smoke.main(captured["args"][3:]) == 0
 
 
-def test_normalize_without_an_installed_package(tmp_path):
+def test_normalize_without_an_installed_package(tmp_path) -> None:
     archive = tmp_path / "source.tar.gz"
     payload = b"source payload\n"
     member = tarfile.TarInfo("package/source.py")

@@ -211,7 +211,7 @@ def test_output(code: str, expected: str) -> None:
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_halts_with_hint(
         "Jaune", "1@", "undefined subroutine", "define the subroutine"
     )

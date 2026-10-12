@@ -277,7 +277,7 @@ def test_a_width_tree_reads_an_ignored_input_in_the_next_block(width: int) -> No
 
 
 @pytest.mark.parametrize("table", ["00", "0000"])
-def test_narrow_balance_regime_edge_executes(table):
+def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Dig", table, balance=True)
     assert _evaluate("Dig", balanced, inputs=len(table).bit_length() - 1) == table

@@ -12,7 +12,7 @@ from scripts.verify import process as processes
 from scripts.verify.process import MARKER, spool
 
 
-def test_spool_keeps_complete_small_logs_and_bounded_overflow(tmp_path):
+def test_spool_keeps_complete_small_logs_and_bounded_overflow(tmp_path) -> None:
     path = tmp_path / "log"
     stops = []
     spool(io.BytesIO(b"complete"), path, 100, lambda: stops.append(True))
@@ -28,7 +28,7 @@ def test_spool_keeps_complete_small_logs_and_bounded_overflow(tmp_path):
 @pytest.mark.parametrize("benchmark", [False, True])
 def test_noisy_worker_stops_with_bounded_log_and_descendants(
     tmp_path, monkeypatch, benchmark
-):
+) -> None:
     marker = tmp_path / "tick"
     child = (
         "import time;from pathlib import Path\nwhile True:\n "

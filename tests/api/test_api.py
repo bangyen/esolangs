@@ -27,7 +27,7 @@ def test_list_languages() -> None:
     assert names == sorted(names)
 
 
-def test_seed_hint_tracks_registered_random_languages(monkeypatch):
+def test_seed_hint_tracks_registered_random_languages(monkeypatch) -> None:
     from esolangs.registry import Language
     from esolangs.runtime import _execution
 
@@ -195,7 +195,7 @@ def test_option_hints_preserve_messages() -> None:
     assert check_bits([0, 1]) == [0, 1]
 
 
-def test_debugger_exports_are_available():
+def test_debugger_exports_are_available() -> None:
     for name in debugger.__all__:
         assert hasattr(debugger, name)
     assert debugger.make_vm(REFERENCE, "+.").ip == 0
@@ -203,7 +203,7 @@ def test_debugger_exports_are_available():
 
 
 @pytest.mark.medium  # spawns a worker, like test_run_isolated
-def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path):
+def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path) -> None:
     path = tmp_path / "program.bf"
     path.write_text("++.")
     with ThreadPoolExecutor(max_workers=1) as pool:
@@ -218,12 +218,12 @@ def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path):
         {"max_steps": 2, "seed": 1},
     ],
 )
-def test_unsupported_execution_options_are_refused(options):
+def test_unsupported_execution_options_are_refused(options) -> None:
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run(REFERENCE, "+.", **options)
 
 
-def test_isolated_seed_is_forwarded(monkeypatch):
+def test_isolated_seed_is_forwarded(monkeypatch) -> None:
     seen = []
 
     def execute(language, program, stdin, timeout, *, seed):
@@ -235,25 +235,25 @@ def test_isolated_seed_is_forwarded(monkeypatch):
     assert seen == [(REFERENCE, "+.", "", 30.0, 7)]
 
 
-def test_runnable_guard_refuses_non_source_values():
+def test_runnable_guard_refuses_non_source_values() -> None:
     from esolangs import _check_runnable
 
     with pytest.raises(esolangs.ProgramError, match="got int"):
         _check_runnable(REFERENCE, 7)
 
 
-def test_default_answer_contract_reads_the_final_bit():
+def test_default_answer_contract_reads_the_final_bit() -> None:
     assert esolangs.read_answer(REFERENCE, "answer: 1\n") == "1"
 
 
-def test_isolated_worker_requires_a_deadline():
+def test_isolated_worker_requires_a_deadline() -> None:
     from esolangs.runtime import _isolated
 
     with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
         _isolated.run_isolated(REFERENCE, "+.", timeout=None)
 
 
-def test_bound_language_runs_a_boolean_workflow():
+def test_bound_language_runs_a_boolean_workflow() -> None:
     language = esolangs.Language(" BRAINFUCK ")
     assert language.name == REFERENCE
     assert language.describe()["name"] == language.name
@@ -266,7 +266,7 @@ def test_bound_language_runs_a_boolean_workflow():
 
 
 @pytest.mark.medium
-def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path):
+def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path) -> None:
     language = esolangs.Language(REFERENCE)
     path = tmp_path / "program.bf"
     path.write_text("++.")
@@ -280,7 +280,7 @@ def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path):
     assert language.run(path, isolated=True, timeout=None) == "\x02"
 
 
-def test_bound_execution_keeps_partial_output_on_step_exhaustion():
+def test_bound_execution_keeps_partial_output_on_step_exhaustion() -> None:
     language = esolangs.Language(REFERENCE)
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         language.run("+.[]", max_steps=10, timeout=1)

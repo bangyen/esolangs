@@ -10,7 +10,7 @@ import pytest
 from scripts.verify import process as _verify_process
 
 
-def test_preflight_reaps_descendants(tmp_path):
+def test_preflight_reaps_descendants(tmp_path) -> None:
     marker = tmp_path / "marker"
     worker = (
         "from pathlib import Path; import time; time.sleep(1); "
@@ -32,7 +32,7 @@ def test_preflight_reaps_descendants(tmp_path):
     assert not marker.exists()
 
 
-def test_atomic_failure_preserves_file(tmp_path, monkeypatch):
+def test_atomic_failure_preserves_file(tmp_path, monkeypatch) -> None:
     path = tmp_path / "data"
     path.write_text("previous")
 
@@ -46,7 +46,7 @@ def test_atomic_failure_preserves_file(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == [path]
 
 
-def test_provenance_deadline_kills_git_probe(monkeypatch):
+def test_provenance_deadline_kills_git_probe(monkeypatch) -> None:
     from scripts import benchmark
 
     def hung_probe(_command, **kwargs):
@@ -61,7 +61,7 @@ def test_provenance_deadline_kills_git_probe(monkeypatch):
     assert time.monotonic() - started < 2
 
 
-def test_worker_failure_keeps_full_log_and_bounded_note():
+def test_worker_failure_keeps_full_log_and_bounded_note() -> None:
     from scripts.benchmark import Worker
 
     command = (

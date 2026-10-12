@@ -50,7 +50,9 @@ def _rows(start, stop, depth, core_bits, ignored):
         (tuple(f"{word:04b}" for word in range(1, 9)), "0123456776543210"),
     ],
 )
-def test_non_power_of_two_words_and_three_bit_words_cover_all_paths(words, pattern):
+def test_non_power_of_two_words_and_three_bit_words_cover_all_paths(
+    words, pattern
+) -> None:
     table, candidate, metric, depth, ignored = _fixture(words, pattern, 2)
     assert metric.commands <= 162
     assert len(bfpda(table)) <= len(candidate)
@@ -63,7 +65,7 @@ def test_non_power_of_two_words_and_three_bit_words_cover_all_paths(words, patte
 @pytest.mark.medium
 @pytest.mark.parametrize("seed", [73031, 73032, 73033])
 @pytest.mark.parametrize("start", range(0, 512, 64))
-def test_four_class_cap_bank_covers_every_essential_row(seed, start):
+def test_four_class_cap_bank_covers_every_essential_row(seed, start) -> None:
     rng = random.Random(seed)
     words = tuple("".join(str(rng.randrange(2)) for _ in range(64)) for _ in range(4))
     table, candidate, metric, depth, ignored = _fixture(words, "01233021", 6)
@@ -78,25 +80,25 @@ def test_four_class_cap_bank_covers_every_essential_row(seed, start):
 
 
 @pytest.mark.parametrize("classes", [("0001",), ("0001", "0001")])
-def test_invalid_labels_abort(classes):
+def test_invalid_labels_abort(classes) -> None:
     with pytest.raises(ValueError, match="distinct residuals"):
         _bfpda_tree("0001" * 8, classes=classes, class_depth=3)
 
 
-def test_word_must_fit_the_retired_stack():
+def test_word_must_fit_the_retired_stack() -> None:
     classes = ("0001", "0110", "0011", "0101")
     with pytest.raises(ValueError, match="retired stack"):
         _bfpda_tree(_reflected("".join(classes), 4), classes=classes)
 
 
-def test_bank_keeps_existing_paths_when_no_candidate_is_admissible():
+def test_bank_keeps_existing_paths_when_no_candidate_is_admissible() -> None:
     table = _reflected("0001011000110101", 4)
     context = _prepare(table)
     assert best_bank(table, context, 42, 10000) is None
     assert best_bank(table, context, 10000, 0) is None
 
 
-def test_emitter_drift_aborts(monkeypatch):
+def test_emitter_drift_aborts(monkeypatch) -> None:
     from importlib import import_module
 
     module = import_module("esolangs.languages.bf_pda.generator")

@@ -14,7 +14,7 @@ from scripts.benchmark import WrittenState
 @pytest.mark.medium
 @pytest.mark.parametrize("inputs", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_root_deletes_inputs_without_selecting_a_table(inputs, bit):
+def test_constant_root_deletes_inputs_without_selecting_a_table(inputs, bit) -> None:
     table = bit * (1 << inputs)
     template = esolangs.generate("///", table)
     assert len(template) == inputs + 9
@@ -41,11 +41,11 @@ def test_constant_root_deletes_inputs_without_selecting_a_table(inputs, bit):
 
 
 @pytest.mark.parametrize("suffix", ["", "0", "$", "$2", "$x0", "ab0"])
-def test_constant_recognizer_does_not_reserve_other_literal_dollars(suffix):
+def test_constant_recognizer_does_not_reserve_other_literal_dollars(suffix) -> None:
     assert not _is_unfilled_template("/a///b//" + suffix)
 
 
-def test_partly_filled_constant_still_requires_its_remaining_input():
+def test_partly_filled_constant_still_requires_its_remaining_input() -> None:
     assert _is_unfilled_template("/a///b//a$b1")
     assert esolangs.run("///", "$0") == "$0"
 

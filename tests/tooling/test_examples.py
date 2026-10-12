@@ -316,7 +316,7 @@ def test_an_unknown_interpreter_names_the_file_to_fix() -> None:
         _contract_for("no_such_module")
 
 
-def test_compressed_example_equality_uses_source_text():
+def test_compressed_example_equality_uses_source_text() -> None:
     import gzip
 
     from scripts.docs.examples import _same_program

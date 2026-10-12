@@ -11,7 +11,7 @@ from scripts.benchmark import measure
     ("language", "table"),
     [(name, table) for name in BOUNDARIES for table in boundary_tables(name)],
 )
-def test_boundary_program_answers_every_row(language, table):
+def test_boundary_program_answers_every_row(language, table) -> None:
     record = measure(
         language, table, repeat=1, row=len(table) - 1, step_cap=STEP_CAP, all_rows=True
     )

@@ -84,7 +84,7 @@ def test_growth_detector_accepts_halt_at_step_limit(program: str, limit: int) ->
     ],
 )
 @pytest.mark.parametrize("limit", [float("nan"), float("inf"), 1.5, "3", True, -1])
-def test_invalid_limit_is_refused_before_machine_acquisition(detector, limit):
+def test_invalid_limit_is_refused_before_machine_acquisition(detector, limit) -> None:
     from esolangs.exceptions import ArgumentError
 
     with pytest.raises(ArgumentError, match="limit"):

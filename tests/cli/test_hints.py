@@ -13,7 +13,7 @@ from tests.support.reference import REFERENCE
 
 
 @pytest.mark.medium
-def test_vm_load_retains_the_delimiter_and_position():
+def test_vm_load_retains_the_delimiter_and_position() -> None:
     with pytest.raises(esolangs.ProgramError, match="unmatched") as caught:
         make_vm(REFERENCE, "[", stdin="")
     assert str(caught.value) == "unmatched '[' at position 0"
@@ -21,7 +21,7 @@ def test_vm_load_retains_the_delimiter_and_position():
 
 
 @pytest.mark.medium
-def test_isolated_error_keeps_the_hint():
+def test_isolated_error_keeps_the_hint() -> None:
     with pytest.raises(esolangs.ProgramError, match="unmatched") as caught:
         esolangs.run(REFERENCE, "[", isolated=True)
     assert caught.value.__notes__ == ["hint: close this '[' with ']'"]
@@ -36,11 +36,11 @@ def test_isolated_error_keeps_the_hint():
         ("XYZ", "use a command"),
     ],
 )
-def test_keyword_hint_refuses_ambiguity(word, hint):
+def test_keyword_hint_refuses_ambiguity(word, hint) -> None:
     assert keyword_hint(word, ("PUSH", "POP", "PRT"), "use a command") == hint
 
 
-def test_input_hint_is_available_to_direct_interpreter_callers():
+def test_input_hint_is_available_to_direct_interpreter_callers() -> None:
     with pytest.raises(
         esolangs.ArgumentError, match="input must be an integer"
     ) as caught:
@@ -48,14 +48,14 @@ def test_input_hint_is_available_to_direct_interpreter_callers():
     assert "decimal integer" in caught.value.__notes__[0]
 
 
-def test_bad_png_hint_survives_exception_translation():
+def test_bad_png_hint_survives_exception_translation() -> None:
     with pytest.raises(esolangs.ProgramError, match="bad signature") as caught:
         Raster.from_png(b"not an image")
     assert "export the image as PNG" in caught.value.__notes__[0]
 
 
 @pytest.mark.medium
-def test_text_encoding_hint_is_available_before_interpreter_loading():
+def test_text_encoding_hint_is_available_before_interpreter_loading() -> None:
     with pytest.raises(esolangs.ProgramError, match="invalid UTF-8") as caught:
         esolangs.run(REFERENCE, b"\xff", timeout=1)
     assert caught.value.__notes__ == [
@@ -63,7 +63,7 @@ def test_text_encoding_hint_is_available_before_interpreter_loading():
     ]
 
 
-def test_value_error_hint_without_language_context():
+def test_value_error_hint_without_language_context() -> None:
     with (
         pytest.raises(esolangs.ProgramError) as caught,
         interpreter_errors("recursion"),
@@ -75,7 +75,7 @@ def test_value_error_hint_without_language_context():
     ]
 
 
-def test_truncated_png_header_has_a_recovery_hint():
+def test_truncated_png_header_has_a_recovery_hint() -> None:
     import struct
     import zlib
 
@@ -90,7 +90,7 @@ def test_truncated_png_header_has_a_recovery_hint():
 
 @pytest.mark.parametrize("isolated", [False, True])
 @pytest.mark.medium
-def test_input_exhaustion_keeps_counts_and_one_hint(isolated):
+def test_input_exhaustion_keeps_counts_and_one_hint(isolated) -> None:
     with pytest.raises(esolangs.InputExhaustedError) as caught:
         # 10s: an isolated spawn under a loaded full run took over 2s.
         esolangs.run(REFERENCE, "+.,", timeout=10, isolated=isolated)
@@ -102,14 +102,14 @@ def test_input_exhaustion_keeps_counts_and_one_hint(isolated):
 
 
 @pytest.mark.medium
-def test_timeout_hint_preserves_the_timeout_class():
+def test_timeout_hint_preserves_the_timeout_class() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         esolangs.run(REFERENCE, "+[]", max_steps=3)
     assert "check loop termination" in caught.value.__notes__[0]
     assert "before increasing" in caught.value.__notes__[0]
 
 
-def test_recursion_limit_has_a_depth_hint():
+def test_recursion_limit_has_a_depth_hint() -> None:
     with (
         pytest.raises(esolangs.InterpreterLimitError) as caught,
         interpreter_errors("too deep"),
@@ -121,7 +121,7 @@ def test_recursion_limit_has_a_depth_hint():
     ]
 
 
-def test_missing_dependency_hint_names_the_environment(monkeypatch):
+def test_missing_dependency_hint_names_the_environment(monkeypatch) -> None:
     from esolangs.raster import png
     from esolangs.raster.png import _require_image
 
@@ -157,7 +157,7 @@ def test_missing_dependency_hint_names_the_environment(monkeypatch):
 )
 def test_detector_bounds_preserve_the_exact_diagnostic(
     detector, language, source, message, hint
-):
+) -> None:
     machine = vm.make_vm(language, source)
     with pytest.raises(TimeoutError) as caught:
         getattr(vm, detector)(machine, limit=0)
@@ -166,7 +166,7 @@ def test_detector_bounds_preserve_the_exact_diagnostic(
     assert hint in caught.value.__notes__[0]
 
 
-def test_cycle_detector_requires_a_snapshot_machine():
+def test_cycle_detector_requires_a_snapshot_machine() -> None:
     with pytest.raises(TypeError) as caught:
         vm.run_until_halt_or_cycle(object())
     assert str(caught.value) == (

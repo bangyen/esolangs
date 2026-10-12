@@ -24,7 +24,7 @@ from scripts.benchmark import MAX_RECORD_CHARS, Worker
         [{"error": {"message": "bad"}}],
     ],
 )
-def test_invalid_protocol_reaps_worker(records):
+def test_invalid_protocol_reaps_worker(records) -> None:
     command = (
         "import sys,time; "
         + "; ".join(f"print({json.dumps(record)!r}, flush=True)" for record in records)
@@ -36,7 +36,7 @@ def test_invalid_protocol_reaps_worker(records):
     assert worker.process is None
 
 
-def test_oversized_record_is_bounded():
+def test_oversized_record_is_bounded() -> None:
     command = (
         f"import sys,time; sys.stdout.write('x'*{MAX_RECORD_CHARS + 1}); "
         "sys.stdout.flush(); time.sleep(10)"
@@ -47,7 +47,7 @@ def test_oversized_record_is_bounded():
     assert worker.process is None
 
 
-def test_valid_multiline_protocol_runs_all_rows():
+def test_valid_multiline_protocol_runs_all_rows() -> None:
     from scripts import benchmark
 
     record = benchmark.measure(
@@ -60,7 +60,7 @@ def test_valid_multiline_protocol_runs_all_rows():
     )
 
 
-def test_total_deadline_cannot_be_extended_by_valid_row_phases():
+def test_total_deadline_cannot_be_extended_by_valid_row_phases() -> None:
     import time
 
     import esolangs

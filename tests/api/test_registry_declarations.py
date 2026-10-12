@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from esolangs.registry import LANGUAGES, _table
 
 
-def test_imported_incidental_declarations_do_not_register(monkeypatch):
+def test_imported_incidental_declarations_do_not_register(monkeypatch) -> None:
     incidental = replace(next(iter(LANGUAGES.values())), name="Incidental declaration")
     monkeypatch.setitem(
         sys.modules,

@@ -214,7 +214,7 @@ def test_raster_rejects_a_noniterable_pixel() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 @pytest.mark.parametrize("scale", [1, 2])
-def test_png_metadata_round_trip_executes(language, scale):
+def test_png_metadata_round_trip_executes(language, scale) -> None:
     settings = esolangs.DialectSettings()
     source = esolangs.generate(language, "0110", scale=scale, settings=settings)
     restored = Raster.from_png(source.to_png())
@@ -227,7 +227,7 @@ def test_png_metadata_round_trip_executes(language, scale):
     assert _evaluate(language, restored, inputs=2, isolated=True) == "0110"
 
 
-def test_plain_png_has_no_source_metadata():
+def test_plain_png_has_no_source_metadata() -> None:
     source = Raster((((1, 2, 3),),))
     restored = Raster.from_png(source.to_png())
     assert restored == source
@@ -236,24 +236,24 @@ def test_plain_png_has_no_source_metadata():
     assert restored.scale is None
 
 
-def test_scaling_composes_retained_factors():
+def test_scaling_composes_retained_factors() -> None:
     source = esolangs.generate(RASTER_LANGUAGES[0], "01", scale=2)
     assert Raster.from_png(source.upscaled(3).to_png()).scale == 6
 
 
-def test_png_settings_retain_large_integer_choices():
+def test_png_settings_retain_large_integer_choices() -> None:
     settings = esolangs.DialectSettings(**{integer_setting(): 1 << 20_000})
     source = Raster((((1, 2, 3),),), settings=settings)
     assert Raster.from_png(source.to_png()).settings == settings
 
 
-def test_png_language_tag_refuses_cross_language_execution():
+def test_png_language_tag_refuses_cross_language_execution() -> None:
     source = esolangs.generate(RASTER_LANGUAGES[0], "01")
     with pytest.raises(esolangs.ProgramError, match="generated for"):
         esolangs.run(RASTER_LANGUAGES[1], source.to_png(), max_steps=1000)
 
 
-def test_tagging_unknown_pixels_preserves_automatic_scale_detection():
+def test_tagging_unknown_pixels_preserves_automatic_scale_detection() -> None:
     rows = (((255, 0, 0),) * 4,) * 4
     source = Raster(rows).tagged(RASTER_LANGUAGES[0])
     assert source.scale is None
@@ -261,14 +261,14 @@ def test_tagging_unknown_pixels_preserves_automatic_scale_detection():
 
 
 @pytest.mark.parametrize("scale", [0, True, -1])
-def test_retained_scale_is_validated(scale):
+def test_retained_scale_is_validated(scale) -> None:
     with pytest.raises(esolangs.ArgumentError, match="scale"):
         Raster((((1, 2, 3),),), scale=scale)
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
-def test_explicit_scale_overrides_png_metadata(language):
+def test_explicit_scale_overrides_png_metadata(language) -> None:
     source = esolangs.generate(language, "01", scale=2)
     changed = Raster(source.rows, language=language, scale=7)
     assert (

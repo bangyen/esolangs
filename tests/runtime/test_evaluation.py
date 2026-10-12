@@ -68,7 +68,7 @@ def test_timeout_is_not_a_boolean_answer() -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("streaming", [False, True])
-def test_isolated_row_output_limit_resets_per_row(streaming):
+def test_isolated_row_output_limit_resets_per_row(streaming) -> None:
     source = "+" * 48 + "."
     evaluate = _iter_evaluate if streaming else _evaluate
     assert (
@@ -78,7 +78,7 @@ def test_isolated_row_output_limit_resets_per_row(streaming):
 
 
 @pytest.mark.medium
-def test_evaluation_output_overflow_retains_partial_output_and_row():
+def test_evaluation_output_overflow_retains_partial_output_and_row() -> None:
     with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
         _evaluate(REFERENCE, "+" * 48 + "..", inputs=1, isolated=True, max_output=1)
     assert caught.value.partial_output == "0"
@@ -87,7 +87,7 @@ def test_evaluation_output_overflow_retains_partial_output_and_row():
 
 
 @pytest.mark.medium
-def test_termination_output_limit_is_not_a_divergence_verdict():
+def test_termination_output_limit_is_not_a_divergence_verdict() -> None:
     """A program that prints hits the limit; a silent one still answers."""
     outcomes = set()
     for name in languages(answer_mode="termination"):
@@ -106,21 +106,23 @@ def test_termination_output_limit_is_not_a_divergence_verdict():
 
 
 @pytest.mark.parametrize("limit", [-1, True, 1.0])
-def test_evaluation_rejects_invalid_output_limit_before_loading(limit, tmp_path):
+def test_evaluation_rejects_invalid_output_limit_before_loading(
+    limit, tmp_path
+) -> None:
     with pytest.raises(esolangs.ArgumentError, match="max_output"):
         _evaluate(
             REFERENCE, tmp_path / "missing", inputs=1, isolated=True, max_output=limit
         )
 
 
-def test_evaluation_output_limit_requires_isolation():
+def test_evaluation_output_limit_requires_isolation() -> None:
     with pytest.raises(esolangs.ArgumentError, match="isolated=True"):
         _evaluate(REFERENCE, "", inputs=1, max_output=1)
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("name", _kinds())
-def test_streaming_executes_the_expected_table(name):
+def test_streaming_executes_the_expected_table(name) -> None:
     table = probe_table(name)
     program = esolangs.generate(name, table)
     assert (
@@ -129,7 +131,7 @@ def test_streaming_executes_the_expected_table(name):
     )
 
 
-def test_row_budget_refuses_before_loading():
+def test_row_budget_refuses_before_loading() -> None:
     class Unreadable(StringIO):
         def read(self, *_args):
             pytest.fail("source must not load when the table exceeds its budget")
@@ -139,13 +141,13 @@ def test_row_budget_refuses_before_loading():
 
 
 @pytest.mark.parametrize("max_rows", [-1, True, 1.5])
-def test_invalid_row_budgets(max_rows):
+def test_invalid_row_budgets(max_rows) -> None:
     with pytest.raises(esolangs.ArgumentError, match="max_rows"):
         _evaluate(REFERENCE, ",.", inputs=1, max_rows=max_rows)
 
 
 @pytest.mark.medium
-def test_row_budget_can_be_raised_or_disabled():
+def test_row_budget_can_be_raised_or_disabled() -> None:
     for limit in (2, None):
         assert _evaluate(REFERENCE, ",.", inputs=1, max_rows=limit) == "01"
     with pytest.raises(esolangs.InterpreterLimitError):
@@ -154,7 +156,7 @@ def test_row_budget_can_be_raised_or_disabled():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("isolated", [False, True])
-def test_total_deadline_interrupts_source_acquisition(isolated):
+def test_total_deadline_interrupts_source_acquisition(isolated) -> None:
     release = threading.Event()
     finished = threading.Event()
 
@@ -177,7 +179,7 @@ def test_total_deadline_interrupts_source_acquisition(isolated):
 
 
 @pytest.mark.medium
-def test_deadline_includes_iterator_pauses(monkeypatch):
+def test_deadline_includes_iterator_pauses(monkeypatch) -> None:
     clock = [0.0]
     monkeypatch.setattr(evaluator, "monotonic", lambda: clock[0])
     answers = _iter_evaluate(REFERENCE, ",.", inputs=1, total_timeout=5)
@@ -191,7 +193,7 @@ def test_deadline_includes_iterator_pauses(monkeypatch):
 
 
 @pytest.mark.medium
-def test_deadline_clamps_each_row_and_expires_after_work(monkeypatch):
+def test_deadline_clamps_each_row_and_expires_after_work(monkeypatch) -> None:
     clock = [0.0]
     bounds = []
     monkeypatch.setattr(evaluator, "monotonic", lambda: clock[0])
@@ -209,7 +211,7 @@ def test_deadline_clamps_each_row_and_expires_after_work(monkeypatch):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("isolated", [False, True])
-def test_total_deadline_bounds_a_growing_machine(isolated):
+def test_total_deadline_bounds_a_growing_machine(isolated) -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError):
         _evaluate(
             REFERENCE,
@@ -223,17 +225,17 @@ def test_total_deadline_bounds_a_growing_machine(isolated):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("isolated", [False, True])
-def test_loading_errors_keep_their_public_type_under_a_deadline(isolated):
+def test_loading_errors_keep_their_public_type_under_a_deadline(isolated) -> None:
     with pytest.raises(esolangs.ProgramError):
         _evaluate(REFERENCE, b"\xff", inputs=1, isolated=isolated, total_timeout=5)
 
 
 @pytest.mark.parametrize("budget", [0, True, float("inf"), 0.00001])
-def test_invalid_total_deadlines(budget):
+def test_invalid_total_deadlines(budget) -> None:
     with pytest.raises(esolangs.ArgumentError):
         _evaluate(REFERENCE, ",.", inputs=1, total_timeout=budget)
 
 
-def test_isolated_evaluation_requires_at_least_one_finite_budget():
+def test_isolated_evaluation_requires_at_least_one_finite_budget() -> None:
     with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
         _evaluate(REFERENCE, ",.", inputs=1, timeout=None, isolated=True)

@@ -1,3 +1,5 @@
+"""Clockwise interpreter behavior."""
+
 from typing import ClassVar
 
 import pytest

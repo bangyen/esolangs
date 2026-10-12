@@ -1,3 +1,5 @@
+"""Balanced generator output and width selection."""
+
 import pytest
 
 import esolangs

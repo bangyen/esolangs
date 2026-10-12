@@ -180,7 +180,7 @@ class TestRotfuck:
             assert run_rotfuck(program, [str(b) for b in bits]) == table[combo]
 
 
-def test_rotation_is_checked():
+def test_rotation_is_checked() -> None:
     with pytest.raises(ValueError, match="rotation"):
         boolean.rotfuck("01", rotation="sideways")
 

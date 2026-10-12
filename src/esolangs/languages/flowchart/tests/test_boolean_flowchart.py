@@ -217,7 +217,7 @@ def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_lookup_reads_without_deque_or_selector(bit):
+def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
     from tests.support.generator_support import assert_shared_program
 
     n = 8
@@ -246,7 +246,7 @@ def test_constant_lookup_reads_without_deque_or_selector(bit):
 
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_lookup_retains_balanced_deque(n, bit):
+def test_constant_lookup_retains_balanced_deque(n, bit) -> None:
     import esolangs
     from esolangs.generation.wrap import balance_score
 

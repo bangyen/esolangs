@@ -212,7 +212,9 @@ class TestTheLastResortPaths:
         ("1", "11", "constant with one input"),
     ],
 )
-def test_truth_table_hint_and_corrected_cli_program(bad, good, hint, tmp_path, capsys):
+def test_truth_table_hint_and_corrected_cli_program(
+    bad, good, hint, tmp_path, capsys
+) -> None:
     out, err = _failure(["generate", REFERENCE, bad], capsys)
     assert out == ""
     assert err.count("hint:") == 1
@@ -229,13 +231,13 @@ def test_truth_table_hint_and_corrected_cli_program(bad, good, hint, tmp_path, c
     assert err == ""
 
 
-def test_reader_template_hint_names_cli_encode(capsys):
+def test_reader_template_hint_names_cli_encode(capsys) -> None:
     _, err = _failure(["generate", "--bits", "01", REFERENCE, "0110"], capsys)
     assert "hint: pipe input from esolangs encode brainfuck <bits>" in err
     assert "stdin=encode_inputs" not in err
 
 
-def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys):
+def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys) -> None:
     path = tmp_path / "program.bf"
     path.write_text("+.")
     _, err = _failure(["run", "--timeout", "0", REFERENCE, str(path)], capsys)
@@ -246,7 +248,7 @@ def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys):
     assert err == ""
 
 
-def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes():
+def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes() -> None:
     from esolangs.cli.hints import _cli_error_text
 
     error = esolangs.ArgumentError("bad timeout=5.0\nscale=1")
@@ -258,7 +260,7 @@ def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes():
     assert error.__notes__ == ["hint: set timeout=5.0 or scale=1", "unrelated context"]
 
 
-def test_text_generator_scale_hint_uses_cli_flag(capsys):
+def test_text_generator_scale_hint_uses_cli_flag(capsys) -> None:
     _, err = _failure(["generate", "--scale", "2", REFERENCE, "0110"], capsys)
     assert "hint: omit --scale for text languages" in err
 

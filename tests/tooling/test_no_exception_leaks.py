@@ -143,7 +143,7 @@ def test_missing_imported_module_fails_closed(source_tree) -> None:
 
 @pytest.mark.parametrize("extension", ["txt", "png"])
 @pytest.mark.parametrize("exists", [False, True])
-def test_shipped_example_selects_its_language(source_tree, extension, exists):
+def test_shipped_example_selects_its_language(source_tree, extension, exists) -> None:
     from types import SimpleNamespace
 
     path = source_tree / f"src/esolangs/languages/fixture/fixture-name.{extension}"
@@ -167,7 +167,7 @@ def test_shipped_example_selects_its_language(source_tree, extension, exists):
     assert selected == ["fixture"]
 
 
-def test_language_corpus_is_independent_of_other_examples(monkeypatch):
+def test_language_corpus_is_independent_of_other_examples(monkeypatch) -> None:
     from types import SimpleNamespace
 
     monkeypatch.setattr(
@@ -185,7 +185,9 @@ def test_language_corpus_is_independent_of_other_examples(monkeypatch):
     assert leaks._corpus("fixture", examples) != old  # noqa: SLF001
 
 
-def test_runtime_changes_invalidate_clean_fingerprints(source_tree, monkeypatch):
+def test_runtime_changes_invalidate_clean_fingerprints(
+    source_tree, monkeypatch
+) -> None:
     assert source_tree.is_dir()
     from types import SimpleNamespace
 
@@ -199,7 +201,7 @@ def test_runtime_changes_invalidate_clean_fingerprints(source_tree, monkeypatch)
     assert leaks._fingerprint("fixture", []) != changed  # noqa: SLF001
 
 
-def test_concurrent_cache_publication_keeps_valid_json(tmp_path, monkeypatch):
+def test_concurrent_cache_publication_keeps_valid_json(tmp_path, monkeypatch) -> None:
     import json
     from concurrent.futures import ThreadPoolExecutor
 
@@ -219,7 +221,9 @@ def test_concurrent_cache_publication_keeps_valid_json(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == [path]
 
 
-def test_an_unknown_flag_is_refused_not_written_as_a_report(tmp_path, monkeypatch):
+def test_an_unknown_flag_is_refused_not_written_as_a_report(
+    tmp_path, monkeypatch
+) -> None:
     """A stray flag must not become the report path.
 
     ``main`` treats its first positional as the JSON report path, so ``--help``

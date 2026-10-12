@@ -258,23 +258,23 @@ class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
     ("letters", "value"),
     [("", 0), ("A", 1), ("AB", 12), ("ABC", 123), ("AZ", 10), ("ZA", 1), ("Y", 25)],
 )
-def test_integer_conversion_shifts_only_between_letters(letters, value):
+def test_integer_conversion_shifts_only_between_letters(letters, value) -> None:
     assert run_program("F" + letters + "FY") == str(value)
     assert run_program("E" + letters + "EJY") == str(value)
 
 
-def test_spec_truth_machine_zero_branch():
+def test_spec_truth_machine_zero_branch() -> None:
     assert run_program("HFAFYHWJUZFZFY", "Z") == "0"
 
 
-def test_an_empty_z_body_repeats_while_the_stack_is_live():
+def test_an_empty_z_body_repeats_while_the_stack_is_live() -> None:
     """Z runs its function "while the stack is not empty", empty body or not."""
     from esolangs.vm import run_until_halt_or_cycle
 
     assert run_until_halt_or_cycle(Grapheme("FAFHHZ", ScriptedIO()), limit=100) is False
 
 
-def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle():
+def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle() -> None:
     """A port with no cursor reports position 0; the snapshot counts reads."""
     from esolangs.vm import run_until_halt_or_cycle
 

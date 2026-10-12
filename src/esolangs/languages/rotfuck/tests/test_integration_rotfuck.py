@@ -10,7 +10,7 @@ from esolangs.vm import complete_vm, make_vm
 @pytest.mark.parametrize(
     "isolated", [False, pytest.param(True, marks=pytest.mark.medium)]
 )
-def test_rotfuck_rotation_reaches_every_execution_path(isolated):
+def test_rotfuck_rotation_reaches_every_execution_path(isolated) -> None:
     """The wiki cat ``,[`` echoes backward; forward, ``,,`` does instead.
 
     The generator follows the choice: it emits a forward program that answers

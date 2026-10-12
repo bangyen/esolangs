@@ -271,7 +271,7 @@ def _sampled(**facts: object) -> str:
         _sampled(self_halts=False),
     ],
 )
-def test_completion_agrees_with_running(name):
+def test_completion_agrees_with_running(name) -> None:
     source, stdin = SAMPLES[name]
     vm = make_vm(name, source, stdin=stdin)
     if not vm.self_halts:
@@ -286,7 +286,7 @@ def test_completion_agrees_with_running(name):
 
 
 @pytest.mark.medium
-def test_exhaustion_keeps_partial_state_and_can_resume():
+def test_exhaustion_keeps_partial_state_and_can_resume() -> None:
     vm = make_vm(REFERENCE, "+.")
     with pytest.raises(esolangs.InterpreterLimitError):
         complete_vm(vm, max_steps=1)
@@ -295,13 +295,13 @@ def test_exhaustion_keeps_partial_state_and_can_resume():
 
 
 @pytest.mark.parametrize("budget", [-1, True, 1.5])
-def test_completion_rejects_invalid_budgets(budget):
+def test_completion_rejects_invalid_budgets(budget) -> None:
     with pytest.raises(esolangs.ArgumentError):
         complete_vm(make_vm(REFERENCE, "+."), max_steps=budget)
 
 
 @pytest.mark.medium
-def test_completion_can_opt_out_of_the_step_budget():
+def test_completion_can_opt_out_of_the_step_budget() -> None:
     assert complete_vm(make_vm(REFERENCE, "+."), max_steps=None) == "\x01"
 
 
@@ -392,7 +392,7 @@ class TestTheArmsThatTranslateWhatAnInterpreterRaises:
         (KeyboardInterrupt(), KeyboardInterrupt),
     ],
 )
-def test_step_keeps_shared_failure_translation(fault, error_type):
+def test_step_keeps_shared_failure_translation(fault, error_type) -> None:
     machine = debugger_api.make_vm(REFERENCE, "+")
     message = (
         "the brainfuck interpreter recursed deeper than "

@@ -21,7 +21,7 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
     assert_an_ignored_input_costs("Alight", 6, 6)
 
 
-def test_alight_affine_fold_comparisons_and_empty_turn_rows():
+def test_alight_affine_fold_comparisons_and_empty_turn_rows() -> None:
     from esolangs.languages.alight.generator import (
         _alight_folded,
         _dimensions,
@@ -40,7 +40,7 @@ def test_alight_affine_fold_comparisons_and_empty_turn_rows():
         assert esolangs.run("Alight", program) == "0"
 
 
-def test_alight_planned_layouts_render_and_execute():
+def test_alight_planned_layouts_render_and_execute() -> None:
     from esolangs.languages.alight.generator import _emit, _plans
 
     for plan in _plans(2):
@@ -49,7 +49,7 @@ def test_alight_planned_layouts_render_and_execute():
 
 
 @pytest.mark.parametrize("syntax", ["infix", "postfix"])
-def test_alight_balance_drops_ignored_inputs(syntax):
+def test_alight_balance_drops_ignored_inputs(syntax) -> None:
     from esolangs.settings import DialectSettings
 
     settings = DialectSettings(expression_syntax=syntax)
@@ -61,7 +61,7 @@ def test_alight_balance_drops_ignored_inputs(syntax):
     assert len(program) < len(str(kept))
 
 
-def test_alight_model_drift_aborts(monkeypatch):
+def test_alight_model_drift_aborts(monkeypatch) -> None:
     from esolangs.languages.alight import generator as module
 
     monkeypatch.setattr(module, "_alight_folded", lambda *_args: "begin;end;")
@@ -71,7 +71,7 @@ def test_alight_model_drift_aborts(monkeypatch):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("inputs", [1, 4, 8])
-def test_alight_native_minimax_records_match_rendered_columns(inputs):
+def test_alight_native_minimax_records_match_rendered_columns(inputs) -> None:
     from esolangs.languages.alight.generator import (
         _alight_chunk,
         _alight_folded,
@@ -208,7 +208,7 @@ _TABLE = "00110110011010100101110010100110"
 
 @pytest.mark.medium
 @pytest.mark.parametrize("width", [None, 100])
-def test_postfix_generated(width):
+def test_postfix_generated(width) -> None:
     source = boolean.alight(_TABLE, width, expression_syntax="postfix")
     if width is not None:
         assert max(map(len, source.splitlines())) <= width
@@ -218,7 +218,7 @@ def test_postfix_generated(width):
         assert io.getvalue() == _TABLE[row]
 
 
-def test_postfix_settings_are_checked_and_do_not_leak():
+def test_postfix_settings_are_checked_and_do_not_leak() -> None:
     with pytest.raises(ValueError, match="expression_syntax"):
         boolean.alight("01", expression_syntax="mixed")
     with pytest.raises(ValueError, match="width"):
@@ -228,7 +228,7 @@ def test_postfix_settings_are_checked_and_do_not_leak():
     assert boolean.alight("0110") == before
 
 
-def test_postfix_balance_model_checks_rendering():
+def test_postfix_balance_model_checks_rendering() -> None:
     with (
         patch(
             "esolangs.languages.alight.generator._alight_folded",
@@ -244,7 +244,7 @@ def test_postfix_balance_model_checks_rendering():
 @pytest.mark.parametrize("syntax", ["infix", "postfix"])
 @pytest.mark.parametrize("update", ["in_place", "copy"])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_lookup_drops_every_index_input(syntax, update, bit):
+def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
     import esolangs
     from esolangs.languages.alight.generator import _program
     from esolangs.runtime._evaluate import _evaluate
@@ -263,7 +263,7 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit):
 @pytest.mark.parametrize("width", [None, 1, 8, 40, "balance"])
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [3, 4, 8])
-def test_constant_lookup_executes_every_layout(syntax, bit, width, n):
+def test_constant_lookup_executes_every_layout(syntax, bit, width, n) -> None:
     import esolangs
     from esolangs.generation.wrap import balance_score
     from esolangs.languages.alight.generator import _program, balance_alight

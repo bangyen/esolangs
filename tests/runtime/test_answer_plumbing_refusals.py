@@ -322,7 +322,7 @@ class TestDivergenceIsProvenNotWaitedOut:
         assert evaluate_generated(name, "00011011") == "00011011"
 
 
-def test_nested_signal_guard_keeps_the_outer_deadline():
+def test_nested_signal_guard_keeps_the_outer_deadline() -> None:
     import time
 
     from esolangs.runtime.io import ScriptedIO
@@ -337,7 +337,7 @@ def test_nested_signal_guard_keeps_the_outer_deadline():
         _run(outer, "", ScriptedIO(""), 0.02)
 
 
-def test_signal_guard_deducts_elapsed_time_from_pending_alarm(monkeypatch):
+def test_signal_guard_deducts_elapsed_time_from_pending_alarm(monkeypatch) -> None:
     import signal
     import time
 
@@ -361,7 +361,7 @@ def test_signal_guard_deducts_elapsed_time_from_pending_alarm(monkeypatch):
         signal.setitimer(signal.ITIMER_REAL, *saved)
 
 
-def test_periodic_caller_alarm_fires_during_guard():
+def test_periodic_caller_alarm_fires_during_guard() -> None:
     import signal
     import time
 
@@ -386,7 +386,7 @@ def test_periodic_caller_alarm_fires_during_guard():
         signal.setitimer(signal.ITIMER_REAL, *saved)
 
 
-def test_ignored_caller_alarm_does_not_cancel_execution():
+def test_ignored_caller_alarm_does_not_cancel_execution() -> None:
     import signal
     import time
 
@@ -404,7 +404,7 @@ def test_ignored_caller_alarm_does_not_cancel_execution():
 
 
 @pytest.mark.medium
-def test_default_caller_alarm_keeps_its_termination_behavior():
+def test_default_caller_alarm_keeps_its_termination_behavior() -> None:
     import signal
     import subprocess
     import sys
@@ -422,7 +422,7 @@ _run(lambda *_args: time.sleep(0.1), '', ScriptedIO(''), 1)
     assert child.returncode == -signal.SIGALRM
 
 
-def test_default_alarm_is_forwarded_to_the_restored_disposition(monkeypatch):
+def test_default_alarm_is_forwarded_to_the_restored_disposition(monkeypatch) -> None:
     import signal
     import time
 
@@ -451,7 +451,7 @@ def test_default_alarm_is_forwarded_to_the_restored_disposition(monkeypatch):
         signal.setitimer(signal.ITIMER_REAL, *saved)
 
 
-def test_caller_handler_time_counts_against_execution_deadline(monkeypatch):
+def test_caller_handler_time_counts_against_execution_deadline(monkeypatch) -> None:
     import signal
     import time
 

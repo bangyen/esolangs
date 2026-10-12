@@ -27,7 +27,7 @@ NAME = "Algebraic Programming Language"
 @pytest.mark.parametrize(
     ("n", "band"), [(1, 0), (2, 0), (3, 0), (3, 1), (3, 2), (3, 3)]
 )
-def test_shared_expressions_obey_bounds_for_every_small_table(n, band, sharing):
+def test_shared_expressions_obey_bounds_for_every_small_table(n, band, sharing) -> None:
     positive = 0
     span = 64 if n == 3 else 1 << (1 << n)
     for value in range(band * span, (band + 1) * span):
@@ -72,7 +72,7 @@ def test_shared_expressions_obey_bounds_for_every_small_table(n, band, sharing):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [4, 5, 6])
-def test_public_parity_selects_shared_frames(n):
+def test_public_parity_selects_shared_frames(n) -> None:
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     source = esolangs.generate(NAME, table)
     assert source.count("=") > 1
@@ -80,7 +80,7 @@ def test_public_parity_selects_shared_frames(n):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [8, 10])
-def test_named_groups_keep_large_input_bindings(n):
+def test_named_groups_keep_large_input_bindings(n) -> None:
     table = format(random.Random(91026 + n).getrandbits(1 << n), f"0{1 << n}b")
     source = _apl_repeated_expressions(_apl_reduced_ordered(table, tuple(range(n))))
     definitions = source.count("=") - 1

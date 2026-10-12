@@ -68,7 +68,7 @@ def test_monochrome_codel_grid() -> None:
 
 
 @pytest.mark.parametrize("value", ["x", "0", "-1", "1.5"])
-def test_cli_rejects_invalid_scale(value, monkeypatch, capsys):
+def test_cli_rejects_invalid_scale(value, monkeypatch, capsys) -> None:
     import sys
 
     from esolangs.cli import main

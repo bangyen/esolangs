@@ -17,7 +17,7 @@ from esolangs.runtime._evaluate import _evaluate
 
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_root_keeps_setters_without_index_save_loops(bit):
+def test_constant_root_keeps_setters_without_index_save_loops(bit) -> None:
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import input_weights, mark_runs, unmark
     from esolangs.languages.bio.generator import BIO_PAIR, _bio
@@ -80,7 +80,7 @@ class TestParameterizedBIO:
             assert len(setters) == n
 
 
-def test_bio_balance_keeps_source_that_does_not_tile_commands():
+def test_bio_balance_keeps_source_that_does_not_tile_commands() -> None:
     assert balance_program("not BIO", "bio") == "not BIO"
 
 

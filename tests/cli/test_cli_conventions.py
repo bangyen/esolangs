@@ -14,7 +14,7 @@ from tests.cli.test_cli import call_main
 from tests.support.pick import first
 
 
-def test_help_examples_follow_remaining_capabilities(monkeypatch):
+def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     import shlex
 
     from esolangs.cli import help as help_module

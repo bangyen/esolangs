@@ -15,7 +15,7 @@ from tests.support.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 
 
-def test_bound_template_language_runs_each_input_row():
+def test_bound_template_language_runs_each_input_row() -> None:
     language = esolangs.Language("RAM0")
     template = language.generate("0110", width=1)
     assert _evaluate(language.name, template, timeout=None, inputs=2) == "0110"

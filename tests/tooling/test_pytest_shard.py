@@ -47,7 +47,7 @@ class TestShardIds:
         )  # type: ignore[attr-defined]
 
 
-def test_duration_assignment_improves_longest_shard_and_covers_unknowns():
+def test_duration_assignment_improves_longest_shard_and_covers_unknowns() -> None:
     shard = load_script()
     ids = list("abcdefghij")
     durations = dict(zip(ids, [10, 9, 8, 7, 1, 1, 1, 1, 1, 1], strict=True))
@@ -65,19 +65,21 @@ def test_duration_assignment_improves_longest_shard_and_covers_unknowns():
 
 
 @pytest.mark.parametrize("payload", ["[]", '{"a": -1}', '{"a": true}', '{"a": NaN}'])
-def test_bad_durations_are_refused(tmp_path, payload):
+def test_bad_durations_are_refused(tmp_path, payload) -> None:
     path = tmp_path / "durations.json"
     path.write_text(payload)
     with pytest.raises(ValueError, match="finite positive"):
         load_script().load_durations(path)
 
 
-def test_invalid_shard_arguments_are_refused():
+def test_invalid_shard_arguments_are_refused() -> None:
     with pytest.raises(ValueError, match="invalid shard"):
         load_script().shard_ids([], -1, 2)
 
 
-def test_shard_reports_estimate_and_unknown_weights(tmp_path, monkeypatch, capsys):
+def test_shard_reports_estimate_and_unknown_weights(
+    tmp_path, monkeypatch, capsys
+) -> None:
     shard = load_script()
     path = tmp_path / "durations.json"
     path.write_text('{"a": 10, "b": 2, "stale": 1000}')
@@ -105,7 +107,9 @@ def test_shard_reports_estimate_and_unknown_weights(tmp_path, monkeypatch, capsy
     assert "18.0s (1 tests use median fallback 6.000s)" in capsys.readouterr().out
 
 
-def test_duration_order_uses_read_only_input_and_preserves_fixture_order(tmp_path):
+def test_duration_order_uses_read_only_input_and_preserves_fixture_order(
+    tmp_path,
+) -> None:
     from types import SimpleNamespace
 
     shard = load_script()
@@ -132,7 +136,7 @@ def test_duration_order_uses_read_only_input_and_preserves_fixture_order(tmp_pat
     assert source.read_text() == '{"a.py::second": 20, "b.py::first": 1}'
 
 
-def test_progress_survives_without_publishing_complete_evidence(tmp_path):
+def test_progress_survives_without_publishing_complete_evidence(tmp_path) -> None:
     import json
     from types import SimpleNamespace
 

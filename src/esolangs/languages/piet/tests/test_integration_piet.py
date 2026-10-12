@@ -23,7 +23,7 @@ def first_other_raster() -> str:
     return others[0]
 
 
-def test_bound_raster_language_loads_and_evaluates_png(tmp_path):
+def test_bound_raster_language_loads_and_evaluates_png(tmp_path) -> None:
     language = esolangs.Language("Piet")
     program = language.generate("0110")
     assert isinstance(program, esolangs.Raster)
@@ -65,7 +65,7 @@ class TestSpecAbortsRatherThanReturningNothing:
 
 
 @pytest.mark.medium
-def test_raster_interpreter_retains_geometry_hint():
+def test_raster_interpreter_retains_geometry_hint() -> None:
     image = Raster((((255, 255, 255),),))
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
         esolangs.run("Piet", image, scale=2, timeout=1)

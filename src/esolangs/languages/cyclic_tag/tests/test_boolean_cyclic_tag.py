@@ -14,7 +14,9 @@ from esolangs.runtime.io import ScriptedIO
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_uses_one_empty_production_and_deletes_each_embedded_input(n, bit):
+def test_constant_uses_one_empty_production_and_deletes_each_embedded_input(
+    n, bit
+) -> None:
     table = bit * (1 << n)
     template = esolangs.generate("Cyclic tag", table)
     assert template == "," + "$" * n + bit

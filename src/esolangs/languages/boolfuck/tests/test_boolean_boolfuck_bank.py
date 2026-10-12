@@ -29,7 +29,7 @@ def _bank_tables():
     list(enumerate(_bank_tables())),
     ids=["two", "four", *map(str, range(6))],
 )
-def test_banked_residuals_execute_and_match_command_price(kind, case, table):
+def test_banked_residuals_execute_and_match_command_price(kind, case, table) -> None:
     import esolangs
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
@@ -96,7 +96,7 @@ def test_banked_residuals_execute_and_match_command_price(kind, case, table):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("case", range(len(_bank_tables())))
-def test_mixed_depth_bank_executes_and_matches_command_price(case):
+def test_mixed_depth_bank_executes_and_matches_command_price(case) -> None:
     """A bank whose blocks sit at several depths shares all of them and computes."""
     import esolangs
     from esolangs.debugger import make_vm
@@ -131,7 +131,7 @@ def test_mixed_depth_bank_executes_and_matches_command_price(case):
         (((1, 0), (1, 4)), (1, 2), 5),
     ],
 )
-def test_bank_requires_distinct_unused_descendant_flags(blocks, levels, result):
+def test_bank_requires_distinct_unused_descendant_flags(blocks, levels, result) -> None:
     from esolangs.generation.shared_flag import flag_tree_body
 
     # A block at depth d may use any distinct unused flag at level >= d.  A
@@ -143,7 +143,7 @@ def test_bank_requires_distinct_unused_descendant_flags(blocks, levels, result):
         )
 
 
-def test_duplicate_residual_definitions_abort():
+def test_duplicate_residual_definitions_abort() -> None:
     from esolangs.generation.shared_flag import flag_tree_body
 
     with pytest.raises(ValueError, match="distinct residuals"):

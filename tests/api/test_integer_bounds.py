@@ -22,7 +22,7 @@ from tests.support.reference import REFERENCE
         lambda huge: esolangs.run(REFERENCE, "", timeout={"value": huge}),
     ],
 )
-def test_oversized_integer_arguments_keep_public_errors(operation):
+def test_oversized_integer_arguments_keep_public_errors(operation) -> None:
     with pytest.raises(esolangs.ArgumentError) as caught:
         operation(10**5000)
     assert len(str(caught.value)) < 400

@@ -74,7 +74,7 @@ def _cases():
 
 
 @pytest.mark.parametrize(("language", "page", "example", "citation"), _cases())
-def test_wiki_examples(language, page, example, citation):
+def test_wiki_examples(language, page, example, citation) -> None:
     source = _text(page, example, "source")
     stdin = example.get("stdin", "")
     expected = _text(page, example, "expected")

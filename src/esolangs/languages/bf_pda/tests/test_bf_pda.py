@@ -137,5 +137,5 @@ class TestContract(EmptyProgramContract, CycleContract):
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_rejected_with_hint("BF-PDA", "[", "close this '[' with ']'")

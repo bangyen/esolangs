@@ -67,6 +67,6 @@ def test_run_read_answer_prints_the_bit_for_a_dump(
 
 
 @pytest.mark.medium
-def test_unsupported_stepping_candidate_is_bounded():
+def test_unsupported_stepping_candidate_is_bounded() -> None:
     assert _worst("a_painter_ant", "nn$", "00", [0], 0.02) == (1, 0)
     assert _worst("a_painter_ant", "N$", "00", [1], 0.5) == (0, 0)

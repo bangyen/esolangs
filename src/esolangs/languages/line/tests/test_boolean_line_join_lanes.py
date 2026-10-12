@@ -10,7 +10,7 @@ from esolangs.languages.line.generator.forward import _join_lanes, forward_canva
 from esolangs.languages.line.tests.test_boolean_line_forward import _check
 
 
-def test_disjoint_spans_reuse_rows_with_a_three_unit_gap():
+def test_disjoint_spans_reuse_rows_with_a_three_unit_gap() -> None:
     a, b, c = (0, 0, 0), (0, 1, 0), (0, 2, 0)
     lanes, count = _join_lanes([(a, 0, 8), (b, 11, 20), (c, 10, 0)])
     assert count == 2
@@ -19,7 +19,7 @@ def test_disjoint_spans_reuse_rows_with_a_three_unit_gap():
     assert _join_lanes([]) == ({}, 0)
 
 
-def test_lane_count_matches_padded_interval_concurrency():
+def test_lane_count_matches_padded_interval_concurrency() -> None:
     rng = random.Random(11)
     for _ in range(100):
         spans = [
@@ -40,7 +40,7 @@ def test_lane_count_matches_padded_interval_concurrency():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [4, 5, 6])
-def test_seeded_joined_graphs_execute_every_row(n, tmp_path):
+def test_seeded_joined_graphs_execute_every_row(n, tmp_path) -> None:
     rng = random.Random(37 + n)
     admitted = 0
     for _ in range(8):
@@ -54,7 +54,7 @@ def test_seeded_joined_graphs_execute_every_row(n, tmp_path):
 @pytest.mark.slow
 def test_majority22_packing_beats_unique_rows_with_native_contracts(
     tmp_path, monkeypatch
-):
+) -> None:
     n = 22
     table = "".join(str(int(row.bit_count() > n // 2)) for row in range(1 << n))
     rows = sorted(
@@ -86,7 +86,7 @@ def test_majority22_packing_beats_unique_rows_with_native_contracts(
 
 
 @pytest.mark.medium
-def test_scaled_disjoint_join_rows_execute(tmp_path):
+def test_scaled_disjoint_join_rows_execute(tmp_path) -> None:
     table = "".join(str(int(row.bit_count() > 4)) for row in range(256))
     area, _ = _check(table, tmp_path, scale=2)
     assert area == 12_028_800

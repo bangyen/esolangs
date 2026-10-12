@@ -59,6 +59,6 @@ def test_it_catches_taglates_pad() -> None:
         _check_stdin("Taglate", "1\n0\n1\n", "00010111")
 
 
-def test_odd_arities_take_a_leading_ghost_digit():
+def test_odd_arities_take_a_leading_ghost_digit() -> None:
     assert esolangs.encode_inputs("Taglate", [1, 0, 1]) == "0101"
     assert esolangs.encode_inputs("Taglate", [1, 0]) == "10"

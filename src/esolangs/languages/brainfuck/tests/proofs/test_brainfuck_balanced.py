@@ -249,7 +249,9 @@ def test_zeroing_prefix_is_not_a_forced_divergence_body() -> None:
         ([[0] * 8], [{1: 6}], [{0: 7}], 1, (7, 1), "matrix entry"),
     ],
 )
-def test_malformed_balanced_certificates(rows, nonempty, bodies, scale, bound, error):
+def test_malformed_balanced_certificates(
+    rows, nonempty, bodies, scale, bound, error
+) -> None:
     with pytest.raises(ValueError, match=error):
         check_certificate(rows, nonempty, bodies, scale, bound)
 

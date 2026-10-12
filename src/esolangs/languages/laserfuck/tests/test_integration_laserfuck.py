@@ -18,13 +18,13 @@ from tests.support.generator_support import evaluate_generated, overruns
 from tests.support.reference import REFERENCE
 
 
-def test_bound_execution_passes_the_seed():
+def test_bound_execution_passes_the_seed() -> None:
     language = esolangs.Language("LaserFuck")
     assert [language.run("o+++.\n", seed=0) for _ in range(6)] == ["3"] * 6
 
 
 @pytest.mark.medium
-def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit():
+def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit() -> None:
     seeds = [*range(8), 10**5000, -(10**5000)]  # strings are refused now
     direct = [
         esolangs.run("LaserFuck", "o+++.\n", seed=seed, timeout=5) for seed in seeds

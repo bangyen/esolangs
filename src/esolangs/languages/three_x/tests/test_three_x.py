@@ -229,7 +229,7 @@ class TestStateViewValues:
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_rejected_with_hint(
         "3x", "?", "fraction with nonzero denominator", stdin="oops"
     )

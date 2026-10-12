@@ -4,10 +4,10 @@ import random
 
 import pytest
 
-from esolangs.runtime._evaluate import _evaluate
 from esolangs.languages.line.generator import line
 from esolangs.languages.line.generator.forward import projected_streaming_canvas
 from esolangs.languages.line.tests import test_boolean_line_forward as controls
+from esolangs.runtime._evaluate import _evaluate
 
 
 def _embed(core, kept, n):
@@ -29,7 +29,9 @@ def projected_check(monkeypatch):
 
 
 @pytest.mark.medium
-def test_every_admitted_three_input_projection_executes(projected_check, tmp_path):
+def test_every_admitted_three_input_projection_executes(
+    projected_check, tmp_path
+) -> None:
     admitted = 0
     for value in range(256):
         table = f"{value:08b}"
@@ -42,13 +44,17 @@ def test_every_admitted_three_input_projection_executes(projected_check, tmp_pat
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [4, 5, 6])
-def test_ignored_prefix_middle_and_tail_reads_execute(n, projected_check, tmp_path):
+def test_ignored_prefix_middle_and_tail_reads_execute(
+    n, projected_check, tmp_path
+) -> None:
     for kept in ((0, 1, 2), (n - 3, n - 2, n - 1), (0, 2, n - 1)):
         projected_check(_embed("00010111", kept, n), tmp_path)
 
 
 @pytest.mark.medium
-def test_seeded_eight_input_controls_keep_the_smaller_layout(tmp_path, projected_check):
+def test_seeded_eight_input_controls_keep_the_smaller_layout(
+    tmp_path, projected_check
+) -> None:
     rng = random.Random(419)
     old_total = new_total = admitted = 0
     for index in range(22):
@@ -75,6 +81,6 @@ def test_seeded_eight_input_controls_keep_the_smaller_layout(tmp_path, projected
     assert (old_total, new_total) == (28_852_400, 28_010_000)
 
 
-def test_projection_declines_constants_and_tables_without_ignored_inputs():
+def test_projection_declines_constants_and_tables_without_ignored_inputs() -> None:
     for table in ("00000000", "11111111", "01101001", "00110011"):
         assert projected_streaming_canvas(table, 10**9) is None

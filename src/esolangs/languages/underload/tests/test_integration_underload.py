@@ -17,13 +17,13 @@ from tests.runtime.test_memory_budget import _BUDGET, _LINUX
         ("(", "unmatched Underload", "close the string"),
     ],
 )
-def test_underload_errors_have_the_right_hint(source, message, hint):
+def test_underload_errors_have_the_right_hint(source, message, hint) -> None:
     with pytest.raises(esolangs.HaltError, match=message) as caught:
         esolangs.run("Underload", source, timeout=1)
     assert any(hint in note for note in caught.value.__notes__)
 
 
-def test_underload_literal_text_is_preserved():
+def test_underload_literal_text_is_preserved() -> None:
     assert esolangs.run("Underload", "(X)S", timeout=1) == "X"
 
 

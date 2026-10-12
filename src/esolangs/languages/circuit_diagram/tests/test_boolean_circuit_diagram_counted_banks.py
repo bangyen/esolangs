@@ -20,7 +20,7 @@ def _sparse_classes():
 
 
 @pytest.mark.slow
-def test_counted_mask_banks_execute_class_and_prefix_boundaries():
+def test_counted_mask_banks_execute_class_and_prefix_boundaries() -> None:
     table, pairs = _sparse_classes()
     old_bound = 202 * (211 + 114 + 2) - 1
     assert old_bound > 2 * len(table) + 8 * 15 + 111
@@ -45,6 +45,6 @@ def test_counted_mask_banks_execute_class_and_prefix_boundaries():
     assert _execute(table, code, rows) == 30
 
 
-def test_counted_banks_still_obey_the_area_ceiling():
+def test_counted_banks_still_obey_the_area_ceiling() -> None:
     table, _ = _sparse_classes()
     assert _residual_class_bank_candidate(table, ceiling=100) is None

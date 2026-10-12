@@ -1,3 +1,5 @@
+"""Bitdeque interpreter behavior."""
+
 from functools import partial
 
 import pytest

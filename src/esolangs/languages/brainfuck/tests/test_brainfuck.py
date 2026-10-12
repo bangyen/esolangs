@@ -122,7 +122,9 @@ def test_malformed_source_carries_a_repair_hint() -> None:
         (",[>,]", run_until_halt_or_growth, ""),
     ],
 )
-def test_cursorless_input_cannot_prove_cycle_or_growth(io_type, code, detector, output):
+def test_cursorless_input_cannot_prove_cycle_or_growth(
+    io_type, code, detector, output
+) -> None:
     io = io_type("aaaa\0")
     machine = _Machine(code, io)
     assert detector(machine, limit=100)

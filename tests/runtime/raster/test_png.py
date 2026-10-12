@@ -538,7 +538,7 @@ assert esolangs.Raster.from_png(data).rows == raster.rows
         },
     ],
 )
-def test_bad_source_metadata_is_a_program_error(fields):
+def test_bad_source_metadata_is_a_program_error(fields) -> None:
     from esolangs.exceptions import ProgramError
     from esolangs.raster import Raster
 
@@ -548,7 +548,7 @@ def test_bad_source_metadata_is_a_program_error(fields):
         Raster.from_png(data)
 
 
-def test_future_metadata_versions_leave_pixels_readable():
+def test_future_metadata_versions_leave_pixels_readable() -> None:
     from esolangs.raster import Raster
 
     data = png.write_rgb((((1, 2, 3),),))
@@ -558,7 +558,7 @@ def test_future_metadata_versions_leave_pixels_readable():
     assert restored.language is None
 
 
-def test_duplicate_source_metadata_is_refused():
+def test_duplicate_source_metadata_is_refused() -> None:
     from esolangs.exceptions import ProgramError
     from esolangs.raster import Raster
 
@@ -570,7 +570,7 @@ def test_duplicate_source_metadata_is_refused():
 
 
 @pytest.mark.parametrize("body", [b"[]", b"broken-json", b"x" * 16_385])
-def test_malformed_source_metadata_is_refused(body):
+def test_malformed_source_metadata_is_refused(body) -> None:
     from esolangs.exceptions import ProgramError
     from esolangs.raster import Raster
 
@@ -580,7 +580,7 @@ def test_malformed_source_metadata_is_refused(body):
         Raster.from_png(data)
 
 
-def test_metadata_writer_bounds_chunk_size():
+def test_metadata_writer_bounds_chunk_size() -> None:
     data = png.write_rgb((((1, 2, 3),),))
     with pytest.raises(ValueError, match="oversized"):
         png.write_metadata(data, {"version": 1, "extra": "x" * 16_384})

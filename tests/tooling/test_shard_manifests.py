@@ -45,7 +45,7 @@ def evidence(tmp_path):
     return paths
 
 
-def test_complete_shards_include_serial_exclusion(tmp_path):
+def test_complete_shards_include_serial_exclusion(tmp_path) -> None:
     paths = evidence(tmp_path)
     check(paths, ["a", "b", "serial"], "slow", 2)
 
@@ -64,7 +64,7 @@ def test_complete_shards_include_serial_exclusion(tmp_path):
         "altered",
     ],
 )
-def test_bad_shard_evidence_fails_closed(tmp_path, fault):
+def test_bad_shard_evidence_fails_closed(tmp_path, fault) -> None:
     paths = evidence(tmp_path)
     manifest = json.loads(paths[1].read_text())
     if fault == "missing":
@@ -96,7 +96,7 @@ def test_bad_shard_evidence_fails_closed(tmp_path, fault):
 
 
 @pytest.mark.medium
-def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch):
+def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch) -> None:
     from pathlib import Path
 
     from scripts.ci import shard as pytest_shard

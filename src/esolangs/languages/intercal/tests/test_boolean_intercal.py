@@ -85,7 +85,7 @@ def test_shared_templates_execute_on_sampled_tables(n: int) -> None:
 
 
 @pytest.mark.parametrize("table", ["00"])
-def test_narrow_balance_regime_edge_executes(table):
+def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("INTERCAL", table, balance=True)
     assert _evaluate("INTERCAL", balanced, inputs=len(table).bit_length() - 1) == table

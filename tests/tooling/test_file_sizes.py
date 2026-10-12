@@ -62,7 +62,7 @@ def _tracked_lines(tree: str, *, exclude: str | None = None) -> int:
         ("tests/tooling", "scripts", None),
     ],
 )
-def test_test_budgets(tests, source, exclude):
+def test_test_budgets(tests, source, exclude) -> None:
     test_lines = _tracked_lines(tests, exclude=exclude)
     source_lines = _tracked_lines(source)
     assert source_lines > 0

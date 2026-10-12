@@ -382,7 +382,9 @@ class TestTheTokenizerCarriesItsOwnStack:
         ),
     ],
 )
-def test_qoibl_hand_built_expression_guards(function, expression, message, hint):
+def test_qoibl_hand_built_expression_guards(
+    function, expression, message, hint
+) -> None:
     with pytest.raises(ValueError, match=message) as caught:
         getattr(qoibl, function)(expression, {}, lambda: 0, lambda _: None)
     assert str(caught.value) == message

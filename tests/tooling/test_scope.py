@@ -112,7 +112,7 @@ def test_missing_local_main_uses_remote_main() -> None:
 
 
 @pytest.mark.parametrize("bad", [False, True])
-def test_nul_paths_and_rename_sources_are_preserved(bad):
+def test_nul_paths_and_rename_sources_are_preserved(bad) -> None:
     scope = load_script()
     names = [
         "space name.py",

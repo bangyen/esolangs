@@ -11,7 +11,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_combining_shards_retains_every_branch(tmp_path):
+def test_combining_shards_retains_every_branch(tmp_path) -> None:
     source = tmp_path / "branch.py"
     source.write_text(
         "def pick(value):\n    if value:\n        return 1\n    return 0\n"
@@ -53,7 +53,7 @@ def test_combining_shards_retains_every_branch(tmp_path):
     assert (2, 4) in expected
 
 
-def test_coverage_gate_requires_success_and_both_artifacts():
+def test_coverage_gate_requires_success_and_both_artifacts() -> None:
     jobs = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())["jobs"]
     shard = jobs["coverage-tests"]
     assert shard["strategy"]["matrix"]["shard"] == [0, 1]
@@ -73,7 +73,7 @@ def test_coverage_gate_requires_success_and_both_artifacts():
     assert "check_diff_coverage.py --partial --strict" in commands
 
 
-def test_failure_log_uploads_are_unconditional_and_unique():
+def test_failure_log_uploads_are_unconditional_and_unique() -> None:
     for name in ("ci.yml", "weekly.yml", "release.yml"):
         jobs = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())["jobs"]
         for job in jobs.values():

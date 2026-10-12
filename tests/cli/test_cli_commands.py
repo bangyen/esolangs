@@ -184,7 +184,7 @@ def _portable(tmp_path, language=REFERENCE, table="0110", settings=None):
 
 
 @pytest.mark.parametrize("command", ["run", "debug"])
-def test_portable_language_can_be_omitted(command, capsys, tmp_path):
+def test_portable_language_can_be_omitted(command, capsys, tmp_path) -> None:
     path = _portable(tmp_path)
     stdin = esolangs.encode_inputs(REFERENCE, [1, 0], truth_table="0110")
     if command == "run":

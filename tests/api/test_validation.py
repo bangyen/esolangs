@@ -116,7 +116,7 @@ class TestTerminationPolarityIsData:
 
 
 @pytest.mark.parametrize("method", ["break_at", "break_on_cell"])
-def test_debugger_rejects_huge_invalid_arguments(method):
+def test_debugger_rejects_huge_invalid_arguments(method) -> None:
     from esolangs.debugger import make_debugger
     from esolangs.exceptions import ArgumentError
 

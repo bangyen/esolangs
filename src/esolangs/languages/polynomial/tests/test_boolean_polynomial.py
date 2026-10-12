@@ -251,7 +251,7 @@ class TestPolynomial:
 @pytest.mark.parametrize(
     "table", ["01", "10", "0110", "0001", "10010110", "0110100110010110"]
 )
-def test_polynomial_balanced_folds_compute_the_table(table):
+def test_polynomial_balanced_folds_compute_the_table(table) -> None:
     from esolangs.languages.polynomial.wrapping import _polynomial_terms
 
     default = esolangs.generate("Polynomial", table)
@@ -365,7 +365,7 @@ def test_generator_restrictions_name_both_budgets() -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_root_ends_after_consuming_the_inputs(bit):
+def test_constant_root_ends_after_consuming_the_inputs(bit) -> None:
     from esolangs.languages.polynomial.generator import (
         _polynomial_assemble,
         _polynomial_hybrid,
@@ -387,7 +387,7 @@ def test_constant_root_ends_after_consuming_the_inputs(bit):
 
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_root_retains_the_previous_balanced_polynomial(n, bit):
+def test_constant_root_retains_the_previous_balanced_polynomial(n, bit) -> None:
     from esolangs.languages.polynomial.generator import (
         _polynomial_assemble,
         _polynomial_hybrid,

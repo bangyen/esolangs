@@ -175,7 +175,7 @@ def test_uncapped_streaming_builds_dense12_despite_the_packed_work_guard() -> No
 @pytest.mark.parametrize(("unit", "scale"), [(8, 1), (20, 2)])
 def test_complete_landing_layouts_execute_with_explicit_unit(
     builder, unit, scale, monkeypatch, tmp_path
-):
+) -> None:
     from esolangs.languages.line.interpreter.extract import extract
     from esolangs.languages.line.tests import test_boolean_line_forward as controls
     from esolangs.languages.line.tests.test_boolean_line_forward import _check
@@ -190,7 +190,7 @@ def test_complete_landing_layouts_execute_with_explicit_unit(
 
 
 @pytest.mark.medium
-def test_complete_fold_wins_fallback_tie_and_keeps_first_fold(monkeypatch):
+def test_complete_fold_wins_fallback_tie_and_keeps_first_fold(monkeypatch) -> None:
     from copy import deepcopy
     from importlib import import_module
 
@@ -294,7 +294,7 @@ def _reverse_forks(head: Node, table: str) -> set[tuple[int, str]]:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("table", _cases())
-def test_projected_reverse_fold_shares_every_conditional_residual(table):
+def test_projected_reverse_fold_shares_every_conditional_residual(table) -> None:
     reduced, states, joins = _reverse_oracle(table)
     expected = {
         key
@@ -309,7 +309,7 @@ def test_projected_reverse_fold_shares_every_conditional_residual(table):
 
 
 @pytest.mark.parametrize("table", ["00", "01", "10", "11"])
-def test_one_input_tables_have_no_residual_merge(table):
+def test_one_input_tables_have_no_residual_merge(table) -> None:
     joins, _, _ = _oracle(table)
     assert joins == 0
     for builder in (*_UNCAPPED, packed_streaming_canvas):

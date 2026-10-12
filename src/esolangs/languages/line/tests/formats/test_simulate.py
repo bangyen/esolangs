@@ -431,7 +431,9 @@ def test_two_merges_into_one_leg_share_the_resume_position() -> None:
         (1, 4, 0, False),
     ],
 )
-def test_band_probe_preserves_edges_and_all_three_rays(y, x, direction, expected):
+def test_band_probe_preserves_edges_and_all_three_rays(
+    y, x, direction, expected
+) -> None:
     mask = Mask(3, 3, [0, 2, 0])
     assert lattice._band_lit(mask, y, x, direction) is expected  # noqa: SLF001
 

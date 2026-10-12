@@ -65,7 +65,7 @@ class TestGraphemeTable:
 
 
 @pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
-def test_generator_literals_are_exact(mode):
+def test_generator_literals_are_exact(mode) -> None:
     dialect = GraphemeDialect(integer_conversion=mode)
     for value in (0, 1, 2, 5, 13, 16, 106, 1006, 1263460, 5666666, 9999996):
         io = ScriptedIO("")

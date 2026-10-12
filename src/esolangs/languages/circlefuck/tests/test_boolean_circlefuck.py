@@ -22,7 +22,7 @@ def _rows(program: str, table: str, n: int) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit):
+def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> None:
     import esolangs
     from esolangs.generation.wrap import balance_program, balance_score
     from esolangs.languages.circlefuck.generator import _program

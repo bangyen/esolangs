@@ -7,7 +7,7 @@ import pytest
 from scripts.removal_mentions import drop_owned_comments
 
 
-def test_cohort_removal_preserves_code_and_unowned_comments(tmp_path: Path):
+def test_cohort_removal_preserves_code_and_unowned_comments(tmp_path: Path) -> None:
     path = tmp_path / "sample.py"
     path.write_text(
         '# language-owners: ["Tiny", "Other"]\n'
@@ -27,7 +27,7 @@ def test_cohort_removal_preserves_code_and_unowned_comments(tmp_path: Path):
 
 
 @pytest.mark.parametrize("owners", ["[]", '"Tiny"', "[42]"])
-def test_invalid_comment_ownership_aborts(tmp_path: Path, owners: str):
+def test_invalid_comment_ownership_aborts(tmp_path: Path, owners: str) -> None:
     path = tmp_path / "sample.py"
     source = f"# language-owners: {owners}\n# Evidence.\nanswer = 42\n"
     path.write_text(source)
@@ -36,7 +36,7 @@ def test_invalid_comment_ownership_aborts(tmp_path: Path, owners: str):
     assert path.read_text() == source
 
 
-def test_library_binding_does_not_hide_language_calls(tmp_path: Path):
+def test_library_binding_does_not_hide_language_calls(tmp_path: Path) -> None:
     from scripts.removal_mentions import mention_edit
 
     path = tmp_path / "sample.py"
@@ -53,7 +53,7 @@ def test_library_binding_does_not_hide_language_calls(tmp_path: Path):
     assert mention_edit(tmp_path, "sample.py:3:call", name).startswith("code")
 
 
-def test_adjacent_declarations_keep_the_other_cohort(tmp_path: Path):
+def test_adjacent_declarations_keep_the_other_cohort(tmp_path: Path) -> None:
     path = tmp_path / "sample.py"
     path.write_text(
         '# language-owners: ["Tiny"]\n# First cohort.\n'
@@ -63,7 +63,7 @@ def test_adjacent_declarations_keep_the_other_cohort(tmp_path: Path):
     assert path.read_text().startswith('# language-owners: ["Other"]')
 
 
-def test_arithmetic_literal_keeps_real_language_calls_visible(tmp_path: Path):
+def test_arithmetic_literal_keeps_real_language_calls_visible(tmp_path: Path) -> None:
     from scripts.removal_mentions import mention_edit
 
     name = "3" + "x"
@@ -75,7 +75,9 @@ def test_arithmetic_literal_keeps_real_language_calls_visible(tmp_path: Path):
     assert mention_edit(tmp_path, "sample.py:2:call", name).startswith("code")
 
 
-def test_proof_ownership_preserves_shared_index_and_evidence(tmp_path, monkeypatch):
+def test_proof_ownership_preserves_shared_index_and_evidence(
+    tmp_path, monkeypatch
+) -> None:
     from scripts import remove_language
 
     monkeypatch.setattr(remove_language, "ROOT", tmp_path)

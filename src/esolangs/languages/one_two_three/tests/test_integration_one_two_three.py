@@ -79,7 +79,9 @@ def test_termination_diagnostic_does_not_score_a_timeout() -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("isolated", [False, True])
-def test_termination_answers_still_require_a_proof_with_a_total_budget(isolated):
+def test_termination_answers_still_require_a_proof_with_a_total_budget(
+    isolated,
+) -> None:
     source = esolangs.generate("123", "0110")
     assert (
         _evaluate(
@@ -91,7 +93,7 @@ def test_termination_answers_still_require_a_proof_with_a_total_budget(isolated)
 
 def test_capped_termination_worker_reports_overflow_instead_of_divergence(
     monkeypatch, capsys
-):
+) -> None:
     import io
     import sys
 

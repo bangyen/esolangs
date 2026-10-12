@@ -30,7 +30,7 @@ def _spread_pairs(count):
 
 
 @pytest.mark.medium
-def test_sparse_banks_keep_constant_classes_ignored_inputs_and_original_ports():
+def test_sparse_banks_keep_constant_classes_ignored_inputs_and_original_ports() -> None:
     table = _two_classes()
     model = sparse_class_bank_candidate(table)
     assert model is not None
@@ -44,7 +44,7 @@ def test_sparse_banks_keep_constant_classes_ignored_inputs_and_original_ports():
     _execute(table, model.render(), rows)
 
 
-def test_sparse_banks_reject_limits_before_copying(monkeypatch):
+def test_sparse_banks_reject_limits_before_copying(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.sparse_banks"
     )
@@ -62,7 +62,7 @@ def test_sparse_banks_reject_limits_before_copying(monkeypatch):
     assert sparse_class_bank_candidate(_two_classes()) is None
 
 
-def test_clock_bound_rejects_before_mask_folding(monkeypatch):
+def test_clock_bound_rejects_before_mask_folding(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.sparse_banks"
     )
@@ -75,7 +75,7 @@ def test_clock_bound_rejects_before_mask_folding(monkeypatch):
 
 
 @pytest.mark.slow
-def test_public_sparse_masks_admit_513_classes_beyond_all_three_fold_orders():
+def test_public_sparse_masks_admit_513_classes_beyond_all_three_fold_orders() -> None:
     atoms, pairs = _spread_pairs(513)
     table = "".join(atoms[(row * 509) % 513] for row in range(1024))
     orders = [table] + [

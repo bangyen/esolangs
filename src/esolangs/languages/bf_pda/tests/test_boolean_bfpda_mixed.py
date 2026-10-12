@@ -21,7 +21,7 @@ _fill_bfpda = fill("BF-PDA")
 
 
 @pytest.mark.parametrize("classes", range(2, 20))
-def test_decoder_consumes_each_bit_marker_pair(classes):
+def test_decoder_consumes_each_bit_marker_pair(classes) -> None:
     width = (classes - 1).bit_length()
     pieces = []
     size, tails = _decoder(
@@ -51,7 +51,7 @@ def _fixture(seed=15, n=16):
     return _reflected(core * (1 << (n - 7)), n)
 
 
-def test_public_mixed_bank_shares_two_levels_within_bounds():
+def test_public_mixed_bank_shares_two_levels_within_bounds() -> None:
     table = _fixture()
     context = _prepare(table)
     program = best_mixed_bank(context, 162, 606)
@@ -67,7 +67,7 @@ def test_public_mixed_bank_shares_two_levels_within_bounds():
 
 
 @pytest.mark.parametrize("seed", range(5))
-def test_varied_mixed_bodies_execute_all_essential_rows(seed):
+def test_varied_mixed_bodies_execute_all_essential_rows(seed) -> None:
     table = _fixture(seed, 16)
     program = best_mixed_bank(_prepare(table), 162, 100000)
     assert program is not None
@@ -78,11 +78,11 @@ def test_varied_mixed_bodies_execute_all_essential_rows(seed):
 
 
 @pytest.mark.parametrize("table", ["00", "01", "0011", "01101001", "0" * 64])
-def test_bank_refuses_without_multiple_retired_space_eligible_states(table):
+def test_bank_refuses_without_multiple_retired_space_eligible_states(table) -> None:
     assert best_mixed_bank(_prepare(table), 162, 100000) is None
 
 
-def test_completed_constant_prefix_paths_do_not_enter_decoder():
+def test_completed_constant_prefix_paths_do_not_enter_decoder() -> None:
     rng = random.Random(15)
     a, b = ("".join(rng.choice("01") for _ in range(16)) for _ in range(2))
     core = "0" * 16 + a + b + a + "1" * 16 + b + "0" * 32
@@ -103,5 +103,5 @@ def test_completed_constant_prefix_paths_do_not_enter_decoder():
 
 
 @pytest.mark.parametrize("seed", range(5))
-def test_twelve_input_control_is_refused_at_its_command_bound(seed):
+def test_twelve_input_control_is_refused_at_its_command_bound(seed) -> None:
     assert best_mixed_bank(_prepare(_fixture(seed, 12)), 122, 100000) is None

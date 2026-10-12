@@ -36,7 +36,7 @@ def save_generated(tmp_path, capsys, language, settings, *options, table="0110")
 
 @pytest.mark.medium
 @pytest.mark.parametrize(("language", "settings"), CASES)
-def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
+def test_run_and_debug_restored_program(tmp_path, capsys, language, settings) -> None:
     embedded = esolangs.describe(language)["parameterized"]
     path = save_generated(
         tmp_path, capsys, language, settings, *(["--bits", "10"] if embedded else [])
@@ -82,7 +82,7 @@ def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("language", [name for name, _ in CASES])
-def test_portable_isolated_cli(tmp_path, capsys, language):
+def test_portable_isolated_cli(tmp_path, capsys, language) -> None:
     settings = dict(CASES)[language]
     path = save_generated(tmp_path, capsys, language, settings, table="01")
     source = esolangs.load_program(language, path.read_text(encoding="utf-8"))
@@ -116,7 +116,9 @@ def test_portable_isolated_cli(tmp_path, capsys, language):
         {"expression_syntax": "postfix"},
     ],
 )
-def test_invalid_overrides_fail_before_stdin(tmp_path, capsys, command, choices):
+def test_invalid_overrides_fail_before_stdin(
+    tmp_path, capsys, command, choices
+) -> None:
     source = _Tagged("+.", REFERENCE, DialectSettings())
     path = tmp_path / "program.json"
     path.write_text(esolangs.dump_program("Brainfuck", source), encoding="utf-8")
@@ -146,7 +148,7 @@ def test_invalid_overrides_fail_before_stdin(tmp_path, capsys, command, choices)
 @pytest.mark.parametrize("content", [b"\xff", b"{}", b"not json"])
 def test_bad_portable_files_report_without_traceback(
     tmp_path, capsys, command, content
-):
+) -> None:
     path = tmp_path / "program.json"
     path.write_bytes(content)
     with pytest.raises(SystemExit) as caught:
@@ -158,7 +160,7 @@ def test_bad_portable_files_report_without_traceback(
 
 
 @pytest.mark.parametrize("command", ["generate", "run", "debug"])
-def test_duplicate_portable_flag(command, capsys):
+def test_duplicate_portable_flag(command, capsys) -> None:
     with pytest.raises(SystemExit) as caught:
         call_both([command, "--portable", "--portable"], capsys)
     assert caught.value.code == 2
@@ -166,7 +168,7 @@ def test_duplicate_portable_flag(command, capsys):
 
 
 @pytest.mark.medium
-def test_raw_file_named_portable_flag(tmp_path, capsys, monkeypatch):
+def test_raw_file_named_portable_flag(tmp_path, capsys, monkeypatch) -> None:
     (tmp_path / "--portable").write_text("+.", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     output, error = call_both(["run", "--", "Brainfuck", "--portable"], capsys)
@@ -174,7 +176,7 @@ def test_raw_file_named_portable_flag(tmp_path, capsys, monkeypatch):
 
 
 @pytest.mark.parametrize("command", ["run", "debug"])
-def test_unknown_portable_language_fails_before_file_read(command, capsys):
+def test_unknown_portable_language_fails_before_file_read(command, capsys) -> None:
     module = f"cli.{command}"
     with (
         patch(f"esolangs.{module}._read_program", side_effect=AssertionError("read")),
@@ -187,7 +189,7 @@ def test_unknown_portable_language_fails_before_file_read(command, capsys):
 
 @pytest.mark.parametrize("command", ["run", "debug"])
 @pytest.mark.parametrize("explicit", [False, True])
-def test_portable_source_acquired_once(command, explicit, capsys):
+def test_portable_source_acquired_once(command, explicit, capsys) -> None:
     payload = esolangs.dump_program(REFERENCE, "+.").encode()
     with patch("esolangs.cli.io._bounded_read", side_effect=[payload]) as read:
         args = [command, "--portable", "--timeout", "0.5"]

@@ -53,7 +53,9 @@ _REJECTS = next(name for name, lang in LANGUAGES.items() if lang.empty_program)
 
 
 @pytest.mark.parametrize("error", [TypeError, AttributeError, RuntimeError])
-def test_unexpected_failure_is_not_an_empty_source_rejection(monkeypatch, error):
+def test_unexpected_failure_is_not_an_empty_source_rejection(
+    monkeypatch, error
+) -> None:
     def broken_run(*_args, **_kwargs):
         raise error("injected constructor failure")
 
@@ -62,7 +64,7 @@ def test_unexpected_failure_is_not_an_empty_source_rejection(monkeypatch, error)
         _check_empty_program(_REJECTS)
 
 
-def test_wrong_rejection_message_fails(monkeypatch):
+def test_wrong_rejection_message_fails(monkeypatch) -> None:
     def broken_run(*_args, **_kwargs):
         raise ProgramError("injected parser failure")
 
@@ -71,7 +73,7 @@ def test_wrong_rejection_message_fails(monkeypatch):
         _check_empty_program(_REJECTS)
 
 
-def test_timeout_is_not_an_empty_source_rejection(monkeypatch):
+def test_timeout_is_not_an_empty_source_rejection(monkeypatch) -> None:
     def timed_run(*_args, **_kwargs):
         raise ExecutionTimeoutError(LANGUAGES[_REJECTS].empty_program)
 

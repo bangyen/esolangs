@@ -172,7 +172,7 @@ class TestCrementSharing:
 
 
 @pytest.mark.parametrize("table", ["00", "0011"])
-def test_narrow_balance_regime_edge_executes(table):
+def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Crement", table, balance=True)
     assert _evaluate("Crement", balanced, inputs=len(table).bit_length() - 1) == table

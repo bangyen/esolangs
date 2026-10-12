@@ -318,7 +318,7 @@ def test_strict_gate_allows_a_diff_without_measured_files(
 @pytest.mark.parametrize("partial", [False])
 @pytest.mark.parametrize("kind", ["statements", "branches"])
 @pytest.mark.parametrize(("covered", "expected"), [(8, 1), (9, 0)])
-def test_per_file_coverage_floor(tmp_path, partial, kind, covered, expected):
+def test_per_file_coverage_floor(tmp_path, partial, kind, covered, expected) -> None:
     lines = list(range(1, 11))
     if kind == "statements":
         data = record(lines[:covered], lines[covered:])
@@ -335,7 +335,7 @@ def test_per_file_coverage_floor(tmp_path, partial, kind, covered, expected):
     assert code == expected
 
 
-def test_one_well_covered_file_cannot_hide_another(tmp_path):
+def test_one_well_covered_file_cannot_hide_another(tmp_path) -> None:
     files = {
         PATH: record([1], [2]),
         "src/esolangs/large.py": record(list(range(100)), []),
@@ -355,7 +355,7 @@ def test_one_well_covered_file_cannot_hide_another(tmp_path):
         "unicode-é.py",
     ],
 )
-def test_diff_uses_exact_git_paths(tmp_path, monkeypatch, name):
+def test_diff_uses_exact_git_paths(tmp_path, monkeypatch, name) -> None:
     gate = load_script()
     monkeypatch.setattr(gate, "ROOT", tmp_path)
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
@@ -380,7 +380,7 @@ def test_diff_uses_exact_git_paths(tmp_path, monkeypatch, name):
     assert gate._added_lines("HEAD") == {name: {2}}  # noqa: SLF001
 
 
-def test_added_source_cannot_spoof_a_patch_file_header(monkeypatch):
+def test_added_source_cannot_spoof_a_patch_file_header(monkeypatch) -> None:
     gate = load_script()
     paths = ["first.py", "second.py"]
     diff = (

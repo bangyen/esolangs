@@ -91,7 +91,7 @@ def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.qoibl, range(7, 11), 800)
 
 
-def test_qoibl_affine_row_envelope_minima():
+def test_qoibl_affine_row_envelope_minima() -> None:
     from itertools import product
 
     from esolangs.generation.wrap import balance_score

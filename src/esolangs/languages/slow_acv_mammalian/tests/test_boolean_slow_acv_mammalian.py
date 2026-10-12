@@ -30,7 +30,7 @@ from tests.support.witness_tables import witnesses
 @pytest.mark.parametrize("io_modulus", [255, 256])
 def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
     essential, io_modulus
-):
+) -> None:
     import esolangs
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 
@@ -60,7 +60,7 @@ def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
 @pytest.mark.parametrize("kind", ["first", "last", "ends"])
 def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
     inputs, io_modulus, kind
-):
+) -> None:
     import esolangs
     from esolangs.generation.wrap import balance_program, balance_score
     from esolangs.languages.slow_acv_mammalian.generator import _program
@@ -926,7 +926,7 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
 @pytest.mark.parametrize("cell", [255, 256])
 @pytest.mark.parametrize("io", [255, 256])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_print_array_is_independent_of_every_input(cell, io, bit):
+def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> None:
     import esolangs
     from esolangs.languages.slow_acv_mammalian.generator import _program
     from esolangs.runtime._evaluate import _evaluate
@@ -947,7 +947,7 @@ def test_constant_print_array_is_independent_of_every_input(cell, io, bit):
 @pytest.mark.parametrize("cell", [255, 256])
 @pytest.mark.parametrize("io", [255, 256])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit):
+def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit) -> None:
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 

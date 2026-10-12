@@ -41,7 +41,7 @@ def test_shared_residual_executes_within_ledger() -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("table", multiple_tables())
-def test_multiple_flags_execute_with_their_native_command_price(table):
+def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
     import esolangs
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
@@ -82,7 +82,7 @@ def test_multiple_flags_execute_with_their_native_command_price(table):
 # 4.9s on 3.12 alone (n=16), at the 5s medium ceiling; the loaded CI faster
 # shard pushed it past the 15s scaled limit.
 @pytest.mark.slow
-def test_multiple_flags_reduce_dense_cap_program_within_ledger():
+def test_multiple_flags_reduce_dense_cap_program_within_ledger() -> None:
     from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.painfuck.generator import _painfuck_tree
     from tests.support.generator_support import assert_shared_program

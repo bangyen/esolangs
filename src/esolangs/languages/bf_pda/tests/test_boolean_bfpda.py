@@ -85,7 +85,7 @@ def _execute_bank(table, template, rows):
 
 
 @pytest.mark.medium
-def test_deeper_classifier_is_selected_only_within_command_bound():
+def test_deeper_classifier_is_selected_only_within_command_bound() -> None:
     from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected, bfpda
 
     for n, admitted in ((8, False), (10, True)):
@@ -98,7 +98,7 @@ def test_deeper_classifier_is_selected_only_within_command_bound():
         _execute_bank(table, program, range(1 << n))
 
 
-def test_classifier_cannot_exceed_retired_stack_space():
+def test_classifier_cannot_exceed_retired_stack_space() -> None:
     from esolangs.languages.bf_pda.generator import _bfpda_tree
 
     with pytest.raises(ValueError, match="two consumed inputs"):
@@ -106,7 +106,7 @@ def test_classifier_cannot_exceed_retired_stack_space():
 
 
 @pytest.mark.medium
-def test_deeper_classifier_preserves_a_constant_class():
+def test_deeper_classifier_preserves_a_constant_class() -> None:
     from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected, bfpda
 
     blocks = ("0" * 128, "0110" * 32)
@@ -120,7 +120,7 @@ def test_deeper_classifier_preserves_a_constant_class():
 @pytest.mark.medium
 @pytest.mark.parametrize("seed", [73027, 73028, 73029])
 @pytest.mark.parametrize("start", range(0, 2048, 128))
-def test_cap_classifier_covers_every_essential_row(seed, start):
+def test_cap_classifier_covers_every_essential_row(seed, start) -> None:
     from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected, bfpda
 
     rng = random.Random(seed)

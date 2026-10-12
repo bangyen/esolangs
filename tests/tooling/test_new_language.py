@@ -274,7 +274,9 @@ def test_mention_edit_labels_the_edit_each_path_needs() -> None:
     assert label("workflow.yml:6:  name: Exercise Gone").startswith("configuration")
 
 
-def test_mention_edit_separates_code_comments_and_docstrings(tmp_path, monkeypatch):
+def test_mention_edit_separates_code_comments_and_docstrings(
+    tmp_path, monkeypatch
+) -> None:
     monkeypatch.setattr(remove_language, "ROOT", tmp_path)
     source = (
         '"""Gone had a special wrapper."""\n# Gone benchmark\ndef _gone():\n    pass\n'
@@ -287,7 +289,7 @@ def test_mention_edit_separates_code_comments_and_docstrings(tmp_path, monkeypat
     assert (tmp_path / "shared.py").read_text() == source
 
 
-def test_mention_edit_keeps_common_word_calls_visible(tmp_path, monkeypatch):
+def test_mention_edit_keeps_common_word_calls_visible(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(remove_language, "ROOT", tmp_path)
     word = "li" + "ne"
     source = f'unit = {word!r}\nesolangs.run({word!r}, "+.")\nLANGUAGES[{word!r}]\n'
@@ -304,7 +306,9 @@ def test_mention_edit_keeps_common_word_calls_visible(tmp_path, monkeypatch):
     )
 
 
-def test_mention_edit_does_not_exempt_a_whole_fixture_file(tmp_path, monkeypatch):
+def test_mention_edit_does_not_exempt_a_whole_fixture_file(
+    tmp_path, monkeypatch
+) -> None:
     monkeypatch.setattr(remove_language, "ROOT", tmp_path)
     relative = "tests/tooling/test_new_language.py"
     target = tmp_path / relative

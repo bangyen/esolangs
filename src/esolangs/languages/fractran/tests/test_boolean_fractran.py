@@ -163,7 +163,7 @@ def test_nonuniform_cells_retain_tokens(program: str) -> None:
     assert balance_score(balanced) <= balance_score(program)
 
 
-def test_fractran_parity_representation_omits_empty_width_regimes():
+def test_fractran_parity_representation_omits_empty_width_regimes() -> None:
     from esolangs.languages.fractran.generator import _balance as _fractran
 
     parity = esolangs.generate("FRACTRAN", "0110", width=4)

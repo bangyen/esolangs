@@ -194,11 +194,11 @@ def test_advance_refuses_an_input_the_shell_did_not_supply(
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_halts_with_hint("Super SNUSP", '"1_{1[', "negative", "nonnegative shift")
 
 
-def test_root_hint_does_not_require_an_exact_root():
+def test_root_hint_does_not_require_an_exact_root() -> None:
     assert _floor_root(2, 2) == 1
     with pytest.raises(HaltError) as caught:
         _floor_root(-2, 2)

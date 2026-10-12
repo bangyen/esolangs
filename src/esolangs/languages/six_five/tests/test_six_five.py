@@ -1,3 +1,5 @@
+"""6-5 interpreter behavior."""
+
 import importlib
 
 import pytest

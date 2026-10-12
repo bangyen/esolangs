@@ -15,7 +15,7 @@ def _names(args, capsys):
     return json.loads(output)
 
 
-def test_generator_and_interpreter_only_partition_catalog(capsys):
+def test_generator_and_interpreter_only_partition_catalog(capsys) -> None:
     generators = _names(["--generator"], capsys)
     interpreters = _names(["--interpreter-only"], capsys)
     assert interpreters == languages(boolean_generator=False)
@@ -23,14 +23,14 @@ def test_generator_and_interpreter_only_partition_catalog(capsys):
     assert sorted([*generators, *interpreters]) == esolangs.list_languages()
 
 
-def test_raster_filter_has_a_positive_control(capsys):
+def test_raster_filter_has_a_positive_control(capsys) -> None:
     assert _names(["--source=raster"], capsys) == languages(source_kind="raster")
     assert _names(["--source", "text", "--interpreter-only"], capsys) == languages(
         source_kind="text", boolean_generator=False
     )
 
 
-def test_state_model_and_shape_filters_agree_with_describe(capsys):
+def test_state_model_and_shape_filters_agree_with_describe(capsys) -> None:
     """The two derived axes filter by exactly what ``describe`` reports."""
     for model in ("grid", "tape", "stack", "queue", "register", "other"):
         assert _names(["--state-model", model], capsys) == [
@@ -50,7 +50,7 @@ def test_state_model_and_shape_filters_agree_with_describe(capsys):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("mode", ["output", "dump", "termination"])
-def test_answer_filter_agrees_with_describe(capsys, mode):
+def test_answer_filter_agrees_with_describe(capsys, mode) -> None:
     names = _names(["--answer", mode], capsys)
     assert names
     assert names == [
@@ -61,7 +61,7 @@ def test_answer_filter_agrees_with_describe(capsys, mode):
 
 
 @pytest.mark.medium
-def test_input_filter_respects_caps_without_hiding_table_limits(capsys):
+def test_input_filter_respects_caps_without_hiding_table_limits(capsys) -> None:
     capped = [n for n in languages() if esolangs.describe(n)["generator_max_inputs"]]
     if not capped:
         pytest.skip("no registered generator caps its inputs")
@@ -79,7 +79,7 @@ def test_input_filter_respects_caps_without_hiding_table_limits(capsys):
         assert row["generator_restrictions"] == expected
 
 
-def test_combined_filters_match_in_every_output_format(capsys):
+def test_combined_filters_match_in_every_output_format(capsys) -> None:
     filters = [
         "--generator",
         "--source",
@@ -105,7 +105,7 @@ def test_combined_filters_match_in_every_output_format(capsys):
     assert error == ""
 
 
-def test_no_matches_is_an_empty_catalog(capsys):
+def test_no_matches_is_an_empty_catalog(capsys) -> None:
     filters = ["--source", "raster", "--interpreter-only"]
     assert _names(filters, capsys) == []
     text, error = call_both(["list", *filters], capsys)
@@ -135,7 +135,7 @@ def test_no_matches_is_an_empty_catalog(capsys):
         (["--", "--generator"], "unexpected argument"),
     ],
 )
-def test_invalid_filters_are_usage_errors(capsys, args, message):
+def test_invalid_filters_are_usage_errors(capsys, args, message) -> None:
     with pytest.raises(SystemExit) as caught:
         call_both(["list", *args], capsys)
     assert caught.value.code == 2

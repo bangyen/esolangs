@@ -1,3 +1,5 @@
+"""Verification cache invalidation and scope."""
+
 import json
 import subprocess
 from pathlib import Path
@@ -35,7 +37,7 @@ class TestCertificates:
         ["source", "config", "command", "environment", "runtime", "unrelated", None],
     )
     @pytest.mark.parametrize("step", ["generator size baseline", "bandit"])
-    def test_certificate_inputs(self, cache_repo, change, step):
+    def test_certificate_inputs(self, cache_repo, change, step) -> None:
         module, root, cache, runtime = cache_repo
         command = "uv run --no-sync --with bandit bandit -r src -q"
         cmd = command.split() if step == "bandit" else ["python", "check.py"]
@@ -65,7 +67,7 @@ class TestCertificates:
     @pytest.mark.parametrize(
         "entry", ["invalid", {"returncode": 1}, {"returncode": False}]
     )
-    def test_corrupt_entries_miss(self, cache_repo, entry):
+    def test_corrupt_entries_miss(self, cache_repo, entry) -> None:
         _, _, cache, _ = cache_repo
         key = "a" * 64
         path = cache.path(key)
@@ -76,7 +78,7 @@ class TestCertificates:
         assert cache.load(key) is None
 
     @pytest.mark.parametrize("external", [False, True])
-    def test_directory_links(self, cache_repo, *, external):
+    def test_directory_links(self, cache_repo, *, external) -> None:
         module, root, _, _ = cache_repo
         target = root.parent if external else root / "src"
         if not external:
@@ -91,7 +93,7 @@ class TestCertificates:
             assert not cache.finish()
 
 
-def test_runtime_timeout_declines_certificate(cache_repo, monkeypatch):
+def test_runtime_timeout_declines_certificate(cache_repo, monkeypatch) -> None:
     module, _, cache, _ = cache_repo
 
     def timeout(cmd, **_kwargs):
@@ -102,7 +104,7 @@ def test_runtime_timeout_declines_certificate(cache_repo, monkeypatch):
     assert not cache.finish()
 
 
-def test_a_gitignored_artifact_under_src_is_not_an_input(cache_repo):
+def test_a_gitignored_artifact_under_src_is_not_an_input(cache_repo) -> None:
     """A rebuilt ``src/*.egg-info`` must not invalidate an otherwise clean run.
 
     The fingerprint once walked ``src`` and ``scripts`` and swept gitignored

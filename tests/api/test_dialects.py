@@ -75,7 +75,7 @@ class Unreadable(StringIO):
         *[(name, settings, {}) for name, settings in _invalid()],
     ],
 )
-def test_invalid_settings_fail_before_reading(language, settings, options):
+def test_invalid_settings_fail_before_reading(language, settings, options) -> None:
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run(
             language, Unreadable(), stdin=Unreadable(), settings=settings, **options
@@ -86,19 +86,19 @@ def test_invalid_settings_fail_before_reading(language, settings, options):
         esolangs.generate(language, "01", settings=settings)
 
 
-def test_settings_are_immutable():
+def test_settings_are_immutable() -> None:
     settings = foreign_settings()
     with pytest.raises(FrozenInstanceError):
         settings._items = ()  # noqa: SLF001 - test frozen storage
     assert DialectSettings().options(REFERENCE) == {}
 
 
-def test_constructor_refuses_a_bool_integer():
+def test_constructor_refuses_a_bool_integer() -> None:
     with pytest.raises(esolangs.ArgumentError):
         DialectSettings(**{integer_setting(): True})
 
 
-def test_settings_require_the_public_object():
+def test_settings_require_the_public_object() -> None:
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
         esolangs.run(
             REFERENCE,
@@ -107,7 +107,7 @@ def test_settings_require_the_public_object():
         )
 
 
-def test_cli_help_shows_literal_settings_json(capsys):
+def test_cli_help_shows_literal_settings_json(capsys) -> None:
     with pytest.raises(SystemExit) as caught:
         call_both(["generate", "--help"], capsys)
     assert caught.value.code == 0
@@ -120,13 +120,13 @@ def test_cli_help_shows_literal_settings_json(capsys):
 
 
 @pytest.mark.parametrize("key", ["index_base", "eof", "input_framing"])
-def test_omission_policies_are_not_public_choices(key):
+def test_omission_policies_are_not_public_choices(key) -> None:
     with pytest.raises(esolangs.ArgumentError, match="unknown dialect setting"):
         DialectSettings(**{key: "default"})
 
 
 @pytest.mark.parametrize("balance", [False, True])
-def test_raster_scaling_retains_settings(balance):
+def test_raster_scaling_retains_settings(balance) -> None:
     raster, other = languages(source_kind="raster", boolean_generator=True)[:2]
     settings = DialectSettings()
     source = esolangs.generate(
@@ -140,26 +140,26 @@ def test_raster_scaling_retains_settings(balance):
     assert source.tagged(other).settings is None
 
 
-def test_inherited_choices_are_checked_before_input():
+def test_inherited_choices_are_checked_before_input() -> None:
     source = _Tagged("+.", REFERENCE, foreign_settings())
     with pytest.raises(esolangs.ArgumentError, match="dialect settings"):
         esolangs.run(REFERENCE, source, stdin=Unreadable())
 
 
-def test_default_pickle_has_no_retained_choices():
+def test_default_pickle_has_no_retained_choices() -> None:
     source = esolangs.generate(REFERENCE, "01")
     restored = pickle.loads(pickle.dumps(source))
     assert restored.settings is None
     assert esolangs.run(REFERENCE, restored, stdin="1") == "1"
 
 
-def test_generation_rejects_untyped_settings():
+def test_generation_rejects_untyped_settings() -> None:
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
         esolangs.generate(REFERENCE, "01", settings={})
 
 
 @pytest.mark.medium
-def test_every_reported_default_and_choice_is_accepted():
+def test_every_reported_default_and_choice_is_accepted() -> None:
     for language in esolangs.list_languages():
         schema = esolangs.describe(language)["dialect_settings"]
         defaults = {key: item["default"] for key, item in schema.items()}

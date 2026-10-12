@@ -22,7 +22,7 @@ from tests.support.reference import REFERENCE
 
 @pytest.mark.medium
 @pytest.mark.parametrize("scale", [1, 2])
-def test_cli_scaled_raster(tmp_path, capsys, scale):
+def test_cli_scaled_raster(tmp_path, capsys, scale) -> None:
     settings = DialectSettings()
     path = save_generated(tmp_path, capsys, "Line", settings, "--scale", str(scale))
     restored = esolangs.load_program("Line", path.read_text(encoding="utf-8"))
@@ -31,7 +31,7 @@ def test_cli_scaled_raster(tmp_path, capsys, scale):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("scale", [1, 2])
-def test_raw_png_round_trip_executes(scale):
+def test_raw_png_round_trip_executes(scale) -> None:
     settings = DialectSettings()
     source = esolangs.generate("Line", "01", scale=scale, settings=settings)
     raw = Raster.from_png(source.to_png())
@@ -44,7 +44,7 @@ def test_raw_png_round_trip_executes(scale):
 
 
 @pytest.mark.parametrize("value", ["!", "abcd", "é"])
-def test_invalid_png(value):
+def test_invalid_png(value) -> None:
     document = json.loads(
         esolangs.dump_program("Line", esolangs.generate("Line", "01"))
     )
@@ -131,7 +131,7 @@ class TestTheSmallInconsistencies:
         assert "no breakpoint matched" not in err
 
 
-def test_source_kind_cannot_change_language_contract():
+def test_source_kind_cannot_change_language_contract() -> None:
     document = json.loads(
         esolangs.dump_program("Line", esolangs.generate("Line", "01"))
     )
@@ -141,7 +141,7 @@ def test_source_kind_cannot_change_language_contract():
 
 
 @pytest.mark.medium
-def test_raster_interpreter_retains_geometry_hint():
+def test_raster_interpreter_retains_geometry_hint() -> None:
     image = Raster((((255, 255, 255),),))
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
         esolangs.run("Line", image, scale=None, timeout=1)

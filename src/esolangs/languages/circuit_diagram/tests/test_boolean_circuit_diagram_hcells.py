@@ -27,7 +27,7 @@ class _IntervalBaseline(_RoutingLayout):
 @pytest.mark.parametrize("module", [hlayout, hpool])
 def test_h_cell_router_preserves_emitted_bytes_and_native_contracts(
     monkeypatch, n, module
-):
+) -> None:
     rng = random.Random(813 + n)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
     build = _h_term_layout if module is hlayout else _h_pool_layout
@@ -41,7 +41,7 @@ def test_h_cell_router_preserves_emitted_bytes_and_native_contracts(
 @pytest.mark.parametrize(
     "obstacle", ["glyph", "junction", "reserved", "hold", "parallel"]
 )
-def test_h_cell_routes_reject_foreign_obstacles(shape, obstacle):
+def test_h_cell_routes_reject_foreign_obstacles(shape, obstacle) -> None:
     layout = _HCellLayout(32)
     # All shapes include the source endpoint; holds also guard neighbours.
     if obstacle == "glyph":
@@ -58,7 +58,7 @@ def test_h_cell_routes_reject_foreign_obstacles(shape, obstacle):
         layout.route((8, 8), (16, 16), 1, shape)
 
 
-def test_h_cell_sealing_preserves_gaps_and_legitimate_crossings():
+def test_h_cell_sealing_preserves_gaps_and_legitimate_crossings() -> None:
     layout = _HCellLayout(32)
     layout.run_horizontal(18, 24, 8, 1)
     layout.run_horizontal(2, 6, 8, 1)
@@ -75,12 +75,12 @@ def test_h_cell_sealing_preserves_gaps_and_legitimate_crossings():
 
 
 @pytest.mark.parametrize("point", [(-1, 0), (32, 0), (0, -1)])
-def test_h_cell_packing_rejects_out_of_bounds_coordinates(point):
+def test_h_cell_packing_rejects_out_of_bounds_coordinates(point) -> None:
     with pytest.raises(AssertionError, match="outside"):
         _HCellLayout(32).junction(*point, 1)
 
 
-def test_h_cell_neighbours_do_not_wrap_across_rows():
+def test_h_cell_neighbours_do_not_wrap_across_rows() -> None:
     layout = _HCellLayout(16)
     layout.junction(15, 4, 2)
     layout.route((0, 5), (0, 8), 1)

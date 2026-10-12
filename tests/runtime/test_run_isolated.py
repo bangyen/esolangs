@@ -19,13 +19,13 @@ _UNUSUAL = [*one(self_halts=False), *one(answer_mode="termination")]
 @pytest.mark.parametrize(
     "language", [*_UNUSUAL, *one(source_kind="raster", boolean_generator=True)]
 )
-def test_generated_xor_runs_every_row_in_a_worker(language):
+def test_generated_xor_runs_every_row_in_a_worker(language) -> None:
     with ThreadPoolExecutor(max_workers=1) as pool:
         assert pool.submit(verify_generated, language, "0110", isolated=True).result()
 
 
 @pytest.mark.medium
-def test_timeout_retains_streamed_output():
+def test_timeout_retains_streamed_output() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         esolangs.run(REFERENCE, "+.[]", timeout=1, isolated=True)
     assert caught.value.partial_output == "\x01"
@@ -33,7 +33,7 @@ def test_timeout_retains_streamed_output():
 
 
 @pytest.mark.medium
-def test_input_error_retains_counts_and_output():
+def test_input_error_retains_counts_and_output() -> None:
     with pytest.raises(esolangs.InputExhaustedError) as caught:
         esolangs.run(REFERENCE, "+.,", isolated=True)
     assert caught.value.reads == 0
@@ -42,12 +42,12 @@ def test_input_error_retains_counts_and_output():
 
 
 @pytest.mark.parametrize("timeout", [0, float("inf")])
-def test_refuses_an_invalid_deadline(timeout):
+def test_refuses_an_invalid_deadline(timeout) -> None:
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run(REFERENCE, "", timeout=timeout, isolated=True)
 
 
-def test_decode_missing_result_and_notes():
+def test_decode_missing_result_and_notes() -> None:
     with pytest.raises(esolangs.InterpreterLimitError) as caught:
         _decode('{"output": "abc"}\n', expired=False)
     assert caught.value.partial_output == "abc"
@@ -57,13 +57,13 @@ def test_decode_missing_result_and_notes():
     assert caught.value.__notes__ == ["row 1"]
 
 
-def test_decode_truncated_write_on_timeout():
+def test_decode_truncated_write_on_timeout() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         _decode('{"output": "done"}\n{"output": "unfinished', expired=True)
     assert caught.value.partial_output == "done"
 
 
-def test_cancellation_kills_and_reaps_child(monkeypatch):
+def test_cancellation_kills_and_reaps_child(monkeypatch) -> None:
     from esolangs.runtime import _isolated
 
     calls = []
@@ -92,7 +92,7 @@ def test_cancellation_kills_and_reaps_child(monkeypatch):
     assert calls == ["communicate", "kill", "communicate"]
 
 
-def test_unknown_error_reconstructs_suggestions():
+def test_unknown_error_reconstructs_suggestions() -> None:
     payload = {"error": "UnknownLanguageError", "args": ["brainfuk", [REFERENCE]]}
     with pytest.raises(esolangs.UnknownLanguageError) as caught:
         _decode(json.dumps(payload), expired=False)
@@ -102,7 +102,7 @@ def test_unknown_error_reconstructs_suggestions():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("limit", [0, 1, 4097])
-def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned):
+def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned) -> None:
     with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
         esolangs.run(REFERENCE, "+[.]", isolated=True, max_output=limit)
     assert caught.value.partial_output == "\x01" * limit
@@ -111,12 +111,12 @@ def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned):
 
 
 @pytest.mark.medium
-def test_output_limit_beyond_the_decimal_rendering_limit_accepts_small_output():
+def test_output_limit_beyond_the_decimal_rendering_limit_accepts_small_output() -> None:
     assert esolangs.run(REFERENCE, "++.", isolated=True, max_output=10**5000) == "\x02"
 
 
 @pytest.mark.medium
-def test_capped_timeout_retains_output_and_reaps(spawned):
+def test_capped_timeout_retains_output_and_reaps(spawned) -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         esolangs.run(REFERENCE, "+.[]", timeout=1, isolated=True, max_output=10)
     assert caught.value.partial_output == "\x01"
@@ -124,17 +124,19 @@ def test_capped_timeout_retains_output_and_reaps(spawned):
 
 
 @pytest.mark.parametrize("limit", [-1, True, 1.5, "1"])
-def test_refuses_invalid_output_limits(limit):
+def test_refuses_invalid_output_limits(limit) -> None:
     with pytest.raises(esolangs.ArgumentError, match="max_output"):
         esolangs.run(REFERENCE, "", isolated=True, max_output=limit)
 
 
-def test_output_limit_requires_isolation():
+def test_output_limit_requires_isolation() -> None:
     with pytest.raises(esolangs.ArgumentError, match="isolated"):
         esolangs.run(REFERENCE, "", max_output=1)
 
 
-def test_capped_worker_splits_and_truncates_a_single_large_write(monkeypatch, capsys):
+def test_capped_worker_splits_and_truncates_a_single_large_write(
+    monkeypatch, capsys
+) -> None:
     import io
     import sys
 
@@ -162,7 +164,7 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(monkeypatch, ca
 
 
 @pytest.mark.medium
-def test_capped_input_error_retains_public_class_and_prefix():
+def test_capped_input_error_retains_public_class_and_prefix() -> None:
     with pytest.raises(esolangs.InputExhaustedError) as caught:
         esolangs.run(REFERENCE, "+.,", isolated=True, max_output=2)
     assert caught.value.partial_output == "\x01"
@@ -190,7 +192,7 @@ def protocol_child():
     return Child
 
 
-def test_capped_protocol_truncated_record_retains_prefix(protocol_child):
+def test_capped_protocol_truncated_record_retains_prefix(protocol_child) -> None:
     from esolangs.runtime._isolated import _bounded_output
 
     child = protocol_child(['{"output":"prefix"}\n', '{"output":'])
@@ -201,7 +203,9 @@ def test_capped_protocol_truncated_record_retains_prefix(protocol_child):
     assert child.reaped
 
 
-def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(protocol_child):
+def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(
+    protocol_child,
+) -> None:
     import subprocess
 
     from esolangs.runtime._isolated import _bounded_output
@@ -223,7 +227,7 @@ def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(protocol_chi
 
 
 @pytest.mark.parametrize("language", _UNUSUAL)
-def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
+def test_isolated_row_timeout_stays_undecided(language, monkeypatch) -> None:
     from esolangs.runtime import _isolated
 
     def expire(*_args, **_kwargs):
@@ -243,7 +247,7 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
 @pytest.mark.parametrize("startup", [0.4, 1.2])
 def test_process_creation_consumes_the_worker_deadline(
     monkeypatch, max_output, startup
-):
+) -> None:
     from esolangs.runtime import _isolated
     from esolangs.runtime._isolated import _launch
 
@@ -296,7 +300,7 @@ def test_process_creation_consumes_the_worker_deadline(
         ),
     ],
 )
-def test_raster_transport_preserves_every_pixel(rows, monkeypatch):
+def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
     from esolangs.runtime import _isolated
     from esolangs.runtime._isolated import _raster_rows, _raster_transport
 
@@ -314,7 +318,7 @@ def test_raster_transport_preserves_every_pixel(rows, monkeypatch):
 
 
 @pytest.mark.medium
-def test_worker_executes_compact_raster_pixels(monkeypatch, capsys):
+def test_worker_executes_compact_raster_pixels(monkeypatch, capsys) -> None:
     import io
     import sys
 
@@ -346,7 +350,7 @@ def test_worker_executes_compact_raster_pixels(monkeypatch, capsys):
 )
 def test_memory_budget_rejects_unsupported_execution(
     monkeypatch, budget, isolated, platform, message
-):
+) -> None:
     import sys
 
     from esolangs.runtime._isolated import check_memory
@@ -356,7 +360,7 @@ def test_memory_budget_rejects_unsupported_execution(
         check_memory(budget, isolated=isolated)
 
 
-def test_memory_budget_accepts_linux_worker(monkeypatch):
+def test_memory_budget_accepts_linux_worker(monkeypatch) -> None:
     import sys
 
     from esolangs.runtime._isolated import check_memory
@@ -366,7 +370,7 @@ def test_memory_budget_accepts_linux_worker(monkeypatch):
 
 
 @pytest.mark.medium
-def test_worker_returns_a_termination_verdict(monkeypatch, capsys):
+def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
     import io
     import sys
 

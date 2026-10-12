@@ -1,3 +1,5 @@
+"""Canonical language identifiers and aliases."""
+
 import importlib
 
 import pytest

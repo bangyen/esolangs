@@ -595,7 +595,7 @@ def test_bad_programs_carry_a_repair_hint() -> None:
     ("source", "syntax"),
     [("65 1 +", "postfix"), ("65+1", "infix"), ("[65, 66] 0.5", "bad")],
 )
-def test_alight_notation(source, syntax):
+def test_alight_notation(source, syntax) -> None:
     io = ScriptedIO("")
     if syntax == "bad":
         with pytest.raises(ValueError, match="one value"):
@@ -610,7 +610,7 @@ def test_alight_notation(source, syntax):
     ("expr", "expected"),
     [("right !", "A"), ("left !", "B"), ("at{[65, 66], 1.5}", "B")],
 )
-def test_postfix_unary_and_nested_lists(expr, expected):
+def test_postfix_unary_and_nested_lists(expr, expected) -> None:
     io = ScriptedIO("")
     command = (
         f"set a {expr}" if expr.startswith("at") else f"set a 65;skip {expr};set a 66"
@@ -621,7 +621,7 @@ def test_postfix_unary_and_nested_lists(expr, expected):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("expr", ["65 +", "!"])
-def test_postfix_operator_requires_operands(expr):
+def test_postfix_operator_requires_operands(expr) -> None:
     with pytest.raises(ValueError, match="lacks operands"):
         run(
             f"begin;var a;set a {expr};end;",
@@ -631,7 +631,7 @@ def test_postfix_operator_requires_operands(expr):
 
 
 @pytest.mark.parametrize("io_type", [ScriptedIO, PositionlessIO])
-def test_cycle_detector_tracks_cursorless_input(io_type):
+def test_cycle_detector_tracks_cursorless_input(io_type) -> None:
     io = io_type("aaaa")
     machine = _Machine(CAT_TURN, io)
     assert run_until_halt_or_cycle(machine, limit=2000)

@@ -89,7 +89,7 @@ class TestDecleq:
         assert sum(len(boolean.decleq(t)) for t in tables) == 326_910
 
 
-def test_mixed_digit_operands_share_one_grid_cell():
+def test_mixed_digit_operands_share_one_grid_cell() -> None:
     # All three subleq OISCs share wrap_grid, so the language is not an axis.
     language = "decleq"
     for count in range(3, 65):

@@ -18,7 +18,7 @@ from esolangs import vm
         ("run_until_halt_or_value_growth", "unbounded affine values"),
     ],
 )
-def test_unsupported_detectors_name_the_needed_capability(detector, hint):
+def test_unsupported_detectors_name_the_needed_capability(detector, hint) -> None:
     with pytest.raises(TypeError) as caught:
         getattr(vm, detector)(vm.make_vm("Sophie", ""))
     assert type(caught.value) is TypeError

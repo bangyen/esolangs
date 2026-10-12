@@ -31,7 +31,7 @@ def test_a_reshaped_snapshot_aborts() -> None:
         state.sample((0,))
 
 
-def test_mixed_records_keep_scalar_widths_and_mutable_counts():
+def test_mixed_records_keep_scalar_widths_and_mutable_counts() -> None:
     from fractions import Fraction
 
     from scripts.benchmark import state_bits
@@ -44,7 +44,7 @@ def test_mixed_records_keep_scalar_widths_and_mutable_counts():
     assert state_bits(mutable, {}) == 32 + 5 + 1 + 64 + 3 + 3 + 16 + 1 + 9
 
 
-def test_flat_integer_delta_retains_whole_store_peak():
+def test_flat_integer_delta_retains_whole_store_peak() -> None:
     initial = (0,) * 32
     state = WrittenState((initial,))
     state.sample(((1000, *initial[1:]),))

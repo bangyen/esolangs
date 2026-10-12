@@ -39,7 +39,7 @@ def test_source_growth_is_linear_in_the_table() -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("table", _fish_tables())
-def test_fish_balance_matches_all_power_of_two_folds(table):
+def test_fish_balance_matches_all_power_of_two_folds(table) -> None:
     default = fish(table)
     balanced = balance_fish(table, default)
     layouts = [default, fish(table, 1)] + [

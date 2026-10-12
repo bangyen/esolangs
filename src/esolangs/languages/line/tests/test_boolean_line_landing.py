@@ -20,6 +20,6 @@ def packed_check(monkeypatch):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("scale", [1, 2], ids=["scale1", "scale2"])
-def test_landing_table_executes_every_row(packed_check, tmp_path, scale):
+def test_landing_table_executes_every_row(packed_check, tmp_path, scale) -> None:
     """Execute all rows with command, workspace, and admission checks."""
     packed_check(_LANDING_TABLE, tmp_path, scale=scale)

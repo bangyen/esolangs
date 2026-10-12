@@ -40,7 +40,7 @@ class TestPytestScopeCollects:
             ("src/esolangs/runtime/io.py", False),
         ],
     )
-    def test_only_collected_leaf_modules_are_scoped(self, path, scoped):
+    def test_only_collected_leaf_modules_are_scoped(self, path, scoped) -> None:
         verify = load_scope()
         scope = verify._pytest_scope([path])  # noqa: SLF001
         assert scope == ([path] if scoped else verify.WHOLE_SUITE)
@@ -153,7 +153,7 @@ class TestZeroStepsIsNotAPass:
 @pytest.mark.parametrize("allow", [False, True])
 def test_missing_tools_never_report_complete_verification(
     tool, allow, monkeypatch, capsys
-):
+) -> None:
     verify = load_script()
     step = "bandit" if tool == "uv" else "duplicate-code check (pylint)"
     monkeypatch.setattr(
@@ -316,7 +316,9 @@ class TestGeneratorScope:
 
 
 @pytest.mark.parametrize("package", [False, True])
-def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch, *, package):
+def test_generator_scope_keeps_transitive_dependents(
+    tmp_path, monkeypatch, *, package
+) -> None:
     from types import SimpleNamespace
 
     from esolangs import registry
@@ -369,7 +371,7 @@ def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
     )
 
 
-def test_leak_step_covers_shipped_examples():
+def test_leak_step_covers_shipped_examples() -> None:
     from scripts.verify.scope import STEP_SCOPE
 
     assert "src/esolangs/languages/fixture/fixture.txt".startswith(
@@ -378,7 +380,7 @@ def test_leak_step_covers_shipped_examples():
 
 
 @pytest.mark.medium
-def test_leak_sweep_starts_before_pytest_finishes(tmp_path):
+def test_leak_sweep_starts_before_pytest_finishes(tmp_path) -> None:
     verify = load_script()
     ready = tmp_path / "leaks-started"
     script = (
@@ -405,7 +407,7 @@ def test_leak_sweep_starts_before_pytest_finishes(tmp_path):
 
 
 @pytest.mark.medium
-def test_companion_checks_share_one_serial_lane(monkeypatch):
+def test_companion_checks_share_one_serial_lane(monkeypatch) -> None:
     from threading import Event
 
     verify = load_script()
@@ -442,7 +444,7 @@ def test_companion_checks_share_one_serial_lane(monkeypatch):
 )
 def test_deadline_kills_step_and_its_worker(
     tmp_path, monkeypatch, capsys, stream, shadow
-):
+) -> None:
     v = load_script()
     monkeypatch.setattr(v, "STEP_DEADLINES", {"pytest": 0.5})
     marker = tmp_path / "worker"
@@ -476,7 +478,7 @@ while True:
 @pytest.mark.skipif(os.name != "posix", reason="worker inherits a POSIX session")
 def test_deadline_includes_output_from_an_exited_leaders_worker(
     tmp_path, monkeypatch, capsys, stream
-):
+) -> None:
     verify = load_script()
     verify.ROOT = tmp_path
     monkeypatch.setattr(verify, "STEP_DEADLINES", {"pytest": 0.2})
@@ -515,7 +517,7 @@ print('late worker output', flush=True)
 @pytest.mark.skipif(os.name != "posix", reason="worker inherits a POSIX session")
 def test_exited_leaders_worker_can_finish_within_the_deadline(
     tmp_path, monkeypatch, capsys, stream
-):
+) -> None:
     verify = load_script()
     verify.ROOT = tmp_path
     monkeypatch.setattr(verify, "STEP_DEADLINES", {"pytest": 1})
@@ -536,7 +538,7 @@ def test_exited_leaders_worker_can_finish_within_the_deadline(
 @pytest.mark.parametrize("reader_exit", [2.2, None])
 def test_logged_parent_and_reader_share_heartbeat_intervals(
     tmp_path, monkeypatch, parent_exit, reader_exit
-):
+) -> None:
     verify = load_script()
     process = sys.modules[verify.start_logged.__module__]
     now = [0.0]
@@ -596,7 +598,7 @@ def test_logged_parent_and_reader_share_heartbeat_intervals(
 @pytest.mark.skipif(os.name != "posix", reason="closes POSIX stdout descriptors")
 def test_closed_stdout_does_not_skip_heartbeats_or_the_leaders_deadline(
     tmp_path, monkeypatch, capsys
-):
+) -> None:
     verify = load_script()
     verify.ROOT = tmp_path
     monkeypatch.setattr(verify, "STEP_DEADLINES", {"pytest": 0.2})
@@ -615,7 +617,7 @@ def test_closed_stdout_does_not_skip_heartbeats_or_the_leaders_deadline(
 @pytest.mark.parametrize("running", [False, True])
 def test_log_writer_errors_fail_the_check_and_stop_running_steps(
     tmp_path, monkeypatch, capsys, stream, running
-):
+) -> None:
     verify = load_script()
     process = sys.modules[verify.start_logged.__module__]
     verify.ROOT = tmp_path
@@ -653,7 +655,7 @@ def test_log_writer_errors_fail_the_check_and_stop_running_steps(
 @pytest.mark.parametrize("timeout", [False, True])
 def test_unreadable_log_fails_with_a_diagnostic(
     tmp_path, monkeypatch, capsys, stream, timeout
-):
+) -> None:
     verify = load_script()
     verify.ROOT = tmp_path
     original_open = Path.open
@@ -679,7 +681,9 @@ def test_unreadable_log_fails_with_a_diagnostic(
     assert ("deadline exceeded" in output) is timeout
 
 
-def test_broken_streamed_stdout_does_not_fail_complete_logs(tmp_path, monkeypatch):
+def test_broken_streamed_stdout_does_not_fail_complete_logs(
+    tmp_path, monkeypatch
+) -> None:
     verify = load_script()
     verify.ROOT = tmp_path
     output = sys.stdout
@@ -707,7 +711,9 @@ def test_broken_streamed_stdout_does_not_fail_complete_logs(tmp_path, monkeypatc
 
 
 @pytest.mark.parametrize("stream", [False, True])
-def test_step_logs_persist_for_streamed_and_captured_output(tmp_path, capsys, stream):
+def test_step_logs_persist_for_streamed_and_captured_output(
+    tmp_path, capsys, stream
+) -> None:
     verify = load_script()
     verify.ROOT = tmp_path
     steps = [("probe", [sys.executable, "-c", "print('log marker')"], dict(os.environ))]
@@ -719,7 +725,7 @@ def test_step_logs_persist_for_streamed_and_captured_output(tmp_path, capsys, st
 
 
 @pytest.mark.medium
-def test_streamed_logs_deliver_short_flushes_before_exit(tmp_path, monkeypatch):
+def test_streamed_logs_deliver_short_flushes_before_exit(tmp_path, monkeypatch) -> None:
     verify = load_script()
     verify.ROOT = tmp_path
     marker = tmp_path / "received"

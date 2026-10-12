@@ -67,7 +67,7 @@ def _corpus():
 
 
 @pytest.mark.parametrize("stdin", STDINS)
-def test_bounded_programs_match_the_oracle(stdin):
+def test_bounded_programs_match_the_oracle(stdin) -> None:
     for code in _corpus():
         agrees(_Machine, oracle, code, stdin, dump=True)
 
@@ -76,7 +76,7 @@ def test_bounded_programs_match_the_oracle(stdin):
     ("code", "output"),
     [("[", None), ("]", None), ("][", None), (">>*", "1"), ("<", "0"), (">", "0")],
 )
-def test_oracle_controls(code, output):
+def test_oracle_controls(code, output) -> None:
     result = agrees(_Machine, oracle, code, "\x81", dump=True)
     assert result.output == output if output else isinstance(result, ValueError)
     assert not agrees(_Machine, oracle, "*[]", "", dump=True).halted

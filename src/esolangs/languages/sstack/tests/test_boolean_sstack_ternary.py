@@ -17,7 +17,7 @@ from scripts.benchmark import WrittenState
 
 
 @pytest.mark.parametrize("classes", range(2, 29))
-def test_decoder_consumes_every_word_before_its_body(classes):
+def test_decoder_consumes_every_word_before_its_body(classes) -> None:
     width = _width(classes)
     pieces = []
     chars, tails = _decoder(
@@ -56,7 +56,7 @@ def _mixed_table():
     return "".join(chunks) * 16
 
 
-def test_mixed_bank_exceeds_numeric_capacity_and_passes_admission():
+def test_mixed_bank_exceeds_numeric_capacity_and_passes_admission() -> None:
     table = _mixed_table()
     result = best_ternary_bank(table, _sstack_tree, 115, 39492)
     assert result is not None
@@ -82,12 +82,12 @@ def test_mixed_bank_exceeds_numeric_capacity_and_passes_admission():
 
 
 @pytest.mark.parametrize("table", ["00", "01", "0011", "01101001", "0" * 64])
-def test_bank_refuses_without_multiple_eligible_reachable_definitions(table):
+def test_bank_refuses_without_multiple_eligible_reachable_definitions(table) -> None:
     assert best_ternary_bank(table, _sstack_tree, 1000, 100000) is None
 
 
 @pytest.mark.parametrize("seed", range(5))
-def test_admitted_small_banks_execute_every_row(seed):
+def test_admitted_small_banks_execute_every_row(seed) -> None:
     rng = random.Random(seed)
     a, b, c = ("".join(rng.choice("01") for _ in range(32)) for _ in range(3))
     table = "0" * 32 + a + b + a + "1" * 32 + b + c + c
@@ -107,7 +107,7 @@ def test_admitted_small_banks_execute_every_row(seed):
     assert peak == commands
 
 
-def test_render_price_disagreement_aborts():
+def test_render_price_disagreement_aborts() -> None:
     table = _mixed_table()
 
     def wrong_body(block):

@@ -28,7 +28,9 @@ _BAD_TIMEOUTS = [
 
 @pytest.mark.parametrize("command", ["run", "debug"])
 @pytest.mark.parametrize(("args", "message"), _BAD_TIMEOUTS)
-def test_a_bad_timeout_is_refused_with_exit_2(command, args, message, tmp_path, capsys):
+def test_a_bad_timeout_is_refused_with_exit_2(
+    command, args, message, tmp_path, capsys
+) -> None:
     refused = _refused(f"{command} {args} prog:,.", tmp_path, capsys, "1\n")
     assert message in refused
 

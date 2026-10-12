@@ -138,7 +138,7 @@ def test_complemented_shared_arm_contributes_its_constant_first() -> None:
 @pytest.mark.parametrize("half", [0, 1])
 def test_multiple_residuals_preserve_bands_and_native_bounds(
     table, reverse, kind, half
-):
+) -> None:
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank, repeated_blocks
@@ -194,7 +194,7 @@ def test_multiple_residuals_preserve_bands_and_native_bounds(
         (((1, 0), (1, 4)), (1, 2), "distinct residuals"),
     ],
 )
-def test_invalid_multiple_definitions_abort(blocks, flags, message):
+def test_invalid_multiple_definitions_abort(blocks, flags, message) -> None:
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
 
     with pytest.raises(ValueError, match=message):
@@ -202,7 +202,7 @@ def test_invalid_multiple_definitions_abort(blocks, flags, message):
 
 
 @pytest.mark.medium
-def test_multiple_residuals_reduce_tiled_cap_program_within_ledger():
+def test_multiple_residuals_reduce_tiled_cap_program_within_ledger() -> None:
     from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
     from tests.support.generator_support import assert_shared_program
@@ -237,7 +237,7 @@ def test_multiple_residuals_reduce_tiled_cap_program_within_ledger():
 @pytest.mark.medium
 @pytest.mark.parametrize("swap_suffix", [False, True])
 @pytest.mark.parametrize("half", [0, 1])
-def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half):
+def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half) -> None:
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_block
@@ -273,7 +273,7 @@ def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half):
         assert written.bits <= bound
 
 
-def test_pair_definitions_require_retired_levels_and_an_exclusive_mode():
+def test_pair_definitions_require_retired_levels_and_an_exclusive_mode() -> None:
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
 
     with pytest.raises(ValueError, match="two retired levels"):
@@ -285,7 +285,7 @@ def test_pair_definitions_require_retired_levels_and_an_exclusive_mode():
 
 
 @pytest.mark.parametrize("word", ["0001", "0100"])
-def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word):
+def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> None:
     from esolangs.languages.smallfuck.generator import _paired_roots, _smallfuck_tree
 
     complement = "".join("1" if bit == "0" else "0" for bit in word)

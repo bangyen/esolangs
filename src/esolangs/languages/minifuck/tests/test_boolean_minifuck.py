@@ -209,7 +209,7 @@ def test_ten_input_builds_print_on_the_interpreter() -> None:
 
 
 @pytest.mark.parametrize("table", ["01"])
-def test_narrow_balance_regime_edge_executes(table):
+def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Minifuck", table, balance=True)
     assert _evaluate("Minifuck", balanced, inputs=len(table).bit_length() - 1) == table

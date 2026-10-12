@@ -24,7 +24,7 @@ def _classes(tail, count):
 
 @pytest.mark.weekly
 @pytest.mark.cost_evidence("public folded-mask admission beyond 256 distinct classes")
-def test_public_folded_masks_share_257_classes():
+def test_public_folded_masks_share_257_classes() -> None:
     table, pairs = _classes(7, 257)
     code = circuit_diagram(table)
     lines = code.splitlines()
@@ -36,7 +36,7 @@ def test_public_folded_masks_share_257_classes():
 
 @pytest.mark.weekly
 @pytest.mark.cost_evidence("eight-input atoms retain native ports beyond 512 classes")
-def test_eight_input_atoms_share_513_classes():
+def test_eight_input_atoms_share_513_classes() -> None:
     table, pairs = _classes(8, 513)
     model = folded_class_bank_candidate(table, 60_000_000)
     assert model is not None
@@ -46,7 +46,7 @@ def test_eight_input_atoms_share_513_classes():
     assert _execute(table, code, rows) == 24
 
 
-def test_folded_masks_reject_small_ceiling_and_excess_table_work(monkeypatch):
+def test_folded_masks_reject_small_ceiling_and_excess_table_work(monkeypatch) -> None:
     table, _ = _classes(7, 257)
     assert folded_class_bank_candidate(table, 100) is None
     table, _ = _classes(7, 513)
@@ -61,7 +61,7 @@ def test_folded_masks_reject_small_ceiling_and_excess_table_work(monkeypatch):
     assert folded_class_bank_candidate(table) is None
 
 
-def test_unrepeated_classes_and_empty_area_reject():
+def test_unrepeated_classes_and_empty_area_reject() -> None:
     table, _ = _classes(7, 257)
     assert folded_class_bank_candidate(table, 0) is None
     assert folded_class_bank_candidate("0001") is None
@@ -71,7 +71,7 @@ def test_unrepeated_classes_and_empty_area_reject():
     assert folded_class_bank_candidate(table) is None
 
 
-def test_excess_fold_work_rejects_before_model_construction(monkeypatch):
+def test_excess_fold_work_rejects_before_model_construction(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.folded_banks"
     )
@@ -87,7 +87,7 @@ def test_excess_fold_work_rejects_before_model_construction(monkeypatch):
     assert folded_class_bank_candidate(table) is None
 
 
-def test_unavailable_body_rejects(monkeypatch):
+def test_unavailable_body_rejects(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.folded_banks"
     )
@@ -96,7 +96,7 @@ def test_unavailable_body_rejects(monkeypatch):
     assert folded_class_bank_candidate(table) is None
 
 
-def test_excess_workspace_gates_reject_before_assembly(monkeypatch):
+def test_excess_workspace_gates_reject_before_assembly(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.folded_banks"
     )
@@ -111,7 +111,7 @@ def test_excess_workspace_gates_reject_before_assembly(monkeypatch):
     assert folded_class_bank_candidate(table) is None
 
 
-def test_invalid_preflight_rectangle_aborts(monkeypatch):
+def test_invalid_preflight_rectangle_aborts(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.folded_banks"
     )
@@ -129,7 +129,7 @@ def test_invalid_preflight_rectangle_aborts(monkeypatch):
 
 
 @pytest.mark.slow
-def test_constant_one_class_needs_only_its_mask():
+def test_constant_one_class_needs_only_its_mask() -> None:
     table, _ = _classes(7, 2)
     chunks = [table[i : i + 128] for i in range(0, len(table), 128)]
     first = chunks[0]
@@ -140,7 +140,7 @@ def test_constant_one_class_needs_only_its_mask():
 
 
 @pytest.mark.medium
-def test_public_area_competition_executes_an_admitted_candidate(monkeypatch):
+def test_public_area_competition_executes_an_admitted_candidate(monkeypatch) -> None:
     module = importlib.import_module("esolangs.languages.circuit_diagram.generator")
     folded = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.folded_banks"
@@ -155,7 +155,7 @@ def test_public_area_competition_executes_an_admitted_candidate(monkeypatch):
 
 
 @pytest.mark.medium
-def test_two_classes_with_large_mask_ports_execute():
+def test_two_classes_with_large_mask_ports_execute() -> None:
     table, _ = _classes(7, 2)
     model = folded_class_bank_candidate(table)
     assert model is not None
@@ -164,7 +164,7 @@ def test_two_classes_with_large_mask_ports_execute():
 
 
 @pytest.mark.slow
-def test_public_folded_masks_below_old_cap_execute_prefix_boundaries():
+def test_public_folded_masks_below_old_cap_execute_prefix_boundaries() -> None:
     table, pairs = _classes(7, 202)
     code = circuit_diagram(table)
     lines = code.splitlines()

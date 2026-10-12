@@ -135,7 +135,7 @@ def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:
             sizes.sweep()
 
 
-def test_boundary_rows_are_pinned_and_corpus_drift_fails():
+def test_boundary_rows_are_pinned_and_corpus_drift_fails() -> None:
     name = next(iter(BOUNDARIES))
     table = boundary_tables(name)[0]
     measured = baseline(
@@ -156,7 +156,7 @@ def test_boundary_rows_are_pinned_and_corpus_drift_fails():
     assert differences(stale, measured) == ["baseline boundary corpus changed"]
 
 
-def test_sweep_checks_and_pins_every_small_table_row(monkeypatch):
+def test_sweep_checks_and_pins_every_small_table_row(monkeypatch) -> None:
     from checks import check_generator_sizes as sizes
 
     monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: [REFERENCE])
@@ -172,7 +172,7 @@ def test_sweep_checks_and_pins_every_small_table_row(monkeypatch):
         assert len(pinned[table]["commands_by_row"]) == len(table)
 
 
-def test_executed_artifact_and_provenance():
+def test_executed_artifact_and_provenance() -> None:
     r = b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=10000, all_rows=True)
     p = esolangs.generate("Brainfuck", "01")
     assert all(row["matches"] for row in r["executions"])
@@ -188,7 +188,7 @@ def test_executed_artifact_and_provenance():
     )
 
 
-def test_checkout_change_invalidates_benchmark(monkeypatch):
+def test_checkout_change_invalidates_benchmark(monkeypatch) -> None:
     identities = iter([{"commit": "before"}, {"commit": "after"}])
     monkeypatch.setattr(b, "source_identity", lambda: next(identities))
     with pytest.raises(RuntimeError, match="checkout changed"):
@@ -201,7 +201,7 @@ def test_checkout_change_invalidates_benchmark(monkeypatch):
 )
 def test_benchmark_deadline_reaps_workers_with_positive_control(
     tmp_path, monkeypatch, phase
-):
+) -> None:
     import sys
     import time
     from pathlib import Path
@@ -266,7 +266,9 @@ def hang(*args, **kwargs):
 @pytest.mark.parametrize(
     "verdict", [None, ("Total", "Language lower bound"), ("Cap", "Linear")]
 )
-def test_custom_corpus_cannot_hide_an_unproved_scaling_failure(monkeypatch, verdict):
+def test_custom_corpus_cannot_hide_an_unproved_scaling_failure(
+    monkeypatch, verdict
+) -> None:
     from dataclasses import replace
     from types import SimpleNamespace
 

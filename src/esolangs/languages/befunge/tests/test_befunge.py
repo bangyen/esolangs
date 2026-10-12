@@ -232,7 +232,7 @@ def test_division_keeps_the_mutable_runtime_stack() -> None:
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_rejected_with_hint(
         "Befunge",
         "&@",
