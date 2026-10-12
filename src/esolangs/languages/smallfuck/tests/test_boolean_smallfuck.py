@@ -45,6 +45,14 @@ def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
     assert smallfuck("0110").endswith("<<<]>[*>>[*<*>]]")
     assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 20145
 
+    table = multiple_tables()[0]
+    template = esolangs.generate("Smallfuck", table)
+    assert len(template) <= 637
+    for row, expected in enumerate(table):
+        bits = [int(bit) for bit in format(row, "06b")]
+        program = esolangs.instantiate("Smallfuck", template, bits)
+        assert esolangs.run("Smallfuck", program, max_steps=10_000) == expected
+
 
 @pytest.mark.medium
 def test_fresh_setters_lower_the_public_floor() -> None:

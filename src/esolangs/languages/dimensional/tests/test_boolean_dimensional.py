@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import generate
+from esolangs import generate, run
 from esolangs.generation.wrap import (
     wrap_program,
 )
@@ -108,6 +108,15 @@ class TestDimensional:
         early = "1" + "0" * 15
         late = "0" * 15 + "1"
         assert len(boolean.dimensional(early)) < len(boolean.dimensional(late))
+
+        table = "0" * 9 + "1" + "0" * 6
+        program = generate("Dimensional", table)
+        assert len(program) <= 155
+        for row, expected in enumerate(table):
+            stdin = "\n".join(format(row, "04b"))
+            assert (
+                run("Dimensional", program, stdin=stdin, max_steps=10_000) == expected
+            )
 
     def test_scales_beyond_the_old_reference_cap(self) -> None:
         """The v3.0 interpreter's unbounded cells lift the old n <= 12 cap."""
