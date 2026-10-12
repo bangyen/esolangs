@@ -116,11 +116,9 @@ class TestParameterizedOneTwoThree:
             ConstructError,
             _separated,
             _verdict_junky,
-            _work,
         )
 
-        _work[0] = _WORK_BUDGET
-        builder = _separated(1).clone()
+        builder = _separated(1).clone([_WORK_BUDGET])
         # Nudge one row onto an even cell; the law itself never does.
         builder.live()[0].pos += 1
         assert any(r.pos % 2 == 0 for r in builder.live())
@@ -135,7 +133,6 @@ class TestParameterizedOneTwoThree:
             _Builder,
             _normalize,
             _Row,
-            _work,
         )
 
         rows = []
@@ -148,7 +145,9 @@ class TestParameterizedOneTwoThree:
         b.chunks = []
         b.seg = []
         b.rows = rows
-        _work[0] = 100_000  # _normalize is called outside construct() here
+        work = [100_000]
+        for row in rows:
+            row.work = work
         with pytest.raises(ConstructError, match="live-locked"):
             _normalize(b)
 
@@ -158,7 +157,6 @@ class TestParameterizedOneTwoThree:
             ConstructError,
             _Builder,
             _Row,
-            _work,
         )
 
         row = _Row((0,))
@@ -169,7 +167,7 @@ class TestParameterizedOneTwoThree:
         b.chunks = []
         b.seg = ["2"]
         b.rows = [row]
-        _work[0] = 10_000  # fixpoint is called outside construct() here
+        row.work[0] = 10_000  # fixpoint is called outside construct() here
         with pytest.raises(ConstructError, match="fixpoint cap"):
             b.fixpoint(row)
 
@@ -179,7 +177,6 @@ class TestParameterizedOneTwoThree:
             ConstructError,
             _Builder,
             _Row,
-            _work,
         )
 
         row = _Row((0,))
@@ -190,7 +187,7 @@ class TestParameterizedOneTwoThree:
         b.chunks = []
         b.seg = ["2"]  # pos 0 -> 1, leaves the tape: escapes, not a kill
         b.rows = [row]
-        _work[0] = 10_000  # test() is called outside construct() here
+        row.work[0] = 10_000  # test() is called outside construct() here
         with pytest.raises(ConstructError, match="kill escaped"):
             b.test(kills=frozenset({(0,)}))
 
@@ -200,7 +197,6 @@ class TestParameterizedOneTwoThree:
             ConstructError,
             _Builder,
             _Row,
-            _work,
         )
 
         row = _Row((0,))
@@ -211,7 +207,7 @@ class TestParameterizedOneTwoThree:
         b.chunks = []
         b.seg = ["2"]
         b.rows = [row]
-        _work[0] = 10_000  # test() is called outside construct() here
+        row.work[0] = 10_000  # test() is called outside construct() here
         with pytest.raises(ConstructError, match="kill missed"):
             b.test(kills=frozenset({(0,)}))
 
@@ -221,7 +217,6 @@ class TestParameterizedOneTwoThree:
             ConstructError,
             _Builder,
             _Row,
-            _work,
         )
 
         row = _Row((0,))
@@ -235,7 +230,7 @@ class TestParameterizedOneTwoThree:
         b.chunks = []
         b.seg = ["1"] * 8
         b.rows = [row]
-        _work[0] = 10_000  # test() is called outside construct() here
+        row.work[0] = 10_000  # test() is called outside construct() here
         with pytest.raises(ConstructError, match="unintended loop"):
             b.test()
 
@@ -270,20 +265,18 @@ class TestParameterizedOneTwoThree:
             _exec_char,
             _exec_run,
             _Row,
-            _work,
             _WorkExhaustedError,
         )
 
         def drained(budget: int, ch: str, pos: int, w: int) -> None:
             row = _Row((0,))
             row.pos = pos
-            _work[0] = budget
+            row.work[0] = budget
             _exec_run(row, ch, w)
 
         # The per-character fallback, reached directly.
-        _work[0] = 0
         with pytest.raises(_WorkExhaustedError):
-            _exec_char(_Row((0,)), "1")
+            _exec_char(_Row((0,), [0]), "1")
         # `2` from pos >= 0: a plain right-walk.
         with pytest.raises(_WorkExhaustedError):
             drained(3, "2", 0, 10)
@@ -305,16 +298,15 @@ class TestParameterizedOneTwoThree:
             _Builder,
             _endgame,
             _Row,
-            _work,
         )
 
-        _work[0] = _WORK_BUDGET
+        work = [_WORK_BUDGET]
         stranded = _Builder.__new__(_Builder)
         stranded.n = 1  # an allowance of 192 passes
         stranded.chunks, stranded.seg = [], []
         stranded.rows = []
         for i in range(12):
-            row = _Row((i,))
+            row = _Row((i,), work)
             row.pos, row.tape = i * 977, 0
             stranded.rows.append(row)
         with pytest.raises(ConstructError, match="endgame did not converge"):
@@ -340,11 +332,9 @@ class TestParameterizedOneTwoThree:
             ConstructError,
             _exec_char,
             _Row,
-            _work,
         )
 
-        _work[0] = _WORK_BUDGET
-        reads_stdin = _Row((0,))
+        reads_stdin = _Row((0,), [_WORK_BUDGET])
         reads_stdin.pos = -3
         with pytest.raises(ConstructError, match="reads stdin"):
             _exec_char(reads_stdin, "2")
@@ -395,3 +385,30 @@ def test_ignored_trailing_inputs_idle_past_the_end() -> None:
         bits = [row >> shift & 1 for shift in (3, 2, 1, 0)]
         code = fill_runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * 4, bits)
         assert one_two_three_result(code) == want, row
+
+
+def test_builds_own_their_work_budgets() -> None:
+    from esolangs.languages.one_two_three.generator.construction import (
+        _Builder,
+        _WorkExhaustedError,
+    )
+
+    first = _Builder(1, [1])
+    second = _Builder(1, [1])
+    first.apply_token(first.rows[0], "1")
+    assert second.rows[0].work == [1]
+    second.apply_token(second.rows[0], "1")
+    with pytest.raises(_WorkExhaustedError):
+        first.apply_token(first.rows[1], "1")
+    assert second.rows[0].work == [0]
+
+
+def test_cloning_a_prototype_keeps_its_budget_private() -> None:
+    from esolangs.languages.one_two_three.generator.construction import _Builder
+
+    prototype = _Builder(1, [2])
+    first = prototype.clone()
+    second = prototype.clone()
+    first.apply_token(first.rows[0], "1")
+    assert prototype.rows[0].work == [2]
+    assert second.rows[0].work == [2]

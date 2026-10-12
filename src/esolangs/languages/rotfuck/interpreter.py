@@ -25,6 +25,7 @@ text rewritten. Invalid rotation settings raise :class:`ValueError`.
 """
 
 from esolangs.exceptions import HaltError
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 
@@ -270,43 +271,8 @@ class _Machine:
 
 
 def run(code: str, io: IO, *, rotation: str = "backward") -> None:
-    """Run a ROTfuck program."""
-    cycle = CYCLES[validate_rotation(rotation)]
-    chars = tuple(code)
-    tape = bytearray(1)
-    ptr = 0
-    ind = 0
-    rot = 0
-    while ind < len(chars):
-        char = _at(chars, rot, ind, cycle)
-        if char == ">":
-            ptr += 1
-            if ptr == len(tape):
-                tape.append(0)
-        elif char == "<":
-            if not ptr:
-                # Grow left as ``_advance`` does, but by doubling, so a
-                # long leftward walk stays linear; the extra cells are zero
-                # and nothing here reads an absolute index.
-                ptr = len(tape)
-                tape[:0] = bytes(ptr)
-            ptr -= 1
-        elif char == "+":
-            tape[ptr] = (tape[ptr] + 1) % 256
-        elif char == "-":
-            tape[ptr] = (tape[ptr] - 1) % 256
-        elif char == ".":
-            io.print_char(chr(tape[ptr]))
-        elif char == ",":
-            tape[ptr] = io.input_char() % 256
-        elif (char == "[") == (tape[ptr] == 0) and char in "[]":
-            ind = _jump(chars, rot, ind, cycle)
-            rot += 1
-            continue
-
-        if char in _COMMANDS:
-            rot += 1
-        ind += 1
+    """Run a ROTfuck program through its pure transition."""
+    drive(_Machine(code, io, rotation=rotation))
 
 
 if __name__ == "__main__":

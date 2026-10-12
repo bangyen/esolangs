@@ -55,6 +55,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Final, Literal
 
 from esolangs.exceptions import HaltError
@@ -305,7 +306,7 @@ def _advance(
         pops, value = _pop(view, pops)
         # The map takes "integers/strings/functions to" the same, so a
         # function names a variable too (by its body, a hashable pair).
-        variables = {**variables, name: value}
+        variables = MappingProxyType({**variables, name: value})
     elif c == "D":
         pops, name = _pop(view, pops)
         # An unset name reads as itself: the wiki's "Using variables"
@@ -444,7 +445,7 @@ class _Machine:
                 "use uppercase Latin command letters A through Z",
             )
         self.stack: list[_Value] = []
-        self.vars: _Vars = {}
+        self.vars: _Vars = MappingProxyType({})
         self.io = io
         self._input_reads = 0
         self.frames: tuple[_Frame, ...] = (_frame(code),)

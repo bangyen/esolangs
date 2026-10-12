@@ -80,3 +80,19 @@ def test_oracle_controls(code, output) -> None:
     result = agrees(_Machine, oracle, code, "\x81", dump=True)
     assert result.output == output if output else isinstance(result, ValueError)
     assert not agrees(_Machine, oracle, "*[]", "", dump=True).halted
+
+
+def test_transition_preserves_its_state_and_reports_output() -> None:
+    from esolangs.languages.smallfuck.interpreter import _advance
+
+    machine = _Machine(">>*", ScriptedIO(""))
+    state = machine.state
+    first = _advance(state, machine.code, machine.brackets)
+    assert _advance(state, machine.code, machine.brackets) == first
+    assert machine.state == state
+    assert machine.io.getvalue() == ""
+    halted = (3, 2, (0, 0, 1), False)
+    assert _advance(halted, machine.code, machine.brackets) == (
+        (3, 2, (0, 0, 1), True),
+        "1",
+    )

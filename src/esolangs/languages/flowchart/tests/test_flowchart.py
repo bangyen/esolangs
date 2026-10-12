@@ -443,3 +443,99 @@ def test_a_fork_keeps_its_own_pointer_on_the_forward_exit() -> None:
     """The spec's forward-first rule names only ``< >`` as an exception."""
     machine = _Machine([" ┌─(( ))", "( )─(( ))"], ScriptedIO(""))
     assert [p.d for p in machine.pointers] == [(0, 1), (-1, 0)]
+
+
+class TestPureTransition:
+    """``_advance`` owns the pointers, deques and output; ``step`` is the shell."""
+
+    def test_advance_is_pure_and_repeatable(self) -> None:
+        from esolangs.languages.flowchart.interpreter import _advance
+
+        machine = _Machine(TRUTH_MACHINE, ScriptedIO("0"))
+        before = machine.snapshot()
+        run = machine.state
+        bits = (0,) * 64
+        first = _advance(run, machine.grid, machine.nodes, machine.width, bits)
+        second = _advance(run, machine.grid, machine.nodes, machine.width, bits)
+        # The run it was handed is untouched and nothing was written.
+        assert machine.snapshot() == before
+        assert machine.io.getvalue() == ""
+        # Same arguments, same result.
+        assert first == second
+        assert first[0] != run
+
+    def test_a_read_is_requested_rather_than_performed(self) -> None:
+        from esolangs.languages.flowchart.interpreter import _advance, _NeedBitError
+
+        machine = _Machine(TRUTH_MACHINE, ScriptedIO("0"))
+        with pytest.raises(_NeedBitError):
+            _advance(machine.state, machine.grid, machine.nodes, machine.width, ())
+        assert machine.io.getvalue() == ""
+        assert machine.io.position() == 0
+
+
+def _two_pointer_program() -> list[str]:
+    """A fork into an output chain and an input chain.
+
+    ``P_out`` walks ``[ ]`` then eight ``\\ \\`` nodes on the top row; the
+    eighth completes a byte on the same tick ``P_in``, on the second row,
+    must fetch its second input byte.  Because row 0 sorts before row 2,
+    the byte is written before the later pointer reads.
+    """
+    out = "\\ \\"
+    read = "/ /"
+    return [
+        f"( )─[ ]─{'─'.join([out] * 8)}─(( ))",
+        " │",
+        f" └─{'─'.join([read] * 9)}─(( ))",
+    ]
+
+
+class _LoggingIO(ScriptedIO):
+    """Record the order of character reads and writes, optionally faulting."""
+
+    def __init__(self, stdin: str, *, fail_at: int | None = None) -> None:
+        super().__init__(stdin)
+        self.events: list[tuple[str, int]] = []
+        self.read_calls = 0
+        self.fail_at = fail_at
+
+    def input_char(self, prompt: str = "Input: ") -> int:
+        self.read_calls += 1
+        if self.fail_at is not None and self.read_calls == self.fail_at:
+            raise RuntimeError("boom at read")
+        value = super().input_char(prompt)
+        self.events.append(("read", value))
+        return value
+
+    def print_char(self, char: str) -> None:
+        self.events.append(("print", ord(char)))
+        super().print_char(char)
+
+
+def _run_to_end(machine: _Machine) -> None:
+    for _ in range(40):
+        if machine.halted:
+            return
+        machine.step()
+
+
+def test_an_output_byte_is_written_before_a_later_pointer_reads() -> None:
+    """The event order matches the pointer order that produced it."""
+    io = _LoggingIO("1" * 11)
+    _run_to_end(_Machine(_two_pointer_program(), io))
+    assert io.events == [
+        ("read", ord("1")),
+        ("print", 0xFF),
+        ("read", ord("1")),
+    ]
+
+
+def test_a_byte_finished_before_a_faulting_read_is_not_swallowed() -> None:
+    """A later read's fault flushes the prefix an earlier pointer wrote."""
+    io = _LoggingIO("1" * 11, fail_at=2)
+    machine = _Machine(_two_pointer_program(), io)
+    with pytest.raises(RuntimeError, match="boom at read"):
+        _run_to_end(machine)
+    assert io.events == [("read", ord("1")), ("print", 0xFF)]
+    assert io.getvalue() == "\xff"

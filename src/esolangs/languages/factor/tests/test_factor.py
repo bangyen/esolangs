@@ -213,3 +213,14 @@ def test_factor_grows_the_tape_without_halting() -> None:
     assert run_until_halt_or_growth(Factor("2429007", ScriptedIO())) is False
     assert decode(19803) == "+[>]"
     assert run_until_halt_or_growth(Factor("19803", ScriptedIO())) is True
+
+
+def test_delegation_exposes_an_immutable_state() -> None:
+    from esolangs.languages.factor.interpreter import _Machine
+
+    machine = _Machine("5", ScriptedIO(""))
+    before = machine.state
+    machine.step()
+    assert isinstance(before, tuple)
+    assert before != machine.state
+    assert before == (0, 0, (0,), 0, False)

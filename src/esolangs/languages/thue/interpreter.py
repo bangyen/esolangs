@@ -318,6 +318,15 @@ def _starts(text: str, lhs: str, low: int, high: int) -> list[int]:
     return out
 
 
+def _advance_indexed(
+    rules: tuple[_Rule, ...], match: tuple[int, int, int], line: str | None = None
+) -> tuple[tuple[int, int, int, str], str | None]:
+    """Return a block rewrite effect and any output, without editing the text."""
+    rule, block, at = match
+    replacement, output = _rewrite(rules[rule][1], line)
+    return (rule, block, at, replacement), output
+
+
 class _Machine:
     """The run state: the rewritten string, against fixed rules."""
 
@@ -385,10 +394,12 @@ class _Machine:
         count = sum(self._text.totals)
         if not count:
             return
-        rule, block, index = self._text.select(draw(self._rng, count))
-        rhs = self.rules[rule][1]
-        replacement, out = _rewrite(rhs, self.io.input_str() if rhs == _INPUT else None)
-        self._text.replace(rule, block, index, replacement)
+        match = self._text.select(draw(self._rng, count))
+        rhs = self.rules[match[0]][1]
+        effect, out = _advance_indexed(
+            self.rules, match, self.io.input_str() if rhs == _INPUT else None
+        )
+        self._text.replace(*effect)
         if out is not None:
             self.io.print_str(out)
 

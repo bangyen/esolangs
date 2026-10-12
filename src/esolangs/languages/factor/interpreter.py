@@ -21,6 +21,7 @@ import re
 from esolangs.factor_primes import isprime64 as _isprime64
 from esolangs.factor_primes import prime_segments
 from esolangs.languages.brainfuck.interpreter import _Machine as _BFMachine
+from esolangs.languages.brainfuck.interpreter import _State as _BFState
 from esolangs.runtime._digits import digit_limit_for
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -29,7 +30,7 @@ from esolangs.runtime.io import IO
 _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
 
 #: Factor has no execution state beyond the Brainfuck machine it decodes to.
-type _State = _BFMachine
+type _State = _BFState
 
 
 #: Sieve batch size for :func:`_factorint`; not a ceiling.
@@ -150,12 +151,12 @@ class _Machine:
         self.io = io
         digits = re.sub(r"[^0-9]", "", code)
         number = _parse(digits) if digits else 1
-        self.state: _State = _BFMachine(decode(number), io)
+        self.bf = _BFMachine(decode(number), io)
 
     @property
-    def bf(self) -> _State:
-        """The delegated Brainfuck state."""
-        return self.state
+    def state(self) -> _State:
+        """The immutable state of the delegated Brainfuck transition."""
+        return self.bf.state
 
     @property
     def halted(self) -> bool:

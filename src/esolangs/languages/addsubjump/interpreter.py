@@ -21,7 +21,9 @@ included.
 """
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -340,7 +342,7 @@ def _program(code: str) -> list[int]:
 #: what ``halted`` and the allocation cap test) and can no longer be read
 #: off the container.  A ``dict`` is unhashable, so :meth:`_Machine.snapshot`
 #: is what freezes it for the cycle detector.
-type _Cells = tuple[dict[int, int], int]
+type _Cells = tuple[Mapping[int, int], int]
 type _State = tuple[_Cells, int, int, int, int, int, int]
 
 
@@ -349,7 +351,7 @@ def _pack(values: list[int]) -> _Cells:
 
     Zeros are dropped, as :func:`_store` does, so parsed and written zeros match.
     """
-    return ({i: v for i, v in enumerate(values) if v}, len(values))
+    return (MappingProxyType({i: v for i, v in enumerate(values) if v}), len(values))
 
 
 def _operands(state: _State) -> tuple[int, int, int, int]:
@@ -424,12 +426,13 @@ def _store(state: _State, addr: int, value: int) -> _State:
         return (state[0], ip, cf, zf, nf, vf, value) if addr == _FUM else state
     if addr >= length:
         length = addr + 1
-    new = dict(cells)
+    # dict(proxy) walks keys; proxy.copy() retains the dict's native copy.
+    new = cells.copy() if isinstance(cells, MappingProxyType) else dict(cells)
     if value:
         new[addr] = value
     else:
         new.pop(addr, None)
-    return ((new, length), ip, cf, zf, nf, vf, fum)
+    return ((MappingProxyType(new), length), ip, cf, zf, nf, vf, fum)
 
 
 def _advance(

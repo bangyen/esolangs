@@ -63,7 +63,6 @@ from esolangs.languages.one_two_three.generator.construction import (
     _paint,
     _table_val,
     _tested,
-    _work,
     _WorkExhaustedError,
     construct,
 )
@@ -119,14 +118,13 @@ def _separated(n: int, law: int = 0) -> _Builder:
     sweep turns into a test failure.
     """
     walks, disps = _LAWS[n][law]
-    _work[0] = _WORK_BUDGET
-    b = _Builder(n)
+    b = _Builder(n, [_WORK_BUDGET])
     for i, walk in enumerate(walks):
         if walk:
             b.run("2" * walk)
         b.fill(i)
     for d in range(4 * 2**n + 9):
-        probe = b.clone()
+        probe = b.clone(b.rows[0].work)
         if d:
             probe.run("2" * d)
         if any(r.pos < 0 for r in probe.live()):
@@ -190,9 +188,8 @@ def _construct_small(truth_table: str, n: int, law: int = 0) -> str:
     table through the real interpreter, the same contract as
     :func:`~esolangs.languages.one_two_three.generator.construction.construct`.
     """
-    _work[0] = _WORK_BUDGET
     try:
-        b = _separated(n, law).clone()
+        b = _separated(n, law).clone([_WORK_BUDGET])
         _verdict_junky(b, truth_table)
         _endgame(b)
     except (

@@ -27,9 +27,10 @@ The spec asks for a string without defining its delimiter; comma reads one
 line, excluding its newline, and pushes its Unicode code points.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from operator import add, mul, sub
+from types import MappingProxyType
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -83,7 +84,7 @@ class _Frame:
 #: scope the way completing it would, and only at the top level does it
 #: mean the run failed.  ``run`` reads it after the loop.
 type _Frames = tuple[_Frame, ...]
-type _State = tuple[tuple[int, ...], dict[int, str], _Frames, bool]
+type _State = tuple[tuple[int, ...], Mapping[int, str], _Frames, bool]
 
 
 def _top(stack: tuple[int, ...]) -> int:
@@ -215,7 +216,7 @@ def _advance(state: _State, line: str | None = None) -> _State:
             if _top(stack):
                 return (stack, table, (*frames, _Frame(scope, loop=char == "[")), error)
             return state
-        return (stack, {**table, _top(stack): scope}, frames, error)
+        return (stack, MappingProxyType({**table, _top(stack): scope}), frames, error)
     if char in "+-*/%v":
         if len(stack) < 2:
             return _abort(state)
@@ -244,7 +245,7 @@ class _Machine:
         """Start with the top-level ``code`` as the only frame."""
         self.io = io
         self.stack: tuple[int, ...] = ()
-        self.table: dict[int, str] = {}
+        self.table: Mapping[int, str] = MappingProxyType({})
         self.frames: tuple[_Frame, ...] = (_Frame(code),)
         self._input_reads = 0
         self.error = False  # the top-level scope aborted (status 3)

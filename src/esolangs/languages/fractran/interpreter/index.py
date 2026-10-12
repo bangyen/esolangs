@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import sys
 from bisect import bisect_left, bisect_right
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cache
 from itertools import pairwise
@@ -303,6 +304,17 @@ class _Minimum:
         return result
 
 
+type FactorWrites = tuple[tuple[int, int, int], ...]
+
+
+def factor_writes(value: Mapping[int, int], delta: Factors) -> FactorWrites:
+    """Return each changed prime's old and new exponent, without mutating value."""
+    return tuple(
+        (prime, value.get(prime, 0), value.get(prime, 0) + change)
+        for prime, change in delta
+    )
+
+
 class Cursor:
     """Maintain exact guard eligibility while changing only affected exponents."""
 
@@ -404,14 +416,17 @@ class Cursor:
         return (None, 0) if rule == self.absent else (rule, 1)
 
     def advance(self, rule: int) -> None:
-        """Update exponents and guards whose secondary thresholds were crossed."""
+        """Apply a rule through the pure exponent-write calculation."""
+        self.apply(rule, factor_writes(self.value, self.index.rules[rule][1]))
+
+    def apply(self, rule: int, writes: FactorWrites) -> None:
+        """Apply exponent writes and refresh affected guard indexes."""
         if rule >= self.cleanup_start:
             # Pure removal cannot enable an earlier failed guard. Once this
             # suffix fires, retain its priority with a forward scan alone.
             self.cleanup_position = rule
-            for prime, delta in self.index.rules[rule][1]:
+            for prime, _old, new in writes:
                 self.factor_updates += 1
-                new = self.value.get(prime, 0) + delta
                 if new:
                     self.value[prime] = new
                 else:
@@ -419,10 +434,8 @@ class Cursor:
             self.version += 1
             return
         dirty = set()
-        for prime, delta in self.index.rules[rule][1]:
+        for prime, old, new in writes:
             self.factor_updates += 1
-            old = self.value.get(prime, 0)
-            new = old + delta
             if new:
                 self.value[prime] = new
             else:

@@ -702,3 +702,79 @@ def test_output(circuit: list[str], stdin: str, expected: str) -> None:
 def test_rejected(circuit: list[str], stdin: str, match: str) -> None:
     with pytest.raises(ValueError, match=match):
         run(circuit, ScriptedIO(stdin))
+
+
+class TestPureTransition:
+    """``_generation`` is pure; the clock is an explicit tuple of values."""
+
+    def test_generation_is_pure_and_needs_no_wall_time(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from esolangs.languages.circuit_diagram.interpreter import _generation
+
+        def forbidden() -> int:
+            raise AssertionError("the transition read wall time")
+
+        monkeypatch.setattr(
+            "esolangs.languages.circuit_diagram.interpreter._seconds_since_2000",
+            forbidden,
+        )
+        machine = _Machine(["-.~.-:"], ScriptedIO("0\n"))
+        before = machine.snapshot()
+        state = (machine.values, machine.latches)
+        first = _generation(state, machine.gates, machine.index, machine.consumers, ())
+        second = _generation(state, machine.gates, machine.index, machine.consumers, ())
+        # The inputs are untouched, nothing was written, and same args agree.
+        assert machine.snapshot() == before
+        assert machine.io.getvalue() == ""
+        assert first == second
+        assert first[0] != state
+
+    def test_a_buffer_clock_serves_explicit_values_then_asks_for_more(self) -> None:
+        from esolangs.languages.circuit_diagram.interpreter._functions import (
+            _BufferedClock,
+            _ClockNeededError,
+        )
+
+        clock = _BufferedClock((7, 9))
+        assert clock.read() == 7
+        assert clock.read() == 9
+        assert clock.position == 2
+        with pytest.raises(_ClockNeededError):
+            clock.read()
+
+    def test_step_reads_the_clock_only_when_the_transition_asks(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        reads: list[int] = []
+
+        def counting() -> int:
+            reads.append(1)
+            return 5
+
+        monkeypatch.setattr(
+            "esolangs.languages.circuit_diagram.interpreter._seconds_since_2000",
+            counting,
+        )
+        code = ["{stamp", "-.~.-:", "t-32-:", "}", "-stamp-:"]
+        machine = _Machine(code, ScriptedIO("1\n"))
+        while not machine.halted:
+            machine.step()
+        # One requested read, advanced once; the shell did not sample extra.
+        assert len(reads) == 1
+        assert machine.snapshot()[3] == 1
+
+    def test_a_clockless_tick_never_reads_the_clock(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def forbidden() -> int:
+            raise AssertionError("a clockless tick read wall time")
+
+        monkeypatch.setattr(
+            "esolangs.languages.circuit_diagram.interpreter._seconds_since_2000",
+            forbidden,
+        )
+        machine = _Machine(["-.~.-:"], ScriptedIO("0\n"))
+        while not machine.halted:
+            machine.step()
+        assert machine.io.getvalue() == "1"

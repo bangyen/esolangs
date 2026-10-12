@@ -18,6 +18,7 @@ import functools
 import operator
 from dataclasses import dataclass
 
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
@@ -298,37 +299,7 @@ def run(
     io_modulus: int = DEFAULT_MODULI.io_modulus,
 ) -> None:
     """Run with separate cell and EXCRETE/PRONOUNCE moduli."""
-    moduli = MammalianModuli(cell_modulus, io_modulus)
-    tokens = _tokens(code)
-    arrays = [[0] for _ in range(23)]
-    ind = ptr = acc = 0
-    while ind < len(tokens):
-        n = _OPCODE[tokens[ind]]
-        curr = arrays[ptr]
-        if n == 0:
-            for num, arr in enumerate(arrays, 1):
-                if arr:
-                    arr[0] = (arr[0] + num) % moduli.cell_modulus
-        elif n == 1:
-            rebuilt = _total(
-                1, tuple(tuple(arr) for arr in arrays), moduli.cell_modulus
-            )
-            arrays = [list(arr) for arr in rebuilt]
-        elif n < 6:
-            updated, acc = _partial(n, tuple(curr), acc, moduli.io_modulus)
-            arrays[ptr] = list(updated)
-        elif n == 6 and acc < len(curr):
-            ptr = (ptr + curr[acc]) % 23
-        elif n == 7 and curr and curr[-1]:
-            target = acc - curr[0] - 1
-            if target < 0:
-                return
-            ind = target
-        elif n == 8:
-            arrays[0].append((io.input_char() ^ acc) % moduli.cell_modulus)
-        elif n == 9:
-            io.print_char(chr(acc % moduli.io_modulus))
-        ind += 1
+    drive(_Machine(code, io, cell_modulus=cell_modulus, io_modulus=io_modulus))
 
 
 if __name__ == "__main__":

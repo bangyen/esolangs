@@ -42,14 +42,22 @@ Judgment calls for what the page leaves open:
 - Roll and Roll-Context of depth 0 pop both operands and move nothing;
   Divide and Mod by zero are ignored; both floor.  An In at EOF is ignored,
   and In Integer consumes a token that is not an integer.
+
+The stack tree is one immutable nested value with an explicit path to the
+current stack, which preserves the page's aliasing (``Down`` makes a nested
+stack the current one, and both see the same value).  :func:`_advance` is the
+pure transition; :meth:`_Machine.step` is the shell that reads input, applies
+it, and writes the returned :data:`_Effect`.  When an ``in`` command needs a
+value the transition raises :class:`_NeedInputError`; the shell reads one (or
+records EOF) and retries, which is sound because the transition is pure.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import suppress
-from copy import deepcopy
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.raster import Raster
@@ -66,8 +74,18 @@ supports_scale = True
 
 Pixel = tuple[int, int, int]
 Point = tuple[int, int]
-#: An int or a nested stack (a list, bottom first); ``Any`` spares the casts.
-Element = Any
+#: An integer or a nested stack, held as an immutable tuple (bottom first).
+#: ``Any`` spares the casts around the recursive stack tree, as before.
+type Element = Any
+type _Stack = tuple[Element, ...]
+type _Rows = tuple[tuple[Pixel, ...], ...]
+#: current, dp, cc, the root stack, the path to the current stack, halted,
+#: the image, and the pixels ``Write`` has changed.
+type _Core = tuple[
+    Point, int, int, _Stack, tuple[int, ...], bool, _Rows, Mapping[Point, Pixel]
+]
+#: ``("out", values, number)``: print each value as a number or a character.
+type _Effect = tuple[str, tuple[int, ...], bool] | None
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -108,238 +126,388 @@ _BINARY: dict[str, Callable[[int, int], int | None]] = {
 }
 
 
+class _NeedInputError(Exception):
+    """The transition reached an ``in`` command and needs its value.
+
+    ``effects`` is the output the transition already produced (there is at
+    most one command per step, so it is normally ``None``); the shell
+    flushes it before reading.
+    """
+
+    def __init__(self, *, number: bool, effects: _Effect = None) -> None:
+        super().__init__(number)
+        self.number = number
+        self.effects = effects
+
+
+class _FaultError(Exception):
+    """A transition fault carrying the output produced before it."""
+
+    def __init__(self, cause: BaseException, effects: _Effect) -> None:
+        super().__init__(cause)
+        self.cause = cause
+        self.effects = effects
+
+
 def _colour(pixel: Pixel) -> Pixel:
     """Return a palette colour, treating any other pixel as white."""
     return pixel if all(channel in _LEVELS for channel in pixel) else WHITE
 
 
-def _ints(stack: list[Element], count: int) -> bool:
+def _ints(stack: _Stack, count: int) -> bool:
     return len(stack) >= count and all(type(v) is int for v in stack[-count:])
 
 
-def _freeze(value: Element) -> object:
-    return tuple(map(_freeze, value)) if isinstance(value, list) else value
+def _get(node: _Stack, path: tuple[int, ...]) -> _Stack:
+    """Return the stack ``path`` selects from the nested root."""
+    for index in path:
+        node = node[index]
+    return node
+
+
+def _set(node: _Stack, path: tuple[int, ...], value: _Stack) -> _Stack:
+    """Return ``node`` with the stack ``path`` selects replaced by ``value``."""
+    if not path:
+        return value
+    index = path[0]
+    return (
+        *node[:index],
+        _set(node[index], path[1:], value),
+        *node[index + 1 :],
+    )
+
+
+def _out_values(value: Element) -> tuple[int, ...]:
+    """Return the integers ``Out`` prints from ``value``, in print order."""
+    result: list[int] = []
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if type(item) is tuple:
+            pending.extend(item)  # top first: the top is popped next
+        else:
+            result.append(item)
+    return tuple(result)
+
+
+def _roll_context(root: _Stack, path: tuple[int, ...]) -> _Stack:
+    """Rotate the data of the linked stack levels, as the page's examples do."""
+    stack = _get(root, path)
+    depth, rolls = stack[-2], stack[-1]
+    if depth < 0:
+        return root
+    base = stack[:-2]
+    levels: list[_Stack] = [base]
+    while len(levels) < depth and levels[-1] and type(levels[-1][-1]) is tuple:
+        levels.append(levels[-1][-1])
+    if len(levels) < depth:
+        return _set(root, path, (*base, depth, rolls))
+    links = [
+        level[-1:] if level and type(level[-1]) is tuple else ()
+        for level in levels[:depth]
+    ]
+    data = [
+        level[: len(level) - len(link)]
+        for level, link in zip(levels, links, strict=False)
+    ]
+    rotated = [data[(i + rolls) % depth] + links[i] for i in range(len(levels))]
+    node = rotated[-1]
+    for index in range(len(rotated) - 2, -1, -1):
+        node = (*rotated[index][:-1], node)
+    return _set(root, path, node)
+
+
+def _written_rows(rows: _Rows, x: int, y: int, pixel: Pixel) -> _Rows:
+    row = (*rows[y][:x], pixel, *rows[y][x + 1 :])
+    return (*rows[:y], row, *rows[y + 1 :])
+
+
+def _command(
+    core: _Core,
+    name: str,
+    size: int,
+    value: str | int | None,
+    *,
+    ready: bool = False,
+) -> tuple[_Core, _Effect]:
+    """Run ``name`` on the current stack; return the next core and any output."""
+    current, dp, cc, root, path, halted, rows, writes = core
+    stack = _get(root, path)
+    effect: _Effect = None
+
+    def commit(new_stack: _Stack) -> None:
+        nonlocal root
+        root = _set(root, path, new_stack)
+
+    if name == "push_int":
+        commit((*stack, size))
+    elif name == "push_stack":
+        commit((*stack, ()))
+    elif name in {"pop", "dup", "size"} and stack:
+        if name == "pop":
+            commit(stack[:-1])
+        elif name == "dup":
+            commit((*stack, stack[-1]))
+        else:
+            top = stack[-1]
+            commit((*stack, -1 if type(top) is int else len(top)))
+    elif name == "roll" and _ints(stack, 2):
+        depth, rolls = stack[-2:]
+        if 0 <= depth <= len(stack) - 2:
+            base = stack[:-2]
+            rolls = rolls % depth if depth else 0
+            if rolls:
+                base = (*base[:-depth], *(base[-rolls:] + base[-depth:-rolls]))
+            commit(base)
+    elif name == "roll_context" and _ints(stack, 2):
+        root = _roll_context(root, path)
+    elif name == "push_up" and path and stack:
+        parent = _get(root, path[:-1])
+        moved = stack[-1]
+        root = _set(root, path[:-1], (*parent, moved))
+        commit(stack[:-1])
+    elif name == "push_down" and len(stack) > 1 and type(stack[-2]) is tuple:
+        commit((*stack[:-2], (*stack[-2], stack[-1])))
+    elif name == "pull_up" and stack and type(stack[-1]) is tuple and stack[-1]:
+        nested = stack[-1]
+        commit((*stack[:-1], nested[:-1], nested[-1]))
+    elif name == "up" and path:
+        path = path[:-1]
+    elif name == "down" and stack and type(stack[-1]) is tuple:
+        path = (*path, len(stack) - 1)
+    elif name == "add" and len(stack) > 1:
+        below, above = stack[-2:]
+        if type(below) is int and type(above) is int:
+            commit((*stack[:-2], below + above))
+        else:
+            low = (below,) if type(below) is int else below
+            high = (above,) if type(above) is int else above
+            commit((*stack[:-2], (*low, *high)))
+    elif name in _BINARY and _ints(stack, 2):
+        result = _BINARY[name](*stack[-2:])
+        if result is not None:
+            commit((*stack[:-2], result))
+    elif name in {"negate", "not"} and _ints(stack, 1):
+        commit(
+            (
+                *stack[:-1],
+                -stack[-1] if name == "negate" else int(stack[-1] == 0),
+            )
+        )
+    elif name in {"pointer", "toggle"} and _ints(stack, 1):
+        turns = stack[-1]
+        commit(stack[:-1])
+        if name == "pointer":
+            dp = (dp + turns) % 4
+        elif turns % 2:
+            cc *= -1
+    elif name == "depth":
+        commit((*stack, len(path)))
+    elif name in {"read", "write"}:
+        operands = 2 if name == "read" else 3
+        if _ints(stack, operands):
+            x = current[0] + stack[-2]
+            y = current[1] + stack[-1]
+            if 0 <= x < len(rows[0]) and 0 <= y < len(rows):
+                if name == "read":
+                    r, g, b = rows[y][x]
+                    commit((*stack[:-2], r << 16 | g << 8 | b))
+                elif 0 <= stack[-3] <= 0xFFFFFF:
+                    pixel = (
+                        stack[-3] >> 16,
+                        stack[-3] >> 8 & 0xFF,
+                        stack[-3] & 0xFF,
+                    )
+                    commit(stack[:-3])
+                    rows = _written_rows(rows, x, y, pixel)
+                    writes = MappingProxyType({**writes, (x, y): pixel})
+    elif name in {"out_integer", "out_character"} and stack:
+        effect = ("out", _out_values(stack[-1]), name == "out_integer")
+        commit(stack[:-1])
+    elif name in {"in_integer", "in_character"}:
+        if not ready:
+            raise _NeedInputError(number=name == "in_integer")
+        if value is not None:
+            if name == "in_integer":
+                if _INTEGER.fullmatch(str(value)):
+                    commit((*stack, parse_integer(str(value))))
+            else:
+                commit((*stack, int(value)))
+    return ((current, dp, cc, root, path, halted, rows, writes), effect)
+
+
+def _slide(core: _Core, start: Point) -> _Core:
+    current, dp, cc, root, path, halted, rows, writes = core
+    slid = slide(rows, start, dp, cc, _colour)
+    if slid is None:
+        return (current, dp, cc, root, path, True, rows, writes)
+    target, dp, cc = slid
+    return (target, dp, cc, root, path, halted, rows, writes)
+
+
+def _advance(
+    core: _Core,
+    value: str | int | None = None,
+    *,
+    ready: bool = False,
+) -> tuple[_Core, _Effect]:
+    """Return the next core and any output effect for one Piet++ step.
+
+    Pure.  ``value`` is the shell's input for an ``in`` command; ``ready``
+    says whether it has been supplied (``value is None`` then means EOF).
+    An input request carries no prefix (one command per step); any other
+    fault is wrapped in :class:`_FaultError` so the shell can flush and re-raise.
+    """
+    try:
+        return _advance_core(core, value, ready=ready)
+    except _NeedInputError:
+        raise
+    except Exception as error:
+        raise _FaultError(error, None) from error
+
+
+def _advance_core(
+    core: _Core,
+    value: str | int | None,
+    *,
+    ready: bool,
+) -> tuple[_Core, _Effect]:
+    """Run the pure traversal and command dispatch behind :func:`_advance`."""
+    current, dp, cc, root, path, halted, rows, writes = core
+    if halted:
+        return core, None
+    colour = _colour(rows[current[1]][current[0]])
+    if colour == BLACK:
+        return (current, dp, cc, root, path, True, rows, writes), None
+    if colour == WHITE:
+        return _slide(core, current), None
+    block = find_block(rows, current, _colour)
+    for attempt in range(8):
+        x, y = leave(block, dp, cc)
+        dx, dy = DIRECTIONS[dp]
+        target = x + dx, y + dy
+        tx, ty = target
+        if 0 <= tx < len(rows[0]) and 0 <= ty < len(rows):
+            seen = _colour(rows[ty][tx])
+            if seen == WHITE:
+                return _slide(core, target), None
+            if seen != BLACK:
+                (r, g, b), (r0, g0, b0) = seen, colour
+                change = (
+                    (r // 85 - r0 // 85) % 4,
+                    (g // 85 - g0 // 85) % 2,
+                    (b // 85 - b0 // 85) % 4,
+                )
+                moved = (target, dp, cc, root, path, halted, rows, writes)
+                return _command(
+                    moved, _COMMANDS[change], len(block), value, ready=ready
+                )
+        if attempt % 2 == 0:
+            cc *= -1
+        else:
+            dp = (dp + 1) % 4
+    return (current, dp, cc, root, path, True, rows, writes), None
 
 
 class _Machine:
-    """A Piet++ run: a mutable image, the stack tree, and the pointer chain."""
+    """Piet++ shell: one immutable :data:`_Core`, rebound per step."""
 
     ip_shape = "grid"
 
     def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
         rows = program._normalized(scale)  # noqa: SLF001
-        self.rows = [list(row) for row in rows]
+        self.rows: _Rows = tuple(tuple(row) for row in rows)
         self._program_key = (
             len(rows[0]),
             bytes(channel for row in rows for pixel in row for channel in pixel),
         )
         self.io = io
-        self.current: Point = (0, 0)
-        self.dp, self.cc = 0, -1
-        # chain[-1] is the current stack; each is the top element of the last.
-        self.chain: list[list[Element]] = [[]]
-        self.halted = _colour(self.rows[0][0]) == BLACK
-        self._writes: dict[Point, Pixel] = {}
+        self.state: _Core = (
+            (0, 0),
+            0,
+            -1,
+            (),
+            (),
+            _colour(rows[0][0]) == BLACK,
+            self.rows,
+            MappingProxyType({}),
+        )
         self._input_reads = 0
 
     @property
     def stack(self) -> list[Element]:
-        return self.chain[-1]
+        return list(_get(self.state[3], self.state[4]))
 
     @property
     def ip(self) -> tuple[int, ...] | None:
-        x, y = self.current
-        return None if self.halted else (y, x, self.dp, self.cc)
+        x, y = self.state[0]
+        return None if self.halted else (y, x, self.state[1], self.state[2])
+
+    @property
+    def halted(self) -> bool:
+        return self.state[5]
 
     def snapshot(self) -> tuple[object, ...]:
-        path = tuple(
-            next(i for i, item in enumerate(parent) if item is child)
-            for parent, child in zip(self.chain, self.chain[1:], strict=False)
-        )
+        current, dp, cc, root, path, halted, _rows, writes = self.state
         return (
-            self.current,
-            self.dp,
-            self.cc,
-            _freeze(self.chain[0]),
+            current,
+            dp,
+            cc,
+            root,
             path,
-            frozenset(self._writes.items()),
+            frozenset(writes.items()),
             self.io.progress(),
-            self.halted,
+            halted,
             self._program_key,
             self._input_reads,
         )
 
-    def step(self) -> None:
-        if self.halted:
+    def _write_effect(self, effect: _Effect) -> None:
+        """Write one output effect exactly once."""
+        if effect is None:
             return
-        colour = _colour(self.rows[self.current[1]][self.current[0]])
-        if colour == BLACK:
-            self.halted = True
-            return
-        if colour == WHITE:
-            self._slide(self.current)
-            return
-        block = find_block(self.rows, self.current, _colour)
-        for attempt in range(8):
-            x, y = leave(block, self.dp, self.cc)
-            dx, dy = DIRECTIONS[self.dp]
-            target = x + dx, y + dy
-            tx, ty = target
-            if 0 <= tx < len(self.rows[0]) and 0 <= ty < len(self.rows):
-                seen = _colour(self.rows[ty][tx])
-                if seen == WHITE:
-                    self._slide(target)
-                    return
-                if seen != BLACK:
-                    self.current = target
-                    (r, g, b), (r0, g0, b0) = seen, colour
-                    change = (
-                        (r // 85 - r0 // 85) % 4,
-                        (g // 85 - g0 // 85) % 2,
-                        (b // 85 - b0 // 85) % 4,
-                    )
-                    self._command(_COMMANDS[change], len(block))
-                    return
-            if attempt % 2 == 0:
-                self.cc *= -1
-            else:
-                self.dp = (self.dp + 1) % 4
-        self.halted = True
-
-    def _slide(self, start: Point) -> None:
-        slid = slide(self.rows, start, self.dp, self.cc, _colour)
-        if slid is None:
-            self.halted = True
-        else:
-            self.current, self.dp, self.cc = slid
-
-    def _command(self, name: str, size: int) -> None:
-        stack = self.stack
-        if name == "push_int":
-            stack.append(size)
-        elif name == "push_stack":
-            stack.append([])
-        elif name in {"pop", "dup", "size"} and stack:
-            if name == "pop":
-                stack.pop()
-            elif name == "dup":
-                stack.append(deepcopy(stack[-1]))
-            else:
-                top = stack[-1]
-                stack.append(-1 if type(top) is int else len(top))
-        elif name == "roll" and _ints(stack, 2):
-            depth, rolls = stack[-2:]
-            if 0 <= depth <= len(stack) - 2:
-                del stack[-2:]
-                rolls = rolls % depth if depth else 0
-                if rolls:
-                    stack[-depth:] = stack[-rolls:] + stack[-depth:-rolls]
-        elif name == "roll_context" and _ints(stack, 2):
-            self._roll_context()
-        elif name == "push_up" and len(self.chain) > 1 and stack:
-            self.chain[-2].append(stack.pop())
-        elif name == "push_down" and len(stack) > 1 and type(stack[-2]) is list:
-            stack[-2].append(stack.pop())
-        elif name == "pull_up" and stack and type(stack[-1]) is list and stack[-1]:
-            stack.append(stack[-1].pop())
-        elif name == "up" and len(self.chain) > 1:
-            self.chain.pop()
-        elif name == "down" and stack and type(stack[-1]) is list:
-            self.chain.append(stack[-1])
-        elif name == "add" and len(stack) > 1:
-            below, above = stack[-2:]
-            del stack[-2:]
-            if type(below) is int and type(above) is int:
-                stack.append(below + above)
-            else:
-                # Keep stack order: ``below`` ends under ``above``.
-                low = [below] if type(below) is int else below
-                high = [above] if type(above) is int else above
-                stack.append([*low, *high])
-        elif name in _BINARY and _ints(stack, 2):
-            result = _BINARY[name](*stack[-2:])
-            if result is not None:
-                stack[-2:] = [result]
-        elif name in {"negate", "not"} and _ints(stack, 1):
-            stack[-1] = -stack[-1] if name == "negate" else int(stack[-1] == 0)
-        elif name in {"pointer", "toggle"} and _ints(stack, 1):
-            turns = stack.pop()
-            if name == "pointer":
-                self.dp = (self.dp + turns) % 4
-            elif turns % 2:
-                self.cc *= -1
-        elif name == "depth":
-            stack.append(len(self.chain) - 1)
-        elif name in {"read", "write"}:
-            self._bitmap(name)
-        elif name in {"out_integer", "out_character"} and stack:
-            self._out(stack.pop(), number=name == "out_integer")
-        elif name in {"in_integer", "in_character"}:
-            self._in(number=name == "in_integer")
-
-    def _roll_context(self) -> None:
-        stack = self.stack
-        depth, rolls = stack[-2:]
-        if depth < 0:
-            return
-        del stack[-2:]
-        levels = [stack]
-        while len(levels) < depth and levels[-1] and type(levels[-1][-1]) is list:
-            levels.append(levels[-1][-1])
-        if len(levels) < depth:
-            stack.extend((depth, rolls))
-            return
-        # A level's top stack is its link down and stays; the rest is data.
-        links = [
-            level[-1:] if level and type(level[-1]) is list else []
-            for level in levels[:depth]
-        ]
-        data = [
-            level[: len(level) - len(link)]
-            for level, link in zip(levels, links, strict=False)
-        ]
-        for i, (level, link) in enumerate(zip(levels, links, strict=False)):
-            level[:] = data[(i + rolls) % depth] + link
-
-    def _bitmap(self, name: str) -> None:
-        stack = self.stack
-        operands = 2 if name == "read" else 3
-        if not _ints(stack, operands):
-            return
-        x, y = self.current[0] + stack[-2], self.current[1] + stack[-1]
-        if not (0 <= x < len(self.rows[0]) and 0 <= y < len(self.rows)):
-            return
-        if name == "read":
-            r, g, b = self.rows[y][x]
-            stack[-2:] = [r << 16 | g << 8 | b]
-        elif 0 <= stack[-3] <= 0xFFFFFF:
-            value = stack[-3]
-            del stack[-3:]
-            pixel = (value >> 16, value >> 8 & 0xFF, value & 0xFF)
-            self.rows[y][x] = self._writes[(x, y)] = pixel
-
-    def _out(self, value: Element, *, number: bool) -> None:
-        pending = [value]
-        while pending:
-            item = pending.pop()
-            if type(item) is list:
-                pending.extend(item)  # top first: the top is popped next
-            elif number:
+        _kind, values, number = effect
+        for item in values:
+            if number:
                 self.io.print_num(item)
             else:
                 with suppress(ValueError, OverflowError):
                     self.io.print_char(chr(item))
 
-    def _in(self, *, number: bool) -> None:
-        try:
-            read = self.io.input_token() if number else chr(self.io.input_char())
-        except EOFError:
+    def step(self) -> None:
+        """Execute one step, reading input and writing output as the shell.
+
+        An input request carries no output prefix (one command per step),
+        so nothing is deferred; a fault is re-raised after flushing any
+        prefix it carried.
+        """
+        if self.halted:
             return
-        self._input_reads += 1
-        if not number:
-            self.stack.append(ord(read))
-        elif _INTEGER.fullmatch(read):
-            self.stack.append(parse_integer(read))
+        value: str | int | None = None
+        ready = False
+        number = False
+        while True:
+            try:
+                core, effect = _advance(self.state, value, ready=ready)
+            except _NeedInputError as need:
+                self._write_effect(need.effects)
+                number = need.number
+                read_ok = True
+                try:
+                    value = self.io.input_token() if number else self.io.input_char()
+                except EOFError:
+                    value = None
+                    read_ok = False
+                ready = True
+                if read_ok:
+                    self._input_reads += 1
+            except _FaultError as fault:
+                self._write_effect(fault.effects)
+                raise fault.cause from None
+            else:
+                self.state = core
+                self._write_effect(effect)
+                return
 
 
 def run(program: Raster, io: IO, *, scale: int | None = None) -> None:

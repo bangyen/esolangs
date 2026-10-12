@@ -17,6 +17,7 @@ I/O and the malformed-line rejection are the shell's.
 
 from __future__ import annotations
 
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
@@ -235,46 +236,8 @@ class _Machine:
 
 
 def run(code: list[str], io: IO) -> None:
-    """Run a BrainIf program."""
-    parsed: dict[int, _Line] = {}
-    cells = [0]
-    ptr = 0
-    ind = 0
-    size = len(code)
-    while ind < size:
-        if ind not in parsed:
-            parsed[ind] = _parse(code[ind])
-        line = parsed[ind]
-        if line is None:
-            ind += 1
-            continue
-
-        value, command, target = line
-        if cells[ptr] != value:
-            ind += 1
-            continue
-        if command in ("increment", "inc"):
-            cells[ptr] = (cells[ptr] + 1) % 256
-        elif command == "right":
-            ptr += 1
-            if ptr == len(cells):
-                cells.append(0)
-        elif command == "left":
-            if not ptr:
-                # Grow left as ``_advance`` does, but by doubling, so a
-                # long leftward walk stays linear; the extra cells are zero
-                # and nothing here reads an absolute index.
-                ptr = len(cells)
-                cells[:0] = [0] * ptr
-            ptr -= 1
-        elif command == "goto":
-            ind = target - 1
-            continue
-        elif command == "input":
-            cells[ptr] = io.input_char() % 256
-        elif command == "output":
-            io.print_char(chr(value))
-        ind += 1
+    """Run a BrainIf program through its pure transition."""
+    drive(_Machine(code, io))
 
 
 if __name__ == "__main__":

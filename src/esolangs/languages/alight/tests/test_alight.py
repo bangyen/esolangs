@@ -644,3 +644,88 @@ def test_a_list_without_a_placeholder_is_left_unchanged() -> None:
     """The no-match return for a node that is not a call."""
     expr = ("list", [("num", 1)])
     assert _replace_first(expr, ("val", 2)) == (expr, False)
+
+
+class TestPureTransition:
+    """``_advance`` is the semantics; the machine is only its shell."""
+
+    def test_advance_leaves_its_input_and_makes_no_effects(self) -> None:
+        from esolangs.languages.alight.interpreter import _advance
+        from esolangs.languages.alight.interpreter._state import _freeze
+
+        machine = _Machine(["begin;var l;set l 1;end;"], ScriptedIO())
+        before = machine.snapshot()
+        core = machine.core
+        first_core, first_output = _advance(core)
+        second_core, second_output = _advance(core)
+        # The inputs are untouched and neither call wrote anything.
+        assert machine.snapshot() == before
+        assert machine.io.getvalue() == ""
+        assert first_output is None
+        assert second_output is None
+        # Same arguments, same result.
+        first = _freeze(tuple(w.key() for w in first_core.walkers))
+        second = _freeze(tuple(w.key() for w in second_core.walkers))
+        assert first == second
+        assert first != _freeze(tuple(w.key() for w in core.walkers))
+
+    def test_advance_returns_output_as_an_effect_not_a_write(self) -> None:
+        from esolangs.languages.alight.interpreter import _advance
+
+        machine = _Machine(
+            ["begin;var l;set l 65;out l;end;"],
+            ScriptedIO(),
+        )
+        before = machine.snapshot()
+        core = machine.core
+        output = None
+        for _ in range(10):
+            core, output = _advance(core)
+            if output is not None:
+                break
+        assert output == ord("A")
+        assert machine.io.getvalue() == ""
+        assert machine.snapshot() == before
+
+    def test_an_in_place_list_write_does_not_edit_the_state_handed_in(self) -> None:
+        from esolangs.languages.alight.interpreter import _advance
+        from esolangs.languages.alight.interpreter._state import _freeze
+
+        machine = _Machine(
+            ['begin;var l;var m;set l "A";set m l;at{l,0.5,66};end;'],
+            ScriptedIO(),
+        )
+        original = machine.core
+        frozen = _freeze(tuple(w.key() for w in original.walkers))
+        core = original
+        for _ in range(50):
+            core, _output = _advance(core)
+            if core.halted:
+                break
+        # The in-place ``at`` replaced the list everywhere it was aliased
+        # without ever editing the state the first call was handed.
+        assert _freeze(tuple(w.key() for w in original.walkers)) == frozen
+
+    def test_the_shell_writes_before_a_later_read(self) -> None:
+        """An ``out`` effect is applied before a later ``inp`` reads."""
+        from esolangs.runtime.io import ScriptedIO as _ScriptedIO
+
+        class LoggingIO(_ScriptedIO):
+            def __init__(self, stdin: str) -> None:
+                super().__init__(stdin)
+                self.events: list[tuple[str, int]] = []
+
+            def input_char(self, prompt: str = "Input: ") -> int:
+                value = super().input_char(prompt)
+                self.events.append(("read", value))
+                return value
+
+            def print_char(self, char: str) -> None:
+                self.events.append(("print", ord(char)))
+                super().print_char(char)
+
+        io = LoggingIO("B")
+        machine = _Machine(["begin;var c;set c 65;out c;inp c;end;"], io)
+        while not machine.halted:
+            machine.step()
+        assert io.events == [("print", 65), ("read", ord("B"))]

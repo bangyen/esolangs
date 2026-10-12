@@ -19,7 +19,6 @@ class TestSeparationLaws:
             _endgame,
             _on_mark,
             _verdict_junky,
-            _work,
         )
 
         def prototype(n: int, walk: int, disps: tuple[int, ...]) -> object:
@@ -31,15 +30,14 @@ class TestSeparationLaws:
             # helper would check the generator against itself and a bug
             # in the replay would pass here, so the copy stays and the
             # similarity check is told so rather than left to fail in CI.
-            _work[0] = _WORK_BUDGET
             try:
-                b = _Builder(n)
+                b = _Builder(n, [_WORK_BUDGET])
                 for i in range(n):
                     if walk:
                         b.run("2" * walk)
                     b.fill(i)
                 for d in range(4 * 2**n + 9):
-                    probe = b.clone()
+                    probe = b.clone(b.rows[0].work)
                     if d:
                         probe.run("2" * d)
                     if any(r.pos < 0 for r in probe.live()):
@@ -65,8 +63,7 @@ class TestSeparationLaws:
             total = 0
             tables = ["".join(t) for t in product("01", repeat=2**n)]
             for table in tables:
-                _work[0] = _WORK_BUDGET
-                b = proto.clone()  # type: ignore[attr-defined]
+                b = proto.clone([_WORK_BUDGET])  # type: ignore[attr-defined]
                 try:
                     _verdict_junky(b, table)
                     _endgame(b)

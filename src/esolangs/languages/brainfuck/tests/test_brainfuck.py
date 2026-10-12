@@ -131,3 +131,24 @@ def test_cursorless_input_cannot_prove_cycle_or_growth(
     assert machine.halted
     assert io.getvalue() == output
     assert io.reads == 5
+
+
+def test_compiled_transition_preserves_borrowed_tape_and_reports_effects() -> None:
+    from esolangs.languages.brainfuck.interpreter import _advance_compiled, _compile
+
+    tape = bytearray([3])
+    state = (0, 0)
+    ops = _compile("[>++<-]")
+    first = _advance_compiled(state, ops, tape)
+    assert _advance_compiled(state, ops, tape) == first
+    assert state == (0, 0)
+    assert tape == bytearray([3])
+    assert first == ((1, 0), (0, 1, ((1, 6), (0, 0))), None, False)
+    ops = _compile(",")
+    assert _advance_compiled(state, ops, tape)[3]
+    assert _advance_compiled(state, ops, tape, 65) == (
+        (1, 0),
+        (0, 0, ((0, 65),)),
+        None,
+        False,
+    )

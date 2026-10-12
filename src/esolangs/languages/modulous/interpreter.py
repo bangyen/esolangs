@@ -41,6 +41,7 @@ spec does not define their text framing.
 import re
 from collections.abc import Callable, Mapping
 from difflib import get_close_matches
+from types import MappingProxyType
 from typing import Never, cast
 
 from esolangs.exceptions import HaltError
@@ -96,8 +97,9 @@ def _parse_tokens(code: str) -> tuple[str, ...]:
 #:
 #: The tokens stay out: Modulous parses its program once and never
 #: rewrites it, so a handler is handed the token it is running rather than
-#: carrying the list.
-type _Core = tuple[tuple[int, ...], dict[str, int], int]
+#: carrying the list.  ``var`` is a read-only mapping: a store returns a
+#: fresh proxy, so a retained state never changes under a later step.
+type _Core = tuple[tuple[int, ...], Mapping[str, int], int]
 
 #: Every value a Modulous step can change: the handler's stack, variables,
 #: and cursor, plus whether ``END`` has stopped the run.  Tokens are parsed
@@ -127,16 +129,16 @@ def _freeze(state: _State) -> _BranchState:
 
 
 def _thaw(state: _BranchState) -> _State:
-    """Invert :func:`_freeze` so a handler sees the map it expects."""
+    """Invert :func:`_freeze` so a handler sees the read-only map it expects."""
     (stk, var, ind), halted = state
-    return ((stk, dict(var), ind), halted)
+    return ((stk, MappingProxyType(dict(var)), ind), halted)
 
 
 class _Machine:
     """Stack, variables, and instruction pointer for a Modulous run."""
 
     stk: tuple[int, ...]
-    var: dict[str, int]
+    var: Mapping[str, int]
     ind: int
     io: IO
     tokens: tuple[str, ...]
@@ -148,7 +150,9 @@ class _Machine:
     def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
         """Build a state for ``code`` with its variables and parsed tokens."""
         self.stk = ()
-        self.var = {f"VAR{k}": 0 for k in range(1, 5)}
+        self.var: Mapping[str, int] = MappingProxyType(
+            {f"VAR{k}": 0 for k in range(1, 5)}
+        )
         self.ind = 0
         self.io = io
         self.tokens = _parse_tokens(code)
@@ -208,9 +212,9 @@ class _Machine:
     ) -> tuple[_BranchState, ...] | None:
         """Return the state for every value ``RND`` could draw.
 
-        Mirrors :meth:`step`, whose cursor advances *before* the handler
-        runs, so a successor that dispatched on the un-advanced core would
-        re-run the same token forever.
+        Uses the same :func:`_advance` transition as :meth:`step`, so a
+        successor that dispatched on the un-advanced core cannot re-run the
+        same token forever.
 
         ``RND n`` takes its range from the program text rather than from a
         fixed coin, so one token can ask for arbitrarily many outcomes;
@@ -224,11 +228,8 @@ class _Machine:
             ind %= len(self.tokens)
         mod = self.tokens[ind]
         arg = mod.split()
-        advanced: _Core = (stk, var, ind + 1)
         if not arg:
-            return (_freeze((advanced, halted)),)
-
-        handler = _handler(mod, arg)
+            return (_freeze(_advance(((stk, var, ind), halted), mod)),)
 
         if arg[0] == "PRT":
             n = _print_value(stk, var, mod, arg)
@@ -256,9 +257,8 @@ class _Machine:
                     )
                 values = tuple(range(n))
 
-        done = halted or arg[0] == "END"
         return tuple(
-            _freeze((handler(advanced, mod, arg, value), done)) for value in values
+            _freeze(_advance(((stk, var, ind), halted), mod, value)) for value in values
         )
 
     @property
@@ -275,10 +275,9 @@ class _Machine:
     def step(self) -> None:
         """Execute one ``[OP arg]`` token, advancing the pointer.
 
-        The three effectful commands are answered here rather than by their
-        handlers: ``PRT`` prints the value the handler then consumes,
-        ``INP`` takes a line, and ``RND`` draws.  Everything else is a pure
-        map from one core to the next.
+        The shell answers the three effectful commands -- ``PRT`` prints the
+        value the handler then consumes, ``INP`` takes a line, and ``RND``
+        draws -- then applies the pure :func:`_advance` transition.
         """
         if self.halted:
             return
@@ -287,32 +286,25 @@ class _Machine:
             # A backwards jump past the start wraps to the end: Python's own
             # negative indexing did that for a jump of at most one program
             # length (``[JMP B 1][END]`` lands on END) and raised IndexError
-            # beyond it.
-            # The wrap is total here, so the same mistake cannot leak a
-            # Python error for the sake of its size.
+            # beyond it.  The wrap is total here, so the same mistake cannot
+            # leak a Python error for the sake of its size.
             ind %= len(self.tokens)
-            self._restore(((stk, var, ind), halted))
         mod = self.tokens[ind]
         arg = mod.split()
-        self._restore(((stk, var, ind + 1), halted))
-        if not arg:
-            return
-
-        handler = _handler(mod, arg)
 
         value: str | int | None = None
-        if arg[0] == "PRT":
-            self._print(mod, arg)
-        elif arg[0] == "INP":
-            value = self.io.input_token() if "INT" in mod else self.io.input_str()
-            self._input_reads += 1
-        elif arg[0] == "RND":
-            n = int(_operand(arg, 1))
-            if n >= 1:
-                value = draw(self.rng, n)
-                self._draws += 1
-        core, halted = self._state
-        self._restore((handler(core, mod, arg, value), halted or arg[0] == "END"))
+        if arg:
+            if arg[0] == "PRT":
+                self._print(mod, arg)
+            elif arg[0] == "INP":
+                value = self.io.input_token() if "INT" in mod else self.io.input_str()
+                self._input_reads += 1
+            elif arg[0] == "RND":
+                n = int(_operand(arg, 1))
+                if n >= 1:
+                    value = draw(self.rng, n)
+                    self._draws += 1
+        self._restore(_advance(((stk, var, ind), halted), mod, value))
 
     def _print(self, mod: str, arg: list[str]) -> None:
         """Write what ``PRT`` names: a variable, or the top of the stack."""
@@ -349,6 +341,23 @@ def _reject_unknown(mod: str, command: str) -> Never:
         f"is the only other thing a command can be{hint}",
         "use a listed command keyword, with spaces before its operands",
     )
+
+
+def _advance(state: _State, mod: str, value: str | int | None = None) -> _State:
+    """Return the state after running token ``mod`` with its cursor advanced.
+
+    Pure: ``value`` is what the shell read (``INP``) or drew (``RND``); the
+    handler receives the already-advanced core, so a jump lands relative to
+    the token after the jump.  ``END`` sets the halt flag, and an empty
+    token only advances.
+    """
+    (stk, var, ind), halted = state
+    arg = mod.split()
+    advanced: _Core = (stk, var, ind + 1)
+    if not arg:
+        return (advanced, halted)
+    core = _handler(mod, arg)(advanced, mod, arg, value)
+    return (core, halted or arg[0] == "END")
 
 
 def _print_value(
@@ -459,7 +468,7 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
         # into a phantom ``VAR`` and silently do nothing to ``VAR1``.
         name = _operand(arg, 1)
         _named(var, name)
-        return (stk, {**var, name: _top(stk)}, ind)
+        return (stk, MappingProxyType({**var, name: _top(stk)}), ind)
     raise ValueError(f"invalid PSH operand {kind!r}")
 
 
@@ -540,11 +549,11 @@ def _var_arith(
     stk, var, ind = core
     if "+" in mod and ("-" not in mod or mod.index("+") < mod.index("-")):
         lhs, rhs = mod.split("+", 1)
-        return (stk, {**var, lhs: _named(var, lhs) + int(rhs)}, ind)
+        return (stk, MappingProxyType({**var, lhs: _named(var, lhs) + int(rhs)}), ind)
     # The caller only routes a token here when it holds a ``+`` or a ``-``,
     # so the one that is not a ``+`` is a ``-``.
     lhs, rhs = mod.split("-", 1)
-    return (stk, {**var, lhs: _named(var, lhs) - int(rhs)}, ind)
+    return (stk, MappingProxyType({**var, lhs: _named(var, lhs) - int(rhs)}), ind)
 
 
 _DISPATCH: dict[str, _Handler] = {

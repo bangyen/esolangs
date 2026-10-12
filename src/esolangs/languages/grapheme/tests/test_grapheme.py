@@ -299,3 +299,18 @@ def test_grapheme_changing_stack_halts() -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Grapheme", "abc", "uppercase Latin")
+
+
+def test_variable_transition_keeps_old_maps_immutable() -> None:
+    from esolangs.languages.grapheme.interpreter import _advance
+
+    machine = Grapheme("C", ScriptedIO(""))
+    before = (machine.vars, machine.frames)
+    moved, effects, output = _advance(before, (7, "name"))
+    assert before[0] == {}
+    assert moved[0] == {"name": 7}
+    assert effects == (2, (), False)
+    assert output is None
+    with pytest.raises(TypeError):
+        moved[0]["name"] = 8  # type: ignore[index]
+    assert _advance(before, (7, "name")) == (moved, effects, output)
