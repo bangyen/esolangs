@@ -5,11 +5,13 @@ from __future__ import annotations
 import random
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
+from esolangs import encode_inputs
 from esolangs.languages.container.generator import _container_threshold
 from esolangs.languages.container.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
@@ -32,11 +34,17 @@ def parse(program: str) -> tuple[int, list[int], list[tuple[int, int]]]:
     print_at = lines.index("PRINT:")
     count_at = max(i for i in range(out_at) if lines[i].endswith(":"))
     base = int(lines[out_at][len("OUT=") : -1]) - _ASCII_ZERO
-    weights = []
+    by_latch = {}
     for line in lines[count_at + 1 : out_at]:
         match = _WEIGHT.fullmatch(line)
         assert match, f"not a weight line: {line!r}"
-        weights.append(int(match[1]))
+        by_latch[match[2]] = int(match[1])
+    # Every input has a latch; an ignored one has no counter contribution.
+    latches = [
+        lines[i - 1][:-1] for i, line in enumerate(lines[:count_at]) if " IN>=" in line
+    ]
+    weights = [by_latch.get(latch, 0) for latch in latches]
+    assert set(by_latch) <= set(latches)
     steps = []
     for line in lines[out_at + 1 : print_at]:
         match = _STEP.fullmatch(line)
@@ -93,19 +101,22 @@ def check_l1(max_n: int = 12, per_arity: int = 40) -> list[str]:
 
 
 def check_l2(max_n: int = 12) -> list[str]:
-    """L2: the emitted weights are a place-value system, in either order."""
+    """L2: essential weights are bijective; ignored bits repeat rows evenly."""
     lines = []
     for n in range(1, max_n + 1):
         seen = set()
         for table in tables(n, 6, seed=3 + n):
             _base, weights, _steps = parse(_container_threshold(table))
-            assert sorted(weights) == [1 << k for k in range(n)], (
-                f"n={n}: weights {weights} are not the powers of two"
+            assert len(weights) == n
+            active = [weight for weight in weights if weight]
+            assert sorted(active) == [1 << k for k in range(len(active))], (
+                f"n={n}: active weights {active} are not the powers of two"
             )
-            counters = {row_of(index, weights, n) for index in range(1 << n)}
-            assert counters == set(range(1 << n)), f"n={n}: weights are not a bijection"
+            counters = Counter(row_of(index, weights, n) for index in range(1 << n))
+            assert set(counters) == set(range(1 << len(active)))
+            assert set(counters.values()) == {1 << (n - len(active))}
             seen.add(tuple(weights))
-        lines.append(f"  n={n:2d}: all {1 << n:5d} rows distinct, {len(seen)} order(s)")
+        lines.append(f"  n={n:2d}: all {1 << n:5d} rows mapped, {len(seen)} order(s)")
     return lines
 
 
@@ -143,13 +154,18 @@ def check_l4(arities: tuple[int, ...] = (7, 8, 9)) -> list[str]:
             worst = 0
             for index in range(1 << n):
                 bits = format(index, f"0{n}b")
-                stream = ScriptedIO("".join(f"{b}\n" for b in bits))
+                stream = ScriptedIO(
+                    encode_inputs(
+                        "Container", [int(bit) for bit in bits], truth_table=table
+                    )
+                )
                 machine = _Machine(program.splitlines(), stream)
                 ticks = 0
                 while not machine.halted:
                     assert ticks < budget, f"n={n}: still running after {budget} ticks"
                     machine.step()
                     ticks += 1
+                assert stream.reads == n
                 worst = max(worst, ticks)
                 assert stream.getvalue() == table[index], (
                     f"n={n} row {index}: printed {stream.getvalue()!r}"
@@ -165,7 +181,7 @@ def main() -> int:
     """Run every lemma and report."""
     print("L1  the prefix sum of the emitted steps is the table (all n, all rows)")
     print("\n".join(check_l1()))
-    print("\nL2  the input weights are a bijection onto the rows (all n, all rows)")
+    print("\nL2  essential weights are bijective; ignored inputs repeat rows evenly")
     print("\n".join(check_l2()))
     print("\nL3  the scaling families have the shape L1 and L2 assume")
     print("\n".join(check_l3()))

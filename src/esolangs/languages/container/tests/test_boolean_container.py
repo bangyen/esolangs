@@ -276,3 +276,18 @@ def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Container", table, balance=True)
     assert _evaluate("Container", balanced, inputs=len(table).bit_length() - 1) == table
+
+
+@pytest.mark.parametrize(("table", "weights"), [("0011", [1, 0]), ("0101", [0, 1])])
+def test_threshold_proof_keeps_ignored_latches(table: str, weights: list[int]) -> None:
+    from esolangs.languages.container.generator import _container_threshold
+    from esolangs.languages.container.tests.proof_container import parse
+
+    assert parse(_container_threshold(table))[1] == weights
+
+
+@pytest.mark.medium
+def test_threshold_proof_executes_wide_inputs() -> None:
+    from esolangs.languages.container.tests.proof_container import check_l4
+
+    check_l4((7,))
