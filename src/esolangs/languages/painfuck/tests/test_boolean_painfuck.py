@@ -5,6 +5,7 @@ import random
 import pytest
 
 from esolangs.languages import generators as boolean
+from tests.support.generator_support import multiple_tables
 
 
 class TestPainfuck:
@@ -38,24 +39,8 @@ def test_shared_residual_executes_within_ledger() -> None:
     )
 
 
-def _multiple_tables():
-    rng = random.Random(88417)
-    a, b = "00010111", "01101001"
-    four = (
-        "0001011101101001",
-        "0110100100010111",
-        "1010110010001101",
-        "1101001010010010",
-    )
-    return [
-        a + b + b + a + a + b + a + b,
-        "".join(four[(row // 4 + row % 4) % 4] for row in range(16)),
-        *("".join(str(rng.randrange(2)) for _ in range(128)) for _ in range(6)),
-    ]
-
-
 @pytest.mark.medium
-@pytest.mark.parametrize("table", _multiple_tables())
+@pytest.mark.parametrize("table", multiple_tables())
 def test_multiple_flags_execute_with_their_native_command_price(table):
     import esolangs
     from esolangs.debugger import make_vm
