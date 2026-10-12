@@ -10,7 +10,7 @@ module docstring shape ``tests/generators/test_interpreter_conventions.py`` chec
 are listed under "Interpreter conventions" in ``docs/CONTRIBUTING.md``.
 """
 
-from esolangs._drive import drive
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 

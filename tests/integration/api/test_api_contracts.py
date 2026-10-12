@@ -163,7 +163,7 @@ class TestDescribe:
 #: ``inspect.signature`` of every public callable; identical on 3.12 and 3.14.
 #: Required arguments positional, optional ones keyword-only (docs/usage.md).
 SIGNATURES = {
-    "esolangs.describe": "(language: str) -> esolangs._describe.LanguageInfo",
+    "esolangs.describe": "(language: str) -> esolangs.registry._describe.LanguageInfo",
     "esolangs.dump_program": "(language: 'str', program: 'Program', *, settings: 'DialectSettings | None' = None) -> 'str'",  # noqa: E501
     "esolangs.encode_inputs": "(language: str, bits: list[int] | tuple[int, ...], *, truth_table: str | None = None) -> str",  # noqa: E501
     "esolangs.generate": "(language: str, truth_table: str, *, width: int | None = None, balance: bool = False, scale: int = 1, settings: esolangs.settings.DialectSettings | None = None) -> Program",  # noqa: E501
@@ -175,7 +175,7 @@ SIGNATURES = {
     "esolangs.debugger.make_debugger": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', scale: 'int | None' = None, settings: 'DialectSettings | None' = None) -> 'Debugger'",  # noqa: E501
     "esolangs.debugger.make_vm": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', scale: 'int | None' = None, settings: 'DialectSettings | None' = None) -> 'VM'",  # noqa: E501
     "Language.__init__": "(self, name: str) -> None",
-    "Language.describe": "(self) -> esolangs._describe.LanguageInfo",
+    "Language.describe": "(self) -> esolangs.registry._describe.LanguageInfo",
     "Language.dump_program": "(self, program: Program, *, settings: esolangs.settings.DialectSettings | None = None) -> str",  # noqa: E501
     "Language.encode_inputs": "(self, bits: list[int] | tuple[int, ...], *, truth_table: str | None = None) -> str",  # noqa: E501
     "Language.generate": "(self, truth_table: str, *, width: int | None = None, balance: bool = False, scale: int = 1, settings: esolangs.settings.DialectSettings | None = None) -> Program",  # noqa: E501

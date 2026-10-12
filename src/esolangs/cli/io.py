@@ -12,8 +12,6 @@ import threading
 from contextlib import AbstractContextManager, nullcontext
 
 from esolangs import _read_source, load_program
-from esolangs._program import Program
-from esolangs._source import _FileSource
 from esolangs.cli.args import (
     _fail,
 )
@@ -23,6 +21,8 @@ from esolangs.cli.hints import (
 )
 from esolangs.exceptions import EsolangError, ProgramError
 from esolangs.registry import resolve
+from esolangs.runtime._program import Program
+from esolangs.runtime._source import _FileSource
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 

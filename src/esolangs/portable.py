@@ -7,11 +7,11 @@ import json
 from dataclasses import asdict
 from typing import Any
 
-from esolangs._program import Program
 from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, resolve, template_char
+from esolangs.runtime._program import Program
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
 

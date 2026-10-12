@@ -18,11 +18,11 @@ decoded brainfuck machine.
 import math
 import re
 
-from esolangs._digits import digit_limit_for
-from esolangs._drive import drive
 from esolangs.factor_primes import isprime64 as _isprime64
 from esolangs.factor_primes import prime_segments
 from esolangs.languages.brainfuck.interpreter import _Machine as _BFMachine
+from esolangs.runtime._digits import digit_limit_for
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 

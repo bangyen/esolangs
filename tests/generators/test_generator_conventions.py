@@ -10,8 +10,8 @@ import pytest
 
 import esolangs
 import esolangs.languages.generators as boolean
-from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._evaluate import _evaluate
 from tests.integration.cli.test_cli import call_main
 from tests.support.generator_support import probe_table
 

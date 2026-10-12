@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs._evaluate import _evaluate
+from esolangs.runtime._evaluate import _evaluate
 from tests.integration.cli.test_cli import call_main
 from tests.reference import REFERENCE
 from tests.runtime.vm.test_stepping_parity import _STEP_BUDGET, _row
@@ -89,8 +89,8 @@ class TestStdinCannotHangTheCommandForever:
 
 @pytest.mark.medium
 def test_execution_does_not_require_examples_or_docstrings(monkeypatch) -> None:
-    from esolangs import _describe
     from esolangs.generation import examples
+    from esolangs.registry import _describe
 
     def refuse_documentation(_language):
         raise AssertionError("execution requested documentation")

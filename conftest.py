@@ -100,7 +100,7 @@ def _repair_coverage_lock() -> Generator[None, None, None]:
 @pytest.fixture
 def spawned(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
     """Every worker process the isolated runner starts, in order."""
-    from esolangs import _isolated
+    from esolangs.runtime import _isolated
 
     children: list[Any] = []
     popen = _isolated.subprocess.Popen

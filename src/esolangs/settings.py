@@ -112,7 +112,7 @@ class DialectOption(TypedDict):
 
 def dialect_choices(language: str) -> dict[str, DialectOption]:
     """Return fresh choices and defaults drawn from the interpreter signature."""
-    from esolangs._execution import interpreter_module
+    from esolangs.runtime._execution import interpreter_module
 
     name = resolve(language)
     dialect = LANGUAGES[name].dialect

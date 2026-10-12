@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 import esolangs
-import esolangs._evaluate as evaluator
-from esolangs._evaluate import _evaluate, _iter_evaluate
+import esolangs.runtime._evaluate as evaluator
+from esolangs.runtime._evaluate import _evaluate, _iter_evaluate
 from tests.reference import REFERENCE
 from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages

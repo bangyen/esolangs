@@ -28,8 +28,8 @@ on 1, as drawn; zeroing the mole there would make it print ``111...``.
 
 from functools import lru_cache
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer

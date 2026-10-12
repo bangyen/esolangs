@@ -23,8 +23,8 @@ from tests.support.witness_tables import row_bits, witnesses
 
 @pytest.mark.medium
 def test_packed_projection_executes_every_three_input_table():
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.addsubjump.generator import _addsubjump_packed
+    from esolangs.runtime._evaluate import _evaluate
 
     for value in range(256):
         table = f"{value:08b}"
@@ -37,10 +37,10 @@ def test_packed_projection_executes_every_three_input_table():
 @pytest.mark.medium
 @pytest.mark.parametrize("kind", ["zero", "one", "first", "last", "ends"])
 def test_wide_packed_projection_keeps_reads_and_old_balanced_score(kind):
-    from esolangs._evaluate import _evaluate
     from esolangs.generation.wrap import balance_program, balance_score
     from esolangs.languages.addsubjump.generator import _addsubjump_packed
     from esolangs.languages.addsubjump.interpreter import _Machine
+    from esolangs.runtime._evaluate import _evaluate
     from esolangs.runtime.io import ScriptedIO
     from esolangs.vm import run_until_halt_or_cycle
 
@@ -82,8 +82,8 @@ def test_wide_packed_projection_keeps_reads_and_old_balanced_score(kind):
 @pytest.mark.medium
 @pytest.mark.parametrize("essential", range(1, 8))
 def test_packed_projection_indexes_nonadjacent_coordinates(essential):
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.addsubjump.generator import _addsubjump_packed
+    from esolangs.runtime._evaluate import _evaluate
 
     used = [*range(essential - 1), 7]
     table = "".join(

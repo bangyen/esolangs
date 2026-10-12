@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings
-from esolangs._evaluate import _evaluate
+from esolangs.runtime._evaluate import _evaluate
 from esolangs.tagged import _Tagged
 from tests.integration.api.test_dialects import CASES
 from tests.reference import REFERENCE

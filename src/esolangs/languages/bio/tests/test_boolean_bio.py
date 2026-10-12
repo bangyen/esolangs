@@ -5,7 +5,6 @@ import re
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.generation.wrap import (
     DEFAULT_WIDTH,
     balance_program,
@@ -13,6 +12,7 @@ from esolangs.generation.wrap import (
 )
 from esolangs.languages.bio.wrapping import _bio
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._evaluate import _evaluate
 
 
 @pytest.mark.medium

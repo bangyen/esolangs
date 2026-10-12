@@ -6,7 +6,7 @@ root ``a + p**b*i``; conjugate pairs keep the coefficients integral.
 
 import decimal
 
-from esolangs._digits import digit_limit_for
+from esolangs.runtime._digits import digit_limit_for
 
 
 def primes(count: int) -> list[int]:

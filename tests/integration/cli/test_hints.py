@@ -4,8 +4,8 @@ import pytest
 
 import esolangs
 from esolangs import vm
-from esolangs._execution import interpreter_errors
 from esolangs.raster import Raster
+from esolangs.runtime._execution import interpreter_errors
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import keyword_hint
 from esolangs.vm import make_vm

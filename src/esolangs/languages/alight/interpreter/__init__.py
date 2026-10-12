@@ -66,7 +66,6 @@ operations raise :class:`~esolangs.exceptions.HaltError`.
 from fractions import Fraction
 from typing import Literal, TypeGuard, cast
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.languages.alight.interpreter._dialect import (
     expression_syntax as validate_expression_syntax,
@@ -77,6 +76,7 @@ from esolangs.languages.alight.interpreter._dialect import (
 from esolangs.languages.alight.interpreter._helpers import _grid
 from esolangs.languages.alight.interpreter._hints import Hint
 from esolangs.languages.alight.interpreter._state import _equal, _freeze
+from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import keyword_hint, syntax_error

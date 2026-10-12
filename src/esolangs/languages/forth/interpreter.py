@@ -29,8 +29,8 @@ line, excluding its newline, and pushes its Unicode code points.
 
 from dataclasses import dataclass
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 

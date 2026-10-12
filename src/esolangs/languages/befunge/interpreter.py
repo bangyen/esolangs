@@ -22,8 +22,8 @@ from collections.abc import Sequence
 from ctypes import c_long, sizeof
 from typing import cast
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw

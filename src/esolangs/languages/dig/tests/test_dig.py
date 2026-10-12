@@ -223,8 +223,8 @@ class TestStepMachine:
 
 
 def test_repeated_runs_keep_stores_private() -> None:
-    from esolangs._drive import drive
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime._drive import drive
 
     rows = [">$3~;:@"]
     first = _Machine(rows, ScriptedIO("12\n"))

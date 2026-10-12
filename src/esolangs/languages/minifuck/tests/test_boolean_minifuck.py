@@ -5,7 +5,6 @@ import importlib
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.generation.helpers import TEMPLATE_CHAR, essential_inputs, runs
 from esolangs.languages.minifuck.generator.mux import (
     _MUX_MIN_ARITY,
@@ -22,6 +21,7 @@ from esolangs.languages.minifuck.tests.minifuck_support import (
     _mux_separate,
     run_count,
 )
+from esolangs.runtime._evaluate import _evaluate
 
 
 def _slot_order(gen: object, table: str) -> list[int] | None:

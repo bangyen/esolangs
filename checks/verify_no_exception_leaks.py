@@ -57,11 +57,11 @@ sys.path.insert(0, str(_ROOT / "scripts"))
 
 from verify.process import write_text
 
-from esolangs._program import Program
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.raster import Raster
 from esolangs.registry import INTERPRETERS, LANGUAGES, example_stems
+from esolangs.runtime._program import Program
 from esolangs.vm import make_vm, run_until_halt
 
 # Exceptions an interpreter is allowed to raise at the API boundary.

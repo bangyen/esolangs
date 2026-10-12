@@ -81,7 +81,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.languages.algebraic_programming_language.interpreter._parse import (
     _as_number,
@@ -101,6 +100,7 @@ from esolangs.languages.algebraic_programming_language.interpreter._parse import
     _split_definition,
     _tokens,
 )
+from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error

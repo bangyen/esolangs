@@ -3,10 +3,10 @@
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster
 from esolangs.raster.scale import detect_scale, normalize
+from esolangs.runtime._evaluate import _evaluate
 from tests.reference import REFERENCE
 from tests.support.pick import languages
 

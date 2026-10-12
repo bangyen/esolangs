@@ -34,7 +34,6 @@ import functools
 from collections.abc import Mapping
 from typing import Literal, Self, assert_never
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.languages.streetcode.interpreter.geometry import (
     _DELTA,
@@ -53,6 +52,7 @@ from esolangs.languages.streetcode.interpreter.geometry import (
 from esolangs.languages.streetcode.interpreter.geometry import (
     _State as _GeometryState,
 )
+from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 

@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs._execution import interpreter_module
+from esolangs.runtime._execution import interpreter_module
 from tests.integration.cli.test_cli import call_main
 from tests.reference import REFERENCE
 

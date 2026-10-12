@@ -15,12 +15,12 @@ from time import monotonic
 from typing import Any, TextIO, cast
 
 from esolangs import exceptions
-from esolangs._program import Program
-from esolangs._source import InputSource, ProgramSource, read_input
-from esolangs._validate import check_timeout, check_whole
 from esolangs.compressed import CompressedText
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry import resolve
+from esolangs.runtime._program import Program
+from esolangs.runtime._source import InputSource, ProgramSource, read_input
+from esolangs.runtime._validate import check_timeout, check_whole
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
@@ -221,7 +221,11 @@ def _launch(request: str, timeout: float, *, max_output: int | None = None) -> s
     env["PYTHONPATH"] = os.pathsep.join(sys.path)
     deadline = monotonic() + timeout
     with subprocess.Popen(  # nosec B603 -- fixed executable and code, no shell.
-        [sys.executable, "-c", "from esolangs._isolated import _worker; _worker()"],
+        [
+            sys.executable,
+            "-c",
+            "from esolangs.runtime._isolated import _worker; _worker()",
+        ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE if max_output is None else subprocess.DEVNULL,
@@ -422,7 +426,7 @@ def _worker() -> None:
         )
         if "termination" in request:
             from esolangs import vm
-            from esolangs._evaluate import _terminates
+            from esolangs.runtime._evaluate import _terminates
 
             if request.get("max_output") is not None:
                 vars(vm)["ScriptedIO"] = StreamingIO

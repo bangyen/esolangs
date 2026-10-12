@@ -12,7 +12,6 @@ from contextlib import contextmanager
 from types import ModuleType
 from typing import Any
 
-from esolangs._program import Program, RunnerProgram
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -20,6 +19,7 @@ from esolangs.exceptions import (
     ProgramError,
 )
 from esolangs.registry import INTERPRETERS, LANGUAGES
+from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from esolangs.runtime.source_hints import with_hint

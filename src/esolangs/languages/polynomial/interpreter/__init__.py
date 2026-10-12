@@ -31,8 +31,6 @@ import re
 from collections.abc import Callable, Sequence
 from typing import cast
 
-from esolangs._digits import digit_limit_for
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.languages.polynomial.interpreter.roots import (
     _PEEL_MAX_EXPONENT,
@@ -46,6 +44,8 @@ from esolangs.languages.polynomial.interpreter.roots import (
 from esolangs.languages.polynomial.interpreter.roots import (
     prime as prime,
 )
+from esolangs.runtime._digits import digit_limit_for
+from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 

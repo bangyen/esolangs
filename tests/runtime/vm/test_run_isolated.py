@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
-from esolangs._isolated import _decode, _worker
+from esolangs.runtime._isolated import _decode, _worker
 from tests.reference import REFERENCE
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import one
@@ -64,7 +64,7 @@ def test_decode_truncated_write_on_timeout():
 
 
 def test_cancellation_kills_and_reaps_child(monkeypatch):
-    from esolangs import _isolated
+    from esolangs.runtime import _isolated
 
     calls = []
 
@@ -191,7 +191,7 @@ def protocol_child():
 
 
 def test_capped_protocol_truncated_record_retains_prefix(protocol_child):
-    from esolangs._isolated import _bounded_output
+    from esolangs.runtime._isolated import _bounded_output
 
     child = protocol_child(['{"output":"prefix"}\n', '{"output":'])
     with pytest.raises(esolangs.InterpreterLimitError) as caught:
@@ -204,7 +204,7 @@ def test_capped_protocol_truncated_record_retains_prefix(protocol_child):
 def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(protocol_child):
     import subprocess
 
-    from esolangs._isolated import _bounded_output
+    from esolangs.runtime._isolated import _bounded_output
 
     child = protocol_child(['{"output":"prefix"}\n', '{"result":"prefix"}\n'])
     original_wait = child.wait
@@ -224,7 +224,7 @@ def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(protocol_chi
 
 @pytest.mark.parametrize("language", _UNUSUAL)
 def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
-    from esolangs import _isolated
+    from esolangs.runtime import _isolated
 
     def expire(*_args, **_kwargs):
         error = esolangs.ExecutionTimeoutError("deadline")
@@ -244,8 +244,8 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
 def test_process_creation_consumes_the_worker_deadline(
     monkeypatch, max_output, startup
 ):
-    from esolangs import _isolated
-    from esolangs._isolated import _launch
+    from esolangs.runtime import _isolated
+    from esolangs.runtime._isolated import _launch
 
     clock = [0.0]
     calls = []
@@ -297,8 +297,8 @@ def test_process_creation_consumes_the_worker_deadline(
     ],
 )
 def test_raster_transport_preserves_every_pixel(rows, monkeypatch):
-    from esolangs import _isolated
-    from esolangs._isolated import _raster_rows, _raster_transport
+    from esolangs.runtime import _isolated
+    from esolangs.runtime._isolated import _raster_rows, _raster_transport
 
     image = esolangs.Raster(rows)
     runs = _raster_transport(image)
@@ -318,7 +318,7 @@ def test_worker_executes_compact_raster_pixels(monkeypatch, capsys):
     import io
     import sys
 
-    from esolangs._isolated import _raster_runs
+    from esolangs.runtime._isolated import _raster_runs
 
     language = one(source_kind="raster", boolean_generator=True)[0]
     image = esolangs.generate(language, "0110")
@@ -349,7 +349,7 @@ def test_memory_budget_rejects_unsupported_execution(
 ):
     import sys
 
-    from esolangs._isolated import check_memory
+    from esolangs.runtime._isolated import check_memory
 
     monkeypatch.setattr(sys, "platform", platform)
     with pytest.raises(esolangs.ArgumentError, match=message):
@@ -359,7 +359,7 @@ def test_memory_budget_rejects_unsupported_execution(
 def test_memory_budget_accepts_linux_worker(monkeypatch):
     import sys
 
-    from esolangs._isolated import check_memory
+    from esolangs.runtime._isolated import check_memory
 
     monkeypatch.setattr(sys, "platform", "linux")
     check_memory(1, isolated=True)
@@ -371,7 +371,7 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys):
     import sys
 
     from esolangs import vm
-    from esolangs._isolated import _source_transport
+    from esolangs.runtime._isolated import _source_transport
     from tests.support.pick import first
 
     language = first(

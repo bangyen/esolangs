@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import _isolated
-from esolangs._evaluate import _evaluate
+from esolangs.runtime import _isolated
+from esolangs.runtime._evaluate import _evaluate
 from tests.runtime.vm.test_memory_budget import _BUDGET, _LINUX
 
 

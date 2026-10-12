@@ -7,8 +7,8 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs._execution import interpreter_module
 from esolangs.cli import HELP
+from esolangs.runtime._execution import interpreter_module
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
 from tests.integration.cli.test_cli import call_main
 from tests.reference import REFERENCE

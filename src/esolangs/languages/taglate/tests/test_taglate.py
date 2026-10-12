@@ -39,8 +39,8 @@ def test_consecutive_rotations_compose(count):
     ],
 )
 def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch):
-    from esolangs._drive import drive
     from esolangs.languages.taglate import interpreter as taglate
+    from esolangs.runtime._drive import drive
     from esolangs.runtime.io import ScriptedIO
 
     original = taglate._Machine  # noqa: SLF001

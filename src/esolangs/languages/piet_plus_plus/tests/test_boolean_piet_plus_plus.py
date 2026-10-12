@@ -5,9 +5,9 @@ import random
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.languages.piet_plus_plus.generator import piet_plus_plus as generate
 from esolangs.raster import Raster
+from esolangs.runtime._evaluate import _evaluate
 from tests.support.witness_tables import witnesses
 
 

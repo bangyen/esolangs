@@ -79,7 +79,7 @@ def _run(rest: list[str]) -> None:
     if "--max-memory" in options:
         max_memory = _integer(options["--max-memory"], "--max-memory")
         with _errors():
-            from esolangs._isolated import check_memory
+            from esolangs.runtime._isolated import check_memory
 
             check_memory(max_memory, isolated=isolated)
     rest = _split_positional(

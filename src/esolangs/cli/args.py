@@ -12,7 +12,6 @@ import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from esolangs._validate import check_timeout
 from esolangs.cli.help import (
     HELP,
 )
@@ -22,6 +21,7 @@ from esolangs.cli.hints import (
 )
 from esolangs.exceptions import EsolangError
 from esolangs.generation.wrap import DEFAULT_WIDTH
+from esolangs.runtime._validate import check_timeout
 from esolangs.settings import DialectSettings, dialect_choices
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -342,7 +342,7 @@ def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float 
     """Return the ``--timeout`` seconds, or None, refusing a bad value.
 
     The *value* checks are the private stdin check's neighbour
-    :func:`esolangs._validate.check_timeout`, not a second copy: this had
+    :func:`esolangs.runtime._validate.check_timeout`, not a second copy: this had
     its own rules for zero, negatives and non-finite values, and the
     library then grew a floor and a ceiling that this did not know about.
     A ``--timeout 1e10`` therefore got past here and overflowed the C
@@ -426,8 +426,8 @@ def _scale_of(options: dict[str, str]) -> int | None:
     """Read a positive integer pixel scale."""
     if "--scale" not in options:
         return None
-    from esolangs._validate import check_scale
     from esolangs.exceptions import ArgumentError
+    from esolangs.runtime._validate import check_scale
 
     try:
         return check_scale(

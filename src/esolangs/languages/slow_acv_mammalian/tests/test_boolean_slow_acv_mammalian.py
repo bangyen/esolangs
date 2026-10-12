@@ -924,8 +924,8 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_print_array_is_independent_of_every_input(cell, io, bit):
     import esolangs
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.slow_acv_mammalian.generator import _program
+    from esolangs.runtime._evaluate import _evaluate
 
     table = bit * 256
     settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)

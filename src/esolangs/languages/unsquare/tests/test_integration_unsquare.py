@@ -1,7 +1,7 @@
 """Unsquare through the shared API, CLI and machinery."""
 
 import esolangs
-from esolangs._execution import interpreter_module
+from esolangs.runtime._execution import interpreter_module
 
 
 class TestTheSpecIsReachable:

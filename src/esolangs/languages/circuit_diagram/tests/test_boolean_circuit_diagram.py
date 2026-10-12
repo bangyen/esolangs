@@ -572,8 +572,8 @@ class TestCircuitDiagram:
 
 
 def test_a_repeated_subtree_is_drawn_once_and_still_computes() -> None:
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.circuit_diagram.generator import circuit_diagram
+    from esolangs.runtime._evaluate import _evaluate
 
     gates = lambda t: sum(map(str(circuit_diagram(t)).count, "aox"))  # noqa: E731
     tiled, distinct = "0110111010010011" * 2, "01101110100100110011101011000101"
@@ -621,8 +621,8 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_wide_constant_uses_only_its_scalar_clock_frame(bit):
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.circuit_diagram.generator import _circuit_diagram_at
+    from esolangs.runtime._evaluate import _evaluate
 
     table = bit * 256
     program = boolean.circuit_diagram(table)
@@ -632,8 +632,8 @@ def test_wide_constant_uses_only_its_scalar_clock_frame(bit):
 
 @pytest.mark.medium
 def test_wide_constant_balance_keeps_the_old_square_candidate():
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+    from esolangs.runtime._evaluate import _evaluate
 
     table = "1" * 256
     legacy = _h_term_layout(table).render()
@@ -646,9 +646,9 @@ def test_wide_constant_balance_keeps_the_old_square_candidate():
 @pytest.mark.medium
 @pytest.mark.parametrize("inputs", [8, 9])
 def test_wide_repeated_cofactors_use_the_bounded_shared_circuit(inputs):
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.circuit_diagram.generator import _linear_shared_layout
     from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+    from esolangs.runtime._evaluate import _evaluate
 
     table = "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
     model = _linear_shared_layout(table, inputs)
@@ -666,10 +666,10 @@ def test_wide_repeated_cofactors_use_the_bounded_shared_circuit(inputs):
 
 @pytest.mark.medium
 def test_complete_wide_projection_retains_nonadjacent_ports():
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.circuit_diagram.generator import _linear_shared_layout
     from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
     from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
+    from esolangs.runtime._evaluate import _evaluate
 
     rng = random.Random(841)
     residual = "".join(rng.choice("01") for _ in range(128))

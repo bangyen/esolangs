@@ -27,11 +27,11 @@ import re
 from collections.abc import Callable
 from contextlib import suppress
 
-from esolangs._drive import drive
-from esolangs._source import raster_source as load_source
 from esolangs.generation.raster_lookup.palette import _COLOURS, BLACK, WHITE
 from esolangs.raster import Raster
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._source import raster_source as load_source
 from esolangs.runtime.codels import DIRECTIONS, find_block, leave, slide
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer

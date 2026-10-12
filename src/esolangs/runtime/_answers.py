@@ -7,13 +7,13 @@ registered Boolean I/O contract.
 
 import re
 
-from esolangs._validate import check_bits
 from esolangs.exceptions import (
     ArgumentError,
     ProgramError,
     TruthTableError,
 )
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.runtime._validate import check_bits
 from esolangs.runtime.source_hints import with_hint
 
 

@@ -6,10 +6,15 @@ import pytest
 
 import esolangs
 from esolangs import _check_program, debugger
-from esolangs._evaluate import _evaluate
-from esolangs._validate import check_bits, check_scale, check_timeout, check_whole
 from esolangs.exceptions import EsolangError, UnknownLanguageError
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._evaluate import _evaluate
+from esolangs.runtime._validate import (
+    check_bits,
+    check_scale,
+    check_timeout,
+    check_whole,
+)
 from esolangs.runtime.source_hints import error_text
 from esolangs.vm import machine_traits
 from tests.reference import REFERENCE
@@ -23,8 +28,8 @@ def test_list_languages() -> None:
 
 
 def test_seed_hint_tracks_registered_random_languages(monkeypatch):
-    from esolangs import _execution
     from esolangs.registry import Language
+    from esolangs.runtime import _execution
 
     registered = {
         REFERENCE: LANGUAGES[REFERENCE],
@@ -242,7 +247,7 @@ def test_default_answer_contract_reads_the_final_bit():
 
 
 def test_isolated_worker_requires_a_deadline():
-    from esolangs import _isolated
+    from esolangs.runtime import _isolated
 
     with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
         _isolated.run_isolated(REFERENCE, "+.", timeout=None)

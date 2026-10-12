@@ -41,8 +41,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error

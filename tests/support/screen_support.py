@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 import esolangs
-from esolangs._evaluate import _terminates
+from esolangs.runtime._evaluate import _terminates
 from scripts import benchmark
 
 #: Step cap for a candidate row, matching the removed screen's.

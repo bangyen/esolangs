@@ -23,8 +23,8 @@ included.
 import re
 from dataclasses import dataclass
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer

@@ -81,8 +81,8 @@ def _refuses_timeout() -> None:
 def _generator(name: str, *, math_extra: bool, image_extra: bool) -> None:
     """Execute all rows in one process; its parent supplies the deadline."""
     import esolangs
-    from esolangs._evaluate import _evaluate
     from esolangs.registry import LANGUAGES, resolve
+    from esolangs.runtime._evaluate import _evaluate
 
     controls = LANGUAGES[resolve(name)].benchmark_tables
     table = next((t for t in controls if "0" in t and "1" in t), "0110")
@@ -118,8 +118,8 @@ def _generator_process(name: str, *, math_extra: bool, image_extra: bool) -> Non
 def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     """Check installed resources and behaviour outside the source checkout."""
     import esolangs
-    from esolangs._evaluate import _evaluate
     from esolangs.registry import LANGUAGES
+    from esolangs.runtime._evaluate import _evaluate
 
     package = Path(esolangs.__file__).resolve().parent
     assert package.parent.name in {"site-packages", "dist-packages"}, package

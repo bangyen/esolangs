@@ -4,13 +4,13 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs._evaluate import _evaluate
+from esolangs.runtime._evaluate import _evaluate
 
 
 def test_termination_input_exhaustion_is_a_fault(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import esolangs._evaluate as evaluate_module
+    import esolangs.runtime._evaluate as evaluate_module
 
     def exhausted(*_args: object, **_kwargs: object) -> None:
         raise esolangs.InputExhaustedError(2, 1)

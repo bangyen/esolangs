@@ -8,7 +8,7 @@ read, so EOFError does not arise. Appends are effects to avoid copying the queue
 
 from __future__ import annotations
 
-from esolangs._drive import drive
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error

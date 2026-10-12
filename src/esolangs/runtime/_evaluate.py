@@ -12,14 +12,6 @@ from time import monotonic
 from typing import cast
 
 import esolangs
-from esolangs._answers import (
-    encode_inputs,
-    read_answer,
-)
-from esolangs._execution import check_signal_timeout
-from esolangs._program import Program
-from esolangs._source import ProgramSource, check_scale_for
-from esolangs._validate import _TIMEOUT_FLOOR, check_timeout, check_whole
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -28,6 +20,14 @@ from esolangs.exceptions import (
 )
 from esolangs.generation.helpers import MOST_INPUTS
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.runtime._answers import (
+    encode_inputs,
+    read_answer,
+)
+from esolangs.runtime._execution import check_signal_timeout
+from esolangs.runtime._program import Program
+from esolangs.runtime._source import ProgramSource, check_scale_for
+from esolangs.runtime._validate import _TIMEOUT_FLOOR, check_timeout, check_whole
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
@@ -149,7 +149,7 @@ def _iter_evaluate(
     Retained dialect choices apply to filling and execution; explicit ``settings``
     overrides individual choices.
     """
-    from esolangs._isolated import check_memory
+    from esolangs.runtime._isolated import check_memory
 
     check_memory(max_memory, isolated=isolated)
     settings = effective_settings(language, program, settings)
@@ -229,7 +229,7 @@ def _iter_evaluate(
             if terminating:
                 source = cast("str", source)
                 if isolated:
-                    from esolangs._isolated import termination_isolated
+                    from esolangs.runtime._isolated import termination_isolated
 
                     termination_runner = termination_isolated
                     if settings is not None:

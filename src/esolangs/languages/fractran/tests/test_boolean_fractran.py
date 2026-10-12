@@ -3,13 +3,13 @@
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.fractran.generator import PAIR as FRACTRAN_PAIR
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.fractran.interpreter import run as run_fractran
+from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.reader_support import _TABLES
 from tests.support.generator_support import evaluate_generated

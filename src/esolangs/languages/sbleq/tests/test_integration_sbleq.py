@@ -4,8 +4,8 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs._validate import _MAX_CELLS, check_address
 from esolangs.exceptions import InterpreterLimitError
+from esolangs.runtime._validate import _MAX_CELLS, check_address
 
 
 @pytest.mark.medium

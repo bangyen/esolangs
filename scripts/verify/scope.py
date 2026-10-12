@@ -41,6 +41,7 @@ SHARED_INTERPRETER = (
     "registry/_table.py",
     "registry/_contracts.py",
     "registry/_language.py",
+    "registry/_describe.py",
 )
 
 # The checking machinery itself.  A change here can alter what every step

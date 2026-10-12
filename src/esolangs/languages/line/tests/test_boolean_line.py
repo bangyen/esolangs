@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.languages.line.generator import line_boolean
 from esolangs.languages.line.generator.render import Node, render
 from esolangs.languages.line.generator.tree_layout import tree_extents
@@ -19,6 +18,7 @@ from esolangs.languages.line.interpreter.simulate import (
     run_compiled,
 )
 from esolangs.raster import Raster, png
+from esolangs.runtime._evaluate import _evaluate
 from tests.support.witness_tables import row_bits
 
 

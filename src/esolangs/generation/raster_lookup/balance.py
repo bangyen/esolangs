@@ -4,7 +4,6 @@ from collections.abc import Callable
 from math import isqrt
 from typing import NamedTuple
 
-from esolangs._validate import check_width
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.raster_lookup import (
     _INITIAL,
@@ -21,6 +20,7 @@ from esolangs.generation.raster_lookup import (
 from esolangs.generation.raster_lookup.packing import pack
 from esolangs.generation.raster_lookup.palette import BLACK
 from esolangs.raster import Raster
+from esolangs.runtime._validate import check_width
 
 _POINTER = (3, 1)
 

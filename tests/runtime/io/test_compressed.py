@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs._source import text_source
 from esolangs.compressed import CompressedText
+from esolangs.runtime._source import text_source
 from tests.reference import REFERENCE
 from tests.support.source_support import source_units
 

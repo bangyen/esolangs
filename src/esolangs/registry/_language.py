@@ -12,9 +12,9 @@ from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
-from esolangs._program import Program
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
+from esolangs.runtime._program import Program
 
 # ``generator(truth_table)`` returns a program computing it; the few that lay
 # out two dimensions also take a ``width``, hence ``...``.

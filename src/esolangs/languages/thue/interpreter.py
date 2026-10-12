@@ -35,7 +35,7 @@ from __future__ import annotations
 from bisect import bisect_left, bisect_right
 from itertools import accumulate
 
-from esolangs._drive import drive
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw

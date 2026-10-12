@@ -112,8 +112,8 @@ def test_one_input_not_stays_within_the_command_ledger(bit, expected) -> None:
 
 @pytest.mark.medium
 def test_multiple_residuals_reduce_encoded_size_within_ledger():
-    from esolangs._digits import digit_limit_for
     from esolangs.languages.factor.generator import _encode, _program
+    from esolangs.runtime._digits import digit_limit_for
     from tests.support.generator_support import assert_shared_program
 
     n = 10

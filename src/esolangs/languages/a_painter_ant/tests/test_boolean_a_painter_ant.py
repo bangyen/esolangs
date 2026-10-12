@@ -94,7 +94,7 @@ class TestAPainterAnt:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_roots_keep_one_origin(bit: str) -> None:
     """A constant table restores each input to one white origin, then leaves it."""
-    from esolangs._evaluate import _evaluate
+    from esolangs.runtime._evaluate import _evaluate
 
     table = bit * 8
     assert a_painter_ant(table) == "P" + "$S" * 3 + ("p" if bit == "0" else "")

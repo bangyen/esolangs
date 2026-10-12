@@ -18,8 +18,8 @@ holding the two I/O tokens and ``A``'s range check.
 
 from __future__ import annotations
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 

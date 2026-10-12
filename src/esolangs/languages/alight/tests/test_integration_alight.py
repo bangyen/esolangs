@@ -8,7 +8,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
-from esolangs._evaluate import _evaluate
+from esolangs.runtime._evaluate import _evaluate
 from tests.integration.api.test_dialects import Unreadable
 from tests.reference import REFERENCE
 from tests.runtime.vm.test_debug import _step_to_halt

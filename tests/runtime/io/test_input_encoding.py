@@ -7,9 +7,9 @@ import pathlib
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.cli.hints import _template_hint
 from esolangs.exceptions import ProgramError, TemplateError
+from esolangs.runtime._evaluate import _evaluate
 from tests.reference import REFERENCE
 from tests.support.pick import languages
 from tests.support.witness_tables import row_bits

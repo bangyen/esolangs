@@ -22,15 +22,19 @@ from collections.abc import Callable, Hashable, Sequence
 from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
-from esolangs._execution import interpreter_errors, interpreter_module, prepare_call
-from esolangs._program import Program
-from esolangs._source import InputSource, ProgramSource, check_scale_for
-from esolangs._traits import trait, traits
-from esolangs._validate import check_whole
-from esolangs._vm_views import (
+from esolangs.registry import resolve
+from esolangs.runtime._execution import (
+    interpreter_errors,
+    interpreter_module,
+    prepare_call,
+)
+from esolangs.runtime._program import Program
+from esolangs.runtime._source import InputSource, ProgramSource, check_scale_for
+from esolangs.runtime._traits import trait, traits
+from esolangs.runtime._validate import check_whole
+from esolangs.runtime._vm_views import (
     machine_views,
 )
-from esolangs.registry import resolve
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
@@ -664,8 +668,8 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     Raises on exhausted steps or an active machine that never self-halts. Repeated
     completion is safe: the post-halt step is idempotent by the VM contract.
     """
-    from esolangs._validate import check_whole
     from esolangs.exceptions import ArgumentError, InterpreterLimitError
+    from esolangs.runtime._validate import check_whole
 
     if max_steps is not None:
         check_whole(max_steps, "max_steps")
@@ -940,7 +944,7 @@ def make_vm(
     :class:`UnknownLanguageError`. Text and raster use the same step interface. The
     program and ``stdin`` are checked as :func:`esolangs.run` checks them (an
     unfilled template otherwise runs to a confident ``'0'``), and the checked
-    value is what reaches the interpreter (:mod:`esolangs._validate`).
+    value is what reaches the interpreter (:mod:`esolangs.runtime._validate`).
     """
     from esolangs import _check_program
 

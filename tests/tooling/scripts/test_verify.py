@@ -364,7 +364,7 @@ def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch, *, p
 def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
     verify = load_scope()
     assert any(
-        "src/esolangs/_traits.py".startswith(prefix)
+        "src/esolangs/runtime/_traits.py".startswith(prefix)
         for prefix in verify.STEP_SCOPE["exception leaks"]
     )
 

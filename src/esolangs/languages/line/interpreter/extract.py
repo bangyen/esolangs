@@ -146,7 +146,7 @@ def normalize_scale(mask: Mask, scale: int | None = None) -> Mask:
     if scale is None:
         scale = detect_scale(mask)
     else:
-        from esolangs._validate import check_scale
+        from esolangs.runtime._validate import check_scale
 
         check_scale(scale)
         bounds = mask.bounds()

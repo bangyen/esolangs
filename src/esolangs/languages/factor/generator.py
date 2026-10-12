@@ -18,7 +18,6 @@ import heapq
 from collections.abc import Iterator
 from itertools import groupby
 
-from esolangs._digits import digit_limit_for
 from esolangs.factor_primes import prime_segments
 from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
@@ -32,6 +31,7 @@ from esolangs.generation.shared_flag import shared_flag_tree
 from esolangs.generation.wrap import balance_program, wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime._digits import digit_limit_for
 
 __all__ = ["factor"]
 

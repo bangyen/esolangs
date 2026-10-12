@@ -49,7 +49,6 @@ import copy
 from collections.abc import Hashable
 from typing import Any
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.languages.intercal.interpreter._parse import (
     _SELF_ABSTAIN,
@@ -63,6 +62,7 @@ from esolangs.languages.intercal.interpreter._parse import (
     _statements,
     _unary,
 )
+from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import Randomness, draw
 

@@ -9,7 +9,7 @@ and no text. + increments an unbounded accumulator. No input, EOFError,
 ValueError or HaltError arises.
 """
 
-from esolangs._drive import drive
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 

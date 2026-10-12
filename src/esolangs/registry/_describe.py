@@ -3,7 +3,6 @@
 import pathlib
 from typing import TypedDict
 
-from esolangs._execution import interpreter_module
 from esolangs.exceptions import ProgramError
 from esolangs.generation.wrap import takes_width as _takes_width
 from esolangs.registry import (
@@ -16,11 +15,12 @@ from esolangs.registry import (
 )
 from esolangs.registry._contracts import AnswerMode, InputShape, WidthEffect
 from esolangs.registry._language import Shape
+from esolangs.runtime._execution import interpreter_module
 from esolangs.settings import DialectOption, dialect_choices
 from esolangs.vm import machine_traits
 
 #: The committed examples, inside the package so the wheel ships them.
-_LANGUAGES = pathlib.Path(__file__).resolve().parent / "languages"
+_LANGUAGES = pathlib.Path(__file__).resolve().parents[1] / "languages"
 
 # Registry category -> state model name.
 _STATE_MODELS = {

@@ -10,11 +10,11 @@ both directions. Exhausted character input stores zero, as in the
 wiki's cat example.
 """
 
-from esolangs._drive import drive
-from esolangs._source import ProgramSource, _read_container, text_source
 from esolangs.compressed import CompressedText
 from esolangs.languages.brainfuck.interpreter import _Machine as _BFMachine
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._source import ProgramSource, _read_container, text_source
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 

@@ -5,7 +5,7 @@ are ignored; unmatched brackets raise ValueError. Unicode input is reduced
 modulo 256, matching the package's byte interfaces.
 """
 
-from esolangs._drive import drive
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO

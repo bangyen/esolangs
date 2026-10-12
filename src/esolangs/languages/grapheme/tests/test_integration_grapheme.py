@@ -7,8 +7,8 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
-from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
+from esolangs.runtime._evaluate import _evaluate
 from tests.integration.api.test_api_contracts import XOR
 from tests.integration.cli.test_cli import call_main
 from tests.reference import REFERENCE

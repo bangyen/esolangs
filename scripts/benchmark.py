@@ -29,9 +29,9 @@ from typing import Any, BinaryIO, cast
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs._describe import LanguageInfo
-from esolangs._validate import check_timeout
 from esolangs.registry import LANGUAGES
+from esolangs.registry._describe import LanguageInfo
+from esolangs.runtime._validate import check_timeout
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 

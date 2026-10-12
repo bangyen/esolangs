@@ -5,10 +5,10 @@ from itertools import pairwise
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.fish.generator import balance_fish, fish
 from esolangs.languages.fish.interpreter import run
+from esolangs.runtime._evaluate import _evaluate
 from tests.support.generator_support import run_lines
 from tests.support.witness_tables import witnesses
 

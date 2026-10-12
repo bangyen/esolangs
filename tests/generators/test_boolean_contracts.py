@@ -47,7 +47,7 @@ def test_stripped_docstrings_preserve_all_answer_mechanisms() -> None:
     readers = [name for name in names if esolangs.describe(name)["reads_input"]]
     code = f"""
 import esolangs
-from esolangs._evaluate import _evaluate
+from esolangs.runtime._evaluate import _evaluate
 from tests.support.stdin_check import _check_stdin
 from tests.support.generator_support import probe_table
 for name in {names!r}:

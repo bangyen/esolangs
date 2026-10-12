@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import io as _stdlib_io
 
-from esolangs._input import InputSource, read_input
 from esolangs.exceptions import ArgumentError, InputExhaustedError
+from esolangs.runtime._input import InputSource, read_input
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 

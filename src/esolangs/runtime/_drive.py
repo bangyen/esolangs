@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from esolangs._traits import trait
+from esolangs.runtime._traits import trait
 
 
 class Machine(Protocol):

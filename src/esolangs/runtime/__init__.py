@@ -1,1 +1,1 @@
-"""Interpreters for the supported esolangs."""
+"""Shared execution, source handling and interpreter machinery."""

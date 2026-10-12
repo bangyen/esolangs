@@ -2,9 +2,9 @@
 
 from math import gcd
 
-from esolangs._validate import check_scale
 from esolangs.exceptions import ProgramError
 from esolangs.raster import Pixel, Rows
+from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error
 
 

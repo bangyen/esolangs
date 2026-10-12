@@ -9,8 +9,8 @@ import pytest
 
 import esolangs
 from esolangs import _check_program
-from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
+from esolangs.runtime._evaluate import _evaluate
 from tests.reference import REFERENCE
 from tests.support.pick import languages
 
@@ -135,7 +135,7 @@ def test_stream_failures_keep_public_error_types(mode: str) -> None:
 def test_isolated_deadline_bounds_stream_acquisition(
     blocked: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from esolangs import _isolated
+    from esolangs.runtime import _isolated
 
     entered, release, finished = Event(), Event(), Event()
 

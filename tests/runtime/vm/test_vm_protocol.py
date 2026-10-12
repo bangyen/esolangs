@@ -525,7 +525,7 @@ class TestViews:
     def test_a_long_sequence_is_cut_before_it_is_formatted(self) -> None:
         # A tape can be thousands of cells; the view has to be short, and
         # cheap to produce, at every step.
-        from esolangs._vm_views import _abbreviate
+        from esolangs.runtime._vm_views import _abbreviate
 
         text = _abbreviate(list(range(4096)))
         assert len(text) < 80
@@ -533,14 +533,14 @@ class TestViews:
 
     def test_a_sequence_of_exactly_the_limit_is_shown_whole(self) -> None:
         """The cut is one *past* the limit, not at it."""
-        from esolangs._vm_views import _VIEW_ITEMS, _abbreviate
+        from esolangs.runtime._vm_views import _VIEW_ITEMS, _abbreviate
 
         assert "more" not in _abbreviate(list(range(_VIEW_ITEMS)))
         assert "more" in _abbreviate(list(range(_VIEW_ITEMS + 1)))
 
     def test_the_scalar_cut_is_pinned_at_its_edge(self) -> None:
         """Sixty characters survive whole; sixty-one is cut."""
-        from esolangs._vm_views import _abbreviate
+        from esolangs.runtime._vm_views import _abbreviate
 
         assert _abbreviate("x" * 58) == repr("x" * 58)
         assert len(repr("x" * 58)) == 60

@@ -3,8 +3,8 @@
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.exceptions import TemplateError
+from esolangs.runtime._evaluate import _evaluate
 from tests.support.generator_support import assert_proved_resource_cap, probe_table
 from tests.support.pick import languages
 

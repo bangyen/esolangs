@@ -7,9 +7,9 @@ import pytest
 
 import esolangs
 from esolangs import _check_program
-from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster, lazy_raster
 from esolangs.registry import LANGUAGES, SourceKind
+from esolangs.runtime._evaluate import _evaluate
 from tests.reference import REFERENCE
 from tests.support.dialect_support import integer_setting
 

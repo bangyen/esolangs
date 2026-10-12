@@ -15,8 +15,8 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
-from esolangs._source import raster_source as load_source
 from esolangs.raster import Pixel, Raster, Rows
+from esolangs.runtime._source import raster_source as load_source
 from esolangs.runtime.io import IO
 
 from .extract import extract_mask

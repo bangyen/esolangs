@@ -1,7 +1,5 @@
 """One tiny program per registry language, and the stdin it needs."""
 
-from esolangs._program import Program
-
 # The truth-machine fixture lives beside its interpreter's own
 # tests: the mutation bundle does not inline this module, so a test file
 # importing the program from here would fail collection there before any
@@ -12,6 +10,7 @@ from esolangs.languages.piet.generator import piet as _piet_sample
 from esolangs.languages.piet_plus_plus.generator import piet_plus_plus as _pp_sample
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._program import Program
 from tests.reference import REFERENCE
 
 # The wiki's street shape: a two-wide road with the instructions in the

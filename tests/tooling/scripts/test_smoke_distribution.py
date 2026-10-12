@@ -19,7 +19,7 @@ def test_generator_batch_executes_all_rows() -> None:
 
 def test_generator_batch_rejects_a_wrong_table(monkeypatch) -> None:
     monkeypatch.setattr(
-        "esolangs._evaluate._evaluate", lambda *_args, **_kwargs: "0000"
+        "esolangs.runtime._evaluate._evaluate", lambda *_args, **_kwargs: "0000"
     )
     with pytest.raises(AssertionError, match="Brainfuck"):
         smoke._generator("Brainfuck", math_extra=False, image_extra=False)  # noqa: SLF001
@@ -32,7 +32,7 @@ def test_missing_math_is_only_allowed_without_the_extra(
     def missing(*_args, **_kwargs):
         raise esolangs.MissingDependencyError("math extra missing")
 
-    monkeypatch.setattr("esolangs._evaluate._evaluate", missing)
+    monkeypatch.setattr("esolangs.runtime._evaluate._evaluate", missing)
     if math_extra:
         with pytest.raises(AssertionError):
             smoke._generator("Brainfuck", math_extra=True, image_extra=False)  # noqa: SLF001

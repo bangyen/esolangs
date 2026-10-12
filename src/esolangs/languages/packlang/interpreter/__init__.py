@@ -78,7 +78,6 @@ Further decisions for gaps the wiki leaves open:
 
 from collections.abc import Callable
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.languages.packlang.interpreter._parse import (
     _DECR,
@@ -103,6 +102,7 @@ from esolangs.languages.packlang.interpreter._values import (
     _set,
     _truth,
 )
+from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
 
 # There is no recursion ceiling.  A call pushes a frame rather than

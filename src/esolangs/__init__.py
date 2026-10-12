@@ -27,36 +27,7 @@ from functools import cache, partial
 from math import isqrt
 from typing import Any, TypedDict, cast
 
-from esolangs._answers import encode_inputs, read_answer
-from esolangs._describe import (
-    LanguageInfo,
-    describe,
-    list_languages,
-)
-from esolangs._execution import (
-    check_signal_timeout,
-    interpreter_errors,
-    interpreter_module,
-    prepare_call,
-)
-from esolangs._isolated import run_isolated as _run_isolated
 from esolangs._language import Language
-from esolangs._program import Program, RunnerProgram
-from esolangs._source import (
-    InputSource,
-    ProgramSource,
-    _FileSource,
-    check_input,
-    check_scale_for,
-    text_source,
-)
-from esolangs._validate import (
-    check_bits,
-    check_scale,
-    check_seed,
-    check_timeout,
-    check_width,
-)
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import (
     ArgumentError,
@@ -96,6 +67,35 @@ from esolangs.registry import (
     resolve,
     template_body,
     template_char,
+)
+from esolangs.registry._describe import (
+    LanguageInfo,
+    describe,
+    list_languages,
+)
+from esolangs.runtime._answers import encode_inputs, read_answer
+from esolangs.runtime._execution import (
+    check_signal_timeout,
+    interpreter_errors,
+    interpreter_module,
+    prepare_call,
+)
+from esolangs.runtime._isolated import run_isolated as _run_isolated
+from esolangs.runtime._program import Program, RunnerProgram
+from esolangs.runtime._source import (
+    InputSource,
+    ProgramSource,
+    _FileSource,
+    check_input,
+    check_scale_for,
+    text_source,
+)
+from esolangs.runtime._validate import (
+    check_bits,
+    check_scale,
+    check_seed,
+    check_timeout,
+    check_width,
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
@@ -591,7 +591,7 @@ def _run_bounded(
     with ``partial_output``. Works on Windows and worker threads; loading
     and individual steps cannot be interrupted.
     """
-    from esolangs._validate import check_whole
+    from esolangs.runtime._validate import check_whole
 
     check_whole(max_steps, "max_steps")
     check_timeout(timeout)
@@ -673,11 +673,11 @@ def run(
     check_scale_for(language, scale)
     check_seed(seed)
     check_timeout(timeout)
-    from esolangs._isolated import check_memory
+    from esolangs.runtime._isolated import check_memory
 
     check_memory(max_memory, isolated=isolated)
     if max_output is not None:
-        from esolangs._validate import check_whole
+        from esolangs.runtime._validate import check_whole
 
         check_whole(max_output, "max_output")
         if not isolated:

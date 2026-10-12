@@ -24,8 +24,8 @@ operands is one read, not two; any negative ``c`` raises when its
 instruction runs, jump taken or not (after a ``-3`` print).
 """
 
-from esolangs._validate import check_address
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._validate import check_address
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.memory import parse_int_memory as _parse

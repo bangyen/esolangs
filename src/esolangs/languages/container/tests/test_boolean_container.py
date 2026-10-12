@@ -6,9 +6,9 @@ import random
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.languages import generators as boolean
 from esolangs.languages.container.tests.runners import run_container
+from esolangs.runtime._evaluate import _evaluate
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import row_bits, witnesses

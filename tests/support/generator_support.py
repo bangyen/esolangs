@@ -4,8 +4,8 @@ import random
 from itertools import pairwise
 
 import esolangs
-from esolangs._evaluate import _DEFAULT, _Default, _evaluate
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime._evaluate import _DEFAULT, _Default, _evaluate
 from esolangs.runtime.io import ScriptedIO
 from tests.support.stdin_check import _validate_shape_for_evaluate
 from tests.support.witness_tables import parity, row_bits

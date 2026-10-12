@@ -58,7 +58,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.languages.forbin.interpreter._parse import (
     _ForSpec,
@@ -67,6 +66,7 @@ from esolangs.languages.forbin.interpreter._parse import (
     _Statement,
     _ValueNode,
 )
+from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 

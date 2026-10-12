@@ -52,7 +52,6 @@ from esolangs import (
     list_languages,
     read_answer,
 )
-from esolangs._describe import SHAPES, STATE_MODELS
 from esolangs.cli.args import (
     _check_count,
     _expand_short_options,
@@ -90,6 +89,7 @@ from esolangs.exceptions import (
     EsolangError,
 )
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.registry._describe import SHAPES, STATE_MODELS
 
 
 def _encode(rest: list[str]) -> None:

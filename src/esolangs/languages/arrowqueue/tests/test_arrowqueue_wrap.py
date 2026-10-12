@@ -48,7 +48,7 @@ def test_arrowqueue_four_columns_preserve_public_provenance(*, tagged: bool) -> 
 @pytest.mark.parametrize("width", [1, 4, 5, 6])
 def test_arrowqueue_narrow_drops_ignored_inputs(width: int) -> None:
     """A narrow build with ignored inputs is smaller than the full cascade and runs."""
-    from esolangs._evaluate import _evaluate
+    from esolangs.runtime._evaluate import _evaluate
 
     table = "".join(b for b in "0110" for _ in range(8))  # 2 of 5 inputs essential
     template = arrowqueue(table, width)

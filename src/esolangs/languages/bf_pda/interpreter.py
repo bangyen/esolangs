@@ -11,7 +11,7 @@ state and the transition is total; an empty or unbalanced program raises
 
 from __future__ import annotations
 
-from esolangs._drive import drive
+from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO

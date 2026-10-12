@@ -21,7 +21,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import cast
 
-from esolangs._program import Program
 from esolangs.compressed import CompressedText
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
@@ -32,6 +31,7 @@ from esolangs.generation.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, Language, SourceKind, canonical_id, resolve
 from esolangs.registry._contracts import AnswerMode, BooleanContract, InputShape
+from esolangs.runtime._program import Program
 
 # Examples use AND2 on 0,1 unless the source budget requires a smaller
 # witness. Generator suites cover the other tables and rows.
@@ -314,7 +314,7 @@ def _stem(lang: Language) -> str:
 
 
 def _register() -> None:
-    from esolangs._answers import encode_inputs
+    from esolangs.runtime._answers import encode_inputs
 
     # Everything an example needs is in its ``LANGUAGE``: the registry facts
     # ``_reader`` takes, and ``example=`` for a template or other answer.

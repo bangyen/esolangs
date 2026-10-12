@@ -20,10 +20,10 @@ def _rows(program: str, table: str, n: int) -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit):
     import esolangs
-    from esolangs._evaluate import _evaluate
     from esolangs.generation.wrap import balance_program, balance_score
     from esolangs.languages.circlefuck.generator import _program
     from esolangs.languages.circlefuck.interpreter import _Machine
+    from esolangs.runtime._evaluate import _evaluate
     from esolangs.runtime.io import ScriptedIO
 
     table = bit * (1 << n)

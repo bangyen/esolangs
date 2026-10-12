@@ -195,7 +195,7 @@ class TestBranchesTheGeneratorNoLongerReaches:
     def test_the_digit_cap_is_lifted_and_restored(self) -> None:
         import sys
 
-        from esolangs._digits import digit_limit_for
+        from esolangs.runtime._digits import digit_limit_for
 
         before = sys.get_int_max_str_digits()
         with digit_limit_for(before + 200):

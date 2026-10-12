@@ -4,7 +4,6 @@ import random
 
 import pytest
 
-from esolangs._evaluate import _evaluate
 from esolangs.languages.line.generator import line
 from esolangs.languages.line.generator.forward import forward_canvas
 from esolangs.languages.line.interpreter.extract import extract
@@ -15,6 +14,7 @@ from esolangs.languages.line.interpreter.simulate import (
     compile_program,
     run_node,
 )
+from esolangs.runtime._evaluate import _evaluate
 from scripts.benchmark import WrittenState
 
 

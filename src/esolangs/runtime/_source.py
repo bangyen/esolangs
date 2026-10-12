@@ -7,13 +7,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
 
-from esolangs._input import InputSource as InputSource
-from esolangs._input import check_input as check_input
-from esolangs._input import read_input as read_input
-from esolangs._program import Program
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
 from esolangs.raster import Raster
+from esolangs.runtime._input import InputSource as InputSource
+from esolangs.runtime._input import check_input as check_input
+from esolangs.runtime._input import read_input as read_input
+from esolangs.runtime._program import Program
 from esolangs.runtime.source_hints import syntax_error, with_hint
 
 type ProgramSource = Program | bytes | os.PathLike[str] | IO[str] | IO[bytes]
@@ -120,9 +120,9 @@ def check_scale_for(language: str, scale: int | None) -> None:
     """Validate scale using the interpreter's declared capability."""
     if scale is None:
         return
-    from esolangs._execution import interpreter_module
-    from esolangs._validate import check_scale
     from esolangs.registry import resolve
+    from esolangs.runtime._execution import interpreter_module
+    from esolangs.runtime._validate import check_scale
 
     check_scale(scale)
     module = interpreter_module(resolve(language))

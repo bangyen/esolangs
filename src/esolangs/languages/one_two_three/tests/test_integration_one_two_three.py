@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
-from esolangs._isolated import _worker
 from esolangs.exceptions import ArgumentError
+from esolangs.runtime._evaluate import _evaluate
+from esolangs.runtime._isolated import _worker
 from tests.integration.cli.test_cli import _program, call_main
 from tests.reference import REFERENCE
 from tests.support.cli_support import _LOOPS, call_both
@@ -43,7 +43,7 @@ class TestTerminationTimeoutIsUndecided:
     def test_vm_construction_is_timed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import time
 
-        from esolangs import _evaluate
+        from esolangs.runtime import _evaluate
 
         def slow_machine(*_args: object, **_kwargs: object) -> None:
             time.sleep(1)

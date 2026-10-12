@@ -6,8 +6,8 @@ import sys
 import pytest
 
 import esolangs
-from esolangs import _isolated
-from esolangs._isolated import _decode, _worker
+from esolangs.runtime import _isolated
+from esolangs.runtime._isolated import _decode, _worker
 from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
 
@@ -59,7 +59,7 @@ def test_memory_ceiling_preserves_inherited_hard_limit(
 ) -> None:
     from types import SimpleNamespace
 
-    from esolangs._isolated import _limit_memory
+    from esolangs.runtime._isolated import _limit_memory
 
     calls = []
     resource = SimpleNamespace(

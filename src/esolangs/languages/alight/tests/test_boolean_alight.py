@@ -6,11 +6,11 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.alight.generator.balance import _balance_postfix
 from esolangs.languages.alight.interpreter import run as alight_run
+from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import assert_an_ignored_input_costs
 
@@ -243,8 +243,8 @@ def test_postfix_balance_model_checks_rendering():
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_lookup_drops_every_index_input(syntax, update, bit):
     import esolangs
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.alight.generator import _program
+    from esolangs.runtime._evaluate import _evaluate
 
     table = bit * 256
     settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
@@ -262,10 +262,10 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit):
 @pytest.mark.parametrize("n", [3, 4, 8])
 def test_constant_lookup_executes_every_layout(syntax, bit, width, n):
     import esolangs
-    from esolangs._evaluate import _evaluate
     from esolangs.generation.wrap import balance_score
     from esolangs.languages.alight.generator import _program
     from esolangs.languages.alight.generator.balance import balance_alight
+    from esolangs.runtime._evaluate import _evaluate
 
     table = bit * (1 << n)
     settings = esolangs.DialectSettings(expression_syntax=syntax)
