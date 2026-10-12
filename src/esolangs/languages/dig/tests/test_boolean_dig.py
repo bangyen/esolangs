@@ -348,13 +348,13 @@ def test_shared_routes_keep_the_execution_bound(
 
 @pytest.mark.medium
 @pytest.mark.parametrize(("a", "b"), [("01" * 32, "10" * 32), ("0" * 64, "1" * 64)])
-def test_fixed_pair_reads_ignored_and_constant_leaf_inputs(a: str, b: str) -> None:
-    from esolangs.languages.dig.generator import _dig_shared_pair
+def test_indexed_pair_reads_ignored_and_constant_leaf_inputs(a: str, b: str) -> None:
+    from esolangs.languages.dig.generator._shared import _dig_indexed_shared
     from esolangs.languages.dig.interpreter import run
     from esolangs.runtime.io import ScriptedIO
 
     table = a + b + b + a
-    program = _dig_shared_pair(table, 8)
+    program = _dig_indexed_shared(table, 8)
     assert program is not None
     for row, expected in enumerate(table):
         io = ScriptedIO("\n".join(format(row, "08b")) + "\n")

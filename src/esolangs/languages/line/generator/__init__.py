@@ -262,101 +262,69 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
     """Choose the most balanced compact or previous forward/reverse tree."""
     _check_unit(unit)
 
-    def score(node: Node, *, compact: bool, tight: bool = True) -> tuple[int, int, int]:
-        y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[id(node)]
-        width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
-        return abs(width - height), width * height, width
+    from .render import _has_goto
 
-    def retain_shared(score: tuple[int, int, int]) -> bool:
-        from .render import _has_goto
-
-        if not _has_goto(cast("Node | None", default._payload)):  # noqa: SLF001 - generator-owned graph
-            return False
-        height, width = len(default.rows), len(default.rows[0])
-        return (
-            abs(width - height),
-            width * height,
-            width,
-        ) <= score and width * height <= score[1]
-
-    nodes = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
-    previous_nodes = nodes[:]
-    nodes += [
+    small = _validate_truth_table(truth_table) <= _SMALL_MAX
+    previous = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
+    nodes = previous + [
         projected
         for reverse in (False, True)
         if (projected := projected_boolean(truth_table, reverse=reverse)) is not None
     ]
-    if _validate_truth_table(truth_table) <= _SMALL_MAX:
-        drawn = [(small_tree_canvas(node, unit=unit), node) for node in nodes]
+    type Choice = tuple[tuple[int, int, int], Node, Canvas | None, bool, bool]
 
-        def canvas_score(pair: tuple[Canvas, Node]) -> tuple[int, int]:
-            canvas, _ = pair
-            return abs(canvas.width - canvas.height), canvas.width * canvas.height
+    def best(options: list[Node], *, compact: bool, tight: bool = True) -> Choice:
+        choices = []
+        for node in options:
+            canvas = (
+                small_tree_canvas(node, compact=compact, tight=tight, unit=unit)
+                if small
+                else None
+            )
+            if canvas is not None:
+                width, height = canvas.width, canvas.height
+            else:
+                y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[
+                    id(node)
+                ]
+                width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
+            score = abs(width - height), width * height, 0 if small else width
+            choices.append((score, node, canvas, compact, tight))
+        return min(choices, key=lambda choice: choice[0])
 
-        previous = [
-            (small_tree_canvas(node, compact=False, unit=unit), node)
-            for node in previous_nodes
-        ]
-        old = min(previous, key=canvas_score)
-        preceding = min(
-            [(small_tree_canvas(node, tight=False, unit=unit), node) for node in nodes],
-            key=canvas_score,
-        )
-        if not (
-            canvas_score(preceding) <= canvas_score(old)
-            and canvas_score(preceding)[1] <= canvas_score(old)[1]
-        ):
-            preceding = old
-        candidate = min(drawn, key=canvas_score)
-        # Shorter stems can select a wider orientation: 00010101 grows
-        # 209277 -> 248087 pixels. Preserve the preceding area ceiling.
-        chosen = (
-            candidate
-            if (
-                canvas_score(candidate) <= canvas_score(old)
-                and canvas_score(candidate)[1] <= canvas_score(old)[1]
-            )
-            else old
-        )
-        if canvas_score(chosen)[1] > canvas_score(preceding)[1]:
-            chosen = preceding
-        canvas, node = chosen
-        if retain_shared(
-            (
-                abs(canvas.width - canvas.height),
-                canvas.width * canvas.height,
-                canvas.width,
-            )
-        ):
-            return default
-        return lazy_raster(lambda: _grey_rows(canvas), node)
-    compact_score, selected = min(
-        ((score(node, compact=True), node) for node in nodes), key=lambda p: p[0]
-    )
-    old_score, old_selected = min(
-        ((score(node, compact=False), node) for node in previous_nodes),
-        key=lambda p: p[0],
-    )
-    preceding_score, preceding_selected = min(
-        ((score(node, compact=True, tight=False), node) for node in nodes),
-        key=lambda p: p[0],
-    )
-    preceding_compact = preceding_score <= old_score
-    if not preceding_compact:
-        preceding_score, preceding_selected = old_score, old_selected
+    old = best(previous, compact=False)
+
+    def within_old(choice: Choice) -> bool:
+        return choice[0] <= old[0] and (not small or choice[0][1] <= old[0][1])
+
+    preceding = best(nodes, compact=True, tight=False)
+    if not within_old(preceding):
+        preceding = old
+    chosen = best(nodes, compact=True)
+    # Shorter stems can select a wider orientation: 00010101 grows
+    # 209277 -> 248087 pixels. Preserve the preceding area ceiling.
+    if not within_old(chosen):
+        chosen = old
     # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
-    compact = compact_score <= old_score
-    tight = True
-    if not compact:
-        selected = old_selected
-    chosen_score = compact_score if compact else old_score
-    if chosen_score[1] > preceding_score[1]:
-        selected, compact, tight = preceding_selected, preceding_compact, False
-        chosen_score = preceding_score
-    if retain_shared(chosen_score):
-        return default
+    if chosen[0][1] > preceding[0][1]:
+        chosen = preceding
+    score, selected, canvas, compact, tight = chosen
+    width = canvas.width if canvas is not None else score[2]
+    if _has_goto(cast("Node | None", default._payload)):  # noqa: SLF001 - generator-owned graph
+        height, shared_width = len(default.rows), len(default.rows[0])
+        shared_area = shared_width * height
+        if (abs(shared_width - height), shared_area, shared_width) <= (
+            score[0],
+            score[1],
+            width,
+        ) and shared_area <= score[1]:
+            return default
     return lazy_raster(
-        lambda: _render_node(selected, compact=compact, tight=tight, unit=unit),
+        lambda: (
+            _grey_rows(canvas)
+            if canvas is not None
+            else _render_node(selected, compact=compact, tight=tight, unit=unit)
+        ),
         selected,
     )
 

@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from esolangs.languages.circuit_diagram.generator import (
     _Builder,
     _Dag,
-    _shannon_fold,
+    _finish_fold,
 )
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
 
@@ -181,10 +181,4 @@ def sparse_mask_model(
         for level, rail in enumerate(rails)
     ]
     builder.band_start = builder.next_column
-    result = _shannon_fold(builder, selectors, dag)
-    if result == "0":
-        result = builder.constant(rails[0], "x")
-    elif result == "1":
-        result = builder.constant(rails[0], "X")
-    builder.output(result)
-    return builder.layout
+    return _finish_fold(builder, selectors, dag)

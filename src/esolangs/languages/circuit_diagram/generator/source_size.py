@@ -29,15 +29,12 @@ def layout_source_size(model: _Layout) -> int:
     # The rightmost occupied point per row outside the verticals: a horizontal
     # run ends one cell before its exclusive bound, a junction or glyph rests
     # on its own column.
-    horizontal: dict[int, int] = {}
+    edges: dict[int, int] = {}
     for row, runs in model.horizontal.items():
-        horizontal[row] = max(bottom for _, bottom, _ in runs) - 1
-    junctions: dict[int, int] = {}
-    for x, row in model.junctions:
-        junctions[row] = max(junctions.get(row, -1), x)
-    glyphs: dict[int, int] = {}
-    for (x, row), _ in model.glyphs.items():
-        glyphs[row] = max(glyphs.get(row, -1), x)
+        edges[row] = max(bottom for _, bottom, _ in runs) - 1
+    for points in (model.junctions, model.glyphs):
+        for x, row in points:
+            edges[row] = max(edges.get(row, -1), x)
 
     active: dict[int, int] = {}
     heap: list[int] = []
@@ -54,12 +51,7 @@ def layout_source_size(model: _Layout) -> int:
         while heap and active.get(-heap[0], 0) == 0:
             heappop(heap)
         edge = -heap[0] if heap else -1
-        edge = max(
-            edge,
-            horizontal.get(row, -1),
-            junctions.get(row, -1),
-            glyphs.get(row, -1),
-        )
+        edge = max(edge, edges.get(row, -1))
         if edge >= 0:
             size += edge + 1
     return size

@@ -217,50 +217,32 @@ class _Layout:
         if height == 0:
             return ""  # pragma: no cover - every table lays a wire
 
-        # Rightmost occupied cell per row, and the point features by row.
+        # Size rows before painting so sparse drawings allocate only their
+        # emitted cells. Feature maps need no second per-row representation.
         last = [-1] * height
-        verts: dict[int, list[int]] = {}
         for x, runs in self.vertical.items():
             for a, b, _ in runs:
                 for y in range(a, b):
-                    verts.setdefault(y, []).append(x)
-                    if x > last[y]:
-                        last[y] = x
+                    last[y] = max(last[y], x)
         for y, runs in self.horizontal.items():
-            edge = max(b for _, b, _ in runs) - 1
-            if edge > last[y]:
-                last[y] = edge
-        dots: dict[int, list[int]] = {}
-        for x, y in self.junctions:
-            dots.setdefault(y, []).append(x)
-            if x > last[y]:
-                last[y] = x
-        marks: dict[int, list[tuple[int, int]]] = {}
-        for (x, y), char in self.glyphs.items():
-            marks.setdefault(y, []).append((x, ord(char)))
-            if x > last[y]:
-                last[y] = x
-
-        dash, pipe, cross, dot = ord("-"), ord("|"), ord("="), ord(".")
+            last[y] = max(last[y], max(b for _, b, _ in runs) - 1)
+        for points in (self.junctions, self.glyphs):
+            for x, y in points:
+                last[y] = max(last[y], x)
+        rows = [bytearray(b" " * (edge + 1)) for edge in last]
         dashes = b"-" * (max(last) + 1)
-        spaces = b" " * (max(last) + 1)
-        rows = []
-        for y in range(height):
-            edge = last[y]
-            if edge < 0:
-                rows.append("")
-                continue
-            buf = bytearray(spaces[: edge + 1])
-            for a, b, _ in self.horizontal.get(y, ()):
-                buf[a:b] = dashes[: b - a]
-            for x in verts.get(y, ()):
-                buf[x] = cross if buf[x] == dash or buf[x] == cross else pipe
-            for x in dots.get(y, ()):
-                buf[x] = dot
-            for x, code in marks.get(y, ()):
-                buf[x] = code
-            rows.append(buf.decode("ascii"))
-        return "\n".join(rows)
+        for y, runs in self.horizontal.items():
+            for a, b, _ in runs:
+                rows[y][a:b] = dashes[: b - a]
+        for x, runs in self.vertical.items():
+            for a, b, _ in runs:
+                for y in range(a, b):
+                    rows[y][x] = ord("=") if rows[y][x] in b"-=" else ord("|")
+        for x, y in self.junctions:
+            rows[y][x] = ord(".")
+        for (x, y), char in self.glyphs.items():
+            rows[y][x] = ord(char)
+        return "\n".join(row.decode("ascii") for row in rows)
 
 
 class _RoutingLayout(_Layout):

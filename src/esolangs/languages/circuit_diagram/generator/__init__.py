@@ -476,11 +476,11 @@ def _dag(truth_table: str, n: int) -> _Dag:
     return ops, root, needed, reads
 
 
-def _shannon_fold(
+def _emit_dag(
     builder: _Builder, selectors: list[list[int | None]], dag: _Dag
-) -> _Value:
-    """Build each distinct mux of the DAG once; return the root's value."""
-    ops, root, _, reads = dag
+) -> dict[int, _Value]:
+    """Emit shared muxes and retain their values for single or multiple roots."""
+    ops, _, _, reads = dag
     n = len(selectors)
     values: dict[int, _Value] = {0: "0", 1: "1"}
     for level, zero, one, node in ops:
@@ -488,7 +488,21 @@ def _shannon_fold(
         values[node] = signal
         if isinstance(signal, int) and signal in builder.stride_of:
             builder.pending[signal] = reads.get(node, 0)
-    return values[root]
+    return values
+
+
+def _finish_fold(
+    builder: _Builder, selectors: list[list[int | None]], dag: _Dag
+) -> _Layout:
+    """Emit one root, using a self-fed gate for either constant."""
+    result = _emit_dag(builder, selectors, dag)[dag[1]]
+    if isinstance(result, str):
+        rail = selectors[0][0]
+        if rail is None:  # pragma: no cover - every selector has a plain rail
+            raise AssertionError("selector has no plain rail")
+        result = builder.constant(rail, "x" if result == "0" else "X")
+    builder.output(result)
+    return builder.layout
 
 
 def _essential_table(truth_table: str, n: int) -> tuple[list[int], str]:
@@ -562,12 +576,7 @@ def _circuit_diagram_model(
     builder.band_start = builder.next_column
     builder.limit = limit
 
-    result = _shannon_fold(builder, selectors, dag)
-    if result == "0":
-        result = builder.constant(rails[0], "x")
-    elif result == "1":
-        result = builder.constant(rails[0], "X")
-    builder.output(result)
+    _finish_fold(builder, selectors, dag)
     if _events is not None and builder.next_limit is not None:
         _events.append(builder.next_limit)
     return builder.layout
