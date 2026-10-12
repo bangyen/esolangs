@@ -58,8 +58,10 @@ esolangs generate brainfuck 0110 > bf.txt
 printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 ```
 
-The Polynomial interpreter needs the optional mathematics extra:
-`pip install 'esolangs[math]'`.  PNG loading and saving need
+- Polynomial needs the optional mathematics extra:
+  `pip install 'esolangs[math]'`.
+
+PNG loading and saving need
 `pip install 'esolangs[image]'`; in-memory raster programs need neither extra.
 
 ## Python API
@@ -105,10 +107,13 @@ each language's [`examples/` directory](https://github.com/bangyen/esolangs/tree
 
 ## Implemented languages
 
-Familiar languages include [brainfuck](https://esolangs.org/wiki/brainfuck),
-[Befunge](https://esolangs.org/wiki/Befunge), [Piet](https://esolangs.org/wiki/Piet),
-[INTERCAL](https://esolangs.org/wiki/INTERCAL), and
-[Malbolge](https://esolangs.org/wiki/Malbolge).
+Familiar languages include:
+
+- [brainfuck](https://esolangs.org/wiki/brainfuck)
+- [Befunge](https://esolangs.org/wiki/Befunge)
+- [Piet](https://esolangs.org/wiki/Piet)
+- [INTERCAL](https://esolangs.org/wiki/INTERCAL)
+- [Malbolge](https://esolangs.org/wiki/Malbolge)
 
 See the [complete language catalog](https://github.com/bangyen/esolangs/blob/main/docs/languages.md).
 

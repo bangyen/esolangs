@@ -70,11 +70,10 @@ NARROW_WIDTH = 13
 # start marker it enters at the bottom right -- is true of the language but
 # not of these programs, which all begin with an explicit ``"``.)  Both now
 # take a width themselves, by folding on their own turns and mirrors; that
-# is the independence the paragraph below is about.  function x(y) and the
-# Algebraic Programming Language are line-structured source rather than
-# grids -- the first takes one indented statement per line, the second
-# decides a line's *meaning* by whether it contains an ``=``, so a break
-# does not reflow a line but turns one line into two with different jobs.
+# is the independence the paragraph below is about. Line-structured source
+# instead assigns meaning to line boundaries: splitting an indented
+# statement or a line classified by whether it contains ``=`` changes its
+# job rather than reflowing it.
 #
 # Unwrappable is not the same as unbounded, and the two memberships are
 # independent: a language here may still take a width by *emitting* a

@@ -171,8 +171,10 @@ the generated program. A generator guarantees its size class, not its
 constant; constant-factor tweaks beyond the canonical set ship only at 10% or
 more where they run (`docs/CONTRIBUTING.md`). Execution measurements exclude loading and use the
 worst sampled parity row. A sub-10 ms run does not establish an exponent.
-Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
-super-linear area); it is intentionally excluded from execution time.
+Loading is intentionally excluded from execution time.
+
+- Factor loading is dominated by integer factorization.
+- Circuit Diagram loading is dominated by parsing super-linear area.
 
 FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
 language floor. The shipped generator gives equal subtables one state, so
@@ -328,32 +330,88 @@ admits nothing alone and removes nothing. A stalled generator row moves to
 the [roadmap](roadmap.md#parked)'s Parked section; the language stays.
 
 Recognition sources checked 2026-10-01 supply selections, not admission gates
-or popularity rankings:
+or popularity rankings.
 
-- [Kneusel, *Strange Code* (2022)](https://nostarch.com/strange-code):
-  named esolang chapters cover FRACTRAN, Piet, Brainfuck, and Befunge.
-  Filska and Firefly are the author's own creations; Forth, SNOBOL, and CLIPS
-  belong to the separate atypical-language section.
-- [Morr, *Esoteric Programming Languages*](https://blinry.org/esolangs/esolangs.pdf):
-  selects Brainfuck, INTERCAL, Befunge, Malbolge, and Shakespeare as iconic
-  examples with different properties, not an exhaustive canon.
-- [LMU teaching notes](https://cs.lmu.edu/~ray/notes/esolangs/): a brief themed,
-  theoretical, golfing, multidimensional, and difficulty-oriented tour.
-  Selects LOLCODE, Glowup Vibes, ArnoldC, Chef, Shakespeare, Rockstar,
-  Brainfuck, Binaryfuck, Lenguage, GolfScript, Pyth, CJam, Jelly, 05AB1E,
-  Vyxal, Befunge, AsciiDots, Piet, Whitespace, Unreadable, and Malbolge.
-- [Esolang featured archive](https://esolangs.org/w/index.php?title=Esolang:Featured_languages&oldid=161213):
-  administrator-selected features: Thue, Funciton, Brainfuck, Deadfish,
-  Emmental, Malbolge, Glass, and ///. Features are not popularity endorsements.
+[Kneusel, *Strange Code* (2022)](https://nostarch.com/strange-code) has these
+named esolang chapters:
+
+- FRACTRAN is a named chapter.
+- Piet is a named chapter.
+- brainfuck is a named chapter.
+- Befunge is a named chapter.
+
+Filska and Firefly are the author's own creations; Forth, SNOBOL, and CLIPS
+belong to the separate atypical-language section.
+
+[Morr, *Esoteric Programming Languages*](https://blinry.org/esolangs/esolangs.pdf)
+selects these iconic examples with different properties, not an exhaustive canon:
+
+- brainfuck is selected.
+- INTERCAL is selected.
+- Befunge is selected.
+- Malbolge is selected.
+- Shakespeare is selected.
+
+[LMU teaching notes](https://cs.lmu.edu/~ray/notes/esolangs/) give a brief themed,
+theoretical, golfing, multidimensional, and difficulty-oriented tour:
+
+- LOLCODE is selected.
+- Glowup Vibes is selected.
+- ArnoldC is selected.
+- Chef is selected.
+- Shakespeare is selected.
+- Rockstar is selected.
+- brainfuck is selected.
+- Binaryfuck is selected.
+- Lenguage is selected.
+- GolfScript is selected.
+- Pyth is selected.
+- CJam is selected.
+- Jelly is selected.
+- 05AB1E is selected.
+- Vyxal is selected.
+- Befunge is selected.
+- AsciiDots is selected.
+- Piet is selected.
+- Whitespace is selected.
+- Unreadable is selected.
+- Malbolge is selected.
+
+[Esolang featured archive](https://esolangs.org/w/index.php?title=Esolang:Featured_languages&oldid=161213)
+records administrator-selected features, not popularity endorsements:
+
+- Thue was featured.
+- Funciton was featured.
+- brainfuck was featured.
+- Deadfish was featured.
+- Emmental was featured.
+- Malbolge was featured.
+- Glass was featured.
+- /// was featured.
 
 The 2026-10-01 count gives Brainfuck 2,057 backlinks; 282 counted only the first
 API batch. Brainfuck-relative gates and the indeterminate band are retired.
 
-The classics score Befunge 381, Underload 167, Thue 155, Malbolge 129,
-INTERCAL 103, FALSE 91, Fish 91, Unlambda 89, Smallfuck 66, and FRACTRAN 65;
-rejected Brainloller and Braincopter score 26 and 14. Piet (65) clears the
-fame gate; Whitespace (58),
-Forth (57), Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
+The 2026-10-01 fame audit recorded these backlink counts:
+
+- Befunge: 381 backlinks; clears the fame gate.
+- Underload: 167 backlinks; clears the fame gate.
+- Thue: 155 backlinks; clears the fame gate.
+- Malbolge: 129 backlinks; clears the fame gate.
+- INTERCAL: 103 backlinks; clears the fame gate.
+- FALSE: 91 backlinks; clears the fame gate.
+- Fish: 91 backlinks; clears the fame gate.
+- Unlambda: 89 backlinks; clears the fame gate.
+- Smallfuck: 66 backlinks; clears the fame gate.
+- FRACTRAN: 65 backlinks; clears the fame gate.
+- Brainloller: 26 backlinks; rejected.
+- Braincopter: 14 backlinks; rejected.
+- Piet: 65 backlinks; clears the fame gate.
+- Whitespace: 58 backlinks; below the fame gate.
+- Forth: 57 backlinks; below the fame gate.
+- Chicken: 55 backlinks; below the fame gate.
+- Shakespeare: 54 backlinks; below the fame gate.
+- LOLCODE: 47 backlinks; below the fame gate.
 
 Existing fame exceptions must still clear the bar. Whitespace was removed at
 58 backlinks.
@@ -385,8 +443,8 @@ category, and the only other code is a partial C# executor (Esolang-NET/Piet)
 whose Read, Write and Roll-Context are no-ops, so it cannot arbitrate the
 conventions below.
 
-Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis. Deadfish (315)
-is interpreter-only because it has no input vocabulary.
+- Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis.
+- Deadfish (315) is interpreter-only because it has no input vocabulary.
 
 [Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
 (94) clears the fame gate despite duplicating an earlier queue language's
@@ -440,9 +498,13 @@ The 2026-10-01 fame audit covered eight census candidates:
   exactly 20*2^m + n + 53 characters, plus k + 10 for k = n - m > 0
   ignored inputs; build work is O(T).
 
-Each uses the same 309-table, 3,352-row corpus as Cyclic tag. Dense size-difference
-ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.903 (Boolfuck), 2.926 (Subleq)
-and 4.000 (///). The constructions supply the bounds; these ratios are measurements.
+The constructions supply the bounds; dense size-difference ratios at
+n=8,10,12 are measurements. Each uses a 309-table, 3,352-row corpus.
+
+- Cyclic tag has a dense size-difference ratio of 3.997.
+- Boolfuck has a dense size-difference ratio of 3.903.
+- Subleq has a dense size-difference ratio of 2.926.
+- /// has a dense size-difference ratio of 4.000.
 
 - [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only.
   No instruction reads input. `H` and `9` emit fixed non-Boolean text; `Q`
@@ -525,7 +587,7 @@ languages remain rejected from the same image-source screen.
   wiki cat's final empty pop pads to a trailing NUL.
 - LaserFuck inherits Brainfuck commands without defining EOF: exhausted input
   raises `EOFError`.
-- The SStack page has no example with a stated output; its brainfuck
+- SStack has no example with a stated output on its page; its brainfuck
   interpreter is marked untested. Popping an empty stack reads 0 and leaves it
   empty, `:x:` peeks and raises `HaltError` above 255, EOF raises, and
   whitespace is discarded anywhere, inside a token too.

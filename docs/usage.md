@@ -41,15 +41,18 @@ info = bf.describe()
 It also binds `instantiate`; use the package functions across languages.
 `balance=True` minimizes the rendered width/height difference across supported
 layouts, breaking ties by source length (raster pixel area), then width.
-It excludes `width`. Line compares forward and reverse input-test orders;
-Piet folds its path with stack-neutral turns. Both construct O(T) pixels
-for a truth table of length T.
-Raster generators accept `scale=1` (CLI: `--scale N`), applied after layout.
-Both interpreters detect enlargement. Piet chooses the largest uniform codel
-grid anchored at the image origin; `run(..., scale=N)` or `--scale N`
-overrides detection. Use `scale=1` for native images whose blocks also fit a
-larger grid. The committed Piet example uses 80-pixel codels (960×560),
-comparable in area to native Line (680×800).
+It excludes `width`. Raster generators accept `scale=1` (CLI: `--scale N`),
+applied after layout.
+
+- Line compares forward and reverse input-test orders for balance. It
+  constructs O(T) pixels for a truth table of length T and detects
+  enlargement. Its committed example occupies 680×800 native pixels.
+- Piet folds its path with stack-neutral turns for balance. It constructs
+  O(T) pixels for a truth table of length T and detects enlargement by the
+  largest uniform codel grid anchored at the origin. `run(..., scale=N)` or
+  `--scale N` overrides detection; use `scale=1` for native images whose
+  blocks also fit a larger grid. Its committed example uses 80-pixel codels
+  (960×560).
 
 ## Run XOR
 
@@ -67,24 +70,24 @@ output = esolangs.run("brainfuck", program, stdin=stdin)
 assert esolangs.read_answer("brainfuck", output) == "1"
 ```
 
-Some languages embed inputs in their source instead:
+- Minifuck embeds inputs in its source:
 
-```python
-template = esolangs.generate("Minifuck", table)
-program = esolangs.instantiate("Minifuck", template, [1, 0])
-output = esolangs.run("Minifuck", program)
-assert esolangs.read_answer("Minifuck", output) == "1"
-```
+  ```python
+  template = esolangs.generate("Minifuck", table)
+  program = esolangs.instantiate("Minifuck", template, [1, 0])
+  output = esolangs.run("Minifuck", program)
+  assert esolangs.read_answer("Minifuck", output) == "1"
+  ```
 
-Raster languages return an image source:
+- Piet returns an image source:
 
-```python
-raster = esolangs.generate("Piet", table)
-assert isinstance(raster, esolangs.Raster)
-raster.to_png()
-stdin = esolangs.encode_inputs("Piet", [0, 1])
-assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin)) == "1"
-```
+  ```python
+  raster = esolangs.generate("Piet", table)
+  assert isinstance(raster, esolangs.Raster)
+  raster.to_png()
+  stdin = esolangs.encode_inputs("Piet", [0, 1])
+  assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin)) == "1"
+  ```
 
 To step through a text program and inspect its state:
 

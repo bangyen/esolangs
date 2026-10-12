@@ -2,7 +2,7 @@
 
 from esolangs._program import Program
 
-# The corrected Inject truth machine lives beside the interpreter's own
+# The truth-machine fixture lives beside its interpreter's own
 # tests: the mutation bundle does not inline this module, so a test file
 # importing the program from here would fail collection there before any
 # mutant ran.  Defined there, imported here.

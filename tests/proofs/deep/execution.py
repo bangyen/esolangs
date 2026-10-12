@@ -44,11 +44,10 @@ POLY_GROWTH = 1.5
 STEP_GROWTH = 1.4
 
 #: Rungs needed after the last route change before a ratio means anything,
-#: and the window the slope is fitted over.  Five, because the wobble these
-#: counts carry has no single period: Taglate alternates every other input
-#: (1.14x then 3.35x, both Theta(T)), while AddSubJump and S*bleq bump on a
-#: longer cycle.  Any fixed two- or three-step comparison lands mid-wobble
-#: for one of them and reads a linear construction as super-linear.
+#: and the window the slope is fitted over. Five, because route-count
+#: wobble has no single period: an alternating cycle can read 1.14x then
+#: 3.35x while remaining Theta(T), and other cycles are longer. A fixed
+#: two- or three-step comparison can misread linear growth as super-linear.
 MIN_RUNGS = 5
 WINDOW = 5
 

@@ -182,52 +182,69 @@ the tree at any arity.
 These generators keep no unconstrained tree route and have no subtree to fold:
 
 - A Painter Ant: Its answer strip is smaller than a tree at every arity.
+  Its corridor stops at the trailing run of equal answers (36.4% saving).
+  An ignored input costs a bare `SN` through `input_weights`.
 - Alight: Indexes a string literal.
 - BIO: Its telescope has one nested level per row whatever the table says. A
   degenerate table only spares the flat edges’ adjustments, below the fold
   threshold once doubling between input runs is included.
+  Parks its index while an ignored setter runs.
 - B-tapemark: Copies one mark per row onto the blank grid and walks the pointer
   to it.
 - bit~: Lands the pointer on one tape cell per entry and walks the bit home.
+  Indexes the projected table it is handed.
 - Bitwise Cyclic Tag: Has no branch to fold a tree into: commands run in a fixed
   cyclic sequence. Every table of a given arity whose inputs all matter emits
   the same length.
+  An ignored input costs a bare `0` through `input_weights`.
 - Circlefuck: Deletes entries before the indexed one and prints what remains
   under the pointer.
+  Tabulates only essential inputs.
 - Clockwise: Writes one cell per entry in a countdown row and stops on the
   indexed cell.
+  An ignored input reads seven bits before the next input overwrites them.
 - Collatz Multiverse: Writes one cell per four table rows at every arity.
   Degenerate tables with few distinct nibbles need fewer cell constants and a
   shorter decoder; the fold discriminator in `test_schemes.py` records this
   exception.
 - Cyclic tag: Alternating table-bit and empty productions select the indexed
   answer.
+  An ignored input costs an empty rule through `input_weights`.
 - ///: Fixed substitution sweeps select the indexed table entry.
+  An ignored input costs an `X`-deleted bit through `input_weights`.
 - Subleq: A packed decoder selects the indexed table bit.
 - Dimensional: Paints one cell per entry along dimension 1; a bare `>` displaces
-  the pointer by the bit it stands on.
+  the pointer by the bit it stands on. Painting only as far as the last
+  essential input makes a constant-zero tail cheaper (6.9% on the best
+  one-dependency table), without a subtree.
 - EGL: Paints one cell per entry and walks a pointer to it.
 - Eval: Uses a linear lookup at every arity. Its lookup shrinks degenerate
   tables; the fold discriminator in `test_schemes.py` records this exception.
 - Fish: Reads one grid cell per table entry with `g`.
+  An ignored input is read and popped with `i~`.
 - Flowchart: Pushes one deque entry per row and walks the cursor to it. Its tree
   is the width-constrained route.
+  An ignored input skips its eight bits.
 - Forbin: Paints a 128-entry block as one call’s argument list at every arity;
   branches above seven inputs choose a block rather than route a table.
+  An ignored input is read into the scratch name through `input_weights`.
 - Minsky Swap: Its `~` cascade routes the index to two shared leaves with a one-
   digit target per row.
+  An ignored input costs a drained `~ ~` through `input_weights`.
 - Modulous: Pushes the whole table as a string literal and spends the row index
   popping down to the answer.
 - NoComment: Switches between two lookups at four inputs. Its lookup shrinks
   degenerate tables; the fold discriminator in `test_schemes.py` records this
   exception.
 - Packlang: Paints one array block and indexes it at every arity.
+  An ignored input is read bare.
 - Qoibl: Divides one literal by the power of two its reads build.
 - SLOW ACV MAMMALIAN: Its read chain emits one fixed-width leaf slot per row
   whatever the table says.
 - Thue: Makes the table its starting state and rewrites every adjacent pair down
   to one per input.
 - Unsquare: Pushes one stack cell per row and pops the row index off the top.
+  Pushes only cells the essential inputs address.
   `essential_inputs` halves degenerate tables; the fold discriminator in
   `test_schemes.py` records this exception.
 

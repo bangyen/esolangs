@@ -144,6 +144,44 @@ def test_remove_drops_a_link_bullet(tmp_path: Path) -> None:
     assert path.read_text() == "- [Kept](https://y/): stays.\n"
 
 
+def test_remove_preserves_punctuation_prefixed_names(tmp_path: Path) -> None:
+    path = tmp_path / "roadmap.md"
+    path.write_text(
+        "- **Piet:** removed.\n  Its continuation.\n"
+        "- **Piet++:** kept.\n"
+        "- [Piet++](https://x/): kept.\n"
+        "- piet's own entry goes.\n"
+    )
+    remove_language._drop_bullets(path, "Piet")  # noqa: SLF001
+    assert path.read_text() == ("- **Piet++:** kept.\n- [Piet++](https://x/): kept.\n")
+
+
+def test_remove_drops_only_owned_document_rows(tmp_path: Path) -> None:
+    path = tmp_path / "usage.md"
+    path.write_text(
+        "| Language | Limit |\n| --- | --- |\n"
+        "| [Piet](https://x/) | gone |\n"
+        "| **piet** | gone |\n"
+        "| Piet++ | kept |\n"
+        "| Other | discusses Piet |\n"
+    )
+    remove_language._drop_doc_entries(path, "Piet")  # noqa: SLF001
+    assert path.read_text() == (
+        "| Language | Limit |\n| --- | --- |\n"
+        "| Piet++ | kept |\n| Other | discusses Piet |\n"
+    )
+
+
+def test_remove_drops_a_bullet_with_a_fenced_example(tmp_path: Path) -> None:
+    path = tmp_path / "usage.md"
+    path.write_text(
+        "- Gone has an example.\n\n  ```python\n  run('Gone')\n\n"
+        "  check()\n  ```\n\n- Kept has an example.\n"
+    )
+    remove_language._drop_bullets(path, "Gone")  # noqa: SLF001
+    assert path.read_text() == "\n- Kept has an example.\n"
+
+
 def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
     new_language.scaffold("Tiny", "other", generator=False)
     fixtures = root / "tests/support/fixtures"
@@ -398,6 +436,19 @@ def test_remove_cleans_language_package(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("")
     (root / "tests/support/fixtures/generator_sizes.json").write_text("{\n}\n")
+    documents = (
+        "README.md",
+        "docs/CONTRIBUTING.md",
+        "docs/usage.md",
+        "docs/roadmap.md",
+    )
+    for relative in documents:
+        (root / relative).write_text(
+            "- **Tiny:** owned.\n  Continuation.\n"
+            "- Tiny++ stays.\n| Tiny | owned |\n| Other | Tiny comparison |\n"
+        )
+    history = root / "docs/CHANGELOG.md"
+    history.write_text("- Tiny was added.\n")
     for relative in (
         "src/esolangs/languages/tiny/tests/fixtures/wiki_examples/tiny.toml",
         "src/esolangs/languages/tiny/tests/proofs/helper.py",
@@ -448,6 +499,11 @@ def test_remove_cleans_language_package(
     assert not any(path.exists() for path in owned)
     assert namespace.exists()
     assert not (root / "src/esolangs/languages/tiny").exists()
+    for relative in documents:
+        assert (root / relative).read_text() == (
+            "- Tiny++ stays.\n| Other | Tiny comparison |\n"
+        )
+    assert history.read_text() == "- Tiny was added.\n"
 
 
 def test_eval_source_listing_includes_its_canonical_generator():

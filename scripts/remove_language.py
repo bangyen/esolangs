@@ -347,7 +347,12 @@ def _drop_bullets(path: Path, name: str) -> None:
     line that only separated the bullet from the next goes as well.
     """
     text = path.read_text(encoding="utf-8")
-    bullet = rf"(?m)^- \[?(?:\*\*)?{re.escape(name)}(?:\*\*)?\]?(?!\w).*\n(?:  .*\n)*"
+    token = re.escape(name)
+    label = rf"(?:\[{token}\]\([^\n]*?\)|\*\*{token}:?\*\*|{token})"
+    bullet = (
+        rf"(?im)^- {label}(?=\s|:|['\u2019]s\b|$).*(?:\n|$)"
+        r"(?:  .*(?:\n|$)|\n(?=(?:\n)*  ))*"
+    )
 
     def cut(match: re.Match[str]) -> str:
         before = text[: match.start()]
@@ -357,6 +362,16 @@ def _drop_bullets(path: Path, name: str) -> None:
 
     text = re.sub(bullet, cut, text).replace("\0\n", "")
     path.write_text(text, encoding="utf-8")
+
+
+def _drop_doc_entries(path: Path, name: str) -> None:
+    """Drop language-owned bullets and rows whose first cell names it."""
+    _drop_bullets(path, name)
+    token = re.escape(name)
+    label = rf"(?:\[{token}\]\([^\n]*?\)|\*\*{token}\*\*|{token})"
+    row = rf"(?im)^\|\s*{label}\s*\|.*(?:\n|$)"
+    text = path.read_text(encoding="utf-8")
+    path.write_text(re.sub(row, "", text), encoding="utf-8")
 
 
 def _owned_scripts(lang: Language) -> list[Path]:
@@ -973,8 +988,11 @@ def remove(name: str) -> list[str]:
         "tests/support/fixtures/canonical_folding_catalogue.toml",
     ):
         _drop_toml(ROOT / relative, name)
-    for relative in ("docs/limitations.md", "docs/proofs/index.md"):
-        _drop_bullets(ROOT / relative, name)
+    documents = [ROOT / "README.md", ROOT / "docs/proofs/index.md"]
+    documents += sorted((ROOT / "docs").glob("*.md"))
+    for path in documents:
+        if path.is_file() and path.name != "CHANGELOG.md":
+            _drop_doc_entries(path, name)
     _drop_from_series(ROOT / "docs/proofs/index.md", name, "keeps? no tree route")
     tuning = ROOT / "tests/support/fixtures/deep_arities.toml"
     tuning.write_text(

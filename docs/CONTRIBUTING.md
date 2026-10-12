@@ -19,7 +19,7 @@ changes (`test-full` includes slow tests; weekly probes run separately with
 `python scripts/docs/generate.py examples`.
 
 CI checks the wheel on Linux, macOS and Windows: packaged examples, CLI I/O,
-Line/Piet PNG execution, and installation with and without the mathematics extra.
+PNG execution, and installation with and without the mathematics extra.
 
 ## What makes a candidate worth adding
 
@@ -27,19 +27,34 @@ A new language must add an uncovered construction, branch mechanism,
 answer convention, or input interface:
 
 - **Construction shape** -- decision tree (the default), minterm sum
-  (`bfstack`, `vandevelo`), ANF/XOR-of-products (`fargo`), grid walk (`laserfuck`, `a_painter_ant`, `streetcode`).
+  and ANF/XOR-of-products, grid walk.
 - **Branch mechanism** -- explicit conditional, value-testable jump, skip
-  guard, implicit comparator, pointer displacement (`123`).
-- **Answer convention** -- print 0/1, landing colour (`a_painter_ant`),
-  position-encoded (`minifuck`),
-  termination as the answer (`123`, ArrowQueue, Crement, Vandevelo).
-- **Input interface** -- read-and-route, bit-addressable index (`fargo`),
+  guard, implicit comparator, pointer displacement.
+- **Answer convention** -- print 0/1, landing colour, position-encoded,
+  termination as the answer.
+- **Input interface** -- read-and-route, bit-addressable index,
   parameterized embed.
+
+- BFStack uses a minterm sum.
+- Vandevelo uses a minterm sum and answers by termination.
+- Fargo uses ANF/XOR-of-products and a bit-addressable input index.
+- LaserFuck uses a grid walk.
+- A Painter Ant uses a grid walk and answers by landing colour.
+- Streetcode uses a grid walk.
+- 123 branches by pointer displacement and answers by termination.
+- Minifuck gives a position-encoded answer.
+- ArrowQueue answers by termination.
+- Crement answers by termination.
 
 These are generator tests. A language whose specification precludes a
 generator qualifies only through the fame threshold under Curation in
 [limitations](limitations.md). Such languages are interpreter-only, marked
-`int` by `esolangs list --details`; Deadfish, HQ9+ and Nope. qualify.
+`int` by `esolangs list --details`.
+
+- Deadfish qualifies as interpreter-only.
+- HQ9+ qualifies as interpreter-only.
+- Nope. qualifies as interpreter-only.
+
 Curation also defines removal independently of admission. Generator audit
 axes never remove a language; a stalled row moves to the
 [roadmap](roadmap.md#parked)'s Parked section.
@@ -98,8 +113,7 @@ interpreter module ◄──── source + encoded stdin ◄──┘
 Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
 
 - Exposes `run(code, io)` with required `IO`; uses `io` for all I/O.
-  Most grids receive lines via registry `split=True`; A Painter Ant,
-  B-tapemark and EGL receive whole source.
+  Most grids receive lines via registry `split=True`.
 - Raises `ValueError` for a malformed program and `HaltError` for an
   invalid runtime operation, where the spec has one. An empty program the
   spec calls malformed declares its error as `empty_program=` in the
@@ -125,6 +139,10 @@ Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
 - Documents spec-gap decisions in its docstring (`suffolk.py`); never defines
   away invalid operations.
 - Provides a `__main__` block calling `run(data, IO())`.
+
+- A Painter Ant receives whole source.
+- B-tapemark receives whole source.
+- EGL receives whole source.
 
 `tests/test_interpreter_conventions.py` checks the module docstring names
 the language and mentions `EOF`, `HaltError` or `ValueError` wherever the
@@ -237,9 +255,12 @@ A generated program reads the inputs and prints the answer the way its
 default is one `0`/`1` line per input and a printed `0`/`1`. Every program
 reads all n inputs, in order, even when the table is constant or ignores an
 input. `input_shape="char_stream"` reads the bits as bare characters, and also
-covers languages whose stdin packs bits into bytes (Boolfuck, Smu): each
+covers languages whose stdin packs bits into bytes: each
 input is then the byte `'0'` (0x30) or `'1'` (0x31), whose low bit is the
 input's value, so a program that reads low bit first takes that bit and must
 read and drop the byte's other seven before the next input (see
-`src/esolangs/languages/smu/generator.py`). `answer_mode` covers state-dump and
-termination answers.
+the language's generator). `answer_mode` covers state-dump and termination
+answers.
+
+- Boolfuck packs input bits into bytes.
+- Smu packs input bits into bytes.
