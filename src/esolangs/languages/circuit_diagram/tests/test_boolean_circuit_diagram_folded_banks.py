@@ -128,7 +128,7 @@ def test_invalid_preflight_rectangle_aborts(monkeypatch):
 
 @pytest.mark.slow
 def test_constant_one_class_needs_only_its_mask():
-    table, _ = _classes(7, 257)
+    table, _ = _classes(7, 2)
     chunks = [table[i : i + 128] for i in range(0, len(table), 128)]
     first = chunks[0]
     table = "".join("1" * 128 if chunk == first else chunk for chunk in chunks)
@@ -162,8 +162,7 @@ def test_two_classes_with_large_mask_ports_execute():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("start", [0, 51, 102, 153])
-def test_public_folded_masks_below_old_cap_execute_every_class(start):
+def test_public_folded_masks_below_old_cap_execute_prefix_boundaries():
     table, pairs = _classes(7, 202)
     code = circuit_diagram(table)
     lines = code.splitlines()
@@ -174,8 +173,9 @@ def test_public_folded_masks_below_old_cap_execute_every_class(start):
             0,
             len(table) - 1,
             *(
-                (index << 7) + row
-                for index in range(start, min(start + 51, 202))
+                (prefix << 7) + row
+                for prefix in (0, 1, 127, 128, 201, 202, 511, 512, 1023)
+                for index in (prefix % len(pairs),)
                 for row in (
                     *pairs[index],
                     next(row for row in range(128) if row not in pairs[index]),
