@@ -114,14 +114,12 @@ class TestContainer:
 
     def test_name_allocation_steps_over_container_s_own_names(self) -> None:
         """Letter names reach ``T`` at 45 and ``IN`` at 754, so they collide."""
-        from esolangs.languages.container.generator import _RESERVED, _allocate_names
+        from esolangs.languages.container.generator import _RESERVED, _free_names
 
-        uses = {("node", 0, index): 1000 - index for index in range(800)}
-        names = _allocate_names(uses)
-        assert not _RESERVED & set(names.values())
-        assert len(set(names.values())) == len(uses)
-        # Descending use counts, so the allocation order is the key order.
-        assert [names[key] for key in list(uses)[:3]] == ["a", "b", "c"]
+        names = list(itertools.islice(_free_names(_RESERVED), 800))
+        assert not _RESERVED & set(names)
+        assert len(set(names)) == len(names)
+        assert names[:3] == ["a", "b", "c"]
 
     def test_wide_tables_read_exactly_n_inputs(self) -> None:
         """The latch-and-gate route still reads one line per input."""
