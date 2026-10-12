@@ -550,9 +550,10 @@ those zeros has the same generation-time lower bound.
 The generator reads bytes 0/255 in input order. Halt answers zero; a fixed
 empty loop answers one. Complemented reads feed a folded decision tree;
 constants, projections and conjunctions use direct guards. Encoding m
-commands needs between 8**m and 2*8**m - 1 zeros. Refuse above 32 MiB
-before allocating source; eight inputs is an absolute ceiling, and most
-nontrivial tables hit the source cap earlier. Removing both screens leaves
+commands needs between 8**m and 2*8**m - 1 zeros. Cap raw export at 32 Mi
+characters, expanded generation work at 256 Mi characters, and gzip files
+at 256 KiB. Nine inputs is an absolute ceiling; most nontrivial tables
+hit the work cap earlier. Removing the resource screens leaves
 a finite encoding for every table.
 
 The eight-command AND guard `,>,[<[]]` emits 27,452,351 zeros. All four
@@ -564,3 +565,8 @@ zeros without retaining expanded source. The default unwrapped AND occupies
 export files. The CLI writes gzip by default and `--plain` exports text.
 Decoded Brainfuck uses wrapping bytes, a tape growing in both directions
 and zero at EOF.
+
+Nine-input constant false emits 230,087,533 zeros and 223,664 gzip bytes.
+Generation took 0.658 s; all-zero/all-one rows halted after nine reads in
+0.209/0.208 s. Ten-input constant false needs 1,840,700,269 zeros and was
+priced but not built. Arity is not a uniform promise below either cap.

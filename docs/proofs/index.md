@@ -395,7 +395,7 @@ ceiling below.
 The remaining `cap` rows do have a uniform lift argument.
 
 - Unary's complemented-byte tree is finite at every arity. Removing the
-  32 MiB source screen and its eight-input consequence permits every encoding.
+  raw, work and gzip screens and their nine-input consequence permits every encoding.
 - Polynomial's `k == n` candidate is the finite decision tree.  Each of its
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.

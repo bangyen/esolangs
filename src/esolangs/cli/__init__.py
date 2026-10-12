@@ -286,6 +286,8 @@ def _generate(rest: list[str]) -> None:
             program = instantiate(
                 rest[0], program, [int(b) for b in bits], width=width, settings=settings
             )
+        if isinstance(program, CompressedText) and "--plain" in flags and not portable:
+            program.plain_chunks()  # Check the export budget before writing anything.
         if portable:
             program = dump_program(rest[0], program)
     except EsolangError as exc:
@@ -302,7 +304,7 @@ def _generate(rest: list[str]) -> None:
         )
     if isinstance(program, CompressedText):
         if "--plain" in flags:
-            for chunk in program.chunks():
+            for chunk in program.plain_chunks():
                 sys.stdout.write(chunk)
         else:
             sys.stdout.buffer.write(program.to_gzip())

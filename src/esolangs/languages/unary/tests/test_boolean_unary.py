@@ -52,8 +52,20 @@ def test_decoded_construction_exhaustive_through_three_inputs() -> None:
                 assert _answer(BFMachine(code, ScriptedIO(stdin))) == (expected, n)
 
 
-@pytest.mark.parametrize("table", ["0110", "0" * 511 + "1", "0" * 512])
+@pytest.mark.parametrize("table", ["0110", "0" * 1023 + "1", "0" * 1024])
 def test_source_cap_refuses_before_materialization(table: str) -> None:
     with pytest.raises(esolangs.GeneratorCapError, match=r"cap|max-inputs"):
         unary(table)
     assert unary("01")  # Positive control: the cap does not refuse every build.
+
+
+@pytest.mark.medium
+def test_compressed_budget_admits_nine_reads_but_blocks_raw_export() -> None:
+    source = unary("0" * 512)
+    assert len(source) == 230_087_533
+    assert len(source.to_gzip()) == 223_664
+    assert decode(source) == "," * 9
+    for bit in ("\x00", "\xff"):
+        assert _answer(_Machine(source, ScriptedIO(bit * 9))) == ("0", 9)
+    with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
+        str(source)

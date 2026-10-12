@@ -2,11 +2,11 @@
 
 Inputs are bytes 0 and 255. Complementing a read with + gives 1 and 0
 without an ASCII prelude. Source counts grow exponentially in decoded
-commands; refuse before allocating more than 32 MiB of zeros. No repeated
-residual survives the admitted eight-command source budget.
+commands; refuse before allocating more than 256 Mi characters of zeros. No repeated
+residual survives the admitted nine-command source budget.
 """
 
-from esolangs.compressed import CompressedText
+from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import GeneratorCapError
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -18,7 +18,8 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.wrap import wrap_chars
 
-_MAX_SOURCE = 32 * 1024 * 1024
+_MAX_SOURCE = 256 * 1024 * 1024
+_LIMITS = TextLimits(32 * 1024 * 1024, _MAX_SOURCE, 256 * 1024)
 
 
 def _decoded(truth_table: str) -> str:
@@ -45,17 +46,19 @@ def _decoded(truth_table: str) -> str:
 
 
 def unary(truth_table: str) -> CompressedText:
-    """Return compressed zero-count source, refusing more than 32 MiB expanded."""
+    """Return gzip source within the file and expanded-work budgets."""
     n = _validate_truth_table(truth_table)
     # Every path must read n inputs, so every encoding has at least n commands.
-    if n > 8:
-        raise GeneratorCapError("Unary needs at least 8**n zeros; max-inputs=8")
+    if n > 9:
+        raise GeneratorCapError("Unary needs at least 8**n zeros; max-inputs=9")
     count = 1
     for command in _decoded(truth_table):
         count = 8 * count + "><+-.,[]".index(command)
         if count > _MAX_SOURCE:
-            raise GeneratorCapError("Unary source exceeds the 32 MiB zero-count cap")
-    return CompressedText.repeated("0", count)
+            raise GeneratorCapError(
+                "Unary source exceeds the 256 Mi-character generation-work cap"
+            )
+    return CompressedText.repeated("0", count, limits=_LIMITS)
 
 
 LANGUAGE = Language(
@@ -63,10 +66,13 @@ LANGUAGE = Language(
     "unary",
     category="tape_based",
     boolean=unary,
-    generator_max_inputs=8,
+    generator_max_inputs=9,
     compressed_source=True,
     benchmark_tables=("00", "01", "10", "11", "0001"),
-    generator_restrictions="32 MiB source cap; most nontrivial tables exceed it",
+    generator_restrictions=(
+        "raw export 32 Mi characters; generation 256 Mi characters; "
+        "gzip 256 KiB; table-dependent caps"
+    ),
     contract=BooleanContract(
         alphabet=("\x00", "\xff"),
         input_shape="char_stream",

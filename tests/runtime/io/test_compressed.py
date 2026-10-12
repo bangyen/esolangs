@@ -50,3 +50,27 @@ def test_compressed_source_retains_language_origin() -> None:
     assert esolangs.run(REFERENCE, program, stdin="Z") == "Z"
     with pytest.raises(esolangs.ProgramError, match="generated for"):
         esolangs.run(REFERENCE, program.tagged("another language"), stdin="Z")
+
+
+def test_format_budgets_are_independent_and_survive_wrapping() -> None:
+    from esolangs.compressed import TextLimits
+
+    limits = TextLimits(plain_chars=5, generation_chars=30, gzip_bytes=100)
+    program = CompressedText.repeated("x", 10, limits=limits)
+    assert len(program) == 10
+    assert "".join(program.chunks()) == "x" * 10
+    assert len(program.to_gzip()) < limits.gzip_bytes
+    for export in (lambda: str(program), program.plain_chunks):
+        with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
+            export()
+    wrapped = program.wrapped(3)
+    assert wrapped.limits == limits
+    assert wrapped.tagged(REFERENCE).limits == limits
+    with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
+        CompressedText.repeated("x", 31, limits=limits)
+    with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
+        program.wrapped(1).wrapped(1)
+    with pytest.raises(esolangs.GeneratorCapError, match="file cap"):
+        CompressedText.from_chunks(("x",), limits=TextLimits(10, 10, 1))
+    with pytest.raises(esolangs.ArgumentError, match="nonnegative"):
+        TextLimits(1, -1, 1)
