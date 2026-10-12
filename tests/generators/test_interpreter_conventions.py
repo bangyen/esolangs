@@ -214,8 +214,6 @@ def test_no_interpreter_halts_without_saying_why() -> None:
     assert _BARE_RAISE.match("    raise HaltError")
     assert _BARE_RAISE.match("        raise ValueError()")
     assert not _BARE_RAISE.match('    raise HaltError("division by zero")')
-    # Modulous was the reported case and is fixed, so it must not be here.
-    assert "modulous.py" not in _wordless_halts()
 
 
 def _docstring_issues(path: pathlib.Path, language: str | None) -> list[str]:

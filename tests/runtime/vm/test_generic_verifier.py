@@ -25,9 +25,9 @@ _TABLES = ("0110", "0001", "10010110", "00010111")
 #:
 #: Kept for a language that cannot be stepped, where the floor is still the
 #: slowest *halting* row -- a 0-row over the bound would be misread as a
-#: loop.  Measured across 123, ArrowQueue, Crement and Vandevelo over all
-#: four tables below: 0.000s, every one sub-millisecond.  A second is three
-#: orders of magnitude of headroom, which survives CI's slower cores.
+#: loop. The measured halting rows were all sub-millisecond (the cohort is
+#: recorded in the owned termination tests). A second is three orders of
+#: magnitude of headroom, which survives CI's slower cores.
 _TERMINATION_TIMEOUT = 1.0
 _RUN_TIMEOUT = 30.0
 

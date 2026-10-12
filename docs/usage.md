@@ -147,9 +147,11 @@ measured row to answer correctly.
 
 Build language-specific stdin with `encode_inputs`:
 
-```python
-esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
-```
+- Taglate:
+
+  ```python
+  esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
+  ```
 
 <!-- INPUT-SHAPES:START -->
 

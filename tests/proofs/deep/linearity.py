@@ -18,9 +18,8 @@ from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import load as load_audit
 from tests.proofs.deep import deep_arities
 
-#: Cost band; see ``__main__.py``.  It passes now that Forþ is linear, so the
-#: band is a cost call rather than a triage one: it builds every generator at
-#: rising arity, and 30s is too slow for CI to spend on every push.
+#: Cost band; see ``__main__.py``. It builds every generator at rising
+#: arity, and 30s is too slow for CI to spend on every push.
 from tests.support.source_support import source_units
 from tests.support.witness_tables import nested_dense as _nested_dense
 from tests.support.witness_tables import parity as _parity

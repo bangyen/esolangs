@@ -33,7 +33,7 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
     def test_a_memory_error_does_not_escape(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """In process, Underload's string doubling reached it raw."""
+        """In-process allocation failures must reach the API as interpreter limits."""
 
         def explode(*_args: object, **_kwargs: object) -> None:
             raise MemoryError

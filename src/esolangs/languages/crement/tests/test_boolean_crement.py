@@ -176,3 +176,8 @@ def test_narrow_balance_regime_edge_executes(table):
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Crement", table, balance=True)
     assert _evaluate("Crement", balanced, inputs=len(table).bit_length() - 1) == table
+
+
+# The shared verifier's timeout floor was measured across 123, ArrowQueue,
+# Crement and Vandevelo on 0110, 0001, 10010110 and 00010111: 0.000s,
+# every halting row sub-millisecond; its 1s bound has 1000x headroom.

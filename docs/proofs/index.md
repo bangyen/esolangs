@@ -453,35 +453,41 @@ The remaining `cap` rows do have a uniform lift argument.
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
 
-Grapheme left this section when its tree did: the table is one int-mode
-literal and the index is an accumulator, so no arity needs a second variable
-and there is nothing left to run out of.  6-5 left when its walk stopped
-spending a label per input.
-NoComment left when its rows stopped living on the tape: the index is pushed
-as byte-sized stage amounts, a chain of uniform six-command groups pops and
-skips its way to the row's group, and every group after it adds the
-difference between its row and the next, so the landing cell telescopes to
-`table[index]` on six cells at any arity.
-`8n` names the n-th `4` of the program and the operand characters stop at
-35, so a walk that branches every bit with its own jump ends at 35 inputs;
-the looped walk (`_six_five_looped`) marks each row with its 2-adic
-valuation in sixes, and a bit's advance is a loop to the first row past
-the pointer whose mark reads zero — the first row whose valuation is
-exactly `n-1-i`, which is the row `2**(n-1-i)` ahead, because the pointer
-stands on an even multiple of that stride.  The marks are kept at
-`6 * (v - (n-1-i))` by `n-1` decrement passes before the first bit and one
-increment pass after each, so every loop tests a sentinel or a zero and
-the label bill is the loop count, sixteen.  The marks sum to `2**n - n - 1`,
-so the program is linear; every row of every table at seven inputs and
-under has been executed, and the dispatch reaches the loop only past 35.
-Factor left when its digit budget was retired: the budget (4300, then
-16000, then 500000 digits) was a size policy pinned to the arity the
-suite swept, never a ceiling of the language's -- the generator renders
-the integer and the interpreter parses it with CPython's conversion
-guard lifted on both sides -- so the lift argument above *is* the
-construction.  Parity at thirteen inputs is 966568 digits, built in
-three seconds with the prime powers multiplied as a balanced tree, and
-the interpreter decodes it to the tree the generator encoded.
+### Retired resource ceilings
+
+- Grapheme left this section when its tree did: the table is one int-mode
+  literal and the index is an accumulator, so no arity needs a second variable
+  and there is nothing left to run out of.
+
+- 6-5 left when its walk stopped
+  spending a label per input.
+  `8n` names the n-th `4` of the program and the operand characters stop at
+  35, so a walk that branches every bit with its own jump ends at 35 inputs;
+  the looped walk (`_six_five_looped`) marks each row with its 2-adic
+  valuation in sixes, and a bit's advance is a loop to the first row past
+  the pointer whose mark reads zero — the first row whose valuation is
+  exactly `n-1-i`, which is the row `2**(n-1-i)` ahead, because the pointer
+  stands on an even multiple of that stride.  The marks are kept at
+  `6 * (v - (n-1-i))` by `n-1` decrement passes before the first bit and one
+  increment pass after each, so every loop tests a sentinel or a zero and
+  the label bill is the loop count, sixteen.  The marks sum to `2**n - n - 1`,
+  so the program is linear; every row of every table at seven inputs and
+  under has been executed, and the dispatch reaches the loop only past 35.
+
+- NoComment left when its rows stopped living on the tape: the index is pushed
+  as byte-sized stage amounts, a chain of uniform six-command groups pops and
+  skips its way to the row's group, and every group after it adds the
+  difference between its row and the next, so the landing cell telescopes to
+  `table[index]` on six cells at any arity.
+
+- Factor left when its digit budget was retired: the budget (4300, then
+  16000, then 500000 digits) was a size policy pinned to the arity the
+  suite swept, never a ceiling of the language's -- the generator renders
+  the integer and the interpreter parses it with CPython's conversion
+  guard lifted on both sides -- so the lift argument above *is* the
+  construction.  Parity at thirteen inputs is 966568 digits, built in
+  three seconds with the prime powers multiplied as a balanced tree, and
+  the interpreter decodes it to the tree the generator encoded.
 
 <!-- PROOF-TOTALS:START -->
 
