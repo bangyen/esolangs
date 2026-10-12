@@ -78,3 +78,60 @@ def test_total_deadline_cannot_be_extended_by_valid_row_phases() -> None:
         worker.measure({"timeout": 5, "sample_rows": [0, 1]}, {}, 5, total_timeout=0.3)
     assert time.monotonic() - started < 2
     assert worker.process is None
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("directory", [".", "notes/ci"])
+def test_timing_journal_is_scratch_but_source_edits_change_identity(
+    tmp_path, monkeypatch, directory
+) -> None:
+    import subprocess
+    from types import SimpleNamespace
+
+    from scripts import benchmark
+    from scripts.ci.shard import Recorder
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=tmp_path, capture_output=True, check=True)
+
+    git("init", "-q")
+    (tmp_path / ".gitignore").write_text("notes/\n")
+    source = tmp_path / "source.py"
+    source.write_text("value = 1\n")
+    git("add", ".")
+    git(
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.test",
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "commit",
+        "-qm",
+        "fixture",
+    )
+    monkeypatch.setattr(benchmark, "__file__", str(tmp_path / "scripts/benchmark.py"))
+    recorder = Recorder(tmp_path / directory / "test-durations.json")
+    before = benchmark.source_identity()
+    recorder.pytest_runtest_logreport(
+        SimpleNamespace(
+            when="teardown",
+            nodeid="test_example.py::test_value",
+            duration=0.01,
+            failed=False,
+        )
+    )
+    during = benchmark.source_identity()
+    if directory == ".":
+        assert before["untracked_sha256"] != during["untracked_sha256"]
+    else:
+        assert during == before
+        recorder.pytest_sessionfinish(0)
+        assert benchmark.source_identity() == before
+    source.write_text("value = 2\n")
+    assert (
+        benchmark.source_identity()["tracked_diff_sha256"]
+        != before["tracked_diff_sha256"]
+    )

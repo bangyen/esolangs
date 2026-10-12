@@ -1,9 +1,11 @@
 """One shard of a marker band runs its slice and no one else's."""
 
+import re
 from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 from tests.tooling.script_support import load
 
@@ -172,3 +174,34 @@ def test_progress_survives_without_publishing_complete_evidence(tmp_path) -> Non
         json.loads(destination.with_suffix(".json.meta.json").read_text())["exitstatus"]
         == 1
     )
+
+
+@pytest.mark.parametrize("workflow", ["ci", "weekly"])
+def test_workflow_timing_evidence_stays_in_scratch_and_is_uploaded(workflow) -> None:
+    document = yaml.safe_load(
+        (REPO_ROOT / ".github/workflows" / f"{workflow}.yml").read_text()
+    )
+    found = 0
+    for job in document["jobs"].values():
+        steps = job.get("steps", [])
+        uploads = [
+            pattern
+            for step in steps
+            if step.get("uses", "").startswith("actions/upload-artifact@")
+            for pattern in step["with"]["path"].splitlines()
+        ]
+        for step in steps:
+            for filename in re.findall(
+                r"--duration-output\s+(\S+)", step.get("run", "")
+            ):
+                path = Path(filename)
+                assert path.is_relative_to("notes/ci"), filename
+                for emitted in (path, Path(filename + ".progress.jsonl")):
+                    assert any(emitted.match(pattern) for pattern in uploads), emitted
+                found += 1
+            for filename in re.findall(r"--manifest\s+(\S+)", step.get("run", "")):
+                assert Path(filename).is_relative_to("notes/ci"), filename
+                assert any(Path(filename).match(pattern) for pattern in uploads), (
+                    filename
+                )
+    assert found
