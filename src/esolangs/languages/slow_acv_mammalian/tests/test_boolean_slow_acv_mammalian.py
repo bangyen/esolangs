@@ -313,6 +313,25 @@ class TestFastLanding:
         _w_raise(st, 10**6 + 510)
         assert (st.hw + st.nw) % 256 == final_r
 
+    def test_greedy_rule_matches_every_residue_and_chunk_boundary(self) -> None:
+        """Check both sides of the eight-step arithmetic cycle boundary."""
+        for initial in range(256):
+            residue = initial
+            seeds = advance = 0
+            walked = []
+            for chunks in range(1, 26):
+                count = next(k for k in range(16) if (residue + 17 * k) % 256 >= 239)
+                added = (residue + 17 * count) % 256
+                seeds += count
+                advance += added
+                residue = 2 * added % 256
+                walked.append((seeds, chunks, advance, residue))
+            assert _greedy_advance(initial, 0) == (0, 0, 0, initial)
+            for _, _, boundary, _ in walked[:-1]:
+                for target in (boundary - 1, boundary, boundary + 1):
+                    expected = next(state for state in walked if state[2] >= target)
+                    assert _greedy_advance(initial, target) == expected
+
     @pytest.mark.parametrize(
         ("h0", "n0", "acc", "target"),
         [

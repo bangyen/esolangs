@@ -137,21 +137,6 @@ class TestPolynomial:
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
 
-    def test_polynomial_hybrid_cost_mirrors_build(self) -> None:
-        """The hybrid's cost function is a deliberate mirror of its emitter."""
-        from esolangs.languages.polynomial.generator import (
-            _polynomial_hybrid,
-            _polynomial_hybrid_cost,
-        )
-
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
-                for level in range(n + 1):
-                    assert _polynomial_hybrid_cost(table, level) == len(
-                        _polynomial_hybrid(table, level)
-                    ), f"{table} k={level}"
-
     def test_hybrid_endpoints_match_the_tree_and_machine(self) -> None:
         """``k == n`` is the tree and ``k == 0`` is the machine."""
         from esolangs.languages.polynomial.generator import _polynomial_hybrid
@@ -177,23 +162,19 @@ class TestPolynomial:
             _POLYNOMIAL_SCREEN_SLACK,
             _polynomial_assemble,
             _polynomial_hybrid,
-            _polynomial_hybrid_cost,
         )
 
         worst = 0
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
-                built = [
-                    (_polynomial_hybrid_cost(table, k), _polynomial_hybrid(table, k))
-                    for k in range(n + 1)
-                ]
+                built = [_polynomial_hybrid(table, k) for k in range(n + 1)]
                 rendered = [
-                    (len(_polynomial_assemble(instrs)), cost) for cost, instrs in built
+                    (len(_polynomial_assemble(instrs)), len(instrs)) for instrs in built
                 ]
                 shortest = min(length for length, _ in rendered)
                 needed = min(cost for length, cost in rendered if length == shortest)
-                worst = max(worst, needed - min(cost for cost, _ in built))
+                worst = max(worst, needed - min(map(len, built)))
         # Pure-``k`` candidates only.
         assert worst == 1
         assert worst <= _POLYNOMIAL_SCREEN_SLACK
