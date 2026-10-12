@@ -16,6 +16,11 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.languages.polynomial.generator.algebra import primes, render_product
 from esolangs.languages.polynomial.generator.resources import estimate_generation
+from esolangs.languages.polynomial.wrapping import (
+    _balance_polynomial,
+    _polynomial,
+    same_layout,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.constant_projection import balanced_projection
@@ -25,7 +30,7 @@ from esolangs.tools.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.tools.wrap import _polynomial, balance_program
+from esolangs.tools.wrap import balance_program
 
 # Instruction cap.  Analytic n=10 worst case is 1659
 # (``test_polynomial_cap_admits_every_n10_table``); kept at the old 1934,
@@ -406,6 +411,8 @@ LANGUAGE = Language(
     ),
     # Space wrap stranded every sign alone; keep sign with term, one per line.
     wrap=_polynomial,
+    wrap_balance=_balance_polynomial,
+    same_layout=same_layout,
     slow_width_sweep=True,
     eof="an exhausted input instruction stores -1",
     empty_program="Polynomial program must start with 'f(x) = '",

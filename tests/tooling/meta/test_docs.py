@@ -64,6 +64,9 @@ def _commands(text: str) -> list[tuple[str, str | None]]:
         if "->" in command:
             command, _, stated = command.partition("->")
             command, expected = command.strip(), stated.strip()
+        elif " # prints " in command:
+            command, _, stated = command.partition(" # prints ")
+            command, expected = command.strip(), stated.strip()
         if command.startswith("esolangs ") and not _PLACEHOLDER.search(command):
             out.append((command, expected))
     return out
@@ -71,10 +74,9 @@ def _commands(text: str) -> list[tuple[str, str | None]]:
 
 def _language_in(command: str) -> str | None:
     """Return the language a command names, if any."""
-    for token in re.findall(r'"[^"]+"|\S+', command):
-        bare = token.strip('"')
-        if bare.lower() in _LANGUAGES:
-            return _LANGUAGES[bare.lower()]
+    for token in shlex.split(command):
+        if token.lower() in _LANGUAGES:
+            return _LANGUAGES[token.lower()]
     return None
 
 
@@ -144,7 +146,7 @@ def test_the_documents_really_do_contain_commands() -> None:
     parsed = [c for text in _documents().values() for c in _commands(text)]
     assert len(parsed) >= 20, f"only {len(parsed)} documented commands found"
     # And at least one example states the output it produces, or the
-    # arrow-checking half of the test above is dead code.
+    # expected-output half of the test above is dead code.
     assert [c for c in parsed if c[1] is not None]
 
 

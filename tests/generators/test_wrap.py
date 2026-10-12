@@ -1,4 +1,3 @@
-import re
 from dataclasses import replace
 from functools import cache
 
@@ -12,11 +11,9 @@ from esolangs.tools.examples import BooleanExample
 from esolangs.tools.wrap import (
     MULTILINE,
     WRAPPERS,
-    _bio,
     _cell_width,
     _mammalian,
     _packlang,
-    _polynomial,
     _span,
     takes_width,
     wrap_chars,
@@ -210,18 +207,6 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     if _is_grid(name):
         assert wrapped.split() == plain.split()
         return
-    # BIO indents by nesting depth, and its commands carry no separator at
-    # all -- the whole program is one whitespace-delimited token, so the
-    # token check above says nothing about it.  What must survive is the
-    # command text; BIO's own parse rejoins across whitespace before reading
-    # it, so a program the wrapper breaks where a space already stood is the
-    # same program even though the space is gone.  Comparing with all
-    # whitespace removed says exactly that, where stripping only the indent
-    # asserted the spacing too and failed at a width that happened to break
-    # on one.
-    if WRAPPERS[LANGUAGES[name].id] is _bio:
-        assert "".join(wrapped.split()) == "".join(plain.split())
-        return
     # These are multi-line with no structural first line. Their parsers see
     # whitespace-delimited tokens across the whole source, so flattening and
     # repacking may move every original line break.
@@ -241,13 +226,9 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     # there the newline turns back into that space; every other wrapper
     # inserts the newline between two adjacent commands, so it just goes
     # away.  Either way no command may be dropped, reordered, or split.
-    # Polynomial now breaks in both places -- between two terms, where a
-    # space was, and *inside* a coefficient, where nothing was -- so no
-    # single substitution restores it.  Its parser deletes whitespace
-    # before reading, so the invariant that means anything there is that
-    # the two agree once whitespace is gone.
-    if WRAPPERS[LANGUAGES[name].id] is _polynomial:
-        assert re.sub(r"\s", "", wrapped) == re.sub(r"\s", "", plain)
+    same_layout = LANGUAGES[name].same_layout
+    if same_layout is not None:
+        assert same_layout(wrapped, plain, lambda width: _example(name).build(width))
         return
     assert plain in {wrapped.replace("\n", " "), wrapped.replace("\n", "")}
 

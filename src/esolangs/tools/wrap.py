@@ -1,17 +1,16 @@
 """Wrap generated programs to a readable width, on token boundaries.
 
 Most generators emit one long line and most languages read a newline as
-whitespace.  Wrapping is token-aware (slicing every ``width`` splits
-``-6`` or BIO's ``0ox`` triples) and opt-in: 2D languages read newlines as
-rows; Packlang folds only an over-wide line.
+whitespace. Wrapping is token-aware: slicing every ``width`` can split a
+command. It is opt-in because 2D languages read newlines as rows.
 
 Generators detected by :func:`takes_width` lay out their own programs.
 They preserve structural lines and return a width floor when the requested
 width cannot fit whole tokens, statements or routing cells.
 
 :data:`MULTILINE` names the wrappers that handle their own structural
-lines.  :func:`_bio` indents by loop depth, :func:`wrap_grid` right-aligns
-the subleq OISCs into cells, Polynomial glues each sign to its term.
+lines. Language-owned wrappers preserve their own token and term boundaries;
+:func:`wrap_grid` right-aligns instruction cells.
 :data:`WRAPPERS` maps a language id to the wrapper its ``LANGUAGE`` names
 (``wrap=``); :func:`wrap_program` is the entry point.
 """
@@ -19,7 +18,6 @@ the subleq OISCs into cells, Polynomial glues each sign to its term.
 import inspect
 import re
 from collections.abc import Callable
-from itertools import pairwise
 from math import isqrt
 from typing import Any
 
@@ -190,11 +188,6 @@ def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
     return "\n".join(lines)
 
 
-# ``[01][oi][xyz]`` plus ``;`` or ``{``, or ``};``, or the separating
-# space.  Varying width is why neither a character wrap nor a fixed stride
-# will do.
-_BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};| "
-
 # Dimensional's operands, all of which a break would split.  ``_number``
 # takes an optional ``~`` and a digit run for ``<``, ``>``, ``$``, ``{``,
 # ``?`` and ``!``; ``=`` takes exactly two hex digits and ``:`` exactly one
@@ -234,177 +227,6 @@ _FALSE_COMMAND = r"'[\s\S]|[\s\S]"
 # Unlambda ``.x`` and ``?x`` take the next character too: a break inside
 # ``.0`` prints a newline, and one inside ``?0`` asks about one.
 _UNLAMBDA_COMMAND = r"[.?][\s\S]|[\s\S]"
-
-
-def _bio(program: str, width: int) -> str:
-    """Wrap BIO, indenting a nested program by its loop depth.
-
-    The separating space attaches to the following command.  ``0i?`` opens a
-    level and ``}`` closes, so a program two or more levels deep is indented
-    by depth (the boolean generator nests one loop per row).
-    """
-    merged = _bio_tokens(program)
-    if merged is None:
-        return program
-    if _bio_depth(merged) >= 2:
-        return _bio_indented(merged, width)
-    wrapped = _join_tokens(merged, width, separator="")
-    # The newline replaces the trailing separator.
-    return "\n".join(line.rstrip(" ") for line in wrapped.split("\n"))
-
-
-def _bio_tokens(program: str) -> list[str] | None:
-    """Return BIO commands with their trailing separators, if they tile source."""
-    tokens = re.findall(f"{_RUN}|{_BIO_COMMAND}", program)
-    if "".join(tokens) != program:
-        return None
-    merged: list[str] = []
-    for token in tokens:
-        if token.isspace() and merged:
-            merged[-1] += token
-        else:
-            merged.append(token)
-    return merged
-
-
-def _bio_opens(token: str) -> bool:
-    """Whether ``token`` opens a BIO loop: the ``0i?`` triple *with* its ``{``."""
-    return token[:2].lower() == "0i" and "{" in token
-
-
-def _bio_closes(token: str) -> bool:
-    """Whether ``token`` closes a BIO loop."""
-    return token.startswith("}")
-
-
-def _bio_depth(tokens: list[str]) -> int:
-    """Return the deepest loop nesting ``tokens`` reaches."""
-    depth = best = 0
-    for token in tokens:
-        if _bio_opens(token):
-            depth += 1
-            best = max(best, depth)
-        elif _bio_closes(token):
-            depth = max(0, depth - 1)
-    return best
-
-
-def _bio_indented(tokens: list[str], width: int) -> str:
-    """Lay BIO out one loop level to a line, indented by depth.
-
-    The run between an open and a close (the ``0oy`` ramp) packs to the
-    remaining width; the indent stops growing once a run would have less
-    than a quarter of the width.
-    """
-    lines: list[str] = []
-    cap = max(0, (width - width // 4) // 2)
-    for depth, run in _bio_runs(tokens):
-        pad = " " * (2 * min(depth, cap))
-        room = max(width - len(pad), width // 4)
-        for line in _join_tokens(run, room, separator="").split("\n"):
-            lines.append((pad + line).rstrip(" "))
-    return "\n".join(lines)
-
-
-def _bio_runs(tokens: list[str]) -> list[tuple[int, list[str]]]:
-    """Return structural straight runs with their loop depth."""
-    groups: list[tuple[int, list[str]]] = []
-    depth = 0
-    run: list[str] = []
-
-    def flush(at: int) -> None:
-        """Retain a nonempty run without sharing its mutable buffer."""
-        if run:
-            groups.append((at, run.copy()))
-            run.clear()
-
-    for token in tokens:
-        if _bio_opens(token):
-            run.append(token)
-            flush(depth)
-            depth += 1
-        elif _bio_closes(token):
-            flush(depth)
-            depth = max(0, depth - 1)
-            run.append(token)
-            flush(depth)
-        else:
-            run.append(token)
-    flush(depth)
-    return groups
-
-
-def _balance_bio(program: str) -> str:
-    """Balance shallow token fits or nested padding-cap and run-fit regimes."""
-    tokens = _bio_tokens(program)
-    if tokens is None:
-        return program
-    if _bio_depth(tokens) < 2:
-        width = balanced_token_width(tokens, rstrip_rows=True)
-        return min(program, _bio(program, width), key=balance_score)
-    groups = _bio_runs(tokens)
-    full_spans = [2 * depth + len("".join(run).rstrip(" ")) for depth, run in groups]
-    widest = max(full_spans)
-    if widest <= len(groups):
-        # Every layout has at least one row per structural run and no row
-        # wider than its fully indented run. Attaining both bounds is optimal.
-        target = min(
-            depth
-            for (depth, _run), span in zip(groups, full_spans, strict=True)
-            if span == widest
-        )
-        cap_widths = []
-        for residue in range(8):
-            fixed = (residue - residue // 4) // 2
-            remainder = residue - 2 * fixed
-            quotient = max(0, -((residue - 1) // 8), -((fixed - target) // 3))
-            for depth, run in groups:
-                if len(run) > 1:
-                    length = sum(map(len, run))
-                    # For w=8q+r, room=max(2q+r-2f, 8q+r-2depth).
-                    quotient = max(
-                        quotient,
-                        min(
-                            -((remainder - length) // 2),
-                            -((residue - 2 * depth - length) // 8),
-                        ),
-                    )
-            cap_widths.append(8 * quotient + residue)
-        width = min(cap_widths, key=lambda value: ((value - value // 4) // 2, value))
-        return min(program, _bio_indented(tokens, width), key=balance_score)
-
-    depth_limit = max(depth for depth, _run in groups)
-    fits: list[tuple[int, set[int]]] = []
-    for depth, run in groups:
-        lengths = list(map(len, run))
-        if len(set(lengths)) == 1:
-            spans = set(range(lengths[0], sum(lengths) + 1, lengths[0]))
-        else:
-            prefix = [0]
-            for length in lengths:
-                prefix.append(prefix[-1] + length)
-            spans = {
-                end - start
-                for at, start in enumerate(prefix[:-1])
-                for end in prefix[at + 1 :]
-            }
-        fits.append((depth, spans))
-    widths = set()
-    for cap in range(depth_limit + 1):
-        lower = max(1, 2 * cap + 2 * cap // 3)
-        stop = (
-            2 * (cap + 1) + 2 * (cap + 1) // 3 - 1
-            if cap < depth_limit
-            else max(lower, max(2 * depth + max(spans) for depth, spans in fits))
-        )
-        widths.add(lower)
-        for depth, spans in fits:
-            pad = 2 * min(depth, cap)
-            widths.update(pad + span for span in spans if lower < pad + span <= stop)
-    # Padding is fixed within each cap interval; only whole run fits can
-    # change its source. Beyond the last fit, the layout is constant.
-    candidates = [_bio_indented(tokens, width) for width in sorted(widths)]
-    return min(program, *candidates, key=balance_score)
 
 
 def _dimensional(program: str, width: int) -> str:
@@ -474,80 +296,6 @@ def _bracket_literal(program: str, width: int) -> str:
 def _quote_literal(program: str, width: int) -> str:
     """Wrap Eval, keeping literals and conditional commands whole."""
     return wrap_tokens(program, width, _EVAL_UNIT)
-
-
-def _polynomial(program: str, width: int) -> str:
-    """Lay a Polynomial program out one signed term to a line.
-
-    The space wrapper stranded every sign alone between wide terms.  One
-    term to a line, not packed, so the exponents read as a column; the term
-    itself folds too (a coefficient is 5950 digits on the dense eight-input
-    table).  Folding inside a number is safe: ``_parse_program`` deletes
-    every non-digit non-operator character before parsing, and ``sanitize``
-    sizes its digit cap from the cleaned text (checked on that table).
-    """
-    return "\n".join(_folded_term(term, width) for term in _polynomial_terms(program))
-
-
-def _polynomial_terms(program: str) -> list[str]:
-    """Return signed terms, retaining the leading function declaration."""
-    terms: list[str] = []
-    pending = ""
-    for token in program.split():
-        if token in ("+", "-"):
-            # A held sign with no term becomes its own line; ``format_coeffs``
-            # never emits two in a row, so this only keeps the helper total.
-            if pending:
-                terms.append(pending)
-            pending = token
-        elif pending:
-            terms.append(f"{pending} {token}")
-            pending = ""
-        else:
-            terms.append(token)
-    if pending:
-        terms.append(pending)
-    # ``f(x)``, ``=`` and the leading term are three tokens of one line.
-    if len(terms) >= 3 and terms[0] == "f(x)" and terms[1] == "=":
-        terms[:3] = [" ".join(terms[:3])]
-    return terms
-
-
-def _balance_polynomial(program: str) -> str:
-    """Balance term folds at their integer-division transitions."""
-    terms = _polynomial_terms(program)
-    if not terms:
-        return program
-    lengths = list(map(len, terms))
-    total = sum(lengths)
-    widest = max(lengths)
-    events = {1: 0, widest + 1: 0}
-    for length in lengths:
-        remainder = length - 1
-        # ceil(length/w) = 1+floor(remainder/w). Its distinct quotient
-        # endpoints are divisor pairs through sqrt(remainder).
-        for divisor in range(1, isqrt(remainder) + 1):
-            for boundary in {divisor + 1, remainder // divisor + 1}:
-                change = remainder // boundary - remainder // (boundary - 1)
-                events[boundary] = events.get(boundary, 0) + change
-    height = total
-    choices: list[tuple[tuple[int, int, int], int]] = []
-    for lower, stop in pairwise(sorted(events)):
-        height += events[lower]
-        width = min(stop - 1, max(lower, height))
-        choices.append(((abs(width - height), total + height - 1, width), width))
-    _, width = min(choices)
-    return min(program, _polynomial(program, width), key=balance_score)
-
-
-def _folded_term(term: str, width: int) -> str:
-    """Break one Polynomial term across rows of at most ``width``.
-
-    Not indented: that would be invented whitespace, and the suite's
-    invariant is that deleting what the wrapper inserted gives the program back.
-    """
-    rows = [term[i : i + width] for i in range(0, len(term), max(1, width))]
-    return "\n".join(rows)
 
 
 def _taglate(program: str, width: int) -> str:
@@ -649,11 +397,15 @@ def _token_patterns() -> dict[Callable[[str, int], str], str]:
 
 def balance_program(program: str, language_id: str) -> str:
     """Balance whole-token fits and term folds; otherwise estimate source area."""
+    from esolangs.registry import LANGUAGES
+
+    source_balance = next(
+        (lang.wrap_balance for lang in LANGUAGES.values() if lang.id == language_id),
+        None,
+    )
+    if "\n" not in program and source_balance is not None:
+        return source_balance(program)
     wrapper = _wrapper(language_id)
-    if "\n" not in program and wrapper is _polynomial:
-        return _balance_polynomial(program)
-    if "\n" not in program and wrapper is _bio:
-        return _balance_bio(program)
     if "\n" not in program and wrapper is wrap_space_delimited:
         tokens = program.split()
         width = balanced_token_width(tokens, " ")

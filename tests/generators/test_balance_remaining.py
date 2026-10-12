@@ -108,9 +108,9 @@ def _regime_tables():
 
 def _balances_whole_tokens(wrapper: object) -> bool:
     """Whether ``balance_program`` fits ``wrapper``'s tokens, not characters."""
+    if any(lang.wrap is wrapper and lang.wrap_balance for lang in LANGUAGES.values()):
+        return True
     return wrapper in _wrap._TOKEN_PATTERNS or wrapper in (  # noqa: SLF001
-        _wrap._polynomial,  # noqa: SLF001
-        _wrap._bio,  # noqa: SLF001
         _wrap.wrap_space_delimited,
         _wrap.wrap_grid,
         _wrap._mammalian,  # noqa: SLF001

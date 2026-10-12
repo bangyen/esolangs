@@ -16,9 +16,9 @@ from esolangs.languages.polynomial.tests.runners import (
     run_polynomial,
     run_polynomial_from,
 )
+from esolangs.languages.polynomial.wrapping import _polynomial
 from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
-    _polynomial,
     balance_score,
     wrap_program,
 )
@@ -247,7 +247,7 @@ class TestPolynomial:
     "table", ["01", "10", "0110", "0001", "10010110", "0110100110010110"]
 )
 def test_polynomial_balanced_folds_compute_the_table(table):
-    from esolangs.tools.wrap import _polynomial_terms
+    from esolangs.languages.polynomial.wrapping import _polynomial_terms
 
     default = esolangs.generate("Polynomial", table)
     balanced = esolangs.generate("Polynomial", table, balance=True)

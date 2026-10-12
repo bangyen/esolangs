@@ -6,10 +6,10 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
+from esolangs.languages.bio.wrapping import _bio
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
-    _bio,
     balance_program,
     balance_score,
 )

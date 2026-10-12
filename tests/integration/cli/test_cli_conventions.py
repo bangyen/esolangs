@@ -14,6 +14,40 @@ from tests.integration.cli.test_cli import call_main
 from tests.support.pick import first
 
 
+def test_help_examples_follow_remaining_capabilities(monkeypatch):
+    import shlex
+
+    from esolangs.cli import help as help_module
+    from esolangs.registry import Language
+    from esolangs.registry._language import Example
+
+    def build(table):
+        return table
+
+    languages = {
+        "Template Choice": Language(
+            "Template Choice",
+            "template_choice",
+            boolean=build,
+            example=Example(pair=("0", "1")),
+        ),
+        "Dialect Choice": Language(
+            "Dialect Choice",
+            "dialect_choice",
+            boolean=build,
+            dialect_values={"mode": ("plain", "with spaces")},
+        ),
+    }
+    monkeypatch.setattr(help_module, "LANGUAGES", languages)
+    template, dialect = help_module._capability_examples()  # noqa: SLF001
+    assert shlex.split(template)[-2:] == ["Template Choice", "0110"]
+    assert shlex.split(dialect.splitlines()[1])[3] == "mode=with spaces"
+    del languages["Template Choice"]
+    assert help_module._capability_examples()[0] == ""  # noqa: SLF001
+    languages.clear()
+    assert help_module._capability_examples() == ("", "")  # noqa: SLF001
+
+
 class TestExamplesShipWithThePackage:
     """They lived at the repository root, which left them out of the wheel."""
 

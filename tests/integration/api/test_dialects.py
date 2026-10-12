@@ -112,7 +112,11 @@ def test_cli_help_shows_literal_settings_json(capsys):
         call_both(["generate", "--help"], capsys)
     assert caught.value.code == 0
     help_text = capsys.readouterr().out
-    assert '{"expression_syntax":"postfix"}' in help_text
+    from esolangs.cli.help import _capability_examples
+
+    _template, dialects = _capability_examples()
+    assert dialects
+    assert dialects in help_text
 
 
 @pytest.mark.parametrize("key", ["index_base", "eof", "input_framing"])
