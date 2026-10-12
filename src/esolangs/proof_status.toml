@@ -275,7 +275,7 @@ generator = "Circuit Diagram"
 labels = ["tree"]
 qualification = "finite planar routing with fixed-size shared cofactor pools"
 scaling = "linear: prefix H-layout side C sqrt(T), fixed-size cofactor pools"
-execution = "poly n: worst 2n + 1 commands; 2n + 2 past n = 7"
+execution = "poly n: worst 2n + 1 commands; at most 2n + 2 past n = 8"
 workspace = """\
     linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses"""
 evidence = "docs/proofs/index.md#generator-ledger"
