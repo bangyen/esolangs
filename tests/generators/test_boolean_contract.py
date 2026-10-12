@@ -19,6 +19,7 @@ from esolangs.vm import _BranchingStepMachine, run_until_halt, run_until_halt_or
 from tests.support.generator_support import (
     assert_proved_resource_cap,
     evaluate_generated,
+    probe_table,
 )
 from tests.support.source_support import source_units
 from tests.support.witness_tables import dense, parity, row_bits

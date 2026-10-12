@@ -30,7 +30,7 @@ A table lists outputs for inputs `00, 01, 10, 11` in order, so `0110` is XOR:
 ```bash
 pip install esolangs
 esolangs generate brainfuck 0110 > xor.bf
-for i in 00 01 10 11; do printf $i | esolangs run brainfuck xor.bf; echo " <- $i"; done
+for i in 00 01 10 11; do printf $i | esolangs run --timeout 5 brainfuck xor.bf; echo " <- $i"; done
 # 0 <- 00
 # 1 <- 01
 # 1 <- 10
@@ -75,11 +75,13 @@ import esolangs
 
 program = esolangs.generate("brainfuck", "0110")
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-output = esolangs.run("brainfuck", program, stdin=stdin)
+output = esolangs.run("brainfuck", program, stdin=stdin, max_steps=10_000)
 assert esolangs.read_answer("brainfuck", output) == "1"
 ```
 
-Use `isolated=True` for a bounded run on Windows or worker threads.
+Use `max_steps` to bound commands, or `timeout` to bound wall time.
+On Windows or worker threads, use `isolated=True, timeout=5`; isolation also
+supports `max_output` and Linux-only `max_memory` limits.
 
 - Suffolk source may run as brainfuck with a wrong answer.
 

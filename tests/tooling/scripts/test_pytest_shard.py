@@ -103,3 +103,30 @@ def test_shard_reports_estimate_and_unknown_weights(tmp_path, monkeypatch, capsy
         == 0
     )
     assert "18.0s (1 tests use median fallback 6.000s)" in capsys.readouterr().out
+
+
+def test_duration_order_uses_read_only_input_and_preserves_fixture_order(tmp_path):
+    from types import SimpleNamespace
+
+    shard = load_script()
+    source = tmp_path / "durations.json"
+    source.write_text('{"a.py::second": 20, "b.py::first": 1}')
+    options = {
+        "duration_input": source,
+        "duration_output": None,
+        "duration_order": True,
+    }
+    config = SimpleNamespace(stash={}, getoption=options.__getitem__)
+    shard.pytest_configure(config)
+    items = [
+        SimpleNamespace(nodeid=node)
+        for node in ("b.py::first", "a.py::first", "a.py::second", "new.py::first")
+    ]
+    shard.pytest_collection_modifyitems(config, items)
+    assert [item.nodeid for item in items] == [
+        "a.py::first",
+        "a.py::second",
+        "b.py::first",
+        "new.py::first",
+    ]
+    assert source.read_text() == '{"a.py::second": 20, "b.py::first": 1}'

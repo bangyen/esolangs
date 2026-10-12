@@ -530,19 +530,23 @@ def render(root: pathlib.Path = ROOT) -> str:
     lines = []
     for m, g in pairs:
         # language-owners: ["Eval"]
-        # A generator named for its language may shadow a builtin (Eval).
-        comment = "  # noqa: A004 - the language's name" if hasattr(builtins, g) else ""
-        line = f"from {m} import {g}"
-        # Keep the block stable under `ruff format`: past the line limit, a
-        # trailing comma forces the multi-line form ruff would write anyway.
-        if len(line + comment) > LINE_LIMIT:
-            lines.append(f"from {m} import (\n    {g},{comment}\n)")
-        else:
-            lines.append(line + comment)
+        for name, alias in (("LANGUAGE", f"_{g.upper()}_LANGUAGE"), (g, "")):
+            comment = (
+                "  # noqa: A004 - the language's name"
+                if hasattr(builtins, name)
+                else ""
+            )
+            item = f"{name} as {alias}" if alias else name
+            line = f"from {m} import {item}"
+            if len(line + comment) > LINE_LIMIT:
+                lines.append(f"from {m} import (\n    {item},{comment}\n)")
+            else:
+                lines.append(line + comment)
     imports = "\n".join(lines)
     names = sorted(["BOOLEAN", *(g for _, g in pairs)])
     listed = "\n".join(f'    "{name}",' for name in names)
-    return f"{imports}\n\n__all__ = [\n{listed}\n]"
+    declarations = "\n".join(f"    _{g.upper()}_LANGUAGE," for _, g in pairs)
+    return f"{imports}\n\n_LANGUAGES = (\n{declarations}\n)\n\n__all__ = [\n{listed}\n]"
 
 
 def update_exports(

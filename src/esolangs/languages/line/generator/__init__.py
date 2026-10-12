@@ -20,8 +20,9 @@ Complete ordered residual folds share forward joins: the saved loader rewind
 pays for join transitions, and their measured area must beat the tree.
 Shared destination moves allow narrower nonterminal forks. Input-order streaming
 also shares reads on stems, overwriting cell zero and draining constant tails;
-its fresh output cell stays within the original tape. Complete folds win fallback
-area ties; larger drawings retain the smaller fallback.
+its fresh output cell stays within the original tape. Projected streaming drains
+ignored inputs on essential stems, avoiding test-free layers. Complete folds win
+fallback area ties; larger drawings retain the smaller fallback.
 """
 
 from __future__ import annotations
@@ -180,6 +181,7 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
         forward_canvas,
         median_streaming_canvas,
         packed_streaming_canvas,
+        projected_streaming_canvas,
         streaming_canvas,
     )
     from .shared import shared_canvas, shared_tree
@@ -234,6 +236,7 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
         centered_streaming_canvas,
         median_streaming_canvas,
         packed_streaming_canvas,
+        projected_streaming_canvas,
     ):
         # A complete fold wins a fallback tie; later folds retain the first tie.
         forward = build(truth_table, smallest + int(not complete_selected), unit=unit)

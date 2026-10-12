@@ -595,6 +595,16 @@ def main() -> int:
             # caller's own `-m` and lose to it. `just test-quick` supplies its
             # own expression excluding all three deferred bands.
             cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else LOCAL_PYTEST_MARKS]
+            if full:
+                cmd.extend(
+                    [
+                        "-p",
+                        "scripts.ci.shard",
+                        "--duration-order",
+                        "--duration-input",
+                        str(ROOT / "tests/support/fixtures/slow_durations.json"),
+                    ]
+                )
             if not full and os.environ.get("VERIFY_FULL", "0") in ("", "0"):
                 deferred = local_tooling_deselections(changed)
                 cmd.extend(deferred)

@@ -90,7 +90,8 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   answer `contract`; `resolve` normalizes spelling, and `RUNNERS` selects
   whole-source or split-line input. A language with a generator declares
   its own `LANGUAGE = Language(...)` at the end of its generator module, and
-  the registry collects those; only interpreter-only languages are listed
+  generated exports collect those explicitly for the registry. Only
+  interpreter-only languages are listed
   in `registry/_table.py`. `esolangs.languages.generators`'s imports come from
   the declarations (`scripts/docs/generate.py`, run by `generate.py docs`
   and by `check`).

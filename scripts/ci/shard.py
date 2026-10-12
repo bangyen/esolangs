@@ -373,6 +373,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     """Register the recording destination."""
     parser.addoption("--duration-output", type=Path)
     parser.addoption("--duration-order", action="store_true")
+    parser.addoption("--duration-input", type=Path)
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -382,9 +383,10 @@ def pytest_configure(config: pytest.Config) -> None:
         costs = config.workerinput.get("duration_costs", {})
     else:
         costs = {}
-        if path is not None and config.getoption("duration_order"):
+        source = config.getoption("duration_input") or path
+        if source is not None and config.getoption("duration_order"):
             try:
-                recorded = json.loads(path.read_text(encoding="utf-8"))
+                recorded = json.loads(source.read_text(encoding="utf-8"))
                 costs = {
                     node: float(seconds)
                     for node, seconds in recorded.items()
