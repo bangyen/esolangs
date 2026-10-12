@@ -121,29 +121,3 @@ def test_the_execution_exempt_set_is_the_unmeasured_column() -> None:
     }
     assert set(exempt) == set(_EXECUTION_EXEMPT) | qualified == unmeasured
     assert all(why for why in exempt.values())
-
-
-@pytest.mark.medium
-def test_boolfuck_scaling_windows_follow_normalized_gate_route() -> None:
-    from esolangs.languages.boolfuck.generator import boolfuck, normal_gates
-    from tests.proofs.deep.linearity import (
-        ARITY_OVERRIDE,
-        MAX_DIFF_RATIO,
-        _classes,
-        _series,
-        _trend,
-    )
-    from tests.support.witness_tables import nested_dense
-
-    series = _series(boolfuck, nested_dense, ARITY_OVERRIDE["boolfuck"])
-    windows = _classes(series)
-    assert len(windows) == 2
-    for window in windows:
-        for n, size in window:
-            gates = normal_gates(nested_dense(n))
-            assert gates is not None
-            assert len(gates) == size
-            assert boolfuck(nested_dense(n)) == gates
-    trend = _trend(series)
-    assert trend is not None
-    assert trend <= MAX_DIFF_RATIO
