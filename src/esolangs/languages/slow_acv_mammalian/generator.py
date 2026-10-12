@@ -52,11 +52,15 @@ from esolangs.languages.slow_acv_mammalian.interpreter._dialect import (
     MODULI,
     MammalianModuli,
 )
+from esolangs.languages.slow_acv_mammalian.wrapping import (
+    _balance_mammalian,
+    _mammalian,
+    same_layout,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.tools.constant_projection import balanced_projection
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, essential_inputs
-from esolangs.tools.wrap import _mammalian
 
 __all__ = ["slow_acv_mammalian"]
 
@@ -1139,5 +1143,7 @@ LANGUAGE = Language(
     ),
     # Four-character cells align the ``SEED`` runs; longer words span cells.
     wrap=_mammalian,
+    wrap_balance=_balance_mammalian,
+    same_layout=same_layout,
     slow_width_sweep=True,
 )

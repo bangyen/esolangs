@@ -7,6 +7,7 @@ a 1, so a constant half or repeat has nothing to fold or share.
 from itertools import pairwise
 from math import isqrt
 
+from esolangs.languages.taglate.wrapping import _taglate, same_layout
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
@@ -15,7 +16,6 @@ from esolangs.tools.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.tools.wrap import _taglate
 
 
 def _reorder_tt(tt: str, n: int) -> str:
@@ -363,5 +363,7 @@ LANGUAGE = Language(
     # Both concatenate before tokenizing (Taglate after the queue seed; A
     # Painter Ant drops whitespace), so no break can land inside a command.
     wrap=_taglate,
+    wrap_multiline=True,
+    same_layout=same_layout,
     balance=balance_taglate,
 )

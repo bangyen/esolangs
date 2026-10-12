@@ -5,7 +5,6 @@ from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, SourceKind
 from esolangs.tools.helpers import mark
 from esolangs.tools.wrap import (
-    _mammalian,
     balance_program,
     balance_score,
     wrap_grid,
@@ -49,15 +48,12 @@ BALANCED = sorted(
         ),
     }
 )
-_MAMMAL = next(
-    (lang.id for lang in LANGUAGES.values() if lang.wrap is _mammalian), None
-)
 #: One language per token wrapper the global minimum is checked against.
 CELLED = list(
     {
         lang.wrap: lang.id
         for lang in LANGUAGES.values()
-        if lang.wrap in (wrap_space_delimited, wrap_grid, _mammalian)
+        if lang.wrap in (wrap_space_delimited, wrap_grid)
     }.values()
 )
 
@@ -111,8 +107,6 @@ def test_equal_cells_reach_the_global_minimum(language: str, cell: int) -> None:
     for count in range(1, 33):
         program = " ".join(["1" * cell] * count)
         balanced = balance_program(program, language)
-        if language == _MAMMAL and cell != 4:
-            continue
         optimum = min(
             (
                 wrap_program(program, language, width)

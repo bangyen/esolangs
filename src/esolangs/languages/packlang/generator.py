@@ -29,6 +29,11 @@ from esolangs.languages.packlang.interpreter._literals import (
     LITERAL_POLICIES,
     PacklangLiterals,
 )
+from esolangs.languages.packlang.wrapping import (
+    _PACKLANG_LEXEME,
+    _packlang,
+    same_layout,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
@@ -38,9 +43,7 @@ from esolangs.tools.helpers import (
     subtree_ids,
 )
 from esolangs.tools.wrap import (
-    _PACKLANG_LEXEME,
     _join_tokens,
-    _packlang,
     balance_score,
     wrap_program,
 )
@@ -336,6 +339,8 @@ LANGUAGE = Language(
     # Generators emit indented blocks; fold only an over-wide line.
     # Packlang punctuation separates tokens even without a space.
     wrap=_packlang,
+    wrap_multiline=True,
+    same_layout=same_layout,
     balance=balance_packlang,
     eof="an exhausted charGet is newline byte 10",
     empty_program="empty program",

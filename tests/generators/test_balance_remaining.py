@@ -113,7 +113,6 @@ def _balances_whole_tokens(wrapper: object) -> bool:
     return wrapper in _wrap._TOKEN_PATTERNS or wrapper in (  # noqa: SLF001
         _wrap.wrap_space_delimited,
         _wrap.wrap_grid,
-        _wrap._mammalian,  # noqa: SLF001
     )
 
 

@@ -12,8 +12,6 @@ from esolangs.tools.wrap import (
     MULTILINE,
     WRAPPERS,
     _cell_width,
-    _mammalian,
-    _packlang,
     _span,
     takes_width,
     wrap_chars,
@@ -163,7 +161,7 @@ def _stdin(name: str) -> str:
 
 def _is_grid(name: str) -> bool:
     """Whether ``name``'s wrapper lays its tokens out as a padded grid."""
-    return WRAPPERS[LANGUAGES[name].id] in (wrap_grid, _mammalian)
+    return WRAPPERS[LANGUAGES[name].id] is wrap_grid
 
 
 def _run(name: str, program: str) -> str:
@@ -174,10 +172,7 @@ def _run(name: str, program: str) -> str:
         return f"{type(exc).__name__}: {exc}"
 
 
-@pytest.mark.parametrize(
-    "name",
-    [name for name in _wrapper_witnesses() if LANGUAGES[name].wrap is not _packlang],
-)
+@pytest.mark.parametrize("name", _wrapper_witnesses())
 def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     """Wrapping preserves the token sequence exactly."""
     width = NARROW_WIDTH
@@ -185,7 +180,10 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     if takes_width(example.generator):
         plain = example.build(width)
         wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
-        if name in {"FRACTRAN", "RAM0"}:
+        same_layout = LANGUAGES[name].same_layout
+        if same_layout is not None:
+            assert same_layout(wrapped, plain, lambda width: example.build(width))
+        elif name in {"FRACTRAN", "RAM0"}:
             assert wrapped.split() == plain.split()
         else:
             assert wrapped.replace("\n", "") == plain.replace("\n", "")
@@ -196,6 +194,10 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     if wrapped == plain:
         # A program short enough to need no break is left alone; there is
         # nothing to undo.
+        return
+    same_layout = LANGUAGES[name].same_layout
+    if same_layout is not None:
+        assert same_layout(wrapped, plain, lambda width: _example(name).build(width))
         return
     # The grid pads each token into a right-aligned cell, so the original is
     # not recoverable character for character -- the padding is new
@@ -213,8 +215,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     if LANGUAGES[name].id in {"qoibl", "forbin"}:
         assert wrapped.split() == plain.split()
         return
-    # Taglate's first line is a structural queue seed the wrapper must leave
-    # alone; only the commands below it are reflowed.
+    # Structural wrappers preserve the first line while reflowing commands.
     if LANGUAGES[name].id in MULTILINE and "\n" in plain:
         seed, _, rest = wrapped.partition("\n")
         plain_seed, _, plain_rest = plain.partition("\n")
@@ -226,10 +227,6 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     # there the newline turns back into that space; every other wrapper
     # inserts the newline between two adjacent commands, so it just goes
     # away.  Either way no command may be dropped, reordered, or split.
-    same_layout = LANGUAGES[name].same_layout
-    if same_layout is not None:
-        assert same_layout(wrapped, plain, lambda width: _example(name).build(width))
-        return
     assert plain in {wrapped.replace("\n", " "), wrapped.replace("\n", "")}
 
 
@@ -238,14 +235,7 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     """Every language in the table really does wrap, given enough program."""
     example = _example(name)
     raw = example.build(width=None)
-    if example.build(40) != raw:
-        return
-    # Packlang already emits one short, indented statement per line.  Its
-    # wrapper exists for a caller's wider hand-written line; the focused
-    # ``_packlang`` tests supplies that positive control.
-    if WRAPPERS[LANGUAGES[name].id] is _packlang and all(
-        len(line) <= 40 for line in raw.splitlines()
-    ):
+    if any(example.build(width) != raw for width in (40, 1)):
         return
     structural = LANGUAGES[name].id in MULTILINE
     for arity in range(1, 5):
@@ -422,6 +412,26 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
 
 def test_unwrappable_languages_have_no_wrapper() -> None:
     assert set(UNWRAPPABLE).isdisjoint(WRAPPERS)
+
+
+@pytest.mark.parametrize("structural", [False, True])
+def test_multiline_reflow_follows_registry_metadata(monkeypatch, structural):
+    from esolangs import registry
+
+    def wrapper(program: str, _width: int) -> str:
+        return program.replace("\n", " ")
+
+    language = replace(
+        next(iter(LANGUAGES.values())),
+        id="synthetic",
+        wrap=wrapper,
+        no_wrap="",
+        wrap_multiline=structural,
+    )
+    monkeypatch.setattr(registry, "LANGUAGES", {language.name: language})
+    source = "first\nsecond"
+    expected = "first second" if structural else source
+    assert wrap_program(source, "synthetic", 40) == expected
 
 
 def test_wrap_tokens_refuses_a_pattern_that_does_not_tile() -> None:

@@ -46,26 +46,6 @@ def wrap_space_delimited(program: str, width: int) -> str:
     return _join_tokens(program.split(), width, separator=" ")
 
 
-_PACKLANG_LEXEME = r"[A-Za-z_][A-Za-z_0-9]*|\d+|[{}();:,^!]"
-
-
-def _packlang(program: str, width: int) -> str:
-    """Fold complete Packlang lexical tokens, reducing indent when necessary."""
-    lines = []
-    for line in program.split("\n"):
-        if len(line) <= width:
-            lines.append(line)
-            continue
-        tokens = re.findall(_PACKLANG_LEXEME, line)
-        if "".join(tokens) != "".join(line.split()):
-            return program
-        indent = line[: len(line) - len(line.lstrip())]
-        indent = indent[: max(0, width - max(map(len, tokens), default=0))]
-        folded = _join_tokens(tokens, max(1, width - len(indent)), separator=" ")
-        lines.extend(indent + part for part in folded.split("\n"))
-    return "\n".join(lines)
-
-
 def wrap_grid(program: str, width: int) -> str:
     """Wrap a whitespace-delimited program into a right-aligned grid.
 
@@ -108,17 +88,6 @@ def _wrap_grid(
     if row:  # pragma: no branch - never empty; see above
         lines.append(" ".join(row).rstrip())
     return "\n".join(lines)
-
-
-def _mammalian(program: str, width: int) -> str:
-    """Wrap Mammalian on four-character cells, one cell per ``SEED``.
-
-    ``SEED`` forms nearly every long run; the other words span two or three cells.
-    """
-    tokens = program.split()
-    if not tokens:
-        return program
-    return _wrap_grid(tokens, width, 4, left_aligned=True)
 
 
 def _cell_width(tokens: list[str]) -> int:
@@ -298,23 +267,6 @@ def _quote_literal(program: str, width: int) -> str:
     return wrap_tokens(program, width, _EVAL_UNIT)
 
 
-def _taglate(program: str, width: int) -> str:
-    """Wrap Taglate's commands, leaving its queue-seed line alone.
-
-    The first line seeds the queue and is structural; the rest is joined
-    before tokenizing and breaks anywhere.
-    """
-    seed, _, commands = program.partition("\n")
-    if not commands:
-        return program
-    return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
-
-
-# Language id -> wrapper; semantic newlines require generator-owned layouts.
-# These wrappers preserve structural rows or existing newline comments.
-_MULTILINE_WRAPPERS = frozenset({_taglate, _packlang, _minifuck})
-
-
 def __getattr__(name: str) -> Any:
     """Derive ``WRAPPERS`` and ``MULTILINE`` from the registry on first use.
 
@@ -329,9 +281,7 @@ def __getattr__(name: str) -> Any:
     wrappers = {lang.id: lang.wrap for lang in LANGUAGES.values() if lang.wrap}
     globals()["WRAPPERS"] = wrappers
     globals()["MULTILINE"] = frozenset(
-        language_id
-        for language_id, wrapper in wrappers.items()
-        if wrapper in _MULTILINE_WRAPPERS
+        lang.id for lang in LANGUAGES.values() if lang.wrap and lang.wrap_multiline
     )
     return globals()[name]
 
@@ -367,8 +317,14 @@ def wrap_program(program: str, language_id: str, width: int | None) -> str:
     if width is None or width <= 0:
         return program
     wrapper = _wrapper(language_id)
-    if "\n" in program and wrapper not in _MULTILINE_WRAPPERS:
-        return program
+    if "\n" in program:
+        from esolangs.registry import LANGUAGES
+
+        if not any(
+            lang.id == language_id and lang.wrap_multiline
+            for lang in LANGUAGES.values()
+        ):
+            return program
     if wrapper is None:
         return program
     return wrapper(program, width)
@@ -419,16 +375,13 @@ def balance_program(program: str, language_id: str) -> str:
         tokens = re.findall(f"{_RUN}|[\\s\\S]", program)
         width = balanced_token_width(tokens)
         return min(program, _join_tokens(tokens, width, ""), key=balance_score)
-    if "\n" not in program and wrapper in (wrap_grid, _mammalian):
+    if "\n" not in program and wrapper is wrap_grid:
         tokens = program.split()
         if not tokens:
             return program
-        cell = 4 if wrapper is _mammalian else _cell_width(tokens)
+        cell = _cell_width(tokens)
         aligned = [
-            token.ljust(_span(len(token), cell) * (cell + 1) - 1)
-            if wrapper is _mammalian
-            else token.rjust(_span(len(token), cell) * (cell + 1) - 1)
-            for token in tokens
+            token.rjust(_span(len(token), cell) * (cell + 1) - 1) for token in tokens
         ]
         width = balanced_token_width(aligned, " ", rstrip_rows=True)
         return min(

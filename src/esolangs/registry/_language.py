@@ -99,6 +99,7 @@ class Language:
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
     wrap: Callable[[str, int], str] | None = None
+    wrap_multiline: bool = False
     #: ``wrap_balance(program)``: a language-owned source reflow for balance.
     wrap_balance: Callable[[str], str] | None = None
     #: Why ``wrap`` is absent, when a break would change the program.

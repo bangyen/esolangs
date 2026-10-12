@@ -17,9 +17,7 @@ from esolangs.languages.slow_acv_mammalian.generator import (
     _w_raise,
     _w_raise_len,
 )
-from esolangs.tools.wrap import (
-    _mammalian,
-)
+from esolangs.languages.slow_acv_mammalian.wrapping import _mammalian
 from tests.support.witness_tables import witnesses
 
 

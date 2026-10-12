@@ -432,6 +432,7 @@ LANGUAGE = Language(
     contract=BooleanContract(),
     # ``[`` skips the character after it.
     wrap=_minifuck,
+    wrap_multiline=True,
     balance=_balance,
     example=Example(setters=minifuck_setters),
 )
