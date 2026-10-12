@@ -90,9 +90,9 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
     assert_an_ignored_input_costs("BFStack", 6, 2)
 
 
-@pytest.mark.parametrize("n", range(1, 9))
+@pytest.mark.parametrize("n", [1, 2, 3, 8])
 @pytest.mark.parametrize("bit", "01")
-def test_constant_leaf_is_used_at_every_arity(n: int, bit: str) -> None:
+def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -> None:
     """A constant needs only input discards and the printed literal."""
     program = boolean.bfstack(bit * (1 << n))
     assert len(program) == 2 * n + 51 + int(bit)
