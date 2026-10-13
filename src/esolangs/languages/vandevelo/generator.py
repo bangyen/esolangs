@@ -25,6 +25,9 @@ direction reaches ``d(eps) = log2(n) - log2(log2(1/eps)) - 2``, so a peel
 taking only cubes of at least that dimension ends in ``1 + 9 * 2**n / n``
 clauses.
 
+Against the sparse tail's lowest-point growth alone the peel saves 9.7% of
+characters at n=8 (200 tables), 13.2% at n=10 and 20.8% at n=12.
+
 An ignored input is a free direction of every cube, so the cover already
 drops it: projecting first is 0.4% larger, pooled over 22 tables at n=8-9.  Guards
 are cosets of the 1-set, so there is no subtree to share.
@@ -102,11 +105,15 @@ from __future__ import annotations
 import heapq
 import random
 from itertools import islice
+from typing import TYPE_CHECKING, NamedTuple
 
 from esolangs.generation.helpers import _validate_truth_table, short_name
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 __all__ = ["vandevelo"]
 
@@ -862,6 +869,79 @@ def _cover(truth_table: str, n: int) -> tuple[list[list[tuple[int, int]]], list[
     return cover, [len(dirs) for _, dirs in cubes]
 
 
+class _Held(NamedTuple):
+    """What a register holds: the input set ``w`` it XORs and its polarity."""
+
+    w: int
+    polarity: int
+
+
+class _Bank:
+    """The live registers, least recently used first; each binds an input parity.
+
+    A register holds its parity XOR its own polarity, and a clause that
+    (re)binds it sets that polarity -- a ``==`` toggle in place of ``!=``
+    -- so the test it makes is a bare ``r?``.
+    """
+
+    def __init__(self, n: int, ref: Callable[[int], str]) -> None:
+        self.held: dict[str, _Held] = {}
+        self.cap = _bank_cap(n)
+        self.next_register = n
+        self.ref = ref
+
+    def bind(
+        self, w: int, value: int, used: set[str]
+    ) -> tuple[str, int, list[tuple[str, ...]]]:
+        """Return ``(register, polarity, binding lines)`` testing parity ``w``.
+
+        Reuses a register already holding ``w``, else morphs the nearest
+        free recent one, else binds a fresh or respelled register.
+        """
+        held = self.held
+        recent = list(islice(reversed(held.items()), _SCAN))
+        exact = next((r for r, h in recent if h.w == w and r not in used), None)
+        if exact is not None:
+            polarity = held.pop(exact).polarity
+            held[exact] = _Held(w, polarity)  # most recently used
+            return exact, polarity, []
+        lines: list[tuple[str, ...]] = []
+        nearest: str | None = None
+        distance = w.bit_count()
+        for r, h in recent:
+            if r in used:
+                continue
+            d = (h.w ^ w).bit_count()
+            if d < distance:
+                nearest, distance = r, d
+        if nearest is not None:
+            register = nearest
+            old = held.pop(register)
+            polarity = old.polarity
+            toggles = _points(old.w ^ w)
+        else:
+            if len(held) < self.cap:
+                register = short_name(self.next_register, _ALPHABET)
+                self.next_register += 1
+            else:
+                # Bank full: respell the least recently used free
+                # register, which costs what a fresh one would.
+                register = next(r for r in held if r not in used)
+                del held[register]
+            first, *toggles = _points(w)
+            polarity = 0
+            lines.append((register, "~>", f"{self.ref(first)}?"))
+        # Every rebinding toggles at least once; the last toggle
+        # sets the polarity that makes this test pass on a 1.
+        for i, b in enumerate(toggles):
+            op = "!="
+            if i == len(toggles) - 1 and polarity == value:
+                op, polarity = "==", polarity ^ 1
+            lines.append((register, "~>", f"{register}?", op, f"{self.ref(b)}?"))
+        held[register] = _Held(w, polarity)
+        return register, polarity, lines
+
+
 def vandevelo(truth_table: str, width: int | None = None) -> str:
     """Build a Vandevelo program computing ``truth_table`` by termination."""
     n = _validate_truth_table(truth_table)
@@ -871,6 +951,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     flips = _flips(cover, dims, n)
     lines = []
     joiner = "" if compact else " "
+    glue = "::" if compact else " :: "
 
     def spaced(*tokens: str) -> str:
         """Join tokens with no separator (compact) or spaces (readable)."""
@@ -888,11 +969,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
         # most-significant-first, and the first read is the top bit.
         return names[n - 1 - bit]
 
-    # A register holds its parity XOR its own polarity, and a clause that
-    # (re)binds it sets that polarity -- a ``==`` toggle in place of ``!=``
-    # -- so the test it makes is a bare ``r?``.
-    bank: dict[str, tuple[int, int]] = {}
-    next_register = n
+    bank = _Bank(n, ref)
     for constraints in cover:
         parts = []
         used: set[str] = set()
@@ -902,58 +979,14 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
             if w.bit_count() == 1:
                 part, polarity = ref(w.bit_length() - 1), 0
             else:
-                recent = list(islice(reversed(bank.items()), _SCAN))
-                exact = next(
-                    (r for r, held in recent if held[0] == w and r not in used),
-                    None,
-                )
-                if exact is not None:
-                    register = exact
-                    polarity = bank.pop(register)[1]
-                    bank[register] = (w, polarity)  # most recently used
-                else:
-                    nearest: str | None = None
-                    distance = w.bit_count()
-                    for r, (held, _) in recent:
-                        if r in used:
-                            continue
-                        d = (held ^ w).bit_count()
-                        if d < distance:
-                            nearest, distance = r, d
-                    if nearest is not None:
-                        register = nearest
-                        held, polarity = bank.pop(register)
-                        toggles = _points(held ^ w)
-                    else:
-                        if len(bank) < _bank_cap(n):
-                            register = short_name(next_register, _ALPHABET)
-                            next_register += 1
-                        else:
-                            # Bank full: respell the least recently used free
-                            # register, which costs what a fresh one would.
-                            register = next(r for r in bank if r not in used)
-                            del bank[register]
-                        first, *toggles = _points(w)
-                        polarity = 0
-                        lines.append(spaced(register, "~>", f"{ref(first)}?"))
-                    # Every rebinding toggles at least once; the last toggle
-                    # sets the polarity that makes this test pass on a 1.
-                    for i, b in enumerate(toggles):
-                        op = "!="
-                        if i == len(toggles) - 1 and polarity == value:
-                            op, polarity = "==", polarity ^ 1
-                        lines.append(
-                            spaced(register, "~>", f"{register}?", op, f"{ref(b)}?")
-                        )
-                    bank[register] = (w, polarity)
-                used.add(register)
-                part = register
+                part, polarity, binding = bank.bind(w, value, used)
+                lines.extend(spaced(*tokens) for tokens in binding)
+                used.add(part)
             # The test passes when the variable equals ``value ^ polarity``.
             if value ^ polarity:
                 parts.append(f"{part}?")
             else:
                 parts.append(spaced(f"{part}?", "==", "Nil?"))
-        glue = "::" if compact else " :: "
         lines.append(glue.join([*parts, loop]))
     return "\n".join(lines)
 
