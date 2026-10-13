@@ -134,6 +134,48 @@ def _thaw(state: _BranchState) -> _State:
     return ((stk, MappingProxyType(dict(var)), ind), halted)
 
 
+def _pre_read(
+    tokens: tuple[str, ...],
+    ind: int,
+    stk: tuple[int, ...],
+    var: Mapping[str, int],
+) -> tuple[int, str, str, int | None]:
+    """Resolve one token and parse what its shell pre-reads.
+
+    Shared by execution and the all-outcomes search: both wrap a backward
+    jump past the start the same way, split the token the same way, and
+    need the same answers before they do their own effectful part -- the
+    executor prints, reads, and draws, while the search validates,
+    declines, and forks.
+
+    Returns ``(ind, mod, command, datum)``: the wrapped cursor, the token,
+    its keyword (``""`` for an empty token), and the parsed pre-read --
+    the validated ``PRT`` value, the ``RND`` bound when it draws, or
+    ``None`` for a bound below one and every other command.
+    """
+    if ind < 0:
+        # A backwards jump past the start wraps to the end: Python's own
+        # negative indexing did that for a jump of at most one program
+        # length (``[JMP B 1][END]`` lands on END) and raised IndexError
+        # beyond it.  The wrap is total here, so the same mistake cannot
+        # leak a Python error for the sake of its size.
+        ind %= len(tokens)
+    mod = tokens[ind]
+    arg = mod.split()
+    if not arg:
+        return (ind, mod, "", None)
+    command = arg[0]
+    if command == "PRT":
+        n = _print_value(stk, var, arg)
+        if "INT" not in mod:
+            chr(n)  # Reject the same out-of-range characters the I/O shell would.
+        return (ind, mod, command, n)
+    if command == "RND":
+        bound = int(_operand(arg, 1))
+        return (ind, mod, command, bound if bound >= 1 else None)
+    return (ind, mod, command, None)
+
+
 class _Machine:
     """Stack, variables, and instruction pointer for a Modulous run."""
 
@@ -224,38 +266,26 @@ class _Machine:
         """
         core, halted = _thaw(cast(_BranchState, state))
         stk, var, ind = core
-        if ind < 0:
-            ind %= len(self.tokens)
-        mod = self.tokens[ind]
-        arg = mod.split()
-        if not arg:
-            return (_freeze(_advance(((stk, var, ind), halted), mod)),)
+        ind, mod, command, datum = _pre_read(self.tokens, ind, stk, var)
 
-        if arg[0] == "PRT":
-            n = _print_value(stk, var, arg)
-            if "INT" not in mod:
-                chr(n)  # Validate the same character range as the I/O shell.
-
-        if arg[0] == "INP":
+        if command == "INP":
             return None
 
         values: tuple[str | int | None, ...] = (None,)
-        if arg[0] == "RND":
-            n = int(_operand(arg, 1))
-            if n >= 1:
-                if n > _RND_FANOUT:
-                    raise with_hint(
-                        TimeoutError(
-                            f"undecided: one 'RND {n}' exceeds "
-                            f"the {_RND_FANOUT}-outcome "
-                            "cap on a single transition"
-                        ),
-                        (
-                            f"reduce RND to at most {_RND_FANOUT}; limit "
-                            "does not raise this transition cap"
-                        ),
-                    )
-                values = tuple(range(n))
+        if command == "RND" and datum is not None:
+            if datum > _RND_FANOUT:
+                raise with_hint(
+                    TimeoutError(
+                        f"undecided: one 'RND {datum}' exceeds "
+                        f"the {_RND_FANOUT}-outcome "
+                        "cap on a single transition"
+                    ),
+                    (
+                        f"reduce RND to at most {_RND_FANOUT}; limit "
+                        "does not raise this transition cap"
+                    ),
+                )
+            values = tuple(range(datum))
 
         return tuple(
             _freeze(_advance(((stk, var, ind), halted), mod, value)) for value in values
@@ -282,33 +312,22 @@ class _Machine:
         if self.halted:
             return
         (stk, var, ind), halted = self._state
-        if ind < 0:
-            # A backwards jump past the start wraps to the end: Python's own
-            # negative indexing did that for a jump of at most one program
-            # length (``[JMP B 1][END]`` lands on END) and raised IndexError
-            # beyond it.  The wrap is total here, so the same mistake cannot
-            # leak a Python error for the sake of its size.
-            ind %= len(self.tokens)
-        mod = self.tokens[ind]
-        arg = mod.split()
+        ind, mod, command, datum = _pre_read(self.tokens, ind, stk, var)
 
         value: str | int | None = None
-        if arg:
-            if arg[0] == "PRT":
-                self._print(mod, arg)
-            elif arg[0] == "INP":
-                value = self.io.input_token() if "INT" in mod else self.io.input_str()
-                self._input_reads += 1
-            elif arg[0] == "RND":
-                n = int(_operand(arg, 1))
-                if n >= 1:
-                    value = draw(self.rng, n)
-                    self._draws += 1
+        if command == "PRT":
+            # The pre-read validates every PRT value, so the datum is set.
+            self._print(mod, cast(int, datum))
+        elif command == "INP":
+            value = self.io.input_token() if "INT" in mod else self.io.input_str()
+            self._input_reads += 1
+        elif command == "RND" and datum is not None:
+            value = draw(self.rng, datum)
+            self._draws += 1
         self._restore(_advance(((stk, var, ind), halted), mod, value))
 
-    def _print(self, mod: str, arg: list[str]) -> None:
-        """Write what ``PRT`` names: a variable, or the top of the stack."""
-        n = _print_value(self.stk, self.var, arg)
+    def _print(self, mod: str, n: int) -> None:
+        """Write a ``PRT`` value the pre-read validated."""
         if "INT" in mod:
             self.io.print_num(n)
         else:

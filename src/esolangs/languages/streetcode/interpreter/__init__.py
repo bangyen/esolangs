@@ -74,6 +74,18 @@ type _Edges = dict[tuple[int, int], _State | Literal["halt"] | None]
 type _Run = tuple[_State, int, Mapping[int, int], bool]
 
 
+def _frozen(
+    car: _State, pointer: int, tape: Mapping[int, int], *, halted: bool
+) -> _Run:
+    """Rebuild the immutable run value from one step's mutable tape."""
+    return (car, pointer, MappingProxyType(tape), halted)
+
+
+def _cell(cells: Mapping[int, int], pointer: int) -> int:
+    """Return the cell under ``pointer``; never-written cells read as 0."""
+    return cells.get(pointer, 0)
+
+
 def _advance(
     run: _Run,
     grid: _Grid,
@@ -94,26 +106,18 @@ def _advance(
     # touched, and every return re-freezes what this step built.
     cells = dict(cells)
 
-    def frozen(
-        car: _State, pointer: int, tape: Mapping[int, int], *, halted: bool
-    ) -> _Run:
-        return (car, pointer, MappingProxyType(tape), halted)
-
     op = grid.op_at(state.row, state.col)
     if op == "HALT":
-        return frozen(state, cp, cells, halted=True), None
+        return _frozen(state, cp, cells, halted=True), None
 
     # The cell on arrival, before this square's instruction, so a turning
     # square's ``=`` sets up the road ahead without deciding it.
-    arrival_cell = cells.get(cp, 0)
-
-    def cell() -> int:
-        return cells.get(cp, 0)
+    arrival_cell = _cell(cells, cp)
 
     if op == "INC":
-        cells = {**cells, cp: cell() + 1}
+        cells = {**cells, cp: _cell(cells, cp) + 1}
     elif op == "DEC":
-        cells = {**cells, cp: cell() - 1}
+        cells = {**cells, cp: _cell(cells, cp) - 1}
     elif op == "RIGHT":
         cp += 1
     elif op == "LEFT":
@@ -131,7 +135,7 @@ def _advance(
             )
         cells = {**cells, cp: value}
     elif op == "OUT":
-        character = cell()
+        character = _cell(cells, cp)
         try:
             chr(character)
         except ValueError:
@@ -148,7 +152,7 @@ def _advance(
                 f"the spec allows",
                 hint="widen the street so a U-turn has an opposite lane",
             )
-        return frozen(turned, cp, cells, halted=done), None
+        return _frozen(turned, cp, cells, halted=done), None
     elif op == "NOP":
         # ``C``, space and every undefined character fold to NOP (see
         # ``_Op``).
@@ -158,7 +162,7 @@ def _advance(
         # above, so this is the checker's exhaustiveness proof.
         assert_never(op)
 
-    current_cell = cell()
+    current_cell = _cell(cells, cp)
     edges = None if graph is None else graph.get(state)
     successor = (
         _drive(grid, state, arrival_cell, current_cell)
@@ -166,19 +170,19 @@ def _advance(
         else edges[int(arrival_cell != 0), int(current_cell != 0)]
     )
 
-    output = cell() if op == "OUT" else None
+    output = _cell(cells, cp) if op == "OUT" else None
 
     if successor == "halt":
-        return frozen(state, cp, cells, halted=True), output
+        return _frozen(state, cp, cells, halted=True), output
     if successor is None:
         if edges is None:
-            return frozen(state, cp, cells, halted=True), output
+            return _frozen(state, cp, cells, halted=True), output
         raise AssertionError(
             f"no successor for {(state.row, state.col)} heading"
             f" {state.heading}: the drive-state graph outlived"
             " the totality check"
         )
-    return frozen(successor, cp, cells, halted=done), output
+    return _frozen(successor, cp, cells, halted=done), output
 
 
 class _Machine:
@@ -190,35 +194,56 @@ class _Machine:
     is true once ``;`` runs or the car has nowhere to go.
     """
 
-    def __init__(self, code: list[str], io: IO) -> None:
-        """Locate the single ``C`` and derive the car's initial heading."""
+    def __init__(
+        self,
+        code: list[str],
+        io: IO,
+        *,
+        _compiled: tuple[_Grid, _State, dict[_State, _Edges] | None] | None = None,
+    ) -> None:
+        """Locate the single ``C`` and derive the car's initial heading.
+
+        ``_compiled`` is the geometry a cached prototype already validated
+        for identical code -- grid, start state and drive graph -- so this
+        machine skips revalidating and re-searching it.
+        """
         if not code or not any(line.strip() for line in code):
             raise syntax_error(
                 "Streetcode program cannot be empty",
                 "draw an enclosed two-cell-wide street containing one C",
             )
         self.io = io
-        self.grid = _Grid(code)
-
-        starts = [
-            (r, c)
-            for r, row in enumerate(self.grid)
-            for c, ch in enumerate(row)
-            if ch == "C"
-        ]
-        if len(starts) != 1:
-            raise syntax_error(
-                f"Streetcode program must have exactly one C, found {len(starts)}",
-                "keep exactly one C on the street as the car start",
+        if _compiled is not None:
+            self.grid, self._state, self._graph = _compiled
+        else:
+            self.grid = _Grid(code)
+            starts = [
+                (r, c)
+                for r, row in enumerate(self.grid)
+                for c, ch in enumerate(row)
+                if ch == "C"
+            ]
+            if len(starts) != 1:
+                raise syntax_error(
+                    f"Streetcode program must have exactly one C, found {len(starts)}",
+                    "keep exactly one C on the street as the car start",
+                )
+            # The whole of the machine's steering state, in the one record the
+            # movement rules speak in.  ``step`` hands it to :func:`_drive` and
+            # stores back what comes out, so the value looked up in the
+            # drive-state graph is the machine's own.  See :class:`_Latches`
+            # for what the three latches carry.
+            self._state = _State(
+                *starts[0], _initial_heading(self.grid, starts[0]), _NO_LATCHES
             )
-        # The whole of the machine's steering state, in the one record the
-        # movement rules speak in.  ``step`` hands it to :func:`_drive` and
-        # stores back what comes out, so the value looked up in the
-        # drive-state graph is the machine's own.  See :class:`_Latches`
-        # for what the three latches carry.
-        self._state = _State(
-            *starts[0], _initial_heading(self.grid, starts[0]), _NO_LATCHES
-        )
+            # The enumerated drive-state graph, or ``None`` for a program whose
+            # geometry is not a street or whose validation a fixture patched
+            # out.  ``step`` then calls :func:`_drive` directly -- the same
+            # function that filled the graph, so the answer is the same.
+            self._graph = None
+            # Last, because ``_validate_total`` drives the real movement rules
+            # over the grid and so needs every field they touch to exist.
+            self._validate(starts[0])
         self.cp = 0
         # The tape, as a value: an instruction returns the cells that
         # follow rather than writing into a dict.  It is bounded by how far
@@ -227,14 +252,6 @@ class _Machine:
         self.cells: Mapping[int, int] = {}
         self._done = False
         self._input_reads = 0
-        # The enumerated drive-state graph, or ``None`` for a program whose
-        # geometry is not a street or whose validation a fixture patched
-        # out.  ``step`` then calls :func:`_drive` directly -- the same
-        # function that filled the graph, so the answer is the same.
-        self._graph: dict[_State, _Edges] | None = None
-        # Last, because ``_validate_total`` drives the real movement rules
-        # over the grid and so needs every field they touch to exist.
-        self._validate(starts[0])
 
     @property
     def halted(self) -> bool:
@@ -307,7 +324,7 @@ class _Machine:
     def _block(self, cell: _ReachableCell) -> tuple[str, ...]:
         """Return the three-by-three neighbourhood around a reachable cell.
 
-        Not bounds-checked: :meth:`_validate_enclosed` has rejected any
+        Not bounds-checked: the enclosure check has rejected any
         road touching the border, and the precondition states that.
         """
         row, col = cell
@@ -325,19 +342,44 @@ class _Machine:
             for d_col in (-1, 0, 1)
         )
 
+    def _reject(self, violation: str | None, hint: str) -> None:
+        """Turn a violation message into a ``ValueError`` rejection.
+
+        The one raising mechanism for every street check: each check is a
+        naming function returning a message or ``None``, and this is the
+        single place a message becomes an error.
+        """
+        if violation is not None:
+            raise syntax_error(violation, hint)
+
     def _validate(self, start: tuple[int, int]) -> None:
         """Reject a malformed street network before the car moves.
 
-        :meth:`_validate_width` and :meth:`_validate_walls` over the cells
-        reachable from ``C``; the one hook the wall-shape fixtures disable.
+        :meth:`_validate_width` over the cells reachable from ``C`` computes
+        the reachable set every other check reads; the one hook the
+        wall-shape fixtures disable.
         """
         reachable = self._validate_width(start)
-        if reachable is not None:
-            self._validate_enclosed(reachable)
-            self._validate_walls(reachable)
-            self._validate_glyphs()
-            self._validate_connected(reachable)
-            self._validate_total(start)
+        if reachable is None:
+            return
+        self._reject(
+            self._enclosure_violation(reachable),
+            "enclose the street with walls before the grid border",
+        )
+        self._reject(
+            self._walls_violation(reachable),
+            "join wall segments using the supported straight, corner "
+            "and junction shapes",
+        )
+        self._reject(
+            self._glyph_violation(),
+            "join - and | wall segments through a + corner or junction",
+        )
+        self._reject(
+            self._connection_violation(reachable),
+            "connect all drawn geometry to the street containing C",
+        )
+        self._validate_total(start)
 
     def _drive_states(self, start: tuple[int, int]) -> dict[_State, _Edges]:
         """Explore every driving state the car can reach from ``start``.
@@ -373,23 +415,32 @@ class _Machine:
     def _validate_total(self, start: tuple[int, int]) -> None:
         """Reject a street the car can drive into and not out of.
 
-        Only ``;`` halts a well-formed program, so a reachable state with
-        no successor is a wedged street, named here.  Hugging is total by
-        construction, so today this rejects only a reachable ``U`` with a
-        walled opposite lane (``HaltError`` promoted to ``ValueError``);
-        137472 small walled grids found none only this check rejects.
+        Hugging is total by construction, so today this rejects only a
+        reachable ``U`` with a walled opposite lane (``HaltError`` promoted
+        to ``ValueError``); 137472 small walled grids found none only this
+        check rejects.
         """
         self._graph = self._drive_states(start)
         for state, edges in self._graph.items():
-            # ``;`` reports ``"halt"`` rather than ``None``, so ``None``
-            # means only the one thing.
-            if any(successor is None for successor in edges.values()):
-                raise syntax_error(
-                    f"the car cannot drive out of {(state.row, state.col)} heading"
-                    f" {state.heading}: the street is a dead end with no ';'",
-                    "continue the road or place ; at the intended stop",
-                )
+            self._reject(
+                self._wedge_violation(state, edges),
+                "continue the road or place ; at the intended stop",
+            )
             self._check_state_invariants(state, edges)
+
+    def _wedge_violation(self, state: _State, edges: _Edges) -> str | None:
+        """Name a drive state the car cannot leave, or ``None``.
+
+        Only ``;`` halts a well-formed program, so a reachable state with
+        no successor is a wedged street.  ``;`` reports ``"halt"`` rather
+        than ``None``, so ``None`` means only the one thing.
+        """
+        if any(successor is None for successor in edges.values()):
+            return (
+                f"the car cannot drive out of {(state.row, state.col)} heading"
+                f" {state.heading}: the street is a dead end with no ';'"
+            )
+        return None
 
     def _check_state_invariants(self, state: _State, edges: _Edges) -> None:
         """Assert what must hold of a drive state under any reading of the spec.
@@ -483,9 +534,9 @@ class _Machine:
         # Isolated single cell is not a street
         if len(visited) <= 1:
             return None
-        violation = self._width_violation(visited)
-        if violation is not None:
-            raise syntax_error(violation, "keep the reachable street two cells wide")
+        self._reject(
+            self._width_violation(visited), "keep the reachable street two cells wide"
+        )
         return visited
 
     def _width_violation(self, reachable: set[_ReachableCell]) -> str | None:
@@ -513,16 +564,16 @@ class _Machine:
                 return f"not two-wide at {(r, c)} (wider than two)"
         return None
 
-    def _validate_walls(self, reachable: set[_ReachableCell]) -> None:
-        """Validate the wall structure around every drivable cell.
+    def _walls_violation(self, reachable: set[_ReachableCell]) -> str | None:
+        """Name a cell whose wall neighbourhood matches no legal form.
 
         Width misses a one-cell hole (``-- --``); each reachable cell's 3x3
         must match ``_WALL_FORMS`` up to rotation.  The forms let a wall
         simply stop and admit any wall character at a corner -- whether a
         divider must end in ``+`` is unsettled, and
         the hello fixture leaves its ends bare.
-        Must run after :meth:`_validate_enclosed`: :meth:`_block` does not
-        bounds-check.
+        Must run after the enclosure check: :meth:`_block` does not
+        bounds-check.  Returns ``None`` when every cell is fine.
         """
         for cell in reachable:
             r, c = cell
@@ -542,31 +593,15 @@ class _Machine:
                     "".join("." if ch not in _WALLS else ch for ch in block[i : i + 3])
                     for i in (0, 3, 6)
                 )
-                raise syntax_error(
-                    f"malformed wall at {(r, c)} ({shape})",
-                    (
-                        "join wall segments using the supported straight, corner "
-                        "and junction shapes"
-                    ),
-                )
-
-    def _validate_enclosed(self, reachable: set[_ReachableCell]) -> None:
-        """Reject a street that runs off the edge of the grid.
-
-        A flood fill from ``C`` reaching the border has escaped through a
-        hole.  This is what catches a two-wide hole, which is legal-width
-        passage the width check cannot see.
-        """
-        violation = self._enclosure_violation(reachable)
-        if violation is not None:
-            raise syntax_error(
-                violation, "enclose the street with walls before the grid border"
-            )
+                return f"malformed wall at {(r, c)} ({shape})"
+        return None
 
     def _enclosure_violation(self, reachable: set[_ReachableCell]) -> str | None:
         """Name a road cell on the grid's border, or ``None`` if none is.
 
-        The property :meth:`_block` depends on, stated once.
+        A flood fill from ``C`` reaching the border has escaped through a
+        hole.  This is what catches a two-wide hole, which is legal-width
+        passage the width check cannot see.
         """
         for r, c in reachable:
             if r in (0, self.grid.height - 1) or c in (0, self.grid.width - 1):
@@ -576,20 +611,13 @@ class _Machine:
                 )
         return None
 
-    def _validate_glyphs(self) -> None:
-        """Reject a ``-`` and a ``|`` drawn side by side.
+    def _glyph_violation(self) -> str | None:
+        """Name a ``-`` drawn beside a ``|``, or ``None`` if none is.
 
         A wall changing direction without its ``+``.  About glyph choice,
-        not wall placement, so the forms in :meth:`_validate_walls` cannot see it.
+        not wall placement, so the forms in :meth:`_walls_violation` cannot
+        see it.
         """
-        violation = self._glyph_violation()
-        if violation is not None:
-            raise syntax_error(
-                violation, "join - and | wall segments through a + corner or junction"
-            )
-
-    def _glyph_violation(self) -> str | None:
-        """Name a ``-`` drawn beside a ``|``, or ``None`` if none is."""
         for r in range(self.grid.height):
             for c in range(self.grid.width):
                 char = self.grid[r, c]
@@ -609,24 +637,16 @@ class _Machine:
                         )
         return None
 
-    def _validate_connected(self, reachable: set[_ReachableCell]) -> None:
-        """Reject geometry that is not part of the one street network.
+    def _connection_violation(self, reachable: set[_ReachableCell]) -> str | None:
+        """Name drawn geometry off the street, or ``None`` if none is.
 
-        Grow the reachable open cells by one so the region takes in its
+        Grows the reachable open cells by one so the region takes in its
         walls; anything still drawn belongs to no street.  A one-thick
         island is taken in whole; only a block with an interior falls
         outside.  Blank cells are ignored (``ljust`` padding, the boolean
         example's margins).  Strict: any character off the street, not
         only walls -- stray marks are likelier a slip than a comment.
         """
-        violation = self._connection_violation(reachable)
-        if violation is not None:
-            raise syntax_error(
-                violation, "connect all drawn geometry to the street containing C"
-            )
-
-    def _connection_violation(self, reachable: set[_ReachableCell]) -> str | None:
-        """Name drawn geometry off the street, or ``None`` if none is."""
         grown = {
             (r + dr, c + dc)
             for r, c in reachable
@@ -675,17 +695,12 @@ class _Machine:
 
     @classmethod
     def _for_run(cls, code: list[str], io: IO) -> Self:
-        grid, state, graph = cls._compile(tuple(code))
-        machine = cls.__new__(cls)
-        machine.io = io
-        machine.grid = grid
-        machine._state = state  # noqa: SLF001
-        machine.cp = 0
-        machine.cells = {}
-        machine._done = False  # noqa: SLF001
-        machine._input_reads = 0  # noqa: SLF001
-        machine._graph = graph  # noqa: SLF001
-        return machine
+        """Build a machine reusing the cached, already-validated street.
+
+        Construction goes through :meth:`__init__` like any other machine;
+        the cached tuple only skips revalidating identical geometry.
+        """
+        return cls(list(code), io, _compiled=cls._compile(tuple(code)))
 
 
 def run(code: list[str], io: IO) -> None:
