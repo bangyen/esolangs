@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, replace
+from functools import partial
 
 from esolangs.generation.helpers import (
     _residual_ids,
@@ -155,13 +156,44 @@ def projected_streaming_canvas(
     return _forward_canvas(table, old_area, _PROJECTED_STREAMING_OPTIONS, unit=unit)
 
 
-def _forward_canvas(
-    table: str,
-    old_area: int,
-    options: _CanvasOptions,
-    *,
-    unit: int = _UNIT,
-) -> tuple[Node, CanvasPlan] | None:
+@dataclass(frozen=True, slots=True)
+class _Dag:
+    """Residual DAG over the kept inputs, plus the read counts between them."""
+
+    original_n: int
+    kept: list[int]
+    children: dict[int, tuple[int, int]]
+    constants: dict[int, int | None]
+    levels: list[list[int]]
+
+    @property
+    def n(self) -> int:
+        return len(self.kept)
+
+    def reads_at(self, depth: int) -> str:
+        if depth == self.n:
+            return "i" * (self.original_n - self.kept[-1] - 1)
+        return "i" * (self.kept[depth] - (self.kept[depth - 1] if depth else -1))
+
+    def reader_height(self, depth: int) -> int:
+        # Each native read advances six units; retain four before the fork.
+        return 10 + 6 * (len(self.reads_at(depth)) - 1) if depth < self.n else 10
+
+    def is_fork(self, residual: int) -> bool:
+        return self.children[residual][0] != self.children[residual][1]
+
+
+@dataclass(slots=True)
+class _Layout:
+    """Per-state fork and entry points and per-edge join points, in units."""
+
+    gaps: dict[State, int]
+    forks: dict[State, tuple[int, int]]
+    entry: dict[State, tuple[int, int]]
+    join: dict[Edge, tuple[int, int]]
+
+
+def _load_dag(table: str, options: _CanvasOptions) -> _Dag | None:
     original_n = _validate_truth_table(table)
     kept = (
         list(range(original_n))
@@ -184,57 +216,46 @@ def _forward_canvas(
         else permute_truth_table(reduced, tuple(range(n - 1, -1, -1))),
         n,
     )
+    return _Dag(original_n, kept, children, constants, levels)
 
-    def reads_at(depth: int) -> str:
-        if depth == n:
-            return "i" * (original_n - kept[-1] - 1)
-        return "i" * (kept[depth] - (kept[depth - 1] if depth else -1))
 
-    def reader_height(depth: int) -> int:
-        # Each native read advances six units; retain four before the fork.
-        return 10 + 6 * (len(reads_at(depth)) - 1) if depth < n else 10
+def _visit(
+    dag: _Dag,
+    options: _CanvasOptions,
+    state: State,
+    seen: set[State],
+    first: dict[State, Edge],
+    incoming: list[list[tuple[Edge, State]]],
+) -> None:
+    if state in seen:
+        return
+    seen.add(state)
+    depth, residual = state
+    if depth == dag.n:
+        return
+    arms = (0, 1) if dag.is_fork(residual) else (0,)
+    for bit in arms:
+        target = dag.children[residual][bit]
+        if options.streaming or dag.constants[target] is None:
+            edge = depth, residual, bit
+            dest = depth + 1, target
+            first.setdefault(dest, edge)
+            incoming[depth + 1].append((edge, dest))
+            _visit(dag, options, dest, seen, first, incoming)
 
-    root = (0, levels[0][0])
-    seen: set[State] = set()
-    first: dict[State, Edge] = {}
-    incoming: list[list[tuple[Edge, State]]] = [
-        [] for _ in range(n + int(options.streaming))
-    ]
 
-    def visit(state: State) -> None:
-        if state in seen:
-            return
-        seen.add(state)
-        depth, residual = state
-        if depth == n:
-            return
-        arms = (0, 1) if children[residual][0] != children[residual][1] else (0,)
-        for bit in arms:
-            target = children[residual][bit]
-            if options.streaming or constants[target] is None:
-                edge = depth, residual, bit
-                dest = depth + 1, target
-                first.setdefault(dest, edge)
-                incoming[depth + 1].append((edge, dest))
-                visit(dest)
-
-    visit(root)
-    joins = sum(len(edges) for edges in incoming) - len(first)
-    if not joins:
-        return None
-    # First-fit interval comparisons are quadratic within a layer; reject
-    # before routing unless aggregate work is linear in the table.
-    if options.packed and sum(len(edges) ** 2 for edges in incoming) > 32 * len(table):
-        return None
-    members = [
-        [residual for residual in level if (depth, residual) in seen]
-        for depth, level in enumerate(levels if options.streaming else levels[:-1])
-    ]
-    gaps = {
+def _stem_gaps(
+    dag: _Dag, options: _CanvasOptions, members: list[list[int]]
+) -> dict[State, int]:
+    # Destination-mode columns are multiples of eight; outgoing rails are
+    # 2 or 6 mod 8. This separates rails from nodes and the +/-1 opcode ink.
+    # Gaps 2/8 with variable pitch failed native dense n=8 extraction;
+    # 2/10 preserves the residue separation and executes every row.
+    return {
         (depth, residual): (
             2
             if options.streaming
-            or all(constants[children[residual][bit]] is None for bit in (0, 1))
+            or all(dag.constants[dag.children[residual][bit]] is None for bit in (0, 1))
             else 10
         )
         if options.destination_moves
@@ -242,277 +263,381 @@ def _forward_canvas(
         for depth, level in enumerate(members)
         for residual in level
     }
-    # Destination-mode columns are multiples of eight; outgoing rails are
-    # 2 or 6 mod 8. This separates rails from nodes and the +/-1 opcode ink.
-    # Gaps 2/8 with variable pitch failed native dense n=8 extraction;
-    # 2/10 preserves the residue separation and executes every row.
-    forks: dict[State, tuple[int, int]] = {}
-    entry: dict[State, tuple[int, int]] = {}
-    join: dict[Edge, tuple[int, int]] = {}
+
+
+def _rail(layout: _Layout, edge: Edge) -> int:
+    """Column of the rail leaving an edge's source fork."""
+    gap = layout.gaps[edge[:2]]
+    return layout.forks[edge[0], edge[1]][1] + (-gap if edge[2] == 0 else gap)
+
+
+def _median_order(
+    layout: _Layout, incoming: list[tuple[Edge, State]], level: list[int]
+) -> list[int]:
+    """Order a level by the lower median incoming rail column."""
+    parents: dict[int, list[int]] = {residual: [] for residual in level}
+    for edge, dest in incoming:
+        parents[dest[1]].append(_rail(layout, edge))
+
+    ranked = []
+    for residual, rails in parents.items():
+        rails.sort()
+        ranked.append((rails[(len(rails) - 1) // 2], residual))
+
+    # One forward pass preserves eight-unit rail separation. Native
+    # dense8 falls from 37,795,200 to 36,982,400 scale-one pixels.
+    return [residual for median, residual in sorted(ranked)]
+
+
+def _level_columns(
+    options: _CanvasOptions, gaps: dict[State, int], depth: int, level: list[int]
+) -> dict[int, int]:
+    columns = {}
+    column = 0
+    previous_gap = gaps[depth, level[0]]
+    for index, residual in enumerate(level):
+        gap = gaps[depth, residual]
+        if index:
+            column += previous_gap + gap + 4 if options.destination_moves else 20
+        columns[residual] = column
+        previous_gap = gap
+    if options.centered:
+        # Eight-unit translation preserves node/rail residue separation.
+        offset = -8 * (column // 16)
+        columns = {residual: x + offset for residual, x in columns.items()}
+    return columns
+
+
+def _place_level(
+    dag: _Dag,
+    options: _CanvasOptions,
+    layout: _Layout,
+    incoming: list[tuple[Edge, State]],
+    first: dict[State, Edge],
+    depth: int,
+    level: list[int],
+    base: int,
+) -> int:
+    """Place one layer's forks, entries and joins; return the next base row."""
+    forks, entry, join = layout.forks, layout.entry, layout.join
+    if options.median_order and depth:
+        level = _median_order(layout, incoming, level)
+    extras = [(edge, dest) for edge, dest in incoming if first[dest] != edge]
+    columns = _level_columns(options, layout.gaps, depth, level)
+    join_spans = [
+        (edge, _rail(layout, edge), columns[dest[1]]) for edge, dest in extras
+    ]
+    lanes, lane_count = _join_lanes(join_spans)
+    arrivals = (
+        [
+            (
+                first[depth, residual],
+                _rail(layout, first[depth, residual]),
+                columns[residual],
+            )
+            for residual in level
+        ]
+        if depth
+        else []
+    )
+    arrival_lanes, arrival_count = _join_lanes(arrivals)
+    if depth == 0:
+        arrival_count = 1
+    if options.packed:
+        # A join lands four units below its own arrival; unrelated
+        # arrivals may reuse its row. Native dense8 saves 812,800 pixels.
+        lanes, total = _packed_join_lanes(
+            arrivals,
+            join_spans,
+            arrival_lanes,
+            arrival_count,
+            {edge: arrival_lanes[first[dest]] + 2 for edge, dest in extras},
+        )
+        lane_count = total - arrival_count
+    # Disjoint arrival/join spans reuse rows. At n=22 majority, scale 1,
+    # this emits 87,270,400 pixels versus 123,110,400 (29.1%); both native
+    # programs pass 37 rows with the same 98-command maximum.
+    # In the original mode, all 81 adjacent arm-shape pairs at pitch 20 keep
+    # opcode ink at least one unit apart (20px > the 15px star probe).
+    # Entry/join lanes contain no opcodes and use two-unit spacing: at a
+    # one-unit pitch a join's diagonal lands on the next lane's row even
+    # with the own-arrival gap widened to four units, reading 0xFAC748EF
+    # row 01010 as 1 not 0 (see tests/test_boolean_line_landing.py).
+    for residual in level:
+        state = depth, residual
+        entry[state] = (
+            base + 4 + 2 * (arrival_lanes[first[state]] if depth else 0),
+            columns[residual],
+        )
+        forks[state] = (
+            base
+            + (20 if options.destination_moves else 16)
+            + 2 * arrival_count
+            + 2 * lane_count
+            + (dag.reader_height(depth) - 10 if options.streaming else 0),
+            columns[residual],
+        )
+    for edge, dest in extras:
+        join[edge] = (
+            base + (4 if options.packed else 8 + 2 * arrival_count) + 2 * lanes[edge],
+            entry[dest][1],
+        )
+    # The last leaf ends 15 units below its fork; the next entry starts
+    # 16 below, retaining a full 20px gap for the 15px extraction probe.
+    # Streaming has no inline leaves: the next arrival is eight units
+    # below the prior fork, and its reader starts at least fourteen below.
+    return forks[depth, level[-1]][0] + (4 if options.streaming else 12)
+
+
+def _layout_dag(
+    dag: _Dag,
+    options: _CanvasOptions,
+    seen: set[State],
+    first: dict[State, Edge],
+    incoming: list[list[tuple[Edge, State]]],
+) -> _Layout:
+    members = [
+        [residual for residual in level if (depth, residual) in seen]
+        for depth, level in enumerate(
+            dag.levels if options.streaming else dag.levels[:-1]
+        )
+    ]
+    layout = _Layout(_stem_gaps(dag, options, members), {}, {}, {})
     base = 0
     for depth, level in enumerate(members):
-        if options.median_order and depth:
-            parents: dict[int, list[int]] = {residual: [] for residual in level}
-            for edge, dest in incoming[depth]:
-                parents[dest[1]].append(
-                    forks[edge[0], edge[1]][1]
-                    + (-gaps[edge[:2]] if edge[2] == 0 else gaps[edge[:2]])
-                )
-
-            ranked = []
-            for residual, rails in parents.items():
-                rails.sort()
-                ranked.append((rails[(len(rails) - 1) // 2], residual))
-
-            # One forward pass preserves eight-unit rail separation. Native
-            # dense8 falls from 37,795,200 to 36,982,400 scale-one pixels.
-            level = [residual for median, residual in sorted(ranked)]
-        extras = [(edge, dest) for edge, dest in incoming[depth] if first[dest] != edge]
-        columns = {}
-        column = 0
-        previous_gap = gaps[depth, level[0]]
-        for index, residual in enumerate(level):
-            gap = gaps[depth, residual]
-            if index:
-                column += previous_gap + gap + 4 if options.destination_moves else 20
-            columns[residual] = column
-            previous_gap = gap
-        if options.centered:
-            # Eight-unit translation preserves node/rail residue separation.
-            offset = -8 * (column // 16)
-            columns = {residual: x + offset for residual, x in columns.items()}
-        join_spans = [
-            (
-                edge,
-                forks[edge[0], edge[1]][1]
-                + (-gaps[edge[:2]] if edge[2] == 0 else gaps[edge[:2]]),
-                columns[dest[1]],
-            )
-            for edge, dest in extras
-        ]
-        lanes, lane_count = _join_lanes(join_spans)
-        arrivals = (
-            [
-                (
-                    first[depth, residual],
-                    forks[first[depth, residual][0], first[depth, residual][1]][1]
-                    + (
-                        -gaps[first[depth, residual][:2]]
-                        if first[depth, residual][2] == 0
-                        else gaps[first[depth, residual][:2]]
-                    ),
-                    columns[residual],
-                )
-                for residual in level
-            ]
-            if depth
-            else []
+        base = _place_level(
+            dag, options, layout, incoming[depth], first, depth, level, base
         )
-        arrival_lanes, arrival_count = _join_lanes(arrivals)
-        if depth == 0:
-            arrival_count = 1
-        if options.packed:
-            # A join lands four units below its own arrival; unrelated
-            # arrivals may reuse its row. Native dense8 saves 812,800 pixels.
-            lanes, total = _packed_join_lanes(
-                arrivals,
-                join_spans,
-                arrival_lanes,
-                arrival_count,
-                {edge: arrival_lanes[first[dest]] + 2 for edge, dest in extras},
-            )
-            lane_count = total - arrival_count
-        # Disjoint arrival/join spans reuse rows. At n=22 majority, scale 1,
-        # this emits 87,270,400 pixels versus 123,110,400 (29.1%); both native
-        # programs pass 37 rows with the same 98-command maximum.
-        # In the original mode, all 81 adjacent arm-shape pairs at pitch 20 keep
-        # opcode ink at least one unit apart (20px > the 15px star probe).
-        # Entry/join lanes contain no opcodes and use two-unit spacing: at a
-        # one-unit pitch a join's diagonal lands on the next lane's row even
-        # with the own-arrival gap widened to four units, reading 0xFAC748EF
-        # row 01010 as 1 not 0 (see tests/test_boolean_line_landing.py).
-        for residual in level:
-            state = depth, residual
-            entry[state] = (
-                base + 4 + 2 * (arrival_lanes[first[state]] if depth else 0),
-                columns[residual],
-            )
-            forks[state] = (
-                base
-                + (20 if options.destination_moves else 16)
-                + 2 * arrival_count
-                + 2 * lane_count
-                + (reader_height(depth) - 10 if options.streaming else 0),
-                columns[residual],
-            )
-        for edge, dest in extras:
-            join[edge] = (
-                base
-                + (4 if options.packed else 8 + 2 * arrival_count)
-                + 2 * lanes[edge],
-                entry[dest][1],
-            )
-        # The last leaf ends 15 units below its fork; the next entry starts
-        # 16 below, retaining a full 20px gap for the 15px extraction probe.
-        # Streaming has no inline leaves: the next arrival is eight units
-        # below the prior fork, and its reader starts at least fourteen below.
-        base = forks[depth, level[-1]][0] + (4 if options.streaming else 12)
+    return layout
 
-    if options.streaming:
-        start = forks[root][0] - reader_height(0), forks[root][1]
-        strokes = []
-    else:
-        reads = "".join(
-            "i" + (">" if index in kept and index < original_n - 1 else "")
-            for index in range(original_n)
-        )
-        if kept[-1] < original_n - 1:
-            reads += "<"
-        # Loader ink reaches x=-11; the left opcode envelope stops at x=-10.
-        start = -12 * original_n - 10, -12
-        loader = _StemCursor(*start, (1, 0))
-        for op in reads:
-            loader.emit_op(op)
-        loader.advance((1, 0), 6)
-        loader.advance((0, 1), -loader.x)
-        loader.advance((1, 0), forks[root][0] - loader.y)
-        loader.finish()
-        strokes = loader.strokes[:]
-    graph: dict[State, Node] = {}
 
-    def build(state: State) -> Node:
-        if state in graph:
-            return graph[state]
+def _loader_reads(dag: _Dag) -> str:
+    reads = "".join(
+        "i" + (">" if index in dag.kept and index < dag.original_n - 1 else "")
+        for index in range(dag.original_n)
+    )
+    if dag.kept[-1] < dag.original_n - 1:
+        reads += "<"
+    return reads
+
+
+def _loader_strokes(
+    dag: _Dag, fork_row: int
+) -> tuple[tuple[int, int], list[list[tuple[int, int]]]]:
+    """Return the start point and strokes of the non-streaming input loader."""
+    # Loader ink reaches x=-11; the left opcode envelope stops at x=-10.
+    start = -12 * dag.original_n - 10, -12
+    loader = _StemCursor(*start, (1, 0))
+    for op in _loader_reads(dag):
+        loader.emit_op(op)
+    loader.advance((1, 0), 6)
+    loader.advance((0, 1), -loader.x)
+    loader.advance((1, 0), fork_row - loader.y)
+    loader.finish()
+    return start, loader.strokes[:]
+
+
+def _chain_onto(head: Node, tail: Node) -> None:
+    """Append ``tail`` after the last node of ``head``'s chain."""
+    end = head
+    while end.next is not None:
+        end = end.next
+    end.next = tail
+
+
+@dataclass(slots=True)
+class _Router:
+    """Builds the node graph while recording the stroke for every stem."""
+
+    dag: _Dag
+    options: _CanvasOptions
+    layout: _Layout
+    strokes: list[list[tuple[int, int]]]
+    graph: dict[State, Node]
+
+    def build(self, state: State) -> Node:
+        if state in self.graph:
+            return self.graph[state]
         depth, residual = state
-        y, x = forks[state]
-        if options.streaming and depth == n:
-            value = constants[residual]
-            if value is None:
-                raise ValueError("streaming terminal residual is not constant")
-            # Cell one starts zero; n >= 2 keeps the fresh output cell
-            # within the original tape.
-            ops = reads_at(depth) + ">" + "+" * value + "o"
-            graph[state] = chain(*ops)
-            cursor = _StemCursor(y - 10, x, (1, 0))
-            for op in ops:
-                cursor.emit_op(op)
-            cursor.advance((1, 0), 4)
-            cursor.finish()
-            strokes.extend(cursor.strokes)
-            return graph[state]
-        is_fork = children[residual][0] != children[residual][1]
+        dag, options = self.dag, self.options
+        if options.streaming and depth == dag.n:
+            return self._terminal(state)
+        y, x = self.layout.forks[state]
+        is_fork = dag.is_fork(residual)
         node = Node("?" if is_fork else "<")
         if options.streaming:
-            reader = chain(*reads_at(depth))
-            tail = reader
-            while tail.next is not None:
-                tail = tail.next
-            tail.next = node
-            graph[state] = reader
+            reader = chain(*dag.reads_at(depth))
+            _chain_onto(reader, node)
+            self.graph[state] = reader
         else:
-            graph[state] = (
+            self.graph[state] = (
                 Node("<", next=node) if options.destination_moves and depth else node
             )
         if options.streaming or (options.destination_moves and depth):
             pre = _StemCursor(
-                y - (reader_height(depth) if options.streaming else 9), x, (1, 0)
+                y - (dag.reader_height(depth) if options.streaming else 9), x, (1, 0)
             )
-            for op in reads_at(depth) if options.streaming else "<":
+            for op in dag.reads_at(depth) if options.streaming else "<":
                 pre.emit_op(op)
             pre.advance((1, 0), 4)
             pre.finish()
-            strokes.extend(pre.strokes)
+            self.strokes.extend(pre.strokes)
         for bit in (0, 1) if is_fork else (0,):
-            direction = (0, -1) if bit == 0 else (0, 1)
-            cursor = _StemCursor(y, x, direction if is_fork else (1, 0))
-            if is_fork:
-                cursor.advance(direction, gaps[state])
-            else:
-                cursor.advance((1, 0), 4)
-                cursor.advance((0, -1), gaps[state])
-            cursor.advance((1, 0), 4)
-            target = children[residual][bit]
-            value = constants[target]
-            if value is not None and not options.streaming:
-                correction = "" if value == bit else "+" if value else "-"
-                arm = chain(*correction, "o")
-                for op in correction + "o":
-                    cursor.emit_op(op)
-            else:
-                if not options.destination_moves:
-                    cursor.emit_op("<")
-                edge = depth, residual, bit
-                dest = depth + 1, target
-                tail = build(dest)
-                if edge in join:
-                    tail = Node("", goto=tail)
-                arm = tail if options.destination_moves else Node("<", next=tail)
-                ey, ex = join.get(edge, entry[dest])
-                cursor.advance((1, 0), ey - cursor.y)
-                dx = ex - cursor.x
-                sign = 1 if dx > 0 else -1
-                if edge not in join:
-                    cursor.advance((0, sign), abs(dx))
-                    cursor.advance(
-                        (1, 0),
-                        forks[dest][0]
-                        - (
-                            reader_height(dest[0])
-                            if options.streaming
-                            else 9
-                            if options.destination_moves
-                            else 0
-                        )
-                        - cursor.y,
-                    )
-                else:
-                    cursor.advance((0, sign), abs(dx) - 1)
-                    cursor.advance((1, sign), 1)
-            cursor.finish()
-            strokes.extend(cursor.strokes)
-            if is_fork:
-                if bit == 0:
-                    node.zero = arm
-                else:
-                    node.nonzero = arm
-            else:
-                if options.destination_moves:
-                    node.op = ""
-                    node.next = arm
-                else:
-                    node.next = arm.next
-        return graph[state]
+            self._arm(state, node, bit)
+        return self.graph[state]
 
-    decision = build(root)
+    def _terminal(self, state: State) -> Node:
+        depth, residual = state
+        y, x = self.layout.forks[state]
+        value = self.dag.constants[residual]
+        if value is None:
+            raise ValueError("streaming terminal residual is not constant")
+        # Cell one starts zero; n >= 2 keeps the fresh output cell
+        # within the original tape.
+        ops = self.dag.reads_at(depth) + ">" + "+" * value + "o"
+        self.graph[state] = chain(*ops)
+        cursor = _StemCursor(y - 10, x, (1, 0))
+        for op in ops:
+            cursor.emit_op(op)
+        cursor.advance((1, 0), 4)
+        cursor.finish()
+        self.strokes.extend(cursor.strokes)
+        return self.graph[state]
+
+    def _arm(self, state: State, node: Node, bit: int) -> None:
+        dag, options, layout = self.dag, self.options, self.layout
+        residual = state[1]
+        is_fork = dag.is_fork(residual)
+        y, x = layout.forks[state]
+        direction = (0, -1) if bit == 0 else (0, 1)
+        cursor = _StemCursor(y, x, direction if is_fork else (1, 0))
+        if is_fork:
+            cursor.advance(direction, layout.gaps[state])
+        else:
+            cursor.advance((1, 0), 4)
+            cursor.advance((0, -1), layout.gaps[state])
+        cursor.advance((1, 0), 4)
+        value = dag.constants[dag.children[residual][bit]]
+        if value is not None and not options.streaming:
+            correction = "" if value == bit else "+" if value else "-"
+            arm = chain(*correction, "o")
+            for op in correction + "o":
+                cursor.emit_op(op)
+        else:
+            arm = self._route_to_child(state, bit, cursor)
+        cursor.finish()
+        self.strokes.extend(cursor.strokes)
+        if is_fork:
+            if bit == 0:
+                node.zero = arm
+            else:
+                node.nonzero = arm
+        elif options.destination_moves:
+            node.op = ""
+            node.next = arm
+        else:
+            node.next = arm.next
+
+    def _route_to_child(self, state: State, bit: int, cursor: _StemCursor) -> Node:
+        """Draw the stem from an arm down to its child; return the arm's node."""
+        dag, options, layout = self.dag, self.options, self.layout
+        depth, residual = state
+        if not options.destination_moves:
+            cursor.emit_op("<")
+        edge = depth, residual, bit
+        dest = depth + 1, dag.children[residual][bit]
+        tail = self.build(dest)
+        if edge in layout.join:
+            tail = Node("", goto=tail)
+        arm = tail if options.destination_moves else Node("<", next=tail)
+        ey, ex = layout.join.get(edge, layout.entry[dest])
+        cursor.advance((1, 0), ey - cursor.y)
+        dx = ex - cursor.x
+        sign = 1 if dx > 0 else -1
+        if edge not in layout.join:
+            cursor.advance((0, sign), abs(dx))
+            cursor.advance(
+                (1, 0),
+                layout.forks[dest][0]
+                - (
+                    dag.reader_height(dest[0])
+                    if options.streaming
+                    else 9
+                    if options.destination_moves
+                    else 0
+                )
+                - cursor.y,
+            )
+        else:
+            cursor.advance((0, sign), abs(dx) - 1)
+            cursor.advance((1, sign), 1)
+        return arm
+
+
+def _rasterize(
+    strokes: list[list[tuple[int, int]]],
+    start: tuple[int, int],
+    box: tuple[int, int, int, int],
+    unit: int,
+) -> Canvas:
+    """Draw strokes and the entry arrowhead on a ``(width, height, top, left)`` box."""
+    width, height, top, left = box
+    canvas = Canvas(width, height)
+    for stroke in strokes:
+        canvas.line([((x - left + 1) * unit, (y - top + 1) * unit) for y, x in stroke])
+    _arrowhead(
+        canvas,
+        (start[0] - top + 1) * unit,
+        (start[1] - left + 1) * unit,
+        (1, 0),
+        unit=unit,
+    )
+    return canvas
+
+
+def _forward_canvas(
+    table: str,
+    old_area: int,
+    options: _CanvasOptions,
+    *,
+    unit: int = _UNIT,
+) -> tuple[Node, CanvasPlan] | None:
+    dag = _load_dag(table, options)
+    if dag is None:
+        return None
+    root = (0, dag.levels[0][0])
+    seen: set[State] = set()
+    first: dict[State, Edge] = {}
+    incoming: list[list[tuple[Edge, State]]] = [
+        [] for _ in range(dag.n + int(options.streaming))
+    ]
+    _visit(dag, options, root, seen, first, incoming)
+    joins = sum(len(edges) for edges in incoming) - len(first)
+    if not joins:
+        return None
+    # First-fit interval comparisons are quadratic within a layer; reject
+    # before routing unless aggregate work is linear in the table.
+    if options.packed and sum(len(edges) ** 2 for edges in incoming) > 32 * len(table):
+        return None
+    layout = _layout_dag(dag, options, seen, first, incoming)
+    strokes: list[list[tuple[int, int]]]
+    if options.streaming:
+        start = layout.forks[root][0] - dag.reader_height(0), layout.forks[root][1]
+        strokes = []
+    else:
+        start, strokes = _loader_strokes(dag, layout.forks[root][0])
+    decision = _Router(dag, options, layout, strokes, {}).build(root)
     if options.streaming:
         head = decision
     else:
-        head = chain(*reads)
-        tail = head
-        while tail.next is not None:
-            tail = tail.next
-        tail.next = decision
+        head = chain(*_loader_reads(dag))
+        _chain_onto(head, decision)
     points = [point for stroke in strokes for point in stroke]
     top, bottom = min(y for y, _ in points), max(y for y, _ in points)
     left, right = min(x for _, x in points), max(x for _, x in points)
     width, height = (right - left + 2) * unit, (bottom - top + 2) * unit
     if width * height >= old_area:
         return None
-
-    def rasterize() -> Canvas:
-        canvas = Canvas(width, height)
-        for stroke in strokes:
-            canvas.line(
-                [((x - left + 1) * unit, (y - top + 1) * unit) for y, x in stroke]
-            )
-        _arrowhead(
-            canvas,
-            (start[0] - top + 1) * unit,
-            (start[1] - left + 1) * unit,
-            (1, 0),
-            unit=unit,
-        )
-        return canvas
 
     # Streaming uses original_n reads, at most n tests and n joins, three output
     # operations and a halt: original_n+2n+4 <= 5original_n for n >= 2.
@@ -522,4 +647,7 @@ def _forward_canvas(
     # output ops and one halt tick give 5n. Projection adds fewer than
     # 5(original_n-n) commands and never enlarges the original tape.
     # Moving an arm's '<' onto its destination changes no path's command count.
-    return head, CanvasPlan(rasterize, width * height)
+    return head, CanvasPlan(
+        partial(_rasterize, strokes, start, (width, height, top, left), unit),
+        width * height,
+    )
