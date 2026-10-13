@@ -81,6 +81,7 @@ from esolangs.languages.forbin.interpreter._parse import (
     _ValueNode,
 )
 from esolangs.runtime._drive import drive
+from esolangs.runtime._fault import _Fault
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -98,15 +99,6 @@ class _NeedByte(Exception):  # noqa: N818 - an internal resumption signal
     def __init__(self, effects: tuple[str, ...] = ()) -> None:
         super().__init__()
         self.effects = effects
-
-
-class _Fault(Exception):  # noqa: N818 - an internal resumption signal
-    """Carries the output prefix computed before a fault, and the fault."""
-
-    def __init__(self, effects: tuple[str, ...], error: BaseException) -> None:
-        super().__init__(str(error))
-        self.effects = effects
-        self.error = error
 
 
 def _frozen(locals_: Mapping[str, object]) -> Mapping[str, object]:

@@ -8,6 +8,7 @@ from esolangs.languages.forbin.interpreter import _Machine as Forbin
 from esolangs.languages.forbin.tests.forbin_support import run_program
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.support.event_io import EventIO
 
 
 def walk_until_halt_or_ancestor(machine: object, limit: int = 64) -> bool:
@@ -450,28 +451,12 @@ class TestPureTransition:
         assert scope.locals["x"] == 1  # most significant bit first
 
 
-class _EventIO(ScriptedIO):
-    """A ``ScriptedIO`` that records each read and write in order."""
-
-    def __init__(self, stdin: str = "") -> None:
-        super().__init__(stdin)
-        self.events: list[tuple[str, str]] = []
-
-    def print_char(self, char: str) -> None:
-        self.events.append(("out", char))
-        super().print_char(char)
-
-    def input_char(self, prompt: str = "Input: ") -> int:
-        self.events.append(("in", ""))
-        return super().input_char(prompt)
-
-
 class TestOutputOrdering:
     """Output computed before a later read or fault is still written."""
 
     def test_output_before_eof_within_a_statement(self) -> None:
         """``out`` in an expression-position call precedes its own ``in``."""
-        io = _EventIO("")
+        io = EventIO("")
         program = "pr { out 0,1,0,0,0,0,0,1; return (in 0); }\nmain { x = (pr 0); }"
         with pytest.raises(EOFError):
             run(program, io)
@@ -479,7 +464,7 @@ class TestOutputOrdering:
 
     def test_output_before_eof_across_initializers(self) -> None:
         """A first initializer's ``out`` precedes a later initializer's ``in``."""
-        io = _EventIO("")
+        io = EventIO("")
         program = (
             "pr { out 0,1,0,0,0,0,0,1; return 0; }\nx = (pr 0);\ny = (in 0);\nmain { }"
         )
@@ -489,7 +474,7 @@ class TestOutputOrdering:
 
     def test_output_before_a_halt_within_a_statement(self) -> None:
         """``out`` precedes a later undeclared-name halt."""
-        io = _EventIO("")
+        io = EventIO("")
         program = "pr { out 0,1,0,0,0,0,0,1; return q; }\nmain { x = (pr 0); }"
         with pytest.raises(HaltError, match="undeclared"):
             run(program, io)

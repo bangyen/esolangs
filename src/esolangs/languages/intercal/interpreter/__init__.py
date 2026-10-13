@@ -76,6 +76,7 @@ from esolangs.languages.intercal.interpreter._parse import (
     _unary,
 )
 from esolangs.runtime._drive import drive
+from esolangs.runtime._fault import _Fault
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 
@@ -251,15 +252,6 @@ class _NeedInput(Exception):  # noqa: N818 - an internal resumption signal
         super().__init__(kind)
         self.kind = kind
         self.effects = effects
-
-
-class _Fault(Exception):  # noqa: N818 - an internal resumption signal
-    """Carries the output prefix computed before a fault, and the fault."""
-
-    def __init__(self, effects: tuple[str, ...], error: BaseException) -> None:
-        super().__init__(str(error))
-        self.effects = effects
-        self.error = error
 
 
 def _frozen_scalars(scalars: Mapping[_Key, int]) -> Mapping[_Key, int]:
