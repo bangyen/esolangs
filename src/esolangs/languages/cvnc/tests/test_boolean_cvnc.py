@@ -76,7 +76,7 @@ class TestCvnc:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Past the reach every gadget squares once more, until it fits."""
-        # ``esolangs.generation.cvnc`` resolves to the re-exported
+        # ``esolangs.languages.cvnc.generator`` resolves to the re-exported
         # *function*, so the module has to be fetched by name.
         module = importlib.import_module("esolangs.languages.cvnc.generator")
         monkeypatch.setattr(module, "_HALT_SQUARINGS", 0)
