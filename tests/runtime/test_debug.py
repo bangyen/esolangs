@@ -4,7 +4,6 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.registry import LANGUAGES
 from tests.support.pick import one
 from tests.support.reference import REFERENCE
 
@@ -90,25 +89,6 @@ def _step_to_halt(dbg: debugger_api.Debugger, budget: int = 200_000) -> None:
         if dbg.halted:
             return
         dbg.step()
-
-
-class TestSteppingWarnsAboutStdinToo:
-    """The warning fired under ``run`` and not under ``step``."""
-
-    @staticmethod
-    def _eof_is_a_value() -> list[str]:
-        """The languages that carry on, which is the set that must warn."""
-        return [
-            pytest.param(
-                name,
-                marks=pytest.mark.medium if LANGUAGES[name].slow_stepping else (),
-            )
-            for name in esolangs.list_languages()
-            if esolangs.describe(name)["boolean_generator"]
-            and esolangs.describe(name)["eof_is_a_value"]
-            and not esolangs.describe(name)["parameterized"]
-            and not LANGUAGES[name].underfed_raises
-        ]
 
 
 class TestPointerFallback:

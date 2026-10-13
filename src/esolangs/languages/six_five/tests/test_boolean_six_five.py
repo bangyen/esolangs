@@ -17,7 +17,6 @@ from esolangs.languages import generators as boolean
 from esolangs.languages.six_five.generator import (
     _SIX_FIVE_TEST,
     _SIX_FIVE_TREE_NORMALIZE,
-    _six_five_chosen,
     _six_five_const,
     _six_five_guarded,
     _six_five_hoisted,
@@ -331,17 +330,6 @@ class TestSixFive:
 
 class TestSixFiveSharing:
     """A repeated subtree is laid out once and jumped to."""
-
-    @staticmethod
-    def _totals(tables: list[str]) -> tuple[int, int]:
-        """Return plain and shipped character totals."""
-        before = after = 0
-        for table in tables:
-            orders = _six_five_orders(table)
-            plain = len(_six_five_chosen(table, orders, share=False).removesuffix("0"))
-            shipped = len(boolean.six_five(table))
-            before, after = before + plain, after + shipped
-        return before, after
 
     @pytest.mark.medium
     def test_five_input_sample_runs(self) -> None:

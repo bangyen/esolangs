@@ -30,18 +30,6 @@ from tests.support.witness_tables import parity
 TABLE = "0110"
 
 
-def _public(lang: object, table: str) -> str:
-    """Return the generator output rendered as a public template when needed."""
-    from esolangs.registry import parameterized_ids, render_template
-
-    assert lang.boolean is not None  # type: ignore[attr-defined]
-    text = lang.boolean(table)  # type: ignore[attr-defined]
-    if lang.id in parameterized_ids():  # type: ignore[attr-defined]
-        n = len(table).bit_length() - 1
-        return render_template(lang.id, text, n)[0]  # type: ignore[attr-defined]
-    return text
-
-
 # language-owners: ["Bitdeque", "Jaune", "RAM0"]
 # A third width, narrower than any a reader would ask for, because a broken
 # wrapper is not broken at every width.  Whether a break lands inside a

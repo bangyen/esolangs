@@ -3,11 +3,6 @@
 import math
 from fractions import Fraction
 
-from esolangs.languages.polynomial.interpreter import (
-    _advance,
-    _bracket_pairs,
-)
-
 
 def test_symmetric_remainders_have_independent_zero_positions() -> None:
     """The two expensive-gap targets in ``lem:evencount`` need two choices."""
@@ -106,17 +101,3 @@ def test_direct_affine_dispatch_only_increases_the_profile() -> None:
         )
         assert profile == baseline + 34 * converted + 4 * converted**2
         assert profile >= baseline
-
-
-def _execute(instructions: list[list[int]], bits: str) -> str:
-    pairs = _bracket_pairs(instructions)
-    state, position, output = (0, 0), 0, ""
-    while state[1] < len(instructions):
-        instruction = instructions[state[1]]
-        byte = None
-        if instruction[1:] == [2] and instruction[0] == 0:
-            byte = 48 + int(bits[position]) if position < len(bits) else -1
-            position += 1
-        state, printed = _advance(state, instructions, byte, pairs)
-        output += printed or ""
-    return output
