@@ -117,6 +117,21 @@ under a fixed template and fill mapping.
   [the construction summary](proofs/index.md#malbolge-bound).
   The shipped cap remains sixteen.
 
+  A cheaper seventeen-input layout is checked but unbuilt (2026-10-13). The
+  sixteen-input readout gives two cells per 14-bit prefix, one each for the
+  last group bit `b` = 0 and 1. A third cell per prefix forces one low digit to its
+  missing value and moves that digit to the top. The three maps are disjoint, giving 49,152
+  cells and leaving 9,897 (one cell wraps; reorder the top digit). That
+  replaces the 8,377-10,449-cell address fold with two extra group-4 runs.
+  Navigation dominates code: sixteen's main line is 5,505 cells, of which
+  4,624 are `o`. Six run-time pointer cells cut it to about 4,040 with all
+  65,536 rows still correct (scratch, unshipped). Seven meanings per cell need
+  the address parity. Its trit-sum parity should follow from `p` with `A`
+  all-2 then all-1 (checked per trit), folding ten rotations into an all-1
+  accumulator (not executed).
+  The decoder, label layout and placement remain unbuilt; the estimate
+  (5-6k code cells against about 6.1k) is unmeasured.
+
 
   Counting bounds each family independently of mixer quality:
 
