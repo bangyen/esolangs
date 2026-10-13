@@ -376,7 +376,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
                 source_rel,
                 "add balance=_balance to its LANGUAGE: a "
                 "`_balance(table, default)` returning the squarest of its "
-                "width regimes (see tools/arrowqueue.py)",
+                "width regimes (see src/esolangs/languages/arrowqueue/generator.py)",
             )
         )
     return gaps + _ledger_gaps(lang.name)

@@ -617,8 +617,8 @@ def _dead_test_files(
     """Return test files that import a gone module and nothing that survives.
 
     The owned prefixes name a language's module stems, not its submodules, so
-    ``tests/generators/test_circuit_free_columns.py`` (importing
-    ``esolangs.languages.circuit_diagram.generator.free_columns``) is caught here;
+    e.g. ``test_boolean_circuit_diagram_hcells.py`` (importing
+    ``esolangs.languages.circuit_diagram.generator.hlayout``) is caught here;
     it cannot run once the module is gone.
     """
     candidates = {

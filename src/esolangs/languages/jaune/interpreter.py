@@ -70,8 +70,7 @@ _NUMBERED: frozenset[_NumberedOp] = frozenset((":", "?", "!", "$", "@"))
 # ``v:`` and ``v$`` are admitted by the grammar and deliberately absent: a
 # marker read at runtime has no findable identity, since ``_find`` matches
 # the parsed argument and the markers are fall-through positions that never
-# execute.  The compiler's ``prep`` strips both (``compilers/jaune.py``), so
-# dropping them at parse keeps the two engines agreeing.
+# execute, so dropping them at parse loses nothing.
 _READ_OPERAND: dict[str, _CountedOp] = {
     "+": "v+",
     "-": "v-",

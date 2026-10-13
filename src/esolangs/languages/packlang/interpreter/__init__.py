@@ -110,7 +110,7 @@ from esolangs.runtime.io import IO
 # recursing natively, so a runaway program grows the frame list on the
 # heap and never touches Python's stack.  That class revisits no state, so
 # it is what ``esolangs.run``'s wall-clock ``timeout`` is for -- the same
-# reasoning ``grapheme.py`` and ``function_x_y.py`` record.
+# reasoning ``grapheme.py`` records.
 
 
 @dataclass(frozen=True)

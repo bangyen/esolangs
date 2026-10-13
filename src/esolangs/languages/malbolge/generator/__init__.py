@@ -333,7 +333,7 @@ def _thirteen_program(truth_table: str) -> str:
 # least 81 leaves a value that ``j`` lands inside the window); that keeps the
 # main code under the level-3 region.
 _FOURTEEN_N = 14
-#: Fifteen and sixteen inputs: :mod:`esolangs.generation.malbolge.digits`.
+#: Fifteen and sixteen inputs: :mod:`esolangs.languages.malbolge.generator.digits`.
 MAX_INPUTS = _DIGITS_N
 #: ``g`` values of the extra state cells 5, 6 and 7.
 _F_EXTRA = (57, 75, 119)
