@@ -188,12 +188,13 @@ class _Audit:
         sys.setprofile(self.previous)
 
 
-def test_purity_audit_detects_mutation_and_effects() -> None:
+def test_purity_audit_detects_mutation_and_effects(tmp_path: Path) -> None:
     namespace: dict[str, Any] = {}
-    filename = (
-        Path(__file__).resolve().parents[2]
-        / "src/esolangs/languages/_positive_control/interpreter.py"
-    )
+    # A real path outside coverage's `source` (src/esolangs) that still looks
+    # like a language interpreter: `_core` keys on "/languages/".  A fake name
+    # under src/esolangs leaves a record coverage cannot read, and `coverage
+    # report` then exits nonzero on "No source for code".
+    filename = tmp_path / "languages" / "_positive_control" / "interpreter.py"
     source = (
         "def _advance(state, io):\n"
         " state.append(1)\n"
