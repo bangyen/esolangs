@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from .anchors import anchors
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -57,24 +58,8 @@ def _check_evidence(reference: str, *, precise: bool) -> None:
         raise ValueError(f"missing evidence: {reference}")
     if precise and (not separator or not anchor):
         raise ValueError(f"invalid audit evidence: {reference}")
-    if separator:
-        anchors = set()
-        counts: dict[str, int] = {}
-        fenced = False
-        for line in target.read_text(encoding="utf-8").splitlines():
-            if line.startswith(("```", "~~~")):
-                fenced = not fenced
-            if fenced:
-                continue
-            anchors.update(re.findall(r'<a id="([\w-]+)"></a>', line))
-            heading = re.match(r"^#{1,6} +(.+?)(?: +#+)?$", line)
-            if heading:
-                slug = re.sub(r"[^\w\- ]", "", heading[1].lower()).replace(" ", "-")
-                count = counts.get(slug, 0)
-                counts[slug] = count + 1
-                anchors.add(f"{slug}-{count}" if count else slug)
-        if anchor not in anchors:
-            raise ValueError(f"missing evidence anchor: {reference}")
+    if separator and anchor not in anchors(target.read_text(encoding="utf-8")):
+        raise ValueError(f"missing evidence anchor: {reference}")
 
 
 def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
