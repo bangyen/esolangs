@@ -411,9 +411,7 @@ def _forward_canvas(
             graph[state] = reader
         else:
             graph[state] = (
-                Node("<", next=node)
-                if options.destination_moves and depth
-                else node
+                Node("<", next=node) if options.destination_moves and depth else node
             )
         if options.streaming or (options.destination_moves and depth):
             pre = _StemCursor(

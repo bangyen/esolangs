@@ -53,6 +53,7 @@ class _DimensionKey(NamedTuple):
     sigil: str
     number: int
 
+
 _MINGLES = "$¢£¤€"
 _UNARIES = "&V?"
 

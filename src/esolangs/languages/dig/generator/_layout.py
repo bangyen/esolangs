@@ -196,9 +196,7 @@ def _merged_box(
     )
 
 
-def _expand_point(
-    point: _Point, lane_axis: int, coordinates: dict[int, int]
-) -> _Point:
+def _expand_point(point: _Point, lane_axis: int, coordinates: dict[int, int]) -> _Point:
     """Stretch ``point`` along the lane axis through gutter coordinates."""
     if lane_axis == 0:
         return _Point(coordinates[point.row], point.col)
@@ -245,9 +243,7 @@ class _AlternatingTree:
         self.depth = len(self.skips)
         self.lane_axis = 0 if self.depth % 2 else 1
         self.travel_axis = 1 - self.lane_axis
-        self.constant: Callable[[int, int], bool] = constant_span_test(
-            self.truth_table
-        )
+        self.constant: Callable[[int, int], bool] = constant_span_test(self.truth_table)
         # Inputs read before each level's block; a constant span reads the rest.
         self.consumed = [0]
         for skip in self.skips:
@@ -328,12 +324,10 @@ class _AlternatingTree:
         the leaf walks, and placing them makes any stray tree cell inside
         the reserved box a collision instead of a silent detour.
         """
-        chars, spins, wants, _exit, bounds = _dig_flat_leaf(
-            table, self.high, self.low
-        )
+        chars, spins, wants, _exit, bounds = _dig_flat_leaf(table, self.high, self.low)
         painted = {_onto(point, heading, cell): char for cell, char in chars.items()}
         painted |= {
-            _onto(point, heading, cell): "^>'<"[ (heading + d) % 4]
+            _onto(point, heading, cell): "^>'<"[(heading + d) % 4]
             for cell, d in spins.items()
         }
         min_x, max_x, min_y, max_y = bounds
@@ -803,8 +797,8 @@ class _AlternatingTree:
                 ):
                     travel += 2
             worst = max(worst, costs[point] + travel + leaf_cost)
-        entry_cost = 4 - min(row for row, _ in self.cells) - min(
-            col for _, col in self.cells
+        entry_cost = (
+            4 - min(row for row, _ in self.cells) - min(col for _, col in self.cells)
         )
         bound: int = 128 + (
             46 * 2 ** ((self.n - 6) // 2)

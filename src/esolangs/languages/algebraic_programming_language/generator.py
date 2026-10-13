@@ -399,9 +399,7 @@ class _Splitter:
         if span > self._limit:
             self._events.add(span)
             parts = [self.define(_join(parts))]
-        tail = self._prefix + self.render(
-            tuple(node for node, _, _ in parts)
-        )
+        tail = self._prefix + self.render(tuple(node for node, _, _ in parts))
         program = "\n".join([_NOT_TIGHT, *self._definitions, tail])
         return program, self._events
 

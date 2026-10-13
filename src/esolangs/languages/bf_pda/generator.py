@@ -261,9 +261,7 @@ def _emit_classifier_tree(
     if len(classes) < 2 or len(set(classes)) != len(classes):
         raise ValueError("a classifier needs at least two distinct residuals")
     if not 2 <= class_depth < n:
-        raise ValueError(
-            "a protected classifier needs at least two consumed inputs"
-        )
+        raise ValueError("a protected classifier needs at least two consumed inputs")
     span = 1 << (n - class_depth)
     rows = class_rows or tuple(
         next(i for i in range(0, 1 << n, span) if reflected[i : i + span] == block)

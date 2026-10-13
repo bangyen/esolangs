@@ -280,9 +280,7 @@ def _random_direction(step: _Step, _command: str) -> None:
 
 def _trampoline(step: _Step, _command: str) -> None:
     """Skip the next cell."""
-    step.x, step.y = _moved(
-        step.x, step.y, step.dx, step.dy, step.width, step.height
-    )
+    step.x, step.y = _moved(step.x, step.y, step.dx, step.dy, step.width, step.height)
 
 
 def _conditional_skip(step: _Step, command: str) -> None:

@@ -179,9 +179,7 @@ class _Machine:
             except EOFError:
                 return "="
             self.remaining = 8
-        (self.incoming, self.remaining), bit = take_bit(
-            (self.incoming, self.remaining)
-        )
+        (self.incoming, self.remaining), bit = take_bit((self.incoming, self.remaining))
         return "|+"[bit]
 
     def _write(self, text: str) -> None:

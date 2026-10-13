@@ -167,9 +167,7 @@ class _CodeBuilder:
             self.emit(0, 0, copy)
             return
         if self.is_constant(row, row + width):
-            self.emit(
-                0, 0, _OUT_ONE if self.truth_table[row] == "1" else _OUT_ZERO
-            )
+            self.emit(0, 0, _OUT_ONE if self.truth_table[row] == "1" else _OUT_ZERO)
             return
         self.done[level, self.ids[level][row >> (self.m - level)]] = self.pc()
         if level == self.m - self.k:

@@ -201,9 +201,7 @@ class _BankAssembler:
         self.layout.glyph(gx, gy, "o")
         self.layout.junction(gx + 1, gy, value)
         for index, (point, signal) in enumerate((older, newer)):
-            self.layout.route(
-                point, (gx - 1, gy - 1 if index == 0 else gy + 1), signal
-            )
+            self.layout.route(point, (gx - 1, gy - 1 if index == 0 else gy + 1), signal)
         # The 16-class probe's two-row return hit lower-port clearance; use four.
         self.layout.route((gx + 1, gy), (gx + 1, gy + 4), value)
         self.layout.route((gx + 1, gy + 4), (self.temporary, gy + 4), value)
@@ -366,9 +364,7 @@ class _BankAssembler:
             self.layout.route(source, (column, source[1]), signal, "across")
             self.held[index] = ((column, source[1]), signal)
 
-    def _and_term_outputs(
-        self, outputs: list[tuple[tuple[int, int], int]]
-    ) -> _Output:
+    def _and_term_outputs(self, outputs: list[tuple[tuple[int, int], int]]) -> _Output:
         """AND a class's two term outputs (mask and body) into one signal."""
         gx, gy = self.right + 8, self.y + 4
         value = self.fresh()

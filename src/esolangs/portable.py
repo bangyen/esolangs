@@ -100,9 +100,9 @@ def _load_png(
     value: dict[str, Any], name: str, settings: DialectSettings | None
 ) -> Program:
     """Restore a ``png`` document's raster."""
-    return Raster.from_png(
-        base64.b64decode(value["source"], validate=True)
-    ).tagged(name, settings=settings)
+    return Raster.from_png(base64.b64decode(value["source"], validate=True)).tagged(
+        name, settings=settings
+    )
 
 
 def _load_gzip(

@@ -445,7 +445,14 @@ def _six_five_use_counts(
     constant = constant_span_test(truth_table)
     uses = dict.fromkeys(stored, 0)
     _six_five_count_uses(
-        truth_table, perm, stored, constant, uses, 0, 0, 2 ** len(perm),
+        truth_table,
+        perm,
+        stored,
+        constant,
+        uses,
+        0,
+        0,
+        2 ** len(perm),
         raw_copies=raw_copies,
     )
     return uses
@@ -469,7 +476,14 @@ def _six_five_count_uses(
     mid = (lo + hi) // 2
     if perm[level] not in stored:
         _six_five_count_uses(
-            truth_table, perm, stored, constant, uses, level + 1, lo, mid,
+            truth_table,
+            perm,
+            stored,
+            constant,
+            uses,
+            level + 1,
+            lo,
+            mid,
             raw_copies=raw_copies,
         )
         return
@@ -478,11 +492,25 @@ def _six_five_count_uses(
         return
     uses[perm[level]] += 1
     _six_five_count_uses(
-        truth_table, perm, stored, constant, uses, level + 1, lo, mid,
+        truth_table,
+        perm,
+        stored,
+        constant,
+        uses,
+        level + 1,
+        lo,
+        mid,
         raw_copies=raw_copies,
     )
     _six_five_count_uses(
-        truth_table, perm, stored, constant, uses, level + 1, mid, hi,
+        truth_table,
+        perm,
+        stored,
+        constant,
+        uses,
+        level + 1,
+        mid,
+        hi,
         raw_copies=raw_copies,
     )
 

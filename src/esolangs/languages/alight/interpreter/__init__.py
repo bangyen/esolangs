@@ -408,9 +408,7 @@ class _Expressions:
             return expr.name
         if isinstance(expr, _Var):
             if expr.name not in self._core.vars:
-                raise Hint.VARIABLE_REFERENCE.halt(
-                    f"no such variable: {expr.name!r}"
-                )
+                raise Hint.VARIABLE_REFERENCE.halt(f"no such variable: {expr.name!r}")
             return self._core.vars[expr.name]
         if isinstance(expr, _List):
             return _list_value([self.evaluate(e) for e in expr.items])
@@ -579,9 +577,7 @@ def _replace_node(
         return node
     if isinstance(root, _List):
         items = [_replace(item, old, updated, memo) for item in root.items]
-        if all(
-            new is current for new, current in zip(items, root.items, strict=True)
-        ):
+        if all(new is current for new, current in zip(items, root.items, strict=True)):
             memo[key] = root
             return root
         node = _List("list", items)

@@ -48,6 +48,7 @@ def balance_cyclic_tag(table: str, default: str) -> str:
         lambda t: _program(t, keep_constant_walk=True),
     )
 
+
 LANGUAGE = Language(
     "Cyclic tag",
     "cyclic_tag",

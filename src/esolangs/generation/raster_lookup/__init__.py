@@ -19,7 +19,6 @@ Change = tuple[int, int]
 Pixel = tuple[int, int, int]
 
 
-
 _INITIAL: Pixel = (255, 192, 192)
 
 _PUSH = (0, 1)
