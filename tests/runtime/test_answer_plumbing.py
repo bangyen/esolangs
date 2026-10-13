@@ -217,7 +217,7 @@ class TestExamplePathsWorkFromAnywhere:
     def test_they_are_package_relative(self) -> None:
         """Absolute paths froze the install location into ``describe()``."""
         for name in esolangs.list_languages():
-            for example in esolangs.describe(name)["examples"]:  # type: ignore[union-attr]
+            for example in esolangs.describe(name)["examples"]:
                 assert example.startswith(
                     f"languages/{esolangs.describe(name)['id']}/"
                 ), (name, example)

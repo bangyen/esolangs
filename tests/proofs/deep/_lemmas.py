@@ -129,7 +129,7 @@ def check_ladder(
     """The construction completes at every arity, on both table shapes."""
     built: dict[str, list[tuple[int, int]]] = {}
     refused = 0
-    for name, make in shapes:  # type: ignore[misc]
+    for name, make in shapes:
         for n in range(1, max_n + 1):
             program = build(fn, make(n))
             if program is None:
@@ -141,7 +141,7 @@ def check_ladder(
     if not built:
         raise UnprovenError(f"builds no shape at any arity through n={max_n}")
     expected = list(range(1, max_n + 1))
-    for name, _make in shapes:  # type: ignore[misc]
+    for name, _make in shapes:
         reached = [n for n, _size in built.get(name, [])]
         if reached != expected and not allow_refusals:
             raise AssertionError(
@@ -192,8 +192,8 @@ def check_embedding(fn: Builder, max_n: int = 4) -> str:
             continue
         template = esolangs.generate(name, _dense(n))
         assert "{X" not in template, f"n={n}: marks left in the public template"
-        setters = template.setters  # type: ignore[attr-defined]
-        spans = runs(str(template), template.char, setters)  # type: ignore[attr-defined]
+        setters = template.setters
+        spans = runs(str(template), template.char, setters)
         assert len(spans) == n, f"n={n}: {len(spans)} runs for {n} inputs"
         checked += 1
     if not checked:

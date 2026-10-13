@@ -258,5 +258,5 @@ def test_scope_transition_keeps_old_tables_immutable() -> None:
     assert before[1] == {}
     assert moved[1] == {1: "2"}
     with pytest.raises(TypeError):
-        moved[1][1] = "3"  # type: ignore[index]
+        moved[1][1] = "3"
     assert _advance(before) == moved

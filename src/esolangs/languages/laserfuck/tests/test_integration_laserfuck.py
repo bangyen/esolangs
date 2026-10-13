@@ -113,7 +113,7 @@ class TestASeedMakesARunRepeat:
     ) -> None:
         """``random.Random`` took ``"x"`` and ``1.5`` and ran; others leaked."""
         with pytest.raises(esolangs.ArgumentError, match="seed must be an integer"):
-            esolangs.run("LaserFuck", self.PROGRAM, timeout=5, seed=seed)  # type: ignore[arg-type]
+            esolangs.run("LaserFuck", self.PROGRAM, timeout=5, seed=seed)
 
     def test_the_languages_that_draw_are_the_ones_named(self) -> None:
         """The message lists them and ``random`` marks them, so both must be right."""

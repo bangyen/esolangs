@@ -126,7 +126,7 @@ class TestZeroStepsIsNotAPass:
         assert "unknown step(s) pytest-typo" in capsys.readouterr().err
 
     def test_a_real_name_is_accepted(self) -> None:
-        only, skip, *_ = self._parse(["--only", "pre-commit,pytest"])  # type: ignore[misc]
+        only, skip, *_ = self._parse(["--only", "pre-commit,pytest"])
         assert only == {"pre-commit", "pytest"}
         assert skip is None
 

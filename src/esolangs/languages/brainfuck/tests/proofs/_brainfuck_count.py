@@ -3,8 +3,8 @@
 import itertools
 from collections.abc import Iterable
 from functools import lru_cache
-from re import _constants as rc  # type: ignore[attr-defined]
-from re import _parser  # type: ignore[attr-defined]
+from re import _constants as rc
+from re import _parser
 from typing import Any
 
 ALPHABET = ".,-+<>[]"

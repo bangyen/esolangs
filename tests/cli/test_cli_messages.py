@@ -94,7 +94,7 @@ class TestRoundSixQol:
     ) -> None:
         """`run --help` used to answer this with a `python -c` incantation."""
         for name in _SPELLED:
-            zero, one = esolangs.describe(name)["input_encoding"]  # type: ignore[misc]
+            zero, one = esolangs.describe(name)["input_encoding"]
             assert call_main(["encode", name, "10"], capsys) == f"{one}\n{zero}\n"
         for name in _PADDED:
             assert call_main(["encode", name, "101"], capsys) == "0101"

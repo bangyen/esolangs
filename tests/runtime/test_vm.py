@@ -38,11 +38,11 @@ def assert_random_steps_reproduce(language: str, program: str) -> None:
         drawn.append(upper)
         return original(self, upper)
 
-    randomness.Seeded.randbelow = counted  # type: ignore[method-assign]
+    randomness.Seeded.randbelow = counted
     try:
         first = trace()
     finally:
-        randomness.Seeded.randbelow = original  # type: ignore[method-assign]
+        randomness.Seeded.randbelow = original
     assert drawn, f"{language}: the random instruction never ran"
     assert trace() == first, f"{language} is not reproducible"
 

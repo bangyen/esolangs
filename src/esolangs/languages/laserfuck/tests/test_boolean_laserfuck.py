@@ -71,7 +71,7 @@ class TestLaserFuck:
             def counted(*args: object, _build: object = real, **kwargs: object) -> str:
                 nonlocal built
                 built += 1
-                return _build(*args, **kwargs)  # type: ignore[operator, no-any-return]
+                return _build(*args, **kwargs)
 
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_laserfuck_build", counted)

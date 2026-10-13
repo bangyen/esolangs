@@ -98,7 +98,7 @@ class TestInstantiateValidates:
     def test_a_non_string_template_is_refused_before_provenance(self) -> None:
         """With a table, ``_is_template_for`` called ``.replace`` on the value."""
         with pytest.raises(TemplateError, match="must be the string"):
-            esolangs.instantiate("Minifuck", 5, [1], width=None, truth_table=XOR)  # type: ignore[arg-type]
+            esolangs.instantiate("Minifuck", 5, [1], width=None, truth_table=XOR)
 
 
 class TestCapabilityListing:
@@ -189,4 +189,4 @@ class TestPackageSurface:
     def test_check_runnable_refuses_a_non_source(self, language: str) -> None:
         """An int leaked a TypeError for a template language and passed elsewhere."""
         with pytest.raises(esolangs.ProgramError, match="string of source"):
-            _check_program(language, 5)  # type: ignore[arg-type]
+            _check_program(language, 5)

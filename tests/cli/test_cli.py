@@ -290,7 +290,7 @@ class TestGenerateArgumentTypes:
     def test_a_non_integer_width_from_the_api_is_refused(self) -> None:
         """The CLI parses its width; a Python caller can pass anything."""
         with pytest.raises(ValueError, match="width must be an integer"):
-            esolangs.generate(REFERENCE, "0110", width="80")  # type: ignore[arg-type]
+            esolangs.generate(REFERENCE, "0110", width="80")
 
 
 #: Commands refused with exit code 2, and what stderr must say.

@@ -21,7 +21,7 @@ class TestABreakpointMustBeAbleToFire:
     @pytest.mark.parametrize("ip", ["x", 1.5, None])
     def test_a_non_position_is_refused(self, ip: object) -> None:
         with pytest.raises(esolangs.ArgumentError, match="ip must be"):
-            _debugger().break_at(ip)  # type: ignore[arg-type]
+            _debugger().break_at(ip)
 
     def test_a_grid_coordinate_is_still_accepted(self) -> None:
         """A 2D language's ``ip`` is a tuple, so that spelling must pass."""
@@ -35,13 +35,13 @@ class TestABreakpointMustBeAbleToFire:
 
     def test_a_non_integer_cell_value_is_refused(self) -> None:
         with pytest.raises(esolangs.ArgumentError, match="value must be"):
-            _debugger().break_on_cell(0, "x")  # type: ignore[arg-type]
+            _debugger().break_on_cell(0, "x")
 
     @pytest.mark.parametrize("index", [-5, "x"])
     def test_a_bad_watch_index_is_refused(self, index: object) -> None:
         """``watch_cell(-5)`` raised a bare IndexError from a later run."""
         with pytest.raises(esolangs.ArgumentError, match="index"):
-            _debugger().watch_cell(index)  # type: ignore[arg-type]
+            _debugger().watch_cell(index)
 
 
 class TestStreetcode:

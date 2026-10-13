@@ -73,7 +73,7 @@ class TestErrorsAreCatchable:
     )
     def test_it_derives_from_the_base(self, call: object, expected: type) -> None:
         with pytest.raises(expected) as exc:
-            call()  # type: ignore[operator]
+            call()
         assert isinstance(exc.value, EsolangError)
         assert str(exc.value), "an error with no message cannot be acted on"
 
@@ -294,7 +294,7 @@ class TestEveryDeliberateErrorIsCatchable:
             facts = esolangs.describe(name)
             if facts["parameterized"] or facts["answer_convention"]:
                 continue  # needs bits embedded, or answers by terminating
-            for example in facts["examples"]:  # type: ignore[union-attr]
+            for example in facts["examples"]:
                 try:
                     esolangs.run(
                         name,
@@ -419,7 +419,7 @@ class TestTheThreadRefusalNamesAWayThrough:
 
         def target() -> None:
             try:
-                box["value"] = work()  # type: ignore[operator]
+                box["value"] = work()
             except BaseException as exc:
                 box["value"] = exc
 
@@ -452,7 +452,7 @@ class TestTheThreadRefusalNamesAWayThrough:
         """The private harness settles diverging rows off the main thread."""
         for language in languages(answer_mode="termination", parameterized=True)[:2]:
             outcome = self._off_thread(
-                lambda language=language: evaluate_generated(  # type: ignore[misc]
+                lambda language=language: evaluate_generated(
                     language, "0110", timeout=None
                 )
             )

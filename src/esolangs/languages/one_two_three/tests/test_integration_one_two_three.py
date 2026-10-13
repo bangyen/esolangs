@@ -224,7 +224,7 @@ class TestTheEncodersRefuseWhatTheyCannotAnswer:
 
     def test_read_answer_refuses_a_non_string(self) -> None:
         with pytest.raises(esolangs.ProgramError, match="output must be a string"):
-            esolangs.read_answer(REFERENCE, None)  # type: ignore[arg-type]
+            esolangs.read_answer(REFERENCE, None)
 
 
 def test_read_answer_refuses_a_termination_language(

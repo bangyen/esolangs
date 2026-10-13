@@ -343,7 +343,7 @@ def test_rewrite_transition_keeps_old_lines_and_spans_immutable() -> None:
     assert moved[0][2] == "new"
     assert output == ()
     with pytest.raises(TypeError):
-        moved[0][2] = "changed"  # type: ignore[index]
+        moved[0][2] = "changed"
     with pytest.raises(TypeError):
-        moved[1]["data"] = (0, 1)  # type: ignore[index]
+        moved[1]["data"] = (0, 1)
     assert _advance(before, "new") == (moved, output)

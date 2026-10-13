@@ -37,7 +37,7 @@ def test_raster_type_has_neutral_ownership() -> None:
 def test_a_raster_needs_pixels_or_a_materializer() -> None:
     """Both paths absent is a programmer error, not an empty image."""
     with pytest.raises(ValueError, match="pixels or a materializer"):
-        Raster(None)  # type: ignore[arg-type]
+        Raster(None)
 
 
 def test_a_raster_hashes_by_pixels() -> None:
@@ -100,7 +100,7 @@ def test_a_malformed_png_is_a_program_error(language: str, tmp_path: Path) -> No
 
 def test_raster_detaches_mutable_pixels() -> None:
     pixels = [[[0, 0, 0]]]
-    raster = Raster(pixels)  # type: ignore[arg-type]
+    raster = Raster(pixels)
     before = hash(raster)
     pixels[0][0][0] = 255
     assert raster.rows == (((0, 0, 0),),)
@@ -111,7 +111,7 @@ def test_raster_detaches_mutable_pixels() -> None:
 @pytest.mark.parametrize("channel", [1.5, True, "1", None, -1, 256])
 def test_raster_refuses_invalid_channel_types(channel: object) -> None:
     with pytest.raises(ValueError, match="8-bit RGB"):
-        Raster((((channel, 0, 0),),))  # type: ignore[arg-type]
+        Raster((((channel, 0, 0),),))
 
 
 def test_lazy_raster_freezes_once_on_access() -> None:
@@ -123,7 +123,7 @@ def test_lazy_raster_freezes_once_on_access() -> None:
         calls += 1
         return pixels
 
-    raster = lazy_raster(materialize)  # type: ignore[arg-type]
+    raster = lazy_raster(materialize)
     assert calls == 0
     assert raster.rows == (((0, 0, 0),),)
     pixels[0][0][0] = 255
@@ -134,7 +134,7 @@ def test_lazy_raster_freezes_once_on_access() -> None:
 
 def test_lazy_raster_does_not_cache_invalid_pixels() -> None:
     pixels = [[[256, 0, 0]]]
-    raster = lazy_raster(lambda: pixels)  # type: ignore[arg-type,return-value]
+    raster = lazy_raster(lambda: pixels)
     with pytest.raises(ValueError, match="8-bit RGB"):
         _ = raster.rows
     pixels[0][0][0] = 0
@@ -167,7 +167,7 @@ def test_palette_validation_does_not_confuse_equal_channel_types(
 ) -> None:
     valid = (1, 0, 0)
     with pytest.raises(ValueError, match="RGB"):
-        Raster(((valid, (channel, 0, 0)),))  # type: ignore[arg-type]
+        Raster(((valid, (channel, 0, 0)),))
 
 
 @pytest.mark.parametrize("builder_name", ["make_vm", "make_debugger"])
@@ -208,7 +208,7 @@ def test_repeated_tuple_rows_do_not_hide_an_invalid_mutation() -> None:
 
 def test_raster_rejects_a_noniterable_pixel() -> None:
     with pytest.raises(TypeError):
-        Raster(((None,),))  # type: ignore[arg-type]
+        Raster(((None,),))
 
 
 @pytest.mark.medium

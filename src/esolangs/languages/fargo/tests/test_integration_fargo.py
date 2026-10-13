@@ -105,7 +105,7 @@ class TestFargo:
         assert vm.ip == 1
         assert len(vm.stack) == 1
         frame = vm.stack[0]
-        assert (frame.tokens, frame.pos, frame.fn_name) == (("$",), 0, "")  # type: ignore[attr-defined]
+        assert (frame.tokens, frame.pos, frame.fn_name) == (("$",), 0, "")
         vm.step()  # $ prints the number it was given
         assert vm.output == "0"
         vm.step()  # the frame pops, and the run is over

@@ -139,7 +139,7 @@ class TestFlowchart:
                     reads += 1
                     return read()
 
-                machine._read_bit = counted  # type: ignore[method-assign]  # noqa: SLF001
+                machine._read_bit = counted  # noqa: SLF001
                 while not machine.halted:
                     machine.step()
                 assert reads == 8 * n - 7, (name, table, row)

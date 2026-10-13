@@ -85,7 +85,7 @@ class TestRemainingGuards:
     def test_a_non_string_language_is_refused_by_name(self) -> None:
         """It leaked ``'NoneType' object has no attribute 'replace'``."""
         with pytest.raises(esolangs.UnknownLanguageError, match="got NoneType"):
-            esolangs.generate(None, XOR)  # type: ignore[arg-type]
+            esolangs.generate(None, XOR)
 
     def test_the_cli_hint_passes_through_an_unrelated_message(self) -> None:
         """Only the slot refusal names a Python call worth rewriting."""
@@ -108,7 +108,7 @@ class TestEveryDeliberateErrorHasTheBase:
     def test_an_invalid_option_is_an_esolangerror(self, call: object) -> None:
         """These were bare ValueErrors, so the documented base class missed."""
         with pytest.raises(esolangs.ArgumentError) as exc:
-            call()  # type: ignore[operator]
+            call()
         assert isinstance(exc.value, esolangs.EsolangError)
         assert isinstance(exc.value, ValueError), "the old base still catches"
 

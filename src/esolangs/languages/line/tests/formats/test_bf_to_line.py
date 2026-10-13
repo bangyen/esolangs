@@ -75,7 +75,7 @@ def _max_between_stroke_adjacency(program: str) -> int:
     captured: list[list[tuple[int, int]]] = []
     original = render_module._Cursor.finish  # noqa: SLF001 - see docstring
 
-    def spy(self) -> None:  # type: ignore[no-untyped-def]
+    def spy(self) -> None:
         before = len(self.strokes)
         original(self)
         # Only real drawing cursors, never `_subtree_extent`'s dry-run scratch

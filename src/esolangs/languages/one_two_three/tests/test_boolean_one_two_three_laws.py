@@ -63,7 +63,7 @@ class TestSeparationLaws:
             total = 0
             tables = ["".join(t) for t in product("01", repeat=2**n)]
             for table in tables:
-                b = proto.clone([_WORK_BUDGET])  # type: ignore[attr-defined]
+                b = proto.clone([_WORK_BUDGET])
                 try:
                     _verdict_junky(b, table)
                     _endgame(b)

@@ -24,12 +24,12 @@ class TestTheNewChecksRefuseTheirOwnBadInput:
     def test_encode_inputs_names_a_non_string_table(self) -> None:
         """It is a table's *type* that is wrong, not the bit count."""
         with pytest.raises(esolangs.TruthTableError, match="got int"):
-            esolangs.encode_inputs(REFERENCE, [1, 0], truth_table=110)  # type: ignore[arg-type]
+            esolangs.encode_inputs(REFERENCE, [1, 0], truth_table=110)
 
     def test_evaluate_names_a_non_string_table(self) -> None:
         """Reported before any generator sees it, for the same reason."""
         with pytest.raises(esolangs.TruthTableError, match="got list"):
-            evaluate_generated(REFERENCE, [0, 1, 1, 0])  # type: ignore[arg-type]
+            evaluate_generated(REFERENCE, [0, 1, 1, 0])
 
 
 class TestEveryAuditedCapIsCatchable:
@@ -157,12 +157,12 @@ class TestABadStdinIsAnArgumentFault:
     def test_every_entry_point_agrees(self, call: object) -> None:
         """One fault, one class -- ``except ArgumentError`` has to cover all five."""
         with pytest.raises(esolangs.ArgumentError, match="stdin must be a string"):
-            call()  # type: ignore[operator]
+            call()
 
     def test_a_bad_program_is_still_a_program_error(self) -> None:
         """The change must not blur the distinction the other way."""
         with pytest.raises(esolangs.ProgramError, match="program must be a string"):
-            esolangs.run(REFERENCE, 42, stdin="")  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, 42, stdin="")
 
 
 class TestBoolsAreRefusedForAStatedReason:

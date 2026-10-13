@@ -392,7 +392,7 @@ def test_import_without_pillow(monkeypatch: pytest.MonkeyPatch) -> None:
     def without_pillow(name: str, *args: object, **kwargs: object) -> object:
         if name == "PIL":
             raise ModuleNotFoundError("No module named 'PIL'")
-        return original_import(name, *args, **kwargs)  # type: ignore[arg-type]
+        return original_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", without_pillow)
     namespace = runpy.run_path(str(png.__file__))

@@ -25,13 +25,13 @@ class TestChangedFiles:
     def test_paths_are_not_repeated(self) -> None:
         """A file both committed and dirty appears once, not twice."""
         scope = load_script()
-        names = scope.changed_files()  # type: ignore[attr-defined]
+        names = scope.changed_files()
         assert len(names) == len(set(names))
 
     def test_returns_repo_relative_paths(self) -> None:
         """Paths are repo-relative, which is what the prefix matching assumes."""
         scope = load_script()
-        for name in scope.changed_files():  # type: ignore[attr-defined]
+        for name in scope.changed_files():
             assert not name.startswith("/")
 
 
@@ -41,13 +41,13 @@ class TestWidensToEverything:
     def test_unreadable_diff_widens(self) -> None:
         """No diff means no evidence, so everything runs."""
         scope = load_script()
-        assert scope.widens_to_everything([]) is not None  # type: ignore[attr-defined]
+        assert scope.widens_to_everything([]) is not None
 
     def test_shared_interpreter_machinery_widens(self) -> None:
         """The shared IO layer can move every interpreter at once."""
         scope = load_script()
         changed = ["src/esolangs/runtime/io.py"]
-        assert scope.widens_to_everything(changed) is not None  # type: ignore[attr-defined]
+        assert scope.widens_to_everything(changed) is not None
 
     def test_every_registry_module_widens(self) -> None:
         """The registry package is shared machinery under any filename."""
@@ -58,19 +58,19 @@ class TestWidensToEverything:
         ]
         assert names, "registry package has no modules"
         for name in names:
-            assert scope.widens_to_everything([name]) is not None  # type: ignore[attr-defined]
+            assert scope.widens_to_everything([name]) is not None
 
     def test_verification_tooling_widens(self) -> None:
         """A scoped run cannot be trusted to validate the scoping code itself."""
         scope = load_script()
         for name in ("scripts/verify/gate.py", "scripts/verify/scope.py"):
-            assert scope.widens_to_everything([name]) is not None  # type: ignore[attr-defined]
+            assert scope.widens_to_everything([name]) is not None
 
     def test_ordinary_interpreter_does_not_widen(self) -> None:
         """A single interpreter is the case scoping exists to narrow."""
         scope = load_script()
         changed = ["src/esolangs/runtime/brainfuck.py"]
-        assert scope.widens_to_everything(changed) is None  # type: ignore[attr-defined]
+        assert scope.widens_to_everything(changed) is None
 
 
 def test_empty_branch_diff_does_not_fall_back_to_previous_commit() -> None:

@@ -63,7 +63,7 @@ class TestAFailedRowSaysWhichRow:
         ) -> str:
             if stdin == "101":  # row 5 of an eight-row table
                 raise esolangs.ExecutionTimeoutError("execution exceeded the bound")
-            return real_run(language, program, stdin=stdin, timeout=timeout)  # type: ignore[arg-type]
+            return real_run(language, program, stdin=stdin, timeout=timeout)
 
         monkeypatch.setattr(esolangs, "run", fail_on_the_sixth)
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:

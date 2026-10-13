@@ -42,12 +42,12 @@ def test_evaluate_files(name: str, tmp_path: Path) -> None:
 @pytest.mark.parametrize("inputs", [True, 0, 65, 2.5, "2"])
 def test_api_refuses_bad_inputs(inputs: object) -> None:
     with pytest.raises(esolangs.ArgumentError, match="inputs must"):
-        _evaluate(REFERENCE, ",.", inputs=inputs)  # type: ignore[arg-type]
+        _evaluate(REFERENCE, ",.", inputs=inputs)
 
 
 def test_api_refuses_bad_source() -> None:
     with pytest.raises(esolangs.ProgramError, match="string of source"):
-        _evaluate(REFERENCE, 42, inputs=1)  # type: ignore[arg-type]
+        _evaluate(REFERENCE, 42, inputs=1)
 
 
 @pytest.mark.parametrize(

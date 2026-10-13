@@ -22,13 +22,13 @@ class TestABoundMustBind:
     def test_a_bad_step_bound_is_refused(self, max_steps: object) -> None:
         """A negative one ran unbounded: the drive counts *up* to the limit."""
         with pytest.raises(esolangs.ArgumentError, match="max_steps"):
-            _debugger().run(max_steps=max_steps)  # type: ignore[arg-type]
+            _debugger().run(max_steps=max_steps)
 
     @pytest.mark.parametrize("timeout", ["x", 0, -1])
     def test_a_bad_timeout_is_refused(self, timeout: object) -> None:
         """``timeout='x'`` reached the arithmetic and leaked a TypeError."""
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
-            _debugger().run(timeout=timeout)  # type: ignore[arg-type]
+            _debugger().run(timeout=timeout)
 
     def test_a_zero_step_bound_still_means_zero(self) -> None:
         """The refusal must not swallow the one legal edge."""
@@ -56,9 +56,9 @@ class TestTheChecksAreSymmetric:
     @pytest.mark.parametrize("timeout", ["5", float("inf"), float("nan"), True, 0])
     def test_both_runs_refuse_the_same_timeout(self, timeout: object) -> None:
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
-            esolangs.run(REFERENCE, "+.", timeout=timeout)  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, "+.", timeout=timeout)
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
-            _debugger().run(timeout=timeout)  # type: ignore[arg-type]
+            _debugger().run(timeout=timeout)
 
     @pytest.mark.parametrize(
         ("program", "stdin", "expected"),
@@ -77,24 +77,24 @@ class TestTheChecksAreSymmetric:
         self, program: object, stdin: object, expected: type[Exception]
     ) -> None:
         with pytest.raises(expected):
-            esolangs.run(REFERENCE, program, stdin=stdin)  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, program, stdin=stdin)
         with pytest.raises(expected):
-            debugger_api.make_debugger(REFERENCE, program, stdin=stdin)  # type: ignore[arg-type]
+            debugger_api.make_debugger(REFERENCE, program, stdin=stdin)
 
     @pytest.mark.parametrize("text", [None, 5, b"x"])
     def test_break_on_output_refuses_a_non_string(self, text: object) -> None:
         """It raised ``'in <string>' requires string`` from the run loop."""
         with pytest.raises(esolangs.ArgumentError, match="text must be a string"):
-            _debugger().break_on_output(text)  # type: ignore[arg-type]
+            _debugger().break_on_output(text)
 
     def test_break_when_refuses_a_non_callable(self) -> None:
         with pytest.raises(esolangs.ArgumentError, match="must be callable"):
-            _debugger().break_when(42)  # type: ignore[arg-type]
+            _debugger().break_when(42)
 
     def test_break_when_refuses_the_wrong_arity(self) -> None:
         """A zero-argument lambda failed inside the loop, not at the setter."""
         with pytest.raises(esolangs.ArgumentError, match="one argument"):
-            _debugger().break_when(lambda: True)  # type: ignore[arg-type,misc]
+            _debugger().break_when(lambda: True)
 
     def test_break_when_still_takes_a_real_predicate(self) -> None:
         dbg = debugger_api.make_debugger(REFERENCE, "+++", stdin="")
