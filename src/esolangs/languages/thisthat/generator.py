@@ -484,16 +484,15 @@ LANGUAGE = Language(
 _MIN_NODE_BUDGET = 8
 
 
-def shared_tree(table: str) -> tuple[str, int] | None:
-    """Return a shared grid and maximum cycles within the previous area envelope."""
-    n = _validate_truth_table(table)
-    limit = max(_MIN_NODE_BUDGET, 2 * isqrt(len(table)))
-    ess = _essential(subtree_ids(table), n)
-    if not ess:
-        return None
-    table = read_at(table, ess, n)
-    m = len(ess)
-    ids = subtree_ids(table)
+def _build_dag(
+    ids: list[list[int]], m: int
+) -> tuple[
+    list[list[tuple[int, int]]],
+    dict[tuple[int, int], list[tuple[int, int]]],
+    set[tuple[int, int]],
+    dict[tuple[int, int], int],
+]:
+    """Return (layers, children, terminal, incoming) of the shared-subtree DAG."""
     representatives = {(0, ids[0][0]): 0}
     pending = [[(0, ids[0][0])]] + [[] for _ in range(m - 1)]
     layers = []
@@ -523,32 +522,18 @@ def shared_tree(table: str) -> tuple[str, int] | None:
                     incoming[child] += 1
                 kids.append(child)
             children[key] = kids
-    if not any(key[0] >= 0 and count > 1 for key, count in incoming.items()):
-        return None
-    nodes = [key for layer in layers for key in layer] + sorted(terminal)
-    banks = [
-        max((len(layer) for layer in layers[parity::2]), default=0) for parity in (0, 1)
-    ]
-    # The former node cap bounded both dimensions independently. Price their
-    # product instead, admitting long narrow DAGs within the same O(T) envelope.
-    count = len(nodes)
-    width = 2 * sum(banks) + 2 * n + 2 * m + 9
-    height = 8 * count - 1
-    if width * height > (4 * limit + 4 * n + 9) * (8 * limit - 1):
-        return None
-    slots = {key: slot for layer in layers for slot, key in enumerate(layer)}
-    columns = {
-        key: 4 + 2 * key[1]
-        if key[0] < 0
-        else 8 + 2 * (slots[key] + banks[0] * (key[0] % 2))
-        for key in nodes
-    }
-    ys = {key: 8 * i for i, key in enumerate(nodes)}
-    builder = _Builder()
-    plan = _deque_plan(tuple(range(m)))
-    if plan is None:
-        raise ValueError("input order has no deque plan")
-    push, pop = plan
+    return layers, children, terminal, incoming
+
+
+def _draw_nodes(
+    builder: _Builder,
+    nodes: list[tuple[int, int]],
+    ys: dict[tuple[int, int], int],
+    columns: dict[tuple[int, int], int],
+    children: dict[tuple[int, int], list[tuple[int, int]]],
+    pop: list[bool],
+) -> tuple[dict[tuple[int, int], int], dict[int, dict[int, int]]]:
+    """Draw every node and its outgoing wires; return (costs, bus events)."""
     # Two column banks alternate with depth. A bank's old edges end before
     # its next parents begin; constants retain their own two downward buses.
     costs: dict[tuple[int, int], int] = {}
@@ -587,6 +572,11 @@ def shared_tree(table: str) -> tuple[str, int] | None:
                 steps.append(6 + 2 * col + target_y - row + costs[child])
             costs[key] = max(steps)
         builder.connect(_path(point, router, "horizontal"), "double")
+    return costs, buses
+
+
+def _draw_buses(builder: _Builder, buses: dict[int, dict[int, int]]) -> None:
+    """Draw each bus column as its merged runs of overlapping edges."""
     # Merge overlapping bus edges before drawing: independently tracing every
     # route to a terminal costs N² on a narrow N-node DAG. Each bus is scanned
     # once within the admitted rectangle, keeping construction O(T).
@@ -600,11 +590,21 @@ def shared_tree(table: str) -> tuple[str, int] | None:
             elif not active and begin is not None:
                 builder.connect(_path((col, begin), (col, row), "vertical"), "single")
                 begin = None
+
+
+def _hollow_crossings(builder: _Builder) -> None:
+    """Turn four-way single-wire crossings into hollow arrows."""
     # Hollow downward arrows pass horizontal traffic straight through while
     # keeping vertical traffic downward; solid arrows merge at destinations.
     for point, (kind, ports) in list(builder.wires.items()):
         if kind == "single" and ports == set("EWNS"):
             builder.node(point, "▽")
+
+
+def _draw_input_chain(
+    builder: _Builder, n: int, m: int, ess: list[int], push: list[bool]
+) -> None:
+    """Draw the input-reading chain feeding the root entry."""
     start = (-(2 * n + 2 * m + 2), -6)
     builder.node(start, "▣")
     previous = start
@@ -623,4 +623,46 @@ def shared_tree(table: str) -> tuple[str, int] | None:
         + _path((0, -6), (0, -4), "vertical")[1:],
         "single",
     )
+
+
+def shared_tree(table: str) -> tuple[str, int] | None:
+    """Return a shared grid and maximum cycles within the previous area envelope."""
+    n = _validate_truth_table(table)
+    limit = max(_MIN_NODE_BUDGET, 2 * isqrt(len(table)))
+    ess = _essential(subtree_ids(table), n)
+    if not ess:
+        return None
+    table = read_at(table, ess, n)
+    m = len(ess)
+    layers, children, terminal, incoming = _build_dag(subtree_ids(table), m)
+    if not any(key[0] >= 0 and count > 1 for key, count in incoming.items()):
+        return None
+    nodes = [key for layer in layers for key in layer] + sorted(terminal)
+    banks = [
+        max((len(layer) for layer in layers[parity::2]), default=0) for parity in (0, 1)
+    ]
+    # The former node cap bounded both dimensions independently. Price their
+    # product instead, admitting long narrow DAGs within the same O(T) envelope.
+    count = len(nodes)
+    width = 2 * sum(banks) + 2 * n + 2 * m + 9
+    height = 8 * count - 1
+    if width * height > (4 * limit + 4 * n + 9) * (8 * limit - 1):
+        return None
+    slots = {key: slot for layer in layers for slot, key in enumerate(layer)}
+    columns = {
+        key: 4 + 2 * key[1]
+        if key[0] < 0
+        else 8 + 2 * (slots[key] + banks[0] * (key[0] % 2))
+        for key in nodes
+    }
+    ys = {key: 8 * i for i, key in enumerate(nodes)}
+    plan = _deque_plan(tuple(range(m)))
+    if plan is None:
+        raise ValueError("input order has no deque plan")
+    push, pop = plan
+    builder = _Builder()
+    costs, buses = _draw_nodes(builder, nodes, ys, columns, children, pop)
+    _draw_buses(builder, buses)
+    _hollow_crossings(builder)
+    _draw_input_chain(builder, n, m, ess, push)
     return builder.render(), 2 * n + 2 * m + 4 + costs[nodes[0]]
