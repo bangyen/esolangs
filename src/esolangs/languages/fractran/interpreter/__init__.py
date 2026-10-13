@@ -55,6 +55,10 @@ type _Fraction = tuple[int, int]
 #: they are not part of the state.
 type _State = tuple[int, bool]
 
+#: Cursor only when rules <= this many per prime of the start: beyond it the
+#: n=10 shipped control paid 296 secondary updates vs 14 scan probes.
+_RULES_PER_PRIME = 16
+
 
 def _product(text: str) -> int:
     """Return the value of a product of powers such as ``2^3*5``."""
@@ -155,12 +159,12 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self._index = compile_index(code)
-        # The n=10 shipped control needed 296 secondary updates vs 14 scan probes.
-        # Keep sparse rule/state ratios on scans; dense bases avoid tuple copying.
+        # Sparse rule/state ratios stay on scans; dense bases avoid tuple copying.
         self._cursor = (
             Cursor(self._index)
             if self._index is not None
-            and len(self._index.rules) <= 16 * max(1, len(self._index.initial))
+            and len(self._index.rules)
+            <= _RULES_PER_PRIME * max(1, len(self._index.initial))
             else None
         )
         self._scan_factors = () if self._index is None else self._index.initial
