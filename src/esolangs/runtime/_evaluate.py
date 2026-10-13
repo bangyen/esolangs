@@ -286,9 +286,9 @@ def _row_answerer(
     # Which of halting and diverging means 1, as data.  It is
     # ``("halts", "diverges")`` for all four, but reading the order
     # rather than assuming it is what keeps this branch language-free.
-    encoding = list(LANGUAGES[name].contract.answer_values)
-    diverges_is = str(encoding.index("diverges"))
-    halts_is = str(encoding.index("halts"))
+    values = LANGUAGES[name].contract.answer_values
+    diverges_is = str(values.index("diverges"))
+    halts_is = str(values.index("halts"))
     if isolated:
         from esolangs.runtime._isolated import termination_isolated
 

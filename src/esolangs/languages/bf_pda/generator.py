@@ -43,6 +43,9 @@ def _decoder_budget(n: int) -> int:
     return _DECODER_BUDGET_PER_INPUT * n + _DECODER_BUDGET_OVERHEAD
 
 
+type _Emit = Callable[[str | int], None]
+
+
 @dataclass(frozen=True)
 class _TreeContext:
     reflected: str
@@ -451,9 +454,6 @@ def best_bank(
     if len(program) != metric.size:
         raise ValueError("emitted BF-PDA bank disagrees with its price")
     return program
-
-
-type _Emit = Callable[[str | int], None]
 
 
 def _price_decoder(

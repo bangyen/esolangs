@@ -48,6 +48,7 @@ from esolangs.languages.line.generator.forward import (
     streaming_canvas,
 )
 from esolangs.languages.line.generator.render import (
+    _UNIT,
     Canvas,
     Node,
     _check_unit,
@@ -123,7 +124,7 @@ def _project_loader(n: int, kept: list[int], node: Node) -> Node:
 
 
 _SMALL_MAX = 5  # tight tree layout through n=5 (see small_tree)
-_BOOLEAN_UNIT = 20
+_BOOLEAN_UNIT = _UNIT
 _GREY_RUN = re.compile(rb"(.)\1*", re.DOTALL)
 
 

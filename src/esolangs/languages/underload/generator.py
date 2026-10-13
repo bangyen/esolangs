@@ -130,20 +130,15 @@ def underload(truth_table: str, width: int | None = None) -> str:
     if width is None or width <= 0:
         return program
     # Only bit literals reach S; every other pushed string is executable code.
-    if short:
-        # The inert prefix distinguishes the four-character uniform setters.
-        program = _PREFIX + program
-    if short and width < 4:
+    if not short:
+        return wrap_tokens(program, width, _token_pattern(len(PAIR[0])))
+    # The inert prefix distinguishes the four-character uniform setters.
+    program = _PREFIX + program
+    if width < 4:
         n = _validate_truth_table(truth_table)
         # Build both selector strings, then keep one with a single swap bit.
         program = _PREFIX + "(!)(~)(!)*$!" * n + program[len(_PREFIX) + 4 * n :]
-    if not short:
-        slots = len(PAIR[0])
-    elif width < 4:
-        slots = 1
-    else:
-        slots = 4
-    return wrap_tokens(program, width, _token_pattern(slots))
+    return wrap_tokens(program, width, _token_pattern(1 if width < 4 else 4))
 
 
 def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:

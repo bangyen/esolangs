@@ -16,7 +16,7 @@ from esolangs.raster import Raster
 from esolangs.runtime.codels import BLACK, WHITE
 
 _DUPLICATE = (4, 0)
-_MIN_COLUMNS = 22
+_MIN_PACKED_COLUMNS = 22
 _MIN_SHARED_COLUMNS = 18
 
 
@@ -206,7 +206,7 @@ def pack(operations: list[_Operation], default: Raster) -> Raster:
             for offset in (5, 9, 13)
         ]
 
-    candidate = min(layouts(_MIN_COLUMNS), key=_raster_score)
+    candidate = min(layouts(_MIN_PACKED_COLUMNS), key=_raster_score)
 
     def area(image: Raster) -> int:
         return len(image.rows) * len(image.rows[0])

@@ -23,6 +23,12 @@ __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 
 BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 
+_BITDEQUE_SHORT_PAIR = ("POP  ", "EJECT")
+_PRELUDE_LEN = 5
+#: One setter run: a token of template text, two commands once filled.
+_SETTER = TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])
+_SHORT_BLOCK = 15
+
 
 def bitdeque(truth_table: str, width: int | None = None) -> str:
     """Build a Bitdeque template for the given truth table.
@@ -58,13 +64,6 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     if width is not None:
         return _bitdeque(program, width)
     return program
-
-
-_BITDEQUE_SHORT_PAIR = ("POP  ", "EJECT")
-_PRELUDE_LEN = 5
-#: One setter run: a token of template text, two commands once filled.
-_SETTER = TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])
-_SHORT_BLOCK = 15
 
 
 def _bitdeque_short_load(n: int) -> list[str]:

@@ -34,9 +34,7 @@ from esolangs.runtime._program import Program
 from esolangs.runtime._source import InputSource, ProgramSource, check_scale_for
 from esolangs.runtime._traits import trait, traits
 from esolangs.runtime._validate import check_whole
-from esolangs.runtime._vm_views import (
-    machine_views,
-)
+from esolangs.runtime._vm_views import machine_views
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
@@ -154,6 +152,7 @@ def run_until_halt_or_cycle(
             limit,
         ),
     )
+    # A Debugger wraps a VM (``vm``); a VM wraps interpreter state (``_machine``).
     underlying = getattr(machine, "vm", machine)
     underlying = getattr(underlying, "_machine", underlying)
     # A seeded random program can repeat its visible state, then halt.
@@ -174,7 +173,7 @@ def run_until_halt_or_cycle(
                     f"undecided after {limit} steps: "
                     "neither halted nor repeated a state"
                 ),
-                ("increase limit; for growing states try a supported growth detector"),
+                "increase limit; for growing states try a supported growth detector",
             )
         machine.step()
         steps += 1
@@ -478,7 +477,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             f"undecided after {limit} steps: neither halted nor grew by a "
             "provable translation"
         ),
-        ("increase limit; for repeated exact states try run_until_halt_or_cycle"),
+        "increase limit; for repeated exact states try run_until_halt_or_cycle",
     )
 
 
@@ -535,6 +534,10 @@ class _AffineMachine(_SteppableMachine, Protocol):
         """Return the input cursor, so a reading loop is not a repeat."""
 
 
+#: One visit's ``(step index, values, input cursor)`` in the affine proof.
+_Visit = tuple[int, tuple[int, ...], int]
+
+
 def run_until_halt_or_value_growth(
     machine: _AffineMachine | VM, limit: int = 20_000
 ) -> bool:
@@ -573,7 +576,7 @@ def run_until_halt_or_value_growth(
     # still unrevisited -- quadratic on a program whose key never repeats,
     # such as ``>`` alone widening the tape every step.
     slacks: list[int | None] = []
-    visits: dict[Hashable, list[tuple[int, tuple[int, ...], int]]] = {}
+    visits: dict[Hashable, list[_Visit]] = {}
     for index in range(limit):
         if machine.halted:
             return True
@@ -592,12 +595,12 @@ def run_until_halt_or_value_growth(
             f"undecided after {limit} steps: neither halted nor climbed by a "
             "provable affine step"
         ),
-        ("increase limit; for repeated exact states try run_until_halt_or_cycle"),
+        "increase limit; for repeated exact states try run_until_halt_or_cycle",
     )
 
 
 def _climbs_forever(
-    visits: list[tuple[int, tuple[int, ...], int]],
+    visits: list[_Visit],
     slacks: list[int | None],
 ) -> bool:
     """Whether three visits advance affinely with every clamp holding.

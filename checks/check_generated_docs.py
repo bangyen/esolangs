@@ -31,7 +31,7 @@ def _manifest_is_stale() -> bool:
     check as slow as ``tests/tooling/test_examples.py``, which covers them.
     """
     manifest = examples.LANGUAGES_DIR / "EXAMPLES.md"
-    return manifest.read_text(encoding="utf-8") != (examples.boolean_manifest_text())
+    return manifest.read_text(encoding="utf-8") != examples.boolean_manifest_text()
 
 
 def main() -> int:

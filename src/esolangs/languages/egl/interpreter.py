@@ -163,8 +163,9 @@ class _Machine:
         if self.halted:
             return
         command = self.code[self.state[0]]
-        value = self.io.input_char() if command == "x" else None
+        value = None
         if command == "x":
+            value = self.io.input_char()
             self._input_reads += 1
         self.state, output = _advance(
             self.state, self.code, self.pairs, self.width, self.height, value

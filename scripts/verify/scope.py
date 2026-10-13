@@ -148,7 +148,6 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
         in {
             "uv.lock",
             ".coveragerc",
-            "conftest.py",
             "tests/__init__.py",
             "tests/tooling/script_support.py",
             "setup.cfg",

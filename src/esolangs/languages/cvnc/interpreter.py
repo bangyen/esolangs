@@ -224,6 +224,10 @@ def _evaluate(node: _Node) -> int:
     return lval // rval
 
 
+class _InvalidFunctionError(Exception):
+    """The built function does not parse, so ``u`` leaves the accumulator."""
+
+
 class _Parser:
     """A recursive-descent reader for the function the program has built."""
 
@@ -278,10 +282,6 @@ class _Parser:
         raise _InvalidFunctionError
 
 
-class _InvalidFunctionError(Exception):
-    """The built function does not parse, so ``u`` leaves the accumulator."""
-
-
 #: One instant of a run: ``(accumulator, deque, function, pointer)``.
 #:
 #: A value, not a record: every handler below returns a new state rather
@@ -325,7 +325,7 @@ def _fricative(
     if token == _READ_NUM:
         # The accumulator is unsigned, so negative tokens floor at zero.
         # Invalid numeric text also reads as zero.
-        return (max(_as_int((line or "").strip()), 0), deque, function, pointer), None
+        return (max(_as_int(line or ""), 0), deque, function, pointer), None
     # what is left is ``ʒ``, the character read
     return ((byte or 0) % 256, deque, function, pointer), None
 

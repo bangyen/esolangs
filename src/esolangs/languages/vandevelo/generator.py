@@ -308,11 +308,7 @@ def _score(node: _Node, dirs: list[int]) -> None:
 def _pairs(node: _Node, cv: int) -> int:
     """Return ``|S & (S ^ v)|`` in points, for ``v`` reduced to ``cv``."""
     reps = node.reps
-    count = 0
-    for r in reps:
-        if (r ^ cv) in reps:
-            count += 1
-    return count << node.dim
+    return sum((r ^ cv) in reps for r in reps) << node.dim
 
 
 def _best(node: _Node) -> tuple[int | None, int]:

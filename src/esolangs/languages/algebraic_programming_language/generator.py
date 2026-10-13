@@ -308,7 +308,7 @@ def _apl_tree_layout(
 class _Splitter:
     """Split one Boolean tree's source into definitions under a width limit.
 
-    Holds the layout state that used to live in closures: the frame stack,
+    Holds the layout state: the frame stack,
     the emitted definitions, the interned bodies, whether any body was
     shared, and the width-transition events.
     """

@@ -510,16 +510,8 @@ class _Parser:
             for col, end, char, body in sorted(candidates):
                 if any(col in label for label in labels):
                     continue
-                # ``_GATE_CELL`` is built from these two alphabets, so one of
-                # the arms always takes; they are spelled out because
-                # membership is what narrows the character to ``_GateKind``,
-                # which a regex match cannot do.
-                if char in _GATES:
-                    kind: _GateKind = char
-                elif char in _MOVERS:
-                    kind = char
-                else:
-                    kind = cast(_GateKind, char)
+                # A built-in gate or mover, or a function name.
+                kind = cast(_GateKind, char)
                 gate = _Gate(kind, row, col, body, self.definitions)
                 if char == _OUTPUT:
                     outputs: list[_Wiring] = []

@@ -202,21 +202,14 @@ class _Layout:
 
 def _load_dag(table: str, options: _CanvasOptions) -> _Dag | None:
     original_n = _validate_truth_table(table)
-    kept = (
-        list(range(original_n))
-        if options.streaming and not options.projected
-        else essential_inputs(table, original_n)
-    )
+    full_read = options.streaming and not options.projected
+    kept = list(range(original_n)) if full_read else essential_inputs(table, original_n)
     if options.projected and len(kept) == original_n:
         return None
     n = len(kept)
     if n < 2:
         return None
-    reduced = (
-        table
-        if options.streaming and not options.projected
-        else read_at(table, kept, original_n)
-    )
+    reduced = table if full_read else read_at(table, kept, original_n)
     levels, children, constants = _residual_ids(
         reduced
         if options.streaming
@@ -293,7 +286,7 @@ def _median_order(
 
     # One forward pass preserves eight-unit rail separation. Native
     # dense8 falls from 37,795,200 to 36,982,400 scale-one pixels.
-    return [residual for median, residual in sorted(ranked)]
+    return [residual for _, residual in sorted(ranked)]
 
 
 def _level_columns(
@@ -436,7 +429,7 @@ def _loader_strokes(
     loader.advance((0, 1), -loader.x)
     loader.advance((1, 0), fork_row - loader.y)
     loader.finish()
-    return start, loader.strokes[:]
+    return start, loader.strokes
 
 
 @dataclass(slots=True)
@@ -463,14 +456,12 @@ class _Router:
             reader = chain(*dag.reads_at(depth))
             chain_onto(reader, node)
             self.graph[state] = reader
-        else:
-            self.graph[state] = (
-                Node("<", next=node) if options.destination_moves and depth else node
-            )
-        if options.streaming:
             self._stem(y - dag.reader_height(depth), x, dag.reads_at(depth))
         elif options.destination_moves and depth:
+            self.graph[state] = Node("<", next=node)
             self._stem(y - 9, x, "<")
+        else:
+            self.graph[state] = node
         for bit in (0, 1) if is_fork else (0,):
             self._arm(state, node, bit)
         return self.graph[state]
@@ -604,10 +595,6 @@ def _forward_canvas(
     else:
         head = chain(*_loader_reads(dag))
         chain_onto(head, decision)
-    plan = stroke_plan(strokes, start, (1, 0), old_area, unit)
-    if plan is None:
-        return None
-
     # Streaming uses original_n reads, at most n tests and n joins, three output
     # operations and a halt: original_n+2n+4 <= 5original_n for n >= 2.
     # Constant residuals drain inputs; only original cells zero and one are used.
@@ -616,4 +603,7 @@ def _forward_canvas(
     # output ops and one halt tick give 5n. Projection adds fewer than
     # 5(original_n-n) commands and never enlarges the original tape.
     # Moving an arm's '<' onto its destination changes no path's command count.
+    plan = stroke_plan(strokes, start, (1, 0), old_area, unit)
+    if plan is None:
+        return None
     return head, plan

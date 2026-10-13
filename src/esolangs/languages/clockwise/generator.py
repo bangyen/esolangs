@@ -236,9 +236,9 @@ def _shift_return_rail(grid: _Grid, trailing: int) -> int:
     increments keep the lean rotation's return sentinel nonzero when a read
     clears its bit.  A zero shift leaves the grid untouched.
     """
-    gap = _READS * trailing - 2 if trailing else 0
-    if not gap:
+    if not trailing:
         return 0
+    gap = _READS * trailing - 2
     grid.cells = {(x, y + gap): char for (x, y), char in grid.cells.items()}
     del grid.cells[_DESCENT, gap]
     grid.cells[_DESCENT, 0] = "R"

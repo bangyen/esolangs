@@ -123,6 +123,7 @@ def describe(language: str) -> LanguageInfo:
     traits = machine_traits(name)
     parameterized = lang.parameterized
     contract = lang.contract
+    width_effect = _width_effect(lang)
     return {
         "name": name,
         "dialect_settings": dialect_choices(name),
@@ -137,7 +138,7 @@ def describe(language: str) -> LanguageInfo:
         "parameterized": parameterized,
         "reads_input": (lang.boolean is not None) and not parameterized,
         # Computed once so the two cannot drift into disagreeing.
-        "width_aware": (width_effect := _width_effect(lang)) == "layout",
+        "width_aware": width_effect == "layout",
         "width_effect": width_effect,
         "input_encoding": contract.alphabet,
         "input_shape": contract.input_shape,

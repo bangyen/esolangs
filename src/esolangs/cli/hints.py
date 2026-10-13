@@ -49,11 +49,15 @@ def _cli_error_text(exc: BaseException) -> str:
     return message + notes
 
 
+def _notes(exc: BaseException) -> str:
+    """Return ``exc``'s notes rendered with CLI flags."""
+    return _cli_error_text(exc)[len(str(exc)) :]
+
+
 def _generate_hint(exc: EsolangError, language: str, table: str) -> str:
     """Keep generator notes and point template input advice at the CLI."""
     message = str(exc)
-    notes = _cli_error_text(exc)[len(message) :]
-    notes = notes.replace(
+    notes = _notes(exc).replace(
         "run the generated program with stdin=encode_inputs(language, bits)",
         f"pipe input from esolangs encode {_as_argument(language)} <bits> "
         "when running the generated program",
@@ -64,7 +68,7 @@ def _generate_hint(exc: EsolangError, language: str, table: str) -> str:
 def _template_hint(exc: TemplateError, language: str) -> str:
     """Re-point a template refusal at the CLI flag that fills the slots."""
     message = str(exc)
-    notes = _cli_error_text(exc)[len(message) :]
+    notes = _notes(exc)
     pointer = "fill them with esolangs.instantiate("
     if pointer not in message:
         return message + notes

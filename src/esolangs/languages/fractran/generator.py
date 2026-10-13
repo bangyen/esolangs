@@ -108,7 +108,7 @@ def _nodes(
             product = state * bit
             guard = product if product <= SMALL_BASE else f"{state}*{bit}"
             fractions.append(f"{states[one]}/{guard}")
-            fractions.append(f"{states[zero]}/{states[index]}")
+            fractions.append(f"{states[zero]}/{state}")
     return fractions
 
 

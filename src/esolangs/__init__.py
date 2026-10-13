@@ -204,7 +204,7 @@ def generate(
         if LANGUAGES[resolve(language)].source_kind is not SourceKind.RASTER:
             raise with_hint(
                 ArgumentError("scale is only supported for raster generators"),
-                ("omit scale for text languages; apply it only to raster source"),
+                "omit scale for text languages; apply it only to raster source",
             )
         source = generate(
             language, truth_table, width=width, balance=balance, settings=settings
@@ -366,7 +366,7 @@ def instantiate(
                 f"inputs rather than embedding them, so there is nothing to "
                 f"instantiate"
             ),
-            ("run the raster with stdin=encode_inputs(language, bits)"),
+            "run the raster with stdin=encode_inputs(language, bits)",
         )
     if not isinstance(template, str):
         # Before the provenance check, which calls ``template.replace`` and
@@ -407,7 +407,7 @@ def instantiate(
                 f"{name} reads its inputs rather than embedding them, so there "
                 f"is nothing to instantiate; pass them in as stdin instead"
             ),
-            ("run the generated program with stdin=encode_inputs(language, bits)"),
+            "run the generated program with stdin=encode_inputs(language, bits)",
         )
     origin = getattr(template, "language", None)
     if origin is not None and origin != name:
@@ -417,7 +417,7 @@ def instantiate(
                 f"it as {name} would substitute {name}'s setter code into a "
                 f"{origin} program -- which runs, and answers the wrong row"
             ),
-            ("instantiate the template using the language that generated it"),
+            "instantiate the template using the language that generated it",
         )
     bits = check_bits(bits, "bits")
     tagged = (
@@ -689,7 +689,7 @@ def run(
         if max_steps is not None:
             raise with_hint(
                 ArgumentError("isolated and max_steps are mutually exclusive"),
-                ("use isolation with timeout, or use max_steps without isolation"),
+                "use isolation with timeout, or use max_steps without isolation",
             )
         deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
         # Every option defaults to None, so passing them unconditionally

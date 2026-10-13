@@ -19,8 +19,8 @@ the trend stays readable without blocking a PR on noise.
 
 Run::
 
-    python scripts/check_generator_sizes.py            # verify
-    python scripts/check_generator_sizes.py --update   # re-record
+    python checks/check_generator_sizes.py            # verify
+    python checks/check_generator_sizes.py --update   # re-record
 """
 
 from __future__ import annotations
@@ -34,14 +34,14 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from benchmark import evidence_session, measure  # noqa: E402
 
 import esolangs  # noqa: E402
 from esolangs.registry import LANGUAGES  # noqa: E402
 
-BASELINE = REPO_ROOT / "tests" / "support/fixtures" / "generator_sizes.json"
+BASELINE = REPO_ROOT / "tests/support/fixtures/generator_sizes.json"
 
 
 def benchmark_tables() -> tuple[str, ...]:
@@ -65,6 +65,8 @@ TABLES = benchmark_tables()
 #: return null ``commands`` before stepping rather than on the cap.
 STEP_CAP = 200_000
 
+SCHEMA = 3
+
 # Dense parity reaches each language's layout switch without folding inputs.
 BOUNDARIES = {
     name: lang.layout_switch for name, lang in LANGUAGES.items() if lang.layout_switch
@@ -77,9 +79,6 @@ def boundary_tables(name: str) -> tuple[str, ...]:
         "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
         for inputs in BOUNDARIES.get(name, ())
     )
-
-
-SCHEMA = 3
 
 
 def control_tables(name: str) -> tuple[str, ...]:
@@ -254,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
     if not BASELINE.exists():
         print(
             f"no baseline at {BASELINE}; run "
-            "uv run python scripts/check_generator_sizes.py --update",
+            "uv run python checks/check_generator_sizes.py --update",
             file=sys.stderr,
         )
         return 1
@@ -269,7 +268,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {line}", file=sys.stderr)
     print(
         "\nIf the change is intended, re-record it so the diff carries it:\n"
-        "  uv run python scripts/check_generator_sizes.py --update",
+        "  uv run python checks/check_generator_sizes.py --update",
         file=sys.stderr,
     )
     return 1

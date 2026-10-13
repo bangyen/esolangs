@@ -110,9 +110,10 @@ class _Chain:
     def route(self, state: _State, dest: int, *, short: bool = False) -> list[str]:
         tokens = self.clear(state) if state.acc else []
         want = (dest - state.ptr) % _ARRAYS
-        count = (want - self.head(state)) * pow(state.ptr + 1, -1, self.modulus)
         if short:
             count = _routing_seeds(self.head(state), state.ptr + 1, want, self.modulus)
+        else:
+            count = (want - self.head(state)) * pow(state.ptr + 1, -1, self.modulus)
         tokens += self.seed(state, count % self.modulus)
         state.ptr = dest
         return [*tokens, "SPRINT"]
@@ -332,10 +333,7 @@ class _Chain:
             level, state = self.level(state, weight, len(tokens), pool)
             tokens += level
         tokens += self.route(state, self.weight)
-        count = (self.dispatch_head - self.head(state)) * pow(
-            self.step, -1, self.modulus
-        )
-        tokens += self.seed(state, count % self.modulus)
+        tokens += self.set_head(state, self.dispatch_head)
         tokens += ["DIGEST", "LEAPFROG"]
         return tokens + ["SEED"] * max(0, base - len(tokens))
 

@@ -18,7 +18,7 @@ directly with ``python -m``.
 ``describe`` and ``read-answer`` are here because the two facts that decided
 every wrong answer this tool ever handed out -- how a language wants its
 input bits, and where in the output its answer sits -- were readable from
-Python and from nowhere else.  A shell user could run all ten of the
+Python and from nowhere else.  A shell user could run every one of the
 languages that do not simply print their answer, and could not judge one of
 them: some languages' answer is a mark on one cell of a grid.
 
@@ -70,10 +70,7 @@ from esolangs.cli.args import (
     _split_positional,
 )
 from esolangs.cli.debug import _debug
-from esolangs.cli.help import (
-    HELP,
-    USAGE,
-)
+from esolangs.cli.help import HELP, USAGE
 from esolangs.cli.hints import (
     _as_argument,
     _cli_error_text,
@@ -83,14 +80,10 @@ from esolangs.cli.hints import (
     _looks_like_a_table,
     _shell_hint,
 )
-from esolangs.cli.io import (
-    _read_stdin,
-)
+from esolangs.cli.io import _read_stdin
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
-from esolangs.exceptions import (
-    EsolangError,
-)
+from esolangs.exceptions import EsolangError
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._describe import SHAPES, STATE_MODELS
 
@@ -189,7 +182,7 @@ def _list(rest: list[str]) -> None:
                         "generator_restrictions": facts["generator_restrictions"],
                         "has_example": bool(facts["examples"]),
                     }
-                    for name, facts in ((name, describe(name)) for name in names)
+                    for name, facts in zip(names, map(describe, names), strict=True)
                 ],
                 indent=2,
             )
@@ -439,8 +432,7 @@ def _read_answer(rest: list[str]) -> None:
     with _errors():
         facts = describe(language)
     if facts["answer_mode"] == "termination":
-        polarity = facts["answer_encoding"]
-        zero, one = polarity
+        zero, one = facts["answer_encoding"]
         _fail(
             f"{facts['name']} answers by {zero} for a 0 and {one} for a 1, so "
             f"there is no output to read; use: esolangs run "

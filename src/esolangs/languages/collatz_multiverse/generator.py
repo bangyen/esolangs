@@ -81,7 +81,7 @@ def _cm_codes(counts: Counter[int]) -> dict[int, int]:
 
 def _cm_narrow_constants(needed: set[int]) -> list[str]:
     """Capture constants at their numbered lines; intervening pads are inert."""
-    needed |= {1, 2, 3, 4}  # k1..k4: the cursor and address code reads them
+    needed = needed | {1, 2, 3, 4}  # k1..k4: the cursor and address code reads them
     return [
         f"k{value}=zx+lineNumber,NOT PRINT." if value in needed else _CM_PAD
         for value in range(1, max(needed) + 1)

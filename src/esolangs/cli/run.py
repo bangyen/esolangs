@@ -5,7 +5,6 @@ from __future__ import annotations
 import sys
 import warnings
 from contextlib import nullcontext
-from functools import partial
 
 from esolangs import describe, run
 from esolangs.cli.args import (
@@ -47,17 +46,15 @@ from esolangs.settings import dialect_options
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     rest, set_pairs = _pop_set_pairs(rest)
-    rest, options = _pop_options(
-        rest,
-        {
-            "--timeout",
-            "--seed",
-            "--scale",
-            "--max-output",
-            "--max-memory",
-            "--settings",
-        },
-    )
+    value_options = {
+        "--timeout",
+        "--seed",
+        "--scale",
+        "--max-output",
+        "--max-memory",
+        "--settings",
+    }
+    rest, options = _pop_options(rest, value_options)
     # The value is checked here, before the positionals are counted.  It ran
     # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
     # swallowed the language as the timeout's value and then reported
@@ -83,19 +80,7 @@ def _run(rest: list[str]) -> None:
         with _errors():
             check_memory(max_memory, isolated=isolated)
     rest = _split_positional(
-        rest,
-        set(),
-        {
-            "--timeout",
-            "--seed",
-            "--scale",
-            "--settings",
-            "--set",
-            "--portable",
-            "--isolated",
-            "--max-output",
-            "--max-memory",
-        },
+        rest, set(), value_options | {"--set", "--portable", "--isolated"}
     )
     seed = _seed_of(options)
     scale = _scale_of(options)
@@ -114,7 +99,7 @@ def _run(rest: list[str]) -> None:
         mode = facts["answer_mode"]
         name = facts["name"]
     if mode == "termination" and timeout is None:
-        # The default path for these four is an unbounded run of a program
+        # The default path for these is an unbounded run of a program
         # written to loop forever, which is a hang with no output and no
         # explanation.  Not refused -- a program whose answer is 0 halts,
         # and running one unbounded is perfectly sensible -- but said aloud.
@@ -134,24 +119,18 @@ def _run(rest: list[str]) -> None:
             warnings.catch_warnings(record=True) as caught,
         ):
             warnings.simplefilter("always")
-            invoke = partial(
-                run,
+            output = run(
                 language,
                 program,
                 stdin=stdin,
                 timeout=timeout,
                 seed=seed,
                 scale=scale,
+                isolated=isolated,
+                max_output=max_output,
+                max_memory=max_memory,
                 settings=settings,
             )
-            if isolated:
-                output = invoke(
-                    isolated=True,
-                    max_output=max_output,
-                    max_memory=max_memory,
-                )
-            else:
-                output = invoke()
         for entry in caught:
             _note(str(entry.message))
     except TemplateError as exc:
@@ -166,7 +145,7 @@ def _run(rest: list[str]) -> None:
             sys.exit(_TIMEOUT_EXIT)
         # Distinct from a program error's 1, following timeout(1), so a
         # script can tell "ran out of time" from "the program broke".  Those
-        # shared exit 1, which made the four termination languages'
+        # shared exit 1, which made the termination languages'
         # answer indistinguishable from a crash.
         _emit_partial(exc)
         _fail(exc, _TIMEOUT_EXIT)

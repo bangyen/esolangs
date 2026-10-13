@@ -106,9 +106,6 @@ def _advance(
     writes: dict[int, int] = {}
     effect = None
 
-    def peek(address: int) -> int:
-        return writes.get(address, memory[address])
-
     if op == "j":
         d = memory[d]
     elif op == "i":
@@ -124,7 +121,7 @@ def _advance(
         a = _EOF if char_input is None else char_input
     elif op == "v":
         return (a, c, d, True), (), None
-    value = peek(c)
+    value = writes.get(c, memory[c])
     if 33 <= value <= 126:
         writes[c] = _ENCRYPT[value - 33]
     c = (c + 1) % _WORDS

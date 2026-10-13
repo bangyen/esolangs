@@ -671,6 +671,11 @@ def decision_tree_body(
     is_constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)
 
+    def set_result() -> None:
+        """Add one to the answer cell."""
+        move(result)
+        cells.append("+")
+
     def constant(i: int, combo: int) -> str | None:
         """Return the shared value of the subtree at ``(i, combo)``, else None."""
         span = 2 ** (n - i)
@@ -683,8 +688,7 @@ def decision_tree_body(
             move(2 * perm[i + 1])
             node(i + 1, combo)
         elif value == "1":
-            move(result)
-            cells.append("+")
+            set_result()
 
     def node(i: int, combo: int) -> None:
         """Emit node ``i``: test ``b_i``, run one side, leave both cells zero.
@@ -700,13 +704,11 @@ def decision_tree_body(
         if binary_leaves and i == n - 1:
             if truth_table[combo] == truth_table[combo + 1]:
                 if truth_table[combo] == "1":
-                    move(result)
-                    cells.append("+")
+                    set_result()
                 return
             move(bit)
             if truth_table[combo] == "1":
-                move(result)
-                cells.append("+")
+                set_result()
                 move(bit)
             cells.append("[-")
             move(result)

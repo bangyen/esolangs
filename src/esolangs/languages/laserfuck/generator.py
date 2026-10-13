@@ -148,13 +148,11 @@ def _laserfuck_ring_reader(n: int, perm: tuple[int, ...] | None = None) -> list[
     # Which input goes in which cell is the reorder (see _laserfuck_reads).
     reads = _laserfuck_reads(tuple(range(n)) if perm is None else perm)
     # one '-' for the counter and one for each input, then home again
-    retire = "".join("->" for _ in range(n)) + "-" + "<" * n + "#/)"
+    retire = "->" * n + "-" + "<" * n + "#/)"
 
     body = "}" + preload + "}" + multiply + reads + "}" + retire
-    top = [" "] * (len(body) + 2)
+    top = [*body, " ", " "]
     ret = [" "] * (len(body) + 2)
-    for i, char in enumerate(body):
-        top[i] = char
     # each ring's return leg: '^' under its own '}', '{' under its '/'
     first = 1 + len(preload)
     ret[first] = "^"
@@ -464,9 +462,8 @@ def _laserfuck_tree(truth_table: str, n: int, *, fold: bool = True) -> _LaserTre
     # zero continues on the row, a one turns back onto 'v' and drops to a
     # '\' on a fresh row.  Rows scale with *one* edges, not nodes.
     # Rows are ``(column, text)`` runs, filled left to right with no blanks
-    # (``><-+``, ``x``, ``>#v)``, ``\``); the old n! order search paid a
-    # cell dict twice over a mostly-blank staircase.  A row is appended
-    # exactly when a ``one`` edge creates it, so ``len(rows)`` is the next index.
+    # (``><-+``, ``x``, ``>#v)``, ``\``).  A row is appended exactly when a
+    # ``one`` edge creates it, so ``len(rows)`` is the next index.
     rows: list[list[tuple[int, str]]] = [[]]
 
     constant = constant_span_test(truth_table)

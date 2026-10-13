@@ -133,7 +133,6 @@ class _Parser:
             while self._peek() == ",":
                 self._expect(",")
                 params.append(self._ident())
-            self._skip_ws()
             if self._peek() == "@":  # anonymous function literal
                 self._expect("@")
                 body, nested = self._block()
@@ -144,7 +143,6 @@ class _Parser:
             self.pos = save
             callee: _Var = ("var", self._ident())
             args: list[_ValueNode] = []
-            self._skip_ws()
             while self._peek() != ")":
                 if args:
                     self._expect(",")
@@ -163,12 +161,10 @@ class _Parser:
         return values
 
     def _semi(self) -> None:
-        self._skip_ws()
         if self._peek() == ";":
             self.pos += 1
 
     def _pattern(self) -> _Star | _ValuePat:
-        self._skip_ws()
         if self._peek() == "*":
             self.pos += 1
             return ("*",)
@@ -185,7 +181,6 @@ class _Parser:
         return ("group", pats)
 
     def _for_spec(self) -> _ForSpec:
-        self._skip_ws()
         if self._peek() == "(":
             self.pos += 1
             vars_ = [self._ident()]
@@ -196,7 +191,6 @@ class _Parser:
         else:
             vars_ = [self._ident()]
         self._expect(":")
-        self._skip_ws()
         if self._peek() == "(":
             self.pos += 1
             items: list[_Pattern] = []
@@ -302,7 +296,6 @@ class _Parser:
             while self._peek() == ",":
                 self.pos += 1
                 values.append(self._value())
-            self._skip_ws()
             if self._peek() != "=":
                 self._fail("expected '=' after assignment targets")
             self.pos += 1

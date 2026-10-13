@@ -180,7 +180,7 @@ class _Reading:
             beg = self._after[marker][lo]
             if beg < hi:
                 # Found before the ``qe`` arm is reached, which is what keeps
-                # an arithmetic value out of a ``qe`` key -- as before.
+                # an arithmetic value out of a ``qe`` key.
                 if beg + 1 >= hi or tokens[beg + 1] not in OPERATORS:
                     return False
                 if beg + 2 >= hi or tokens[beg + 2] != marker:
@@ -239,7 +239,7 @@ def _split(tokens: list[str], out: list[list[str]]) -> bool:
     """Cut ``tokens`` into the shortest prefixes that each parse.
 
     Settled from the right: ``cut[i]`` is the shortest statement at ``i``
-    whose remainder also splits (the same cut the recursive search found).
+    whose remainder also splits.
     Still quadratic in tokens, with a small constant.
     """
     size = len(tokens)

@@ -339,7 +339,10 @@ class _Stacked:
         return _shareable(self.ids, self.counts, depth, lo, hi)
 
     def role(self, sid: int | None) -> str:
-        """Return ``"jump"`` for an earlier copy, ``"body"`` for the last."""
+        """Return ``"jump"`` for an earlier copy, ``"body"`` for the last.
+
+        Anything else is ``"plain"``.
+        """
         if sid is None or self.copies[sid] < 2:
             return "plain"
         self.seen[sid] += 1

@@ -329,8 +329,7 @@ def fargo(truth_table: str, width: int | None = None) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare both order sets and the single definition/factored fallback."""
-    # Width requests add orders; their shortest expression cannot grow.
+    """Compare the default, the default-width fit and the width-one fit."""
     wide = fargo(table, len(default))
     return min(default, wide, fargo(table, 1), key=balance_score)
 

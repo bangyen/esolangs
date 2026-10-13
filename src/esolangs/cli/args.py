@@ -13,13 +13,8 @@ from collections.abc import Collection, Iterator
 from contextlib import contextmanager
 from typing import NoReturn
 
-from esolangs.cli.help import (
-    HELP,
-)
-from esolangs.cli.hints import (
-    _cli_error_text,
-    _did_you_mean,
-)
+from esolangs.cli.help import HELP
+from esolangs.cli.hints import _cli_error_text, _did_you_mean
 from esolangs.exceptions import EsolangError
 from esolangs.generation.wrap import DEFAULT_WIDTH
 from esolangs.registry import resolve
@@ -77,7 +72,7 @@ _SHORT_OPTIONS = {"-p": "--portable", "-s": "--settings"}
 
 
 def _expand_short_options(rest: list[str]) -> list[str]:
-    """Expand the three short options before the positional separator."""
+    """Expand the short options before the positional separator."""
     expanded: list[str] = []
     i = 0
     while i < len(rest):

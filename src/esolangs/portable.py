@@ -71,6 +71,7 @@ def dump_program(
 
 
 def _object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Build a JSON object, refusing a duplicate field."""
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
@@ -80,6 +81,7 @@ def _object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def _settings(value: Any, language: str) -> DialectSettings | None:
+    """Restore saved dialect settings, validated for ``language``."""
     if value is None:
         return None
     if not isinstance(value, dict):

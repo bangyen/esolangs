@@ -234,7 +234,7 @@ def _validate_png(
         )
     offset = 0
     passes = (
-        [_pass_size(width, height, i) for i in range(7)]
+        [_pass_size(width, height, i) for i in range(len(_ADAM7))]
         if interlace
         else [(width, height)]
     )

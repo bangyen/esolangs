@@ -622,8 +622,13 @@ def _loop_return_legs(
             pts += [(bay_y, ex)]
         else:
             # Left of the arm stroke: go around the ring.
-            pts += [(bay_y, ex), (bay_y, lo_x), (far_y, lo_x), (far_y, hi_x)]
-            pts += [(bay_y, hi_x)]
+            pts += [
+                (bay_y, ex),
+                (bay_y, lo_x),
+                (far_y, lo_x),
+                (far_y, hi_x),
+                (bay_y, hi_x),
+            ]
     pts += [(bay_y, approach[1]), approach]
 
     legs: list[tuple[tuple[int, int], int]] = []

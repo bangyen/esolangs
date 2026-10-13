@@ -140,26 +140,23 @@ def normalize_scale(mask: Mask, scale: int | None = None) -> Mask:
     to the first ink pixel, since the crop's origin is not aligned to the
     stroke width.
     """
-    if scale is None:
-        scale = detect_scale(mask)
-    else:
-        check_scale(scale)
-        bounds = mask.bounds()
-        if bounds is not None:
-            top, left, _, _ = bounds
-            if not _blocks_uniform([row >> left for row in mask.rows[top:]], scale):
-                raise syntax_error(
-                    "scale requires uniform Line pixel squares",
-                    "use a uniform integer scale when enlarging the drawing",
-                )
-    if scale <= 1:
-        return mask
-    # One pixel per block, anchored to the first ink pixel (see
-    # detect_scale); every block is uniform, so which pixel does not matter.
     bounds = mask.bounds()
     if bounds is None:
         return mask
     top, left, _, _ = bounds
+    if scale is None:
+        scale = detect_scale(mask)
+    else:
+        check_scale(scale)
+        if not _blocks_uniform([row >> left for row in mask.rows[top:]], scale):
+            raise syntax_error(
+                "scale requires uniform Line pixel squares",
+                "use a uniform integer scale when enlarging the drawing",
+            )
+    if scale <= 1:
+        return mask
+    # One pixel per block, anchored to the first ink pixel (see
+    # detect_scale); every block is uniform, so which pixel does not matter.
     return mask.subsample(scale, top % scale, left % scale)
 
 
@@ -205,7 +202,7 @@ def _thick_regions(thick: Mask) -> list[Mask]:
 
 @dataclass
 class Cursor:
-    """The arrowhead's location, heading, and shape, isolated from a mask."""
+    """The arrowhead's location and blob, isolated from a mask."""
 
     y: float
     x: float
@@ -215,6 +212,10 @@ class Cursor:
 # Ink neighbours in the 3x3 that make a pixel arrowhead body rather than
 # path: a stroke interior has exactly 2, the triangle's outline 3+.
 _BLOB_NEIGHBOR_MIN = 3
+
+# Deliberate gap between walked pixels and source ink: 2 arrowhead-tip
+# corners the blob growth falls a pixel short of (see find_cursor).
+_ARROWHEAD_TIP_GAP = 2
 
 # Fraction of its bbox a real arrowhead fills: deliberately wide, to
 # reject non-triangles -- a solid square is 1.0, a crossing-stroke sliver
@@ -486,9 +487,9 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
             n = len(signature)
             candidate = []
             ok = True
-            j = i  # read position, distinct from the template leg count k:
-            # A noise run can sit between two legs, so n legs may take
-            # more than n runs.
+            # Read position j: a noise run can sit between two legs, so n
+            # legs may take more than n runs.
+            j = i
             for _ in range(n):
                 while j < len(runs) and _round_units(runs[j][1], unit) == 0:
                     j += 1
@@ -555,11 +556,6 @@ def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
                 canvas[py, px] = True
             canvas[v1.y, v1.x] = True
     return canvas
-
-
-# Deliberate gap between walked pixels and source ink: 2 arrowhead-tip
-# corners the blob growth falls a pixel short of (see find_cursor).
-_ARROWHEAD_TIP_GAP = 2
 
 
 def coverage_gap(mask: Mask, cursor: Cursor, stroke: Stroke) -> int:

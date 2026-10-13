@@ -193,7 +193,7 @@ class Mask:
         """Build from a list of rows, each a bool sequence or a '.#' string.
 
         Only used by tests and by callers building a mask literally; the real
-        pipeline goes through :mod:`png`.
+        pipeline goes through :func:`from_grey`.
         """
         height = len(rows)
         width = len(rows[0]) if height else 0

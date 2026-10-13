@@ -314,9 +314,9 @@ def _exact_append(st: _Sums, value: int) -> list[str]:
     arr = st.ptr
     if arr % 2:  # pragma: no cover - every planted array is even by choice
         raise AssertionError(f"array {arr} has an even seed step")
-    head = (value - st.rest(arr)) % st.io_modulus
-    count = ((head - st.heads[arr]) * pow(arr + 1, -1, _MODULUS)) % _MODULUS
     before = st.rest(arr)
+    head = (value - before) % st.io_modulus
+    count = ((head - st.heads[arr]) * pow(arr + 1, -1, _MODULUS)) % _MODULUS
     tokens = _digest_excrete(st, count)
     if st.rest(arr) - before != value:  # pragma: no cover - the inverse is exact
         raise AssertionError(f"planted {st.rest(arr) - before}, wanted {value}")
@@ -487,10 +487,7 @@ def _build_pool(st: _Sums, delta: int, pool: int) -> list[str]:
     """Emit the prologue that lays ``pool`` out for :func:`_pool_bank`."""
     tokens = _route(st, pool)
     for cell in _pool_plan(delta, pool):
-        if cell:
-            tokens += _exact_append(st, cell)
-            continue
-        tokens += _plant(st)
+        tokens += _exact_append(st, cell) if cell else _plant(st)
     tokens += _route(st, 0)
     return tokens
 

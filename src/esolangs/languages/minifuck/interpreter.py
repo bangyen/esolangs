@@ -43,10 +43,7 @@ def _pool(tape: int) -> int:
     The one place the tape's and the byte's orders meet.
     """
     window = tape & _WINDOW
-    return sum(
-        ((window >> i) & 1) << (_WIDTH - 1 - i)  #
-        for i in range(_WIDTH)
-    )
+    return sum(((window >> i) & 1) << (_WIDTH - 1 - i) for i in range(_WIDTH))
 
 
 def _load(state: _State, byte: int) -> _State:

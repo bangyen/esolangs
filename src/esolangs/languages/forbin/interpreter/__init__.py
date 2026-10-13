@@ -739,7 +739,7 @@ class _Machine:
     @property
     def halted(self) -> bool:
         """Whether the frame stack has emptied (``main`` returned or ended)."""
-        return not self.frames
+        return not self.state.frames
 
     # The VM's language-shaped view: a call-frame language whose store is
     # the innermost frame's integer locals.

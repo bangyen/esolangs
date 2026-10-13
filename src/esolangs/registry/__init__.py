@@ -91,6 +91,7 @@ def example_stems() -> dict[str, str]:
 
 @cache
 def _examples_by_id() -> dict[str, BooleanExample]:
+    """Return canonical id -> example, for the templates only."""
     from esolangs.generation import examples as _examples
 
     return {
@@ -111,15 +112,20 @@ def template_char(language_id: str) -> str | None:
     return None if example is None else example.char
 
 
+def _example(language_id: str) -> BooleanExample:
+    """Return the template example of ``language_id``, or refuse."""
+    example = _examples_by_id().get(language_id)
+    if example is None:
+        raise TemplateError(f"unknown language: {language_id}")
+    return example
+
+
 def template_body(language_id: str, text: str) -> str:
     """Return ``text`` without the header a template carries for its setters.
 
     A template is all program; no remaining language carries a header.
     """
-    example = _examples_by_id().get(language_id)
-    if example is None:
-        raise TemplateError(f"unknown language: {language_id}")
-    body = example.body
+    body = _example(language_id).body
     return text if body is None else body(text)
 
 
@@ -130,10 +136,7 @@ def template_setters(language_id: str, template: str, n: int) -> Setters:
     or the rendered run form -- the setters read what they need from it,
     which for the two-route generators is the route's prefix.
     """
-    example = _examples_by_id().get(language_id)
-    if example is None:
-        raise TemplateError(f"unknown language: {language_id}")
-    setters = example.setters
+    setters = _example(language_id).setters
     if setters is None:
         raise _reads_inputs(language_id)
     return setters(template, n)

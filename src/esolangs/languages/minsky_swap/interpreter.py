@@ -88,11 +88,10 @@ def _parse(code: str) -> tuple[str, list[int]]:
                 prog += "~"
                 nums.append(int(match[2]) if match[2] else 1)
     else:
-        prog = (s := code.split("\n"))[0]
-        prog = re.sub("[^+~*]", "", prog)
-        if len(s) > 1:
-            nums = re.findall(r"\d+", s[1])
-            nums = [int(k) for k in nums]
+        first, *rest = code.split("\n")
+        prog = re.sub("[^+~*]", "", first)
+        if rest:
+            nums = [int(k) for k in re.findall(r"\d+", rest[0])]
 
     return prog, nums
 

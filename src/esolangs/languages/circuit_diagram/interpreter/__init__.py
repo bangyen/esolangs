@@ -358,7 +358,7 @@ class _Machine:
             if not stripped.startswith("-"):
                 continue
             col = len(line) - len(stripped)
-            wiring = self._wiring_at((row, col))
+            wiring = self._by_cell.get((row, col))
             # Every leading dash belongs to a wiring. Connected input rows
             # still consume separate bundles before their drivers are XORed.
             if wiring is None:  # pragma: no cover - see above
@@ -366,10 +366,6 @@ class _Machine:
             position = self.index[id(wiring)]
             value = tuple(self._read_bit() for _ in range(wiring.width))
             self._drive_wiring(position, value)
-
-    def _wiring_at(self, cell: tuple[int, int]) -> _Wiring | None:
-        """Return the wiring covering ``cell``, if any."""
-        return self._by_cell.get(cell)
 
     def _drive_wiring(self, position: int, value: tuple[int, ...]) -> None:
         """XOR ``value`` into the wiring at ``position``.

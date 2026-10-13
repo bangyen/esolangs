@@ -268,7 +268,7 @@ def _smallest(*programs: str | None, minimax: bool = True) -> str:
 def _postfix_width(units: list[list[str]], width: int) -> str:
     """Return the fold of ``units`` if it fits ``width``, else one column."""
     program = _alight_folded(units, width)
-    return program if _dimensions(program)[0] <= width else "\n".join(_flatten(units))
+    return _fit(program, width) or "\n".join(_flatten(units))
 
 
 def alight(

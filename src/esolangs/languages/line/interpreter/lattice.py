@@ -124,7 +124,7 @@ def _walk_segment(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]
 class Vertex:
     """One lattice point the walk passes through, plus the heading taken.
 
-    ``heading`` is the :data:`extract._DIRS` index travelled *away*; ``None``
+    ``heading`` is the :data:`_DIRS` index travelled *away*; ``None``
     at a stroke's final vertex.
     """
 

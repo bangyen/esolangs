@@ -29,7 +29,7 @@ from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
 _NAME = re.compile(r"[A-Za-z0-9_&*$]+")
-_ASSIGN = re.compile(r"([A-Za-z0-9_&*$]+)\s*(~!>|~>|-!>|->)\s*(.+)")
+_ASSIGN = re.compile(rf"({_NAME.pattern})\s*(~!>|~>|-!>|->)\s*(.+)")
 
 
 @dataclass(frozen=True)

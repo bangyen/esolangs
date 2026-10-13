@@ -255,13 +255,11 @@ class _Layout:
 class _RoutingLayout(_Layout):
     """Layout whose wires are laid in fixed shapes over interval runs.
 
-    The base class stores each run as one interval; this subclass used to
-    also mirror every covered cell into ``_horizontal_cells`` /
-    ``_vertical_cells`` so a route could be tested cell by cell.  That is
-    O(area) time and memory for checks interval overlap answers in
-    O(log runs + overlaps), and the H-layout's area is linear in the table,
-    so the per-cell maps put a large constant on every build.  Junctions
-    and reservations are indexed per row and column for the same reason.
+    The base class stores each run as one interval; this subclass checks
+    routes against those intervals, not per-cell maps, which cost O(area)
+    time and memory for checks that interval overlap answers in
+    O(log runs + overlaps).  Junctions and reservations are indexed per
+    row and column for the same reason.
     """
 
     def __init__(self) -> None:

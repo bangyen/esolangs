@@ -3,6 +3,7 @@
 import re
 from collections.abc import Callable, Iterator
 from itertools import count, islice
+from string import ascii_letters
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -18,9 +19,7 @@ from esolangs.generation.wrap import _join_tokens, balance_score, wrap_space_del
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
-_FORBIN_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-
+_FORBIN_ALPHABET = ascii_letters
 _FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
 
 
@@ -48,8 +47,8 @@ class _Names:
     def __init__(self, n: int, block: int) -> None:
         self._names = _forbin_names()
 
-        def take(count: int) -> list[str]:
-            return list(islice(self._names, count))
+        def take(size: int) -> list[str]:
+            return list(islice(self._names, size))
 
         # The tree names an input bit once a node and calls ``table`` or a
         # constant printer once a leaf, so those repeat with the table

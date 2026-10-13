@@ -47,6 +47,11 @@ class _Plan(NamedTuple):
         return _shape_score(self.width, self.height)
 
 
+def _improves(candidate: tuple[int, int, int], ceiling: tuple[int, int, int]) -> bool:
+    """Return whether ``candidate`` is squarer without growing the area."""
+    return candidate[1] <= ceiling[1] and candidate < ceiling
+
+
 def _bounded_operations(table: str) -> list[_Operation]:
     """Replace the depth push by doubling; blocks use at most two cells."""
     options = []
@@ -197,7 +202,7 @@ def _tight_plan(operations: list[_Operation], columns: int, stop: int) -> _Plan:
         return compact
     dense = _plan(operations, columns, stop, compact=True, dense=True)
     selected = compact
-    if dense.score()[1] <= compact.score()[1] and dense.score() < compact.score():
+    if _improves(dense.score(), compact.score()):
         selected = dense
     return selected._replace(next_fit=min(compact.next_fit, dense.next_fit))
 
@@ -245,11 +250,11 @@ def balance(table: str, default: Raster) -> Raster:
     default_score = _raster_score(default)
     old_score = min(old.score(), default_score)
     selected = old
-    if compact.score()[1] <= old_score[1] and compact.score() < old_score:
+    if _improves(compact.score(), old_score):
         selected = compact
     dense = _balanced_plan(operations, default, compact=True, dense=True)
     ceiling = min(selected.score(), default_score)
-    if dense.score()[1] <= ceiling[1] and dense.score() < ceiling:
+    if _improves(dense.score(), ceiling):
         selected = dense
     if default_score <= selected.score():
         return pack(operations, default)

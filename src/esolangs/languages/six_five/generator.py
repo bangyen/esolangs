@@ -476,7 +476,7 @@ def _six_five_leaf(value: str, entry: int, held: int | None, scratch: int) -> st
 
 
 def _six_five_node(
-    layout: "_Layout",
+    layout: _Layout,
     truth_table: str,
     perm: tuple[int, ...],
     constant: Callable[[int, int], bool],
@@ -533,7 +533,7 @@ def _six_five_node(
 
 
 def _six_five_tree(
-    layout: "_Layout",
+    layout: _Layout,
     truth_table: str,
     perm: tuple[int, ...],
     constant: Callable[[int, int], bool],

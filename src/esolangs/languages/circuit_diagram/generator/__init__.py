@@ -762,7 +762,7 @@ def _competing_model_circuit(truth_table: str, inputs: int) -> str:
 def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
-    See :func:`_circuit_diagram_at` for the construction.  ``width`` asks
+    See :func:`_circuit_diagram_model` for the construction.  ``width`` asks
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
 

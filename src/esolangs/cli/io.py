@@ -13,15 +13,8 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 
 from esolangs import _read_source, load_program
-from esolangs.cli.args import (
-    _check_count,
-    _errors,
-    _fail,
-)
-from esolangs.cli.hints import (
-    _TIMEOUT_EXIT,
-    _decode_note,
-)
+from esolangs.cli.args import _check_count, _errors, _fail
+from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
 from esolangs.exceptions import EsolangError, ProgramError
 from esolangs.registry import resolve
 from esolangs.runtime._program import Program
@@ -141,13 +134,12 @@ def _resolve_target(
     document carrying its own language; otherwise the positionals are
     the language and the program path.
     """
-    if not (portable and len(rest) == 1):
-        _check_count(command, rest, 2)
     if portable and len(rest) == 1:
         path = rest[0]
         with _errors():
             language, content = _portable_language(path, timeout)
     else:
+        _check_count(command, rest, 2)
         language, path = rest[0], rest[1]
         content = None
     return language, path, content

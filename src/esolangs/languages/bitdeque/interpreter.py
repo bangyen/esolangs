@@ -7,9 +7,8 @@ target past the last command ends the run and a taken GOTO 0 raises
 :class:`HaltError` (the wiki leaves both open).  The wiki has no I/O,
 so the deque is printed space-separated when the program ends -- the
 repo's convention.  A word that is not one of the six upper-case commands
-raises :class:`ValueError` (the old tokenizer ran a lower-case program
-as nothing).  :func:`_advance` is pure over an immutable ``_State``; the
-dump is the shell's post-halt step.
+raises :class:`ValueError`.  :func:`_advance` is pure over an immutable
+``_State``; the dump is the shell's post-halt step.
 """
 
 from __future__ import annotations
@@ -73,8 +72,7 @@ def _advance(state: _State, sym: str) -> _State:
 def _reject_stray_text(code: str) -> None:
     """Refuse a word that is not one of the six commands.
 
-    ``findall`` kept what matched: ``push invert push`` ran as nothing and
-    exited 0, and a seventh word is never deliberate.
+    A seventh word is never deliberate, and ``findall`` would skip it.
     """
     if stray := _TOKEN.sub(" ", code).split():
         raise syntax_error(
@@ -91,7 +89,7 @@ def _reject_stray_text(code: str) -> None:
 class _Machine:
     """Per-run Bitdeque state: the token cursor, register, and deque."""
 
-    #: Whether the tape/registers are written on the step *after* the halt.
+    #: Whether the deque is printed on the step *after* the halt.
     #: It belongs to the language, not to whoever is stepping it: ``run``
     #: ends its loop with one more ``step()``, so a caller who stops at
     #: ``halted`` has driven the program correctly and still holds none of

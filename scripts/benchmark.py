@@ -51,6 +51,7 @@ from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
 _MEMO_TYPES = (tuple, frozenset, Fraction)
+MAX_RECORD_CHARS = 1024 * 1024
 
 
 def artifact_hash(program: esolangs.Program) -> str:
@@ -616,9 +617,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if all(item["matches"] is True for item in result["executions"]) else 1
-
-
-MAX_RECORD_CHARS = 1024 * 1024
 
 
 def _post(

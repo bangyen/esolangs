@@ -27,8 +27,8 @@ from esolangs.runtime.io import IO
 #: returns a new one rather than editing one in place, and the grid is a
 #: ``tuple`` for the same reason.
 #:
-#: This is exactly what ``snapshot`` returns, and always has been, so the
-#: state and its hashable view are the same tuple.
+#: This is exactly what ``snapshot`` returns, so the state and its
+#: hashable view are the same tuple.
 #:
 #: The code and its loop pairing are deliberately not in here.  Neither
 #: changes during a run, so carrying them would put constant data in every

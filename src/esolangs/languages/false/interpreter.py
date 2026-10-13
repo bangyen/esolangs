@@ -40,6 +40,7 @@ why ``ip`` stays a real offset even inside one.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from string import ascii_lowercase
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -48,7 +49,7 @@ from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div, wrap_int32
 from esolangs.runtime.source_hints import syntax_error
 
-_LETTERS = "abcdefghijklmnopqrstuvwxyz"
+_LETTERS = ascii_lowercase
 _VARS = len(_LETTERS)
 
 
@@ -435,10 +436,10 @@ class _Machine:
 
     def step(self) -> None:
         """Execute one command, with the reads and writes the transition asks."""
-        if self.halted:
-            return
         state = _finalize(self.state)
         frames = state[2]
+        if not frames:
+            return
         char = self.code[frames[-1].pc]
         char_input: int | None = None
         if char == "^":
@@ -446,8 +447,8 @@ class _Machine:
                 char_input = self.io.input_char()
             except EOFError:
                 # ``^`` has an EOF value in the spec, so the port's raise is
-                # caught and turned into it -- as nine other interpreters here
-                # turn it into their own language's.  Letting it escape made
+                # caught and turned into it, as other interpreters here do for
+                # their own languages.  Letting it escape made
                 # the reference's own cat loop (``[^1_=~][,]#``) a crash.
                 char_input = None
         self.state, effect = _advance(state, self.code, self.closers, char_input)

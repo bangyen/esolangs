@@ -727,9 +727,8 @@ def _exits_from_node(
     northern cell offered again from a different column.  ``came_from`` is
     ``None`` at the start, where nothing is excluded.
     """
-    cells = set(_cells_of(nodes, row, col))
     out: list[tuple[int, int, tuple[int, int]]] = []
-    for c_row, c_col in sorted(cells):
+    for c_row, c_col in _cells_of(nodes, row, col):
         for d in _HEADINGS:
             n_row, n_col = c_row + d[0], c_col + d[1]
             # A neighbouring node is never an exit: the only nodes that may

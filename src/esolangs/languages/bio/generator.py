@@ -21,6 +21,15 @@ __all__ = ["BIO_PAIR", "bio"]
 
 BIO_PAIR = ("0oz;", "0ox;")
 
+#: ``x = 2 * x`` through ``y``: the first loop moves each unit of ``x`` into
+#: ``y`` twice, the second moves ``y`` back; both registers stay non-negative,
+#: so each loop terminates and ``y`` ends at zero.
+_BIO_DOUBLE = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
+
+#: Around an ignored input's setter: park ``x`` in ``y``, then clear what the
+#: setter added and move ``x`` back, so ``y`` ends at zero as doubling leaves it.
+_BIO_SKIP = ("0ix{1ox;0oy;};", "0ix{1ox;};0iy{1oy;0ox;};")
+
 
 def bio(truth_table: str) -> str:
     """Return a BIO template for a binary, MSB-first ``2**n`` truth table.
@@ -76,16 +85,6 @@ def _bio(
     init = "0oy;" if truth_table[0] == "1" else ""
     closes = "};" * len(opens)
     return pack + init + "".join(opens) + closes + "0oy;" * _ASCII_ZERO + "1iy;"
-
-
-#: ``x = 2 * x`` through ``y``: the first loop moves each unit of ``x`` into
-#: ``y`` twice, the second moves ``y`` back; both registers stay non-negative,
-#: so each loop terminates and ``y`` ends at zero.
-_BIO_DOUBLE = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
-
-#: Around an ignored input's setter: park ``x`` in ``y``, then clear what the
-#: setter added and move ``x`` back, so ``y`` ends at zero as doubling leaves it.
-_BIO_SKIP = ("0ix{1ox;0oy;};", "0ix{1ox;};0iy{1oy;0ox;};")
 
 
 def balance_bio(table: str, default: str) -> str:

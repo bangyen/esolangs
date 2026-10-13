@@ -3,8 +3,8 @@
 ``esolangs/exceptions.py`` states the contract: an interpreter halts with
 :class:`HaltError` "instead of leaking an incidental Python error", and a
 structurally malformed program is rejected with :class:`ValueError`.
-Exhausted input raises :class:`EOFError` (the repo-wide convention), and
-An exit-based halt makes :class:`SystemExit` a documented end.
+Exhausted input raises :class:`EOFError` (the repo-wide convention), and an
+exit-based halt makes :class:`SystemExit` a documented end.
 Anything else reaching the caller -- IndexError, TypeError, OverflowError,
 KeyError -- is a bug in the interpreter, not in the program it was given.
 
@@ -55,7 +55,11 @@ _HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
+# The scoping rule (which files changed, and what forces a full sweep) is
+# shared with scripts/verify/gate.py, so both agree on when a narrowed run is safe.
 from verify.process import write_text
+from verify.scope import SHARED_INTERPRETER as _SHARED
+from verify.scope import changed_files as _changed_files
 
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
@@ -207,13 +211,6 @@ def mutate(text: str, rng: random.Random, n: int = 12) -> list[str]:
         else:
             out.append(text[:i] + rng.choice(",.[]{}()$0az") + text[i:])
     return out
-
-
-# The scoping rule (which files changed, and what forces a full sweep) is
-# shared with scripts/verify/gate.py, so both agree on when a narrowed run is safe.
-sys.path.insert(0, str(_ROOT / "scripts"))
-from verify.scope import SHARED_INTERPRETER as _SHARED
-from verify.scope import changed_files as _changed_files
 
 
 def _select(

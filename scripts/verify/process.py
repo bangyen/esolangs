@@ -21,6 +21,8 @@ from typing import BinaryIO, cast
 from weakref import WeakKeyDictionary
 
 EXCERPT_BYTES = 32 * 1024
+MAX_LOG_BYTES = 8 * 1024 * 1024
+MARKER = b"\n[diagnostic byte limit exceeded]\n"
 
 
 @dataclass
@@ -268,10 +270,6 @@ def write_text(path: Path, text: str) -> None:
             temporary.unlink(missing_ok=True)
 
 
-MAX_LOG_BYTES = 8 * 1024 * 1024
-MARKER = b"\n[diagnostic byte limit exceeded]\n"
-
-
 def spool(
     stream: BinaryIO,
     path: Path,
@@ -285,8 +283,8 @@ def spool(
         while chunk := cast(bytes, getattr(stream, "read1", stream.read)(8192)):
             if written + len(chunk) > limit - len(MARKER):
                 available = max(0, limit - written - len(MARKER))
-                excerpt = chunk[-available:] if available else b""
-                output.write(excerpt)
+                tail = chunk[-available:] if available else b""
+                output.write(tail)
                 output.write(MARKER)
                 output.flush()
                 if tee is not None:

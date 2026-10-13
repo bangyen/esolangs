@@ -95,7 +95,7 @@ _DOUBLE = frozenset("═║╔╗╚╝╠╣╦╩╬")
 _ARROWS = frozenset("▲▶▼◀△▷▽◁")
 _NODES = frozenset("▣◉◘▲▶▼◀△▷▽◁◯◔◈◇◧⬓◨⬒◹◺◐◑◒◓□■▦")
 _PRIORITY = {"◘": 2, "◈": 2, "◹": 2, "◺": 2, "◇": 3, "◧": 3, "⬓": 3, "◨": 3, "⬒": 3}
-_ARROW_DIRECTION = dict(zip("▶◀▲▼▷◁△▽", "EWNS EWNS".replace(" ", ""), strict=True))
+_ARROW_DIRECTION = dict(zip("▶◀▲▼▷◁△▽", "EWNSEWNS", strict=True))
 _BLACK_SIDE = {"◐": "W", "◑": "E", "◒": "S", "◓": "N"}
 _WHITE_SIDE = {node: _OPPOSITE[side] for node, side in _BLACK_SIDE.items()}
 

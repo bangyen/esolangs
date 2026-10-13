@@ -416,12 +416,7 @@ def _too_large(state: _State, addr: int) -> bool:
     Values are unbounded; the list of cells is not: halt, not ``OverflowError``.
     """
     _cells, length = state[0]
-    return (
-        addr != _IO
-        and addr not in _SPECIAL
-        and addr >= length
-        and addr + 1 > _MAX_MEMORY
-    )
+    return addr not in _SPECIAL and addr >= length and addr + 1 > _MAX_MEMORY
 
 
 def _store(state: _State, addr: int, value: int) -> _State:

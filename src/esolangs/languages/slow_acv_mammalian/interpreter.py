@@ -152,11 +152,7 @@ _INS = (
     "PRONOUNCE",
 )
 
-# Token -> opcode, so a step names its instruction by lookup.  ``step``
-# used ``_INS.index(...)``, which walks the tuple comparing strings, and
-# does it once per token executed: SEED is first and costs one compare,
-# but PRONOUNCE is last and costs ten, so the price depended on which
-# instruction was running rather than on the work it did.
+# Token -> opcode, so a step names its instruction by lookup.
 _OPCODE = {name: op for op, name in enumerate(_INS)}
 
 

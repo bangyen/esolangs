@@ -5,9 +5,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Self
 
-if TYPE_CHECKING:
-    from esolangs.settings import DialectSettings
-
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     Setters,
@@ -15,6 +12,9 @@ from esolangs.generation.helpers import (
     fill_runs,
     runs,
 )
+
+if TYPE_CHECKING:
+    from esolangs.settings import DialectSettings
 
 __all__ = ["_Tagged", "_Template"]
 

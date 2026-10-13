@@ -38,8 +38,8 @@ against a rebuilt tuple.  The invariant that makes reporting sound:
 ``stack[-1 - pops]``.  Finishing a frame (flush the mode buffer, pop, or
 rewind for ``Z``) is part of the transition, reading the *virtual* depth.
 
-The old ``steps``/``limit`` budget is gone: unbounded pushes are what
-``esolangs.run``'s ``timeout`` catches, and ancestor replay is decided by
+Unbounded pushes are what ``esolangs.run``'s ``timeout`` catches, and
+ancestor replay is decided by
 :func:`esolangs.vm.run_until_halt_or_ancestor`.
 
 The page's truth machine ``HFAFYHWJUZFZFY`` works for input 0 only: on 1,
@@ -202,9 +202,8 @@ def _frame(code: str, *, repeat: bool = False) -> _Frame:
 class _Step:
     """Everything one command may read or change, held in one place.
 
-    The old dispatch chain threaded these through mutable locals that every
-    branch closed over; a handler takes this instead and records its effects
-    on it explicitly.  It never escapes :func:`_advance`, so the transition
+    A handler takes this and records its effects on it explicitly.  It
+    never escapes :func:`_advance`, so the transition
     stays pure over the immutable :type:`_State`.
     """
 
@@ -400,7 +399,7 @@ def _cmd_cond_call(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> 
 
 def _cmd_not(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
     """Push 1 for a falsy value, 0 for a truthy one."""
-    step.pushes = (1 if not _truthy(step.pop(view)) else 0,)
+    step.pushes = (int(not _truthy(step.pop(view))),)
 
 
 def _cmd_skip_if_falsy(
@@ -460,10 +459,8 @@ _COMMANDS: Final[dict[str, _Handler]] = {
     "B": _arith(sub),
     "C": _cmd_store,
     "D": _cmd_load,
-    "E": _open_mode("string"),
-    "F": _open_mode("int"),
+    **{char: _open_mode(mode) for char, mode in _OPENS.items()},
     "G": _cmd_call,
-    "H": _open_mode("func"),
     "I": _cmd_exec,
     "J": _cmd_to_int,
     "K": _cmd_dup,

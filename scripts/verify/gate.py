@@ -184,8 +184,7 @@ def _rerun_hint(name: str) -> list[str]:
     """Return the commands that rerun, and any that fix, failed step *name*."""
     if name == "verification inputs":
         return ["  rerun: uv run python scripts/verify/gate.py"]
-    step = name
-    rerun = f"  rerun: uv run python scripts/verify/gate.py --only {shlex.quote(step)}"
+    rerun = f"  rerun: uv run python scripts/verify/gate.py --only {shlex.quote(name)}"
     return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
 
 
@@ -587,7 +586,7 @@ def main() -> int:
                 continue
             cmd = narrowed
         step_env = env
-        if name == "pre-commit":
+        if name == MUTATES_TREE:
             # Skip the config's mypy hook: the very next step runs mypy over
             # src/ *and* scripts/ from the project env, against the same
             # pyproject config, so the hook re-proves a strict subset -- and
@@ -595,7 +594,7 @@ def main() -> int:
             # skips it; CI runs `pre-commit run --all-files` with no SKIP
             # (ci.yml:28), so the hook still guards the config itself.
             step_env = dict(step_env, SKIP="mypy")
-        if only is None and name == "pytest":
+        if only is None and name == LONG_STEP:
             cmd = _pytest_cmd(cmd, full=full, changed=changed)
         if not have_pylint and "(pylint)" in name:
             unavailable.append(f"{name}: pylint not installed (pip install pylint)")

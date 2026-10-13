@@ -126,8 +126,7 @@ def _nocomment_chain(
     stages = 0
     for i in range(n):
         move(bit)
-        out.append("c")
-        out.append(_NOCOMMENT_INPUT)
+        out.extend(("c", _NOCOMMENT_INPUT))
         if i not in weights:
             continue
         weight = weights[i]

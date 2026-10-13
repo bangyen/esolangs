@@ -28,6 +28,11 @@ from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
+_AT_NUMBER = re.compile(r"@\$(\d+){")
+_AT_CHAR = re.compile(r"@(.){")
+_LOAD_NUMBER = re.compile(r"#\$(\d+)")
+_LOAD_CHAR = re.compile(r"#(.)")
+
 
 def _brackets(code: str) -> Iterator[tuple[int, str]]:
     """Yield structural brackets, skipping literal data in loads and guards."""
@@ -120,19 +125,24 @@ def _advance(
     elif c == "&":
         return (acc, ind, stk, True)
     else:
-        val = code[ind:]
-        if m := re.match(r"@\$(\d+){", val):
+        if m := _AT_NUMBER.match(code, ind):
             ind = _branch(
-                code, partners, ind, m.end() - 1, taken=acc == parse_integer(m[1])
+                code,
+                partners,
+                ind,
+                m.end() - 1 - ind,
+                taken=acc == parse_integer(m[1]),
             )
-        elif m := re.match(r"@(.){", val):
-            ind = _branch(code, partners, ind, m.end() - 1, taken=acc == ord(m[1]))
-        elif m := re.match(r"#\$(\d+)", val):
+        elif m := _AT_CHAR.match(code, ind):
+            ind = _branch(
+                code, partners, ind, m.end() - 1 - ind, taken=acc == ord(m[1])
+            )
+        elif m := _LOAD_NUMBER.match(code, ind):
             acc = parse_integer(m[1])
-            ind += m.end() - 1
-        elif m := re.match(r"#(.)", val):
+            ind = m.end() - 1
+        elif m := _LOAD_CHAR.match(code, ind):
             acc = ord(m[1])
-            ind += m.end() - 1
+            ind = m.end() - 1
 
     return (acc, ind + 1, stk, halted)
 

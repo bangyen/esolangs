@@ -81,7 +81,7 @@ supports_scale = True
 Pixel = tuple[int, int, int]
 Point = tuple[int, int]
 #: An integer or a nested stack, held as an immutable tuple (bottom first).
-#: ``Any`` spares the casts around the recursive stack tree, as before.
+#: ``Any`` spares the casts around the recursive stack tree.
 type Element = Any
 type _Stack = tuple[Element, ...]
 type _Rows = tuple[tuple[Pixel, ...], ...]
@@ -480,16 +480,14 @@ class _Machine:
             try:
                 core, effect = _advance(self.state, value, ready=ready)
             except _NeedInputError as need:
-                number = need.number
-                read_ok = True
                 try:
-                    value = self.io.input_token() if number else self.io.input_char()
+                    value = (
+                        self.io.input_token() if need.number else self.io.input_char()
+                    )
+                    self._input_reads += 1
                 except EOFError:
                     value = None
-                    read_ok = False
                 ready = True
-                if read_ok:
-                    self._input_reads += 1
             except _FaultError as fault:
                 raise fault.cause from None
             else:

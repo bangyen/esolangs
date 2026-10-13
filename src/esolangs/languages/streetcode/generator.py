@@ -3,7 +3,7 @@
 Through five inputs, a decision tree from labelled loop strips
 (:func:`_streetcode_strip`), per-level blocks joined side by side.  Each
 per-input strip walks a cell by 48 (an ASCII digit to a bit, a fresh cell
-to a digit); its hallway loop spends the 48 as unary cells, 29 rows by 4
+to a digit); its hallway loop spends the 48 as unary cells, 30 rows by 4
 columns.
 
 From six inputs the tree goes away: the table is written one cell per
@@ -87,16 +87,15 @@ def _streetcode_ring(c: str) -> list[str]:
         (_RING_ENTRY, _RING_COUNTER - 1, "^"),
         (_RING_LAP, _RING_PER_LAP, c),
     ):
-        for i, (r, col) in enumerate(cells):
-            if i < keep:
-                grid[r][col] = char
+        for r, col in cells[:keep]:
+            grid[r][col] = char
     return ["".join(row) for row in grid]
 
 
 def _streetcode_hallway(c: str) -> list[str]:
     """Build a wall-hugging loop of exactly 48 ``c`` cells, one per row-pair.
 
-    29 rows by 4 columns, for width-constrained programs.
+    30 rows by 4 columns, for width-constrained programs.
     """
     top = ["----", "    ", "    ", "+  +", "|  |"]
     row = f"|{c * 2}|"

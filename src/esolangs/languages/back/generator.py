@@ -26,6 +26,14 @@ _Node = tuple[int, int]
 _Grid = dict[tuple[int, int], str]
 
 
+#: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
+#: Both are one grid cell, so a run is the exact width of its program.
+PAIR = ("-", "+")
+_BACK_INPUT = TEMPLATE_CHAR
+_WRAP_ROWS = 8
+_MIRROR = {"/": "\\", "\\": "/"}
+
+
 def _extent(grid: _Grid) -> tuple[int, int]:
     """Return the rows and columns ``grid`` spans, counted from zero."""
     return (
@@ -139,14 +147,6 @@ def _back_bend(
     return candidate
 
 
-#: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
-#: Both are one grid cell, so a run is the exact width of its program.
-PAIR = ("-", "+")
-_BACK_INPUT = TEMPLATE_CHAR
-_WRAP_ROWS = 8
-_MIRROR = {"/": "\\", "\\": "/"}
-
-
 def _render(rows: list[dict[int, str]]) -> str:
     """Join sparse rows, gaps blank, each row only as long as its last cell."""
     return "\n".join(
@@ -155,16 +155,14 @@ def _render(rows: list[dict[int, str]]) -> str:
     )
 
 
-def _place_load(
-    grid: dict[tuple[int, int], str], units: list[str], height: int
-) -> None:
+def _place_load(grid: _Grid, units: list[str], height: int) -> None:
     """Put the origin ``/`` and the load column, bottom up, into ``grid``."""
     grid[(0, 0)] = "/"
     for k, unit in enumerate(units):
         grid[(height - 1 - k, 0)] = unit
 
 
-def _reflect_back(grid: dict[tuple[int, int], str], height: int, width: int) -> str:
+def _reflect_back(grid: _Grid, height: int, width: int) -> str:
     r"""Reflect a Back template and route the fixed eastward start into it.
 
     ``grid`` maps ``(row, column)`` to a character; ``width`` is the widest
@@ -186,7 +184,7 @@ def _reflect_back(grid: dict[tuple[int, int], str], height: int, width: int) -> 
     return _render(rows)
 
 
-def _descending_back(grid: dict[tuple[int, int], str], units: list[str]) -> str:
+def _descending_back(grid: _Grid, units: list[str]) -> str:
     """Reflect the tree below a downward loader, without outer entry columns."""
     top = len(units) + 1
     last = max(column for _, column in grid)
@@ -636,8 +634,7 @@ def _back_ordered(
     # the bottom row (toroidal wrap), up the load, then up -> right into the
     # tree at column 1.
     _place_load(grid, units, height)
-    # No input row can instantiate to whitespace (a zero used to embed as a
-    # blank, and the height revealed it).
+    # No input row can instantiate to whitespace.
     program = _reflect_back(grid, height, tree_width)
     if bent is not None:
         bent_rows, bent_width = _extent(bent)

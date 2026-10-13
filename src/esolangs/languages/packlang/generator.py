@@ -169,9 +169,7 @@ def balance_packlang(_table: str, default: str) -> str:
     )
 
 
-def _painted(
-    painted: str, weights: list[int], *, runs: bool, block: int = _BLOCK
-) -> str:
+def _painted(painted: str, weights: list[int], *, runs: bool, block: int) -> str:
     """Return a program painting ``painted``'s ones into an array.
 
     ``painted`` indexes the inputs of nonzero weight; the rest are read and

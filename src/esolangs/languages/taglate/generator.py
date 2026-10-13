@@ -175,9 +175,7 @@ def _taglate_raw(truth_table: str, *, keep_constant_layout: bool = False) -> str
     # table, which is not a valid shape.
     if not used and n > 1:
         used = [0]
-    # An odd-sized dependency set would make the *reduced* program
-    # ghost-pad itself and expect an input the stream does not carry, so
-    # widen it by one adjacent ignored input to keep it even.
+    # Widen an odd dependency set to even (see the docstring).
     if len(used) % 2 == 1 and len(used) > 1:
         if used[-1] + 1 < n:
             used = [*used, used[-1] + 1]

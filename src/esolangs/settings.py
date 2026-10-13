@@ -1,6 +1,7 @@
 """Immutable specification choices for generation and execution."""
 
 import inspect
+from collections.abc import Callable
 from dataclasses import dataclass
 from difflib import get_close_matches
 from typing import Any, TypedDict, cast
@@ -52,7 +53,7 @@ class DialectSettings:
             if values:
                 raise ArgumentError(f"{name} supports no dialect settings")
         else:
-            keys = list(inspect.signature(dialect).parameters)
+            keys = _dialect_keys(dialect)
             unknown = values.keys() - set(keys)
             if unknown:
                 raise ArgumentError(
@@ -67,6 +68,11 @@ class DialectSettings:
                     f"invalid dialect settings for {name}: {error}"
                 ) from error
         return values
+
+
+def _dialect_keys(dialect: Callable[..., Any]) -> list[str]:
+    """Return the setting names a dialect validator accepts."""
+    return list(inspect.signature(dialect).parameters)
 
 
 def dialect_options(language: str, settings: DialectSettings | None) -> dict[str, Any]:
@@ -119,7 +125,7 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
     dialect = LANGUAGES[name].dialect
     if dialect is None:
         return {}
-    keys = list(inspect.signature(dialect).parameters)
+    keys = _dialect_keys(dialect)
     machine = interpreter_module(name)._Machine  # noqa: SLF001 - interpreter adapter
     parameters = inspect.signature(machine).parameters
     return {

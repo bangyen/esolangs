@@ -169,12 +169,6 @@ def _grow(tape: tuple[int, ...], ptr: int) -> tuple[int, ...]:
     return (*tape, *([0] * (ptr + 1 - len(tape))))
 
 
-#: Idempotent commands: a repeat of any length is one application.  ``h``
-#: halves the cell it writes, so it is collapsed by the shift in
-#: :func:`_advance` instead.
-_IDEMPOTENT = frozenset("zwqd")
-
-
 def _set(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
     """Return ``tape`` with the cell at ``ptr`` set to ``value``."""
     return (*tape[:ptr], value, *tape[ptr + 1 :])
@@ -260,8 +254,7 @@ def _scan_c_run(prog: str, ind: int, n: int) -> tuple[str, int, int]:
     ``7**3``.  A ``t`` run after the ``c`` run repeats the ``c`` itself:
     ``ct`` is four ``c``s, ``7 ** 4``; ``ctt`` thirteen, ``7 ** 13``.  Read
     here, not by the ``t`` executing (that made ``pt`` and ``ct`` unable to
-    both be right).  The scan loop above already pulled the next char into
-    ``c``.
+    both be right).
     """
     rep = 1
     while True:
@@ -376,7 +369,7 @@ def _do_i(step: _Step) -> None:
     except _NeedRead as want:
         raise _NeedRead(line=True, state=step.snapshot()) from want
     try:
-        step.tape = _set(step.tape, step.ptr, int(str(line)))
+        step.tape = _set(step.tape, step.ptr, int(line))
     except ValueError:
         raise _Halted(
             step.snapshot(),
@@ -387,12 +380,11 @@ def _do_i(step: _Step) -> None:
 
 def _do_j(step: _Step) -> None:
     """Read one character code into the cell."""
-    # ``j`` is answered with a character code, so this is already an int.
     try:
         byte = step.reads.take(line=False)
     except _NeedRead as want:
         raise _NeedRead(line=False, state=step.snapshot()) from want
-    step.tape = _set(step.tape, step.ptr, int(str(byte)))
+    step.tape = _set(step.tape, step.ptr, int(byte))
 
 
 def _do_o(step: _Step) -> None:
@@ -529,6 +521,11 @@ _DISPATCH: dict[str, Callable[[_Step], _After | None]] = {
     "d": _do_d,
     "t": _do_t,
 }
+
+
+#: Idempotent commands: a repeat of any length is one application.  ``h``
+#: is not one: :func:`_collapse_half` shifts it instead.
+_IDEMPOTENT = frozenset("zwqd")
 
 
 def _collapse_repeat(step: _Step) -> bool:

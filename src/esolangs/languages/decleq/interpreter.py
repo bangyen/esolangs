@@ -56,7 +56,6 @@ def _written(memory: tuple[int, ...], addr: int, value: int) -> tuple[int, ...]:
     """
     if addr < 0:
         if addr < -len(memory):
-            # Was a bare ``IndexError`` (``run("Decleq", "4 -8")`` gave a traceback).
             raise HaltError(
                 f"address {format_integer(addr)} is "
                 f"{format_integer(-addr - len(memory))} cells past the "
@@ -132,7 +131,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        # A list, as before the memory became a tuple; the VM copies it.
+        # A list; the VM copies it.
         return list(self.state[1])
 
     def snapshot(self) -> tuple[object, ...]:

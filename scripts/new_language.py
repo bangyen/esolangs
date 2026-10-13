@@ -230,14 +230,13 @@ def _source_file(base: Path) -> Path | None:
 
 
 def _unregistered(name: str, slug: str) -> list[Gap]:
-    module = slug
     package = ROOT / "src/esolangs/languages" / slug / "generator"
     generator = _source_file(package)
     if generator is None:
         return [
             Gap(
                 "src/esolangs/registry/_table.py",
-                f'add Language("{name}", "{module}") to _INTERPRETER_ONLY; add '
+                f'add Language("{name}", "{slug}") to _INTERPRETER_ONLY; add '
                 "split=True only if run() takes list[str], one string per line, "
                 "and random=True if an instruction draws at random",
             )
@@ -245,7 +244,7 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
     return [
         Gap(
             str(generator.relative_to(ROOT)),
-            f'end it with LANGUAGE = Language("{name}", "{module}", '
+            f'end it with LANGUAGE = Language("{name}", "{slug}", '
             f"boolean={slug}); add split=True only if run() takes list[str], "
             "one string per source line, and contract=BooleanContract(...) if "
             "its programs do not read one 0/1 line per input "
@@ -442,8 +441,7 @@ def quick_tests(name: str) -> list[str]:
     from esolangs.registry._language import Shape
 
     lang = LANGUAGES[name]
-    nodes: list[str] = []
-    nodes += [
+    nodes = [
         path.relative_to(ROOT).as_posix()
         for path in sorted(
             (ROOT / "src/esolangs/languages" / lang.id / "tests").rglob("test_*.py")
@@ -452,7 +450,7 @@ def quick_tests(name: str) -> list[str]:
     nodes += [
         "tests/interpreters/test_interpreter_conventions.py"
         "::test_interpreter_docstrings_follow_the_template",
-        f"tests/interpreters/test_interpreters_robustness.py"
+        "tests/interpreters/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
     ]
     if lang.boolean is None:

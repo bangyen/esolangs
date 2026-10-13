@@ -194,8 +194,7 @@ class _Machine:
     @property
     def ip(self) -> tuple[int, ...]:
         """The current instruction position."""
-        row, col, a, b = self.state[:4]
-        return (row, col, a, b)
+        return self.state[:4]
 
     @property
     def memory(self) -> list[int]:

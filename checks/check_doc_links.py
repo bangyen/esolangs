@@ -51,13 +51,13 @@ def slug(heading: str) -> str:
 
 def anchors(text: str) -> set[str]:
     """Return every heading and explicit anchor a reader can link to in ``text``."""
-    found = {slug(m.group(1)) for m in _HEADING.finditer(_FENCE.sub("", text))}
+    headings = [slug(m.group(1)) for m in _HEADING.finditer(_FENCE.sub("", text))]
+    found = set(headings)
     found |= {m.group(1) for m in _EXPLICIT_ANCHOR.finditer(text)}
     # GitHub disambiguates a repeated heading, but a repeated anchor is a
     # document bug rather than a link target, so only headings get suffixes.
     seen: dict[str, int] = {}
-    for match in _HEADING.finditer(_FENCE.sub("", text)):
-        base = slug(match.group(1))
+    for base in headings:
         count = seen.get(base, 0)
         seen[base] = count + 1
         if count:

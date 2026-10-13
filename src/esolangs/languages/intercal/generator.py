@@ -242,7 +242,7 @@ def _program(n: int, assigned: list[tuple[int, _Expr]], result: _Expr) -> str:
     """Return the polite template: inputs, shared variables, result, output."""
     statements = [f".{n - i} <- {TEMPLATE_CHAR * 2}" for i in range(n)]
     statements += [f".{name} <- {expr.render()}" for name, expr in assigned]
-    statements += [f".{n + 1} <- {result.render()}"]
+    statements.append(f".{n + 1} <- {result.render()}")
     statements += [f"READ OUT .{n + 1}", "GIVE UP"]
     polite = max(1, (len(statements) + 4) // 5)  # one statement in five
     return "\n".join(
