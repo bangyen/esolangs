@@ -56,7 +56,7 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     if width is not None:
         plain = _brainif_tree(truth_table, width)
         n = _validate_truth_table(truth_table)
-        if n <= 2 and max(map(len, plain.splitlines())) > width:
+        if n <= 2 and grid_width(plain) > width:
             # Two-digit output jumps overflow a narrow width; zero jumps are shorter.
             return _brainif_zero_jumps(truth_table)
         return plain

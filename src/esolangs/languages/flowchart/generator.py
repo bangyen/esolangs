@@ -20,6 +20,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
+    grid_area,
     grid_width,
     narrowest_grid,
     read_at,
@@ -552,14 +553,9 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     # in both characters and the rectangle.
     shared = _flowchart_render(_flowchart_stacked(truth_table, share=True))
     fits = grid_width(shared) <= width
-    if fits and len(shared) < len(stacked) and _area(shared) < _area(stacked):
+    if fits and len(shared) < len(stacked) and grid_area(shared) < grid_area(stacked):
         return shared
     return stacked
-
-
-def _area(program: str) -> int:
-    """Return the cells of the program's bounding rectangle."""
-    return grid_width(program) * (program.count("\n") + 1)
 
 
 def _flowchart_deque(truth_table: str, *, keep_constant_input: bool = False) -> str:
@@ -666,7 +662,6 @@ LANGUAGE = Language(
     # program pane and a tuple ``ip``, neither of which a tape language
     # exercises.  ``replay`` derives the frame from nothing, so this is a
     # coordinate, not a recording.
-    showcase=True,
     boolean=flowchart,
     # Not a tree: one deque push per entry.
     shape=Shape.LOOKUP,

@@ -544,11 +544,6 @@ def _start_statement_call(
     return pushed, ctx
 
 
-def _state_of(frames: tuple[_Frame, ...], ctx: _Ctx) -> _State:
-    """Return the immutable run state a transition attempt has reached."""
-    return _State(frames, ctx.scopes, ctx.next_scope, ctx.bits, ctx.reads)
-
-
 def _advance(
     state: _State,
     globals_: Mapping[str, _Function],
@@ -565,20 +560,14 @@ def _advance(
     out: list[str] = []
     ctx = _Ctx(state.scopes, state.next_scope, state.bits, state.reads, 0, out, inputs)
     try:
-        new_state = _step(state, globals_, ctx)
+        frames, ctx, _returned = _step_frames(state.frames, globals_, ctx)
     except _NeedByte:
         raise _NeedByte(tuple(out)) from None
     except _Fault:
         raise
     except BaseException as exc:
         raise _Fault(tuple(out), exc) from None
-    return new_state, tuple(out)
-
-
-def _step(state: _State, globals_: Mapping[str, _Function], ctx: _Ctx) -> _State:
-    """Advance one statement, row, or call, appending output to ``ctx.out``."""
-    frames, ctx, _returned = _step_frames(state.frames, globals_, ctx)
-    return _state_of(frames, ctx)
+    return _State(frames, ctx.scopes, ctx.next_scope, ctx.bits, ctx.reads), tuple(out)
 
 
 def _step_frames(

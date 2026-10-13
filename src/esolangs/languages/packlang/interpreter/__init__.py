@@ -469,10 +469,8 @@ def _resolved(frame: _Frame) -> tuple[object, ...]:
     stmt = frame.func.body[frame.pc]
     if frame.pending is None:
         return stmt
-    slot = _EXPR_SLOT.get(str(stmt[0]))
-    if slot is None:  # pragma: no cover - only _JUMP lacks a slot, and a
-        # jump never has a pending call, so the check above returns first
-        return stmt
+    # A pending call came from this statement's expression, so it has a slot.
+    slot = _EXPR_SLOT[str(stmt[0])]
     parts = list(stmt)
     parts[slot] = frame.pending
     return tuple(parts)

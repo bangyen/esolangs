@@ -29,6 +29,15 @@ def detect_scale(rows: Rows) -> int:
     return scale
 
 
+def _uneven() -> ValueError:
+    """Return the error for a codel square that is not one solid colour."""
+    return syntax_error(
+        "scale requires uniform codel squares",
+        "use solid square codels at the chosen scale, or use scale 1",
+        error_type=ProgramError,
+    )
+
+
 def normalize(rows: Rows, scale: int | None = None) -> Rows:
     """Validate and reduce uniform codel squares, detecting size when omitted."""
     factor = detect_scale(rows) if scale is None else check_scale(scale)
@@ -45,22 +54,14 @@ def normalize(rows: Rows, scale: int | None = None) -> Rows:
     for y in range(0, len(rows), factor):
         source = rows[y]
         if any(rows[yy] != source for yy in range(y + 1, y + factor)):
-            raise syntax_error(
-                "scale requires uniform codel squares",
-                "use solid square codels at the chosen scale, or use scale 1",
-                error_type=ProgramError,
-            )
+            raise _uneven()
         cached = checked.get(id(source))
         if cached is None:
             row = []
             for x in range(0, len(source), factor):
                 pixel = source[x]
                 if source[x : x + factor] != (pixel,) * factor:
-                    raise syntax_error(
-                        "scale requires uniform codel squares",
-                        "use solid square codels at the chosen scale, or use scale 1",
-                        error_type=ProgramError,
-                    )
+                    raise _uneven()
                 row.append(pixel)
             reduced = tuple(row)
             if len(checked) < 1024:

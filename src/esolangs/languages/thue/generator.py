@@ -26,6 +26,7 @@ from esolangs.generation.helpers import (
     _residual_ids,
     _validate_truth_table,
     essential_inputs,
+    grid_width,
     read_at,
     subtree_ids,
 )
@@ -92,17 +93,13 @@ _QUEUED_NAME_ALPHABET = "".join(c for c in _NAME_ALPHABET if c not in "KSJ")
 _FOLD_NAME_ALPHABET = "".join(c for c in _QUEUED_NAME_ALPHABET if c not in "ZYWV")
 
 
-def _chunk_marker(index: int, digits: int, alphabet: str = _NAME_ALPHABET) -> str:
+def _chunk_marker(index: int, digits: int, alphabet: str) -> str:
     """Return a fixed-width name containing no table or control symbol."""
     name = []
     for _ in range(digits):
         index, digit = divmod(index, len(alphabet))
         name.append(alphabet[digit])
     return "".join(reversed(name))
-
-
-def _widest(program: str) -> int:
-    return max(map(len, program.splitlines()))
 
 
 def thue(truth_table: str, width: int | None = None) -> str:
@@ -125,7 +122,7 @@ def thue(truth_table: str, width: int | None = None) -> str:
     limit = width if width and width > 0 else None
 
     def overshoot(layout: str) -> int:
-        return 0 if limit is None else max(0, _widest(layout) - limit)
+        return 0 if limit is None else max(0, grid_width(layout) - limit)
 
     return min(layouts, key=lambda layout: (overshoot(layout), len(layout)))
 
@@ -208,7 +205,7 @@ def _thue_layout(
         base = "\n".join([base.removesuffix("\n::="), *extra, "::="])
     start = f"L{rounds}R" if queued else "LM"
     program = f"{base}\n{start}{entries}E"
-    if width is None or width <= 0 or _widest(program) <= width:
+    if width is None or width <= 0 or grid_width(program) <= width:
         return program
     if extra:
         # Contracting would merge the fold's ``KRaE`` with the final ``LRaE``.
@@ -223,7 +220,7 @@ def _thue_layout(
         rules_text = _RULES.replace("LR", "C").replace("::=LM", "::=D")
         rules_text = rules_text.removesuffix("::=") + "LR::=C\nD::=LM\n::="
     narrow = f"{rules_text}\n{start}{entries}E"
-    if _widest(narrow) <= width:
+    if grid_width(narrow) <= width:
         return narrow
     length = len(entries)
     # One-symbol nodes fit only bounded arities; larger trees retain chunks.
@@ -343,8 +340,8 @@ def _thue_short_tree(truth_table: str) -> str:
     return "\n".join([*rules, "::=", ready[levels[0][0]]])
 
 
-def _marker_digits(length: int, base: int = len(_NAME_ALPHABET)) -> int:
-    """Return the fixed base-44 name length covering the table."""
+def _marker_digits(length: int, base: int) -> int:
+    """Return the name length, in ``base``-letter symbols, covering the table."""
     digits, capacity = 1, base
     while capacity < length:
         digits += 1
@@ -363,7 +360,7 @@ def balance_thue(truth_table: str, default: str) -> str:
         (_thue_layout(*layout, None) for layout in _tables(truth_table)), key=len
     )
     candidates = [default, plain, thue(truth_table, 1)]
-    cap = max(_widest(default), _widest(plain))
+    cap = max(grid_width(default), grid_width(plain))
     for table, rounds, extra in _tables(truth_table):
         size = len(table)
         digits = _marker_digits(size, len(_alphabet(rounds, extra)))

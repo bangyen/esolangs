@@ -442,75 +442,23 @@ def _six_five_use_counts(
     """
     constant = constant_span_test(truth_table)
     uses = dict.fromkeys(stored, 0)
-    _six_five_count_uses(
-        truth_table,
-        perm,
-        stored,
-        constant,
-        uses,
-        0,
-        0,
-        2 ** len(perm),
-        raw_copies=raw_copies,
-    )
+
+    def tally(level: int, lo: int, hi: int) -> None:
+        if level == len(perm) or constant(lo, hi):
+            return
+        mid = (lo + hi) // 2
+        if perm[level] not in stored:
+            tally(level + 1, lo, mid)
+            return
+        if _six_five_halves(truth_table, constant, lo, hi, "01"):
+            uses[perm[level]] += 1 if raw_copies else 2
+            return
+        uses[perm[level]] += 1
+        tally(level + 1, lo, mid)
+        tally(level + 1, mid, hi)
+
+    tally(0, 0, 2 ** len(perm))
     return uses
-
-
-def _six_five_count_uses(
-    truth_table: str,
-    perm: tuple[int, ...],
-    stored: set[int],
-    constant: Callable[[int, int], bool],
-    uses: dict[int, int],
-    level: int,
-    lo: int,
-    hi: int,
-    *,
-    raw_copies: bool,
-) -> None:
-    """Tally one span of :func:`_six_five_use_counts`' walk into ``uses``."""
-    if level == len(perm) or constant(lo, hi):
-        return
-    mid = (lo + hi) // 2
-    if perm[level] not in stored:
-        _six_five_count_uses(
-            truth_table,
-            perm,
-            stored,
-            constant,
-            uses,
-            level + 1,
-            lo,
-            mid,
-            raw_copies=raw_copies,
-        )
-        return
-    if _six_five_halves(truth_table, constant, lo, hi, "01"):
-        uses[perm[level]] += 1 if raw_copies else 2
-        return
-    uses[perm[level]] += 1
-    _six_five_count_uses(
-        truth_table,
-        perm,
-        stored,
-        constant,
-        uses,
-        level + 1,
-        lo,
-        mid,
-        raw_copies=raw_copies,
-    )
-    _six_five_count_uses(
-        truth_table,
-        perm,
-        stored,
-        constant,
-        uses,
-        level + 1,
-        mid,
-        hi,
-        raw_copies=raw_copies,
-    )
 
 
 def _six_five_leaf(value: str, entry: int, held: int | None, scratch: int) -> str:

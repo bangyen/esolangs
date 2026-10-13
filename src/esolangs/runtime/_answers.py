@@ -11,6 +11,7 @@ from esolangs.exceptions import (
     ArgumentError,
     ProgramError,
 )
+from esolangs.generation.helpers import _validate_truth_table, check_table_text
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._contracts import CHAR_STREAMS
 from esolangs.runtime._validate import check_bits
@@ -45,8 +46,6 @@ def encode_inputs(
     # no sign that anything went astray.
     bits = check_bits(bits, "bits")
     if truth_table is not None and LANGUAGES[name].boolean is not None:
-        from esolangs.generation.helpers import _validate_truth_table, check_table_text
-
         check_table_text(truth_table)
         arity = _validate_truth_table(truth_table)
         if len(bits) != arity:

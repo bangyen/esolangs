@@ -270,10 +270,7 @@ def _draw_loop_back(
         # legitimate ink.
         stop_at = cursor.occupied if plan.ancestor_returns else None
         cells = _leg_cells((cursor.y, cursor.x), legs, stop_at)
-        end = (
-            cursor.y + sum(direction[0] * length for direction, length in legs),
-            cursor.x + sum(direction[1] * length for direction, length in legs),
-        )
+        end = _leg_end((cursor.y, cursor.x), legs)
         blocked = cells[-1] != end or any(c in cursor.occupied for c in cells[1:-1])
         if blocked:
             trunk = plan.returns.get(id(target))
@@ -326,6 +323,16 @@ _CLEARANCE = 1
 _TREE_GAP = _CLEARANCE + 1
 
 
+def _leg_end(
+    start: tuple[int, int], legs: list[tuple[tuple[int, int], int]]
+) -> tuple[int, int]:
+    """Return the cell the ``legs`` walk ends on from ``start``."""
+    return (
+        start[0] + sum(direction[0] * length for direction, length in legs),
+        start[1] + sum(direction[1] * length for direction, length in legs),
+    )
+
+
 def _leg_cells(
     start: tuple[int, int],
     legs: list[tuple[tuple[int, int], int]],
@@ -333,10 +340,7 @@ def _leg_cells(
 ) -> list[tuple[int, int]]:
     """Return walked cells, stopping at occupied interior ink when requested."""
     cells = [start]
-    end = (
-        start[0] + sum(direction[0] * length for direction, length in legs),
-        start[1] + sum(direction[1] * length for direction, length in legs),
-    )
+    end = _leg_end(start, legs)
     y, x = start
     for (dy, dx), length in legs:
         for _ in range(length):

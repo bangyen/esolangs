@@ -540,7 +540,6 @@ LANGUAGE = Language(
     "brainfuck",
     "brainfuck",
     category="tape_based",
-    weekly_mutation=("interpreter",),
     boolean=brainfuck,
     contract=BooleanContract(
         input_shape="char_stream",

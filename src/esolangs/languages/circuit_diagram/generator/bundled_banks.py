@@ -6,6 +6,7 @@ from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.circuit_diagram.generator import _circuit_diagram_model
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
+    _chunks,
     _class_tail,
     _gate_count,
     _online_bank_area_floor,
@@ -28,7 +29,7 @@ def bundled_class_bank_candidate(
     if prefix < 2 or len(set(table)) == 1:
         return None
     size = 1 << tail
-    chunks = [table[i : i + size] for i in range(0, len(table), size)]
+    chunks = _chunks(table, size)
     classes = [word for word in dict.fromkeys(chunks) if "1" in word]
     q = len(classes)
     if q * len(chunks) > 4 * len(table):

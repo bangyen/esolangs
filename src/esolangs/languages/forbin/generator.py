@@ -101,7 +101,7 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     """
     if width is not None:
         natural = forbin(truth_table)
-        if max(map(len, natural.splitlines())) <= width:
+        if grid_width(natural) <= width:
             return natural
     # The tree is built over the essential inputs; an ignored input is still
     # read, but its kept bit drops into the scratch name with the other seven.

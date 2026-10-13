@@ -593,7 +593,6 @@ LANGUAGE = Language(
     "Smallfuck",
     "smallfuck",
     category="tape_based",
-    weekly_mutation=("interpreter", "generator"),
     boolean=smallfuck,
     same_layout=_same_layout,
     contract=BooleanContract(

@@ -182,7 +182,6 @@ LANGUAGE = Language(
     "Underload",
     "underload",
     category="stack_based",
-    weekly_mutation=("generator",),
     boolean=underload,
     same_layout=_same_layout,
     contract=BooleanContract(),

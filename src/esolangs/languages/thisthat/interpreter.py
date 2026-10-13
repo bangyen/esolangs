@@ -651,10 +651,6 @@ class _Machine:
     def cursor(self) -> int:
         return self.state[2]
 
-    @cursor.setter
-    def cursor(self, value: int) -> None:
-        self.state = (self.state[0], self.state[1], value, self.state[3], self.state[4])
-
     @property
     def halted(self) -> bool:
         return self.state[3] or not self.state[0]

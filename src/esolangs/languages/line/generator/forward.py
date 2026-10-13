@@ -466,15 +466,10 @@ class _Router:
             self.graph[state] = (
                 Node("<", next=node) if options.destination_moves and depth else node
             )
-        if options.streaming or (options.destination_moves and depth):
-            pre = _StemCursor(
-                y - (dag.reader_height(depth) if options.streaming else 9), x, (1, 0)
-            )
-            for op in dag.reads_at(depth) if options.streaming else "<":
-                pre.emit_op(op)
-            pre.advance((1, 0), 4)
-            pre.finish()
-            self.strokes.extend(pre.strokes)
+        if options.streaming:
+            self._stem(y - dag.reader_height(depth), x, dag.reads_at(depth))
+        elif options.destination_moves and depth:
+            self._stem(y - 9, x, "<")
         for bit in (0, 1) if is_fork else (0,):
             self._arm(state, node, bit)
         return self.graph[state]
@@ -489,13 +484,17 @@ class _Router:
         # within the original tape.
         ops = self.dag.reads_at(depth) + ">" + "+" * value + "o"
         self.graph[state] = chain(*ops)
-        cursor = _StemCursor(y - 10, x, (1, 0))
+        self._stem(y - 10, x, ops)
+        return self.graph[state]
+
+    def _stem(self, top: int, x: int, ops: str) -> None:
+        """Draw ``ops`` down a stem from row ``top``, ending four cells lower."""
+        cursor = _StemCursor(top, x, (1, 0))
         for op in ops:
             cursor.emit_op(op)
         cursor.advance((1, 0), 4)
         cursor.finish()
         self.strokes.extend(cursor.strokes)
-        return self.graph[state]
 
     def _arm(self, state: State, node: Node, bit: int) -> None:
         dag, options, layout = self.dag, self.options, self.layout

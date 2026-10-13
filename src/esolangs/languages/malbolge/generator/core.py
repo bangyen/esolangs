@@ -994,6 +994,16 @@ def _prime(main: _Planner, helper: dict[str, int], cells: Iterable[int]) -> None
     main.op("p", helper["all2"])
 
 
+def _turn_hubs(
+    main: _Planner, pointer: dict[int, int], hub_turns: dict[int, int]
+) -> None:
+    """Turn each hub ``V`` its ``hub_turns[V]`` times, in ``V`` order."""
+    for v, turns in sorted(hub_turns.items()):
+        for _ in range(turns):
+            main.hub(pointer[v], v)
+            main.raw("*")
+
+
 def _n_hub_pass(main: _Planner, pointer: int, v: int) -> None:
     """First pass over an ``N`` hub: all-1 written twice, then at ``V + 2``."""
     main.hub(pointer, v)

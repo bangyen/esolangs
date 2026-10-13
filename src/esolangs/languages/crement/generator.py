@@ -67,7 +67,7 @@ def crement(truth_table: str, width: int | None = None) -> str:
     tester data is filled.
     """
     template = in_input_order(truth_table, _crement_shared)
-    if width is None or width <= 0 or max(map(len, template.splitlines())) <= width:
+    if width is None or width <= 0 or grid_width(template) <= width:
         return template
     return _narrow(template, width)
 
@@ -88,7 +88,7 @@ def _narrow(template: str, width: int) -> str:
         narrowed = narrowed.replace(
             TEMPLATE_CHAR * len(PAIR[0]), f"+J 0 {TEMPLATE_CHAR}"
         )
-    if max(map(len, narrowed.splitlines())) > width:
+    if grid_width(narrowed) > width:
         return wrap_space_delimited(narrowed, width)
     return narrowed
 

@@ -75,43 +75,32 @@ def _at(chars: tuple[str, ...], rot: int, i: int, cycle: str) -> str:
     return cycle[(code + rot) % 8] if code >= 0 else chars[i]
 
 
-def _forward(chars: tuple[str, ...], rot: int, i: int, cycle: str) -> int | None:
-    """Return the ``]`` matching the effective ``[`` at ``i``, if any."""
+def _partner(
+    chars: tuple[str, ...], rot: int, i: int, cycle: str, step: int
+) -> int | None:
+    """Return the bracket matching the effective one at ``i``, if any.
+
+    ``step`` is 1 to scan right from a ``[`` and -1 to scan left from a ``]``.
+    """
+    opener, closer = ("[", "]") if step == 1 else ("]", "[")
     depth = 1
-    j = i + 1
-    while j < len(chars):
+    j = i + step
+    while 0 <= j < len(chars):
         ch = _at(chars, rot, j, cycle)
-        if ch == "[":
+        if ch == opener:
             depth += 1
-        elif ch == "]":
+        elif ch == closer:
             depth -= 1
             if depth == 0:
                 return j
-        j += 1
-    return None
-
-
-def _backward(chars: tuple[str, ...], rot: int, i: int, cycle: str) -> int | None:
-    """Return the ``[`` matching the effective ``]`` at ``i``, if any."""
-    depth = 1
-    j = i - 1
-    while j >= 0:
-        ch = _at(chars, rot, j, cycle)
-        if ch == "]":
-            depth += 1
-        elif ch == "[":
-            depth -= 1
-            if depth == 0:
-                return j
-        j -= 1
+        j += step
     return None
 
 
 def _jump(chars: tuple[str, ...], rot: int, ind: int, cycle: str) -> int:
     """Return the cursor after the firing bracket at ``ind``: one past its partner."""
     char = _at(chars, rot, ind, cycle)
-    seek = _forward if char == "[" else _backward
-    partner = seek(chars, rot, ind, cycle)
+    partner = _partner(chars, rot, ind, cycle, 1 if char == "[" else -1)
     if partner is None:
         raise HaltError(
             f"an executed '{char}' has no bracket partner",

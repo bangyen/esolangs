@@ -89,9 +89,9 @@ from esolangs.languages.circuit_diagram.generator.hlayout import (
     _h_term_layout,
 )
 from esolangs.languages.circuit_diagram.generator.layout import (
-    _check_order,
     _Layout,
     _layout_area,
+    _resolve_order,
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -582,9 +582,7 @@ def _circuit_diagram_model(
 
     builder = _Builder(narrow=limit is not None)
     n = len(truth_table).bit_length() - 1
-    order = list(range(n)) if input_order is None else input_order
-    port_inputs = n if port_inputs is None else port_inputs
-    _check_order(order, n, port_inputs, "fold")
+    order, port_inputs = _resolve_order(input_order, n, port_inputs, "fold")
     # Every input keeps its ``-`` row (the read order), but the fold uses
     # only the essential inputs' rails; an ignored rail drives nothing, as
     # every rail but the first does for a constant table.

@@ -15,7 +15,7 @@ from .hlayout import (
     _HTermPlan,
     _merge_results,
 )
-from .layout import _check_order, _Layout, _Shape
+from .layout import _Layout, _resolve_order, _Shape
 
 
 @dataclass(frozen=True)
@@ -136,9 +136,7 @@ def _pool_inputs(
 ) -> tuple[int, list[int], int]:
     _validate_truth_table(table)
     n = len(table).bit_length() - 1
-    order = list(range(n)) if order is None else order
-    ports = n if ports is None else ports
-    _check_order(order, n, ports, "cofactor pool")
+    order, ports = _resolve_order(order, n, ports, "cofactor pool")
     return n, order, ports
 
 

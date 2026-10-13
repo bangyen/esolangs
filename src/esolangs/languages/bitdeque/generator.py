@@ -310,7 +310,6 @@ LANGUAGE = Language(
     "Bitdeque",
     "bitdeque",
     category="queue_based",
-    weekly_mutation=("interpreter",),
     boolean=bitdeque,
     same_layout=_same_layout,
     contract=BooleanContract(

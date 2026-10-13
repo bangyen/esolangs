@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from itertools import pairwise
 from typing import Any
 
@@ -9,6 +10,7 @@ from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
+    grid_area,
     grid_width,
     input_weights,
     layout_width,
@@ -280,9 +282,7 @@ def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> st
         candidate = _back_ordered(
             table, tuple(range(levels)), weights=weights, wrap=True, bend=True
         )
-        if len(candidate) < len(program) and len(candidate.splitlines()) * grid_width(
-            candidate
-        ) < len(program.splitlines()) * grid_width(program):
+        if len(candidate) < len(program) and grid_area(candidate) < grid_area(program):
             program = candidate
     if width is not None and width > 0 and grid_width(program) > width:
         parity = _back_parity(truth_table, n)
@@ -573,8 +573,8 @@ def _back_ordered(
     constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)
 
-    shared = _back_plan(
-        vertical=False,
+    plan = partial(
+        _back_plan,
         truth_table=truth_table,
         levels=levels,
         n=n,
@@ -582,6 +582,7 @@ def _back_ordered(
         ids=ids,
         constant=constant,
     )
+    shared = plan(vertical=False)
     grid, positions = _back_draw(
         truth_table, levels, n, shared, constant, vertical=False
     )
@@ -612,15 +613,7 @@ def _back_ordered(
                 truth_table,
                 levels,
                 n,
-                _back_plan(
-                    vertical=True,
-                    truth_table=truth_table,
-                    levels=levels,
-                    n=n,
-                    wrap=wrap,
-                    ids=ids,
-                    constant=constant,
-                ),
+                plan(vertical=True),
                 constant,
                 vertical=True,
             )

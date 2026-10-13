@@ -274,7 +274,6 @@ LANGUAGE = Language(
     "NoComment",
     "nocomment",
     category="tape_based",
-    weekly_mutation=("generator",),
     boolean=nocomment,
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,

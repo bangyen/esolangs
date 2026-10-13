@@ -28,6 +28,7 @@ from itertools import pairwise, product
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    grid_width,
     input_weights,
     same_ignoring_whitespace,
     subtree_ids,
@@ -159,7 +160,7 @@ def _balance_form(program: str, minimum: int, maximum: int) -> str:
 def balance_packlang(_table: str, default: str) -> str:
     """Compare token-fit layouts with the two package-name spellings."""
     short = _short_name(default)
-    maximum = max(map(len, default.split("\n"))) - 1
+    maximum = grid_width(default) - 1
     return min(
         default,
         _balance_form(default, _NAME_LEN, maximum),

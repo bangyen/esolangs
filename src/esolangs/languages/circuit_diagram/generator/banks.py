@@ -93,7 +93,7 @@ def _cofactor_bank_layout(table: str, prefix_inputs: int = 2) -> _Layout:
         return _circuit_diagram_model(table, None)
     prefix_order = list(range(prefix_inputs))
     size = len(table) // (1 << prefix_inputs)
-    chunks = [table[i : i + size] for i in range(0, len(table), size)]
+    chunks = _chunks(table, size)
     parts: list[list[tuple[_Layout, list[int]]]] = []
     for cofactor in dict.fromkeys(chunks):
         if "1" not in cofactor:
@@ -469,6 +469,11 @@ def _gate_count(model: _Layout) -> int:
     return sum(char in "ao~xX" for char in model.glyphs.values())
 
 
+def _chunks(table: str, size: int) -> list[str]:
+    """Cut ``table`` into consecutive subtables of ``size`` rows."""
+    return [table[start : start + size] for start in range(0, len(table), size)]
+
+
 def _class_tail(n: int) -> int:
     """Return a class's input width: seven when ``n`` is odd, else eight."""
     return 7 if n % 2 else 8
@@ -565,7 +570,7 @@ def _class_bank_layout(
     if prefix < 2 or len(set(table)) == 1:
         return None
     size = 1 << tail
-    chunks = [table[start : start + size] for start in range(0, len(table), size)]
+    chunks = _chunks(table, size)
     classes = [chunk for chunk in dict.fromkeys(chunks) if "1" in chunk]
     # Keep the former implied class cap independently of the gate count:
     # sparse masks can fit the workspace even when their worst-case bound cannot.
@@ -632,7 +637,7 @@ def _class_bank_layout(
 def _repeated_cofactor_bank(table: str) -> _Layout | None:
     """Return a bank candidate when a nonconstant top-level cofactor repeats."""
     size = len(table) // 4
-    chunks = [table[start : start + size] for start in range(0, len(table), size)]
+    chunks = _chunks(table, size)
     if not any(
         "0" in chunk and "1" in chunk and chunks.count(chunk) > 1 for chunk in chunks
     ):
@@ -646,7 +651,7 @@ def _bank_exceeds_area(table: str, prefix_inputs: int, ceiling: int) -> bool:
 
     inputs = len(table).bit_length() - 1 - prefix_inputs
     size = 1 << inputs
-    for chunk in dict.fromkeys(table[i : i + size] for i in range(0, len(table), size)):
+    for chunk in dict.fromkeys(_chunks(table, size)):
         if "0" not in chunk or "1" not in chunk:
             continue
         used, _ = _essential_table(chunk, inputs)

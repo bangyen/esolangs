@@ -28,7 +28,6 @@ LANGUAGE = Language(
     "Piet",
     "piet",
     category="stack_based",
-    weekly_mutation=("interpreter", "generator"),
     source_kind=SourceKind.RASTER,
     boolean=piet,
     contract=BooleanContract(note="80 pixels per codel"),

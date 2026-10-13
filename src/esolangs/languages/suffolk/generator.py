@@ -198,7 +198,6 @@ LANGUAGE = Language(
     "Suffolk",
     "suffolk",
     category="tape_based",
-    weekly_mutation=("generator",),
     boolean=suffolk,
     # Both routes project to the essential inputs.
     shape=Shape.REDUCING,

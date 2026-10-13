@@ -6,6 +6,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
+    grid_area,
     grid_width,
     read_at,
 )
@@ -283,7 +284,7 @@ def _dig_center_shared(truth_table: str, n: int) -> str | None:
 
 def _dig_size(program: str) -> tuple[int, int]:
     """Rank grid area first, then text length for ties."""
-    return len(program.splitlines()) * grid_width(program), len(program)
+    return grid_area(program), len(program)
 
 
 def _dig_center_choice(table: str, n: int, current: str, width: int | None) -> str:

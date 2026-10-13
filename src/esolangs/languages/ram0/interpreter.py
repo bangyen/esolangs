@@ -3,8 +3,7 @@
 Two registers (z, n) and unbounded RAM; seven commands: Z, A, N, C, L,
 S, and goto.  :func:`_advance` is pure over an immutable ``_State``
 whose RAM is a tuple of ``(address, value)`` pairs in insertion order
-(the dump prints that order); the old :func:`change` wrote into the
-caller's dict.  ``halted`` once the cursor runs off the token list, and
+(the dump prints that order).  ``halted`` once the cursor runs off the token list, and
 the dump prints exactly once on that step -- the ``dumped`` flag is in
 the state because it records an effect.
 
@@ -69,10 +68,7 @@ def _loaded(ram: _Ram, addr: int, index: _Index) -> int:
 
 
 def change(z: int, n: int, ram: _Ram, op: str, index: _Index) -> tuple[int, int, _Ram]:
-    """Execute a single RAM0 command and return the updated registers.
-
-    Returns the RAM too rather than writing the caller's dict.
-    """
+    """Execute a single RAM0 command and return the updated ``(z, n, ram)``."""
     if op == "Z":
         z = 0
     elif op == "A":

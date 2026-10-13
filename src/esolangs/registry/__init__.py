@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from esolangs.exceptions import TemplateError, UnknownLanguageError
-from esolangs.generation.helpers import MOST_INPUTS, Setters
+from esolangs.generation.helpers import MOST_INPUTS, Setters, mark_runs, runs, unmark
+from esolangs.generation.wrap import wrap_program
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
 from esolangs.registry._table import LANGUAGES, Generator, Language, SourceKind
 
@@ -151,9 +152,6 @@ def render_template(
     wrapper breaks every run of the same length the same way, so the wrapped
     template is the wrapped form of every program it fills to.
     """
-    from esolangs.generation.helpers import mark_runs, unmark
-    from esolangs.generation.wrap import wrap_program
-
     char = template_char(language_id)
     if char is None:
         raise _reads_inputs(language_id)
@@ -174,8 +172,6 @@ def recover_setters(language_id: str, template: str) -> Setters:
     is the one value at which the widths sum to what the text holds.  The
     runs are then checked against it like any other template.
     """
-    from esolangs.generation.helpers import runs
-
     char = template_char(language_id)
     if char is None:
         raise _reads_inputs(language_id)

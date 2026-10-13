@@ -8,6 +8,7 @@ from itertools import combinations
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    grid_width,
     input_weights,
 )
 from esolangs.generation.token_balance import near_even_counts, run_widths
@@ -87,7 +88,7 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
         return program
     # Fits as-is: no Horner expansion needed.
     wrapped = _qoibl(program, width)
-    if max(map(len, wrapped.splitlines())) <= width:
+    if grid_width(wrapped) <= width:
         return wrapped
     limit = max(2, width)
     return _qoibl("\n".join(_horner_lines(lines, limit)), limit)
@@ -296,7 +297,6 @@ LANGUAGE = Language(
     "Qoibl",
     "qoibl",
     category="register_based",
-    weekly_mutation=("interpreter",),
     boolean=qoibl,
     # Not a tree: the table is one binary literal the reads divide down.
     shape=Shape.LOOKUP,

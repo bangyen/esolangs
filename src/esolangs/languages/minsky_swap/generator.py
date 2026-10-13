@@ -6,6 +6,7 @@ from typing import Any
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    grid_width,
     input_weights,
     same_up_to_wrapping,
 )
@@ -80,7 +81,7 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     end = pos + 1
     resolved = [end if t is None else t for t in targets]
     program = " ".join(tokens) + "\n" + " ".join(map(str, resolved))
-    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+    if width is None or width <= 0 or grid_width(program) <= width:
         return program
     if n <= 2 and width < 10:
         # Essential: otherwise lines reach 10 columns.

@@ -266,11 +266,11 @@ def _fit_width(
     else:
         rail_cells, rail_height, rail_span = grid.cells, height, span
     legacy = _legacy_rotation(rail_cells, rail_height, rail_span)
-    legacy_w = _text_width(legacy)
+    legacy_w = grid_width(legacy)
     if legacy_w <= width:
         return legacy
     lean = _clockwise_lean_rotate(grid.cells, n, digit, span, return_gap)
-    lean_w = _text_width(lean)
+    lean_w = grid_width(lean)
     chosen, chosen_w = (lean, lean_w) if lean_w < legacy_w else (legacy, legacy_w)
     # Only n <= 2 has a two-column form (its prefix handles n == 2 alone).
     if total <= 2 and chosen_w > width:
@@ -314,11 +314,6 @@ def _legacy_rotation(
     rotated[rail_span + 1] = {1: "R", rail_height + 1: "R"}
     rotated.setdefault(rail_span, {})[0] = "R"
     return _render(rotated, rail_span + 2)
-
-
-def _text_width(text: str) -> int:
-    """Widest line of a rendered program."""
-    return max(map(len, text.splitlines()))
 
 
 def _render(rotated: dict[int, dict[int, str]], nrows: int) -> str:

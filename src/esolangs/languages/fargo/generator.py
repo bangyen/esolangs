@@ -30,6 +30,7 @@ from string import ascii_lowercase
 from esolangs.generation.helpers import (
     _validate_shape,
     _validate_truth_table,
+    grid_width,
     short_name,
 )
 from esolangs.generation.wrap import balance_score
@@ -319,13 +320,9 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     shared = _definition_program(expression, n)
     if width is None:
         return min(compact, shared, key=len)
-    if max(map(len, compact.splitlines())) <= width:
+    if grid_width(compact) <= width:
         return min(
-            (
-                program
-                for program in (compact, shared)
-                if max(map(len, program.splitlines())) <= width
-            ),
+            (program for program in (compact, shared) if grid_width(program) <= width),
             key=len,
         )
     return shared

@@ -95,6 +95,7 @@ from .core import (
     _t_hubs,
     _t_jump,
     _table_char,
+    _turn_hubs,
     _valid_chars,
     _wide,
     _wide_program,
@@ -220,10 +221,7 @@ def _thirteen() -> _Layout:
     for v in sorted(pointer):
         if label[pointer[v]] == "N":
             _n_hub_pass(main, pointer[v], v)
-    for v, turns in sorted(hub_turns.items()):
-        for _ in range(turns):
-            main.hub(pointer[v], v)
-            main.raw("*")
+    _turn_hubs(main, pointer, hub_turns)
     _emit_fold(main, cell)
     main.raw("/")
     _ops(main, select, _W_SELECT_OPS)
@@ -878,10 +876,7 @@ def _f_emit_hubs(
                 main.op("*", helper[_K_CELL[op]])
             main.hub(pointer[v], v, 11)
             main.raw("*" if op == "rot" else "p")
-    for v, turns in sorted(place.hub_turns.items()):
-        for _ in range(turns):
-            main.hub(pointer[v], v)
-            main.raw("*")
+    _turn_hubs(main, pointer, place.hub_turns)
     return handlers
 
 
@@ -1058,7 +1053,6 @@ LANGUAGE = Language(
     "malbolge",
     category="other",
     # The program is the full 59049-cell store.
-    slow_stepping=True,
     # Every source loads into 59,049 cells, so every program -- this
     # generator's or any other -- is bounded by a constant.
     size_bound=lambda _n: 59_049,

@@ -12,6 +12,7 @@ from esolangs.languages.circuit_diagram.generator import (
 )
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
+    _chunks,
     _class_tail,
     _gate_count,
     _pool_budget,
@@ -49,7 +50,7 @@ def folded_class_bank_candidate(
     if prefix <= 8:
         return None
     size = 1 << tail
-    chunks = [table[i : i + size] for i in range(0, len(table), size)]
+    chunks = _chunks(table, size)
     counts = Counter(chunks)
     classes = [word for word in counts if "1" in word]
     q = len(classes)

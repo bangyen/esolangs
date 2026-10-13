@@ -32,7 +32,7 @@ from esolangs.runtime._validate import _TIMEOUT_FLOOR, check_timeout, check_whol
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.vm import make_vm
+from esolangs.vm import make_vm, run_until_halt_or_cycle
 
 
 class _Default:
@@ -372,8 +372,6 @@ def _terminates(
 
     Repeated snapshots prove divergence; a growing state needs the deadline.
     """
-    from esolangs.vm import run_until_halt_or_cycle
-
     dialect_options(name, settings)
 
     # A box, because ``_run`` exists to apply the timeout and discards what

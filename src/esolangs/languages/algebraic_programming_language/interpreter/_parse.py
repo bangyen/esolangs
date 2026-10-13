@@ -134,7 +134,6 @@ class _Parser:
 
     def __init__(self, tokens: list[str], defs: Mapping[str, _Definition]) -> None:
         self.tokens = tokens
-        self.defs = defs
         self.ind = 0
         # Definitions are fixed during one parse. Rescanning them per operand
         # timed out the 219,826-character generated n=16 dense control at 2s.

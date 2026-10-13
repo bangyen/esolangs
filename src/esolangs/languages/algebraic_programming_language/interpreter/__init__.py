@@ -224,10 +224,6 @@ class _Machine:
     def line(self) -> int:
         return self.state.line
 
-    @line.setter
-    def line(self, value: int) -> None:
-        self.state = replace(self.state, line=value)
-
     @property
     def halted(self) -> bool:
         """Whether every line has been executed and no frame is live."""

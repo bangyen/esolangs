@@ -11,6 +11,7 @@ import functools
 import math
 import re
 from collections.abc import Callable, Iterable, Iterator
+from itertools import islice
 from typing import Any, NamedTuple
 
 try:
@@ -384,11 +385,7 @@ def _quadratic_candidates_ntt(
         field_data.append(
             (modulus, pow(generator, (modulus - 1) // 4, modulus), roots, mask)
         )
-    for index, base in enumerate(  # pragma: no branch - ends on the break
-        sp.primerange(2, prime_count * prime_count + 3)
-    ):
-        if index >= prime_count:
-            break
+    for base in islice(sp.primerange(2, prime_count * prime_count + 3), prime_count):
         candidates: set[tuple[int, int]] = set()
         # If the instruction prime equals one field, its conjugate roots
         # coincide there.  Pair in the other field and use the collision as
@@ -434,36 +431,6 @@ def _ntt_real_bound(degree: int) -> int:
     return max(_NTT_FIELDS[0][0] // 2, degree * degree)
 
 
-def _divide_quadratic_mod(
-    coefficients: list[int], real: int, square: int
-) -> list[int] | None:
-    """:func:`_divide_quadratic` over GF(:data:`_TRIAL_MODULUS`).
-
-    The screen: ``None`` means the exact division cannot succeed either.
-    """
-    modulus = _TRIAL_MODULUS
-    b1 = -2 * real % modulus
-    b0 = (real * real + square) % modulus
-    size = len(coefficients)
-    quotient: list[int] = []
-    for index in range(size - 2):
-        value = coefficients[index]
-        if index >= 1:
-            value -= b1 * quotient[index - 1]
-        if index >= 2:
-            value -= b0 * quotient[index - 2]
-        quotient.append(value % modulus)
-    linear = (coefficients[size - 2] - b1 * quotient[size - 3]) % modulus
-    if size >= 4:
-        linear = (linear - b0 * quotient[size - 4]) % modulus
-    if linear:
-        return None
-    constant = (coefficients[size - 1] - b0 * quotient[size - 3]) % modulus
-    if constant:
-        return None
-    return quotient
-
-
 def _divide_out_quadratics(
     coefficients: list[int], candidates: Iterable[tuple[int, int]]
 ) -> tuple[list[tuple[int, int]], list[int]]:
@@ -478,7 +445,9 @@ def _divide_out_quadratics(
     ordered = sorted(candidates) if isinstance(candidates, set) else candidates
     for real, square in ordered:
         while len(remainder) >= 3:
-            quotient_mod = _divide_quadratic_mod(remainder_mod, real, square)
+            quotient_mod = _divide_quadratic(
+                remainder_mod, real, square, _TRIAL_MODULUS
+            )
             if quotient_mod is None:
                 break
             quotient = _divide_quadratic(remainder, real, square)
@@ -493,15 +462,20 @@ def _divide_out_quadratics(
 
 
 def _divide_quadratic(
-    coefficients: list[int], real: int, square: int
+    coefficients: list[int], real: int, square: int, modulus: int | None = None
 ) -> list[int] | None:
     """Divide by ``(x - real)**2 + square`` exactly, or report that it does not.
 
     Long division on the integer coefficient list; a ``Poly`` division at
     this degree costs orders of magnitude more.  ``None`` on a remainder.
+    With a ``modulus`` it is the screen over that field: ``None`` there
+    means the exact division cannot succeed either.
     """
     b1 = -2 * real
     b0 = real * real + square
+    if modulus is not None:
+        b1 %= modulus
+        b0 %= modulus
     size = len(coefficients)
     if size < 3:
         return None
@@ -512,16 +486,17 @@ def _divide_quadratic(
             value -= b1 * quotient[index - 1]
         if index >= 2:
             value -= b0 * quotient[index - 2]
-        quotient.append(value)
+        quotient.append(value if modulus is None else value % modulus)
     # Both remainder positions have to vanish for this to be a factor.
     # ``size >= 3`` from the guard above, so that much always applies.
     linear = coefficients[size - 2] - b1 * quotient[size - 3]
     if size >= 4:
         linear -= b0 * quotient[size - 4]
-    if linear:
-        return None
     constant = coefficients[size - 1] - b0 * quotient[size - 3]
-    if constant:
+    if modulus is not None:
+        linear %= modulus
+        constant %= modulus
+    if linear or constant:
         return None
     return quotient
 
@@ -566,13 +541,8 @@ def _peel_instruction_quadratics(
     # primes a program of this size can have reached.
     prime_count = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
     candidates: set[tuple[int, int]] = set()
-    # `primerange(2, n*n + 3)` always holds more than `n` primes, so the loop
-    # leaves on the `break` and never by running out.
-    for index, base in enumerate(  # pragma: no branch
-        sp.primerange(2, prime_count * prime_count + 3)
-    ):
-        if index >= prime_count:
-            break
+    # `primerange(2, n*n + 3)` always holds more than `n` primes.
+    for base in islice(sp.primerange(2, prime_count * prime_count + 3), prime_count):
         for exponent in range(1, _PEEL_MAX_IMAGINARY_EXPONENT + 1):
             square = base ** (2 * exponent)
             root_of_negative = sp.sqrt_mod((-square) % modulus, modulus)
@@ -613,11 +583,8 @@ def _peel_prime_power_roots(
     sp = _require_sympy()
     found: list[int] = []
     limit = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
-    # As above: the range always outlasts `limit`, so this ends on the `break`.
-    for prime_index, base in enumerate(  # pragma: no branch
-        sp.primerange(2, limit * limit + 3)
-    ):
-        if prime_index >= limit or len(coefficients) <= 1:
+    for base in islice(sp.primerange(2, limit * limit + 3), limit):
+        if len(coefficients) <= 1:
             break
         candidate = base
         for _exponent in range(_PEEL_MAX_EXPONENT):

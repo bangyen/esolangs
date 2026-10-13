@@ -65,6 +65,7 @@ from .core import (
     _t_hubs,
     _t_jump,
     _table_char,
+    _turn_hubs,
     _valid_chars,
 )
 
@@ -232,10 +233,7 @@ def _digits(n: int) -> _Digits:
     _seed_label_chains(
         main, helper, {lab: ops for lab, (_, ops) in _D_SEEDS.items()}, seeds, label
     )
-    for v, turns in sorted(hub_turns.items()):
-        for _ in range(turns):
-            main.hub(pointer[v], v)
-            main.raw("*")
+    _turn_hubs(main, pointer, hub_turns)
     for f, ops in sorted(_D_OPERANDS.items()):
         _emit_chain(main, f, ops, helper)
 

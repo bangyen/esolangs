@@ -115,9 +115,6 @@ class BooleanExample:
     #: The ``(zero, one)`` text per input, read off a template; ``fill`` is
     #: :func:`instantiate` with these and nothing else.
     setters: Callable[[str, int], Setters] | None = None
-    #: The one ``(zero, one)`` pair every input is spelled with, where the
-    #: embed is uniform; ``setters`` is then derived from it.
-    pair: tuple[str, str] | None = None
     #: The character the public template spells its inputs with, one run
     #: per input; outside the language's alphabet.
     char: str = TEMPLATE_CHAR
@@ -264,7 +261,6 @@ def _embedded(
         bits=bits,
         fill=_fill_from(setters, body, char),
         setters=setters,
-        pair=pair,
         char=char,
         body=body,
         split=split,

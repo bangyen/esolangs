@@ -58,9 +58,12 @@ def decleq(truth_table: str) -> str:
     # Routing only the essential inputs drops an ignored one's level and the
     # leaves it doubles, but it can move the leaf depth off a constant half
     # the full routing exploits (0100010011111111: 1345 -> 1371), so both run.
+    # All n inputs are read either way; only the essential ones pay the chain,
+    # so an ignored input left routed is a level whose sides share a subtree.
+    reduced = read_at(truth_table, essential, n)
     return min(
-        _decleq_build(read_at(truth_table, essential, n), n, essential, essential),
-        _decleq_build(truth_table, n, list(range(n)), essential),
+        _CodeBuilder(reduced, n, essential, essential).build(),
+        _CodeBuilder(truth_table, n, list(range(n)), essential).build(),
         key=len,
     )
 
@@ -182,18 +185,6 @@ class _CodeBuilder:
             target = self.pc()
             self.node(level + 1, row)
         self.mem[branch + 2] = target
-
-
-def _decleq_build(
-    truth_table: str, n: int, routes: list[int], normalized: list[int]
-) -> str:
-    """Build over ``truth_table``, the table read at the inputs ``routes`` names.
-
-    All ``n`` inputs are read; only the ``normalized`` ones pay the chain, and
-    only they are counted, so an ignored input left in ``routes`` is a level
-    whose sides are equal and share one subtree.
-    """
-    return _CodeBuilder(truth_table, n, routes, normalized).build()
 
 
 LANGUAGE = Language(

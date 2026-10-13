@@ -119,6 +119,13 @@ def _span(length: int, cell: int) -> int:
 #: One input's mark run (:func:`~esolangs.generation.helpers.mark`), one token:
 #: a break inside would land inside the setter.  Adjacent runs are two tokens.
 _RUN = "|".join(f"{re.escape(mark(i))}+" for i in range(MOST_INPUTS))
+
+
+def _tokens(program: str, pattern: str) -> list[str]:
+    """Split ``program`` into tokens, trying a template run ahead of ``pattern``."""
+    return re.findall(f"{_RUN}|{pattern}", program)
+
+
 _MARK_PATTERN = re.compile(f"[{chr(MARK)}-{chr(MARK + MOST_INPUTS - 1)}]")
 
 
@@ -128,7 +135,7 @@ def wrap_tokens(program: str, width: int, pattern: str) -> str:
     ``pattern`` must tile the program exactly; one that does not is returned
     unwrapped.  A :data:`_RUN` is tried ahead of ``pattern``.
     """
-    tokens = re.findall(f"{_RUN}|{pattern}", program)
+    tokens = _tokens(program, pattern)
     if "".join(tokens) != program:
         return program
     return _join_tokens(tokens, width, separator="")
@@ -141,7 +148,7 @@ def wrap_chars(program: str, width: int) -> str:
     """
     if not _MARK_PATTERN.search(program):
         return "\n".join(program[i : i + width] for i in range(0, len(program), width))
-    return _join_tokens(re.findall(f"{_RUN}|[\\s\\S]", program), width, separator="")
+    return _join_tokens(_tokens(program, r"[\s\S]"), width, separator="")
 
 
 def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
@@ -231,7 +238,7 @@ def _minifuck(program: str, width: int) -> str:
     ``[`` skips two *characters*, a newline included; a run chains, so in
     ``[[x`` a break before ``x`` is unsafe.
     """
-    tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", program)
+    tokens = _tokens(program, _MINIFUCK_COMMAND)
     floor = max(map(len, tokens), default=0)
     if "\n" in program and max(map(len, program.split("\n"))) <= max(width, floor):
         return program
@@ -374,9 +381,9 @@ def _balance_line(program: str, language_id: str) -> str | None:
         return _token_fit(program, program.split(), " ")
     pattern = _TOKEN_PATTERNS.get(wrapper) if wrapper is not None else None
     if pattern is not None:
-        return _token_fit(program, re.findall(f"{_RUN}|{pattern}", program))
+        return _token_fit(program, _tokens(program, pattern))
     if wrapper is wrap_chars and _MARK_PATTERN.search(program):
-        return _token_fit(program, re.findall(f"{_RUN}|[\\s\\S]", program))
+        return _token_fit(program, _tokens(program, r"[\s\S]"))
     if wrapper is wrap_grid:
         tokens = program.split()
         if not tokens:

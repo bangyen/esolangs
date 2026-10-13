@@ -188,15 +188,14 @@ def _drop_entries(
             spans.append((lo, node.end_lineno or node.lineno))
     # A top-level function or class using a name imported from a deleted
     # module goes too, and so, in turn, does whatever uses it.
-    tree = ast.parse(source)
     dead = {
         alias.asname or alias.name
-        for node in tree.body
+        for node in parsed.body
         if isinstance(node, ast.ImportFrom) and _gone(node.module, modules)
         for alias in node.names
     } | {
         node.name
-        for node in tree.body
+        for node in parsed.body
         if isinstance(node, ast.FunctionDef | ast.ClassDef)
         and any(lo <= node.lineno <= hi for lo, hi in spans)
     }
@@ -204,7 +203,7 @@ def _drop_entries(
         spanned = {lo for lo, _ in spans}
         more = [
             node
-            for node in tree.body
+            for node in parsed.body
             if isinstance(node, ast.FunctionDef | ast.ClassDef)
             and node.name not in dead
             and node.name not in external
@@ -230,7 +229,7 @@ def _drop_entries(
     # PAIR); judged on the source with every other cut already made.
     imports = {
         node.end_lineno or node.lineno: node
-        for node in ast.parse(source).body
+        for node in parsed.body
         if isinstance(node, ast.ImportFrom)
     }
     kept = [*lines]

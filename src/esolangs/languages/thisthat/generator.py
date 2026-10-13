@@ -7,6 +7,7 @@ from typing import Literal
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
+    grid_area,
     grid_width,
     narrowest_grid,
     read_at,
@@ -143,8 +144,8 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
     if program == plain:
         return old
     candidate = _narrow_tree(truth_table, program, width)
-    old_area = len(old.splitlines()) * grid_width(old)
-    area = len(candidate.splitlines()) * grid_width(candidate)
+    old_area = grid_area(old)
+    area = grid_area(candidate)
     if grid_width(candidate) <= max(width, grid_width(old)) and area < old_area:
         return candidate
     return old

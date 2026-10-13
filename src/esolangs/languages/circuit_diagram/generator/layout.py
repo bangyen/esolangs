@@ -1,6 +1,7 @@
 """Wire layouts shared by the Circuit Diagram generators."""
 
 from bisect import bisect_left, insort
+from collections.abc import Sequence
 from itertools import pairwise
 from typing import Literal
 
@@ -448,11 +449,19 @@ def _layout_area(layout: _Layout) -> int:
     return height * width
 
 
-def _check_order(order: list[int], n: int, ports: int, what: str) -> None:
-    """Refuse an input order that is not ``n`` distinct ports below ``ports``."""
+def _resolve_order(
+    order: Sequence[int] | None, n: int, ports: int | None, what: str
+) -> tuple[list[int], int]:
+    """Default the read order and port count, refusing a bad order.
+
+    The order must be ``n`` distinct ports below ``ports``.
+    """
+    order = list(range(n)) if order is None else list(order)
+    ports = n if ports is None else ports
     if (
         len(order) != n
         or len(set(order)) != n
         or any(index < 0 or index >= ports for index in order)
     ):
         raise ValueError(f"{what} input order must name distinct original ports")
+    return order, ports

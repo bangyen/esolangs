@@ -9,6 +9,7 @@ from typing import NamedTuple
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    grid_width,
     input_weights,
     short_name,
     subtree_ids,
@@ -28,7 +29,7 @@ _TREE_MAX_N = 6
 
 
 def _free_names(taken: Iterable[str]) -> Iterator[str]:
-    """Yield the shortest letter names not in ``taken``, which may grow."""
+    """Yield the shortest letter names not in ``taken``."""
     for index in count():
         name = short_name(index, ascii_letters)
         if name not in taken:
@@ -373,9 +374,7 @@ def _narrow_rule_parts(program: str, width: int) -> list[str | tuple[int, str]]:
         left, right = condition.split(operator)
         if len(f"{delta} {condition}") > width and right.isdecimal():
             if right not in constants:
-                name = next(identifiers)
-                occupied.add(name)
-                constants[right] = name
+                constants[right] = next(identifiers)
             name = constants[right]
             # ``Container<=Constant`` only: a named bound flips to ``>=``.
             replacement = f"{left}>={name}" if operator == ">=" else f"{name}>={left}"
@@ -415,7 +414,7 @@ def container(truth_table: str, width: int | None = None) -> str:
         program = _container_tree(truth_table, share=True)
     else:
         program = _container_threshold(truth_table)
-    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+    if width is None or width <= 0 or grid_width(program) <= width:
         return program
     narrow = _narrow_rules(program, width)
     if n > _TREE_MAX_N:
@@ -423,14 +422,14 @@ def container(truth_table: str, width: int | None = None) -> str:
     return min(
         narrow,
         _narrow_rules(_container_threshold(truth_table), width),
-        key=lambda text: (max(map(len, text.splitlines())), len(text)),
+        key=lambda text: (grid_width(text), len(text)),
     )
 
 
 def balance_container(table: str, default: str) -> str:
     """Compare rule-fit and decimal-delta budget transitions."""
     n = _validate_truth_table(table)
-    span = max(map(len, default.splitlines()))
+    span = grid_width(default)
     programs = [default]
     if n <= _TREE_MAX_N:
         programs.append(_container_threshold(table))
@@ -464,7 +463,7 @@ def balance_container(table: str, default: str) -> str:
         candidates.append(
             min(
                 (_narrow_rules(program, width) for program in programs),
-                key=lambda text: (max(map(len, text.splitlines())), len(text)),
+                key=lambda text: (grid_width(text), len(text)),
             )
         )
     return min(candidates, key=balance_score)

@@ -9,6 +9,7 @@ from itertools import pairwise
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    grid_width,
     input_weights,
 )
 from esolangs.generation.token_balance import (
@@ -76,7 +77,7 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     if width is None or width <= 0:
         return program
     wrapped = _bracket_literal(program, width)
-    if max(map(len, wrapped.splitlines())) <= width:
+    if grid_width(wrapped) <= width:
         return wrapped
     # Push chunks from last to first: each string itself pushes in reverse.
     # All jumps follow the prologue and are relative, so its length is free.
