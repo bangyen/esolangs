@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from esolangs.generation.helpers import _validate_truth_table
 
-from . import _Builder, _dag, _emit_dag, _note_mux
+from . import _Builder, _Dag, _dag, _emit_dag, _note_mux
 from .layout import _Layout
 
 type _Forest = tuple[_Layout, list[tuple[int, int] | None]]
@@ -39,15 +39,15 @@ def _suffix_forest(words: list[str], inputs: int) -> _Forest:
     size = 1 << (len(words) - 1).bit_length()
     virtual = size.bit_length() - 1
     dag = _dag("".join(words + [words[-1]] * (size - len(words))), inputs + virtual)
-    by_id = {node: (level, zero, one) for level, zero, one, node in dag[0]}
+    by_id = {node: (level, zero, one) for level, zero, one, node in dag.ops}
     roots = []
     for index in range(len(words)):
-        root = dag[1]
+        root = dag.root
         for bit in range(virtual - 1, -1, -1):
             if root in by_id and by_id[root][0] == inputs + bit:
                 root = by_id[root][2 if (index >> bit) & 1 else 1]
         roots.append(root)
-    ops = [op for op in dag[0] if op[0] < inputs]
+    ops = [op for op in dag.ops if op[0] < inputs]
     needed: set[int] = set()
     reads: dict[int, int] = {}
     for level, zero, one, _ in ops:
@@ -79,7 +79,7 @@ def _suffix_forest(words: list[str], inputs: int) -> _Forest:
     # Reserve one four-column gate group per live result. A fixed 128-column
     # cap forced repeated carries: the eight-root n=14 probe timed out at 30s.
     builder.limit = builder.band_start + 4 * peak + 8
-    values = _emit_dag(builder, selectors, (ops, dag[1], needed, reads))
+    values = _emit_dag(builder, selectors, _Dag(ops, dag.root, needed, reads))
     sources: list[int | None] = []
     for root in roots:
         if root == 1:

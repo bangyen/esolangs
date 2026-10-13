@@ -133,7 +133,7 @@ def _sparse_mask_dag(
     root = folder.build(prefix, 0, 0, len(rows))
     if root is None:
         return None
-    return folder.ops, root, folder.needed, folder.reads
+    return _Dag(folder.ops, root, folder.needed, folder.reads)
 
 
 def sparse_mask_model(
@@ -155,13 +155,13 @@ def sparse_mask_model(
     if dag is None:
         return None
     order, port_inputs = _resolve_order(input_order, prefix, port_inputs, "fold")
-    if not work.spend((len(dag[0]) + port_inputs) ** 2):
+    if not work.spend((len(dag.ops) + port_inputs) ** 2):
         return None
     # Unbanded folds make O(nodes+ports) taps; each interval guard scans at
     # most that many runs. Fenwick column work fits the same quadratic bound.
     builder = _Builder()
     ports = [builder.input_bus() for _ in range(port_inputs)]
     rails = [ports[order[level]] for level in range(prefix)]
-    selectors = builder.selectors(rails, dag[2])
+    selectors = builder.selectors(rails, dag.needed)
     builder.band_start = builder.next_column
     return _finish_fold(builder, selectors, dag)

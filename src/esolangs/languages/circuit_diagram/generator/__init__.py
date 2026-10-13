@@ -73,7 +73,7 @@ a run prints exactly one character.
 """
 
 from collections.abc import Iterator
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -457,7 +457,13 @@ def _mux(
     return builder.gate("o", off, on)
 
 
-_Dag = tuple[list[tuple[int, int, int, int]], int, set[int], dict[int, int]]
+class _Dag(NamedTuple):
+    """A shared Shannon-fold DAG; see :func:`_dag`."""
+
+    ops: list[tuple[int, int, int, int]]
+    root: int
+    needed: set[int]
+    reads: dict[int, int]
 
 
 def _note_mux(
@@ -505,21 +511,20 @@ def _dag(truth_table: str, n: int) -> _Dag:
     [(root, level)] = stack
     if level != n:  # pragma: no cover - validation guarantees 2**n entries
         raise AssertionError("incomplete Shannon fold")
-    return ops, root, needed, reads
+    return _Dag(ops, root, needed, reads)
 
 
 def _emit_dag(
     builder: _Builder, selectors: list[list[int | None]], dag: _Dag
 ) -> dict[int, _Value]:
     """Emit shared muxes and retain their values for single or multiple roots."""
-    ops, _, _, reads = dag
     n = len(selectors)
     values: dict[int, _Value] = {0: "0", 1: "1"}
-    for level, zero, one, node in ops:
+    for level, zero, one, node in dag.ops:
         signal = _mux(builder, selectors[n - 1 - level], values[zero], values[one])
         values[node] = signal
         if isinstance(signal, int) and signal in builder.stride_of:
-            builder.pending[signal] = reads.get(node, 0)
+            builder.pending[signal] = dag.reads.get(node, 0)
     return values
 
 
@@ -527,7 +532,7 @@ def _finish_fold(
     builder: _Builder, selectors: list[list[int | None]], dag: _Dag
 ) -> _Layout:
     """Emit one root, using a self-fed gate for either constant."""
-    result = _emit_dag(builder, selectors, dag)[dag[1]]
+    result = _emit_dag(builder, selectors, dag)[dag.root]
     if isinstance(result, str):
         rail = selectors[0][0]
         if rail is None:  # pragma: no cover - every selector has a plain rail
@@ -591,7 +596,7 @@ def _circuit_diagram_model(
     rails = [ports[order[i]] for i in used]
 
     dag = _dag(table, len(used))
-    selectors = builder.selectors(rails, dag[2])
+    selectors = builder.selectors(rails, dag.needed)
     builder.band_start = builder.next_column
     builder.limit = limit
 

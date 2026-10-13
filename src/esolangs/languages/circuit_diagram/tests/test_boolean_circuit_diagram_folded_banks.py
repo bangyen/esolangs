@@ -5,7 +5,7 @@ from itertools import combinations, islice
 
 import pytest
 
-from esolangs.languages.circuit_diagram.generator import circuit_diagram
+from esolangs.languages.circuit_diagram.generator import _Dag, circuit_diagram
 from esolangs.languages.circuit_diagram.generator.folded_banks import (
     folded_class_bank_candidate,
 )
@@ -77,7 +77,7 @@ def test_excess_fold_work_rejects_before_model_construction(monkeypatch) -> None
     )
     table, _ = _classes(7, 257)
     monkeypatch.setattr(
-        module, "_dag", lambda *_args: (list(range(1000)), 0, set(), {})
+        module, "_dag", lambda *_args: _Dag(list(range(1000)), 0, set(), {})
     )
 
     def unexpected(*_args, **_kwargs):

@@ -32,7 +32,7 @@ def _folded_class_masks(
             "".join(str(int(chunk == word)) for chunk in chunks), prefix
         )
         # Include original ports in the quadratic fold-work bound.
-        work += (len(_dag(reduced, len(used))[0]) + prefix) ** 2
+        work += (len(_dag(reduced, len(used)).ops) + prefix) ** 2
         if work > 4 * table_size:
             return None
         masks.append((used, reduced))
