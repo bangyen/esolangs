@@ -264,10 +264,6 @@ class _Parser:
                 return node
             node = match
 
-    def _operators(self) -> list[_Definition]:
-        """Return the custom operators, longest pattern first."""
-        return self.operator_patterns
-
     def _match_operator(self, left: _Node | None) -> _Node | None:
         """Try each custom operator pattern at the cursor; None if none fit.
 
@@ -275,7 +271,7 @@ class _Parser:
         operator, and None when looking for a *prefix* one, whose pattern
         opens with a symbol and so takes nothing from its left.
         """
-        for definition in self._operators():
+        for definition in self.operator_patterns:
             leading = definition.name.startswith("\0")
             if leading != (left is not None):
                 continue

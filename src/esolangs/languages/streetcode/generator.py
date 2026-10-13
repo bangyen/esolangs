@@ -115,18 +115,6 @@ def _streetcode_strip(before: str, block: list[str]) -> list[str]:
     return _streetcode_combine([first, block])
 
 
-# ``~=I^`` leads into a collect loop: ``~`` consumes the +1 the previous loop
-# left on the cell behind, ``=`` advances CP onto a fresh cell, ``I`` reads
-# the next bit (ASCII ``'0'``/``'1'``), and ``^`` bumps it to 49 or 50, which
-# forces the cell nonzero before the loop's junction is tested -- the
-# ambiguous-turn rule (leftmost when the CPth cell is 0, otherwise
-# second-leftmost) has to see a nonzero cell to turn into the loop rather
-# than drive past it.  The loader label is the same without an ``I``.
-# The +1 it leaves behind is not slack. Every gap crossing reads the CPth
-# cell; a bare 0 there would steer the car West back down the street instead
-# of East onto the next loop.
-
-
 def _streetcode_leaf(bit: int, skipped: int = 0) -> list[str]:
     r"""Build a leaf that prints ``bit``, reusing the loader loop's cell.
 
@@ -300,6 +288,16 @@ def _streetcode_populate(n: int) -> list[str]:
     turn and ramps a fresh cell to ``'0'`` + 1 (:func:`_streetcode_leaf`).
     """
     start = ["+--", "|  ", "|C^", "+--"]
+    # ``~=I^`` leads into a collect loop: ``~`` consumes the +1 the previous loop
+    # left on the cell behind, ``=`` advances CP onto a fresh cell, ``I`` reads
+    # the next bit (ASCII ``'0'``/``'1'``), and ``^`` bumps it to 49 or 50, which
+    # forces the cell nonzero before the loop's junction is tested -- the
+    # ambiguous-turn rule (leftmost when the CPth cell is 0, otherwise
+    # second-leftmost) has to see a nonzero cell to turn into the loop rather
+    # than drive past it.  The loader label is the same without an ``I``.
+    # The +1 it leaves behind is not slack. Every gap crossing reads the CPth
+    # cell; a bare 0 there would steer the car West back down the street instead
+    # of East onto the next loop.
     col = _streetcode_strip("~=I^", _streetcode_hallway("~"))
     # The rewind strip walks CP back over the n cells the input loops filled,
     # so it carries n '_' instructions.  Streets are two characters wide, so

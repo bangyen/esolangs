@@ -876,16 +876,20 @@ class _Tick:
         self.pointers[i] = replace(p, prev=(p.row, p.col), row=row, col=col, d=d)
 
     def exits(self, p: _Pointer) -> list[tuple[int, int, tuple[int, int]]]:
-        return _exits_from_node(self.grid, self.nodes, self.width, p.row, p.col, p.prev)
-
-    def leave(self, i: int, prefer: tuple[int, int] | None = None) -> None:
-        p = self.pointers[i]
-        exits = self.exits(p)
+        """Return the paths out of ``p``'s node; a non-end node must have one."""
+        exits = _exits_from_node(
+            self.grid, self.nodes, self.width, p.row, p.col, p.prev
+        )
         if not exits:
             raise syntax_error(
                 "non-end node has no exit path",
                 "connect an exit path or use an end node",
             )
+        return exits
+
+    def leave(self, i: int, prefer: tuple[int, int] | None = None) -> None:
+        p = self.pointers[i]
+        exits = self.exits(p)
         order = (p.d, _turn_right(p.d), _turn_left(p.d))
         exits.sort(key=lambda step: order.index(step[2]))
         if prefer is None and len(exits) > 1:
@@ -896,11 +900,6 @@ class _Tick:
     def fork(self, i: int) -> None:
         p = self.pointers[i]
         exits = _forward_first(self.exits(p), p.d)
-        if not exits:
-            raise syntax_error(
-                "non-end node has no exit path",
-                "connect an exit path or use an end node",
-            )
         here = (p.row, p.col)
         for n_row, n_col, d in exits[1:]:
             self.pointers.append(

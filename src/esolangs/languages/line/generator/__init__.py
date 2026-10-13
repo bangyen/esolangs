@@ -136,7 +136,6 @@ _GREY_RUN = re.compile(rb"(.)\1*", re.DOTALL)
 
 def _render_node(
     node: Node,
-    heading: tuple[int, int] = (-1, 0),
     *,
     compact: bool = True,
     tight: bool = True,
@@ -149,7 +148,6 @@ def _render_node(
     return _grey_rows(
         render(
             node,
-            start_heading=heading,
             acyclic=True,
             compact=compact,
             tight=tight,

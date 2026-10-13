@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from esolangs.generation.helpers import _validate_truth_table
 
-from . import _Builder, _dag, _emit_dag
+from . import _Builder, _dag, _emit_dag, _note_mux
 from .layout import _Layout
 
 type _Forest = tuple[_Layout, list[tuple[int, int] | None]]
@@ -48,14 +48,10 @@ def _suffix_forest(words: list[str], inputs: int) -> _Forest:
                 root = by_id[root][2 if (index >> bit) & 1 else 1]
         roots.append(root)
     ops = [op for op in dag[0] if op[0] < inputs]
-    needed = {
-        inputs - 1 - level for level, zero, one, _ in ops if zero != 0 and one != 1
-    }
+    needed: set[int] = set()
     reads: dict[int, int] = {}
-    for _, zero, one, _ in ops:
-        for child in (zero, one):
-            if child > 1:
-                reads[child] = reads.get(child, 0) + 1
+    for level, zero, one, _ in ops:
+        _note_mux(needed, reads, inputs - 1 - level, zero, one)
     for root in roots:
         if root > 1:
             reads[root] = reads.get(root, 0) + 1

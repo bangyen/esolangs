@@ -40,7 +40,6 @@ class Hint(StrEnum):
     BUILTIN_LIST = "pass a list as the first argument"
     AT_ARGUMENTS = "pass a list as the first argument"
     INDEXED_WRITE = "use an index inside the list before replacing an element"
-    ELEMENT_TYPE = "store a list element of the same type as the existing elements"
     GRID_PATH = "keep the execution path on the grid or terminate it with end"
     VARIABLE_REFERENCE = (
         "declare the variable before reading or assigning it; check its spelling"

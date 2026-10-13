@@ -1,8 +1,29 @@
 """Exact balance on the prefix-sum lattice of whole-token row fits."""
 
 from bisect import bisect_left
+from collections.abc import Iterator, Sequence
 from itertools import accumulate
 from math import isqrt
+
+
+def run_widths(lengths: Sequence[int]) -> Iterator[int]:
+    """Yield the single-space joined width of every contiguous token run."""
+    for start in range(len(lengths)):
+        span = -1
+        for length in lengths[start:]:
+            span += length + 1
+            yield span
+
+
+def near_even_counts(size: int) -> set[int]:
+    """Return ``size`` and the chunk counts near the divisors of ``size - 1``.
+
+    Those are every count that splits ``size`` items near-evenly: O(sqrt size).
+    """
+    counts = {size}
+    for divisor in range(1, isqrt(size - 1) + 1):
+        counts.update((divisor + 1, (size - 1) // divisor + 1))
+    return counts
 
 
 def balanced_token_width(

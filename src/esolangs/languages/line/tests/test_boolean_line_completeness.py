@@ -141,7 +141,7 @@ def test_constants_and_test_free_tables_offer_no_fold(table: str) -> None:
 @pytest.mark.medium
 def test_rejection_allocates_no_raster(monkeypatch: pytest.MonkeyPatch) -> None:
     """A rejected plan builds strokes without allocating a bitmap."""
-    from esolangs.languages.line.generator import forward
+    from esolangs.languages.line.generator import shared
 
     table = parity(8)
     for builder in _UNCAPPED:
@@ -152,7 +152,7 @@ def test_rejection_allocates_no_raster(monkeypatch: pytest.MonkeyPatch) -> None:
     def boom(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("a raster was allocated before area rejection")
 
-    monkeypatch.setattr(forward, "Canvas", boom)
+    monkeypatch.setattr(shared, "Canvas", boom)
     for builder in _UNCAPPED:
         assert builder(table, 1) is None
 

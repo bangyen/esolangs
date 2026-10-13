@@ -664,10 +664,6 @@ class _Machine:
         self.state = (self.state[0], self.state[1], value, self.state[3], self.state[4])
 
     @property
-    def _halted(self) -> bool:
-        return self.state[3]
-
-    @property
     def halted(self) -> bool:
         return self.state[3] or not self.state[0]
 

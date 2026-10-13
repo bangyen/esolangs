@@ -4,13 +4,13 @@ A packed literal has no subtrees to fold or share.
 """
 
 from itertools import combinations
-from math import isqrt
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.token_balance import near_even_counts, run_widths
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -265,16 +265,9 @@ def balance_qoibl(table: str, default: str) -> str:
     candidates.extend(qoibl(table, width) for width in range(1, 6))
     fits = {floor}
     for line in lines:
-        for start in range(len(line)):
-            span = -1
-            for token in line[start:]:
-                span += len(token) + 1
-                if span >= floor:
-                    fits.add(span)
+        fits.update(span for span in run_widths(list(map(len, line))) if span >= floor)
     candidates.extend(qoibl(table, width) for width in sorted(fits))
-    quotients = {floor}
-    for divisor in range(1, isqrt(floor - 1) + 1):
-        quotients.update((divisor + 1, (floor - 1) // divisor + 1))
+    quotients = near_even_counts(floor)
     best: tuple[int, int, int, int] | None = None
     for count in quotients:
         lower = max(5, (floor + count - 1) // count) + 1

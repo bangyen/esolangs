@@ -236,7 +236,6 @@ def _embedded(
     table: str = AND2,
     bits: tuple[int, ...] = (0, 1),
     expected: str = "0",
-    expected_compared: bool = True,
     split: bool = False,
     kwargs: tuple[tuple[str, int], ...] = (),
 ) -> BooleanExample:
@@ -261,7 +260,6 @@ def _embedded(
         table=table,
         interpreter=interpreter,
         expected=expected,
-        expected_compared=expected_compared,
         bits=bits,
         fill=_fill_from(setters, body, char),
         setters=setters,
@@ -331,7 +329,6 @@ def _register() -> None:
                 setters=spec.setters,
                 char=spec.char or TEMPLATE_CHAR,
                 expected=spec.expected,
-                expected_compared=spec.expected_compared,
                 split=lang.split,
                 kwargs=spec.kwargs,
             )
@@ -348,9 +345,13 @@ def _register() -> None:
                 split=lang.split,
                 kwargs=spec.kwargs,
             )
-        example = replace(example, expected_compared=spec.expected_compared)
         stem = _stem(lang)
-        BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem, scale=spec.scale)
+        BOOLEAN_EXAMPLES[stem] = replace(
+            example,
+            stem=stem,
+            scale=spec.scale,
+            expected_compared=spec.expected_compared,
+        )
 
 
 _register()

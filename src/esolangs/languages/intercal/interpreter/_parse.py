@@ -228,12 +228,6 @@ class _Parser:
         self.at += 1
         self.groups.append(delimiter)
         char = self.peek()
-        if not char:
-            raise _fail(
-                "E000",
-                "incomplete INTERCAL expression",
-                hint="supply a complete INTERCAL operand or expression",
-            )
         unary = char if char in _UNARIES else ""
         self.at += bool(unary)
         inner = self.expression()

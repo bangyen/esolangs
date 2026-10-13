@@ -296,12 +296,6 @@ def _language(language_id: str) -> "Language | None":
     return next((lang for lang in LANGUAGES.values() if lang.id == language_id), None)
 
 
-def _wrapper(language_id: str) -> Callable[[str, int], str] | None:
-    """Return the wrapper the language with ``language_id`` declares."""
-    lang = _language(language_id)
-    return None if lang is None else lang.wrap
-
-
 def takes_width(fn: Callable[..., object]) -> bool:
     """Whether a generator lays its own program out to a width.
 

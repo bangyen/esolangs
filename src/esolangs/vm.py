@@ -256,7 +256,7 @@ def run_until_halt_or_all_branches_cycle(
 
 @runtime_checkable
 class _FramedMachine(_SteppableMachine, Protocol):
-    """A :class:`_StepMachine` that also exposes its call stack.
+    """A :class:`_SteppableMachine` that also exposes its call stack.
 
     ``frames`` is outermost first; ``frame_entry_key`` is what a frame is
     about to run (function, bindings, input cursor).
@@ -328,7 +328,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
 
 @runtime_checkable
 class _TapeMachine(_SteppableMachine, Protocol):
-    """A :class:`_StepMachine` on a rightward-growing tape of cells.
+    """A :class:`_SteppableMachine` on a rightward-growing tape of cells.
 
     The four members are what the growth certificate compares across two
     visits to one ``ip``, and together must be the complete state.

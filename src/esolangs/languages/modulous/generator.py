@@ -5,14 +5,17 @@ A string literal has no subtrees to fold or share.
 
 import re
 from itertools import pairwise
-from math import isqrt
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.token_balance import (
+    balanced_token_width,
+    near_even_counts,
+    run_widths,
+)
 from esolangs.generation.wrap import (
     _BRACKET_LITERAL,
     _bracket_literal,
@@ -127,10 +130,7 @@ def _best_chunked_columns(
         for start in range(4)
         for stop in range(4, 8)
     }
-    # Chunk counts near the divisors of ``size - 1``, i.e. near-even splits.
-    quotients = {size}
-    for divisor in range(1, isqrt(size - 1) + 1):
-        quotients.update((divisor + 1, (size - 1) // divisor + 1))
+    quotients = near_even_counts(size)
 
     best: tuple[int, int, int] | None = None
     for count in quotients:
@@ -205,14 +205,9 @@ def _balance(table: str, default: str) -> str:
         r'"[^"]*"\]|[A-Z]+|\d+|[^\s]', default[size + _TABLE_PUSH_OVERHEAD :]
     )
     lengths = list(map(len, suffix))
-    fits = set()
-    for start in range(len(lengths)):
-        span = -1
-        for length in lengths[start:]:
-            span += length + 1
-            # A suffix token run exactly fills a column budget of ``span``;
-            # subtract the chunk-to-column offset to get the chunk width.
-            fits.add(span - _CHUNK_TOKEN_EXTRA)
+    # A suffix token run exactly fills a column budget of ``span``;
+    # subtract the chunk-to-column offset to get the chunk width.
+    fits = {span - _CHUNK_TOKEN_EXTRA for span in run_widths(lengths)}
     columns = _best_chunked_columns(table, lengths, fits)
     if columns is not None:
         candidates.append(modulous(table, columns))

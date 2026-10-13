@@ -55,6 +55,7 @@ from esolangs import (
 )
 from esolangs.cli.args import (
     _check_count,
+    _errors,
     _expand_short_options,
     _fail,
     _integer,
@@ -385,11 +386,8 @@ def _describe(rest: list[str]) -> None:
     as_json = "--json" in flags
     as_spec = "--spec" in flags
     _check_count("describe", rest, 1)
-    try:
+    with _errors():
         facts = describe(rest[0])
-    except EsolangError as exc:
-        _fail(exc)
-        raise  # pragma: no cover - unreachable; _fail exits
     if as_spec:
         print(json.dumps(facts, indent=2) if as_json else facts["spec"])
         return
@@ -437,11 +435,8 @@ def _read_answer(rest: list[str]) -> None:
     rest = _split_positional(rest, set())
     _check_count("read-answer", rest, 1)
     language = rest[0]
-    try:
+    with _errors():
         facts = describe(language)
-    except EsolangError as exc:
-        _fail(exc)
-        raise  # pragma: no cover - unreachable; _fail exits
     if facts["answer_mode"] == "termination":
         polarity = facts["answer_encoding"]
         zero, one = polarity
@@ -458,10 +453,8 @@ def _read_answer(rest: list[str]) -> None:
             f"output in: esolangs run {language} prog.txt | esolangs "
             f"read-answer {language}"
         )
-    try:
+    with _errors():
         print(read_answer(language, output))
-    except EsolangError as exc:
-        _fail(exc)
 
 
 def main() -> None:

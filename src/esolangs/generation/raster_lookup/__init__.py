@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from esolangs.generation.helpers import essential_inputs, read_at
 from esolangs.raster import Raster
-from esolangs.runtime.codels import BLACK, COLOURS, WHITE
+from esolangs.runtime.codels import BLACK, COLOURS
 
 Change = tuple[int, int]
 Pixel = tuple[int, int, int]

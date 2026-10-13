@@ -123,6 +123,37 @@ class CanvasPlan:
         return self.draw()
 
 
+def stroke_plan(
+    strokes: list[list[tuple[int, int]]],
+    start: tuple[int, int],
+    heading: tuple[int, int],
+    old_area: int,
+    unit: int,
+) -> CanvasPlan | None:
+    """Plan the strokes' bounding canvas, arrowhead at ``start`` facing ``heading``.
+
+    None unless that canvas is smaller than ``old_area``.
+    """
+    points = [point for stroke in strokes for point in stroke]
+    top, bottom = min(y for y, _ in points), max(y for y, _ in points)
+    left, right = min(x for _, x in points), max(x for _, x in points)
+    width, height = (right - left + 2) * unit, (bottom - top + 2) * unit
+    if width * height >= old_area:
+        return None
+
+    def rasterize() -> Canvas:
+        canvas = Canvas(width, height)
+        for stroke in strokes:
+            canvas.line(
+                [((x - left + 1) * unit, (y - top + 1) * unit) for y, x in stroke]
+            )
+        y, x = (start[0] - top + 1) * unit, (start[1] - left + 1) * unit
+        _arrowhead(canvas, y, x, heading, unit)
+        return canvas
+
+    return CanvasPlan(rasterize, width * height)
+
+
 def shared_canvas(root: Node, old_area: int, *, unit: int = _UNIT) -> CanvasPlan | None:
     """Return a lazy rasterizer only for a smaller, separated ancestor return."""
     _check_unit(unit)
@@ -165,20 +196,4 @@ def shared_canvas(root: Node, old_area: int, *, unit: int = _UNIT) -> CanvasPlan
         # Straight exits and perpendicular trunk merges retain the collision
         # guard; an obstructed return keeps the preceding layout.
         return None
-    ys = [y for stroke in cursor.strokes for y, _ in stroke]
-    xs = [x for stroke in cursor.strokes for _, x in stroke]
-    top, bottom, left, right = min(ys), max(ys), min(xs), max(xs)
-    width, height = (right - left + 2) * unit, (bottom - top + 2) * unit
-    if width * height >= old_area:
-        return None
-
-    def rasterize() -> Canvas:
-        canvas = Canvas(width, height)
-        for stroke in cursor.strokes:
-            canvas.line(
-                [((x - left + 1) * unit, (y - top + 1) * unit) for y, x in stroke]
-            )
-        _arrowhead(canvas, (1 - top) * unit, (1 - left) * unit, (-1, 0), unit)
-        return canvas
-
-    return CanvasPlan(rasterize, width * height)
+    return stroke_plan(cursor.strokes, (0, 0), (-1, 0), old_area, unit)

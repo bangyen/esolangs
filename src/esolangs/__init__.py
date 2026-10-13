@@ -20,12 +20,11 @@ import importlib
 import inspect
 import re
 import signal
-import threading
 import time as _time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from functools import cache, partial
 from math import isqrt
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
 from esolangs._language import Language
 from esolangs.compressed import CompressedText
@@ -59,10 +58,8 @@ from esolangs.generation.wrap import takes_width as _takes_width
 from esolangs.portable import dump_program, load_program
 from esolangs.raster import Raster
 from esolangs.registry import (
-    INTERPRETERS,
     LANGUAGES,
     SourceKind,
-    parameterized_ids,
     recover_setters,
     render_template,
     resolve,

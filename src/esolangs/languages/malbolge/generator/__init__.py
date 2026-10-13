@@ -34,7 +34,6 @@ sharing stubs cannot shrink it.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
 from itertools import product
@@ -48,8 +47,6 @@ from esolangs.registry._language import Language, Shape
 from esolangs.runtime.source_hints import with_hint
 
 from .core import (
-    _ACTIVE,
-    _ALL1,
     _ALL2,
     _ANSWER,
     _C_INITS,

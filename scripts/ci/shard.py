@@ -220,10 +220,10 @@ def load_run(directory: Path, expected: set[str]) -> dict[str, float]:
     return result
 
 
-def refresh(runs: list[Path], ids: list[str], output: Path, shards: int) -> list[float]:
+def refresh(runs: list[Path], ids: list[str], output: Path) -> None:
     """Write median timings only after every input run passes validation."""
-    if not runs or not ids or shards < 1:
-        raise ValueError("runs, selected tests, and a positive shard count required")
+    if not runs or not ids:
+        raise ValueError("runs and selected tests required")
     samples = [load_run(run, set(ids)) for run in runs]
     cohorts = {
         tuple(
@@ -238,12 +238,7 @@ def refresh(runs: list[Path], ids: list[str], output: Path, shards: int) -> list
         node: statistics.median(sample[node] for sample in samples)
         for node in sorted(set(ids))
     }
-    loads = [
-        sum(durations[node] for node in shard_ids(ids, index, shards, durations))
-        for index in range(shards)
-    ]
     write_text(output, json.dumps(durations, indent=1) + "\n")
-    return loads
 
 
 def refresh_main(argv: list[str] | None = None) -> int:
@@ -259,11 +254,13 @@ def refresh_main(argv: list[str] | None = None) -> int:
     parser.add_argument("--shards", type=int, default=4)
     parser.add_argument("--serial-node", action="append", default=[])
     args = parser.parse_args(argv)
+    if args.shards < 1:
+        parser.error("--shards must be at least 1")
     ids = collect_ids(args.marker)
     try:
         if set(args.serial_node) - set(ids):
             raise ValueError("serial nodes must belong to the selected corpus")
-        refresh(args.runs, ids, args.output, args.shards)
+        refresh(args.runs, ids, args.output)
         durations = load_durations(args.output)
         parallel = [node for node in ids if node not in args.serial_node]
         for index in range(args.shards):

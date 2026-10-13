@@ -641,7 +641,7 @@ class Worker:
     """Reuse one interpreter across a sweep; kill the tree on any deadline."""
 
     def __init__(self, command: list[str] | None = None) -> None:
-        """Spawn ``command``, or this module in ``--worker`` mode by default."""
+        """Spawn ``command``, or ``_benchmark_worker.py`` by default."""
         self.command = command or [
             sys.executable,
             str(Path(__file__).resolve().parent / "_benchmark_worker.py"),

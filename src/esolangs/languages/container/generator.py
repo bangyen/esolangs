@@ -46,7 +46,6 @@ class _Node(NamedTuple):
 
 @dataclass
 class _TreePlan:
-    n: int
     root_tests: int
     nodes: list[_Node]
     order: list[int]
@@ -110,7 +109,7 @@ def _container_plan(truth_table: str, n: int, *, prune: bool, share: bool) -> _T
                     continue
                 either.setdefault(identity, i)
             children(tests, lo, i)
-    return _TreePlan(n, root_tests, nodes, list(range(len(nodes))), parents, relays)
+    return _TreePlan(root_tests, nodes, list(range(len(nodes))), parents, relays)
 
 
 def _container_tree(

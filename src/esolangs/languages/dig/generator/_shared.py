@@ -5,6 +5,7 @@ from typing import NamedTuple
 from esolangs.languages.dig.generator._layout import (
     _dig_alt_clear,
     _Point,
+    _remap_reads,
     _walk_bound,
 )
 from esolangs.languages.dig.generator._leaf import (
@@ -166,10 +167,7 @@ def _dig_indexed_shared(table: str, n: int) -> str | None:
 
     cells = {place(p): c for p, c in decoder.chars.items()}
     cells.update({place(p): ">'<^"[h] for p, h in decoder.turns.items()})
-    checks = [
-        (place(at), place(want), frozenset(place(p) for p in pending))
-        for at, want, pending in decoder.reads
-    ]
+    checks = _remap_reads(decoder.reads, place)
     cells[0, 0], cells[decoder.row_offset, 0] = "'", ">"
     cells[decoder.top - 2, decoder.end + decoder.offset] = ">"
     cells[decoder.top - 2, merge] = "'"
@@ -182,10 +180,7 @@ def _dig_indexed_shared(table: str, n: int) -> str | None:
 
     cells.update({below(p): c for p, c in chars.items()})
     cells.update({below(p): ">'<^"[h] for p, h in turns.items()})
-    checks.extend(
-        (below(at), below(want), frozenset(below(p) for p in pending))
-        for at, want, pending in reads
-    )
+    checks.extend(_remap_reads(reads, below))
     cells[decoder.top + 2, merge] = "<"
     last = place(decoder.last)
     corridors = [

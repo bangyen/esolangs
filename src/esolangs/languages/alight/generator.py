@@ -20,6 +20,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.token_balance import near_even_counts
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight.interpreter._dialect import (
     EXPRESSION_SYNTAXES,
@@ -599,9 +600,7 @@ def _plans(n: int, kept: tuple[bool, ...] | None = None) -> tuple[_Plan, ...]:
     cutoff = size + base[-3] - overhead
     if cutoff > 1:
         maximum = cutoff - 1
-        quotients = {size}
-        for divisor in range(1, isqrt(size - 1) + 1):
-            quotients.update((divisor + 1, (size - 1) // divisor + 1))
+        quotients = near_even_counts(size)
         powers = []
         power = 10
         while power < size:

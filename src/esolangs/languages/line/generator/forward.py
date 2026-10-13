@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, replace
-from functools import partial
 
 from esolangs.generation.helpers import (
     _residual_ids,
@@ -16,16 +15,14 @@ from esolangs.generation.helpers import (
 
 from .render import (
     _UNIT,
-    Canvas,
     Node,
-    _arrowhead,
     _Cursor,
     chain,
     chain_onto,
     correction,
     loader_reads,
 )
-from .shared import CanvasPlan
+from .shared import CanvasPlan, stroke_plan
 
 type State = tuple[int, int]
 type Edge = tuple[int, int, int]
@@ -570,27 +567,6 @@ class _Router:
         return arm
 
 
-def _rasterize(
-    strokes: list[list[tuple[int, int]]],
-    start: tuple[int, int],
-    box: tuple[int, int, int, int],
-    unit: int,
-) -> Canvas:
-    """Draw strokes and the entry arrowhead on a ``(width, height, top, left)`` box."""
-    width, height, top, left = box
-    canvas = Canvas(width, height)
-    for stroke in strokes:
-        canvas.line([((x - left + 1) * unit, (y - top + 1) * unit) for y, x in stroke])
-    _arrowhead(
-        canvas,
-        (start[0] - top + 1) * unit,
-        (start[1] - left + 1) * unit,
-        (1, 0),
-        unit=unit,
-    )
-    return canvas
-
-
 def _forward_canvas(
     table: str,
     old_area: int,
@@ -628,11 +604,8 @@ def _forward_canvas(
     else:
         head = chain(*_loader_reads(dag))
         chain_onto(head, decision)
-    points = [point for stroke in strokes for point in stroke]
-    top, bottom = min(y for y, _ in points), max(y for y, _ in points)
-    left, right = min(x for _, x in points), max(x for _, x in points)
-    width, height = (right - left + 2) * unit, (bottom - top + 2) * unit
-    if width * height >= old_area:
+    plan = stroke_plan(strokes, start, (1, 0), old_area, unit)
+    if plan is None:
         return None
 
     # Streaming uses original_n reads, at most n tests and n joins, three output
@@ -643,7 +616,4 @@ def _forward_canvas(
     # output ops and one halt tick give 5n. Projection adds fewer than
     # 5(original_n-n) commands and never enlarges the original tape.
     # Moving an arm's '<' onto its destination changes no path's command count.
-    return head, CanvasPlan(
-        partial(_rasterize, strokes, start, (width, height, top, left), unit),
-        width * height,
-    )
+    return head, plan

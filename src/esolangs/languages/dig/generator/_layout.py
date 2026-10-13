@@ -65,6 +65,27 @@ def _operand_side(heading: int) -> int:
     return min((heading + 1) % 4, (heading - 1) % 4)
 
 
+def _remap_reads[P: tuple[int, int]](
+    reads: list[tuple[P, P, frozenset[P]]], move: Callable[[P], P]
+) -> list[tuple[P, P, frozenset[P]]]:
+    """Map every point of each ``(at, want, pending)`` read through ``move``."""
+    return [
+        (move(at), move(want), frozenset(map(move, held))) for at, want, held in reads
+    ]
+
+
+def _remap_corridors(
+    corridors: list[tuple[_Point, int, int]], move: Callable[[_Point], _Point]
+) -> list[tuple[_Point, int, int]]:
+    """Map each ``(start, heading, distance)`` corridor through ``move``."""
+    remapped = []
+    for start, heading, distance in corridors:
+        begin, finish = move(start), move(start.step(heading, distance))
+        span = abs(begin.row - finish.row) + abs(begin.col - finish.col)
+        remapped.append((begin, heading, span))
+    return remapped
+
+
 def _dig_alt_clear(
     cells: dict[_Point, str],
     reads: list[tuple[_Point, _Point, frozenset[_Point]]],
@@ -623,29 +644,13 @@ class _AlternatingTree:
         for point, heading, skip, end in self.branches:
             branch_readers |= self._clear_branch(point, heading, skip, end)
         self.cells = {expand(point): char for point, char in self.cells.items()}
-        self.reads = [
-            (
-                expand(at),
-                expand(want),
-                frozenset(expand(p) for p in hold),
-            )
-            for at, want, hold in self.reads
-            if at not in branch_readers
-        ]
+        self.reads = _remap_reads(
+            [read for read in self.reads if read[0] not in branch_readers], expand
+        )
         for point, heading, skip, end in self.branches:
             if not self._repaint_branch(point, heading, skip, end, expand):
                 return False
-        expanded_corridors = []
-        for start, heading, distance in self.corridors:
-            begin, finish = expand(start), expand(start.step(heading, distance))
-            expanded_corridors.append(
-                (
-                    begin,
-                    heading,
-                    abs(begin.row - finish.row) + abs(begin.col - finish.col),
-                )
-            )
-        self.corridors = expanded_corridors
+        self.corridors = _remap_corridors(self.corridors, expand)
         self.entries = {expand(point): key for point, key in self.entries.items()}
         self.owners = {key: expand(point) for key, point in self.owners.items()}
         self.links = [
@@ -844,20 +849,8 @@ class _AlternatingTree:
             return _compact_point(point, self.travel_axis, coordinates, root)
 
         self.cells = {compact(point): char for point, char in self.cells.items()}
-        compact_reads = [
-            (
-                compact(at),
-                compact(want),
-                frozenset(compact(p) for p in pending),
-            )
-            for at, want, pending in self.reads
-        ]
-        compact_corridors = []
-        for start, heading, distance in self.corridors:
-            finish = compact(start.step(heading, distance))
-            begin = compact(start)
-            distance = abs(finish.row - begin.row) + abs(finish.col - begin.col)
-            compact_corridors.append((begin, heading, distance))
+        compact_reads = _remap_reads(self.reads, compact)
+        compact_corridors = _remap_corridors(self.corridors, compact)
         # Compaction can make a previously distant digit a reader's neighbour.
         try:
             _dig_alt_clear(self.cells, compact_reads, compact_corridors)

@@ -490,17 +490,11 @@ def _step_stmt(
         raise AssertionError(f"unexpected statement kind: {stmt[0]}")
     targets, rhs = stmt[1], stmt[2]
     bindings: list[tuple[str, object]] = []
-    if len(rhs) == 1:
-        for name in targets:
-            if name == "_":
-                continue
-            value, ctx = _eval(rhs[0], frame, globals_, ctx)
-            bindings.append((name, value))
-    else:
-        for name, value_node in zip(targets, rhs, strict=False):
-            if name == "_":
-                continue
-            value, ctx = _eval(value_node, frame, globals_, ctx)
+    # One right-hand side is evaluated afresh for every target.
+    nodes = rhs * len(targets) if len(rhs) == 1 else rhs
+    for name, node in zip(targets, nodes, strict=False):
+        if name != "_":
+            value, ctx = _eval(node, frame, globals_, ctx)
             bindings.append((name, value))
     for name, value in bindings:
         ctx = ctx._replace(scopes=_bind(frame, name, value, ctx.scopes))

@@ -638,7 +638,6 @@ def decision_tree_body(
     for a caller that pays per maximal run rather than per character, and
     so wants to fold the ASCII offsets the reads and the print would
     otherwise spend 48 characters on each.
-    :func:`_decision_tree_program` joins the three parts back.
     ``binary_leaves`` transfers the final bit directly into the answer.
     """
     n = _validate_truth_table(truth_table)

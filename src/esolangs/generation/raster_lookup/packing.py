@@ -187,20 +187,22 @@ def _layout(
     )
 
 
+def _shape_score(width: int, height: int) -> tuple[int, int, int]:
+    """Rank a layout: squarest first, then smallest area, then narrowest."""
+    return abs(width - height), width * height, width
+
+
+def _raster_score(image: Raster) -> tuple[int, int, int]:
+    return _shape_score(len(image.rows[0]), len(image.rows))
+
+
 def pack(operations: list[_Operation], default: Raster) -> Raster:
     """Reduce padding with fixed lane widths and area and black ceilings."""
     root = isqrt(sum(operation.size for operation in operations))
     candidates = [
         _layout(operations, max(_MIN_COLUMNS, root + offset)) for offset in (5, 9, 13)
     ]
-    candidate = min(
-        candidates,
-        key=lambda image: (
-            abs(len(image.rows) - len(image.rows[0])),
-            len(image.rows) * len(image.rows[0]),
-            len(image.rows[0]),
-        ),
-    )
+    candidate = min(candidates, key=_raster_score)
 
     def area(image: Raster) -> int:
         return len(image.rows) * len(image.rows[0])

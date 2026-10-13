@@ -221,7 +221,7 @@ class _Machine:
         rows = [row.ljust(_WIDTH) for row in code]
         rows.extend(" " * _WIDTH for _ in range(_HEIGHT - len(rows)))
         self.grid = tuple(tuple(row) for row in rows)
-        self.code, self.io, self._rng = code, io, rng
+        self.io, self._rng = io, rng
         self.state: _State = ((0, 0, 1, 0), self.grid, None, False, False)
 
     @property

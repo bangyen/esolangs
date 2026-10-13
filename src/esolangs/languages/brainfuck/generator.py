@@ -84,6 +84,16 @@ def _move(state: _BankState, target: int) -> None:
     state.pos = target
 
 
+def _drain(state: _BankState, source: int, target: int) -> None:
+    """Emit ``[-]``-style transfer of ``source`` into ``target``; ends on source."""
+    _move(state, source)
+    _emit(state, "[-")
+    _move(state, target)
+    _emit(state, "+")
+    _move(state, source)
+    _emit(state, "]")
+
+
 def _clear(state: _BankState, plan: _BankPlan, cell: int) -> int:
     """Clear ``cell`` and return its command price."""
     _move(state, cell)
@@ -348,12 +358,7 @@ def binary_bank(
     collector_base = 0
     for i in range(depth if width == remaining + 2 else 0):
         collector_base += abs(state.pos - 2 * i) + 1
-        _move(state, 2 * i)
-        _emit(state, "[-")
-        _move(state, collector)
-        _emit(state, "+")
-        _move(state, 2 * i)
-        _emit(state, "]")
+        _drain(state, 2 * i, collector)
     scratch = tuple(2 * (depth - width + i) for i in range(width))
     metadata = (*flags, result, collector)[:width]
     transfer_base = 0
@@ -361,12 +366,7 @@ def binary_bank(
     for source, target in zip(metadata, scratch, strict=True):
         transfer_base += abs(state.pos - source) + 1
         transfer_active.append(2 * abs(source - target) + 3)
-        _move(state, source)
-        _emit(state, "[-")
-        _move(state, target)
-        _emit(state, "+")
-        _move(state, source)
-        _emit(state, "]")
+        _drain(state, source, target)
 
     decoder = _decode(state, plan, scratch, width - 1, labels)
     final_move = abs(result - state.pos)

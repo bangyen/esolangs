@@ -460,6 +460,21 @@ def _mux(
 _Dag = tuple[list[tuple[int, int, int, int]], int, set[int], dict[int, int]]
 
 
+def _note_mux(
+    needed: set[int], reads: dict[int, int], selector: int, zero: int, one: int
+) -> None:
+    """Record a new ``zero/one`` mux on ``selector``'s rail.
+
+    ``0/x`` is ``selector AND x`` and ``x/1`` is ``selector OR x``: only the
+    plain rail is read, as for ``0/1``; any other mux needs ``~selector``.
+    """
+    if zero != 0 and one != 1:
+        needed.add(selector)
+    for child in (zero, one):
+        if child > 1:
+            reads[child] = reads.get(child, 0) + 1
+
+
 def _dag(truth_table: str, n: int) -> _Dag:
     """Return the fold as a shared DAG: ``(ops, root, needed, reads)``.
 
@@ -483,13 +498,7 @@ def _dag(truth_table: str, n: int) -> _Dag:
                 if key not in nodes:
                     nodes[key] = len(nodes) + 2
                     ops.append((level, zero, identity, nodes[key]))
-                    # ``0/x`` is ``selector AND x`` and ``x/1`` is ``selector
-                    # OR x``: only the plain rail is read, as for ``0/1``.
-                    if zero != 0 and identity != 1:
-                        needed.add(n - 1 - level)
-                    for child in (zero, identity):
-                        if child > 1:
-                            reads[child] = reads.get(child, 0) + 1
+                    _note_mux(needed, reads, n - 1 - level, zero, identity)
                 identity = nodes[key]
             level += 1
         stack.append((identity, level))

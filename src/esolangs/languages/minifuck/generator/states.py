@@ -55,7 +55,6 @@ def _emit(gates: list[list[int]], bias: int) -> str:
     """Keep the state in bit 7; a guarded setter clears it only when active."""
     lower = [0] * 7
     parts: list[str] = []
-    orientations: list[str] = []
 
     def flip(cell: int) -> int:
         parts.append("[x")
@@ -91,7 +90,6 @@ def _emit(gates: list[list[int]], bias: int) -> str:
             else:
                 # Two flips cross bit 7 without changing it; setters land at 9.
                 parts.append("[x<[x[x" + _MINIFUCK_INPUT + "<" * 10)
-            orientations.append("0")
             if constant:
                 toggle()
         else:
@@ -103,7 +101,6 @@ def _emit(gates: list[list[int]], bias: int) -> str:
             # The restoring read leaves bit 7 unchanged, with pointer 6 for a
             # one and 7 for a zero. The setter therefore computes a & !b.
             parts.append(_READS[1] + _MINIFUCK_INPUT + "<" * 9)
-            orientations.append(str(minority & 1))
             if majority:
                 toggle()
 
@@ -117,7 +114,7 @@ def _emit(gates: list[list[int]], bias: int) -> str:
     if carry ^ bias ^ 1:
         parts.append("[x<")
     parts.append(".")
-    return "g" + "".join(orientations) + "g" + "".join(parts)
+    return "g" + "".join(_orientations(gates)) + "g" + "".join(parts)
 
 
 def state_setters(template: str, n: int) -> tuple[tuple[str, str], ...] | None:

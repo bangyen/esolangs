@@ -125,12 +125,6 @@ _OUT_OF_SCOPE = {
 }
 
 
-def _opposite(direction: tuple[int, int]) -> tuple[int, int]:
-    """Return the direction pointing the other way along the same line."""
-    d_row, d_col = direction
-    return (-d_row, -d_col)
-
-
 class _Grid:
     """The program text as a rectangular character grid."""
 

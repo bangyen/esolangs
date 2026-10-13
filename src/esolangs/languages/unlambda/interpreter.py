@@ -25,7 +25,7 @@ applicable, so nothing at run time is invalid and no
 ``@`` consumes the next Unicode character, including newlines. The spec
 does not define character encoding. Both input branches are live.  At end of
 input ``@`` hands its argument ``v``, which the
-shell reaches by catching the ``EOFError`` the port raises, as nine other
+shell reaches by catching the ``EOFError`` the port raises, as other
 interpreters here catch it and carry on with their language's value; letting
 it escape would make ``@``'s failure branch unreachable and every
 read-until-EOF program a crash.  A read at EOF clears the current character.
@@ -441,10 +441,7 @@ class _Machine:
                 line = chr(self.io.input_char())
             except EOFError:
                 # The spec's end-of-input branch: ``@`` hands its argument
-                # ``v`` rather than ``i``.  Nine interpreters here already
-                # catch this raise and carry on with the value their language
-                # defines; letting it escape instead would make the branch
-                # unreachable and break every read-until-EOF program.
+                # ``v`` rather than ``i`` (see the module docstring).
                 at_eof = True
         self.state, out = _advance(self.state, line, at_eof=at_eof)
         if out is not None:

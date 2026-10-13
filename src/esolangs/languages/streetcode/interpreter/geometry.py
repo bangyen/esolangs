@@ -610,11 +610,7 @@ def _lawful_turn(grid: _Grid, car: _Car, heading: _Heading) -> bool:
 
 
 class _Steer(NamedTuple):
-    """What a steering phase decided: a heading, and the latches after it.
-
-    ``None`` for the heading is a phase declining; it may still change the
-    latches (an abandoned merge), hence ``(None, latches)``.
-    """
+    """What a steering phase decided: a heading, and the latches after it."""
 
     heading: _Heading
     latches: _Latches

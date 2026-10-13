@@ -286,7 +286,6 @@ def _addsubjump_ordered(
     perm: tuple[int, ...],
     *,
     shared: bool = False,
-    skip_equal: bool = True,
 ) -> str:
     """Emit one input order's AddSubJump program; see :func:`addsubjump`.
 
@@ -370,7 +369,7 @@ def _addsubjump_ordered(
             return
         half = (hi - lo) // 2
         if perm[level] not in stored or (
-            shared and skip_equal and children[residual][0] == children[residual][1]
+            shared and children[residual][0] == children[residual][1]
         ):
             # Reads already happened; this residual does not depend on the bit.
             build(level + 1, lo, lo + half, children[residual][0])

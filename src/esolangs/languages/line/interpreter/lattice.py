@@ -137,8 +137,8 @@ class Vertex:
 class Stroke:
     """One matched straight-through run of lattice vertices, tree-shaped.
 
-    Mirrors :class:`extract.Stroke` with on-lattice :class:`Vertex` objects
-    rather than a dense pixel path.
+    Built from on-lattice :class:`Vertex` objects rather than a dense pixel
+    path; ``extract.Stroke`` is this class.
     """
 
     vertices: list[Vertex]

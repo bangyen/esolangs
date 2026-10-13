@@ -390,18 +390,25 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
         # The n=8 column uses 16 cells against the row's 51, despite more text.
         column = _dig_discards(n, truth_table[0] + ":") + "\n@"
         return min(built, column, key=_dig_size)
-    if width is None and essential and 0 < essential[0] == n - len(essential):
-        # Inputs before the first essential one can be read and dropped above
-        # the smaller table's program, when that uses less area.
-        inner = dig(read_at(truth_table, essential, n), share=share)
-        # Grids are measured by area: the n=10 parity-prefix wrapper used
-        # 2,736 cells against the integrated reader's 2,627, despite less text.
-        return min(
-            built,
-            _dig_discards(essential[0]) + "\n" + inner,
-            key=_dig_size,
-        )
-    return built
+    if width is not None:
+        return built
+    wrapped = _dig_discarded(truth_table, n, essential, share=share)
+    # Grids are measured by area: the n=10 parity-prefix wrapper used
+    # 2,736 cells against the integrated reader's 2,627, despite less text.
+    return built if wrapped is None else min(built, wrapped, key=_dig_size)
+
+
+def _dig_discarded(
+    table: str, n: int, essential: list[int], *, share: bool = True
+) -> str | None:
+    """Return the smaller table's program below a column dropping lead inputs.
+
+    None unless the ignored inputs are exactly the leading ones.
+    """
+    if not essential or not 0 < essential[0] == n - len(essential):
+        return None
+    inner = dig(read_at(table, essential, n), share=share)
+    return _dig_discards(essential[0]) + "\n" + inner
 
 
 def _dig_build(
@@ -466,10 +473,8 @@ def _balance(table: str, default: str) -> str:
         dig(table, 8),
     ]
     essential = essential_inputs(table, n)
-    if essential and 0 < essential[0] == n - len(essential):
+    if (wrapped := _dig_discarded(table, n, essential)) is not None:
         # A discard column can be more square even when its area is larger.
-        inner = dig(read_at(table, essential, n))
-        wrapped = _dig_discards(essential[0]) + "\n" + inner
         legacy = min(_dig_build(table, n, None, share=True), wrapped, key=len)
         candidates.append(legacy)
     if n >= 2:

@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
     same_ignoring_whitespace,
     subtree_ids,
 )
+from esolangs.generation.token_balance import run_widths
 from esolangs.generation.wrap import (
     _join_tokens,
     balance_score,
@@ -130,11 +131,8 @@ def _balance_form(program: str, minimum: int, maximum: int) -> str:
         longest = max(map(len, tokens), default=0)
         records.append((line, tokens, indent, longest))
         events.update((len(line), longest, indent + longest))
-        for start in range(len(tokens)):
-            span = -1
-            for token in tokens[start:]:
-                span += len(token) + 1
-                events.update((span, indent + span))
+        for span in run_widths(list(map(len, tokens))):
+            events.update((span, indent + span))
     boundaries = sorted(point for point in events if minimum <= point <= maximum + 1)
     candidates = []
     for start, stop in pairwise(boundaries):

@@ -319,16 +319,10 @@ def extract_tree(
     """
     stripped = mask & ~cursor.blob
     pixels = set(stripped.nonzero())
-    if not pixels:
-        raise syntax_error(
-            "no path pixels found outside the cursor blob",
-            "connect a path extending beyond the cursor",
-        )
 
     def distance(point: tuple[int, int]) -> float:
         return (point[0] - cursor.y) ** 2 + (point[1] - cursor.x) ** 2
 
-    nearest = min(pixels, key=distance)
     remaining = set(pixels)
     while remaining:
         candidate = min(remaining, key=distance)

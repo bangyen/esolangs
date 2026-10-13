@@ -85,11 +85,16 @@ def _render_dag(
     return "".join(out)
 
 
+def _split_reads(program: str) -> tuple[str, str]:
+    """Return a tree program's spaceless reads prefix, through ``)|``, and rest."""
+    source = program.removeprefix(_NOT + "\n").replace(" ", "")
+    prefix, rest = source.split(")|", 1)
+    return prefix + ")|", rest
+
+
 def _apl_repeated_expressions(program: str) -> str:
     """Name profitable repeated groups, with one linear scan of the expression DAG."""
-    source = program.removeprefix(_NOT + "\n").replace(" ", "")
-    prefix, source = source.split(")|", 1)
-    prefix += ")|"
+    prefix, source = _split_reads(program)
     nodes: list[tuple[str | int, ...]] = []
     sizes: list[int] = []
     made: dict[tuple[str | int, ...], int] = {}
@@ -318,9 +323,7 @@ class _Splitter:
         build: Callable[[str, tuple[int, ...]], str],
     ) -> None:
         self._n = _validate_truth_table(table)
-        source = build(table, perm).removeprefix(_NOT + "\n").replace(" ", "")
-        self._prefix, self._source = source.split(")|", 1)
-        self._prefix += ")|"
+        self._prefix, self._source = _split_reads(build(table, perm))
         # There are fewer definitions than source characters, bounding name width.
         self._name_width = len(short_name(len(self._source), ascii_uppercase))
         self._call_width = self._name_width + 2

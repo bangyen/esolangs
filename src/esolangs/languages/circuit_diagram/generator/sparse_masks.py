@@ -13,6 +13,7 @@ from esolangs.languages.circuit_diagram.generator import (
     _Builder,
     _Dag,
     _finish_fold,
+    _note_mux,
 )
 from esolangs.languages.circuit_diagram.generator.layout import _check_order, _Layout
 
@@ -98,13 +99,7 @@ class _MaskFolder:
             node = len(self.nodes) + 2
             self.nodes[key] = node
             self.ops.append((level, zero, one, node))
-            # ``0/x`` and ``x/1`` read the plain rail only; the other rules
-            # read ``~selector``, as in :func:`_dag`.
-            if zero != 0 and one != 1:
-                self.needed.add(self.prefix - 1 - level)
-            for child in (zero, one):
-                if child > 1:
-                    self.reads[child] = self.reads.get(child, 0) + 1
+            _note_mux(self.needed, self.reads, self.prefix - 1 - level, zero, one)
         return node
 
 

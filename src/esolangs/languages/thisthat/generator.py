@@ -385,18 +385,7 @@ def _layout(
     loader_y = min_y - 2
     # An ignored input's read sends its bit nowhere and goes straight on.
     start_x = min(min_x, root[0] - 2 * n - 2 * len(essential) - 2)
-    builder.node((start_x, loader_y), "▣")
-    previous = (start_x, loader_y)
-    for i in range(n):
-        diamond = (previous[0] + 2, loader_y)
-        builder.node(diamond, "◇")
-        builder.connect(_path(previous, diamond, "horizontal"), "single")
-        previous = diamond
-        if i in essential:
-            push = (diamond[0] + 2, loader_y)
-            builder.node(push, "◧" if head_push[essential.index(i)] else "◨")
-            builder.connect(_path(diamond, push, "horizontal"), "double")
-            previous = push
+    previous = _draw_loader(builder, (start_x, loader_y), n, essential, head_push)
     entry = (root[0], root[1] - 1)
     route = _path(previous, (root[0], loader_y), "horizontal")
     route += _path((root[0], loader_y), entry, "vertical")[1:]
@@ -581,23 +570,38 @@ def _hollow_crossings(builder: _Builder) -> None:
             builder.node(point, "▽")
 
 
+def _draw_loader(
+    builder: _Builder,
+    start: tuple[int, int],
+    n: int,
+    essential: list[int],
+    push: list[bool],
+) -> tuple[int, int]:
+    """Draw the start node and one read per input, rightward; return the end.
+
+    An essential input's read is followed by its push; an ignored input's read
+    sends its bit nowhere and goes straight on.
+    """
+    builder.node(start, "▣")
+    previous = start
+    for i in range(n):
+        diamond = (previous[0] + 2, start[1])
+        builder.node(diamond, "◇")
+        builder.connect(_path(previous, diamond, "horizontal"), "single")
+        previous = diamond
+        if i in essential:
+            pushed = (diamond[0] + 2, start[1])
+            builder.node(pushed, "◧" if push[essential.index(i)] else "◨")
+            builder.connect(_path(diamond, pushed, "horizontal"), "double")
+            previous = pushed
+    return previous
+
+
 def _draw_input_chain(
     builder: _Builder, n: int, m: int, ess: list[int], push: list[bool]
 ) -> None:
     """Draw the input-reading chain feeding the root entry."""
-    start = (-(2 * n + 2 * m + 2), -6)
-    builder.node(start, "▣")
-    previous = start
-    for i in range(n):
-        diamond = (previous[0] + 2, -6)
-        builder.node(diamond, "◇")
-        builder.connect(_path(previous, diamond, "horizontal"), "single")
-        previous = diamond
-        if i in ess:
-            p = (previous[0] + 2, -6)
-            builder.node(p, "◧" if push[ess.index(i)] else "◨")
-            builder.connect(_path(previous, p, "horizontal"), "double")
-            previous = p
+    previous = _draw_loader(builder, (-(2 * n + 2 * m + 2), -6), n, ess, push)
     builder.connect(
         _path(previous, (0, -6), "horizontal")
         + _path((0, -6), (0, -4), "vertical")[1:],
