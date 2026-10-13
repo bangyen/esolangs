@@ -5,9 +5,9 @@ An incomplete rule halts; an empty pattern diverges. No stdin is read, so
 EOFError does not arise. Source has no invalid characters or ValueError cases.
 """
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 type _State = tuple[str, str | None, str]
 

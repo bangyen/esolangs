@@ -7,9 +7,10 @@ import re
 
 import pytest
 
+from esolangs.generation.examples import BOOLEAN_EXAMPLES, BooleanExample
 from esolangs.registry import BY_BOOLEAN
-from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
 
+# language-owners: ["Bitdeque"]
 #: The arities every convention is read at.  Five is in the list because it
 #: is where Bitdeque switches to its linear route, which the suite's own
 #: equal-width test (n=1..2) never reaches.

@@ -3,9 +3,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     in_input_order,
@@ -13,8 +11,10 @@ from esolangs.tools.helpers import (
     subtree_ids,
     subtree_slot,
 )
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _join_tokens, balance_score, wrap_space_delimited
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _join_tokens, balance_score, wrap_space_delimited
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.
 PAIR = ("Z", "A")
@@ -50,7 +50,7 @@ def ram0(truth_table: str, width: int | None = None) -> str:
     """
     if width is None:
         return in_input_order(truth_table, _ram0_shared)
-    from esolangs.tools.wrap import wrap_space_delimited
+    from esolangs.generation.wrap import wrap_space_delimited
 
     if width == 1 and len(truth_table) <= 8:  # three inputs
         program = _ram0_nand(truth_table)

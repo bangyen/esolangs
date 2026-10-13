@@ -2,15 +2,55 @@
 
 Kept apart from the code it describes because it is the largest thing in the
 interface and the least like the rest of it -- prose that ``--help`` prints
-verbatim, with no logic to read.
+verbatim. Capability-specific examples follow the current registry.
 """
 
 from __future__ import annotations
 
-from esolangs.registry import LANGUAGES
-from esolangs.tools.wrap import DEFAULT_WIDTH
+import json
+import shlex
 
-USAGE = """usage: esolangs <command> [...]
+from esolangs.generation.wrap import DEFAULT_WIDTH
+from esolangs.registry import LANGUAGES, SourceKind
+
+
+def _capability_examples() -> tuple[str, str]:
+    """Return supported template and dialect commands, or empty examples."""
+    templates = ""
+    dialects = ""
+    for name, lang in sorted(LANGUAGES.items()):
+        if lang.boolean is None or lang.source_kind is not SourceKind.TEXT:
+            continue
+        if lang.generator_max_inputs is not None and lang.generator_max_inputs < 2:
+            continue
+        quoted = shlex.quote(name)
+        if not templates and lang.parameterized:
+            templates = f"  esolangs generate --bits 10 {quoted} 0110"
+        if not dialects and lang.dialect_values:
+            for key, values in sorted(lang.dialect_values.items()):
+                if not values:
+                    continue
+                settings = shlex.quote(
+                    json.dumps({key: values[-1]}, separators=(",", ":"))
+                )
+                setting = shlex.quote(f"{key}={values[-1]}")
+                dialects = (
+                    f"  esolangs generate --portable --settings {settings} "
+                    f"{quoted} 0110 > p.json\n"
+                    f"  esolangs generate --set {setting} {quoted} 0110"
+                )
+                break
+    return templates, dialects
+
+
+_TEMPLATE_EXAMPLE, _DIALECT_EXAMPLES = _capability_examples()
+_TERMINATION_NAMES = ", ".join(
+    name
+    for name, lang in sorted(LANGUAGES.items())
+    if lang.contract.answer_mode == "termination"
+)
+
+USAGE = f"""usage: esolangs <command> [...]
 
 commands:
   Generator-made (the API invents source from a truth table):
@@ -55,15 +95,13 @@ error (a bug in esolangs), 120 stdout closed early, 124 a bound ran out,
 
 examples:
   esolangs list
-  esolangs describe Fargo
-  esolangs encode Grapheme 10
-  esolangs generate Circlefuck 0110
+  esolangs describe brainfuck
+  esolangs encode brainfuck 10
+  esolangs generate brainfuck 0110 > prog.txt
   esolangs generate --width brainfuck 10010110
-  esolangs generate --bits 10 Minifuck 0110
-  esolangs run Circlefuck hello.txt
-  esolangs generate Fargo 10010110 > fargo.txt
-  esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt \
-    | esolangs read-answer LaserFuck
+{_TEMPLATE_EXAMPLE}
+  esolangs encode brainfuck 10 | esolangs run brainfuck prog.txt \\
+    | esolangs read-answer brainfuck
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
 
@@ -74,19 +112,18 @@ HELP = {
 Print the stdin that feeds <bits> to a <language> program, so it can be
 piped straight into `esolangs run`:
 
-    esolangs encode Taglate 101 | esolangs run Taglate prog.txt
+    esolangs encode brainfuck 101 | esolangs run brainfuck prog.txt
 
 Character readers take adjacent 0/1 characters. Numeric readers take
-whitespace-delimited tokens; string readers take lines. Grapheme spells
-its bits %/A, Fargo takes one decimal row index, and Taglate pads an odd
-input count with a leading zero character. `esolangs describe <language>`
-prints the encoding.
+whitespace-delimited tokens; string readers take lines. Other contracts
+use a different alphabet, a row index, or padded input.
+`esolangs describe <language>` prints the encoding.
 
 A language whose generator embeds the inputs in the program reads no stdin
 at all; `esolangs generate --bits` builds those.
 
 example:
-  esolangs encode brainfuck 10 -> 10
+  esolangs encode brainfuck 10  # prints 10
 """,
     "list": """usage: esolangs list [--details] [--json]
                      [--generator | --interpreter-only]
@@ -100,7 +137,7 @@ options:
                 gen    has a boolean generator
                 tmpl   that generator returns a template rather than a
                        runnable program -- see `esolangs generate --help`
-                ex     a committed program in examples/
+                ex     a committed program beside its language modules
                 int    interpreter-only: a classic kept for coverage, with
                        no generator, so `generate` refuses it
   --json      print a JSON array: names, or capability records with --details
@@ -144,9 +181,9 @@ options:
                own way, and a 0/1 in the slot is a different program.
   -p, --portable   write JSON retaining source, dialect choices, and template setters.
   --scale N    enlarge raster pixels by N after layout (default 1).
-  -s, --settings JSON  dialect overrides, e.g. '{{"expression_syntax":"postfix"}}'.
+  -s, --settings JSON  dialect overrides; describe lists supported settings.
   --set KEY=VALUE  one dialect override without JSON, repeatable and applied
-               after --settings, e.g. --set expression_syntax=postfix.
+               after --settings.
   --plain            export compressed text as ordinary source text.
   --balance    minimize the rendered width/height difference across supported
                layouts. Ties prefer shorter source, then smaller width. Tokens
@@ -156,9 +193,8 @@ options:
                `esolangs describe <language>` reports which of three
                things it does, as `width_effect`: `wrap` reflows the
                finished program between whole tokens, `layout` hands the
-               width to the generator as a *hint* (LaserFuck asked for 10
-               gives 18, asked for 200 gives 56, because it folds runs
-               rather than breaking lines), and `none` ignores it, because
+               width to the generator as a *hint*, so routing may exceed
+               the requested width, and `none` ignores it, because
                the language's newlines are semantic or it rejects them.  A
                template wraps with each input's run kept whole, so every
                row it fills to has the same breaks; a layout language lays
@@ -168,12 +204,10 @@ options:
 
 examples:
   esolangs generate brainfuck 0110
-  esolangs generate --bits 10 Minifuck 0110
-  esolangs generate --portable --settings '{{"expression_syntax":"postfix"}}' \\
-      Alight 0110 > p.json
-  esolangs generate --set expression_syntax=postfix Alight 0110
+{_TEMPLATE_EXAMPLE}
+{_DIALECT_EXAMPLES}
 """,
-    "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
+    "run": f"""usage: esolangs run [--timeout S] [--isolated] [--max-output N]
                     [--max-memory BYTES] [--seed N]
                     [--scale N] [--settings JSON] [--set KEY=VALUE]
                     [--portable] <language> <program-file>
@@ -185,7 +219,7 @@ Input is consumed verbatim using the language's character, number, or
 string reads. For generated Boolean programs, `esolangs encode` spells the
 input characters, numeric tokens, or lines.
 
-    esolangs encode Taglate 101 | esolangs run Taglate prog.txt
+    esolangs encode brainfuck 101 | esolangs run brainfuck prog.txt
 
 Output is written verbatim, so it can be piped byte for byte; a trailing
 newline is added only when stdout is a terminal.  Whatever the program
@@ -201,14 +235,14 @@ options:
   --max-output N     cap isolated output in Unicode characters (including zero).
   --max-memory BYTES cap Linux worker address space; requires --isolated.
   --timeout SECONDS  stop the run after this long rather than hanging.
-                     Unbounded by default.  {termination_languages}
-                     answer 1 by *not* terminating, so a timeout
-                     there is the answer, not a failure.
+                     Unbounded by default. Termination answers use halt for
+                     0 and divergence for 1; a timeout remains undecided.
+                     Termination-answer languages: {_TERMINATION_NAMES}.
   --scale N          override detected raster scale; 1 preserves native pixels.
   -p, --portable         load JSON saved by generate --portable.  The language
                      may be omitted because the JSON names it.
                      --settings overrides individual saved choices.
-  -s, --settings JSON    dialect overrides, e.g. '{"eof":"zero"}'.
+  -s, --settings JSON    dialect overrides; describe lists supported settings.
   --set KEY=VALUE    one dialect override without JSON, repeatable and applied
                      after --settings.
   --seed N           fix the random draws so the run repeats.  `esolangs
@@ -216,11 +250,11 @@ options:
                      languages that draw.  A seed for a language that draws
                      nothing is refused rather than ignored.
 examples:
-  printf '1\n0\n' | esolangs run brainfuck prog.txt
-  printf '1\n0\n' | esolangs run --timeout 5 brainfuck prog.txt
-  esolangs generate --portable --set expression_syntax=postfix Alight 0110 > p.json
-  esolangs encode Alight 10 | esolangs run --portable Alight p.json \
-    | esolangs read-answer Alight
+  printf '10' | esolangs run brainfuck prog.txt
+  printf '10' | esolangs run --timeout 5 brainfuck prog.txt
+  esolangs generate --portable brainfuck 0110 > p.json
+  esolangs encode brainfuck 10 | esolangs run --portable brainfuck p.json \
+    | esolangs read-answer brainfuck
 """,
     "describe": """usage: esolangs describe [--json] [--spec] <language>
 
@@ -246,10 +280,9 @@ options:
               layout summarizes or omits.
 
 examples:
-  esolangs describe Fargo
-  esolangs describe "A Painter Ant"
+  esolangs describe brainfuck
   esolangs describe --json brainfuck
-  esolangs describe --spec Unsquare
+  esolangs describe --spec brainfuck
 """,
     "read-answer": """usage: esolangs read-answer <language>
 
@@ -257,19 +290,16 @@ Read a program's output on stdin and print the answer bit it carries.
 
 For most languages the answer is the last thing printed and this is barely
 more than `tail`.  For some it is not: several dump their entire final machine
-state, and the answer sits at a fixed place in it -- RAM0's on its `z:`
-line, A Painter Ant's as the mark on the ant's own cell (`o` for 0, `@`
-for 1).  Working that out by hand meant generating all four rows and
-diffing them.
+state, and the answer sits in a tagged memory value or the current marked
+cell. `esolangs describe <language>` reports the answer convention.
 
 The languages that answer by terminating have no output to read, so
 they are refused here and named: run with `--timeout S` and observe whether it halts.
 
 examples:
-  esolangs encode LaserFuck 10 | esolangs run LaserFuck p.txt \
-    | esolangs read-answer LaserFuck
-  esolangs generate --bits 00 123 0110 > p123.txt
-  esolangs run --timeout 10 123 p123.txt
+  esolangs generate brainfuck 0110 > p.txt
+  esolangs encode brainfuck 10 | esolangs run brainfuck p.txt \\
+    | esolangs read-answer brainfuck
 """,
     "debug": """usage: esolangs debug [options] <language> <program-file>
 
@@ -293,8 +323,8 @@ options:
   --break-on-cell I=V  stop while memory cell I still holds V.
   --timeout SECONDS    stop the run after this long, reporting
                        `stopped: timeout`.  Like --steps this bounds a
-                       program that never halts, which is what the registered
-                       terminate-as-answer languages are.
+                       program that never halts, including programs whose
+                       Boolean answer is termination.
   --stdin TEXT         feed TEXT verbatim using the language's input unit.
                        Without this option, read the program input from stdin.
   -p, --portable       load JSON saved by generate --portable.  The language

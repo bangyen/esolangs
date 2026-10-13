@@ -5,9 +5,9 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.forth.interpreter import _Machine as Forth
 from esolangs.languages.forth.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
     CycleContract,
@@ -200,15 +200,15 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.forth.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 
 
 def _reader(code: object, stdin: str) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.forth.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO(stdin))
 
@@ -246,3 +246,17 @@ def test_forth_changing_stack_halts() -> None:
     # calling itself, so every entered scope has a different binding.
     machine = Forth("1{1-(1;)}3v;", ScriptedIO())
     assert run_until_halt_or_ancestor(machine) is True
+
+
+def test_scope_transition_keeps_old_tables_immutable() -> None:
+    from esolangs.languages.forth.interpreter import _advance
+
+    machine = Forth("1{2}", ScriptedIO(""))
+    machine.step()
+    before = machine._state  # noqa: SLF001 - the transition input is the invariant
+    moved = _advance(before)
+    assert before[1] == {}
+    assert moved[1] == {1: "2"}
+    with pytest.raises(TypeError):
+        moved[1][1] = "3"  # type: ignore[index]
+    assert _advance(before) == moved

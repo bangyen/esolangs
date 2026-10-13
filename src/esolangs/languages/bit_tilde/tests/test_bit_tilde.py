@@ -6,8 +6,8 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.bit_tilde.interpreter import run
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
@@ -119,8 +119,8 @@ class TestBitTilde:
 
 class TestStepMachine:
     def test_step_tracks_pool_and_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.bit_tilde.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("~(", ScriptedIO())
         assert (machine.ind, list(machine.tape)) == (0, [0] * 8)
@@ -134,8 +134,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.bit_tilde.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 

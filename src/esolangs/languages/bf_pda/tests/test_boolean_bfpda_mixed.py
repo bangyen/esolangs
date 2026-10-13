@@ -4,19 +4,24 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.languages.bf_pda.generator import _prepare, _reflected, bfpda
-from esolangs.languages.bf_pda.generator._bank import _Metric
-from esolangs.languages.bf_pda.generator._mixed import _decoder, best_mixed_bank
+from esolangs.generation.helpers import reflected_table
+from esolangs.languages.bf_pda.generator import (
+    _decoder,
+    _Metric,
+    _prepare,
+    best_mixed_bank,
+    bfpda,
+)
 from esolangs.languages.bf_pda.interpreter import _Machine
 from esolangs.languages.bf_pda.tests.test_boolean_bfpda import _execute_bank
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.fills import fill
 
 _fill_bfpda = fill("BF-PDA")
 
 
 @pytest.mark.parametrize("classes", range(2, 20))
-def test_decoder_consumes_each_bit_marker_pair(classes):
+def test_decoder_consumes_each_bit_marker_pair(classes) -> None:
     width = (classes - 1).bit_length()
     pieces = []
     size, tails = _decoder(
@@ -43,10 +48,10 @@ def _fixture(seed=15, n=16):
     rng = random.Random(seed)
     a, b, c = ("".join(rng.choice("01") for _ in range(k)) for k in (32, 16, 16))
     core = a + b + c + a + c + b
-    return _reflected(core * (1 << (n - 7)), n)
+    return reflected_table(core * (1 << (n - 7)), n)
 
 
-def test_public_mixed_bank_shares_two_levels_within_bounds():
+def test_public_mixed_bank_shares_two_levels_within_bounds() -> None:
     table = _fixture()
     context = _prepare(table)
     program = best_mixed_bank(context, 162, 606)
@@ -62,7 +67,7 @@ def test_public_mixed_bank_shares_two_levels_within_bounds():
 
 
 @pytest.mark.parametrize("seed", range(5))
-def test_varied_mixed_bodies_execute_all_essential_rows(seed):
+def test_varied_mixed_bodies_execute_all_essential_rows(seed) -> None:
     table = _fixture(seed, 16)
     program = best_mixed_bank(_prepare(table), 162, 100000)
     assert program is not None
@@ -73,15 +78,15 @@ def test_varied_mixed_bodies_execute_all_essential_rows(seed):
 
 
 @pytest.mark.parametrize("table", ["00", "01", "0011", "01101001", "0" * 64])
-def test_bank_refuses_without_multiple_retired_space_eligible_states(table):
+def test_bank_refuses_without_multiple_retired_space_eligible_states(table) -> None:
     assert best_mixed_bank(_prepare(table), 162, 100000) is None
 
 
-def test_completed_constant_prefix_paths_do_not_enter_decoder():
+def test_completed_constant_prefix_paths_do_not_enter_decoder() -> None:
     rng = random.Random(15)
     a, b = ("".join(rng.choice("01") for _ in range(16)) for _ in range(2))
     core = "0" * 16 + a + b + a + "1" * 16 + b + "0" * 32
-    table = _reflected(core * 512, 16)
+    table = reflected_table(core * 512, 16)
     program = best_mixed_bank(_prepare(table), 162, 100000)
     assert program is not None
     rows = [
@@ -98,5 +103,5 @@ def test_completed_constant_prefix_paths_do_not_enter_decoder():
 
 
 @pytest.mark.parametrize("seed", range(5))
-def test_twelve_input_control_is_refused_at_its_command_bound(seed):
+def test_twelve_input_control_is_refused_at_its_command_bound(seed) -> None:
     assert best_mixed_bank(_prepare(_fixture(seed, 12)), 122, 100000) is None

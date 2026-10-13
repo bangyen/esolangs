@@ -5,9 +5,9 @@ import importlib
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw
 from esolangs.languages.painfuck.interpreter import _Machine as Painfuck
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import (
     run_until_halt,
     run_until_halt_or_all_branches_cycle,
@@ -18,6 +18,7 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
     SnapshotContract,
 )
+from tests.runtime.test_vm import assert_random_steps_reproduce
 from tests.support.raises import assert_halts_with_hint
 
 run = importlib.import_module("esolangs.languages.painfuck.interpreter").run
@@ -378,7 +379,7 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_halts_with_hint("Painfuck", "i", HaltError.DEFAULT, "decimal integer", "x")
 
 
@@ -445,3 +446,8 @@ def test_branching_search_leaves_input_and_wide_coin_paths_undecided() -> None:
         run_until_halt_or_all_branches_cycle(
             Painfuck(_encode("ccy"), ScriptedIO()), limit=4
         )
+
+
+def test_stepping_through_the_random_instruction_is_reproducible() -> None:
+    """Its random instruction steps the same way twice under one seed."""
+    assert_random_steps_reproduce("Painfuck", "y")

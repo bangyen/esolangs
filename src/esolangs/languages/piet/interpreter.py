@@ -1,0 +1,286 @@
+"""Piet raster interpreter following https://www.dangermouse.net/esoteric/piet.html.
+
+A program is an image of coloured codels.  The interpreter enters the
+top-left block and follows the direction pointer and codel chooser, running
+the command named by the hue/lightness change from the block left to the
+block entered: hue 0 pushes/pops, 1 adds/subtracts/multiplies, 2
+divides/modulos/nots, 3 compares/rotates/switches, 4 duplicates/rolls/reads
+a number and 5 reads a char or prints a number/char.  A block with no
+colour exit and no white slide ends the run.
+
+A colour outside the 18 standard ones is treated as white. Input commands
+share a cursor: character reads preserve newlines; numeric reads consume
+whitespace-delimited integers. Input commands at EOF are ignored.
+
+Spec gaps, decided here: a command that cannot be performed (too few values,
+division by zero, a negative or too-deep roll) leaves the stack untouched;
+npiet pops a failed roll's two values.  A roll of depth 0 is not a failure:
+it pops both and moves nothing.  An output char outside Unicode is popped and
+not printed.  Division floors, as the spec's mod does (npiet truncates).  A
+numeric read consumes a token that is not an integer and ignores it; npiet's
+scanf leaves it unread.
+"""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Callable
+from contextlib import suppress
+
+from esolangs.raster import Raster
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime._source import raster_source as load_source
+from esolangs.runtime.codels import (
+    BLACK,
+    COLOURS,
+    DIRECTIONS,
+    WHITE,
+    find_block,
+    leave,
+    slide,
+)
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
+
+__all__ = ["load_source", "run"]
+
+supports_scale = True
+
+Pixel = tuple[int, int, int]
+Point = tuple[int, int]
+
+
+_INTEGER = re.compile(r"[+-]?[0-9]+")
+
+
+def _colour(pixel: Pixel) -> Pixel:
+    """Return a standard colour, treating non-standard colours as white."""
+    return pixel if pixel in COLOURS or pixel in {WHITE, BLACK} else WHITE
+
+
+type _State = tuple[Point, int, int, tuple[int, ...], bool]
+type _Effect = tuple[str, int] | None
+
+
+def _binary(
+    stack: tuple[int, ...], operation: Callable[[int, int], int]
+) -> tuple[int, ...]:
+    return (*stack[:-2], operation(stack[-2], stack[-1])) if len(stack) >= 2 else stack
+
+
+def _command(
+    change: tuple[int, int], size: int, stack: tuple[int, ...]
+) -> tuple[tuple[int, ...], int, int, _Effect]:
+    """Return the stack, control changes, and requested I/O effect."""
+    lightness = change[1]
+    if change == (0, 1):
+        stack = (*stack, size)
+    elif change == (0, 2):
+        stack = stack[:-1]
+    elif change == (1, 0):
+        stack = _binary(stack, lambda left, right: left + right)
+    elif change == (1, 1):
+        stack = _binary(stack, lambda left, right: left - right)
+    elif change == (1, 2):
+        stack = _binary(stack, lambda left, right: left * right)
+    elif change in {(2, 0), (2, 1)}:
+        if len(stack) >= 2 and stack[-1] != 0:
+            left, right = stack[-2:]
+            stack = (*stack[:-2], left // right if lightness == 0 else left % right)
+    elif change == (2, 2):
+        if stack:
+            stack = (*stack[:-1], int(stack[-1] == 0))
+    elif change == (3, 0):
+        stack = _binary(stack, lambda left, right: int(left > right))
+    elif change == (3, 1):
+        return stack[:-1], stack[-1] if stack else 0, 0, None
+    elif change == (3, 2):
+        return stack[:-1], 0, stack[-1] if stack else 0, None
+    elif change == (4, 0):
+        if stack:
+            stack = (*stack, stack[-1])
+    elif change == (4, 1):
+        if len(stack) >= 2:
+            depth, rolls = stack[-2:]
+            if 0 <= depth <= len(stack) - 2:
+                # Depth 0 is a valid roll of nothing: both values still pop.
+                stack = stack[:-2]
+                rolls = rolls % depth if depth else 0
+                if rolls:
+                    stack = (*stack[:-depth], *stack[-rolls:], *stack[-depth:-rolls])
+    elif change == (4, 2):
+        return stack, 0, 0, ("read_num", 0)
+    elif change == (5, 0):
+        return stack, 0, 0, ("read_char", 0)
+    elif change in {(5, 1), (5, 2)} and stack:
+        return (
+            stack[:-1],
+            0,
+            0,
+            ("write_num" if lightness == 1 else "write_char", stack[-1]),
+        )
+    return stack, 0, 0, None
+
+
+def _advance(
+    state: _State, rows: tuple[tuple[Pixel, ...], ...]
+) -> tuple[_State, _Effect]:
+    """Return one pure colour transition or white slide and its I/O request."""
+    current, dp, cc, stack, halted = state
+    if halted:
+        return state, None
+    colour = _colour(rows[current[1]][current[0]])
+    if colour == WHITE:
+        slid = slide(rows, current, dp, cc, _colour)
+        return (
+            (current, dp, cc, stack, True) if slid is None else (*slid, stack, False)
+        ), None
+    block = find_block(rows, current, _colour)
+    for attempt in range(8):
+        exit_x, exit_y = leave(block, dp, cc)
+        dx, dy = DIRECTIONS[dp]
+        target = exit_x + dx, exit_y + dy
+        x, y = target
+        if 0 <= x < len(rows[0]) and 0 <= y < len(rows):
+            target_colour = _colour(rows[y][x])
+            if target_colour == WHITE:
+                slid = slide(rows, target, dp, cc, _colour)
+                return (
+                    (current, dp, cc, stack, True)
+                    if slid is None
+                    else (*slid, stack, False)
+                ), None
+            if target_colour != BLACK:
+                old_hue, old_lightness = COLOURS[colour]
+                new_hue, new_lightness = COLOURS[target_colour]
+                stack, dp_change, cc_change, effect = _command(
+                    ((new_hue - old_hue) % 6, (new_lightness - old_lightness) % 3),
+                    len(block),
+                    stack,
+                )
+                return (
+                    target,
+                    (dp + dp_change) % 4,
+                    -cc if cc_change % 2 else cc,
+                    stack,
+                    False,
+                ), effect
+        if attempt % 2 == 0:
+            cc *= -1
+        else:
+            dp = (dp + 1) % 4
+    return (current, dp, cc, stack, True), None
+
+
+class _Machine:
+    """A Piet run: one immutable state rebound after each pure transition."""
+
+    ip_shape = "grid"
+
+    @staticmethod
+    def perform_io(
+        stack: tuple[int, ...],
+        effect: _Effect,
+        io: IO,
+        read_succeeded: Callable[[], None] | None = None,
+    ) -> tuple[int, ...]:
+        """Perform a transition's I/O and return the resulting immutable stack."""
+        if effect is None:
+            return stack
+        action, value = effect
+        if action == "read_num":
+            try:
+                line = io.input_token()
+            except EOFError:
+                pass
+            else:
+                if read_succeeded is not None:
+                    read_succeeded()
+                # Not ``int``: it takes ``1_0`` and non-ASCII digits.
+                if _INTEGER.fullmatch(line):
+                    return (*stack, parse_integer(line))
+        elif action == "read_char":
+            try:
+                value = io.input_char()
+            except EOFError:
+                pass
+            else:
+                if read_succeeded is not None:
+                    read_succeeded()
+                return (*stack, value)
+        elif action == "write_num":
+            io.print_num(value)
+        else:
+            with suppress(ValueError):
+                io.print_char(chr(value))
+        return stack
+
+    def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
+        self.rows = program._normalized(scale)  # noqa: SLF001
+        self._program_key = (
+            len(self.rows[0]),
+            len(self.rows),
+            bytes(channel for row in self.rows for pixel in row for channel in pixel),
+        )
+        self.io = io
+        self._input_reads = 0
+        self.state: _State = ((0, 0), 0, -1, (), _colour(self.rows[0][0]) == BLACK)
+
+    @property
+    def current(self) -> Point:
+        return self.state[0]
+
+    @property
+    def dp(self) -> int:
+        return self.state[1]
+
+    @property
+    def cc(self) -> int:
+        return self.state[2]
+
+    @property
+    def stack(self) -> tuple[int, ...]:
+        return self.state[3]
+
+    @property
+    def halted(self) -> bool:
+        return self.state[4]
+
+    @property
+    def ip(self) -> tuple[int, ...] | None:
+        return (
+            None
+            if self.halted
+            else (self.current[1], self.current[0], self.dp, self.cc)
+        )
+
+    def snapshot(self) -> tuple[object, ...]:
+        return (
+            self.current,
+            self.dp,
+            self.cc,
+            self.stack,
+            self.io.progress(),
+            self.halted,
+            self._program_key,
+            self._input_reads,
+        )
+
+    def _read_succeeded(self) -> None:
+        self._input_reads += 1
+
+    def step(self) -> None:
+        state, effect = _advance(self.state, self.rows)
+        stack = self.perform_io(state[3], effect, self.io, self._read_succeeded)
+        self.state = (*state[:3], stack, state[4])
+
+
+def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
+    """Execute a Piet image, detecting its codel scale."""
+    machine = _Machine(program, io, scale=scale)
+    drive(machine)
+
+
+if __name__ == "__main__":
+    script_main(run, loader=load_source)

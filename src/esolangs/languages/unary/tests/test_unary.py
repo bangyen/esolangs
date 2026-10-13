@@ -2,8 +2,8 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.unary.interpreter import _Machine, decode, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
 
@@ -85,3 +85,14 @@ def test_wiki_cat_stated_count_runs_and_listed_count_is_unmatched() -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Unary", "1", "only 0")
+
+
+def test_delegation_exposes_an_immutable_state() -> None:
+    from esolangs.languages.unary.interpreter import _Machine
+
+    machine = _Machine("0" * 10, ScriptedIO(""))
+    before = machine.state
+    machine.step()
+    assert isinstance(before, tuple)
+    assert before != machine.state
+    assert before == (0, 0, (0,), 0, False)

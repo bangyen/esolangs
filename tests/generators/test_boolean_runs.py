@@ -4,10 +4,10 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import TemplateError
+from esolangs.generation.helpers import runs
 from esolangs.registry import recover_setters, render_template
-from esolangs.tools.helpers import runs
-from tests.reference import REFERENCE
 from tests.support.pick import languages
+from tests.support.reference import REFERENCE
 from tests.support.witness_tables import row_bits
 
 #: Every template language, on XOR.

@@ -31,11 +31,7 @@ import re
 from collections.abc import Callable, Sequence
 from typing import cast
 
-from esolangs._digits import digit_limit_for
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.polynomial.interpreter.roots import (
     _PEEL_MAX_EXPONENT,
     _PEEL_MAX_IMAGINARY_EXPONENT,
@@ -45,9 +41,10 @@ from esolangs.languages.polynomial.interpreter.roots import (
     _Root,
     _sparse_roots,
 )
-from esolangs.languages.polynomial.interpreter.roots import (
-    prime as prime,
-)
+from esolangs.runtime._digits import digit_limit_for
+from esolangs.runtime._drive import drive
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 
 def _bracket_pairs(string: list[list[int]]) -> dict[int, int]:
@@ -223,10 +220,10 @@ def _parse_program(code: str) -> tuple[tuple[int, ...], ...]:
     """Recover the instruction list from a program's source, once.
 
     Keyed on the source: re-parsing a tens-of-megabytes program cost 0.9s
-    per row on dense n=8.  Polynomial time in the source length for every
-    source (``docs/proofs/polynomial.md``, "Cold parsing of arbitrary
-    programs"): a dense source takes the peels, a sparse one never builds
-    its coefficient list.
+    per row on dense n=8. Parsing is polynomial in source length, except
+    for the zero polynomial's output-sized list; see
+    ``docs/proofs/index.md#polynomial-bound``. Dense sources take the peels;
+    sparse sources never build a coefficient list.
     """
     cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
     if cleaned_code[:5] != "f(x)=":

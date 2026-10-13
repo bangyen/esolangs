@@ -50,7 +50,7 @@ def _text(row: dict[str, object], key: str) -> str:
 
 
 def _check_evidence(reference: str, *, precise: bool) -> None:
-    """Check a local Markdown heading; audit evidence must name one."""
+    """Check a local heading or explicit anchor; audits must name one."""
     relative, separator, anchor = reference.partition("#")
     target = (ROOT / relative).resolve()
     if not target.is_relative_to(ROOT.resolve()) or not target.is_file():
@@ -66,6 +66,7 @@ def _check_evidence(reference: str, *, precise: bool) -> None:
                 fenced = not fenced
             if fenced:
                 continue
+            anchors.update(re.findall(r'<a id="([\w-]+)"></a>', line))
             heading = re.match(r"^#{1,6} +(.+?)(?: +#+)?$", line)
             if heading:
                 slug = re.sub(r"[^\w\- ]", "", heading[1].lower()).replace(" ", "-")

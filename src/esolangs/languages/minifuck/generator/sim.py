@@ -17,7 +17,7 @@ arbitrary states.  What to emit lives in :mod:`esolangs.languages.minifuck.gener
 from collections.abc import Callable
 from functools import lru_cache
 
-from esolangs.tools.helpers import TEMPLATE_CHAR
+from esolangs.generation.helpers import TEMPLATE_CHAR
 
 # How an emitted string decomposes: each entry is a law and its repeat
 # count.  ``dot`` carries no count -- prints are emitted singly -- and the

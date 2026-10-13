@@ -6,18 +6,20 @@ import random
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.languages import generators as boolean
-from esolangs.languages.container.tests.runners import run_container
+from esolangs.runtime._evaluate import _evaluate
+from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import row_bits, witnesses
 
+run_container = _runner("container", lines=True)
+
 
 def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:
     """Run a Container program under a hard tick budget and return its output."""
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.container.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     stream = ScriptedIO("".join(f"{line}" for line in inputs))
     machine = _Machine(program.splitlines(), stream)
@@ -49,9 +51,9 @@ class TestContainer:
         "original", ["A:\n+9 A<=18\nEXIT:", "A=27:\n-9 A>=9\nEXIT:"]
     )
     def test_exact_delta_chunks_preserve_each_tick(self, original: str) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.container.generator import _narrow_rules
         from esolangs.languages.container.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         before = _Machine(original.splitlines(), ScriptedIO(""))
         after = _Machine(_narrow_rules(original, 1).splitlines(), ScriptedIO(""))
@@ -74,12 +76,12 @@ class TestContainer:
 
     @pytest.mark.medium
     def test_factored_rules_preserve_synchronous_state(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.container.generator import (
             _container_threshold,
             _narrow_rules,
         )
         from esolangs.languages.container.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         original = _container_threshold("01101001")
         narrow = _narrow_rules(original, 7)
@@ -112,14 +114,12 @@ class TestContainer:
 
     def test_name_allocation_steps_over_container_s_own_names(self) -> None:
         """Letter names reach ``T`` at 45 and ``IN`` at 754, so they collide."""
-        from esolangs.languages.container.generator import _RESERVED, _allocate_names
+        from esolangs.languages.container.generator import _RESERVED, _free_names
 
-        uses = {("node", 0, index): 1000 - index for index in range(800)}
-        names = _allocate_names(uses)
-        assert not _RESERVED & set(names.values())
-        assert len(set(names.values())) == len(uses)
-        # Descending use counts, so the allocation order is the key order.
-        assert [names[key] for key in list(uses)[:3]] == ["a", "b", "c"]
+        names = list(itertools.islice(_free_names(_RESERVED), 800))
+        assert not _RESERVED & set(names)
+        assert len(set(names)) == len(names)
+        assert names[:3] == ["a", "b", "c"]
 
     def test_wide_tables_read_exactly_n_inputs(self) -> None:
         """The latch-and-gate route still reads one line per input."""
@@ -272,7 +272,22 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 
 @pytest.mark.parametrize("table", ["01" * 64])
-def test_narrow_balance_regime_edge_executes(table):
+def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Container", table, balance=True)
     assert _evaluate("Container", balanced, inputs=len(table).bit_length() - 1) == table
+
+
+@pytest.mark.parametrize(("table", "weights"), [("0011", [1, 0]), ("0101", [0, 1])])
+def test_threshold_proof_keeps_ignored_latches(table: str, weights: list[int]) -> None:
+    from esolangs.languages.container.generator import _container_threshold
+    from esolangs.languages.container.tests.proof_container import parse
+
+    assert parse(_container_threshold(table))[1] == weights
+
+
+@pytest.mark.medium
+def test_threshold_proof_executes_wide_inputs() -> None:
+    from esolangs.languages.container.tests.proof_container import check_l4
+
+    check_l4((7,))

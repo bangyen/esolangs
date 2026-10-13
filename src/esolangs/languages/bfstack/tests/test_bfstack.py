@@ -3,8 +3,8 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.bfstack.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
@@ -144,7 +144,7 @@ def test_malformed_source_carries_a_repair_hint() -> None:
 
 
 @pytest.mark.parametrize("io_type", [ScriptedIO, PositionlessIO])
-def test_cycle_detector_tracks_cursorless_input(io_type):
+def test_cycle_detector_tracks_cursorless_input(io_type) -> None:
     io = io_type("aaaa\0")
     machine = _Machine(",[.<,]", io)
     assert run_until_halt_or_cycle(machine, limit=100)

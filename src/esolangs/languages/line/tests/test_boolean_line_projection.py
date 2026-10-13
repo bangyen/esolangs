@@ -4,9 +4,9 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.line.generator import balance, line, projected_boolean
 from esolangs.languages.line.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 
 
@@ -53,7 +53,9 @@ def _execute(table, image, rows, trace=None):
 @pytest.mark.medium
 @pytest.mark.parametrize("kept", [(0, 1, 2), (1, 2, 3), (3, 4, 5), (0, 2, 5)])
 @pytest.mark.parametrize("balanced", [False, True])
-def test_every_row_with_leading_middle_trailing_and_scattered_ignores(kept, balanced):
+def test_every_row_with_leading_middle_trailing_and_scattered_ignores(
+    kept, balanced
+) -> None:
     table = _lift("00010111", 6, kept)
     image = line(table)
     if balanced:
@@ -63,7 +65,7 @@ def test_every_row_with_leading_middle_trailing_and_scattered_ignores(kept, bala
 
 @pytest.mark.medium
 @pytest.mark.parametrize("value", ["0", "1"])
-def test_constant_loader_keeps_a_fresh_output_cell(value):
+def test_constant_loader_keeps_a_fresh_output_cell(value) -> None:
     table = value * 64
     _execute(table, line(table), range(64))
 
@@ -73,7 +75,9 @@ def test_constant_loader_keeps_a_fresh_output_cell(value):
     "kept", [(0, 1, 2, 3), (6, 7, 8, 9), (12, 13, 14, 15), (0, 5, 10, 15)]
 )
 @pytest.mark.parametrize("seed", [73041, 73042, 73043])
-def test_cap_projection_covers_every_kept_row_and_both_ignored_fills(seed, kept):
+def test_cap_projection_covers_every_kept_row_and_both_ignored_fills(
+    seed, kept
+) -> None:
     rng = random.Random(seed)
     core = "".join(str(rng.randrange(2)) for _ in range(16))
     table = _lift(core, 16, kept)
@@ -85,12 +89,14 @@ def test_cap_projection_covers_every_kept_row_and_both_ignored_fills(seed, kept)
     _execute(table, line(table), rows)
 
 
-def test_projection_leaves_fully_essential_trees_to_existing_constructors():
+def test_projection_leaves_fully_essential_trees_to_existing_constructors() -> None:
     assert projected_boolean("0110") is None
 
 
 @pytest.mark.medium
-def test_compact_loader_admits_a_shared_return_within_the_original_input_budget():
+def test_compact_loader_admits_a_shared_return_within_the_original_input_budget() -> (
+    None
+):
     from esolangs.languages.line.generator.render import _has_goto
     from esolangs.languages.line.generator.shared import shared_tree
 
@@ -105,11 +111,11 @@ def test_compact_loader_admits_a_shared_return_within_the_original_input_budget(
 
 
 @pytest.mark.medium
-def test_multiple_returns_share_a_native_trunk_within_projected_ledger():
+def test_multiple_returns_share_a_native_trunk_within_projected_ledger() -> None:
+    from esolangs.generation.helpers import permute_truth_table
     from esolangs.languages.line.generator import _grey_rows, _project_loader
     from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
     from esolangs.raster import Raster
-    from esolangs.tools.helpers import permute_truth_table
 
     rng = random.Random(15)
     a, b, c = ["".join(rng.choice("01") for _ in range(16)) for _ in range(3)]
@@ -129,8 +135,8 @@ def test_multiple_returns_share_a_native_trunk_within_projected_ledger():
 
 
 @pytest.mark.medium
-def test_public_multiple_returns_reduce_mixed_residual_area():
-    from esolangs.tools.helpers import permute_truth_table
+def test_public_multiple_returns_reduce_mixed_residual_area() -> None:
+    from esolangs.generation.helpers import permute_truth_table
 
     rng = random.Random(15)
     a = "".join(rng.choice("01") for _ in range(64))
@@ -151,7 +157,8 @@ def test_public_multiple_returns_reduce_mixed_residual_area():
     assert returns(image._payload) == 35  # noqa: SLF001 - generator-owned graph
     assert (
         len(image.rows) * len(image.rows[0])
-        == 22264000
+        == 16720000
+        < 22264000
         < 22352000
         < 22880000
         < 23496000

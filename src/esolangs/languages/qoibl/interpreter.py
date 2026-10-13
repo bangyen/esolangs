@@ -12,21 +12,34 @@ loop body being one statement.  The variable list is an
 unbounded dict.  Division by zero raises
 :class:`~esolangs.exceptions.HaltError`; an unrecognized operator raises
 :class:`ValueError`; exhausted input raises :class:`EOFError`.
-:func:`_eval` is pure over an immutable ``_Vars`` but takes the two ports
-as callbacks (``read`` for ``et``, ``emit`` for ``tt``): a statement is
-the step and ``rr`` runs its body inside one, so the effects cannot be
-lifted out of the recursion.
+
+The semantics are a pure transition: :func:`_advance` maps an immutable
+``_State`` (the variable mapping and the statement cursor) plus the input
+values the statement may read to a new ``_State`` and the characters it
+asks to print.  :func:`_eval` appends output to an internal accumulator as
+it is computed, so a ``tt`` records output and an ``et`` reads the next
+explicit input value.  A statement may read any number of times (an ``rr``
+body loops), so the shell cannot hoist one read: it calls :func:`_advance`
+with the values it has read, and when the statement asks for one more than
+that -- raising :data:`_NeedInput` with the output prefix already computed
+-- the shell flushes that prefix, reads one character, and retries.  A fault
+raises :data:`_Fault` with the same prefix, which the shell flushes before
+re-raising, so output written before a later read fails or an operation
+halts is never dropped.  The transition is deterministic, so the retry lands
+on the same state; the shell is the only place that touches ``io``.
 """
 
 import functools
 import re
 from collections.abc import Callable, Mapping, Sequence
+from types import MappingProxyType
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import format_integer
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
+from esolangs.runtime.source_hints import syntax_error
 
 INSTRUCTIONS = frozenset({"tt", "we", "qe", "et", "yr", "ry", "rr"})
 OPERATORS = frozenset({"ee", "ey", "ye", "yy"})
@@ -251,31 +264,68 @@ def _split(tokens: list[str], out: list[list[str]]) -> bool:
     return True
 
 
-#: The part of a run the pure layer owns: the variable list, as a mapping
-#: from number to value.  A value, not a record: :func:`_eval` returns a new
-#: one rather than editing the one it was handed, so an expression that
+#: The part of a run the pure layer owns: the variable list, as an immutable
+#: mapping from number to value.  A value, not a record: :func:`_eval` returns
+#: a new one rather than editing the one it was handed, so an expression that
 #: assigns half-way through and then raises leaves the caller's copy intact.
 type _Vars = Mapping[int, int]
 
 #: Every value a Qoibl statement can change: the variable mapping that
 #: expression evaluation returns and the top-level statement cursor.  The
-#: tokenized program is fixed for a run, while ports stay in the shell.
+#: tokenized program is fixed for a run; input values and output characters
+#: are explicit, not ports.
 type _State = tuple[_Vars, int]
 
-#: What ``et`` and ``tt`` reach.  The ports stay callbacks because a
-#: statement is the unit of execution: an ``rr`` body can read and print any
-#: number of times inside one step, at points that depend on values computed
-#: part-way through, so neither can be hoisted into the shell ahead of the
-#: evaluation the way a one-command step hoists them.
-type _Read = Callable[[], int]
-type _Emit = Callable[[str], None]
+#: What a statement asks the shell to print, in order.
+type _Effects = tuple[str, ...]
 
 
-def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _Vars]:
-    """Return a validated expression's value and resulting variables.
+def _frozen(var: Mapping[int, int]) -> _Vars:
+    """Return ``var`` as an immutable mapping, sharing an existing freeze."""
+    return var if isinstance(var, MappingProxyType) else MappingProxyType(var)
+
+
+class _NeedInput(Exception):  # noqa: N818 - an internal resumption signal
+    """Signals that a statement needs one more input value than supplied.
+
+    Raised by :func:`_eval` when an ``et`` finds the explicit input tuple
+    exhausted.  ``effects`` is the output already computed before the read,
+    so the shell can flush it before reading.  The shell reads one more
+    value and retries; the transition is deterministic, so the retry reaches
+    the same point with the new value.
+    """
+
+    def __init__(self, effects: _Effects = ()) -> None:
+        super().__init__()
+        self.effects = effects
+
+
+class _Fault(Exception):  # noqa: N818 - an internal resumption signal
+    """Carries the output prefix computed before a fault, and the fault.
+
+    The shell flushes ``effects`` and re-raises ``error``, so output written
+    before a later read fails or an operation halts is not lost.
+    """
+
+    def __init__(self, effects: _Effects, error: BaseException) -> None:
+        super().__init__(str(error))
+        self.effects = effects
+        self.error = error
+
+
+def _eval(
+    expr: list[str],
+    var: _Vars,
+    inputs: Sequence[int],
+    pos: int,
+    out: list[str],
+) -> tuple[int, _Vars, int]:
+    """Return a validated expression's value, variables, and input cursor.
 
     ``we`` evaluates its target before its value; ``rr`` re-evaluates its
-    condition against the variables its body returned.
+    condition against the variables its body returned.  Output is appended to
+    ``out`` as it is computed, so a later read or fault still sees the prefix;
+    ``inputs`` is the explicit input the shell has supplied.
     """
     if not expr:
         raise syntax_error(
@@ -283,40 +333,47 @@ def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _
         )
 
     if (op := expr[0]) == "tt":
-        value, var = _eval(expr[1:-1], var, read, emit)
-        emit(chr(value))
-        return 0, var
+        value, var, pos = _eval(expr[1:-1], var, inputs, pos, out)
+        out.append(chr(value))
+        return 0, var, pos
     if op == "we":
         ind = expr.index("we", 1)
-        target, var = _eval(expr[1:ind], var, read, emit)
-        value, var = _eval(expr[ind + 1 : -1], var, read, emit)
-        return 0, {**var, _variable(target): value}
+        target, var, pos = _eval(expr[1:ind], var, inputs, pos, out)
+        value, var, pos = _eval(expr[ind + 1 : -1], var, inputs, pos, out)
+        return 0, _frozen({**var, _variable(target): value}), pos
     if op == "rr":
         ind = expr.index("rr", 1)
-        cond, var = _eval(expr[1:ind], var, read, emit)
+        cond, var, pos = _eval(expr[1:ind], var, inputs, pos, out)
         while cond:
-            _, var = _eval(expr[ind + 1 : -1], var, read, emit)
-            cond, var = _eval(expr[1:ind], var, read, emit)
-        return 0, var
+            _, var, pos = _eval(expr[ind + 1 : -1], var, inputs, pos, out)
+            cond, var, pos = _eval(expr[1:ind], var, inputs, pos, out)
+        return 0, var, pos
     if "yr" in expr:
-        return _compare(expr, var, read, emit)
+        return _compare(expr, var, inputs, pos, out)
     if "ry" in expr:
-        return _arithmetic(expr, var, read, emit)
+        return _arithmetic(expr, var, inputs, pos, out)
     if op == "qe":
-        key, var = _eval(expr[1:-1], var, read, emit)
-        return var.get(_variable(key), 0), var
+        key, var, pos = _eval(expr[1:-1], var, inputs, pos, out)
+        return var.get(_variable(key), 0), var, pos
     if op == "et":
-        return read(), var
+        if pos >= len(inputs):
+            raise _NeedInput
+        return inputs[pos], var, pos + 1
     # Loading validates literals; unreachable hand-built tokens need no arm.
-    return int(op.replace("e", "0").replace("y", "1"), 2), var
+    return int(op.replace("e", "0").replace("y", "1"), 2), var, pos
 
 
 def _operands(
-    expr: list[str], marker: str, var: _Vars, read: _Read, emit: _Emit
-) -> tuple[str, int, int, _Vars]:
+    expr: list[str],
+    marker: str,
+    var: _Vars,
+    inputs: Sequence[int],
+    pos: int,
+    out: list[str],
+) -> tuple[str, int, int, _Vars, int]:
     """Return the operator and both operands around ``marker``.
 
-    Left before right, which is observable through the ports.
+    Left before right, which is observable through the requested output.
     """
     beg = expr.index(marker)
     if beg + 1 >= len(expr):
@@ -328,63 +385,93 @@ def _operands(
             ),
         )
     num = expr[beg + 1]
-    x, var = _eval(expr[:beg], var, read, emit)
-    y, var = _eval(expr[beg + 3 :], var, read, emit)
-    return num, x, y, var
+    x, var, pos = _eval(expr[:beg], var, inputs, pos, out)
+    y, var, pos = _eval(expr[beg + 3 :], var, inputs, pos, out)
+    return num, x, y, var, pos
 
 
 def _compare(
-    expr: list[str], var: _Vars, read: _Read, emit: _Emit
-) -> tuple[int, _Vars]:
+    expr: list[str], var: _Vars, inputs: Sequence[int], pos: int, out: list[str]
+) -> tuple[int, _Vars, int]:
     """Evaluate a ``yr``-marked comparison."""
-    num, x, y, var = _operands(expr, "yr", var, read, emit)
+    num, x, y, var, pos = _operands(expr, "yr", var, inputs, pos, out)
     if num == "ee":
-        return int(x == y), var
+        return int(x == y), var, pos
     if num == "ey":
-        return int(x > y), var
+        return int(x > y), var, pos
     if num == "ye":
-        return int(x < y), var
+        return int(x < y), var, pos
     if num == "yy":
-        return int(x != y), var
+        return int(x != y), var, pos
     raise syntax_error(
         "unrecognized comparison operator", "use ee, ey, ye or yy after yr"
     )
 
 
 def _arithmetic(
-    expr: list[str], var: _Vars, read: _Read, emit: _Emit
-) -> tuple[int, _Vars]:
+    expr: list[str], var: _Vars, inputs: Sequence[int], pos: int, out: list[str]
+) -> tuple[int, _Vars, int]:
     """Evaluate a ``ry``-marked arithmetic expression."""
-    num, x, y, var = _operands(expr, "ry", var, read, emit)
+    num, x, y, var, pos = _operands(expr, "ry", var, inputs, pos, out)
     if num == "ee":
-        return x + y, var
+        return x + y, var, pos
     if num == "ey":
-        return x - y, var
+        return x - y, var, pos
     if num == "ye":
-        return x * y, var
+        return x * y, var, pos
     if num == "yy":
         if y == 0:
             raise HaltError(
                 f"division by zero: {format_integer(x)} divided by {format_integer(y)}",
                 hint="ensure the divisor is nonzero before dividing",
             )
-        return x // y, var
+        return x // y, var, pos
     raise syntax_error(
         "unrecognized arithmetic operator", "use ee, ey, ye or yy after ry"
     )
 
 
+def _advance(
+    state: _State, code: Sequence[list[str]], inputs: Sequence[int] = ()
+) -> tuple[_State, _Effects]:
+    """Return the state after one statement, and the characters to print.
+
+    Pure: the tokenized ``code`` is a parameter, a read arrives in
+    ``inputs``, and a write leaves in the returned effects.  An ``et`` that
+    needs a value ``inputs`` does not hold raises :data:`_NeedInput` carrying
+    the output prefix computed before it; any other fault raises
+    :data:`_Fault` carrying the same prefix, so the shell can flush output
+    before re-raising.
+    """
+    var, ind = state
+    out: list[str] = []
+    try:
+        if ind >= len(code):
+            return state, ()
+        tokens = code[ind]
+        if tokens:
+            _value, var, _pos = _eval(tokens, var, inputs, 0, out)
+        new_state: _State = (_frozen(var), ind + 1)
+    except _NeedInput:
+        raise _NeedInput(tuple(out)) from None
+    except _Fault:
+        raise
+    except BaseException as exc:
+        raise _Fault(tuple(out), exc) from None
+    return new_state, tuple(out)
+
+
 class _Machine:
     """Per-run state for a Qoibl interpreter: variables and the code cursor."""
 
-    var: dict[int, int]
+    var: _Vars
     io: IO
     code: tuple[list[str], ...]
     ind: int
 
     def __init__(self, code: str | list[str], io: IO) -> None:
         """Build a state for ``code``, tokenized."""
-        self.var = {}
+        self.var = MappingProxyType({})
         self.io = io
         self.code = tuple(tokenize(code if isinstance(code, str) else "\n".join(code)))
         for statement in self.code:
@@ -430,31 +517,41 @@ class _Machine:
 
     def _restore(self, state: _State) -> None:
         """Write a statement transition's result back onto the shell."""
-        var, self.ind = state
-        self.var = dict(var)
+        self.var, self.ind = state
 
-    def _parse(self, expr: str | list[str]) -> int:
-        """Evaluate one expression, committing what it assigns.
-
-        The shell around :func:`_eval`; kept as a method for its callers.
-        """
-        tokens = list(expr) if isinstance(expr, list) else [expr]
-        value, var = _eval(
-            tokens, self._state[0], self.io.input_char, self.io.print_char
-        )
-        _, ind = self._state
-        self._restore((var, ind))
-        return value
+    def _flush(self, effects: _Effects, flushed: int) -> int:
+        """Print ``effects`` past ``flushed``; return the new flush count."""
+        for char in effects[flushed:]:
+            self.io.print_char(char)
+        return len(effects)
 
     def step(self) -> None:
-        """Execute one statement, advancing the cursor."""
+        """Execute one statement, advancing the cursor.
+
+        The shell: it reads the values the statement asks for and prints the
+        characters it asks to print, then commits the transition's state.  A
+        statement may read any number of times, so the reads cannot be
+        hoisted; each :data:`_NeedInput` flushes the output computed before
+        it, reads one more value, and retries.  A fault flushes the same
+        prefix before it is re-raised, matching the original output order.
+        """
         if self.halted:
             return
-        var, ind = self._state
-        tokens = self.code[ind]
-        self._restore((var, ind + 1))
-        if tokens:
-            self._parse(tokens)
+        inputs: list[int] = []
+        flushed = 0
+        while True:
+            try:
+                state, effects = _advance(self._state, self.code, tuple(inputs))
+            except _NeedInput as need:
+                flushed = self._flush(need.effects, flushed)
+                inputs.append(self.io.input_char())
+                continue
+            except _Fault as fault:
+                self._flush(fault.effects, flushed)
+                raise fault.error from None
+            break
+        self._restore(state)
+        self._flush(effects, flushed)
 
 
 def run(code: list[str] | str, io: IO) -> None:
@@ -462,10 +559,7 @@ def run(code: list[str] | str, io: IO) -> None:
 
     Lines or one string; the program is one character stream.
     """
-    state = _Machine(code, io)
-
-    while not state.halted:
-        state.step()
+    drive(_Machine(code, io))
 
 
 if __name__ == "__main__":

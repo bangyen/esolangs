@@ -6,7 +6,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.minifuck.generator import (
     _lookup_balance,
     _lookup_layout,
@@ -15,11 +15,11 @@ from esolangs.languages.minifuck.generator import (
 from esolangs.languages.minifuck.generator.sim import PAIR
 from esolangs.languages.minifuck.generator.stored import _Plan, plan
 from esolangs.languages.minifuck.interpreter import _Machine
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime.io import ScriptedIO
 
 
 @pytest.mark.medium
-def test_stored_conjunction_preserves_live_cells():
+def test_stored_conjunction_preserves_live_cells() -> None:
     rng = random.Random(622026)
     for left, right in ((12, 17), (17, 12), (12, 12)):
         builder = _Plan()
@@ -48,7 +48,7 @@ def test_stored_conjunction_preserves_live_cells():
 
 
 @pytest.mark.medium
-def test_every_small_stored_table_runs():
+def test_every_small_stored_table_runs() -> None:
     for n in range(1, 4):
         for values in itertools.product("01", repeat=1 << n):
             table = "".join(values)
@@ -66,7 +66,7 @@ def test_every_small_stored_table_runs():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("seed", range(4))
-def test_wider_stored_tables_run(seed):
+def test_wider_stored_tables_run(seed) -> None:
     rng = random.Random(622026 + seed)
     n = 5
     table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
@@ -84,7 +84,7 @@ def test_wider_stored_tables_run(seed):
 @pytest.mark.parametrize(
     ("width", "balance"), [(None, False), (1, False), (40, False), (None, True)]
 )
-def test_public_wider_sharing_runs(width, balance):
+def test_public_wider_sharing_runs(width, balance) -> None:
     n = 12
     table = "".join(str(int(row.bit_count() >= 2)) for row in range(1 << n))
     template = esolangs.generate("Minifuck", table, width=width, balance=balance)

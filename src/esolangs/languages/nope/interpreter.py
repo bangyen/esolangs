@@ -5,9 +5,9 @@ No parsing or input is performed; no newline is appended. No ValueError,
 EOFError or HaltError arises under the constant-language semantics.
 """
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 type _State = bool
 

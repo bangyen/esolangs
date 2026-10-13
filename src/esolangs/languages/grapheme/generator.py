@@ -3,16 +3,19 @@
 The table is one integer literal, so it has no subtrees to fold or share.
 """
 
-from esolangs.languages.grapheme.interpreter._dialect import (
+from esolangs.generation.constant_projection import (
+    balanced_projection,
+    projected_inputs,
+)
+from esolangs.generation.helpers import _validate_truth_table, read_at
+from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.grapheme.interpreter import (
     DEFAULT_GRAPHEME,
     INTEGER_CONVERSIONS,
     GraphemeDialect,
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.constant_projection import balanced_projection, projected_inputs
-from esolangs.tools.helpers import _validate_truth_table, read_at
-from esolangs.tools.wrap import wrap_chars
 
 #: Int-mode digits: ``Z`` is 0 and ``A``-``Y`` are 1 to 25, so the one value
 #: with no letter is 6 -- ``F`` closes the mode.  16 with a borrow spells it.

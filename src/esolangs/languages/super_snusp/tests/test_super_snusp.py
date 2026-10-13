@@ -5,13 +5,14 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw
 from esolangs.languages.super_snusp.generator import super_snusp
 from esolangs.languages.super_snusp.interpreter import _advance, _floor_root, run
 from esolangs.languages.super_snusp.interpreter import _Machine as SuperSnusp
+from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
+from tests.runtime.test_vm_protocol import assert_one_row_moves_along_it
 from tests.support.raises import assert_halts_with_hint
 
 
@@ -193,11 +194,11 @@ def test_advance_refuses_an_input_the_shell_did_not_supply(
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_halts_with_hint("Super SNUSP", '"1_{1[', "negative", "nonnegative shift")
 
 
-def test_root_hint_does_not_require_an_exact_root():
+def test_root_hint_does_not_require_an_exact_root() -> None:
     assert _floor_root(2, 2) == 1
     with pytest.raises(HaltError) as caught:
         _floor_root(-2, 2)
@@ -249,3 +250,8 @@ def test_super_snusp_declines_input_and_caps_a_wide_span() -> None:
         run_until_halt_or_all_branches_cycle(wide, limit=100000)
     assert "cap on a single transition" in str(caught.value)
     assert "limit does not raise this transition cap" in caught.value.__notes__[0]
+
+
+def test_its_one_row_program_moves_along_the_columns() -> None:
+    """The row component of ``VM.ip`` stays put on a one-row program."""
+    assert_one_row_moves_along_it("Super SNUSP")

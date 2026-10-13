@@ -6,12 +6,12 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from tests.integration.api.test_validation import _debugger
-from tests.reference import REFERENCE
-from tests.runtime.vm.test_vm import _run_all
-from tests.runtime.vm.test_vm_protocol import assert_starts_downward
+from tests.api.test_validation import _debugger
+from tests.runtime.test_vm import _run_all
+from tests.runtime.test_vm_protocol import assert_starts_downward
 from tests.support.cli_support import call_both
 from tests.support.generator_support import evaluate_generated, overruns
+from tests.support.reference import REFERENCE
 from tests.support.samples import STREETCODE, STREETCODE_GAP
 
 

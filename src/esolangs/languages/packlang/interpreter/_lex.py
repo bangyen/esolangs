@@ -2,7 +2,7 @@
 
 import re
 
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 
 def _strip_comments(code: str) -> str:

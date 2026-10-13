@@ -12,6 +12,18 @@ from itertools import pairwise
 from math import isqrt
 from typing import Any
 
+from esolangs.generation.helpers import (
+    TEMPLATE_CHAR,
+    _validate_shape,
+    _validate_truth_table,
+    essential_inputs,
+    mark_runs,
+    read_at,
+    same_up_to_wrapping,
+    unmark,
+)
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _MINIFUCK_COMMAND, _RUN, _minifuck, balance_score
 from esolangs.languages.minifuck.generator.mux import (
     _MUX_MIN_ARITY,
     _canonical_endgame,
@@ -31,18 +43,6 @@ from esolangs.languages.minifuck.generator.states import state_setters, two_stat
 from esolangs.languages.minifuck.generator.stored import stored
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.helpers import (
-    TEMPLATE_CHAR,
-    _validate_shape,
-    _validate_truth_table,
-    essential_inputs,
-    mark_runs,
-    read_at,
-    same_up_to_wrapping,
-    unmark,
-)
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _MINIFUCK_COMMAND, _RUN, _minifuck, balance_score
 
 __all__ = ["minifuck"]
 
@@ -313,7 +313,7 @@ def minifuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 
 def _wrap_template(template: str, n: int, width: int) -> str:
     """Wrap a template with each two-character input run kept atomic."""
-    from esolangs.tools.wrap import wrap_program
+    from esolangs.generation.wrap import wrap_program
 
     marked = mark_runs(template, TEMPLATE_CHAR, (PAIR,) * n)
     return unmark(wrap_program(marked, "minifuck", width), TEMPLATE_CHAR, n)
@@ -432,6 +432,7 @@ LANGUAGE = Language(
     contract=BooleanContract(),
     # ``[`` skips the character after it.
     wrap=_minifuck,
+    wrap_multiline=True,
     balance=_balance,
     example=Example(setters=minifuck_setters),
 )

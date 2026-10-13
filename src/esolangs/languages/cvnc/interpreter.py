@@ -37,11 +37,11 @@ from __future__ import annotations
 import math
 from collections.abc import Hashable
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 __all__ = ["run"]
 
@@ -198,65 +198,69 @@ def _match_loops(tokens: list[str]) -> dict[int, int]:
     return pairs
 
 
+#: A parsed function: an int leaf, or ``(operator, left, right)``.
+_Node = int | tuple[str, "_Node", "_Node"]
+
+
+def _evaluate(node: _Node) -> int:
+    """Evaluate a parsed function tree."""
+    if isinstance(node, int):
+        return node
+    symbol, left, right = node
+    lval, rval = _evaluate(left), _evaluate(right)
+    if symbol == "+":
+        return lval + rval
+    if symbol == "-":
+        # The accumulator is unsigned, so a subtraction floors at zero
+        # rather than going negative.
+        return max(lval - rval, 0)
+    if symbol == "*":
+        return lval * rval
+    if rval == 0:
+        raise HaltError(
+            "division by zero in the function",
+            hint="ensure the divisor is nonzero before dividing",
+        )
+    return lval // rval
+
+
 class _Parser:
-    """A recursive-descent reader for the function the program has built.
+    """A recursive-descent reader for the function the program has built."""
 
-    Validate before evaluating: an invalid ``a/0+`` must remain inert.
-    """
-
-    def __init__(
-        self, symbols: list[str], accumulator: int, *, validate_only: bool = False
-    ) -> None:
+    def __init__(self, symbols: list[str], accumulator: int) -> None:
         """Read ``symbols``, substituting ``accumulator`` for every ``a``."""
         self.symbols = symbols
         self.accumulator = accumulator
         self.index = 0
-        self.validate_only = validate_only
 
     def _peek(self) -> str | None:
         return self.symbols[self.index] if self.index < len(self.symbols) else None
 
-    def parse(self) -> int:
-        """Evaluate the whole function, rejecting anything left over."""
-        value = self._expression()
+    def parse(self) -> _Node:
+        """Read the whole function as a syntax tree, rejecting leftovers."""
+        node = self._expression()
         if self.index != len(self.symbols):
             raise _InvalidFunctionError
-        return value
+        return node
 
-    def _expression(self) -> int:
-        """Evaluate a sum of terms, left to right."""
-        value = self._term()
+    def _expression(self) -> _Node:
+        """Read a sum of terms, left to right."""
+        node = self._term()
         while (symbol := self._peek()) in _ADDITIVE:
             self.index += 1
-            right = self._term()
-            if self.validate_only:
-                continue
-            # The accumulator is unsigned, so a subtraction floors at zero
-            # rather than going negative.
-            value = value + right if symbol == "+" else max(value - right, 0)
-        return value
+            node = (symbol, node, self._term())
+        return node
 
-    def _term(self) -> int:
-        """Evaluate a product of factors, left to right."""
-        value = self._factor()
+    def _term(self) -> _Node:
+        """Read a product of factors, left to right."""
+        node = self._factor()
         while (symbol := self._peek()) in _MULTIPLICATIVE:
             self.index += 1
-            right = self._factor()
-            if self.validate_only:
-                continue
-            if symbol == "*":
-                value *= right
-                continue
-            if right == 0:
-                raise HaltError(
-                    "division by zero in the function",
-                    hint="ensure the divisor is nonzero before dividing",
-                )
-            value //= right
-        return value
+            node = (symbol, node, self._factor())
+        return node
 
-    def _factor(self) -> int:
-        """Evaluate ``a``, a literal, or a parenthesized expression."""
+    def _factor(self) -> _Node:
+        """Read ``a``, a literal, or a parenthesized expression."""
         symbol = self._peek()
         if symbol is None:
             raise _InvalidFunctionError
@@ -264,11 +268,11 @@ class _Parser:
         if symbol == "a":
             return self.accumulator
         if symbol == "(":
-            value = self._expression()
+            node = self._expression()
             if self._peek() != ")":
                 raise _InvalidFunctionError
             self.index += 1
-            return value
+            return node
         if symbol.isdigit():
             return int(symbol)
         raise _InvalidFunctionError
@@ -304,8 +308,7 @@ def _popped(deque: tuple[int, ...], *, front: bool) -> tuple[tuple[int, ...], in
 def _applied(accumulator: int, function: tuple[str, ...]) -> int:
     """Return the function applied to the accumulator, if it parses."""
     try:
-        _Parser(list(function), accumulator, validate_only=True).parse()
-        return _Parser(list(function), accumulator).parse()
+        return _evaluate(_Parser(list(function), accumulator).parse())
     except _InvalidFunctionError:
         return accumulator
 

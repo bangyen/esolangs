@@ -6,7 +6,7 @@ import pytest
 
 import esolangs.debugger as debugger_api
 from tests.interpreters.test_input_convention import assert_echoes_a_newline
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 
 class TestEdges:

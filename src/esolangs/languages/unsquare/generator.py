@@ -2,16 +2,19 @@
 
 from itertools import groupby
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.constant_projection import balanced_projection, projected_inputs
-from esolangs.tools.helpers import (
+from esolangs.generation.constant_projection import (
+    balanced_projection,
+    projected_inputs,
+)
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     read_at,
     subtree_ids,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 
 def _run(entry: str, count: int) -> str:

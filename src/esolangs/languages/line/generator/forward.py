@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _residual_ids,
     _validate_truth_table,
     essential_inputs,
@@ -150,6 +150,21 @@ def packed_streaming_canvas(
     )
 
 
+def projected_streaming_canvas(
+    table: str, old_area: int, *, unit: int = _UNIT
+) -> tuple[Node, CanvasPlan] | None:
+    """Share essential residuals while draining ignored reads on their stems."""
+    return _forward_canvas(
+        table,
+        old_area,
+        unit=unit,
+        destination_moves=True,
+        streaming=True,
+        centered=True,
+        projected=True,
+    )
+
+
 def _forward_canvas(
     table: str,
     old_area: int,
@@ -160,19 +175,36 @@ def _forward_canvas(
     centered: bool = False,
     median_order: bool = False,
     packed: bool = False,
+    projected: bool = False,
 ) -> tuple[Node, CanvasPlan] | None:
     original_n = _validate_truth_table(table)
-    kept = list(range(original_n)) if streaming else essential_inputs(table, original_n)
+    kept = (
+        list(range(original_n))
+        if streaming and not projected
+        else essential_inputs(table, original_n)
+    )
+    if projected and len(kept) == original_n:
+        return None
     n = len(kept)
     if n < 2:
         return None
-    reduced = table if streaming else read_at(table, kept, original_n)
+    reduced = table if streaming and not projected else read_at(table, kept, original_n)
     levels, children, constants = _residual_ids(
         reduced
         if streaming
         else permute_truth_table(reduced, tuple(range(n - 1, -1, -1))),
         n,
     )
+
+    def reads_at(depth: int) -> str:
+        if depth == n:
+            return "i" * (original_n - kept[-1] - 1)
+        return "i" * (kept[depth] - (kept[depth - 1] if depth else -1))
+
+    def reader_height(depth: int) -> int:
+        # Each native read advances six units; retain four before the fork.
+        return 10 + 6 * (len(reads_at(depth)) - 1) if depth < n else 10
+
     root = (0, levels[0][0])
     seen: set[State] = set()
     first: dict[State, Edge] = {}
@@ -304,7 +336,10 @@ def _forward_canvas(
         # programs pass 37 rows with the same 98-command maximum.
         # In the original mode, all 81 adjacent arm-shape pairs at pitch 20 keep
         # opcode ink at least one unit apart (20px > the 15px star probe).
-        # Entry/join lanes contain no opcodes and use two-unit spacing.
+        # Entry/join lanes contain no opcodes and use two-unit spacing: at a
+        # one-unit pitch a join's diagonal lands on the next lane's row even
+        # with the own-arrival gap widened to four units, reading 0xFAC748EF
+        # row 01010 as 1 not 0 (see tests/test_boolean_line_landing.py).
         for residual in level:
             state = depth, residual
             entry[state] = (
@@ -315,7 +350,8 @@ def _forward_canvas(
                 base
                 + (20 if destination_moves else 16)
                 + 2 * arrival_count
-                + 2 * lane_count,
+                + 2 * lane_count
+                + (reader_height(depth) - 10 if streaming else 0),
                 columns[residual],
             )
         for edge, dest in extras:
@@ -330,7 +366,7 @@ def _forward_canvas(
         base = forks[depth, level[-1]][0] + (4 if streaming else 12)
 
     if streaming:
-        start = forks[root][0] - 10, forks[root][1]
+        start = forks[root][0] - reader_height(0), forks[root][1]
         strokes = []
     else:
         reads = "".join(
@@ -362,7 +398,7 @@ def _forward_canvas(
                 raise ValueError("streaming terminal residual is not constant")
             # Cell one starts zero; n >= 2 keeps the fresh output cell
             # within the original tape.
-            ops = ">" + "+" * value + "o"
+            ops = reads_at(depth) + ">" + "+" * value + "o"
             graph[state] = chain(*ops)
             cursor = _StemCursor(y - 10, x, (1, 0))
             for op in ops:
@@ -374,12 +410,18 @@ def _forward_canvas(
         is_fork = children[residual][0] != children[residual][1]
         node = Node("?" if is_fork else "<")
         if streaming:
-            graph[state] = Node("i", next=node)
+            reader = chain(*reads_at(depth))
+            tail = reader
+            while tail.next is not None:
+                tail = tail.next
+            tail.next = node
+            graph[state] = reader
         else:
             graph[state] = Node("<", next=node) if destination_moves and depth else node
         if streaming or (destination_moves and depth):
-            pre = _StemCursor(y - (10 if streaming else 9), x, (1, 0))
-            pre.emit_op("i" if streaming else "<")
+            pre = _StemCursor(y - (reader_height(depth) if streaming else 9), x, (1, 0))
+            for op in reads_at(depth) if streaming else "<":
+                pre.emit_op(op)
             pre.advance((1, 0), 4)
             pre.finish()
             strokes.extend(pre.strokes)
@@ -417,7 +459,13 @@ def _forward_canvas(
                     cursor.advance(
                         (1, 0),
                         forks[dest][0]
-                        - (10 if streaming else 9 if destination_moves else 0)
+                        - (
+                            reader_height(dest[0])
+                            if streaming
+                            else 9
+                            if destination_moves
+                            else 0
+                        )
                         - cursor.y,
                     )
                 else:
@@ -469,9 +517,9 @@ def _forward_canvas(
         )
         return canvas
 
-    # Streaming uses n reads, at most n tests and n joins, three output
-    # operations and a halt: 3n+4 <= 5n for n >= 2. Constant residuals
-    # drain the remaining inputs. Only original cells zero and one are used.
+    # Streaming uses original_n reads, at most n tests and n joins, three output
+    # operations and a halt: original_n+2n+4 <= 5original_n for n >= 2.
+    # Constant residuals drain inputs; only original cells zero and one are used.
     # Descending tests remove the loader rewind. At most n-1 join ticks
     # replace those moves: 2n-1 loads, n tests, n-1 moves, n-1 joins, two
     # output ops and one halt tick give 5n. Projection adds fewer than

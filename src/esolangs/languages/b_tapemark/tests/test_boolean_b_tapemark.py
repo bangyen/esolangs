@@ -4,11 +4,11 @@ from itertools import product
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import essential_inputs
 from esolangs.languages import generators as tools
 from esolangs.languages.b_tapemark.generator import _Builder
 from esolangs.languages.b_tapemark.interpreter import run
-from esolangs.tools.helpers import essential_inputs
+from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import witnesses
 
@@ -65,11 +65,11 @@ def test_size_does_not_depend_on_the_table() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_reads_each_input_and_prints_a_literal(n, bit):
+def test_constant_reads_each_input_and_prints_a_literal(n, bit) -> None:
     import esolangs
+    from esolangs.generation.wrap import balance_score
     from esolangs.languages.b_tapemark.generator import _b_tapemark_program
     from esolangs.languages.b_tapemark.interpreter import _Machine
-    from esolangs.tools.wrap import balance_score
 
     table = bit * (1 << n)
     default = tools.b_tapemark(table)
@@ -107,7 +107,7 @@ def test_constant_reads_each_input_and_prints_a_literal(n, bit):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("used", [(i,) for i in range(8)] + [(0, 7), (0, 3, 7)])
-def test_narrow_short_projected_table_keeps_ignored_selectors_out(used):
+def test_narrow_short_projected_table_keeps_ignored_selectors_out(used) -> None:
     import esolangs
     from esolangs.languages.b_tapemark.generator import _b_tapemark_program
 

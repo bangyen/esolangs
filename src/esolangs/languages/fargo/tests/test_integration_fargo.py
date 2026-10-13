@@ -8,8 +8,8 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.exceptions import ArgumentError
-from tests.reference import REFERENCE
 from tests.support.cli_support import call_both
+from tests.support.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 
 
@@ -40,7 +40,7 @@ class TestALeadingZeroIndexNeverCrashes:
         assert len(str(caught.value)) < 200
 
 
-def test_describe_leads_with_the_contract(capsys):
+def test_describe_leads_with_the_contract(capsys) -> None:
     output, _error = call_both(["describe", "Fargo"], capsys)
     assert output.startswith("Fargo\ninput: one decimal row index")
     assert output.index("input:") < output.index("input_shape")
@@ -79,7 +79,7 @@ class TestAHugeRowIndexIsRefusedNotCrashed:
 
 
 @pytest.mark.parametrize("choices", ["[]", "no json", '{"eof":true}'])
-def test_cli_invalid_settings_precede_io(choices, capsys):
+def test_cli_invalid_settings_precede_io(choices, capsys) -> None:
     with (
         patch("esolangs.cli.run._read_program", side_effect=AssertionError("read")),
         pytest.raises(SystemExit) as caught,
@@ -160,6 +160,6 @@ def test_forgetting_stdin_entirely_is_warned_about() -> None:
         )
 
 
-def test_inputs_are_one_number_indexed_by_bit():
+def test_inputs_are_one_number_indexed_by_bit() -> None:
     assert esolangs.describe("Fargo")["input_shape"] == "row_index"
     assert esolangs.encode_inputs("Fargo", [1, 0, 1]) == "5\n"

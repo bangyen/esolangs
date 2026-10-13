@@ -18,10 +18,10 @@ holding the two I/O tokens and ``A``'s range check.
 
 from __future__ import annotations
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 #: The largest value ``A`` can print.  Outputting a cell outside the valid
 #: character range is an invalid operation, not a wrap or a truncation.

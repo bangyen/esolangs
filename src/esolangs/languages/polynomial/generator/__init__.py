@@ -10,22 +10,25 @@ factor ``(x - a)**2 + p**(2*b)`` and ``[v]`` is ``x - p**v``, with
 renders 1.9x shorter than the ``-= 1; if == 0`` builder, n == 7 2.1x.
 """
 
-from typing import Any
-
 from esolangs.exceptions import GeneratorCapError
-from esolangs.interpreters.source_hints import with_hint
-from esolangs.languages.polynomial.generator.algebra import primes, render_product
-from esolangs.languages.polynomial.generator.resources import estimate_generation
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import (
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
-from esolangs.tools.wrap import _polynomial, balance_program
+from esolangs.generation.wrap import balance_program
+from esolangs.languages.polynomial.generator.algebra import primes, render_product
+from esolangs.languages.polynomial.generator.resources import estimate_generation
+from esolangs.languages.polynomial.wrapping import (
+    _balance_polynomial,
+    _polynomial,
+    same_layout,
+)
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
+from esolangs.runtime.source_hints import with_hint
 
 # Instruction cap.  Analytic n=10 worst case is 1659
 # (``test_polynomial_cap_admits_every_n10_table``); kept at the old 1934,
@@ -63,13 +66,20 @@ def polynomial(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    builders: list[tuple[int, Any]] = [
-        (
-            _polynomial_hybrid_cost(truth_table, level),
-            lambda level=level: _polynomial_hybrid(truth_table, level),
-        )
-        for level in range(n, -1, -1)
-    ]
+    fits: list[list[list[int]]] = []
+    costs: list[int] = []
+
+    def retain(table: str, arity: int, *, before: int = 0, after: int = 0) -> None:
+        for level in range(arity, -1, -1):
+            instructions = _polynomial_hybrid(table, level)
+            cost = len(instructions) + before + after
+            costs.append(cost)
+            # Rejected plans are discarded; each retained list has at most
+            # 1934 instructions, including the ignored-input reads.
+            if cost <= _POLYNOMIAL_MAX_INSTRS:
+                fits.append([[0, 2]] * before + instructions + [[0, 2]] * after)
+
+    retain(truth_table, n)
 
     # An ignored input still costs a level of branching, so drain a
     # *leading* ignored run before building (a later one drained out of
@@ -81,37 +91,18 @@ def polynomial(truth_table: str) -> str:
     tail = n - 1 - essential[-1]
     if tail:
         cut = read_at(truth_table, list(range(n - tail)), n)
-        builders += [
-            (
-                _polynomial_hybrid_cost(cut, level) + tail,
-                lambda level=level, c=cut, t=tail: (
-                    _polynomial_hybrid(c, level) + [[0, 2]] * t
-                ),
-            )
-            for level in range(n - tail, -1, -1)
-        ]
+        retain(cut, n - tail, after=tail)
     lead = next((i for i in range(n) if i in essential), n)
     if lead:
-        prefix: list[list[int]] = [[0, 2]] * lead
         reduced = read_at(truth_table, list(range(lead, n)), n)
-        reduced_n = n - lead
-        builders += [
-            (
-                len(prefix) + _polynomial_hybrid_cost(reduced, level),
-                lambda level=level, r=reduced, pre=prefix: (
-                    pre + _polynomial_hybrid(r, level)
-                ),
-            )
-            for level in range(reduced_n, -1, -1)
-        ]
+        retain(reduced, n - lead, before=lead)
 
-    fits = [(cost, build) for cost, build in builders if cost <= _POLYNOMIAL_MAX_INSTRS]
     if not fits:
         raise with_hint(
             GeneratorCapError(
                 "the Polynomial boolean generator groups instructions onto "
                 f"primes and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
-                f"needs {min(cost for cost, _ in builders)} under its cheapest "
+                f"needs {min(costs)} under its cheapest "
                 "construction, which costs more per row than checking a table "
                 "of this width can afford",
             ),
@@ -122,15 +113,15 @@ def polynomial(truth_table: str) -> str:
         )
 
     # Select on rendered characters; the instruction count only screens
-    # (a candidate past ``_POLYNOMIAL_SCREEN_SLACK`` is not built -- a
+    # (a candidate past ``_POLYNOMIAL_SCREEN_SLACK`` is not expanded -- a
     # measured bound, not a proof).  ``k`` descends and the comparison is
     # strict, so a table nothing shortens emits what it always did.
-    cheapest = min(cost for cost, _ in fits)
+    cheapest = min(costs)
     program: str | None = None
-    for cost, build in fits:
-        if cost > cheapest + _POLYNOMIAL_SCREEN_SLACK:
+    for instructions in fits:
+        if len(instructions) > cheapest + _POLYNOMIAL_SCREEN_SLACK:
             continue
-        candidate = _polynomial_assemble(build())
+        candidate = _polynomial_assemble(instructions)
         if program is None or len(candidate) < len(program):
             program = candidate
     if program is None:  # pragma: no cover - the cheapest member always fits
@@ -367,11 +358,6 @@ def _polynomial_hybrid(
     return instrs
 
 
-def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
-    """Return the emitted hybrid instruction count."""
-    return len(_polynomial_hybrid(truth_table, k))
-
-
 def balance_polynomial(table: str, default: str) -> str:
     """Retain the old root parking store when its polynomial balances better."""
     if len(set(table)) > 1:
@@ -406,6 +392,8 @@ LANGUAGE = Language(
     ),
     # Space wrap stranded every sign alone; keep sign with term, one per line.
     wrap=_polynomial,
+    wrap_balance=_balance_polynomial,
+    same_layout=same_layout,
     slow_width_sweep=True,
     eof="an exhausted input instruction stores -1",
     empty_program="Polynomial program must start with 'f(x) = '",

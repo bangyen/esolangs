@@ -5,12 +5,12 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.packlang.interpreter import (
     _Machine,
     run,
 )
 from esolangs.languages.packlang.interpreter._parse import _Parser
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 
 _run = partial(run_program, run)
@@ -221,12 +221,12 @@ class TestMachineMemory:
 
     def test_memory_is_empty_once_the_frames_are_gone(self) -> None:
         machine = _Machine(_wrap("    0;"), ScriptedIO(""))
-        machine.frames.clear()
+        machine.frames = ()
         assert machine.memory == []
 
     def test_ip_is_zero_once_the_frames_are_gone(self) -> None:
         machine = _Machine(_wrap("    0;"), ScriptedIO(""))
-        machine.frames.clear()
+        machine.frames = ()
         assert machine.ip == 0
 
 
@@ -234,3 +234,20 @@ class TestPacklangDeclarationScan:
     def test_a_type_followed_by_a_non_name_is_not_a_declaration(self) -> None:
         """The name check fails, so the semicolon is never looked for."""
         assert _Parser(["Integer", "5", ";"]).is_declaration() is False
+
+
+def test_call_transition_preserves_immutable_frames() -> None:
+    from dataclasses import FrozenInstanceError
+
+    from esolangs.languages.packlang.interpreter import _advance
+
+    machine = _Machine(_wrap("    charPut(65);\n    0;"), ScriptedIO(""))
+    before = machine.frames
+    first = _advance(before, machine.program)
+    assert _advance(before, machine.program) == first
+    assert before == machine.frames
+    assert before[0].pc == 0
+    assert first[1] == "A"
+    assert machine.io.getvalue() == ""
+    with pytest.raises(FrozenInstanceError):
+        before[0].pc = 1

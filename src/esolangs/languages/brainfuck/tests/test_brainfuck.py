@@ -4,14 +4,14 @@ import importlib
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle, run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
-from tests.reference import REFERENCE
 from tests.support.raises import assert_rejected_with_hint
+from tests.support.reference import REFERENCE
 
 bf = importlib.import_module("esolangs.languages.brainfuck.interpreter")
 
@@ -22,8 +22,8 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
 
 
 def _machine(code: str) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.brainfuck.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 
@@ -83,8 +83,8 @@ class TestBrainfuck:
 
     def test_machine_exposes_its_state(self) -> None:
         """``ind``/``ptr``/``tape`` track the run and stay in step."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.brainfuck.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(">+>++", ScriptedIO())
         assert (machine.ind, machine.ptr, machine.tape) == (0, 0, (0,))
@@ -122,10 +122,33 @@ def test_malformed_source_carries_a_repair_hint() -> None:
         (",[>,]", run_until_halt_or_growth, ""),
     ],
 )
-def test_cursorless_input_cannot_prove_cycle_or_growth(io_type, code, detector, output):
+def test_cursorless_input_cannot_prove_cycle_or_growth(
+    io_type, code, detector, output
+) -> None:
     io = io_type("aaaa\0")
     machine = _Machine(code, io)
     assert detector(machine, limit=100)
     assert machine.halted
     assert io.getvalue() == output
     assert io.reads == 5
+
+
+def test_compiled_transition_preserves_borrowed_tape_and_reports_effects() -> None:
+    from esolangs.languages.brainfuck.interpreter import _advance_compiled, _compile
+
+    tape = bytearray([3])
+    state = (0, 0)
+    ops = _compile("[>++<-]")
+    first = _advance_compiled(state, ops, tape)
+    assert _advance_compiled(state, ops, tape) == first
+    assert state == (0, 0)
+    assert tape == bytearray([3])
+    assert first == ((1, 0), (0, 1, ((1, 6), (0, 0))), None, False)
+    ops = _compile(",")
+    assert _advance_compiled(state, ops, tape)[3]
+    assert _advance_compiled(state, ops, tape, 65) == (
+        (1, 0),
+        (0, 0, ((0, 65),)),
+        None,
+        False,
+    )

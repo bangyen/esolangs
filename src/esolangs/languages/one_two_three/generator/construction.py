@@ -22,7 +22,7 @@ one on random programs.
 
 from __future__ import annotations
 
-from esolangs.tools.helpers import TEMPLATE_CHAR
+from esolangs.generation.helpers import TEMPLATE_CHAR
 
 __all__ = ["ConstructError", "construct"]
 
@@ -68,25 +68,19 @@ class _WorkExhaustedError(Exception):
 class _Row:
     """Tracked state of one instantiation while the template is built."""
 
-    __slots__ = ("bits", "dead", "pos", "tape")
+    __slots__ = ("bits", "dead", "pos", "tape", "work")
 
     #: ``tape`` is a bitmask, not a set: bit ``pos + _RING`` is cell
     #: ``pos``.  The builder toggles and tests one cell at a time in the
     #: innermost loop, where an int shift is several times cheaper than a
     #: set operation, and it doubles as its own hashable snapshot -- the
     #: ``frozenset(tape)`` these state keys used to build was pure cost.
-    def __init__(self, bits: tuple[int, ...]) -> None:
+    def __init__(self, bits: tuple[int, ...], work: list[int] | None = None) -> None:
         self.bits = bits
+        self.work = [_WORK_BUDGET] if work is None else work
         self.pos = 0
         self.tape = 0
         self.dead = False
-
-
-#: Remaining work budget for the current small-route build, counted
-#: in simulated commands — machine-independent, so the same table either
-#: builds or raises identically everywhere.  A list so the counter can be
-#: decremented in place from :func:`_exec_char`.
-_work = [0]
 
 
 def _exec_char(row: _Row, ch: str) -> None:
@@ -94,9 +88,7 @@ def _exec_char(row: _Row, ch: str) -> None:
 
     ``2`` at -3 would read stdin, so it raises.
     """
-    _work[0] -= 1
-    if _work[0] < 0:
-        raise _WorkExhaustedError
+    _charge(row, 1)
     if ch == "1":
         row.tape ^= 1 << (row.pos + _RING)
         row.pos -= 1
@@ -113,10 +105,10 @@ def _exec_char(row: _Row, ch: str) -> None:
         raise AssertionError(ch)
 
 
-def _charge(w: int) -> None:
+def _charge(row: _Row, w: int) -> None:
     """Spend ``w`` simulated commands; raise when the budget runs out."""
-    _work[0] -= w
-    if _work[0] < 0:
+    row.work[0] -= w
+    if row.work[0] < 0:
         raise _WorkExhaustedError
 
 
@@ -131,7 +123,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
     """
     if w and row.pos >= 0:
         if ch == _ZERO:
-            _charge(w)
+            _charge(row, w)
             row.pos += w
             return
         if row.pos - w >= -1:
@@ -140,7 +132,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
             # the cells pos-w+1..pos are contiguous, hence one XOR with a
             # w-bit mask.  Below -1 the ring's -4 -> 0 wrap and the read
             # at -3 both matter, so that case stays per-character.
-            _charge(w)
+            _charge(row, w)
             row.tape ^= ((1 << w) - 1) << (row.pos - w + 1 + _RING)
             row.pos -= w
             return
@@ -148,7 +140,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
         # A descent that runs past -1 splits at the ring boundary: the
         # part above it is the contiguous-XOR case, and the rest laps.
         head = row.pos + 1
-        _charge(head)
+        _charge(row, head)
         row.tape ^= ((1 << head) - 1) << _RING
         row.pos = -1
         w -= head
@@ -160,7 +152,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
         # ``w % 4`` steps have to be walked.  This is the kill segment's
         # inner loop, where the descents run hundreds of cells deep.
         laps, rest = divmod(w, 4)
-        _charge(w - rest)
+        _charge(row, w - rest)
         if laps & 1:
             row.tape ^= 0b1111  # cells -3..0, i.e. bits 0..3
         for _ in range(rest):
@@ -173,7 +165,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
         _exec_char(row, ch)
         w -= 1
         if w:
-            _charge(w)
+            _charge(row, w)
             row.pos += w
         return
     for _ in range(w):
@@ -231,12 +223,14 @@ class _Builder:
 
     __slots__ = ("chunks", "n", "rows", "seg")
 
-    def __init__(self, n: int) -> None:
+    def __init__(self, n: int, work: list[int] | None = None) -> None:
         self.n = n
+        work = [_WORK_BUDGET] if work is None else work
         self.chunks: list[str] = []
         self.seg: list[_Token] = []
         self.rows = [
-            _Row(tuple((r >> (n - 1 - i)) & 1 for i in range(n))) for r in range(2**n)
+            _Row(tuple((r >> (n - 1 - i)) & 1 for i in range(n)), work)
+            for r in range(2**n)
         ]
 
     def live(self) -> list[_Row]:
@@ -311,14 +305,16 @@ class _Builder:
     def template(self) -> str:
         return "".join(self.chunks)
 
-    def clone(self) -> _Builder:
+    def clone(self, work: list[int] | None = None) -> _Builder:
         nb = _Builder.__new__(_Builder)
+        if work is None:
+            work = [self.rows[0].work[0]]
         nb.n = self.n
         nb.chunks = list(self.chunks)
         nb.seg = list(self.seg)
         nb.rows = []
         for r in self.rows:
-            nr = _Row(r.bits)
+            nr = _Row(r.bits, work)
             nr.pos, nr.tape, nr.dead = r.pos, r.tape, r.dead
             nb.rows.append(nr)
         return nb

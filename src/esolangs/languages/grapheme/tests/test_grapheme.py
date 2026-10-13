@@ -5,9 +5,9 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.grapheme.interpreter import _Machine as Grapheme
 from esolangs.languages.grapheme.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
     CycleContract,
@@ -258,23 +258,23 @@ class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
     ("letters", "value"),
     [("", 0), ("A", 1), ("AB", 12), ("ABC", 123), ("AZ", 10), ("ZA", 1), ("Y", 25)],
 )
-def test_integer_conversion_shifts_only_between_letters(letters, value):
+def test_integer_conversion_shifts_only_between_letters(letters, value) -> None:
     assert run_program("F" + letters + "FY") == str(value)
     assert run_program("E" + letters + "EJY") == str(value)
 
 
-def test_spec_truth_machine_zero_branch():
+def test_spec_truth_machine_zero_branch() -> None:
     assert run_program("HFAFYHWJUZFZFY", "Z") == "0"
 
 
-def test_an_empty_z_body_repeats_while_the_stack_is_live():
+def test_an_empty_z_body_repeats_while_the_stack_is_live() -> None:
     """Z runs its function "while the stack is not empty", empty body or not."""
     from esolangs.vm import run_until_halt_or_cycle
 
     assert run_until_halt_or_cycle(Grapheme("FAFHHZ", ScriptedIO()), limit=100) is False
 
 
-def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle():
+def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle() -> None:
     """A port with no cursor reports position 0; the snapshot counts reads."""
     from esolangs.vm import run_until_halt_or_cycle
 
@@ -299,3 +299,18 @@ def test_grapheme_changing_stack_halts() -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Grapheme", "abc", "uppercase Latin")
+
+
+def test_variable_transition_keeps_old_maps_immutable() -> None:
+    from esolangs.languages.grapheme.interpreter import _advance
+
+    machine = Grapheme("C", ScriptedIO(""))
+    before = (machine.vars, machine.frames)
+    moved, effects, output = _advance(before, (7, "name"))
+    assert before[0] == {}
+    assert moved[0] == {"name": 7}
+    assert effects == (2, (), False)
+    assert output is None
+    with pytest.raises(TypeError):
+        moved[0]["name"] = 8  # type: ignore[index]
+    assert _advance(before, (7, "name")) == (moved, effects, output)

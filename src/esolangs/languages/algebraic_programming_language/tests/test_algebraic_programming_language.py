@@ -6,8 +6,14 @@ from typing import ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.languages.algebraic_programming_language.interpreter import _Machine, run
+from esolangs.languages.algebraic_programming_language.interpreter import (
+    _advance,
+    _Machine,
+    _NeedInput,
+    _State,
+    run,
+)
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -555,3 +561,48 @@ def test_a_recursion_whose_bindings_differ_each_lap_is_undecided() -> None:
 
     with pytest.raises(TimeoutError):
         run_until_halt_or_ancestor(machine("F(x) = F(x + 1)\nF(0)"))
+
+
+class TestPureTransition:
+    """``_advance`` is a function of its arguments, and only of them."""
+
+    def test_same_state_and_inputs_give_the_same_result(self) -> None:
+        state = _State({}, {}, (), 0)
+        lines = ("1 + 1",)
+        first, first_out = _advance(state, lines)
+        second, second_out = _advance(state, lines)
+        assert first_out == second_out
+        assert first.line == second.line
+        assert first.globals == second.globals
+        assert len(first.frames) == len(second.frames)
+        assert first.frames[0].work == second.frames[0].work
+        assert first.frames[0].value == second.frames[0].value
+
+    def test_the_transition_leaves_its_arguments_unchanged(self) -> None:
+        globals_: dict[str, object] = {}
+        state = _State({}, globals_, (), 0)
+        lines = ("n",)
+        _advance(state, lines, (5,))
+        assert globals_ == {}
+        assert state == _State({}, {}, (), 0)
+        assert lines == ("n",)
+
+    def test_a_read_comes_from_the_explicit_input(self) -> None:
+        state, out = _advance(_State({}, {}, (), 0), ("n",), (7,))
+        assert state.globals == {"n": 7}
+        assert out is None
+
+    def test_an_unfed_read_asks_for_input_rather_than_reading(self) -> None:
+        with pytest.raises(_NeedInput):
+            _advance(_State({}, {}, (), 0), ("n",), ())
+
+    def test_the_transition_reports_output_instead_of_printing(self) -> None:
+        """No port is reachable from ``_advance``: output is a value."""
+        state = _State({}, {}, (), 0)
+        lines = ("1 + 1",)
+        printed = []
+        while not (state.line >= len(lines) and not state.frames):
+            state, out = _advance(state, lines)
+            if out is not None:
+                printed.append(out)
+        assert printed == ["2\n"]

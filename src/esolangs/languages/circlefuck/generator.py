@@ -2,16 +2,15 @@
 
 from itertools import pairwise
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import (
-    _ASCII_ZERO,
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
-from esolangs.tools.wrap import balance_program, wrap_chars
+from esolangs.generation.wrap import balance_program, wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 
 #: Bits an index digit carries: seven is the widest power of two a byte can
 #: also count out (:func:`_deleter` plants that many in the digit below).
@@ -20,7 +19,13 @@ _DIGIT_BITS = 7
 #: One input: read, subtract ``"0"``, clamp to 0 or 1, bank.  The clamp is
 #: load-bearing: an underfed ``,`` is a no-op, so the cell keeps the source
 #: character and the index would delete past the table.
-_READ = "," + "-" * _ASCII_ZERO + ">[-]<[[-]>+<]>[-<+>]"
+#:
+#: The 48 is not spelled out: a 6-count loop subtracts 8 from the read cell
+#: per pass (the scratch cell is cleared first -- the tape holds program
+#: text, not zeros).  This ends exactly where the straight version did
+#: (bit banked, scratch zero, pointer one right), at 40 source characters a read
+#: instead of 69.
+_READ = ",>[-]++++++[<-------->-]<[[-]>+<]>[-<+>]"
 
 
 def circlefuck(truth_table: str) -> str:

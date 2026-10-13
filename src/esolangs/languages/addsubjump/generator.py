@@ -1,11 +1,7 @@
 """Boolean-function generator for AddSubJump."""
 
-from typing import Any
-
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import (
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _residual_ids,
@@ -15,12 +11,51 @@ from esolangs.tools.helpers import (
     input_weights,
     stored_inputs,
 )
-from esolangs.tools.wrap import balance_program, wrap_grid
+from esolangs.generation.wrap import balance_program, wrap_grid
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 #: The ``d`` operand of every instruction: cell 7, the last word of the
 #: first data block, which nothing writes, so ``*d > 0`` never holds and the
 #: instruction adds.  One digit where the special zero ``-7`` spent two.
 _ADD = 7
+
+
+type _Operand = int | str
+type _Instruction = tuple[_Operand, _Operand, _Operand, _Operand]
+
+
+def _memory(
+    instructions: list[_Instruction],
+    values: dict[str, int],
+    targets: dict[str, int],
+    names: list[str] | None = None,
+) -> list[int]:
+    """Resolve operands and literal jumps, allocating names in mention order."""
+    base = 4 * len(instructions)
+    # A dict, not a list: list ``in`` + ``.index`` per operand was 2.4s of a
+    # 3.8s six-input build.
+    address = {
+        name: base + index
+        for index, name in enumerate(dict.fromkeys(values if names is None else names))
+    }
+    memory = [0] * (base + len(address))
+
+    def operand(value: _Operand) -> int:
+        return address[value] if isinstance(value, str) else value
+
+    for i, (a, b, target, d) in enumerate(instructions):
+        c = (
+            4 * (i + 1)
+            if target == "next"
+            else 4 * targets[target]
+            if isinstance(target, str)
+            else target
+        )
+        memory[4 * i : 4 * i + 4] = [operand(a), operand(b), c, operand(d)]
+    for name, value in values.items():
+        memory[address[name]] = value
+    return memory
 
 
 def addsubjump(truth_table: str) -> str:
@@ -69,7 +104,7 @@ def _packed_build(truth_table: str, weights: list[int]) -> str:
     # ``"next"`` resolves straight into the operand and an ``int`` is already
     # one.  A computed jump is therefore a *write* to an instruction's own
     # ``c`` cell, which is what :func:`branch_positive` does below.
-    instructions: list[tuple[int | str, int | str, str | int, int | str]] = []
+    instructions: list[_Instruction] = []
     labels: dict[str, int] = {}
     values: dict[str, int] = {
         "ZERO": 0,
@@ -192,29 +227,8 @@ def _packed_build(truth_table: str, weights: list[int]) -> str:
         for start in range(0, len(truth_table), chunk_width)
     ]
 
-    names = list(values)
-    names.extend(f"CHUNK{i}" for i in range(len(chunks)))
-    base = 4 * len(instructions)
-    address = {name: base + i for i, name in enumerate(names)}
-
-    memory = [0] * (base + len(names))
-
-    def operand(value: int | str) -> int:
-        return address[value] if isinstance(value, str) else int(value)
-
-    for i, (a, b, target, d) in enumerate(instructions):
-        if target == "next":
-            c = 4 * (i + 1)
-        elif isinstance(target, int):
-            c = target
-        else:
-            c = 4 * labels[target]
-        memory[4 * i : 4 * i + 4] = [operand(a), operand(b), c, operand(d)]
-
-    for name, value in values.items():
-        memory[address[name]] = value
-    for i, value in enumerate(chunks):
-        memory[address[f"CHUNK{i}"]] = value
+    values.update((f"CHUNK{i}", value) for i, value in enumerate(chunks))
+    memory = _memory(instructions, values, labels)
     # Advancing this instruction's destination advances LOAD_CHUNK's b
     # operand through the contiguous chunk cells.
     memory[4 * load_operand_increment] = 4 * load_chunk + 1
@@ -260,7 +274,7 @@ def _addsubjump_ordered(
     """
     n = _validate_truth_table(truth_table)
 
-    instructions: list[list[Any]] = []
+    instructions: list[_Instruction] = []
     values: dict[str, int] = {}
     # ``c`` is a literal destination, so a branch target is resolved into the
     # operand rather than into a cell the jump dereferences.  ``targets`` maps
@@ -270,9 +284,9 @@ def _addsubjump_ordered(
     # operand cost 3.5M ``isinstance`` calls on a six-input build.
     named: list[str] = []
 
-    def emit(a: object, b: object, c: object, d: int) -> int:
+    def emit(a: _Operand, b: _Operand, c: _Operand, d: int) -> int:
         idx = len(instructions)
-        instructions.append([a, b, c, d])
+        instructions.append((a, b, c, d))
         for v in (a, b):
             if isinstance(v, str):
                 named.append(v)
@@ -281,8 +295,8 @@ def _addsubjump_ordered(
     # The entry jumps over these two instruction-width data blocks.  Their
     # fixed addresses hold the operands repeated throughout the tree:
     # D48=4, D49=5, U=6 and C48=8.  It adds U to itself, a no-op.
-    emit(6, 6, "next", _ADD)
-    instructions += [[_ASCII_ZERO, _ASCII_ONE, 0, 0], [-_ASCII_ZERO, 0, 0, 0]]
+    emit(6, 6, 12, _ADD)
+    instructions += [(_ASCII_ZERO, _ASCII_ONE, 0, 0), (-_ASCII_ZERO, 0, 0, 0)]
 
     stored = stored_inputs(truth_table, perm)
 
@@ -352,27 +366,7 @@ def _addsubjump_ordered(
 
     build(0, 0, 2**n, root)
 
-    base_data = 4 * len(instructions)
-    # A dict, not a list: list ``in`` + ``.index`` per operand was 2.4s of a
-    # 3.8s six-input build.
-    names = {name: index for index, name in enumerate(dict.fromkeys([*named, *values]))}
-
-    def cell(name: str) -> int:
-        return base_data + names[name]
-
-    mem = [0] * (base_data + len(names))
-    for i, ins in enumerate(instructions):
-        a, b, c, d = ins
-        if c == "next":
-            # Instruction 0 jumps over the two data blocks that follow it.
-            c = 12 if i == 0 else 4 * (i + 1)
-        elif isinstance(c, str):
-            c = 4 * targets[c]
-        row = [cell(v) if isinstance(v, str) else v for v in (a, b)]
-        mem[4 * i : 4 * i + 4] = [*row, c, d]
-    for name, val in values.items():
-        mem[cell(name)] = val
-    return " ".join(map(str, mem))
+    return " ".join(map(str, _memory(instructions, values, targets, [*named, *values])))
 
 
 LANGUAGE = Language(

@@ -6,7 +6,7 @@ root ``a + p**b*i``; conjugate pairs keep the coefficients integral.
 
 import decimal
 
-from esolangs._digits import digit_limit_for
+from esolangs.runtime._digits import digit_limit_for
 
 
 def primes(count: int) -> list[int]:
@@ -205,8 +205,7 @@ def _merge(
 def _render_terms(coeffs: list[str], alternating: bool) -> str:  # noqa: FBT001 - internal
     """Render coefficient strings, highest degree first.
 
-    ``alternating`` means magnitudes with sign ``(-1)**index``.  Mirrors
-    :func:`_format_coeffs` without building the integers.
+    ``alternating`` means magnitudes with sign ``(-1)**index``.
     """
     degree = len(coeffs) - 1
     out = ["f(x) = "]
@@ -236,21 +235,4 @@ def format_coeffs(coeffs: list[int]) -> str:
     widest = max((abs(coeff) for coeff in coeffs), default=0)
     digits = int(widest.bit_length() * 0.30103) + 2
     with digit_limit_for(digits):
-        return _format_coeffs(coeffs)
-
-
-def _format_coeffs(coeffs: list[int]) -> str:
-    terms: list[str] = []
-    degree = len(coeffs) - 1
-    for i, coeff in enumerate(coeffs):
-        d = degree - i
-        if coeff == 0:
-            continue
-        prefix = (
-            ""
-            if coeff == 1 and d > 0
-            else ("-" if coeff == -1 and d > 0 else str(coeff))
-        )
-        power = f"x^{d}" if d > 1 else ("x" if d == 1 else "")
-        terms.append(f"{prefix}{power}")
-    return "f(x) = " + " + ".join(terms).replace("+ -", "- ")
+        return _render_terms(list(map(str, coeffs)), alternating=False)

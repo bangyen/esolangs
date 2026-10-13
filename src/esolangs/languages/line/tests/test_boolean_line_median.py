@@ -19,7 +19,7 @@ def median_check(monkeypatch):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("start", [0, 64, 128, 192])
-def test_median_three_input_graphs_execute(start, median_check, tmp_path):
+def test_median_three_input_graphs_execute(start, median_check, tmp_path) -> None:
     admitted = 0
     for value in range(start, start + 64):
         table = f"{value:08b}"
@@ -33,7 +33,7 @@ def test_median_three_input_graphs_execute(start, median_check, tmp_path):
 @pytest.mark.parametrize(
     "kind", [pytest.param("dense", marks=pytest.mark.slow), "parity", "majority"]
 )
-def test_median_eight_input_graphs_execute(kind, median_check, tmp_path):
+def test_median_eight_input_graphs_execute(kind, median_check, tmp_path) -> None:
     table = (
         dense(8)
         if kind == "dense"
@@ -55,7 +55,7 @@ def test_median_eight_input_graphs_execute(kind, median_check, tmp_path):
 )
 def test_public_median_improvements_execute(
     n, index, area, old, median_check, tmp_path
-):
+) -> None:
     table = _sample(n, index + 1, 11 + n)[index]
     measured, _ = median_check(table, tmp_path)
     assert measured == area < old
@@ -65,5 +65,5 @@ def test_public_median_improvements_execute(
 
 
 @pytest.mark.medium
-def test_median_scaled_crossings(median_check, tmp_path):
+def test_median_scaled_crossings(median_check, tmp_path) -> None:
     median_check(parity(7), tmp_path, scale=2)

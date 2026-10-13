@@ -72,9 +72,9 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from typing import cast
 
-from esolangs._drive import drive
-from esolangs.interpreters.io import IO
 from esolangs.languages.circuit_diagram.interpreter._functions import (
+    _BufferedClock,
+    _ClockNeededError,
     _ClockStream,
     _evaluate_function,
 )
@@ -93,6 +93,8 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
     _split_definitions,
     _Wiring,
 )
+from esolangs.runtime._drive import drive
+from esolangs.runtime.io import IO
 
 
 @lru_cache(maxsize=16)
@@ -227,12 +229,30 @@ def _generation(
     gates: list["_Gate"],
     index: dict[int, int],
     consumers: tuple[tuple[tuple[int, int], ...], ...],
-    clock: _ClockStream | None = None,
+    clock: tuple[int, ...],
 ) -> tuple[_State, bool]:
     """Return the state after one generation, and whether the run went quiet.
 
-    Latch arrivals, fire every gate whose slots are full, re-drive every
-    wiring; a wiring nothing drove goes Null again.
+    Pure.  The topology is a constant of the run and the clock arrives as
+    the explicit values the shell sampled; a generation that needs one more
+    raises :class:`_ClockNeededError` so the shell can supply it, rather
+    than reading wall time itself.  The state handed in is never edited.
+    """
+    return _run_generation(state, gates, index, consumers, _BufferedClock(clock))
+
+
+def _run_generation(
+    state: _State,
+    gates: list["_Gate"],
+    index: dict[int, int],
+    consumers: tuple[tuple[tuple[int, int], ...], ...],
+    clock: "_ClockStream",
+) -> tuple[_State, bool]:
+    """One generation over an explicit clock source the caller owns.
+
+    The worker behind :func:`_generation`; nested function evaluation uses
+    it directly so that every clock read is served from the one source the
+    shell provided.
     """
     values, latches = state
     arrivals: dict[int, list[tuple[int, ...] | None]] = {}
@@ -415,20 +435,43 @@ class _Machine:
         """
         return [bit for value in self.values if value is not None for bit in value]
 
-    def step(self) -> None:
-        """Advance one generation: latch arrivals, fire, then re-drive wires.
+    def _generate(self, clock: _ClockStream) -> bool:
+        """Advance one generation through the worker transition.
 
-        Every ``:`` gate whose wire carries a value prints, in gate order.
+        Nested function evaluation runs here rather than through
+        :meth:`step`, so the clock is the explicit value source the caller
+        passes and the shell's wall clock is never touched.
         """
-        for text in _emitted((self.values, self.latches), self.gates, self.index):
-            self.io.print_str(text)
-        (self.values, self.latches), halted = _generation(
+        (self.values, self.latches), halted = _run_generation(
             (self.values, self.latches),
             self.gates,
             self.index,
             self.consumers,
-            self.clock,
+            clock,
         )
+        if halted:
+            self.halted = True
+        return halted
+
+    def step(self) -> None:
+        """Advance one generation: latch arrivals, fire, then re-drive wires.
+
+        The shell: every ``:`` gate whose wire carries a value prints, in
+        gate order.  The clock is read here, one value per read the
+        transition asks for; the transition itself never touches wall time.
+        """
+        for text in _emitted((self.values, self.latches), self.gates, self.index):
+            self.io.print_str(text)
+        state = (self.values, self.latches)
+        sampled: list[int] = []
+        while True:
+            try:
+                (self.values, self.latches), halted = _generation(
+                    state, self.gates, self.index, self.consumers, tuple(sampled)
+                )
+                break
+            except _ClockNeededError:
+                sampled.append(self.clock.read())
         if halted:
             self.halted = True
 

@@ -16,7 +16,7 @@ run_and_capture = run_lines(run)
 
 
 @pytest.mark.parametrize("count", [0, 1, 2, 3, 4, 17, 257])
-def test_consecutive_rotations_compose(count):
+def test_consecutive_rotations_compose(count) -> None:
     seed = "ABC"
     offset = count % len(seed)
     assert run_and_capture([seed, "e" * count + "iii"]) == seed[offset:] + seed[:offset]
@@ -38,10 +38,10 @@ def test_consecutive_rotations_compose(count):
         ("", "ff", ""),
     ],
 )
-def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch):
-    from esolangs._drive import drive
-    from esolangs.interpreters.io import ScriptedIO
+def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch) -> None:
     from esolangs.languages.taglate import interpreter as taglate
+    from esolangs.runtime._drive import drive
+    from esolangs.runtime.io import ScriptedIO
 
     original = taglate._Machine  # noqa: SLF001
     machines = []
@@ -72,9 +72,9 @@ def test_batched_run_matches_single_steps(seed, commands, stdin, monkeypatch):
 
 @pytest.mark.parametrize("seed", ["", "A"])
 @pytest.mark.parametrize("command", ["a", "b", "c", "d"])
-def test_binary_underflow_retains_consumed_pops(seed, command):
-    from esolangs.interpreters.io import ScriptedIO
+def test_binary_underflow_retains_consumed_pops(seed, command) -> None:
     from esolangs.languages.taglate.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine([seed, command], ScriptedIO(""))
     with pytest.raises(HaltError, match="queue is empty"):
@@ -83,9 +83,9 @@ def test_binary_underflow_retains_consumed_pops(seed, command):
     assert machine.ind == 0
 
 
-def test_repeated_programs_keep_parser_state_private():
-    from esolangs.interpreters.io import ScriptedIO
+def test_repeated_programs_keep_parser_state_private() -> None:
     from esolangs.languages.taglate.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     code = ["ABC", "gyeigz"]
     first = _Machine(code, ScriptedIO(""))
@@ -193,8 +193,8 @@ class TestTaglate:
 
 class TestStepMachine:
     def test_step_tracks_queue_and_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.taglate.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(["abc", "i"], ScriptedIO())
         assert (machine.ind, list(machine.queue)) == (0, [97, 98, 99])
@@ -206,8 +206,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.taglate.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 

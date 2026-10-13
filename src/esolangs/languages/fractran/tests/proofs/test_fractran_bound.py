@@ -1,4 +1,4 @@
-"""The lemmas ``docs/proofs/fractran.md`` rests on, as executable checks."""
+"""The lemmas ``docs/proofs/index.md#fractran-bound`` rests on, as executable checks."""
 
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ from math import gcd
 
 import pytest
 
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.fractran.generator import PAIR, fractran
 from esolangs.languages.fractran.interpreter import _choose, _parse
-from esolangs.languages.fractran.tests.proofs.deep.fractran import (
+from esolangs.languages.fractran.tests.proof_fractran import (
     row_addressed,
     rows,
     spelled,
 )
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.support.witness_tables import row_bits
 
 #: A fraction list, as the interpreter holds it.

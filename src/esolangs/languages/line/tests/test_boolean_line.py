@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.languages.line.generator import line_boolean
 from esolangs.languages.line.generator.render import Node, render
 from esolangs.languages.line.generator.tree_layout import tree_extents
@@ -19,6 +18,7 @@ from esolangs.languages.line.interpreter.simulate import (
     run_compiled,
 )
 from esolangs.raster import Raster, png
+from esolangs.runtime._evaluate import _evaluate
 from tests.support.witness_tables import row_bits
 
 
@@ -415,8 +415,8 @@ def test_shared_return_retains_unshared_balance_and_scale() -> None:
 
 def test_shared_return_extends_an_interior_tip() -> None:
     """A clear straight exit joins the perimeter without exceeding the ledger."""
+    from esolangs.generation.helpers import permute_truth_table
     from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
-    from esolangs.tools.helpers import permute_truth_table
 
     residual = "01" * 16
     other = "0110" * 8

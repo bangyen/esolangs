@@ -76,7 +76,7 @@ exclude = ["tests*", "examples*", "docs*", "esolangs.languages.*.tests*"]
 # root, which left them out of the wheel, so `describe(...)["examples"]` was
 # populated from a checkout and empty from an install, with nothing to say
 # which you had.
-esolangs = ["py.typed", "languages/EXAMPLES.md", "languages/*/examples/*.txt", "languages/*/examples/*.png", "languages/*/examples/*.gz"]
+esolangs = ["py.typed", "languages/EXAMPLES.md", "languages/*/*.txt", "languages/*/*.png", "languages/*/*.gz"]
 
 [tool.ruff]
 target-version = "py312"
@@ -101,6 +101,7 @@ select = [
     "A",   # builtin shadowing
     "ARG", # unused arguments
     "SLF", # private member access
+    "T10", # flake8-debugger
 ]
 ignore = [
     "C901",  # too complex
@@ -117,6 +118,7 @@ ignore = [
 # names are self-documenting, so the D rules would only add boilerplate.
 "tests/**/*.py" = ["D", "N802"]
 "src/esolangs/languages/*/tests/**/*.py" = ["D", "N802"]
+# language-owners: ["CV(N)(C)"]
 # CV(N)(C)'s source code *is* IPA, so the ambiguous-unicode rules fire on
 # every command in the language: the fricative is U+03B8 GREEK SMALL LETTER
 # THETA, the multiplication plosive U+0261 LATIN SMALL LETTER SCRIPT G, and
@@ -180,6 +182,7 @@ addopts = [
     # Override per-run with "-n auto", "-n 8", or "-n 0" on the command line.
     "-n",
     "4",
+    # language-owners: ["Malbolge"]
     # The schedule, not the worker count, was the band's real bound. The
     # default "load" hands out fixed-size chunks up front, so a worker that
     # draws several of the 8-16s Malbolge probes is still going long after
@@ -229,6 +232,11 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = ["src/esolangs"]
+# Branch coverage is what the gates read: `coverage report` derives it from the
+# collected arcs and `check_diff_coverage.py` requires 90% per touched file.
+# Pinned here rather than only on CI's `--cov-branch`, so a local `pytest --cov`
+# measures the same thing and a dropped flag cannot silently fall back to line.
+branch = true
 # Python 3.12's sys.monitoring costs a fraction of what the trace-function
 # backend does: measured over this suite, 0.9s of overhead instead of 11.5s,
 # reporting the same 15295 statements either way.  coverage falls back to the

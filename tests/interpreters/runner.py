@@ -5,7 +5,7 @@ import io
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO
 
 __all__ = ["run_lines", "run_printing", "run_program"]
 

@@ -8,15 +8,15 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
-from esolangs._evaluate import _evaluate
-from tests.integration.api.test_dialects import Unreadable
-from tests.reference import REFERENCE
-from tests.runtime.vm.test_debug import _step_to_halt
-from tests.runtime.vm.test_vm_protocol import assert_one_row_moves_along_it
+from esolangs.runtime._evaluate import _evaluate
+from tests.api.test_dialects import Unreadable
+from tests.runtime.test_debug import _step_to_halt
+from tests.runtime.test_vm_protocol import assert_one_row_moves_along_it
 from tests.support.cli_support import call_both
+from tests.support.reference import REFERENCE
 
 
-def test_set_pairs_match_settings_json(capsys):
+def test_set_pairs_match_settings_json(capsys) -> None:
     by_set, _ = call_both(
         ["generate", "--set", "expression_syntax=postfix", "Alight", "0110"], capsys
     )
@@ -33,7 +33,7 @@ def test_set_pairs_match_settings_json(capsys):
     assert by_set == by_json
 
 
-def test_unknown_settings_key_suggests_the_fix(capsys):
+def test_unknown_settings_key_suggests_the_fix(capsys) -> None:
     with pytest.raises(SystemExit) as caught:
         call_both(
             [
@@ -52,7 +52,7 @@ def test_unknown_settings_key_suggests_the_fix(capsys):
 
 
 @pytest.mark.parametrize("inputs", [1, 6])
-def test_balanced_postfix_chunks_execute(inputs):
+def test_balanced_postfix_chunks_execute(inputs) -> None:
     table = "01" * (1 << (inputs - 1))
     settings = DialectSettings(expression_syntax="postfix")
     program = esolangs.generate("Alight", table, balance=True, settings=settings)
@@ -60,7 +60,7 @@ def test_balanced_postfix_chunks_execute(inputs):
 
 
 @pytest.mark.medium
-def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys):
+def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys) -> None:
     choices = '{"expression_syntax":"postfix"}'
     generated, _ = call_both(
         ["generate", "--settings", choices, "Alight", "0110"], capsys
@@ -76,13 +76,13 @@ def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys):
         assert output.strip() == "1"
 
 
-def test_single_choice_languages_refuse_other_keys():
+def test_single_choice_languages_refuse_other_keys() -> None:
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run("Alight", Unreadable(), settings=DialectSettings(cell_modulus=255))
 
 
 @pytest.mark.medium
-def test_postfix_one_entry_chunks():
+def test_postfix_one_entry_chunks() -> None:
     # Width 1 forces 64 one-entry chunks; parity would hide reversed inputs.
     table = "".join(str(((row * 37) ^ (row >> 1)).bit_count() % 2) for row in range(64))
     settings = DialectSettings(expression_syntax="postfix")
@@ -90,7 +90,7 @@ def test_postfix_one_entry_chunks():
     assert _evaluate("Alight", source, inputs=6, settings=settings) == table
 
 
-def test_foreign_language_guard_precedes_retained_choices():
+def test_foreign_language_guard_precedes_retained_choices() -> None:
     source = esolangs.generate(
         "Alight", "01", settings=DialectSettings(expression_syntax="postfix")
     )
@@ -98,7 +98,7 @@ def test_foreign_language_guard_precedes_retained_choices():
         esolangs.run("Brainfuck", source)
 
 
-def test_short_settings_and_portable_flags(capsys, tmp_path):
+def test_short_settings_and_portable_flags(capsys, tmp_path) -> None:
     output, error = call_both(
         [
             "generate",

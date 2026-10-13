@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from contextlib import contextmanager
+from typing import NoReturn
 
-from esolangs._validate import check_timeout
 from esolangs.cli.help import (
     HELP,
 )
@@ -21,8 +21,9 @@ from esolangs.cli.hints import (
     _did_you_mean,
 )
 from esolangs.exceptions import EsolangError
+from esolangs.generation.wrap import DEFAULT_WIDTH
+from esolangs.runtime._validate import check_timeout
 from esolangs.settings import DialectSettings, dialect_choices
-from esolangs.tools.wrap import DEFAULT_WIDTH
 
 #: Flags every subcommand accepts, so a near miss on one of them is
 #: suggested by whichever subcommand it was typed after.
@@ -41,7 +42,7 @@ _ARGUMENTS = {
 }
 
 
-def _fail(message: str | BaseException, code: int = 2) -> None:
+def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
     if isinstance(message, BaseException):
         message = _cli_error_text(message)
     sys.stderr.write(message + "\n")
@@ -133,7 +134,7 @@ def _is_int(value: str) -> bool:
 def _split_positional(
     rest: list[str],
     known: set[str],
-    vocabulary: set[str] = frozenset(),  # type: ignore[assignment]
+    vocabulary: Collection[str] = frozenset(),
 ) -> list[str]:
     """Return ``rest``'s positionals, refusing any unrecognized option.
 
@@ -342,7 +343,7 @@ def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float 
     """Return the ``--timeout`` seconds, or None, refusing a bad value.
 
     The *value* checks are the private stdin check's neighbour
-    :func:`esolangs._validate.check_timeout`, not a second copy: this had
+    :func:`esolangs.runtime._validate.check_timeout`, not a second copy: this had
     its own rules for zero, negatives and non-finite values, and the
     library then grew a floor and a ceiling that this did not know about.
     A ``--timeout 1e10`` therefore got past here and overflowed the C
@@ -426,8 +427,8 @@ def _scale_of(options: dict[str, str]) -> int | None:
     """Read a positive integer pixel scale."""
     if "--scale" not in options:
         return None
-    from esolangs._validate import check_scale
     from esolangs.exceptions import ArgumentError
+    from esolangs.runtime._validate import check_scale
 
     try:
         return check_scale(

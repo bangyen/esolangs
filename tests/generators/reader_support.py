@@ -5,8 +5,8 @@ from collections.abc import Callable
 from typing import Any
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import row_bits
 
 

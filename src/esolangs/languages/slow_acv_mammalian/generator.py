@@ -47,16 +47,24 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 
 from collections.abc import Sequence
 
-from esolangs.languages.slow_acv_mammalian.interpreter._dialect import (
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    essential_inputs,
+)
+from esolangs.languages.slow_acv_mammalian.interpreter import (
     DEFAULT_MODULI,
     MODULI,
     MammalianModuli,
 )
+from esolangs.languages.slow_acv_mammalian.wrapping import (
+    _balance_mammalian,
+    _mammalian,
+    same_layout,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, essential_inputs
-from esolangs.tools.wrap import _mammalian
 
 __all__ = ["slow_acv_mammalian"]
 
@@ -486,14 +494,10 @@ def _w_greedy_chunk(st: _Sums) -> list[str]:
                 _replay(st, tokens)
                 return tokens
         raise AssertionError("no 17-step residue in [238, 254]")  # pragma: no cover
-    for count in range(_GREEDY_COUNTS):
-        if (st.hw + st.nw + _W_STEP * count) % _MODULUS >= _GREEDY_MIN:
-            tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
-            _replay(st, tokens)
-            return tokens
-    raise AssertionError(
-        f"no {_W_STEP}-step residue in [{_GREEDY_MIN}, {_STASH_BYTE}]"
-    )  # pragma: no cover
+    count, _ = _greedy_step((st.hw + st.nw) % _MODULUS)
+    tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
+    _replay(st, tokens)
+    return tokens
 
 
 def _w_raise(st: _Sums, amount: int) -> list[str]:
@@ -514,67 +518,39 @@ def _w_raise(st: _Sums, amount: int) -> list[str]:
     return tokens
 
 
-def _greedy_step_table() -> tuple[tuple[int, int], ...]:
-    """For each residue ``r``, the greedy chunk's ``(seed count, added byte)``.
-
-    Derived directly from :func:`_w_greedy_chunk`'s own search, not fit to
-    any table of programs -- 256 residues, once, at import time.
-    """
-    table = []
-    for r in range(_MODULUS):
-        for count in range(_GREEDY_COUNTS):
-            added = (r + _W_STEP * count) % _MODULUS
-            if added >= _GREEDY_MIN:
-                table.append((count, added))
-                break
-        else:  # pragma: no cover - argued in _w_greedy_chunk's docstring
-            raise AssertionError(
-                f"no {_W_STEP}-step residue in [{_GREEDY_MIN}, {_STASH_BYTE}] from {r}"
-            )
-    return tuple(table)
-
-
-_GREEDY_STEP = _greedy_step_table()
+def _greedy_step(r: int) -> tuple[int, int]:
+    """Return the first 17-step hit in [239, 255], without wrapping."""
+    count = max(0, -(-(_GREEDY_MIN - r) // _W_STEP))
+    return count, r + _W_STEP * count
 
 
 def _greedy_advance(r: int, target: int) -> tuple[int, int, int, int]:
-    """Fast-forward the greedy phase: total SEEDs and advance past ``target``.
+    """Return seeds, chunks, byte advance and final residue in O(1).
 
-    A chunk's added byte depends only on the residue ``r = (hw + nw) %
-    256`` (:func:`_greedy_step_table`), and the next residue is always
-    ``2 * added % 256`` -- multiply out ``r' = (r + 17*count + added) %
-    256`` where ``added = (r + 17*count) % 256`` and the ``17*count``
-    terms cancel mod 256.  That orbit lives in 256 states, so simulating
-    it must repeat a residue within 256 steps; once it does, the repeat's
-    span is a cycle whose whole-multiples are skipped by multiplication
-    instead of being walked, which is what makes this O(1) in ``target``
-    rather than O(target / 247) like :func:`_w_raise`'s direct loop.
-    Returns ``(seed count, chunk count, byte advance, final residue)``.
+    After one chunk r = 254 - 2d, d in 0..16, and d' = (2d + 1) mod 17.
+    d=16 is fixed. Otherwise d+1 doubles with period eight; opposite pairs
+    sum to 17 since 2**4 = -1 mod 17. Thus sum(d)=60, eight chunks add
+    8*255-60=1980 bytes and spend (1980-(8*254-2*60))/17=4 seeds.
     """
     if target <= 0:
         return 0, 0, 0, r
-    seen: dict[int, tuple[int, int, int]] = {}
-    steps = seed_count = advance = 0
+    seeds, advance = _greedy_step(r)
+    r = 2 * advance % _MODULUS
+    chunks = 1
+    if r == 222:
+        extra = max(0, -(-(target - advance) // 239))
+        return seeds + extra, chunks + extra, advance + 239 * extra, r
+    full = max(0, (target - advance - 1) // 1980)
+    seeds += 4 * full
+    chunks += 8 * full
+    advance += 1980 * full
     while advance < target:
-        if r in seen:
-            prev_steps, prev_seeds, prev_advance = seen[r]
-            cyc_steps = steps - prev_steps
-            cyc_seeds = seed_count - prev_seeds
-            cyc_advance = advance - prev_advance
-            full = (target - advance - 1) // cyc_advance
-            if full > 0:
-                steps += full * cyc_steps
-                seed_count += full * cyc_seeds
-                advance += full * cyc_advance
-            seen = {}  # landed back on the same r; walk the remainder plainly
-            continue
-        seen[r] = (steps, seed_count, advance)
-        count, added = _GREEDY_STEP[r]
-        seed_count += count
-        steps += 1
+        count, added = _greedy_step(r)
+        seeds += count
+        chunks += 1
         advance += added
-        r = (2 * added) % _MODULUS
-    return seed_count, steps, advance, r
+        r = 2 * added % _MODULUS
+    return seeds, chunks, advance, r
 
 
 def _w_raise_len(hw: int, nw: int, amount: int) -> tuple[int, int]:
@@ -1097,7 +1073,7 @@ def balance_slow_acv_mammalian(
     io_modulus: int = DEFAULT_MODULI.io_modulus,
 ) -> str:
     """Retain the legacy weighted dispatch when its layout balances better."""
-    from esolangs.tools.wrap import balance_program
+    from esolangs.generation.wrap import balance_program
 
     if len(set(truth_table)) > 1:
         if cell_modulus == 255:
@@ -1139,5 +1115,7 @@ LANGUAGE = Language(
     ),
     # Four-character cells align the ``SEED`` runs; longer words span cells.
     wrap=_mammalian,
+    wrap_balance=_balance_mammalian,
+    same_layout=same_layout,
     slow_width_sweep=True,
 )

@@ -19,11 +19,11 @@ from __future__ import annotations
 
 import re
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.persistent import (
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.persistent import (
     Chunked,
     append,
     flatten,
@@ -52,7 +52,7 @@ type _State = tuple[int, int, int, _Ram, bool]
 def _stored(ram: _Ram, addr: int, value: int, index: _Index) -> _Ram:
     """Return ``ram`` with ``addr`` set to ``value``, in insertion order.
 
-    A chunked tape (:mod:`esolangs.interpreters.persistent`) with an
+    A chunked tape (:mod:`esolangs.runtime.persistent`) with an
     address-to-position memo: Theta(T) writes of O(T) each (268 cells at
     eight inputs) made execution grow faster than the command count.
     """

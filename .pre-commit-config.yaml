@@ -2,6 +2,7 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # language-owners: ["Alight"]
       # The recorded output matches its generator exactly, trailing spaces
       # included -- Alight pads a turn's column and the generator emits it.
       # Both paths: the files live under src/ so they ship in the wheel, and
@@ -11,9 +12,9 @@ repos:
       # verbatim too (all of tests/support/fixtures/): a 2D program's padding and an
       # output's last byte count.
       - id: trailing-whitespace
-        exclude: ^(src/esolangs/languages/[^/]+/(examples/|tests/fixtures/)|tests/support/fixtures/)
+        exclude: ^(src/esolangs/languages/[^/]+/([^/]+\.(txt|png|gz)$|tests/fixtures/)|tests/support/fixtures/)
       - id: end-of-file-fixer
-        exclude: ^(src/esolangs/languages/[^/]+/(examples/|tests/fixtures/)|tests/support/fixtures/)
+        exclude: ^(src/esolangs/languages/[^/]+/([^/]+\.(txt|png|gz)$|tests/fixtures/)|tests/support/fixtures/)
       - id: check-yaml
         args: ['--unsafe']  # Allow custom YAML tags
       - id: check-added-large-files
@@ -21,7 +22,6 @@ repos:
       - id: check-merge-conflict
       - id: check-json
       - id: check-toml
-      - id: debug-statements
       - id: check-docstring-first
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
@@ -45,12 +45,12 @@ repos:
         language: system
         files: ^(\.pre-commit-config\.yaml|pyproject\.toml)$
         pass_filenames: false
-      - id: check-interpreter-syntax
-        name: Check interpreter syntax
-        entry: python3 -m py_compile
+      - id: check-doc-links
+        name: Check internal Markdown links
+        entry: python3 checks/check_doc_links.py
         language: system
-        files: ^src/esolangs/.*\.py$
-        pass_filenames: true
+        files: \.md$
+        pass_filenames: false
       - id: check-comment-density
         name: Check prose density (>= 2 code lines per comment or docstring-body line)
         entry: python3 checks/check_comment_density.py

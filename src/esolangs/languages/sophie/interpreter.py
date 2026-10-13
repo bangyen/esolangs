@@ -21,12 +21,12 @@ and comment text still counts toward bracket matching.
 import re
 from collections.abc import Iterator
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import format_integer, parse_integer
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
+from esolangs.runtime.source_hints import syntax_error
 
 
 def _brackets(code: str) -> Iterator[tuple[int, str]]:

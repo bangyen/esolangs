@@ -38,6 +38,7 @@ from tests.support.witness_tables import row_bits
 BAND = "by-hand"
 COST = 56.0
 
+# language-owners: ["BIO"]
 #: Most growth a ``T log T`` row may show: T cells of ``log T``-bit values
 #: (BIO's loop counters, 123's painted indices) read x2.32, a quadratic x4.
 LOG_GROWTH = 2.5
@@ -48,6 +49,7 @@ BOUND = {"poly n": POLY_GROWTH, "linear": MAX_GROWTH, "T log T": LOG_GROWTH}
 #: these arities, by language id; each reason is in the fixture.
 STEP_EXEMPT = frozenset(deep_arities("workspace_step_exempt"))
 
+# language-owners: ["BFStack", "FALSE"]
 #: Arity ceilings, fixed for the reason ``linearity.py`` gives.  Written
 #: state is recounted every step, so a rung costs ~4x the last: 9 throughout
 #: was 207s.  Lowered where a generator's top rung passed ~3s; FALSE and
@@ -118,6 +120,7 @@ def measure(
     ceiling: int = MAX_ARITY,
 ) -> Growth:
     """Worst per-input written-state growth, past any route change."""
+    # language-owners: ["BFStack", "FALSE"]
     # An override above MAX_ARITY is a floor (FALSE, BFStack need the rungs),
     # one below it a cap (slow to step); the dense pass raises the ceiling.
     override = ARITY_OVERRIDE.get(key)

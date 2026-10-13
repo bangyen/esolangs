@@ -4,9 +4,9 @@ import itertools
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages import generators as tools
 from esolangs.languages.egl.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import assert_an_ignored_input_costs
 
 

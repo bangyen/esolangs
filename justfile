@@ -19,6 +19,7 @@ help:
     @echo "  just test-mid     Fast + medium tests"
     @echo "  just test         Required checks before committing (branch-scoped)"
     @echo "  just test-full    Whole-tree checks, including slow tests, before release"
+    @echo "  just test-full-parallel  The same gate on every core (idle machine only)"
     @echo ""
     @echo 'New language: just new-language "Name" --category tape_based'
     @echo 'Then: just check-language "Name"; when ready: just finish-language "Name"'
@@ -67,6 +68,15 @@ test *args:
 test-full *args:
     {{PYTHON}} scripts/verify/gate.py --full {{args}}
 
+# The release gate is deliberate, not the inner loop, so it may take the box:
+# on a quiet machine the committed measurement (pyproject.toml's worker note)
+# is 85.6s at `-n auto` against 126.9s at four.  Not the default because >4
+# workers starve the fast band's subprocess tests past their starved ceiling
+# when the box is also loaded -- see the test-quick note.
+# Same full gate on every core; idle machine only.
+test-full-parallel *args:
+    PYTEST_ADDOPTS="-n auto" {{PYTHON}} scripts/verify/gate.py --full {{args}}
+
 # inner loop: pre-commit + pytest, fast band only, quiet by default.
 # Four workers, the pytest config's default: this box also runs sessions in
 # parallel, and at eight workers the subprocess-heavy fast tests starve past
@@ -91,13 +101,9 @@ test-mid *args:
 test-py *args:
     {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
 
-# lint + duplicate-code + bandit + dead definitions
+# lint + duplicate-code + dead definitions
 test-lint *args:
-    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"duplicate-code check (pylint)",bandit,"dead definitions" {{args}}
-
-# security scan only
-test-bandit *args:
-    {{PYTHON}} scripts/verify/gate.py --only bandit {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"duplicate-code check (pylint)","dead definitions" {{args}}
 
 # emit repeatable generator size/time/command evidence as JSON
 benchmark language table *args:
@@ -136,16 +142,7 @@ proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all
 
-# compile the standalone complexity notes; PDFs are ignored generated files
-proofs-pdf:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    command -v tectonic >/dev/null 2>&1 || {
-        echo "tectonic is required (brew install tectonic)" >&2
-        exit 1
-    }
-    tectonic --outdir docs/proofs docs/proofs/polynomial.tex
-
+# language-owners: ["A Painter Ant"]
 # Not in `just test` or CI; run it when A Painter Ant's generator changes.
 # re-check the A Painter Ant uniform-in-n proof
 apa-proof:
@@ -157,5 +154,5 @@ clean:
     find . \( -path ./.venv -o -path ./.worktrees \) -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
         | xargs -0 rm -rf
     find . \( -path ./.venv -o -path ./.worktrees \) -prune -o -name "*.pyc" -type f -delete
-    rm -rf build dist .coverage coverage.xml bandit-report.json .mypy_cache .ruff_cache .pytest_cache
+    rm -rf build dist .coverage coverage.xml .mypy_cache .ruff_cache .pytest_cache
     find src tests -mindepth 1 -type d -empty -delete

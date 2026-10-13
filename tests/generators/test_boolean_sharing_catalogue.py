@@ -12,15 +12,15 @@ no language; the measured bounds are pinned by the generators' own tests.
 
 from __future__ import annotations
 
-import inspect
 import tomllib
 from pathlib import Path
 
 from esolangs.registry import LANGUAGES
 from esolangs.registry._language import Shape
+from tests.generators.source_support import generator_symbols as _source
 
 #: The canonical helper a generator's module references to share subtrees.
-CANONICAL = ("subtree_ids", "SubtreeDiagram")
+CANONICAL = ("subtree_ids", "_residual_ids", "SubtreeDiagram")
 
 CATALOGUE = Path(__file__).parents[1] / "support/fixtures" / "sharing_catalogue.toml"
 
@@ -28,23 +28,6 @@ CATALOGUE = Path(__file__).parents[1] / "support/fixtures" / "sharing_catalogue.
 def _catalogue() -> tuple[dict[str, str], dict[str, str]]:
     data = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))
     return data.get("local", {}), data.get("exempt", {})
-
-
-def _source(name: str) -> str:
-    """The defining module and its sibling modules, as text."""
-    fn = LANGUAGES[name].boolean
-    assert fn is not None
-    path = Path(inspect.getsourcefile(fn))
-    directory = path.parent
-    if path.name == "generator.py":
-        directory = Path(__file__).parents[2] / "src/esolangs/tools"
-    parts = [path.read_text(encoding="utf-8")]
-    parts.extend(
-        sibling.read_text(encoding="utf-8")
-        for sibling in sorted(directory.glob("*.py"))
-        if sibling != path and not sibling.name.startswith("__")
-    )
-    return "\n".join(parts)
 
 
 def _tree_generators() -> set[str]:

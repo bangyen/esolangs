@@ -1,9 +1,15 @@
 """Boolean-function generator for Dig."""
 
-from itertools import pairwise
 from typing import cast
 
-from esolangs.languages.dig.generator._layout import _DIG_ALT_BRANCH, _DIG_DIRECTIONS
+from esolangs.generation.helpers import (
+    _validate_truth_table,
+    constant_span_test,
+    essential_inputs,
+    grid_width,
+    read_at,
+)
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.dig.generator._layout import _dig_alt_clear as _dig_alt_clear
 from esolangs.languages.dig.generator._layout import _dig_layout as _dig_layout
 from esolangs.languages.dig.generator._layout import (
@@ -15,7 +21,6 @@ from esolangs.languages.dig.generator._leaf import (
     _DIG_PRINT,
     _DIG_SPAN,
     _dig_constant_leaf,
-    _Reads,
     _render,
 )
 from esolangs.languages.dig.generator._leaf import (
@@ -26,14 +31,6 @@ from esolangs.languages.dig.generator._leaf import (
 )
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
 from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
-    _validate_truth_table,
-    constant_span_test,
-    essential_inputs,
-    grid_width,
-    read_at,
-)
-from esolangs.tools.wrap import balance_score
 
 # Dig blocks for one level of the decision tree.  ``$`` takes its count
 # from the digit beside it and looks up, right, down, left for one, so the
@@ -322,109 +319,6 @@ def _dig_center_choice(table: str, n: int, current: str, width: int | None) -> s
     return candidate if _dig_size(candidate)[0] < _dig_size(current)[0] else current
 
 
-def _dig_shared_pair(truth_table: str, n: int) -> str | None:
-    """Share two distinct 64-entry leaves behind an eight-input prefix.
-
-    The two 24-row leaves overlap one empty corner row. East and west
-    prefix branches select the same leaves in opposite orders; their rays
-    merge before either entry. Worst path: 60 prefix + 158 leaf commands.
-    """
-    if n != 8:
-        return None
-    blocks = [truth_table[i : i + 64] for i in range(0, 256, 64)]
-    upper, lower = blocks[:2], blocks[2:]
-    if upper[0] != upper[1]:
-        a, b = upper
-    elif lower[0] != lower[1]:
-        b, a = lower
-    else:
-        return None  # only the first prefix bit matters
-    if any(block not in (a, b) for block in blocks):
-        return None
-    if upper == lower:
-        return None  # only the second prefix bit matters
-    cells: dict[tuple[int, int], str] = {}
-    reads: _Reads = []
-    corridors: list[tuple[tuple[int, int], int, int]] = []
-
-    def place(point: tuple[int, int], char: str) -> None:
-        if point in cells:
-            raise AssertionError(f"two cells at {point}")
-        cells[point] = char
-
-    for row, table in ((11, a), (34, b)):
-        chars, spins, wants, _exit, _box = _dig_flat_leaf(table, [4, 2, 1], [4, 2, 1])
-
-        def onto(point: tuple[int, int], row: int = row) -> tuple[int, int]:
-            return point[0] + row, point[1] + 11
-
-        for point, char in chars.items():
-            place(onto(point), char)
-        for point, heading in spins.items():
-            place(onto(point), ">'<^"[heading])
-        reads.extend(
-            (onto(point), onto(want), frozenset(onto(p) for p in pending))
-            for point, want, pending in wants
-        )
-    rays: list[tuple[tuple[int, int], int, int]] = []
-    junctions: set[tuple[int, int]] = set()
-    for row, col, heading, words in (
-        (17, 1, 1, None),
-        (14, 5, 1, upper),
-        (24, 9, 3, lower),
-    ):
-        constant = words is not None and words[0] == words[1]
-        code = "$~" if constant else _DIG_ALT_BRANCH
-        d_col = _DIG_DIRECTIONS[heading][1]
-        for offset, char in enumerate(code):
-            place((row, col + d_col * offset), char)
-        place((row - 1, col), "1" if constant else "2")
-        reads.append(((row, col), (row - 1, col), frozenset()))
-        if not constant:
-            reads.append(((row, col + 3 * d_col), (row, col + 2 * d_col), frozenset()))
-        if words is None:
-            continue
-        ray_col = col + len(code) * d_col if constant else col + 3 * d_col
-        targets = (11 if words[0] == a else 34,) if constant else (11, 34)
-        if constant:
-            place((row, ray_col), "^" if targets[0] < row else "'")
-        for target in targets:
-            rays.append(((row, ray_col), 0 if target < row else 2, abs(target - row)))
-            junctions.add((target, ray_col))
-    # The lower branch enters from the east: its zero steers south to B.
-    for point, char in (
-        ((0, 0), "'"),
-        ((17, 0), ">"),
-        ((14, 4), ">"),
-        ((26, 4), ">"),
-        ((26, 10), "^"),
-        ((24, 10), "<"),
-    ):
-        place(point, char)
-    for point in junctions:
-        place(point, ">")
-    for row in (11, 34):
-        cols = [*sorted(col for y, col in junctions if y == row), 11]
-        corridors.extend(
-            ((row, left), 1, right - left) for left, right in pairwise(cols)
-        )
-    corridors.extend(rays)
-    corridors.extend(
-        (
-            ((0, 0), 2, 17),
-            ((17, 0), 1, 1),
-            ((17, 4), 0, 3),
-            ((17, 4), 2, 9),
-            ((14, 4), 1, 1),
-            ((26, 4), 1, 6),
-            ((26, 10), 0, 2),
-            ((24, 10), 3, 1),
-        )
-    )
-    _dig_alt_clear(cells, reads, corridors)
-    return _render(cells, dense=True)
-
-
 def _dig_quarter_turn(program: str) -> str:
     """Turn a grid clockwise with an external entry above its original origin."""
     rows = program.splitlines()
@@ -494,7 +388,7 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
     Aligned repeated leaves join along spare rows or columns, retaining the
     last copy and compacting unused external space. Paths must fit the execution
     ledger (n=8 A B B A: 1,155 cells, 208 commands). Narrow width paths can
-    use the fixed two-leaf stencil (26 columns, at most 218 commands).
+    use the indexed leaf decoder.
     Two parallel lanes admit interleaved classes (n=10: 5,175 cells,
     292 commands), stretching branch counters around their gutter.
     A prefix lookup can instead index up to seven shared leaf classes at
@@ -530,12 +424,11 @@ def _dig_build(
     """Return :func:`dig`'s layout for every table, ignored inputs included."""
     if width is not None and 0 < width < 8 and truth_table == "0110":
         return _dig_xor_pair()
-    pair = _dig_shared_pair(truth_table, n) if share else None
     lane = _dig_lane_shared(truth_table, n) if share else None
     parallel = _dig_parallel_shared(truth_table, n) if share else None
     if width is None and n > 4:
         current = min(
-            filter(None, (pair, lane, parallel, _dig_alternating(truth_table, n))),
+            filter(None, (lane, parallel, _dig_alternating(truth_table, n))),
             key=len,
         )
         return _dig_center_choice(truth_table, n, current, width) if share else current
@@ -553,7 +446,7 @@ def _dig_build(
             return flat
         if grid_width(banded) <= width:
             return banded
-    candidates = tuple(filter(None, (flat, banded, pair, lane, parallel)))
+    candidates = tuple(filter(None, (flat, banded, lane, parallel)))
     fitting = [p for p in candidates if grid_width(p) <= width]
     if n > 4:
         # Width 40 used 11,250 banded cells on the n=8 repeated-leaf case;

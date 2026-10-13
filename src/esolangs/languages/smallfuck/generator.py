@@ -5,9 +5,7 @@ from collections.abc import Callable
 from itertools import pairwise
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
@@ -18,15 +16,17 @@ from esolangs.tools.helpers import (
     subtree_ids,
     unmark,
 )
-from esolangs.tools.shared_block import ContinuationCost as _Cost
-from esolangs.tools.shared_block import (
+from esolangs.generation.shared_block import ContinuationCost as _Cost
+from esolangs.generation.shared_block import (
     _repeated_blocks,
     repeated_bank,
     repeated_block,
     repeated_blocks,
 )
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _RUN, balance_score, wrap_chars
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _RUN, balance_score, wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
@@ -82,7 +82,7 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     if width < len(PAIR[0]):
         natural = (TEMPLATE_CHAR + ">>>") * n + natural[len(PAIR[0]) * n :]
-    from esolangs.tools.wrap import wrap_program
+    from esolangs.generation.wrap import wrap_program
 
     marked = mark_runs(natural, TEMPLATE_CHAR, smallfuck_setters(natural, n))
     return unmark(wrap_program(marked, "smallfuck", width), TEMPLATE_CHAR, n)
@@ -99,28 +99,21 @@ def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
     plain, _ = _smallfuck_tree(table, perm)
     shared = repeated_block(table)
     paired = _paired_roots(table)
-    if shared is None:
-        if not paired:
-            return plain
-        candidate, commands = _smallfuck_tree(table, perm, paired_roots=paired)
-        n = len(perm)
-        return (
-            candidate
-            if commands <= 9 * n * n + 100 * n + 20 and len(candidate) < len(plain)
-            else plain
-        )
-    candidate, commands = _smallfuck_tree(table, perm, shared)
     n = len(perm)
-    forms = [(plain, 0), (candidate, commands)]
-    plans: list[tuple[tuple[tuple[int, int], ...], tuple[int, ...]]] = [
-        (repeated_blocks(table), ())
-    ]
-    plans.extend(repeated_bank(table, ranked=ranked) for ranked in (False, True))
-    for blocks, flags in dict.fromkeys(plans):
-        if len(blocks) > 1:
-            forms.append(
-                _smallfuck_tree(table, perm, shared_blocks=blocks, flag_levels=flags)
-            )
+    forms = [(plain, 0)]
+    if shared is not None:
+        forms.append(_smallfuck_tree(table, perm, shared))
+        plans: list[tuple[tuple[tuple[int, int], ...], tuple[int, ...]]] = [
+            (repeated_blocks(table), ())
+        ]
+        plans.extend(repeated_bank(table, ranked=ranked) for ranked in (False, True))
+        for blocks, flags in dict.fromkeys(plans):
+            if len(blocks) > 1:
+                forms.append(
+                    _smallfuck_tree(
+                        table, perm, shared_blocks=blocks, flag_levels=flags
+                    )
+                )
     if paired:
         forms.append(_smallfuck_tree(table, perm, paired_roots=paired))
     return min(

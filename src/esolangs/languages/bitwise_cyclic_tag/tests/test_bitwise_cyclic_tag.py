@@ -2,8 +2,8 @@
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.bitwise_cyclic_tag.interpreter import _Machine, run
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,

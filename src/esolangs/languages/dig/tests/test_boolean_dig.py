@@ -5,11 +5,13 @@ import importlib
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.languages import generators as boolean
 from esolangs.languages.dig.generator import _DIG_BRANCH, _DIG_STRIDE
-from esolangs.languages.dig.tests.runners import run_dig
+from esolangs.runtime._evaluate import _evaluate
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
+
+run_dig = _runner("dig", lines=True, newline=True)
 
 
 class TestDig:
@@ -119,8 +121,8 @@ class TestDig:
 
     def test_unaligned_leaf_chains_seven_input_reads(self) -> None:
         """A folded flat leaf needs two windows beyond its six-read tail."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.dig.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         for expected in "01":
             program = boolean.dig(expected * 128, 1000)
@@ -166,8 +168,8 @@ class TestDig:
                     assert run_dig(program, bits) == expected
 
     def test_xor_polynomial_uses_four_operand_columns(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.dig.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         # Every width up to 7 builds this same program.
         program = esolangs.generate("Dig", "0110", width=1)
@@ -275,7 +277,7 @@ def test_a_width_tree_reads_an_ignored_input_in_the_next_block(width: int) -> No
 
 
 @pytest.mark.parametrize("table", ["00", "0000"])
-def test_narrow_balance_regime_edge_executes(table):
+def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Dig", table, balance=True)
     assert _evaluate("Dig", balanced, inputs=len(table).bit_length() - 1) == table
@@ -287,9 +289,9 @@ def test_wide_requests_admit_the_unshared_alternating_grid(width: int) -> None:
     """The repeated-leaf case fits 35 columns and keeps the 220-step bound."""
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_grid
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     a, b = ("".join(rng.choice("01") for _ in range(64)) for _ in range(2))
@@ -321,8 +323,8 @@ def test_shared_routes_keep_the_execution_bound(
 ) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     a, b = ("".join(rng.choice("01") for _ in range(64)) for _ in range(2))
@@ -346,13 +348,13 @@ def test_shared_routes_keep_the_execution_bound(
 
 @pytest.mark.medium
 @pytest.mark.parametrize(("a", "b"), [("01" * 32, "10" * 32), ("0" * 64, "1" * 64)])
-def test_fixed_pair_reads_ignored_and_constant_leaf_inputs(a: str, b: str) -> None:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.languages.dig.generator import _dig_shared_pair
+def test_indexed_pair_reads_ignored_and_constant_leaf_inputs(a: str, b: str) -> None:
+    from esolangs.languages.dig.generator._shared import _dig_indexed_shared
     from esolangs.languages.dig.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     table = a + b + b + a
-    program = _dig_shared_pair(table, 8)
+    program = _dig_indexed_shared(table, 8)
     assert program is not None
     for row, expected in enumerate(table):
         io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
@@ -365,8 +367,8 @@ def test_fixed_pair_reads_ignored_and_constant_leaf_inputs(a: str, b: str) -> No
 def test_two_leaf_prefixes_keep_the_execution_ledger(pattern: str) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
@@ -388,9 +390,9 @@ def test_two_leaf_prefixes_keep_the_execution_ledger(pattern: str) -> None:
 def test_column_routes_consume_ignored_prefix_inputs(ignored: int) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_lane_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     a, b = ("".join(rng.choice("01") for _ in range(64)) for _ in range(2))
@@ -424,9 +426,9 @@ def test_multiple_copies_merge_along_one_column(
 ) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_lane_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
@@ -457,9 +459,9 @@ def test_multiple_copies_merge_along_one_column(
 def test_vertical_leaves_share_a_spare_row(ignored: int) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_lane_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
@@ -492,8 +494,8 @@ def test_vertical_leaves_share_a_spare_row(ignored: int) -> None:
 def test_spare_row_routes_reach_every_width_path(width: int | None) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
@@ -522,9 +524,9 @@ def test_disjoint_and_interleaved_groups_choose_bounded_routes(
 ) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_lane_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
@@ -553,9 +555,9 @@ def test_disjoint_and_interleaved_groups_choose_bounded_routes(
 def test_parallel_lanes_consume_ignored_prefix_inputs(ignored: int) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_parallel_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
@@ -584,9 +586,9 @@ def test_parallel_lanes_consume_ignored_prefix_inputs(ignored: int) -> None:
 def test_parallel_rows_keep_vertical_leaf_stamps_rigid(second: str) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_parallel_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
@@ -617,9 +619,9 @@ def test_parallel_gutters_preserve_constant_leaf_reads(
 ) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_parallel_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
@@ -643,9 +645,9 @@ def test_parallel_gutters_preserve_constant_leaf_reads(
 def test_parallel_gutter_refuses_a_tenth_armed_cell() -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_parallel_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
@@ -671,9 +673,9 @@ def test_parallel_gutter_refuses_a_tenth_armed_cell() -> None:
 def test_ignored_prefix_keeps_the_smallest_shared_grid(ignored: int) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_build, _dig_discards
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
@@ -727,9 +729,9 @@ def test_centered_offset_owner_executes_every_row(
 ) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_center_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
@@ -835,9 +837,9 @@ def test_centered_offset_owner_lowers_the_narrow_floor(width: int) -> None:
 def test_constant_columns_use_grid_area_and_read_every_input(
     n: int, value: str
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator import _dig_build
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     table = value * (1 << n)
     program = boolean.dig(table)
@@ -875,9 +877,9 @@ def test_indexed_sharing_admits_full_input_controls(
 ) -> None:
     import random
 
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
@@ -917,9 +919,9 @@ def test_indexed_sharing_refuses_four_classes_at_nine_inputs() -> None:
 def test_indexed_prefix_decoders_execute_every_row(
     n: int, area: int, commands: int
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
     program = _dig_indexed_shared(table, n)
@@ -949,9 +951,9 @@ def test_indexed_sharing_refuses_four_classes_at_eleven_inputs() -> None:
 
 @pytest.mark.medium
 def test_indexed_six_bit_decoder_keeps_four_classes_within_the_ledger() -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
     table = "".join(blocks) * 16
@@ -974,9 +976,9 @@ def test_indexed_six_bit_decoder_keeps_four_classes_within_the_ledger() -> None:
 
 @pytest.mark.medium
 def test_indexed_sharing_uses_the_ledger_to_limit_class_count() -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     blocks = ["".join(str((row >> bit) & 1) for row in range(64)) for bit in range(6)]
     blocks.append("".join(str(row.bit_count() % 2) for row in range(64)))

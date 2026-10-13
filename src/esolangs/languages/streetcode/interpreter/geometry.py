@@ -189,8 +189,7 @@ def _require(*, condition: bool, message: str) -> None:
     """Raise when an invariant this module relies on does not hold.
 
     A failure here says the *interpreter* is wrong, unlike the validators'
-    ``ValueError``.  Not an ``assert``: bandit rejects those in ``src``
-    (B101), and ``python -O`` would drop it.
+    ``ValueError``.  Not an ``assert``: ``python -O`` would drop it.
     """
     if not condition:
         raise AssertionError(message)

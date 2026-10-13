@@ -5,16 +5,16 @@ import random
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.languages import generators as boolean
-from esolangs.languages.packlang.generator import _folded
-from esolangs.languages.packlang.interpreter import run as packlang_run
-from esolangs.tools.wrap import (
-    _packlang,
+from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
+from esolangs.languages import generators as boolean
+from esolangs.languages.packlang.generator import _folded
+from esolangs.languages.packlang.interpreter import run as packlang_run
+from esolangs.languages.packlang.wrapping import _packlang
+from esolangs.runtime._evaluate import _evaluate
+from esolangs.runtime.io import ScriptedIO
 
 
 class TestPacklangPaintedArray:
@@ -90,7 +90,7 @@ class TestPacklangPaintedArray:
 
 
 @pytest.mark.parametrize("indent", [0, 4, 16, 64])
-def test_packlang_reduced_indent_crossing(indent):
+def test_packlang_reduced_indent_crossing(indent) -> None:
     from esolangs.languages.packlang.generator import _balance_form
 
     for table in ("0110", "0001", "10010110"):
@@ -116,7 +116,7 @@ def test_packlang_reduced_indent_crossing(indent):
     [("0110", 32), ("00110110011010100101110010100110", 32)]
     + [("00110110" * (2**n // 8), None) for n in (8, 11)],
 )
-def test_binary_digits_generated(table, width):
+def test_binary_digits_generated(table, width) -> None:
     source = boolean.packlang(table, width, literal_policy="binary_digits")
     n = (len(table) - 1).bit_length()
     for row in sorted({0, 1, 127 % len(table), len(table) // 2, len(table) - 1}):
@@ -125,7 +125,7 @@ def test_binary_digits_generated(table, width):
         assert io.getvalue() == table[row]
 
 
-def test_literal_policy_is_checked_and_does_not_leak():
+def test_literal_policy_is_checked_and_does_not_leak() -> None:
     with pytest.raises(ValueError, match="literal_policy"):
         boolean.packlang("01", literal_policy="binary")
     before = boolean.packlang("0110")

@@ -4,13 +4,13 @@ import random
 
 import pytest
 
-from esolangs.languages.brainfuck.generator import _bf_ordered
-from esolangs.languages.brainfuck.generator._binary import (
+from esolangs.generation.helpers import essential_inputs
+from esolangs.languages.brainfuck.generator import (
+    _bf_ordered,
     binary_bank,
     larger_suffix_bank,
 )
 from esolangs.languages.brainfuck.tests.test_boolean_brainfuck_binary import _execute
-from esolangs.tools.helpers import essential_inputs
 
 
 def _fixture(remaining, classes):
@@ -42,7 +42,7 @@ def _header(table):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("start", range(0, 1024, 128))
-def test_public_five_input_bank_executes_every_essential_row(start):
+def test_public_five_input_bank_executes_every_essential_row(start) -> None:
     table, core_bits = _fixture(5, 16)
     header = _header(table)
     built = larger_suffix_bank(table, 1148 - len(header) - 49)
@@ -64,7 +64,7 @@ def test_public_five_input_bank_executes_every_essential_row(start):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("start", range(0, 256, 64))
-def test_three_input_high_marker_preserves_native_output(start):
+def test_three_input_high_marker_preserves_native_output(start) -> None:
     table, core_bits = _fixture(3, 16)
     header = _header(table)
     built = binary_bank(table, 100000, remaining=3)
@@ -80,11 +80,11 @@ def test_three_input_high_marker_preserves_native_output(start):
 
 
 @pytest.mark.parametrize("table", ["01", "0011", "0" * 64])
-def test_non_default_bank_requires_eligible_repeated_states(table):
+def test_non_default_bank_requires_eligible_repeated_states(table) -> None:
     assert larger_suffix_bank(table, 100000) is None
 
 
-def test_an_ineligible_suffix_keeps_the_other_candidates():
+def test_an_ineligible_suffix_keeps_the_other_candidates() -> None:
     table, _ = _fixture(3, 16)
     assert binary_bank(table, 100000, remaining=0) is None
     assert binary_bank(table, 100000, remaining=15) is None

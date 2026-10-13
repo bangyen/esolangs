@@ -1,11 +1,13 @@
+"""Bitdeque interpreter behavior."""
+
 from functools import partial
 
 import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
 from esolangs.languages.bitdeque.interpreter import run
+from esolangs.runtime.io import IO
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
@@ -81,8 +83,8 @@ class TestStepMachine:
 
     def test_the_deque_renders_once_however_far_it_is_stepped(self) -> None:
         """The post-halt step prints the deque, and only the first one does."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.bitdeque.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         io_obj = ScriptedIO()
         machine = _Machine("PUSH INVERT", io_obj)

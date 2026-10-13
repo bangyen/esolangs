@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.generation.helpers import _validate_truth_table
 
 from .forest import _Forest, _suffix_forest
 from .hpool import _h_pool_layout, _h_pool_size, _large_pool_layout

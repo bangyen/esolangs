@@ -8,15 +8,15 @@ import pytest
 import esolangs
 from esolangs import _check_program
 from esolangs.exceptions import TemplateError
-from tests.integration.api.test_api_contracts import (
+from tests.api.test_api_contracts import (
     XOR,
 )
-from tests.integration.cli.test_cli import call_main
-from tests.reference import REFERENCE
+from tests.cli.test_cli import call_main
 from tests.support.cli_support import _failure, call_both
+from tests.support.reference import REFERENCE
 
 
-def test_describe_template_still_hides_stdin_fields(capsys):
+def test_describe_template_still_hides_stdin_fields(capsys) -> None:
     output, _error = call_both(["describe", "Minifuck"], capsys)
     assert "input_shape" not in output
     assert "generate --bits" in output
@@ -37,7 +37,7 @@ class TestMessagesNameTheThingThatIsWrong:
         assert "esolangs generate --bits" in err
 
 
-def test_template_hint_names_cli_bits_and_correction_runs(tmp_path, capsys):
+def test_template_hint_names_cli_bits_and_correction_runs(tmp_path, capsys) -> None:
     _, err = _failure(["generate", "--bits", "0", "Minifuck", "0110"], capsys)
     assert "hint: pass exactly 2 0/1 digits to --bits, one per input" in err
     assert "instantiate()" not in err

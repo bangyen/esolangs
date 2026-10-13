@@ -12,7 +12,7 @@ from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 from esolangs.exceptions import MissingDependencyError
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 if TYPE_CHECKING:
     from esolangs.raster import Pixel, Rows

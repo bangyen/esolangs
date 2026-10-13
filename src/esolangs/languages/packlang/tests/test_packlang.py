@@ -8,10 +8,10 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.packlang.interpreter import _get, _Machine, _node, run
 from esolangs.languages.packlang.interpreter._parse import _Parser
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
@@ -538,19 +538,19 @@ def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Packlang", "?", "punctuation")
 
 
-def test_datatype_typo_uses_the_parser_vocabulary():
+def test_datatype_typo_uses_the_parser_vocabulary() -> None:
     with pytest.raises(ValueError, match="unknown datatype") as caught:
         _Parser(["Intger"]).parse_type()
     assert caught.value.__notes__ == ["hint: did you mean 'Integer'?"]
 
 
-def test_variable_suggestions_use_the_live_scope():
+def test_variable_suggestions_use_the_live_scope() -> None:
     with pytest.raises(HaltError) as caught:
         _get((("COUNT", 1),), "COUTN")
     assert caught.value.__notes__ == ["hint: did you mean 'COUNT'?"]
 
 
-def test_internal_tree_errors_and_explicit_aborts_have_no_repair_hint():
+def test_internal_tree_errors_and_explicit_aborts_have_no_repair_hint() -> None:
     with pytest.raises(HaltError) as caught:
         _node("broken internal tree")
     assert not hasattr(caught.value, "__notes__")
@@ -558,7 +558,7 @@ def test_internal_tree_errors_and_explicit_aborts_have_no_repair_hint():
 
 
 @pytest.mark.medium
-def test_dependency_readings_under_each_literal_policy():
+def test_dependency_readings_under_each_literal_policy() -> None:
     for policy, expected in (("decimal", "°±±°"), ("binary_digits", "0110")):
         io = ScriptedIO("")
         run(DEPENDENCY, io, literal_policy=policy)
@@ -566,7 +566,7 @@ def test_dependency_readings_under_each_literal_policy():
 
 
 @pytest.mark.parametrize("policy", ["decimal", "binary_digits"])
-def test_literal_roundtrip(policy):
+def test_literal_roundtrip(policy) -> None:
     from esolangs.languages.packlang.interpreter._literals import PacklangLiterals
 
     literals = PacklangLiterals(policy)
@@ -576,7 +576,7 @@ def test_literal_roundtrip(policy):
 
 
 @pytest.mark.parametrize("value", [True, "text"])
-def test_scalar_numbers_reject_booleans_and_text(value):
+def test_scalar_numbers_reject_booleans_and_text(value) -> None:
     from esolangs.languages.packlang.interpreter._values import _int
 
     with pytest.raises(HaltError, match="expected a number") as raised:

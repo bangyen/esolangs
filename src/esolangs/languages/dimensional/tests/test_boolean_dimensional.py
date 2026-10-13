@@ -2,16 +2,18 @@
 
 import pytest
 
-from esolangs import generate
-from esolangs.interpreters.io import ScriptedIO
+from esolangs import generate, run
+from esolangs.generation.wrap import (
+    wrap_program,
+)
 from esolangs.languages import generators as boolean
 from esolangs.languages.dimensional.generator import dimensional
 from esolangs.languages.dimensional.interpreter import _Machine
-from esolangs.languages.dimensional.tests.runners import run_dimensional
-from esolangs.tools.wrap import (
-    wrap_program,
-)
+from esolangs.runtime.io import ScriptedIO
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import witnesses
+
+run_dimensional = _runner("dimensional", newline=True)
 
 
 @pytest.mark.parametrize("n", [1, 2, 8])
@@ -57,7 +59,7 @@ def test_bare_axis_leaves_execute_all_small_tables() -> None:
 
 @pytest.mark.parametrize("width", [None, 2, 3, 8, 80])
 def test_other_widths_preserve_the_established_build(width: int | None) -> None:
-    from esolangs.tools.wrap import wrap_program
+    from esolangs.generation.wrap import wrap_program
 
     for table in ("00", "11", "0110", "0001", "10010110"):
         assert dimensional(table, width) == wrap_program(
@@ -107,6 +109,15 @@ class TestDimensional:
         late = "0" * 15 + "1"
         assert len(boolean.dimensional(early)) < len(boolean.dimensional(late))
 
+        table = "0" * 9 + "1" + "0" * 6
+        program = generate("Dimensional", table)
+        assert len(program) <= 155
+        for row, expected in enumerate(table):
+            stdin = "\n".join(format(row, "04b"))
+            assert (
+                run("Dimensional", program, stdin=stdin, max_steps=10_000) == expected
+            )
+
     def test_scales_beyond_the_old_reference_cap(self) -> None:
         """The v3.0 interpreter's unbounded cells lift the old n <= 12 cap."""
         program = boolean.dimensional("0" * 4095 + "1")
@@ -131,3 +142,25 @@ def test_dimensional_keeps_every_operand_with_its_command(
 ) -> None:
     """A break inside any of these changes what the program does."""
     assert token in wrap_program(program, "dimensional", 1).split("\n")
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("kind", ["parity", "sparse"])
+def test_fourteen_input_lookup_stays_within_step_cap(kind: str) -> None:
+    n = 14
+    size = 1 << n
+    table = (
+        "".join(str(row.bit_count() & 1) for row in range(size))
+        if kind == "parity"
+        else "0" * (size - 1) + "1"
+    )
+    program = dimensional(table)
+    for row in (0, size // 3, size - 1):
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(program, io)
+        for _ in range(200_000):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (table[row], n)

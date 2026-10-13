@@ -2,16 +2,20 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.languages.suffolk.generator import _suffolk_lookup, suffolk
-from esolangs.languages.suffolk.generator._shared import _nor, shared_dag
+from esolangs.languages.suffolk.generator import (
+    _nor,
+    _suffolk_lookup,
+    shared_dag,
+    suffolk,
+)
 from esolangs.languages.suffolk.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 
 
 @pytest.mark.parametrize("target", [0, 1, 48])
 @pytest.mark.parametrize(("left", "right"), [(0, 0), (0, 1), (1, 0), (1, 1)])
-def test_nor_cancels_the_targets_old_value(target, left, right):
+def test_nor_cancels_the_targets_old_value(target, left, right) -> None:
     code = _nor(2, 0, 1)
     machine = _Machine(code, ScriptedIO(""))
     machine.state = (0, 0, 0, (left, right, target))
@@ -45,7 +49,7 @@ def _execute(table, program, rows):
 @pytest.mark.parametrize(
     ("n", "start"), [(n, start) for n in (9, 10) for start in range(0, 1 << n, 64)]
 )
-def test_changed_scaling_controls_execute_every_row(n, start):
+def test_changed_scaling_controls_execute_every_row(n, start) -> None:
     table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(1 << n))
     old, new = _suffolk_lookup(table), suffolk(table)
     assert len(new) < len(old)
@@ -55,7 +59,7 @@ def test_changed_scaling_controls_execute_every_row(n, start):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("start", range(0, 256, 32))
-def test_shared_parity_executes_both_ignored_input_fills(start):
+def test_shared_parity_executes_both_ignored_input_fills(start) -> None:
     core = "".join(str(row.bit_count() & 1) for row in range(256))
     table = core * 256
     program = shared_dag(table, 16)
@@ -66,19 +70,19 @@ def test_shared_parity_executes_both_ignored_input_fills(start):
     _execute(table, program, rows)
 
 
-def test_workspace_refusal_preserves_lookup():
+def test_workspace_refusal_preserves_lookup() -> None:
     table = "".join(str(row.bit_count() & 1) for row in range(256))
     assert shared_dag(table, 8) is None
     assert suffolk(table) == _suffolk_lookup(table)
 
 
 @pytest.mark.parametrize("table", ["00", "11"])
-def test_constants_keep_the_stream_drain(table):
+def test_constants_keep_the_stream_drain(table) -> None:
     assert shared_dag(table, 1) is None
     assert suffolk(table) == _suffolk_lookup(table)
 
 
-def test_repeated_passes_overwrite_every_shared_value():
+def test_repeated_passes_overwrite_every_shared_value() -> None:
     table = "01101001" * 4
     program = shared_dag(table, 5)
     assert program is not None

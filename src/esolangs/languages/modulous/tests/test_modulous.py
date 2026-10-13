@@ -3,9 +3,9 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.languages.modulous.interpreter import _advance, _named, run
 from esolangs.languages.modulous.interpreter import _Machine as Modulous
-from esolangs.languages.modulous.interpreter import _named, run
+from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import (
     run_until_halt,
     run_until_halt_or_all_branches_cycle,
@@ -21,6 +21,71 @@ from tests.support.raises import (
 )
 
 run_and_capture = run_lines(run)
+
+
+def _modulous_state(ind: int = 0) -> tuple[object, ...]:
+    """An explicit Modulous state with the four zeroed variables."""
+    return (((), {f"VAR{k}": 0 for k in range(1, 5)}, ind), False)
+
+
+def test_advance_is_pure_and_repeatable() -> None:
+    """The transition is a function of its arguments and copies the map."""
+    state = _modulous_state()
+    first = _advance(state, "PSH INT 5")
+    second = _advance(state, "PSH INT 5")
+    assert first == second
+    assert state[0][0] == ()
+    assert dict(state[0][1]) == {f"VAR{k}": 0 for k in range(1, 5)}
+    assert first[0][0] == (5,)
+
+
+def test_advance_takes_input_and_draws_as_arguments() -> None:
+    """``INP``/``RND`` push what the shell supplies, not a port read."""
+    inp = _advance(_modulous_state(), "INP INT", "42")
+    assert inp[0][0] == (42,)
+    rnd = _advance(_modulous_state(), "RND 5", 3)
+    assert rnd[0][0] == (3,)
+
+
+def test_advance_end_sets_the_halt_flag() -> None:
+    state = _modulous_state()
+    assert _advance(state, "END")[1] is True
+    assert state[1] is False
+
+
+def test_stored_variables_are_frozen_and_do_not_mutate_retained_state() -> None:
+    """A store returns a read-only map; a retained map never changes."""
+    from types import MappingProxyType
+
+    state = _modulous_state()
+    stored = _advance(_advance(state, "PSH INT 7"), "PSH VAR1")
+    var = stored[0][1]
+    assert isinstance(var, MappingProxyType)
+    with pytest.raises(TypeError):
+        var["VAR1"] = 99  # type: ignore[index]
+    # The retained map is a value: a later store makes a fresh proxy.
+    later = _advance(_advance(stored, "PSH INT 3"), "PSH VAR2")
+    assert dict(var)["VAR1"] == 7
+    assert dict(var)["VAR2"] == 0
+    assert dict(later[0][1])["VAR2"] == 3
+    assert dict(state[0][1]) == {f"VAR{k}": 0 for k in range(1, 5)}
+
+
+def test_a_retained_variable_map_does_not_change_under_a_step() -> None:
+    """Stepping rebinds the map rather than writing through the old one."""
+    from types import MappingProxyType
+
+    machine = Modulous("[PSH INT 7][PSH VAR1][PSH INT 3][PSH VAR2]", ScriptedIO())
+    while machine.ind < 2 and not machine.halted:
+        machine.step()
+    retained = machine.var
+    assert isinstance(retained, MappingProxyType)
+    before = dict(retained)
+    while machine.ind < 4 and not machine.halted:
+        machine.step()
+    assert dict(retained) == before
+    assert dict(machine.var)["VAR2"] == 3
+    assert dict(machine.var)["VAR1"] == 7
 
 
 _OUTPUT = {
@@ -303,7 +368,7 @@ class TestBranchingMachine:
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_rejected_with_hint("Modulous", "[PSH INT nope]", "decimal integer")
     assert_rejected_with_hint("Modulous", "[PSH INT -1][PRT]", "between 0 and 1114111")
     assert_halts_with_hint(
@@ -312,7 +377,7 @@ def test_hints_for_bad_programs_and_input():
     assert_halts_with_hint("Modulous", "[RND 0]", "upper bound", "at least 1")
 
 
-def test_variable_suggestions_use_the_live_scope():
+def test_variable_suggestions_use_the_live_scope() -> None:
     with pytest.raises(HaltError) as caught:
         _named({"COUNT": 1}, "COUTN")
     assert caught.value.__notes__ == ["hint: did you mean 'COUNT'?"]

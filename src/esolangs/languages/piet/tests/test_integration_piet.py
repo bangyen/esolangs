@@ -7,10 +7,10 @@ import pytest
 
 import esolangs
 from esolangs import Raster
-from esolangs._evaluate import _evaluate
 from esolangs.exceptions import TemplateError
 from esolangs.registry import LANGUAGES, SourceKind
-from tests.integration.api.test_api_contracts import XOR
+from esolangs.runtime._evaluate import _evaluate
+from tests.api.test_api_contracts import XOR
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
 from tests.support.pick import languages
 
@@ -23,7 +23,7 @@ def first_other_raster() -> str:
     return others[0]
 
 
-def test_bound_raster_language_loads_and_evaluates_png(tmp_path):
+def test_bound_raster_language_loads_and_evaluates_png(tmp_path) -> None:
     language = esolangs.Language("Piet")
     program = language.generate("0110")
     assert isinstance(program, esolangs.Raster)
@@ -65,7 +65,7 @@ class TestSpecAbortsRatherThanReturningNothing:
 
 
 @pytest.mark.medium
-def test_raster_interpreter_retains_geometry_hint():
+def test_raster_interpreter_retains_geometry_hint() -> None:
     image = Raster((((255, 255, 255),),))
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
         esolangs.run("Piet", image, scale=2, timeout=1)
@@ -91,7 +91,7 @@ def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
 
 
 def test_empty_piet_operation_path_halts() -> None:
-    from esolangs.languages.piet.generator.balance import _emit, _plan
+    from esolangs.generation.raster_lookup.balance import _emit, _plan
 
     image = _emit([], _plan([], 13, 14))
     assert esolangs.run("Piet", image) == ""

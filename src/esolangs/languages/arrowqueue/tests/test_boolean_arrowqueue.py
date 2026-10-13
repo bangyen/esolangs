@@ -4,8 +4,8 @@ import random
 
 import pytest
 
+from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.arrowqueue.generator import PAIR
-from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from tests.generators.fills import fill
 from tests.support.witness_tables import row_bits
 
@@ -80,9 +80,9 @@ class TestParameterizedArrowQueue:
 def test_constant_balance_and_setters_off_path(bit: str) -> None:
     """Constant roots keep their setters off the halt/ring path, balanced."""
     import esolangs
-    from esolangs._evaluate import _evaluate
+    from esolangs.generation.wrap import balance_score
     from esolangs.languages.arrowqueue.generator import _program
-    from esolangs.tools.wrap import balance_score
+    from esolangs.runtime._evaluate import _evaluate
 
     n = 8
     table = bit * (1 << n)

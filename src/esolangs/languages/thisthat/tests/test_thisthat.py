@@ -4,11 +4,95 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw
 from esolangs.languages.thisthat.generator import thisthat
-from esolangs.languages.thisthat.interpreter import _Machine, _Pointer, run
+from esolangs.languages.thisthat.interpreter import (
+    _advance,
+    _Machine,
+    _NeedInputError,
+    _Pointer,
+    run,
+)
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.randomness import FirstDraw
 from tests.support.paths import ROOT
+
+
+class _EventIO(ScriptedIO):
+    """A ``ScriptedIO`` that logs each read and write in order."""
+
+    def __init__(self, stdin: str = "") -> None:
+        super().__init__(stdin)
+        self.events: list[str] = []
+
+    def input_char(self, prompt: str = "Input: ") -> int:
+        self.events.append("read")
+        return super().input_char(prompt)
+
+    def _write(self, value: object) -> None:
+        self.events.append(f"write:{value}")
+        super()._write(value)
+
+
+def _print_then_read() -> tuple[list[str], tuple[_Pointer, ...]]:
+    """A tick that prints 1, then reads, then prints 2, then reads again."""
+    grid = ["▣─◇─◇─◇─◇"]
+    pointers = (
+        _Pointer((2, 0), (1, 0), "data", 1),
+        _Pointer((4, 0), (3, 0)),
+        _Pointer((6, 0), (5, 0), "data", 2),
+        _Pointer((8, 0), (7, 0)),
+    )
+    return grid, pointers
+
+
+def test_a_tick_prints_before_it_reads() -> None:
+    """A print already produced is written before the later read asks."""
+    io = _EventIO("0\n")
+    machine = _Machine(["▣─◇─◇"], io)
+    machine.pointers = (
+        _Pointer((2, 0), (1, 0), "data", 1),
+        _Pointer((4, 0), (3, 0)),
+    )
+    machine.step()
+    assert io.events == ["write:1", "read"]
+    assert io.getvalue() == "1"
+
+
+def test_a_tick_keeps_output_when_a_later_read_hits_eof() -> None:
+    io = _EventIO("")
+    machine = _Machine(["▣─◇─◇"], io)
+    machine.pointers = (
+        _Pointer((2, 0), (1, 0), "data", 1),
+        _Pointer((4, 0), (3, 0)),
+    )
+    machine.step()
+    assert io.events == ["write:1", "read"]
+    assert io.getvalue() == "1"
+
+
+def test_a_tick_keeps_output_when_a_later_read_is_invalid() -> None:
+    """The prefix is flushed before the read's fault is re-raised."""
+    io = _EventIO("x\n")
+    machine = _Machine(["▣─◇─◇"], io)
+    machine.pointers = (
+        _Pointer((2, 0), (1, 0), "data", 1),
+        _Pointer((4, 0), (3, 0)),
+    )
+    with pytest.raises(HaltError, match="must be a bit"):
+        machine.step()
+    assert io.events == ["write:1", "read"]
+    assert io.getvalue() == "1"
+
+
+def test_a_retried_tick_flushes_each_print_once_in_order() -> None:
+    """Two reads split the tick; each print lands once, in order."""
+    grid, pointers = _print_then_read()
+    io = _EventIO("01")
+    machine = _Machine(grid, io)
+    machine.pointers = pointers
+    machine.step()
+    assert io.getvalue() == "12"
+    assert io.events == ["write:1", "read", "write:2", "read"]
 
 
 @pytest.mark.parametrize(
@@ -42,6 +126,38 @@ def test_output(stdin: str, grid: list[str], expected: str) -> None:
     io = ScriptedIO(stdin)
     run(grid, io)
     assert io.getvalue() == expected
+
+
+def test_advance_is_pure_and_repeatable() -> None:
+    """The transition is a function of its core and copies the bistack."""
+    grid = ("▣─◧",)
+    core = ((_Pointer((2, 0), (1, 0), "data", 1),), {}, 0, False, False)
+    first, first_effects = _advance(core, grid)
+    second, second_effects = _advance(core, grid)
+    assert first == second
+    assert first_effects == second_effects
+    assert core[1] == {}  # the input mapping is not written through
+    assert dict(first[1]) == {(0, 0): 1}
+
+
+def test_advance_returns_prints_instead_of_writing() -> None:
+    """A data-mode ``◇`` reports the number it prints."""
+    grid = ("▣─◇",)
+    core = ((_Pointer((2, 0), (1, 0), "data", 1),), {}, 0, False, False)
+    _moved, effects = _advance(core, grid)
+    assert effects == (1,)
+    assert core[0][0].value == 1  # the pointer is unchanged
+
+
+def test_advance_requests_input_rather_than_reading() -> None:
+    """An execution ``◇`` raises until the shell supplies a character."""
+    grid = ("▣─◇─◯",)
+    core = ((_Pointer((2, 0), (1, 0)),), {}, 0, False, False)
+    with pytest.raises(_NeedInputError):
+        _advance(core, grid)
+    moved, effects = _advance(core, grid, (None,))
+    assert effects == ()  # EOF is an empty transfer
+    assert moved[0]  # and the pointer still goes on
 
 
 def test_loader_push_pop_and_horizontal_route() -> None:
@@ -327,7 +443,7 @@ def test_a_cursorless_read_loop_halts_at_eof() -> None:
 def test_cat_and_kolakoski_wiki_examples() -> None:
     """The Cat echoes and halts; Kolakoski prints the sequence, 1 as 0, 2 as 1."""
 
-    pages = ROOT / "src/esolangs/languages/thisthat/tests/fixtures/wiki_examples"
+    pages = ROOT / "src/esolangs/languages/thisthat/tests/fixtures"
     cat = (pages / "thisthat_cat.txt").read_text(encoding="utf-8").splitlines()
     for bits in ("", "0", "1", "0110"):
         io = ScriptedIO(bits)
@@ -343,3 +459,13 @@ def test_cat_and_kolakoski_wiki_examples() -> None:
     printed = machine.io.getvalue()
     assert len(printed) > 60
     assert printed == "".join(str(term - 1) for term in kolakoski)[: len(printed)]
+
+
+def test_cursor_moves_before_a_bistack_read_in_the_same_cycle() -> None:
+    machine = _Machine(["▣ ◹ ◧═◇"], ScriptedIO(""))
+    machine.cells = {(0, 0): 0, (0, 1): 1}
+    machine.pointers = (_Pointer((2, 0), None), _Pointer((4, 0), None))
+    for _ in range(3):
+        machine.step()
+    assert machine.io.getvalue() == "1"
+    assert machine.cells == {(0, 0): 0}

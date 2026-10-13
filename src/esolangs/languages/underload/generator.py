@@ -14,16 +14,17 @@ from collections.abc import Callable
 from functools import cache
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     SubtreeDiagram,
     _validate_truth_table,
+    reflected_table,
     same_up_to_wrapping,
 )
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import balance_score, wrap_tokens
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import balance_score, wrap_tokens
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 # ()! and :! are neutral, padding both selectors to _NODE space-free characters.
 PAIR = ("(()!!^)", "(~:!!^)")
@@ -39,21 +40,16 @@ _NODE = 7
 _PREFIX = "()!"
 
 
-def _reflected(truth_table: str, n: int) -> str:
-    """Reorder rows so the tree's first test is the last-pushed input."""
-    return "".join(truth_table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(1 << n))
-
-
 def _shared(truth_table: str, *, short: bool = False) -> str:
     """Return the tree over the reduced diagram, carrying repeated subtrees.
 
-    Subtrees are named by :class:`~esolangs.tools.helpers.SubtreeDiagram`.  A
+    Subtrees are named by :class:`~esolangs.generation.helpers.SubtreeDiagram`.  A
     node whose halves agree is ``!`` and the half, a leaf pushes its bit and
     one ``S`` after the tree prints it, and each node carries the one
     subtree within :data:`_REACH` levels that shortens it most, if any does.
     """
     n = _validate_truth_table(truth_table)
-    diagram = SubtreeDiagram(_reflected(truth_table, n))
+    diagram = SubtreeDiagram(reflected_table(truth_table, n))
     halves, level_of, reaches = diagram.halves, diagram.level, diagram.reaches
 
     @cache

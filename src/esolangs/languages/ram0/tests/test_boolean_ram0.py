@@ -15,8 +15,8 @@ class TestParameterizedRam0:
 
     def run_ram0(self, prog: str) -> str:
 
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.ram0.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         io = ScriptedIO()
         run(prog, io)
@@ -34,9 +34,9 @@ class TestParameterizedRam0:
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
+        from esolangs.generation.helpers import TEMPLATE_CHAR, runs
         from esolangs.languages import generators
         from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR
-        from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 
         template = generators.ram0("0110")
         assert "{X" not in template
@@ -56,9 +56,9 @@ class TestParameterizedRam0:
     @staticmethod
     def _sharing_totals(tables: list[str]) -> tuple[int, int]:
         """(before, shipped) totals, each table checked not to grow."""
+        from esolangs.generation.helpers import best_input_order
         from esolangs.languages import generators
         from esolangs.languages.ram0.generator import _ram0_ordered
-        from esolangs.tools.helpers import best_input_order
 
         before = after = 0
         for table in tables:

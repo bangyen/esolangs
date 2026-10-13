@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+# scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import argparse
@@ -15,9 +16,7 @@ import os
 import platform
 import statistics
 import subprocess
-import sys
 from collections import defaultdict
-from pathlib import Path
 from typing import Protocol
 
 import pytest
@@ -282,7 +281,7 @@ def main(argv: list[str] | None = None) -> int:
     """Dispatch one CI subcommand."""
     argv = sys.argv[1:] if argv is None else argv
     if not argv:
-        raise SystemExit("usage: ci.py {shard|refresh} ...")
+        raise SystemExit("usage: scripts/ci/shard.py {shard|refresh} ...")
     command, rest = argv[0], argv[1:]
     if command == "shard":
         return shard_main(rest)
@@ -308,6 +307,9 @@ class Recorder:
         self.durations: dict[str, float] = {}
         self.collected: set[str] = set()
         self.finished: set[str] = set()
+        self.failed: set[str] = set()
+        self.progress = path.with_suffix(path.suffix + ".progress.jsonl")
+        write_text(self.progress, "")
 
     def pytest_collection_finish(self, session: pytest.Session) -> None:
         """Record the selected corpus in a serial session."""
@@ -325,6 +327,21 @@ class Recorder:
         self.durations[report.nodeid] = (
             self.durations.get(report.nodeid, 0) + report.duration
         )
+        if report.failed:
+            self.failed.add(report.nodeid)
+        if report.when == "teardown" or report.failed:
+            record = {
+                "nodeid": report.nodeid,
+                "duration": self.durations[report.nodeid],
+                "finished": report.when == "teardown",
+                "failed": report.nodeid in self.failed,
+            }
+            if report.failed:
+                record["failure"] = str(report.longrepr)
+            # A flushed diagnostic journal survives SIGKILL; only sessionfinish
+            # publishes the immutable snapshot and completion metadata.
+            with self.progress.open("a", encoding="utf-8") as progress:
+                progress.write(json.dumps(record) + "\n")
 
     def pytest_sessionfinish(self, exitstatus: int) -> None:
         """Write the measured corpus even when tests fail."""
@@ -373,6 +390,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     """Register the recording destination."""
     parser.addoption("--duration-output", type=Path)
     parser.addoption("--duration-order", action="store_true")
+    parser.addoption("--duration-input", type=Path)
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -382,9 +400,10 @@ def pytest_configure(config: pytest.Config) -> None:
         costs = config.workerinput.get("duration_costs", {})
     else:
         costs = {}
-        if path is not None and config.getoption("duration_order"):
+        source = config.getoption("duration_input") or path
+        if source is not None and config.getoption("duration_order"):
             try:
-                recorded = json.loads(path.read_text(encoding="utf-8"))
+                recorded = json.loads(source.read_text(encoding="utf-8"))
                 costs = {
                     node: float(seconds)
                     for node, seconds in recorded.items()

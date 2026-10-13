@@ -5,9 +5,9 @@ import random
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.languages.piet_plus_plus.generator import piet_plus_plus as generate
 from esolangs.raster import Raster
+from esolangs.runtime._evaluate import _evaluate
 from tests.support.witness_tables import witnesses
 
 
@@ -35,7 +35,7 @@ def test_emitted_pixels_are_linear_in_the_table() -> None:
 
 @pytest.mark.medium
 def test_every_small_function_executes_without_growing() -> None:
-    from esolangs.languages.piet.generator import _operations, strip
+    from esolangs.generation.raster_lookup import _operations, strip
     from esolangs.languages.piet_plus_plus.generator import _next_colour
 
     total = 0
@@ -68,7 +68,7 @@ def test_folded_functions_execute_through_png(inputs: int) -> None:
 
 
 def test_large_function_uses_a_smaller_fold() -> None:
-    from esolangs.languages.piet.generator import _operations, strip
+    from esolangs.generation.raster_lookup import _operations, strip
     from esolangs.languages.piet_plus_plus.generator import _next_colour
 
     rng = random.Random(20261009)

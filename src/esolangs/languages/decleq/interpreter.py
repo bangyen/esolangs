@@ -24,13 +24,13 @@ user input"):
 
 from __future__ import annotations
 
-from esolangs._drive import drive
-from esolangs._validate import check_address
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import format_integer
-from esolangs.interpreters.memory import parse_int_memory as _parse
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime._validate import check_address
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
+from esolangs.runtime.memory import parse_int_memory as _parse
 
 _OUT = -2
 _IN = -1

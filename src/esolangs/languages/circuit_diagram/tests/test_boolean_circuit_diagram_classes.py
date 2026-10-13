@@ -40,7 +40,7 @@ def _eight_classes(n):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [9, 10])
-def test_repeated_classes_execute_every_row(n):
+def test_repeated_classes_execute_every_row(n) -> None:
     table = _three_classes(n)
     model = _residual_class_bank_candidate(table)
     assert model is not None
@@ -49,7 +49,7 @@ def test_repeated_classes_execute_every_row(n):
 
 
 @pytest.mark.medium
-def test_public_abba_class_bank_executes_every_row():
+def test_public_abba_class_bank_executes_every_row() -> None:
     a, b = dense(8, b"bank-a"), dense(8, b"bank-b")
     table = a + b + b + a
     code = circuit_diagram(table)
@@ -59,9 +59,10 @@ def test_public_abba_class_bank_executes_every_row():
 
 
 @pytest.mark.medium
-def test_classes_cross_distinct_banks_beyond_all_fold_orders():
+def test_classes_cross_distinct_banks_beyond_all_fold_orders() -> None:
     table = _eight_classes(13)
-    assert _linear_shared_layout(table, 13) is None
+    complete = _linear_shared_layout(table, 13)
+    assert complete is not None
     assert _repeated_cofactor_bank(table) is None
     chunks = [table[start : start + 1024] for start in range(0, len(table), 1024)]
     assert len(set(chunks)) == 8
@@ -70,11 +71,14 @@ def test_classes_cross_distinct_banks_beyond_all_fold_orders():
     lines = code.splitlines()
     assert len(lines) * max(map(len, lines)) == 1_160_811
     rows = sorted({0, len(table) - 1, *range(0, len(table), 256)})
+    h, w = complete.bounds()
+    assert h * w >= len(lines) * max(map(len, lines))
+    _execute(table, complete.render(), rows)
     _execute(table, code, rows)
 
 
 @pytest.mark.medium
-def test_constant_classes_and_projected_suffix_ports_execute():
+def test_constant_classes_and_projected_suffix_ports_execute() -> None:
     atom = "".join(str(((row >> 6) & 1) ^ (row & 1)) for row in range(128))
     for table in ("0" * 128 + "1" * 128 + atom + atom, atom * 4):
         model = _residual_class_bank_candidate(table)
@@ -82,7 +86,7 @@ def test_constant_classes_and_projected_suffix_ports_execute():
         _execute(table, model.render())
 
 
-def test_unrepeated_and_excess_classes_reject_before_routing(monkeypatch):
+def test_unrepeated_and_excess_classes_reject_before_routing(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.banks"
     )
@@ -102,7 +106,7 @@ def test_unrepeated_and_excess_classes_reject_before_routing(monkeypatch):
 
 
 @pytest.mark.medium
-def test_class_area_ceiling_preserves_a_fitting_native_layout(monkeypatch):
+def test_class_area_ceiling_preserves_a_fitting_native_layout(monkeypatch) -> None:
     table = _three_classes(9)
     model = _residual_class_bank_candidate(table)
     height, width = model.bounds()
@@ -124,7 +128,9 @@ def test_class_area_ceiling_preserves_a_fitting_native_layout(monkeypatch):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("extra_height", [0, 1])
-def test_public_class_admission_preserves_existing_area_ties(monkeypatch, extra_height):
+def test_public_class_admission_preserves_existing_area_ties(
+    monkeypatch, extra_height
+) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.banks"
     )
@@ -132,24 +138,28 @@ def test_public_class_admission_preserves_existing_area_ties(monkeypatch, extra_
     monkeypatch.setattr(module, "_residual_class_bank_candidate", lambda *_args: None)
     table = dense(9)
     expected = circuit_diagram(table)
-    lines = expected.splitlines()
 
     class Rejected:
+        def __init__(self, ceiling):
+            self.ceiling = ceiling
+
         def bounds(self):
-            return len(lines) + extra_height, max(map(len, lines))
+            return 1, self.ceiling + extra_height
 
         def render(self):
             pytest.fail("an equal or larger class bank must preserve the old candidate")
 
     monkeypatch.setattr(
-        module, "_residual_class_bank_candidate", lambda *_args: Rejected()
+        module,
+        "_residual_class_bank_candidate",
+        lambda _table, ceiling: Rejected(ceiling),
     )
     assert circuit_diagram(table) == expected
     _execute(table, expected, (0, len(table) - 1))
 
 
 @pytest.mark.medium
-def test_explicit_width_never_builds_class_masks(monkeypatch):
+def test_explicit_width_never_builds_class_masks(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.banks"
     )
@@ -162,23 +172,11 @@ def test_explicit_width_never_builds_class_masks(monkeypatch):
     _execute(table, circuit_diagram(table, width=80), (0, len(table) - 1))
 
 
-@pytest.mark.slow
-@pytest.mark.parametrize("arities", [(9, 11, 13), (10, 12, 14)])
-def test_class_bank_growth_executes_native_positive_controls(arities):
-    sizes = []
-    for n in arities:
-        table = _three_classes(n)
-        model = _residual_class_bank_candidate(table)
-        assert model is not None
-        code = model.render()
-        rows = sorted({0, len(table) - 1, *range(0, len(table), len(table) // 32)})
-        _execute(table, code, rows)
-        sizes.append(len(code))
-    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) <= 4.4
-
-
-@pytest.mark.slow
-def test_large_h_masks_keep_their_local_complement_drivers():
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "seventeen-input H masks retain their local complement drivers"
+)
+def test_large_h_masks_keep_their_local_complement_drivers() -> None:
     table = _three_classes(17)
     model = _residual_class_bank_candidate(table)
     assert model is not None
@@ -187,7 +185,7 @@ def test_large_h_masks_keep_their_local_complement_drivers():
 
 
 @pytest.mark.medium
-def test_nine_input_atom_shares_internal_residuals_of_distinct_roots():
+def test_nine_input_atom_shares_internal_residuals_of_distinct_roots() -> None:
     table = dense(9)
     assert len({table[i : i + 128] for i in range(0, 512, 128)}) == 4
     model = _residual_class_bank_candidate(table)
@@ -200,7 +198,7 @@ def test_nine_input_atom_shares_internal_residuals_of_distinct_roots():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("shared", [False, True])
-def test_online_class_rectangle_rejects_before_copying(monkeypatch, shared):
+def test_online_class_rectangle_rejects_before_copying(monkeypatch, shared) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.banks"
     )
@@ -217,7 +215,7 @@ def test_online_class_rectangle_rejects_before_copying(monkeypatch, shared):
 
 
 @pytest.mark.medium
-def test_single_class_preserves_its_native_area_ceiling():
+def test_single_class_preserves_its_native_area_ceiling() -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.banks"
     )

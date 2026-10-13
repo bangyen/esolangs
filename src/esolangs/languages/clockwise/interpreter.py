@@ -23,11 +23,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from esolangs._drive import drive
 from esolangs.exceptions import InputExhaustedError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 #: How many parity bits make one printed byte.
 _BYTE_BITS = 7

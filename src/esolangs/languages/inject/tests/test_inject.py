@@ -6,8 +6,8 @@ from typing import Any, ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.inject.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
@@ -331,3 +331,19 @@ def test_a_rewrite_cannot_move_the_pointer_before_the_program() -> None:
     program = "a;\nreadto a\nx\ny\na;"
     with pytest.raises(HaltError, match="before the program"):
         run(program, ScriptedIO(""))
+
+
+def test_rewrite_transition_keeps_old_lines_and_spans_immutable() -> None:
+    from esolangs.languages.inject.interpreter import _advance
+
+    machine = _Machine(["readto data", "data;", "old", "data;"], ScriptedIO(""))
+    before = machine._state  # noqa: SLF001 - the transition input is the invariant
+    moved, output = _advance(before, "new")
+    assert before[0][2] == "old"
+    assert moved[0][2] == "new"
+    assert output == ()
+    with pytest.raises(TypeError):
+        moved[0][2] = "changed"  # type: ignore[index]
+    with pytest.raises(TypeError):
+        moved[1]["data"] = (0, 1)  # type: ignore[index]
+    assert _advance(before, "new") == (moved, output)

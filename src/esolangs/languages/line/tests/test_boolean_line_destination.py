@@ -2,11 +2,11 @@
 
 import pytest
 
+from esolangs.generation.helpers import permute_truth_table
 from esolangs.languages.line.generator import line
 from esolangs.languages.line.generator.forward import destination_canvas, forward_canvas
 from esolangs.languages.line.tests import test_boolean_line_forward as controls
 from esolangs.languages.line.tests.test_boolean_line_forward import _check
-from esolangs.tools.helpers import permute_truth_table
 from tests.support.witness_tables import dense, parity
 
 
@@ -19,7 +19,7 @@ def destination_check(monkeypatch):
 @pytest.mark.medium
 def test_every_admitted_three_input_destination_graph_executes(
     destination_check, tmp_path
-):
+) -> None:
     admitted = 0
     for value in range(256):
         table = f"{value:08b}"
@@ -31,7 +31,9 @@ def test_every_admitted_three_input_destination_graph_executes(
 
 
 @pytest.mark.medium
-def test_adjacent_terminal_and_nonterminal_arm_profiles(destination_check, tmp_path):
+def test_adjacent_terminal_and_nonterminal_arm_profiles(
+    destination_check, tmp_path
+) -> None:
     profiles = [
         a + b for a in ("0000", "1111", "0110") for b in ("0000", "1111", "0110")
     ]
@@ -48,7 +50,9 @@ def test_adjacent_terminal_and_nonterminal_arm_profiles(destination_check, tmp_p
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [7, 8, 9])
-def test_public_majority_shares_destination_moves(n, destination_check, tmp_path):
+def test_public_majority_shares_destination_moves(
+    n, destination_check, tmp_path
+) -> None:
     table = "".join(str(int(row.bit_count() > n // 2)) for row in range(1 << n))
     area, commands = destination_check(table, tmp_path)
     assert area == {7: 9_345_600, 8: 10_665_600, 9: 13_438_400}[n]
@@ -58,7 +62,9 @@ def test_public_majority_shares_destination_moves(n, destination_check, tmp_path
 
 
 @pytest.mark.medium
-def test_dense_narrow_forks_keep_native_rails_separate(destination_check, tmp_path):
+def test_dense_narrow_forks_keep_native_rails_separate(
+    destination_check, tmp_path
+) -> None:
     table = dense(8)
     area, _ = destination_check(table, tmp_path)
     assert area == 75_521_200
@@ -67,7 +73,7 @@ def test_dense_narrow_forks_keep_native_rails_separate(destination_check, tmp_pa
 
 
 @pytest.mark.medium
-def test_parity_keeps_the_smaller_arrival_layout(destination_check, tmp_path):
+def test_parity_keeps_the_smaller_arrival_layout(destination_check, tmp_path) -> None:
     table = parity(6)
     area, _ = destination_check(table, tmp_path)
     assert area == 6_466_800
@@ -78,7 +84,7 @@ def test_parity_keeps_the_smaller_arrival_layout(destination_check, tmp_path):
 @pytest.mark.parametrize("kept", [(0, 2, 5), (1, 3, 4)])
 def test_projected_destination_loader_executes_every_row(
     kept, destination_check, tmp_path
-):
+) -> None:
     table = "".join(
         str(sum((row >> (5 - bit)) & 1 for bit in kept) % 2) for row in range(64)
     )
@@ -88,7 +94,7 @@ def test_projected_destination_loader_executes_every_row(
 @pytest.mark.slow
 def test_majority_22_destination_moves_obey_native_contract(
     destination_check, tmp_path
-):
+) -> None:
     n = 22
     table = "".join(str(int(row.bit_count() > n // 2)) for row in range(1 << n))
     rows = sorted(

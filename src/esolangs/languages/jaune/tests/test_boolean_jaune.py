@@ -6,13 +6,21 @@ import random
 
 import pytest
 
+from esolangs.generation.helpers import best_input_order
 from esolangs.languages import generators as boolean
 from esolangs.languages.jaune.generator import _jaune_ordered
-from esolangs.languages.jaune.tests.runners import run_jaune
-from esolangs.tools.helpers import best_input_order
 from tests.generators.plain_oracles import _jaune_linear
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import assert_parity_at_most_doubles
+
+
+def run_jaune(program: str, inputs: list[str]) -> str:
+    from esolangs.languages.jaune.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    io = ScriptedIO("\n".join(inputs) + "\n")
+    run(program, io)
+    return io.getvalue()
 
 
 class TestJaune:
@@ -24,8 +32,8 @@ class TestJaune:
 
     def test_reads_every_input_whatever_the_table(self) -> None:
         """Every table consumes exactly ``n`` inputs, folds included."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.jaune.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         n = 3
         for table in ("11111111", "00000000", "11110000", "10101010", "10010110"):

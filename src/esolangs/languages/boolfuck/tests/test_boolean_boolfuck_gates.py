@@ -4,10 +4,9 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.languages.boolfuck.generator import boolfuck
-from esolangs.languages.boolfuck.generator._gates import affine_stream, normal_gates
+from esolangs.languages.boolfuck.generator import affine_stream, boolfuck, normal_gates
 from esolangs.languages.boolfuck.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 
 
@@ -118,3 +117,29 @@ def test_extreme_prefix_attains_the_derived_command_bound(n: int) -> None:
         assert program is not None
         maxima.append(_execute(table, program, list(range((1 << n) - 4, 1 << n))))
     assert max(maxima) == 2 * n * n + 25 * n + 26
+
+
+@pytest.mark.medium
+def test_boolfuck_scaling_windows_follow_normalized_gate_route() -> None:
+    from esolangs.languages.boolfuck.generator import boolfuck, normal_gates
+    from tests.proofs.deep.linearity import (
+        ARITY_OVERRIDE,
+        MAX_DIFF_RATIO,
+        _classes,
+        _series,
+        _trend,
+    )
+    from tests.support.witness_tables import nested_dense
+
+    series = _series(boolfuck, nested_dense, ARITY_OVERRIDE["boolfuck"])
+    windows = _classes(series)
+    assert len(windows) == 2
+    for window in windows:
+        for n, size in window:
+            gates = normal_gates(nested_dense(n))
+            assert gates is not None
+            assert len(gates) == size
+            assert boolfuck(nested_dense(n)) == gates
+    trend = _trend(series)
+    assert trend is not None
+    assert trend <= MAX_DIFF_RATIO

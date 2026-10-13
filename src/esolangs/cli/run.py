@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import sys
 import warnings
+from functools import partial
 
 from esolangs import describe, run
 from esolangs.cli.args import (
-    _check_count,
     _errors,
     _fail,
     _integer,
@@ -32,10 +32,11 @@ from esolangs.cli.io import (
     _emit_partial,
     _note,
     _null_context,
-    _portable_language,
     _read_program,
     _read_stdin,
-    _UnboundedNotice,
+    _resolve_target,
+    _termination_notice,
+    _unbounded_notice,
     _write_output,
 )
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
@@ -79,7 +80,7 @@ def _run(rest: list[str]) -> None:
     if "--max-memory" in options:
         max_memory = _integer(options["--max-memory"], "--max-memory")
         with _errors():
-            from esolangs._isolated import check_memory
+            from esolangs.runtime._isolated import check_memory
 
             check_memory(max_memory, isolated=isolated)
     rest = _split_positional(
@@ -101,15 +102,7 @@ def _run(rest: list[str]) -> None:
     scale = _scale_of(options)
     if flags.count("--isolated") > 1:
         _fail("--isolated given more than once")
-    if not (portable and len(rest) == 1):
-        _check_count("run", rest, 2)
-    content = None
-    if portable and len(rest) == 1:
-        path = rest[0]
-        with _errors():
-            language, content = _portable_language(path, timeout)
-    else:
-        language, path = rest[0], rest[1]
+    language, path, content = _resolve_target("run", rest, timeout, portable=portable)
     settings = _settings_of(options, set_pairs, language=language)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
@@ -126,11 +119,7 @@ def _run(rest: list[str]) -> None:
         # written to loop forever, which is a hang with no output and no
         # explanation.  Not refused -- a program whose answer is 0 halts,
         # and running one unbounded is perfectly sensible -- but said aloud.
-        sys.stderr.write(
-            f"{name}: this language answers 1 by not terminating, so a "
-            f"program with that answer will run until you stop it; pass "
-            f"--timeout SECONDS to bound it\n"
-        )
+        _termination_notice(name, "--timeout SECONDS")
     program = _read_program(
         path,
         timeout,
@@ -142,33 +131,28 @@ def _run(rest: list[str]) -> None:
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     try:
         with (
-            _UnboundedNotice("run") if timeout is None else _null_context(),
+            _unbounded_notice("run") if timeout is None else _null_context(),
             warnings.catch_warnings(record=True) as caught,
         ):
             warnings.simplefilter("always")
+            invoke = partial(
+                run,
+                language,
+                program,
+                stdin=stdin,
+                timeout=timeout,
+                seed=seed,
+                scale=scale,
+                settings=settings,
+            )
             if isolated:
-                output = run(
-                    language,
-                    program,
-                    stdin=stdin,
-                    timeout=timeout,
-                    seed=seed,
-                    scale=scale,
+                output = invoke(
                     isolated=True,
                     max_output=max_output,
                     max_memory=max_memory,
-                    settings=settings,
                 )
             else:
-                output = run(
-                    language,
-                    program,
-                    stdin=stdin,
-                    timeout=timeout,
-                    seed=seed,
-                    scale=scale,
-                    settings=settings,
-                )
+                output = invoke()
         for entry in caught:
             _note(str(entry.message))
     except TemplateError as exc:

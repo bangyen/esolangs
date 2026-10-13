@@ -4,10 +4,12 @@ from importlib import import_module
 
 import pytest
 
+from esolangs.generation.wrap import shortest
 from esolangs.languages import generators as boolean
-from esolangs.languages.streetcode.tests.runners import run_streetcode
-from esolangs.tools.wrap import shortest
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
+
+run_streetcode = _runner("streetcode", lines=True)
 
 
 def _columns(program: str) -> int:
@@ -50,6 +52,28 @@ class TestStreetcode:
                 tree = module._streetcode_tree(table)  # noqa: SLF001
                 shared = module._streetcode_shared_programs(table, n, tree)  # noqa: SLF001
                 assert boolean.streetcode(table) == shortest(*shared)
+
+    @pytest.mark.parametrize("table", ["01100110", "00010101"])
+    def test_equal_siblings_share_one_drawing(self, table: str) -> None:
+        """A redundant selector preserves every input row and shrinks the grid."""
+        module = import_module("esolangs.languages.streetcode.generator")
+        half = table[: len(table) // 2]
+        if table == half * 2:
+            shared = module._streetcode_tree(table)  # noqa: SLF001
+            repeated = module._streetcode_join(  # noqa: SLF001
+                module._streetcode_tree(half),  # noqa: SLF001
+                module._streetcode_tree(half),  # noqa: SLF001
+            )
+            assert len(shared) * max(map(len, shared)) < len(repeated) * max(
+                map(len, repeated)
+            )
+        program = boolean.streetcode(table)
+        n = len(table).bit_length() - 1
+        for combo in range(1 << n):
+            assert (
+                run_streetcode(program, [str(bit) for bit in row_bits(combo, n)])
+                == table[combo]
+            )
 
     def test_constant_subtrees_fold(self) -> None:
         """A subtree whose rows agree prints instead of driving down halls."""
@@ -183,7 +207,7 @@ class TestStreetcode:
 
     def test_only_identity_and_greedy_orders_are_offered(self) -> None:
         """Streetcode never renders more than two order candidates."""
-        from esolangs.tools.helpers import input_orders
+        from esolangs.generation.helpers import input_orders
 
         table = "01011010"
         assert input_orders(table)[0] == (0, 1, 2)
@@ -201,8 +225,8 @@ def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
 @pytest.mark.parametrize("n", [1, 3, 6])
 @pytest.mark.parametrize("row", [0, 1, -1])
 def test_quarter_turned_lookup_preserves_input_order(n: int, row: int) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.streetcode.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(1 << n))
     row %= len(table)

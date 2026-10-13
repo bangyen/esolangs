@@ -5,9 +5,9 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.jaune.interpreter import _Machine as Jaune
 from esolangs.languages.jaune.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters import runner
 from tests.interpreters.contract import SnapshotContract
@@ -211,7 +211,7 @@ def test_output(code: str, expected: str) -> None:
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_halts_with_hint(
         "Jaune", "1@", "undefined subroutine", "define the subroutine"
     )

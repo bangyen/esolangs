@@ -5,7 +5,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.vm import make_vm, run_until_halt_or_ancestor
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 
 class TestTheVmPathRefusesLikeRunDoes:

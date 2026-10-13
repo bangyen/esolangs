@@ -24,12 +24,12 @@ from __future__ import annotations
 
 import re
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import match_brackets
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import format_integer, parse_integer
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.brackets import match_brackets
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
+from esolangs.runtime.source_hints import syntax_error
 
 type _State = tuple[int, int, int, tuple[int, ...], tuple[tuple[int, int, int], ...]]
 type _Output = int | str | None

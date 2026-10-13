@@ -1,14 +1,18 @@
 """Boolean-function generator for s*bleq."""
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.branch_decoder import hoisted_tree as _sbleq_hoisted
-from esolangs.tools.helpers import (
+from esolangs.generation.branch_decoder import hoisted_tree as _sbleq_hoisted
+from esolangs.generation.helpers import (
     _validate_truth_table,
     in_input_order,
 )
-from esolangs.tools.packed_decoder import _packed_build, _sbleq_constant, packed_decoder
-from esolangs.tools.wrap import balance_program, balance_score, wrap_grid
+from esolangs.generation.packed_decoder import (
+    _packed_build,
+    _sbleq_constant,
+    packed_decoder,
+)
+from esolangs.generation.wrap import balance_program, balance_score, wrap_grid
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 
 def sbleq(truth_table: str) -> str:

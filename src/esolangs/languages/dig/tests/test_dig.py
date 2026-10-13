@@ -4,10 +4,11 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.dig.interpreter import run
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract, InputCursorContract
 from tests.interpreters.runner import run_lines
+from tests.runtime.test_vm_protocol import assert_starts_downward
 from tests.support.raises import raises_message
 
 run_and_capture = run_lines(run)
@@ -163,8 +164,8 @@ class TestDigEdgeCases:
 
     def test_a_steer_digit_outside_zero_and_one_goes_straight(self) -> None:
         """``#`` turns on 1 and 0; every other digit holds the heading."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.dig.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         def heading_after(digit: str) -> int:
             # "#" steers overground, so no "$" -- the mole starts at (0, 0)
@@ -182,8 +183,8 @@ class TestDigEdgeCases:
 
     def test_a_whitespace_digit_outside_zero_and_one_is_inert(self) -> None:
         """``%`` loads a newline for 1 and a space for 0, nothing otherwise."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.dig.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         def mole_after(digit: str) -> int:
             # "%" is a work command, so "$" has to open the underground
@@ -223,8 +224,8 @@ class TestStepMachine:
 
 
 def test_repeated_runs_keep_stores_private() -> None:
-    from esolangs._drive import drive
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime._drive import drive
 
     rows = [">$3~;:@"]
     first = _Machine(rows, ScriptedIO("12\n"))
@@ -262,8 +263,8 @@ def test_overground_data_steps_match_the_transition() -> None:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
     from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import IO
 
     return _Machine(code, IO())
 
@@ -284,3 +285,8 @@ class TestContract(CycleContract, InputCursorContract):
     reading_program: ClassVar[list[str]] = [">$=:", " 2 "]
     reading_stdin = "A"
     steps_before_read = 2  # move over, dig, and only then read
+
+
+def test_the_first_move_is_down_the_rows() -> None:
+    """It begins vertically, so ``VM.ip``'s first component moves first."""
+    assert_starts_downward("Dig")

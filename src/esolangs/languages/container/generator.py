@@ -6,15 +6,15 @@ from itertools import count, pairwise
 from string import ascii_letters
 from typing import NamedTuple
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     input_weights,
     short_name,
     subtree_ids,
 )
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 #: The names Container gives its own meaning, which a generated container
 #: may not take.  The names draw from a mixed-case alphabet and so reach
@@ -26,29 +26,12 @@ _RESERVED = frozenset({"EXIT", "IN", "OUT", "PRINT", "T"})
 _TREE_MAX_N = 6
 
 
-_Names = dict[tuple[str, int, int], str]
-
-
 def _free_names(taken: Iterable[str]) -> Iterator[str]:
     """Yield the shortest letter names not in ``taken``, which may grow."""
     for index in count():
         name = short_name(index, ascii_letters)
         if name not in taken:
             yield name
-
-
-def _allocate_names(uses: dict[tuple[str, int, int], int]) -> _Names:
-    """Give the shortest free identifier to the most-referenced container.
-
-    ``uses`` maps a container's key to how many times the emitted program
-    spells its name, so the length saved is the reference count; ties break
-    on the key, keeping the emission deterministic.
-    """
-    identifiers = _free_names(_RESERVED)
-    return {
-        key: next(identifiers)
-        for key in sorted(uses, key=lambda key: (-uses[key], key))
-    }
 
 
 class _Node(NamedTuple):
@@ -69,21 +52,21 @@ class _TreePlan:
     parents: dict[int, list[int]]
     relays: dict[int, int]
 
-    def key(self, index: int) -> tuple[str, int, int]:
-        if index < 0:
-            return ("root", 0, 0)
-        node = self.nodes[index]
-        return ("node", node.born, node.lo >> (self.n - node.born))
-
 
 def _container_plan(truth_table: str, n: int, *, prune: bool, share: bool) -> _TreePlan:
     """Plan pruned nodes, shared parents, and opposite-side relays."""
     size = 2**n
 
     nodes: list[_Node] = []
+    parents: dict[int, list[int]] = {}
+    relays: dict[int, int] = {}
+    levels: list[list[_Node]] = [[] for _ in range(n + 1)]
+    ids = subtree_ids(truth_table) if share else []
+    first: dict[tuple[int, int, int], int] = {}
+    either: dict[tuple[int, int], int] = {}
 
     def settle(depth: int, lo: int) -> int:
-        """Return the first level at or below ``depth`` whose halves differ."""
+        """Return the first level whose halves differ."""
         span = size >> depth
         while (
             prune
@@ -95,76 +78,38 @@ def _container_plan(truth_table: str, n: int, *, prune: bool, share: bool) -> _T
             span //= 2
         return depth
 
-    def grow(tests: int, lo: int, parent: int) -> None:
-        """Add the two children of a node that tests level ``tests``."""
-        half = size >> (tests + 1)
-        for child_lo in (lo, lo + half):
-            nodes.append(
-                _Node(tests + 1, settle(tests + 1, child_lo), child_lo, parent)
+    def children(tests: int, lo: int, parent: int) -> None:
+        if tests < n:
+            half = size >> (tests + 1)
+            levels[tests + 1].extend(
+                _Node(tests + 1, settle(tests + 1, row), row, parent)
+                for row in (lo, lo + half)
             )
-            if nodes[-1].tests < n:
-                grow(nodes[-1].tests, child_lo, len(nodes) - 1)
 
     root_tests = settle(0, 0)
-    if root_tests < n:
-        grow(root_tests, 0, -1)
-    # Emit by birth depth and row, as the unpruned tree did.  A constant
-    # table's root is its only leaf; index -1 stands for the root.
-    order = sorted(range(len(nodes)), key=lambda i: (nodes[i].born, nodes[i].lo))
-    # ``parents[i]`` lists every node that gives birth to ``i``; a node
-    # missing from it is folded or lies under a fold or a relay.  ``first``
-    # holds the copy for a (depth, subtable, side) and ``either`` the first
-    # side seen, which a node on the other side relays to.
-    parents = {i: [nodes[i].parent] for i in order}
-    relays: dict[int, int] = {}
-    if share:
-        ids = subtree_ids(truth_table)
-        first: dict[tuple[int, int, int], int] = {}
-        either: dict[tuple[int, int], int] = {}
-        for i in order:
-            born, tests, lo, parent = nodes[i]
-            if parent >= 0 and (parent not in parents or parent in relays):
-                del parents[i]  # inside a folded copy
-                continue
+    children(root_tests, 0, -1)
+    # Resolve copies before growing them: folded nodes never allocate descendants.
+    # Birth depth and row choose the same canonical copy as the full tree.
+    for level in levels:
+        for node in sorted(level, key=lambda node: node.lo):
+            born, tests, lo, parent = node
             block = lo >> (n - born)
-            slot = (born, ids[born][block], block & 1)
+            slot = (born, ids[born][block], block & 1) if share else None
             if slot in first:
                 parents[first[slot]].append(parent)
-                del parents[i]
                 continue
-            first[slot] = i
-            if (born, slot[1]) in either:
-                if tests < n:
-                    relays[i] = either[born, slot[1]]
-            else:
-                either[born, slot[1]] = i
-        order = [i for i in order if i in parents]
-    return _TreePlan(n, root_tests, nodes, order, parents, relays)
-
-
-def _container_names(
-    plan: _TreePlan, order: list[int], answers: set[int]
-) -> tuple[_Names, list[int]]:
-    """Allocate identifiers from emitted reference counts and return tested levels."""
-    n, root_tests, nodes = plan.n, plan.root_tests, plan.nodes
-    parents, relays, key = plan.parents, plan.relays, plan.key
-    # Assign shortest names by how often each is spelt: a node once, once
-    # more if it decays, twice per child it feeds and once if it adds to
-    # ``OUT``; a gate once, and once a test.
-    uses: dict[tuple[str, int, int], int] = {key(-1): 1 + (root_tests < n)}
-    for i in order:
-        born, tests = nodes[i].born, nodes[i].tests
-        uses[key(i)] = uses.get(key(i), 0) + 1 + (tests < n) + (i in relays)
-        for parent in parents[i]:
-            uses[key(parent)] = uses.get(key(parent), 0) + 2
-        gate_key = ("high" if key(i)[2] & 1 else "low", born - 1, 0)
-        uses[gate_key] = uses.get(gate_key, 1) + 1
-    for i in answers:
-        uses[key(i)] += 1
-    uses[("output", 0, 0)] = 1 + len(answers)
-    tested = sorted({k for side, k, _ in uses if side in ("low", "high")})
-
-    return _allocate_names(uses), tested
+            i = len(nodes)
+            nodes.append(node)
+            parents[i] = [parent]
+            if slot is not None:
+                first[slot] = i
+                identity = (born, slot[1])
+                if identity in either and tests < n:
+                    relays[i] = either[identity]
+                    continue
+                either.setdefault(identity, i)
+            children(tests, lo, i)
+    return _TreePlan(n, root_tests, nodes, list(range(len(nodes))), parents, relays)
 
 
 def _container_tree(
@@ -235,11 +180,13 @@ def _container_tree(
     answers = {i for i in leaves if truth_table[row_of(i)] == wanted}
     order = [i for i in order if nodes[i].tests < n or i in answers]
 
-    key = plan.key
-    names, tested = _container_names(plan, order, answers)
-
-    root = names[("root", 0, 0)]
-    output_gate = names[("output", 0, 0)]
+    identifiers = _free_names(_RESERVED)
+    names = {i: next(identifiers) for i in [-1, *order]}
+    gates = {
+        (nodes[i].born - 1, (nodes[i].lo >> (n - nodes[i].born)) & 1): "" for i in order
+    }
+    gates = {key: next(identifiers) for key in sorted(gates)}
+    root, output_gate = names[-1], next(identifiers)
 
     # A positive delta is spelt unsigned, as ``int`` reads it.
     lines = ["T:", "1 T>=T"]
@@ -253,40 +200,39 @@ def _container_tree(
     # IN starts at 0.  Only a child's mismatch rule reads it, and the first
     # read lands after tick 0, when every child is still 0 and clamped.
     lines.append("IN:")
-    for k in tested:
-        # 50 is above every byte IN holds, and dips to 49 for one tick.
-        if ("low", k, 0) in names:
-            lines.append(f"{names[('low', k, 0)]}=50:")
-            lines.append(f"-1 T>={2 * k}")
-            lines.append(f"2 T>={2 * k + 1}")
-            lines.append(f"-1 T>={2 * k + 2}")
-        if ("high", k, 0) in names:
-            lines.append(f"{names[('high', k, 0)]}=47:")
-            lines.append(f"1 T>={2 * k}")
-            lines.append(f"-2 T>={2 * k + 1}")
-            lines.append(f"1 T>={2 * k + 2}")
+    for (k, high), gate in gates.items():
+        sign = 1 if high else -1
+        lines.extend(
+            (
+                f"{gate}={47 if high else 50}:",
+                f"{sign} T>={2 * k}",
+                f"{-2 * sign} T>={2 * k + 1}",
+                f"{sign} T>={2 * k + 2}",
+            )
+        )
     lines.append(f"{root}={2 + 2 * root_tests}:")
     if root_tests < n:
         lines.append(f"-1 {root}>=1")
     for i in order:
         born, tests = nodes[i].born, nodes[i].tests
-        child = names[key(i)]
+        child = names[i]
         value = 2 + 2 * (tests - born)
         lines.append(f"{child}:")
         # The paired parent rules fire only while the parent is exactly 1,
         # and one parent at most is alive: the others are off the path.
         for parent in parents[i]:
-            lines.append(f"{value} {names[key(parent)]}>=1")
-            lines.append(f"-{value} {names[key(parent)]}>=2")
-        gate = names[("high" if key(i)[2] & 1 else "low", born - 1, 0)]
-        mismatch = f"{gate}>=IN" if key(i)[2] & 1 else f"IN>={gate}"
+            lines.append(f"{value} {names[parent]}>=1")
+            lines.append(f"-{value} {names[parent]}>=2")
+        high = (nodes[i].lo >> (n - born)) & 1
+        gate = gates[born - 1, high]
+        mismatch = f"{gate}>=IN" if high else f"IN>={gate}"
         lines.append(f"-{value} {mismatch}")
         if i in relays:  # alive one tick after its birth, then gone
             lines.append(f"-{value} {child}>=1")
             continue
         # A relay is alive a tick late, so it feeds one less than a parent.
         for relay in fed.get(i, []):
-            lines.append(f"{value - 1} {names[key(relay)]}>=1")
+            lines.append(f"{value - 1} {names[relay]}>=1")
         # Only a node that tests must decay, to be 1 when its bit is in
         # IN.  A leaf keeps its birth value, below the output gate's rest.
         if tests < n:
@@ -301,7 +247,7 @@ def _container_tree(
     lines.append(f"OUT={_ASCII_ZERO + 1 if invert else _ASCII_ZERO}:")
     delta = "-1" if invert else "1"
     for i in sorted(answers, key=row_of):
-        lines.append(f"{delta} {names[key(i)]}>={output_gate}")
+        lines.append(f"{delta} {names[i]}>={output_gate}")
     lines.append("PRINT:")
     lines.append(f"1 T>={2 * n}")
     lines.append("EXIT=1:")
@@ -357,18 +303,10 @@ def _container_threshold(truth_table: str) -> str:
     deltas = mirrored if mirror else plain
     steps = [(row, delta) for row, delta in enumerate(deltas) if row and delta]
 
-    # The counter is named once per step line and so dominates; the gate is
-    # named once per input.  Assign the shortest names by actual frequency.
-    uses: dict[tuple[str, int, int], int] = {
-        ("count", 0, 0): 1 + len(steps),
-        ("gate", 0, 0): 1 + essential,
-    }
-    for bit in range(n):
-        uses[("latch", bit, 0)] = 1 + bool(weights[bit])
-        uses[("window", bit, 0)] = 2
-    names = _allocate_names(uses)
-    counter = names[("count", 0, 0)]
-    gate = names[("gate", 0, 0)]
+    identifiers = _free_names(_RESERVED)
+    counter, gate = next(identifiers), next(identifiers)
+    latches = [next(identifiers) for _ in range(n)]
+    windows = [next(identifiers) for _ in range(n)]
 
     lines = ["T:", "+1 T>=T", ":", "+1 T>=0", "-2 T>=1"]
     for k in range(1, n):
@@ -379,14 +317,14 @@ def _container_threshold(truth_table: str) -> str:
     # Window k is 49 for exactly the tick input k sits in IN and 65
     # otherwise, so ``IN>=window`` holds exactly when that bit is a one.
     for k in range(n):
-        window = names[("window", k, 0)]
+        window = windows[k]
         lines.extend(
             (
                 f"{window}=65:",
                 f"-16 T>={2 * k}",
                 f"+32 T>={2 * k + 1}",
                 f"-16 T>={2 * k + 2}",
-                f"{names[('latch', k, 0)]}:",
+                f"{latches[k]}:",
                 f"+1 IN>={window}",
             )
         )
@@ -407,7 +345,7 @@ def _container_threshold(truth_table: str) -> str:
         if weight:
             # The mirror reverses the essential inputs' ranks.
             weight = (1 << (essential - 1)) // weight if mirror else weight
-            lines.append(f"+{weight} {names[('latch', k, 0)]}>={gate}")
+            lines.append(f"+{weight} {latches[k]}>={gate}")
 
     lines.append(f"OUT={_ASCII_ZERO + deltas[0]}:")
     lines.extend(f"{delta:+d} {counter}>={row}" for row, delta in steps)
@@ -492,7 +430,7 @@ def container(truth_table: str, width: int | None = None) -> str:
 
 def balance_container(table: str, default: str) -> str:
     """Compare rule-fit and decimal-delta budget transitions."""
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     n = _validate_truth_table(table)
     span = max(map(len, default.splitlines()))

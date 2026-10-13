@@ -22,11 +22,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from functools import lru_cache
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.persistent import CHUNK, chunked
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.persistent import CHUNK, chunked
+from esolangs.runtime.source_hints import syntax_error
 
 #: Instruction decipherment: ``(cell - 33 + c) % 94`` indexes this.
 _XLAT1 = (
@@ -38,6 +38,8 @@ _XLAT2 = (
     "5z]&gqtyfr$(we4{WP)H-Zn,[%\\3dL+Q;>U!pJS72FhOA1C"
     "B6v^=I_0/8|jsb9m<.TVac`uY*MK'X~xDl}REokN:#?G\"i@"
 )
+_ENCRYPT = tuple(map(ord, _XLAT2))
+
 #: The crazy operation on two base-9 di-trits, indexed ``[y][x]``.
 _CRAZY = (
     (4, 3, 3, 1, 0, 0, 1, 0, 0),
@@ -90,6 +92,14 @@ def _advance(
     op = _op(cell, c)
     if op is None:
         return (a, c, d, True), (), None
+    if op not in "ji*p</v":
+        # Native n=12 controls take 12.8M transitions, mostly no-ops.
+        # Their sole write needs neither a scratch dictionary nor a peek closure.
+        return (
+            (a, (c + 1) % _WORDS, (d + 1) % _WORDS, False),
+            ((c, _ENCRYPT[cell - 33]),),
+            None,
+        )
     writes: dict[int, int] = {}
     effect = None
 
@@ -113,7 +123,7 @@ def _advance(
         return (a, c, d, True), (), None
     value = peek(c)
     if 33 <= value <= 126:
-        writes[c] = ord(_XLAT2[value - 33])
+        writes[c] = _ENCRYPT[value - 33]
     c = (c + 1) % _WORDS
     d = (d + 1) % _WORDS
     return (a, c, d, False), tuple(writes.items()), effect

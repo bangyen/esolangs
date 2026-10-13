@@ -8,18 +8,15 @@ columns.
 
 From six inputs the tree goes away: the table is written one cell per
 entry and the inputs address it (:func:`_streetcode_flat`), which is nine
-rows of street however many entries there are.  The tree folds constant
-subtrees; a repeated one is redrawn, not shared: at n=5, sharing every
-repeat of 8+ rows for free would save 0.0% (random, const-half) to 0.9%
-(tiled), and the flat lookup already wins 40/40 random, 36/40 tiled tables.
+rows of street however many entries there are. The tree folds constant
+subtrees and draws equal nonconstant sibling cofactors once, advancing CP
+past their selector. Nonadjacent repeats still have separate drawings.
 """
 
 from collections.abc import Callable
 from functools import cache
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     grid_width,
@@ -29,7 +26,9 @@ from esolangs.tools.helpers import (
     move_text,
     permute_truth_table,
 )
-from esolangs.tools.wrap import balance_score, shortest
+from esolangs.generation.wrap import balance_score, shortest
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 __all__ = ["streetcode"]
 
@@ -128,16 +127,6 @@ def _streetcode_strip(before: str, block: list[str]) -> list[str]:
 # of East onto the next loop.
 
 
-def _streetcode_constant(block: list[str]) -> bool:
-    """Whether every leaf in a rendered subtree prints the same digit.
-
-    Read off the drawing: a zero leaf is ``~O;`` and a one leaf ``` O;```, so
-    all-zeros has matching ``~`` and ``O`` counts and all-ones no ``~``.
-    """
-    text = "".join(block)
-    return text.count("~") == text.count("O") or text.count("~") == 0
-
-
 def _streetcode_leaf(bit: int, skipped: int = 0) -> list[str]:
     r"""Build a leaf that prints ``bit``, reusing the loader loop's cell.
 
@@ -177,25 +166,35 @@ def _streetcode_tree_span(
     stop: int,
     constant: Callable[[int, int], bool],
 ) -> list[str]:
-    """Build a large tree by bounds, delegating small spans to the cache."""
+    """Build a tree by bounds, caching only its small nonconstant children."""
     size = stop - start
-    if size <= _TREE_CACHE_MAX:
-        return _streetcode_tree(table[start:stop])
+    if size == 1:
+        return _streetcode_leaf(int(table[start]))
+    shared = _streetcode_shared_half(table[start:stop])
+    if shared is not None:
+        return shared
+    middle = start + size // 2
+    skipped = (size // 2).bit_length() - 1
 
-    half = size // 2
-    middle = start + half
-    skipped = half.bit_length() - 1
-    top = (
-        _streetcode_leaf(int(table[start]), skipped)
-        if constant(start, middle)
-        else _streetcode_tree_span(table, start, middle, constant)
-    )
-    bot = (
-        _streetcode_leaf(int(table[middle]), skipped)
-        if constant(middle, stop)
-        else _streetcode_tree_span(table, middle, stop, constant)
-    )
-    return _streetcode_join(top, bot)
+    def child(lo: int, hi: int) -> list[str]:
+        if constant(lo, hi):
+            return _streetcode_leaf(int(table[lo]), skipped)
+        if hi - lo <= _TREE_CACHE_MAX:
+            return list(_streetcode_tree_memo(table[lo:hi]))
+        return _streetcode_tree_span(table, lo, hi, constant)
+
+    return _streetcode_join(child(start, middle), child(middle, stop))
+
+
+def _streetcode_shared_half(table: str) -> list[str] | None:
+    """Draw equal nonconstant sibling cofactors once, skipping their selector."""
+    # At n=3, emitted grid area falls from 225308 to 220764 cells over all
+    # tables; none grows. Two label columns preserve the two-lane street.
+    half = len(table) // 2
+    child = table[:half]
+    if child != table[half:] or len(set(child)) != 2:
+        return None
+    return _streetcode_strip("= ", _streetcode_tree(child))
 
 
 @cache
@@ -207,18 +206,7 @@ def _streetcode_tree_memo(table: str) -> tuple[str, ...]:
     at three inputs); the reads happen before the tree, so a folded program
     consumes its input unchanged.  Siblings are padded to a common width.
     """
-    size = len(table)
-    if size == 1:
-        return tuple(_streetcode_leaf(int(table[0])))
-
-    half = size // 2
-    top = _streetcode_tree(table[:half])
-    bot = _streetcode_tree(table[half:])
-    if _streetcode_constant(top):
-        top = _streetcode_leaf(int(table[0]), half.bit_length() - 1)
-    if _streetcode_constant(bot):
-        bot = _streetcode_leaf(int(table[half]), half.bit_length() - 1)
-    return tuple(_streetcode_join(top, bot))
+    return tuple(_streetcode_tree_span(table, 0, len(table), constant_span_test(table)))
 
 
 def _streetcode_join(top: list[str], bot: list[str]) -> list[str]:

@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
+from esolangs.runtime.io import IO
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -75,8 +75,8 @@ class TestNoComment:
 
     def test_tape_size_is_configurable(self) -> None:
         """The wiki fixes the wrap but not the size, so the size is a knob."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.nocomment.interpreter import _TAPE, _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         assert _TAPE == 4096  # the default stays put; moving it moves behaviour
 
@@ -92,8 +92,8 @@ class TestNoComment:
 
     def test_tape_size_must_be_positive(self) -> None:
         """A tape with no cells has no cell to point at."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.nocomment.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         for size in (0, -1):
             with pytest.raises(ValueError, match="at least one cell"):
@@ -205,8 +205,8 @@ class TestTheWikiExamples:
 
 class TestStepMachine:
     def test_step_tracks_tape_stack_and_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.nocomment.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("cino", ScriptedIO())
         assert (machine.ptr, machine.ind, machine.stack) == (0, 0, ())
@@ -222,8 +222,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.nocomment.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 

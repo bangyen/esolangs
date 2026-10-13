@@ -21,10 +21,10 @@ character code, including newlines.
 
 from typing import cast
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.persistent import (
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.persistent import (
     Chunked,
     append,
     chunked,
@@ -34,7 +34,7 @@ from esolangs.interpreters.persistent import (
     prepend,
     put,
 )
-from esolangs.interpreters.randomness import Randomness, draw
+from esolangs.runtime.randomness import Randomness, draw
 
 #: One instant of a run: ``(tape, ptr, lsrs, ind, jmp, pos)`` -- the cells
 #: with their touched flags, the cell pointer, the live beams as

@@ -1,3 +1,5 @@
+"""Line mask extraction and reconstruction."""
+
 from __future__ import annotations
 
 import pytest

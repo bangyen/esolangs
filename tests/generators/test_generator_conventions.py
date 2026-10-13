@@ -10,9 +10,9 @@ import pytest
 
 import esolangs
 import esolangs.languages.generators as boolean
-from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES
-from tests.integration.cli.test_cli import call_main
+from esolangs.runtime._evaluate import _evaluate
+from tests.cli.test_cli import call_main
 from tests.support.generator_support import probe_table
 
 
@@ -62,7 +62,7 @@ def test_boolean_generators_take_a_truth_table() -> None:
         if lang.generator_max_inputs is not None
     ],
 )
-def test_declared_arity_cap_is_enforced(name, cap):
+def test_declared_arity_cap_is_enforced(name, cap) -> None:
     with pytest.raises(esolangs.GeneratorCapError):
         esolangs.generate(name, "0" * (1 << (cap + 1)))
 
@@ -71,7 +71,7 @@ def test_declared_arity_cap_is_enforced(name, cap):
 _INTERNAL_CAPS = {name for name, lang in LANGUAGES.items() if lang.internal_cap}
 
 
-def test_a_generator_that_can_refuse_declares_its_limit():
+def test_a_generator_that_can_refuse_declares_its_limit() -> None:
     """A ``GeneratorCapError`` a caller can see is in ``describe``."""
     undeclared = []
     for name, lang in LANGUAGES.items():
@@ -101,7 +101,7 @@ def test_a_generator_that_can_refuse_declares_its_limit():
         | _INTERNAL_CAPS
     ),
 )
-def test_restricted_generators_have_executed_positive_controls(name):
+def test_restricted_generators_have_executed_positive_controls(name) -> None:
     table = probe_table(name)
     assert (
         _evaluate(
@@ -112,7 +112,7 @@ def test_restricted_generators_have_executed_positive_controls(name):
 
 
 @pytest.mark.medium
-def test_list_exposes_limits_in_both_formats(capsys):
+def test_list_exposes_limits_in_both_formats(capsys) -> None:
     text = call_main(["list", "--details"], capsys)
     for lang in LANGUAGES.values():
         if lang.generator_max_inputs is not None:

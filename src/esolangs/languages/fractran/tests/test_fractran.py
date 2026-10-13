@@ -8,9 +8,9 @@ import sys
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.fractran.interpreter import _choose, _Machine, _parse, run
 from esolangs.languages.fractran.interpreter import index as fractran_index
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
 
@@ -21,59 +21,31 @@ PRIMEGAME = (
 
 
 @pytest.mark.parametrize("step", [1, 3, 10, 11, 99, 100])
-def test_decimal_progressions_and_dense_values(step: int) -> None:
-    reader = fractran_index._DecimalReader(128)
-    for value in reversed(range(2049)):
-        assert reader.read(107, str(step * value), progression=True) == step * value
-    rng = random.Random(20261011)
-    for _ in range(2049):
-        value = rng.randrange(2049)
-        assert reader.read(7, str(value)) == value
-    for text in (
-        "0",
-        "000000",
-        "00037",
-        "\u0660\u0660\u0661\u0662",
-        "\uff11\uff12\uff13",
-        "999",
-        "1000",
-        "8",
+def test_decimal_exponents_parse_exactly(step: int) -> None:
+    for value in (0, 1, 37, 999, 1000, 2048):
+        index = fractran_index.compile_index(f"2 3/2^{step * value or 1}")
+        assert index is not None
+        assert index.literal[0][1] == ((2, step * value or 1),)
+    for text, expected in (
+        ("0", ()),  # 2^0 is the empty product; zero exponents drop out
+        ("000000", ()),
+        ("00037", ((2, 37),)),
+        ("\u0661\u0662\u0663", ((2, 123),)),  # Arabic-Indic digits
+        ("\uff19\uff19\uff19", ((2, 999),)),  # Fullwidth digits
+        ("999", ((2, 999),)),
+        ("1000", ((2, 1000),)),
+        ("8", ((2, 8),)),
     ):
-        assert reader.read(107, text, progression=True) == int(text)
+        index = fractran_index.compile_index(f"2 3/2^{text}")
+        assert index is not None
+        assert index.literal[0][1] == expected
 
 
-def test_decimal_cache_keeps_long_literals_out_and_preserves_limits() -> None:
-    reader = fractran_index._DecimalReader(16)
-    text = "9" * 129
-    assert reader.read(7, text) == int(text)
-    assert reader.values == {"": 0}
+def test_decimal_exponent_preserves_int_conversion_limit() -> None:
     limit = sys.get_int_max_str_digits()
     if limit:
         with pytest.raises(ValueError, match="limit"):
-            reader.read(7, "1" * (limit + 1))
-
-
-def test_decimal_guard_progression_amortizes_scalar_byte_addresses(monkeypatch) -> None:
-    reads = writes = 0
-
-    class CountedBytes(bytearray):
-        def __getitem__(self, key):
-            nonlocal reads
-            reads += isinstance(key, int)
-            return super().__getitem__(key)
-
-        def __setitem__(self, key, value):
-            nonlocal writes
-            writes += isinstance(key, int)
-            super().__setitem__(key, value)
-
-    monkeypatch.setattr(fractran_index, "bytearray", CountedBytes, raising=False)
-    reader = fractran_index._DecimalReader(1000)
-    count = 2049
-    for value in reversed(range(count)):
-        assert reader.read(107, str(1000 * value), progression=True) == 1000 * value
-    assert 2 * (count - 2) < reads < 3 * count
-    assert count - 2 < writes < 2 * count
+            fractran_index.compile_index(f"2 3/2^{'1' * (limit + 1)}")
 
 
 def test_monotone_empty_or_singleton_suffix_skips_bisection(monkeypatch) -> None:

@@ -9,27 +9,20 @@ pointer, so returning to the reads costs one character instead of one
 per cell.
 """
 
-from esolangs.languages.painfuck.interpreter import _CYCLES
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
-    constant_span_test,
     in_input_order,
-    subtree_ids,
 )
-from esolangs.tools.shared_block import (
-    BranchCost,
-    add_cost,
-    dispatch_cost,
-    merge_cost,
-    normal_cost,
+from esolangs.generation.shared_block import (
     repeated_bank,
     repeated_block,
     repeated_blocks,
     repeated_mixed_bank,
 )
-from esolangs.tools.shared_flag import FlagDialect, flag_tree_body
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
+from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.painfuck.interpreter import _CYCLES
+from esolangs.registry._language import Language
 
 __all__ = ["painfuck"]
 
@@ -143,123 +136,8 @@ def _painfuck_shared(
 def _painfuck_tree(
     table: str, perm: tuple[int, ...], shared: tuple[int, int] | None = None
 ) -> tuple[str, int]:
-    """Emit a tree and its maximum commands, separating deferred paths."""
-    n = _validate_truth_table(table)
-    out: list[str] = []
-    pos = count = 0
-    result = 2 * n
-    pending = 2 * perm[shared[0]] + 1 if shared is not None else 0
-    fold_zero = shared is not None
-    ids = subtree_ids(table)
-    is_constant = constant_span_test(table)
-
-    def emit(code: str) -> None:
-        nonlocal count
-        out.append(code)
-        count += len(code)
-
-    def move(target: int) -> None:
-        nonlocal pos
-        emit(_move(pos, target))
-        pos = target
-
-    for k in range(n):
-        emit("i")
-        if k < n - 1:
-            move(pos + 2)
-
-    def constant(level: int, row: int) -> str | None:
-        span = 1 << (n - level)
-        return table[row] if is_constant(row, row + span) else None
-
-    def branch(level: int, row: int) -> BranchCost:
-        start = count
-        value = constant(level + 1, row)
-        if value is None:
-            move(2 * perm[level + 1])
-            overhead = count - start
-            return add_cost(node(level + 1, row), overhead)
-        if value == "1":
-            move(result)
-            emit("ps")
-        return count - start, None
-
-    def node(level: int, row: int) -> BranchCost:
-        start = count
-        if (
-            shared is not None
-            and level == shared[0]
-            and ids[level][row >> (n - level)] == ids[level][shared[1] >> (n - level)]
-        ):
-            move(pending)
-            emit("ps")
-            return None, count - start
-        bit = 2 * perm[level]
-        flag = bit + 1
-        one = row | (1 << (n - 1 - level))
-        below = ids[level + 1]
-        if below[row >> (n - level - 1)] == below[one >> (n - level - 1)]:
-            return branch(level, row)
-        if fold_zero and constant(level + 1, row) == "0":
-            move(bit)
-            emit("a")
-            common = count - start
-            emit("s")
-            body_start = count
-            cost = branch(level, one)
-            flat = count - body_start
-            move(bit)
-            emit("b")
-            return merge_cost(add_cost(cost, count - start - flat + 1), (common, None))
-        move(flag)
-        emit("ps")
-        move(bit)
-        emit("a")
-        one_start = count
-        emit("s")
-        move(flag)
-        emit("s")
-        body_start = count
-        one_cost = branch(level, one)
-        one_flat = count - body_start
-        move(bit)
-        emit("b")
-        one_cost = add_cost(one_cost, count - one_start - one_flat + 1)
-        between = count
-        move(flag)
-        emit("a")
-        common = one_start - start + count - between
-        zero_start = count
-        emit("s")
-        body_start = count
-        zero_cost = branch(level, row)
-        zero_flat = count - body_start
-        move(flag)
-        emit("b")
-        zero_cost = add_cost(zero_cost, count - zero_start - zero_flat + 1)
-        return add_cost(merge_cost(one_cost, zero_cost), common)
-
-    move(2 * perm[0])
-    read_cost = count
-    cost = node(0, 0)
-    tail_start = count
-    if shared is not None:
-        depth, row = shared
-        move(pending)
-        skip = count - tail_start + 1
-        emit("as")
-        body_start = count
-        shared = None
-        body_cost = node(depth, row)
-        flat = count - body_start
-        move(pending)
-        emit("b")
-        active = count - tail_start - flat + normal_cost(body_cost) + 1
-        cost = dispatch_cost(cost, active, skip)
-        tail_start = count
-    move(result)
-    emit("o")
-    return _encode("".join(out)), read_cost + normal_cost(cost) + count - tail_start
+    """Emit an inline tree or one deferred residual with the native flag dialect."""
+    return _painfuck_shared(table, perm, () if shared is None else (shared,))
 
 
 LANGUAGE = Language(

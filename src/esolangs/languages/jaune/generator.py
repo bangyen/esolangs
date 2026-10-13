@@ -2,8 +2,7 @@
 
 from collections.abc import Callable
 
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     in_input_order,
@@ -12,7 +11,8 @@ from esolangs.tools.helpers import (
     subtree_ids,
     subtree_slot,
 )
-from esolangs.tools.wrap import _jaune
+from esolangs.generation.wrap import _jaune
+from esolangs.registry._language import Language
 
 
 def jaune(truth_table: str) -> str:

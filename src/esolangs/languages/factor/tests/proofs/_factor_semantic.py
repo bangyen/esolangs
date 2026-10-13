@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from esolangs.interpreters.io import IO
 from esolangs.languages.brainfuck.interpreter import _Machine
+from esolangs.runtime.io import IO
 
 #: Runs past this many steps on a valid row are undecided, not observed.
 _STEP_LIMIT = 200_000

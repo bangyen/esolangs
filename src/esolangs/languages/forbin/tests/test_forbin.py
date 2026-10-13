@@ -3,10 +3,10 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.languages.forbin.interpreter import _advance, _NeedByte, run
 from esolangs.languages.forbin.interpreter import _Machine as Forbin
-from esolangs.languages.forbin.interpreter import run
 from esolangs.languages.forbin.tests.forbin_support import run_program
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
 
@@ -65,8 +65,8 @@ class TestStepMachine:
     def test_main_with_parameters_defaults_to_zero(self) -> None:
         # main's own parameters are set to 0 (per the wiki), same as any
         # other function's unpassed arguments
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.forbin.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("main a { out 0,0,0,0,0,0,0,a; }", ScriptedIO())
         while not machine.halted:
@@ -74,8 +74,8 @@ class TestStepMachine:
         assert machine.io.getvalue() == "\x00"
 
     def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.forbin.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("main { out 0,0,0,0,0,0,0,1; }", ScriptedIO())
         assert hash(machine.snapshot()) is not None
@@ -89,8 +89,8 @@ class TestForbinMutationSurvivors:
     @staticmethod
     def _drive(code: str, stdin: str = "") -> tuple[int, str, int]:
         """Run ``code`` to a halt; return (steps, output, deepest frame stack)."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.forbin.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine(code, ScriptedIO(stdin))
         steps, deepest = 0, 0
@@ -213,6 +213,21 @@ class TestSnapshotWithoutTheCycleDetector:
         # and so is the input cursor, with everything else equal
         read = "main {\n a,b,c,d,e,f,g,h = (in 0);\n}\n"
         assert at(read, 0, "HH") != at(read, 1, "HH")
+
+    def test_scope_keys_are_locals_identity_serials(self) -> None:
+        """The scope keys count in the workspace formula, so numbering is fixed.
+
+        Each scope is keyed by its locals mapping's identity serial (the
+        global scope first), not by a scope id; the ledger's exact Forbin
+        workspace formula depends on that numbering.
+        """
+        from esolangs.languages.forbin.interpreter import _Machine
+
+        machine = _Machine("main { x = 1; }", ScriptedIO(""))
+        machine.step()
+        scopes = machine.snapshot()[5]
+        assert [key for key, _locals in scopes] == [1, 2]
+        assert scopes[-1][1] == (("x", "1"),)
 
     def test_an_anonymous_function_is_named_by_the_empty_string(self) -> None:
         """``""`` is a real value here, not a placeholder nobody reads."""
@@ -397,3 +412,85 @@ def test_forbin_for_loop_halts_without_a_false_cycle() -> None:
     # own row index (in the snapshot) keeps this from reading as a repeat.
     machine = Forbin("main { for i:0..1 { x = 0; } }", ScriptedIO())
     assert run_until_halt_or_cycle(machine) is True
+
+
+class TestPureTransition:
+    """``_advance`` is a function of its arguments, and only of them."""
+
+    def test_same_state_and_inputs_give_the_same_result(self) -> None:
+        machine = Forbin("main { x = 1; }", ScriptedIO())
+        state = machine.state
+        assert _advance(state, machine.globals, ()) == _advance(
+            state, machine.globals, ()
+        )
+
+    def test_the_transition_leaves_its_arguments_unchanged(self) -> None:
+        machine = Forbin("main { x = 1; }", ScriptedIO())
+        state = machine.state
+        scopes = dict(state.scopes)
+        _advance(state, machine.globals, ())
+        assert state == machine.state
+        assert dict(state.scopes) == scopes
+
+    def test_the_transition_reports_output_instead_of_printing(self) -> None:
+        """No port is reachable from ``_advance``: ``out``'s byte is a value."""
+        machine = Forbin("main { out 0,1,0,0,0,0,0,1; }", ScriptedIO())
+        _state, out = _advance(machine.state, machine.globals, ())
+        assert out == ("A",)
+
+    def test_an_unfed_read_asks_for_a_byte_rather_than_reading(self) -> None:
+        machine = Forbin("main { x = (in 0); }", ScriptedIO())
+        with pytest.raises(_NeedByte):
+            _advance(machine.state, machine.globals, ())
+
+    def test_a_read_comes_from_the_explicit_input(self) -> None:
+        machine = Forbin("main { x = (in 0); }", ScriptedIO())
+        state, _out = _advance(machine.state, machine.globals, (0b10101010,))
+        scope = state.scopes[state.frames[-1].scope]
+        assert scope.locals["x"] == 1  # most significant bit first
+
+
+class _EventIO(ScriptedIO):
+    """A ``ScriptedIO`` that records each read and write in order."""
+
+    def __init__(self, stdin: str = "") -> None:
+        super().__init__(stdin)
+        self.events: list[tuple[str, str]] = []
+
+    def print_char(self, char: str) -> None:
+        self.events.append(("out", char))
+        super().print_char(char)
+
+    def input_char(self, prompt: str = "Input: ") -> int:
+        self.events.append(("in", ""))
+        return super().input_char(prompt)
+
+
+class TestOutputOrdering:
+    """Output computed before a later read or fault is still written."""
+
+    def test_output_before_eof_within_a_statement(self) -> None:
+        """``out`` in an expression-position call precedes its own ``in``."""
+        io = _EventIO("")
+        program = "pr { out 0,1,0,0,0,0,0,1; return (in 0); }\nmain { x = (pr 0); }"
+        with pytest.raises(EOFError):
+            run(program, io)
+        assert io.events == [("out", "A"), ("in", "")]
+
+    def test_output_before_eof_across_initializers(self) -> None:
+        """A first initializer's ``out`` precedes a later initializer's ``in``."""
+        io = _EventIO("")
+        program = (
+            "pr { out 0,1,0,0,0,0,0,1; return 0; }\nx = (pr 0);\ny = (in 0);\nmain { }"
+        )
+        with pytest.raises(EOFError):
+            run(program, io)
+        assert io.events == [("out", "A"), ("in", "")]
+
+    def test_output_before_a_halt_within_a_statement(self) -> None:
+        """``out`` precedes a later undeclared-name halt."""
+        io = _EventIO("")
+        program = "pr { out 0,1,0,0,0,0,0,1; return q; }\nmain { x = (pr 0); }"
+        with pytest.raises(HaltError, match="undeclared"):
+            run(program, io)
+        assert io.events == [("out", "A")]

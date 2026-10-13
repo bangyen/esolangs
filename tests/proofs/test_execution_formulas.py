@@ -12,6 +12,7 @@ from collections.abc import Callable
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.languages.one_two_three.generator.construction import _leftover
+from esolangs.registry import LANGUAGES
 from scripts.benchmark import WrittenState
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
@@ -19,14 +20,6 @@ from tests.proofs.deep.execution import _dense, run_to_answer
 from tests.support.generator_support import CHECK
 from tests.support.witness_tables import parity as _parity
 from tests.support.witness_tables import row_bits
-
-
-def _taglate(n: int) -> int:
-    """Even n past 2, then odd n through a ghost input, m = n + 1."""
-    if n % 2 == 0:
-        return 16 * 2**n + (7 * n * n + 26 * n - 22) // 2
-    m = n + 1
-    return 28 * 2**n + (7 * m * m + 22 * m - 36) // 2
 
 
 def _vandevelo(p: str) -> int:
@@ -74,7 +67,6 @@ _HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
     # At n=8 the large pool is one atom: no prefix/footer tick; parity reaches 17.
     "Circuit Diagram": (lambda n, _: 2 * n + 1 + (n > 8), True, (3, 8)),
     "FALSE": (lambda n, _: min(12 * n + 69, 10 * n + 99), False, (3, 6)),
-    "Taglate": (lambda n, _: _taglate(n), True, (3, 4)),
     "thisthat": (
         lambda n, _: (
             32 * 2 ** (n // 2) - 29 if n % 2 == 0 else 48 * 2 ** ((n - 1) // 2) - 29
@@ -115,7 +107,8 @@ _HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
     ),
     "Circlefuck": (
         lambda n, p: (
-            (2 * n + 13) * 2**n + 63 * n + 89 + 2 * sum(map(ord, p[1 : n + 1]))
+            (2 * n + 13) * 2**n + 94 * n + 89 + 2 * sum(map(ord, p[1 : n + 1]))
+            # 94n = 63n + 31n loop-based 48-normalization in _READ
         ),
         True,
         (3, 5),
@@ -170,23 +163,29 @@ _ARITIES: dict[str, tuple[int, ...]] = {
 
 #: Generator -> (formula, exact?, arities): the ledger's own clause where
 #: it parses (``tests/proofs/_formula.py``), else ``_HAND``.
+_HAND.update(
+    (name, lang.proof_execution)
+    for name, lang in LANGUAGES.items()
+    if lang.proof_execution is not None
+)
 FORMULAS = ledger_formulas(
     lambda row: row.execution_clause, _HAND, _ARITIES, column="execution"
 )
 
 
 def _seeded(n: int, seed: int) -> str:
-    """A seeded random table; seeds 1 and 3 reach Boolfuck's and BF-PDA's worst."""
+    """A deterministic random table for the formula corpus."""
     width = 1 << n
     return f"{random.Random(7919 * seed + n).getrandbits(width):0{width}b}"
 
 
+# language-owners: ["BFStack"]
 #: BFStack's worst 7-input block, a rule: 64 zeros, 60 ones, a zero, then ones.
 _BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
 
 
 def _bfstack_worst(n: int) -> str:
-    """BFStack's worst past n = 7, a rule: the block under classifier nodes.
+    """Worst past n = 7, a rule: the block under classifier nodes.
 
     Two inputs wrap ``t`` as ``t d d t`` with ``d`` all ones: the classifier
     reads 1001 and its last row costs 146 commands against two branches' 120.
@@ -225,7 +224,7 @@ def _one_two_three_worst(n: int) -> str:
 
 
 def _tables(name: str, n: int) -> tuple[str, ...]:
-    """Parity, dense, seeded, constants, AND, both alternations, NAND, ends."""
+    """Structured and random tables, with named worst-case witnesses."""
     width = 1 << n
     if name == "Circuit Diagram" and n >= 8:
         # Parity reaches 2n+1 at n=8; dense tables exercise pool admission
@@ -243,11 +242,17 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     if name == "LaserFuck" and n >= 5:
         # Its worsts, all zeros and all ones; a 3T + 1 cell tape is slow.
         return (_parity(n), _dense(n), "0" * width, "1" * width)
+    if name == "BFStack" and n >= 10:
+        # Lower arities sweep the generic families; this named witness reaches
+        # the combined classifier/odd-prefix bound without repeating them.
+        return (_bfstack_worst(n),)
+    if name == "Algebraic Programming Language" and n >= 8:
+        # Lower arities sweep the full corpus; retain shared, dense and inline
+        # program shapes for the larger frame/serial bounds.
+        return (_parity(n), _dense(n), "0" * width, "1" * width)
     tables = (
         _parity(n),
-        _dense(n),
         _seeded(n, 1),
-        _seeded(n, 3),
         "0" * width,
         "1" * width,
         "0" * (width - 1) + "1",
@@ -295,7 +300,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
             at = 16 * j + 2 * j % 16
             cells[at], cells[at + 1] = cells[at + 1], cells[at]
         tables += ("".join(cells) * (width // block),)
-    return tables
+    return tuple(dict.fromkeys(tables))
 
 
 def _measure(

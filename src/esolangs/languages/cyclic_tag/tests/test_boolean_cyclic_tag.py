@@ -3,18 +3,20 @@
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, mark_runs, unmark
+from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.languages.cyclic_tag.generator import PAIR, _program
 from esolangs.languages.cyclic_tag.interpreter import _Machine
-from esolangs.tools.helpers import TEMPLATE_CHAR, mark_runs, unmark
-from esolangs.tools.wrap import balance_program, balance_score
+from esolangs.runtime._evaluate import _evaluate
+from esolangs.runtime.io import ScriptedIO
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_uses_one_empty_production_and_deletes_each_embedded_input(n, bit):
+def test_constant_uses_one_empty_production_and_deletes_each_embedded_input(
+    n, bit
+) -> None:
     table = bit * (1 << n)
     template = esolangs.generate("Cyclic tag", table)
     assert template == "," + "$" * n + bit

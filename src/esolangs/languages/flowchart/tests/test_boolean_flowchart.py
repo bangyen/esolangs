@@ -5,7 +5,6 @@ from itertools import pairwise
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages import generators as boolean
 from esolangs.languages.flowchart.generator import (
     _flowchart_cells,
@@ -13,8 +12,11 @@ from esolangs.languages.flowchart.generator import (
     _flowchart_render,
     _flowchart_stacked,
 )
-from esolangs.languages.flowchart.tests.runners import run_flowchart
+from esolangs.runtime.io import IO, ScriptedIO
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
+
+run_flowchart = _runner("flowchart", lines=True)
 
 
 class TestFlowchart:
@@ -215,7 +217,7 @@ def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_lookup_reads_without_deque_or_selector(bit):
+def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
     from tests.support.generator_support import assert_shared_program
 
     n = 8
@@ -244,9 +246,9 @@ def test_constant_lookup_reads_without_deque_or_selector(bit):
 
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_lookup_retains_balanced_deque(n, bit):
+def test_constant_lookup_retains_balanced_deque(n, bit) -> None:
     import esolangs
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     table = bit * (1 << n)
     legacy = _flowchart_deque(table, keep_constant_input=True)

@@ -25,25 +25,28 @@ time, so the two alternate and no copy is ever needed.
 import re
 from itertools import pairwise, product
 
-from esolangs.languages.packlang.interpreter._literals import (
-    LITERAL_POLICIES,
-    PacklangLiterals,
-)
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     input_weights,
     subtree_ids,
 )
-from esolangs.tools.wrap import (
-    _PACKLANG_LEXEME,
+from esolangs.generation.wrap import (
     _join_tokens,
-    _packlang,
     balance_score,
     wrap_program,
 )
+from esolangs.languages.packlang.interpreter._literals import (
+    LITERAL_POLICIES,
+    PacklangLiterals,
+)
+from esolangs.languages.packlang.wrapping import (
+    _PACKLANG_LEXEME,
+    _packlang,
+    same_layout,
+)
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 
 __all__ = ["packlang"]
 
@@ -336,6 +339,8 @@ LANGUAGE = Language(
     # Generators emit indented blocks; fold only an over-wide line.
     # Packlang punctuation separates tokens even without a space.
     wrap=_packlang,
+    wrap_multiline=True,
+    same_layout=same_layout,
     balance=balance_packlang,
     eof="an exhausted charGet is newline byte 10",
     empty_program="empty program",

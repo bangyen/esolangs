@@ -7,8 +7,8 @@ from contextvars import ContextVar
 from threading import Lock
 from typing import TYPE_CHECKING
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.circuit_diagram.interpreter._hints import Hint
+from esolangs.runtime.io import ScriptedIO
 
 if TYPE_CHECKING:
     from esolangs.languages.circuit_diagram.interpreter._parse import _Gate
@@ -65,6 +65,25 @@ class _TypeClock(_ClockStream):
     def read(self) -> int:
         self.position += 1
         return 0
+
+
+class _ClockNeededError(Exception):
+    """A generation read more clock values than it was given; ask for one more."""
+
+
+class _BufferedClock(_ClockStream):
+    """Serve a generation's clock reads from values the shell sampled."""
+
+    def __init__(self, values: tuple[int, ...]) -> None:
+        super().__init__()
+        self.values = values
+
+    def read(self) -> int:
+        if self.position >= len(self.values):
+            raise _ClockNeededError
+        value = self.values[self.position]
+        self.position += 1
+        return value
 
 
 class _ReplayClock(_ClockStream):
@@ -347,7 +366,9 @@ def _evaluate_function_body(
         emitted.extend(
             _emitted((machine.values, machine.latches), machine.gates, machine.index)
         )
-        machine.step()
+        # Drive the atomic machine through the pure transition with the
+        # clock the caller passed; its shell ``step`` would read wall time.
+        machine._generate(machine.clock)  # noqa: SLF001 -- the function evaluation core
     output = "".join(emitted)
     if not output or set(output) - {"0", "1"}:
         raise Hint.RETURN_BITS.error(f"function {gate.kind!r} did not return bits")

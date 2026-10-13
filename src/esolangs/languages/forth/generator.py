@@ -1,7 +1,8 @@
 """Boolean program generator for Forþ."""
 
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from collections import deque
+
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     constant_span_test,
@@ -9,7 +10,8 @@ from esolangs.tools.helpers import (
     permute_truth_table,
     subtree_ids,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._language import Language
 
 
 def _forth_const(value: int) -> str:
@@ -71,27 +73,15 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
     constant = constant_span_test(truth_table)
 
     prog = []
-    folded: set[int] = set()
-
-    def fold_below(m: int) -> None:
-        """Drop every scope under ``m``, grandchildren too, as unreachable."""
-        below = [2 * m + 1, 2 * m + 2]
-        while below:
-            child = below.pop()
-            folded.add(child)
-            if child <= last_internal:
-                below += [2 * child + 1, 2 * child + 2]
+    pending = deque((1, 2))
 
     ids = subtree_ids(truth_table) if share else []
     # Heap order is level order, so a twin is at the same level; a folded
     # scope is never recorded, so a call lands on a defined one.
     emitted: dict[int, int] = {}
     previous = 0  # the index the accumulator holds; 0 before anything is pushed
-    for m in range(1, 2 ** (n + 1) - 1):
-        if m in folded:
-            # An ancestor answered for it, so it is never called; the gap
-            # in the numbering costs nothing (scopes are looked up with a default).
-            continue
+    while pending:
+        m = pending.popleft()
         if m <= last_internal:
             depth = (m + 1).bit_length() - 1
             index = m + 1 - (1 << depth)
@@ -104,12 +94,11 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
                 # Every row agrees: answer here.  The reads sit outside the
                 # tree, so a folded program still consumes its input.
                 body = _forth_const(_ASCII_ZERO + int(truth_table[lo]))
-                fold_below(m)
             elif call and len(call) < _FORTH_SUBTREE_FLOOR:
                 body = call
-                fold_below(m)
             else:
                 body = _FORTH_DISPATCH
+                pending.extend((2 * m + 1, 2 * m + 2))
             emitted[key] = m
         else:
             body = _forth_const(_ASCII_ZERO + int(truth_table[m - last_internal - 1]))

@@ -9,14 +9,14 @@ Constant roots halt on an empty pop or circulate one right heading; input
 setters remain off those paths, as they do for ignored cascade inputs.
 """
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
 PAIR = (".", "~")

@@ -1,4 +1,5 @@
-import re
+"""Program wrapping and width handling."""
+
 from dataclasses import replace
 from functools import cache
 
@@ -6,17 +7,12 @@ import pytest
 
 import esolangs
 from esolangs import generate, run
-from esolangs.registry import LANGUAGES, canonical_id
-from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
-from esolangs.tools.examples import BooleanExample
-from esolangs.tools.wrap import (
+from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
+from esolangs.generation.examples import BooleanExample
+from esolangs.generation.wrap import (
     MULTILINE,
     WRAPPERS,
-    _bio,
     _cell_width,
-    _mammalian,
-    _packlang,
-    _polynomial,
     _span,
     takes_width,
     wrap_chars,
@@ -25,6 +21,7 @@ from esolangs.tools.wrap import (
     wrap_space_delimited,
     wrap_tokens,
 )
+from esolangs.registry import LANGUAGES, canonical_id
 from tests.support.divergence import diverges, terminates
 from tests.support.generator_support import CHECK
 from tests.support.witness_tables import parity
@@ -45,6 +42,7 @@ def _public(lang: object, table: str) -> str:
     return text
 
 
+# language-owners: ["Bitdeque", "Jaune", "RAM0"]
 # A third width, narrower than any a reader would ask for, because a broken
 # wrapper is not broken at every width.  Whether a break lands inside a
 # multi-character token depends on where the width happens to put it, so a
@@ -56,6 +54,7 @@ def _public(lang: object, table: str) -> str:
 # width in the suite is what keeps the class from coming back.
 NARROW_WIDTH = 13
 
+# language-owners: ["Alight", "Line", "Super SNUSP"]
 # Languages that must never be *reflowed*, and why: each ``LANGUAGE``'s
 # ``no_wrap=``.  Not a restatement of
 # the implementation: each was verified to break (or to be meaningless) when
@@ -70,11 +69,10 @@ NARROW_WIDTH = 13
 # start marker it enters at the bottom right -- is true of the language but
 # not of these programs, which all begin with an explicit ``"``.)  Both now
 # take a width themselves, by folding on their own turns and mirrors; that
-# is the independence the paragraph below is about.  function x(y) and the
-# Algebraic Programming Language are line-structured source rather than
-# grids -- the first takes one indented statement per line, the second
-# decides a line's *meaning* by whether it contains an ``=``, so a break
-# does not reflow a line but turns one line into two with different jobs.
+# is the independence the paragraph below is about. Line-structured source
+# instead assigns meaning to line boundaries: splitting an indented
+# statement or a line classified by whether it contains ``=`` changes its
+# job rather than reflowing it.
 #
 # Unwrappable is not the same as unbounded, and the two memberships are
 # independent: a language here may still take a width by *emitting* a
@@ -84,6 +82,7 @@ NARROW_WIDTH = 13
 # destructive, and those hold whatever the generator learns to do.
 UNWRAPPABLE = {lang.id: lang.no_wrap for lang in LANGUAGES.values() if lang.no_wrap}
 
+# language-owners: ["Dig", "LaserFuck", "Streetcode"]
 # These are 2D too, and wrap_program must not touch them either -- but each
 # honours a width itself by *laying its program out* to fit rather than by
 # ignoring it, so they belong here rather than in UNWRAPPABLE.  LaserFuck's
@@ -105,6 +104,7 @@ WIDTH_HONOURING = sorted(
     if lang.boolean is not None and takes_width(lang.boolean)
 )
 
+# language-owners: ["6-5"]
 # The boolean example for each language, keyed by the language id rather
 # than the example's stem.  The two differ ("6-5" against ``six_five``), and
 # a lookup by id against a stem-keyed table silently misses -- which is a
@@ -167,7 +167,7 @@ def _stdin(name: str) -> str:
 
 def _is_grid(name: str) -> bool:
     """Whether ``name``'s wrapper lays its tokens out as a padded grid."""
-    return WRAPPERS[LANGUAGES[name].id] in (wrap_grid, _mammalian)
+    return WRAPPERS[LANGUAGES[name].id] is wrap_grid
 
 
 def _run(name: str, program: str) -> str:
@@ -178,10 +178,7 @@ def _run(name: str, program: str) -> str:
         return f"{type(exc).__name__}: {exc}"
 
 
-@pytest.mark.parametrize(
-    "name",
-    [name for name in _wrapper_witnesses() if LANGUAGES[name].wrap is not _packlang],
-)
+@pytest.mark.parametrize("name", _wrapper_witnesses())
 def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     """Wrapping preserves the token sequence exactly."""
     width = NARROW_WIDTH
@@ -189,7 +186,10 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     if takes_width(example.generator):
         plain = example.build(width)
         wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
-        if name in {"FRACTRAN", "RAM0"}:
+        same_layout = LANGUAGES[name].same_layout
+        if same_layout is not None:
+            assert same_layout(wrapped, plain, lambda width: example.build(width))
+        elif name in {"FRACTRAN", "RAM0"}:
             assert wrapped.split() == plain.split()
         else:
             assert wrapped.replace("\n", "") == plain.replace("\n", "")
@@ -201,6 +201,10 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
         # A program short enough to need no break is left alone; there is
         # nothing to undo.
         return
+    same_layout = LANGUAGES[name].same_layout
+    if same_layout is not None:
+        assert same_layout(wrapped, plain, lambda width: _example(name).build(width))
+        return
     # The grid pads each token into a right-aligned cell, so the original is
     # not recoverable character for character -- the padding is new
     # whitespace.  What must survive is the token sequence, which is the
@@ -211,26 +215,13 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     if _is_grid(name):
         assert wrapped.split() == plain.split()
         return
-    # BIO indents by nesting depth, and its commands carry no separator at
-    # all -- the whole program is one whitespace-delimited token, so the
-    # token check above says nothing about it.  What must survive is the
-    # command text; BIO's own parse rejoins across whitespace before reading
-    # it, so a program the wrapper breaks where a space already stood is the
-    # same program even though the space is gone.  Comparing with all
-    # whitespace removed says exactly that, where stripping only the indent
-    # asserted the spacing too and failed at a width that happened to break
-    # on one.
-    if WRAPPERS[LANGUAGES[name].id] is _bio:
-        assert "".join(wrapped.split()) == "".join(plain.split())
-        return
     # These are multi-line with no structural first line. Their parsers see
     # whitespace-delimited tokens across the whole source, so flattening and
     # repacking may move every original line break.
     if LANGUAGES[name].id in {"qoibl", "forbin"}:
         assert wrapped.split() == plain.split()
         return
-    # Taglate's first line is a structural queue seed the wrapper must leave
-    # alone; only the commands below it are reflowed.
+    # Structural wrappers preserve the first line while reflowing commands.
     if LANGUAGES[name].id in MULTILINE and "\n" in plain:
         seed, _, rest = wrapped.partition("\n")
         plain_seed, _, plain_rest = plain.partition("\n")
@@ -242,14 +233,6 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     # there the newline turns back into that space; every other wrapper
     # inserts the newline between two adjacent commands, so it just goes
     # away.  Either way no command may be dropped, reordered, or split.
-    # Polynomial now breaks in both places -- between two terms, where a
-    # space was, and *inside* a coefficient, where nothing was -- so no
-    # single substitution restores it.  Its parser deletes whitespace
-    # before reading, so the invariant that means anything there is that
-    # the two agree once whitespace is gone.
-    if WRAPPERS[LANGUAGES[name].id] is _polynomial:
-        assert re.sub(r"\s", "", wrapped) == re.sub(r"\s", "", plain)
-        return
     assert plain in {wrapped.replace("\n", " "), wrapped.replace("\n", "")}
 
 
@@ -258,14 +241,7 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     """Every language in the table really does wrap, given enough program."""
     example = _example(name)
     raw = example.build(width=None)
-    if example.build(40) != raw:
-        return
-    # Packlang already emits one short, indented statement per line.  Its
-    # wrapper exists for a caller's wider hand-written line; the focused
-    # ``_packlang`` tests supplies that positive control.
-    if WRAPPERS[LANGUAGES[name].id] is _packlang and all(
-        len(line) <= 40 for line in raw.splitlines()
-    ):
+    if any(example.build(width) != raw for width in (40, 1)):
         return
     structural = LANGUAGES[name].id in MULTILINE
     for arity in range(1, 5):
@@ -292,6 +268,7 @@ def _grown(name: str, table: str, width: int | None) -> str:
     return esolangs.instantiate(name, generate(name, table), [0] * arity, width=width)
 
 
+# language-owners: ["Polynomial"]
 # Long enough that a run which has not finished is looping, short enough
 # that eight of them are not a wait.  123 answers by *looping forever* for a
 # one, so a timeout is one of the behaviours being compared rather than a
@@ -440,22 +417,28 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     assert relaid, f"{name}: no width produced a different layout"
 
 
-def test_unwrappable_languages_are_untouched() -> None:
-    """No unwrappable language has a wrapper, so a one-line program is kept."""
+def test_unwrappable_languages_have_no_wrapper() -> None:
     assert set(UNWRAPPABLE).isdisjoint(WRAPPERS)
-    assert wrap_program("iiiioddo", "slashes", 4) == "iiiioddo"
 
 
-def test_zero_and_negative_widths_do_not_wrap() -> None:
-    """A nonsensical width is a no-op rather than an error or a crash."""
-    for width in (0, -1):
-        assert wrap_program("a b c", "decleq", width) == "a b c"
+@pytest.mark.parametrize("structural", [False, True])
+def test_multiline_reflow_follows_registry_metadata(monkeypatch, structural) -> None:
+    from esolangs import registry
 
+    def wrapper(program: str, _width: int) -> str:
+        return program.replace("\n", " ")
 
-def test_already_multiline_programs_are_left_alone() -> None:
-    """A program that already has newlines is never re-wrapped."""
-    program = "line one\nline two"
-    assert wrap_program(program, "decleq", 4) == program
+    language = replace(
+        next(iter(LANGUAGES.values())),
+        id="synthetic",
+        wrap=wrapper,
+        no_wrap="",
+        wrap_multiline=structural,
+    )
+    monkeypatch.setattr(registry, "LANGUAGES", {language.name: language})
+    source = "first\nsecond"
+    expected = "first second" if structural else source
+    assert wrap_program(source, "synthetic", 40) == expected
 
 
 def test_wrap_tokens_refuses_a_pattern_that_does_not_tile() -> None:

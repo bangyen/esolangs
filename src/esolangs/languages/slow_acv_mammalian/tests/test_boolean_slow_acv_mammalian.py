@@ -7,6 +7,7 @@ from math import gcd
 
 import pytest
 
+from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.slow_acv_mammalian.generator import (
     _greedy_advance,
@@ -17,7 +18,8 @@ from esolangs.languages.slow_acv_mammalian.generator import (
     _w_raise,
     _w_raise_len,
 )
-from esolangs.tools.wrap import (
+from esolangs.languages.slow_acv_mammalian.wrapping import (
+    _balance_mammalian,
     _mammalian,
 )
 from tests.support.witness_tables import witnesses
@@ -28,7 +30,7 @@ from tests.support.witness_tables import witnesses
 @pytest.mark.parametrize("io_modulus", [255, 256])
 def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
     essential, io_modulus
-):
+) -> None:
     import esolangs
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 
@@ -58,12 +60,12 @@ def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
 @pytest.mark.parametrize("kind", ["first", "last", "ends"])
 def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
     inputs, io_modulus, kind
-):
+) -> None:
     import esolangs
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.generation.wrap import balance_program, balance_score
     from esolangs.languages.slow_acv_mammalian.generator import _program
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
-    from esolangs.tools.wrap import balance_program, balance_score
+    from esolangs.runtime.io import ScriptedIO
     from esolangs.vm import run_until_halt_or_cycle
 
     used = {"first": [0], "last": [inputs - 1], "ends": [0, inputs - 1]}[kind]
@@ -108,8 +110,8 @@ class TestSlowAcvMammalian:
 
     def test_constant_tables_still_read_every_input(self) -> None:
         """A constant table consumes all ``n`` inputs."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
         from esolangs.vm import run_until_halt_or_cycle
 
         for table in ("0000", "1111", "0110"):
@@ -135,9 +137,9 @@ class TestSlowAcvMammalian:
 
     def test_the_landing_is_start_minus_15(self) -> None:
         """A 1-bit resumes exactly 15 tokens short of the array sum."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.slow_acv_mammalian.generator import _node, _seeded
         from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         for array, acc in (([3, 255, 255, 255], 7), ([90, 200, 200, 255], 4242)):
             tokens, _, taken, landing = _node(list(array), acc)
@@ -156,9 +158,9 @@ class TestSlowAcvMammalian:
 
     def test_the_trampoline_jump_ignores_the_head(self) -> None:
         """The trampoline lands on its target from any head value."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.slow_acv_mammalian.generator import _trampoline
         from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         target = 900
         for head in (0, 130, 255):
@@ -176,9 +178,9 @@ class TestSlowAcvMammalian:
 
     def test_the_shortest_hop_still_fires(self) -> None:
         """A hop of one token appends ``b == 1``, the least firing byte."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.slow_acv_mammalian.generator import _trampoline
         from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         array = [5, 255, 255, 255]
         target = sum(array) - array[0] + 1
@@ -211,13 +213,13 @@ class TestSlowAcvMammalian:
             banked.add(st.nw - before)
         assert banked == {32}
 
-    @pytest.mark.parametrize("amount", [0, 100, 256, 600, 2000])
+    @pytest.mark.parametrize("amount", [0, 100, 255, 256, 600, 2000])
     def test_a_weight_raise_is_exact_on_the_machine(self, amount: int) -> None:
         """``_w_raise`` moves array 16's non-head sum by exactly its ask."""
         import importlib
 
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         module = importlib.import_module(
             "esolangs.languages.slow_acv_mammalian.generator"
@@ -228,17 +230,20 @@ class TestSlowAcvMammalian:
         machine = _Machine(" ".join(tokens), ScriptedIO(""), io_modulus=256)
         machine.ptr = 16
         machine.lst = tuple((9, 200, 55) if k == 16 else (0,) for k in range(23))
+        commands = 0
         while not machine.halted:
             machine.step()
+            commands += 1
+        assert commands == module._w_raise_len(9, 255, amount)[0]  # noqa: SLF001
         array = machine.lst[16]
         assert sum(array) - array[0] == 255 + amount
         assert (st.nw, st.hw) == (255 + amount, array[0])
 
     def test_the_dispatch_lands_every_row_on_its_own_leaf(self) -> None:
         """Each run halts inside the leaf slot its inputs selected."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.slow_acv_mammalian.generator import _LEAF_UNIT, _weights
         from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         table = "01101001"
         program = boolean.slow_acv_mammalian(table)
@@ -310,6 +315,25 @@ class TestFastLanding:
         st.hw, st.nw, st.ptr = 0, 17, 16
         _w_raise(st, 10**6 + 510)
         assert (st.hw + st.nw) % 256 == final_r
+
+    def test_greedy_rule_matches_every_residue_and_chunk_boundary(self) -> None:
+        """Check both sides of the eight-step arithmetic cycle boundary."""
+        for initial in range(256):
+            residue = initial
+            seeds = advance = 0
+            walked = []
+            for chunks in range(1, 26):
+                count = next(k for k in range(16) if (residue + 17 * k) % 256 >= 239)
+                added = (residue + 17 * count) % 256
+                seeds += count
+                advance += added
+                residue = 2 * added % 256
+                walked.append((seeds, chunks, advance, residue))
+            assert _greedy_advance(initial, 0) == (0, 0, 0, initial)
+            for _, _, boundary, _ in walked[:-1]:
+                for target in (boundary - 1, boundary, boundary + 1):
+                    expected = next(state for state in walked if state[2] >= target)
+                    assert _greedy_advance(initial, target) == expected
 
     @pytest.mark.parametrize(
         ("h0", "n0", "acc", "target"),
@@ -388,9 +412,9 @@ def test_generator_rejects_unverified_moduli(settings, message: str) -> None:
 def test_moduli_generate_every_small_table(
     table: str, cell_modulus: int, io_modulus: int
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian.generator import slow_acv_mammalian
     from esolangs.languages.slow_acv_mammalian.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     source = slow_acv_mammalian(table, cell_modulus=cell_modulus, io_modulus=io_modulus)
     n = len(table).bit_length() - 1
@@ -408,9 +432,9 @@ def test_moduli_generate_every_small_table(
 def test_moduli_generate_asymmetric_tables(
     n: int, cell_modulus: int, io_modulus: int
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian.generator import slow_acv_mammalian
     from esolangs.languages.slow_acv_mammalian.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(20261003 + n)
     table = "".join(str(rng.getrandbits(1)) for _ in range(1 << n))
@@ -438,9 +462,9 @@ def test_moduli_generate_asymmetric_tables(
 def test_coprime_chain_generates_every_small_table(
     table: str, modulus: int, io_modulus: int
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
     from esolangs.languages.slow_acv_mammalian.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     n = len(table).bit_length() - 1
     source = compact_chain(table, n, modulus=modulus, io_modulus=io_modulus)
@@ -455,9 +479,9 @@ def test_coprime_chain_generates_every_small_table(
 @pytest.mark.parametrize("n", [5])
 @pytest.mark.parametrize("io_modulus", [255, 256])
 def test_coprime_chain_generates_asymmetric_tables(n: int, io_modulus: int) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
     from esolangs.languages.slow_acv_mammalian.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(20261003 + n)
     table = "".join(str(rng.getrandbits(1)) for _ in range(1 << n))
@@ -504,9 +528,9 @@ def test_chain_greedy_chunks_keep_their_short_continuation(
 def test_mixed_chain_appends_all_missing_head_values(
     ptr: int, head: int, extra: int
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import _Chain, _State
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     chain = _Chain(255, io_modulus=256)
     for value in range(256):
@@ -560,8 +584,8 @@ def native_pooled_program():
 def test_coprime_chain_runs_in_stepped_interpreter(
     modulus: int, io_modulus: int, inputs: int, row: int, stepped_chain_program
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     table, source = stepped_chain_program(inputs, modulus, io_modulus)
     token_count = len(source.split())
@@ -580,8 +604,8 @@ def test_coprime_chain_runs_in_stepped_interpreter(
 def test_native_255_pooled_blocks_in_stepped_interpreter(
     row: int, native_pooled_program
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     table, source = native_pooled_program
     io = ScriptedIO(f"{row:06b}")
@@ -604,9 +628,9 @@ def test_native_255_pooled_blocks_in_stepped_interpreter(
 def test_chain_regions_cover_distant_nodes_and_large_weights(
     modulus: int, io_modulus: int, head: int, pos: int, weight: int, bit: int
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import _Chain, _State
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     chain = _Chain(modulus, io_modulus=io_modulus)
     state = _State(head=head, acc=io_modulus + 48)
@@ -650,9 +674,9 @@ def test_chain_regions_cover_distant_nodes_and_large_weights(
 def test_compact_pool_retrieves_weight_and_routes(
     modulus: int, io_modulus: int, weight: int, *, compact: bool
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import _Chain, _State
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     chain = _Chain(modulus, io_modulus=io_modulus)
     pool = chain.pools[-1]
@@ -677,9 +701,9 @@ def test_compact_pool_retrieves_weight_and_routes(
 
 @pytest.mark.parametrize(("modulus", "budget"), [(255, 63_845), (256, 62_600)])
 def test_pool_compaction_preserves_three_input_size(modulus: int, budget: int) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
     from esolangs.languages.slow_acv_mammalian.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     table = "00101101"
     source = compact_chain(table, 3, modulus=modulus)
@@ -708,9 +732,9 @@ def test_cell_255_tree_rejects_backward_sum_targets() -> None:
 def test_cell_255_appends_every_value_with_a_missing_head(
     head: int, extra: int, values: tuple[int, ...] | range
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian._mammalian255 import _State
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     for value in values:
         rest = value + 1 + extra
@@ -731,9 +755,9 @@ def test_cell_255_appends_every_value_with_a_missing_head(
 
 @pytest.mark.parametrize("io_modulus", [255, 256])
 def test_cell_255_tree_runs_in_stepped_interpreter(io_modulus: int) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian._mammalian255 import decision_tree
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     table = "00101101"
     source = decision_tree(table, 3, io_modulus=io_modulus)
@@ -752,12 +776,12 @@ def test_cell_255_tree_runs_in_stepped_interpreter(io_modulus: int) -> None:
 @pytest.mark.parametrize("head", [0, 255])
 @pytest.mark.parametrize("target", [700, 66000])
 def test_modulo_255_trampoline_length_and_execution(head: int, target: int) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian.generator import (
         _trampoline,
         _trampoline_len,
     )
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     array, acc = [head, 254], 507
     tokens, predicted, predicted_acc = _trampoline(array, acc, target, io_modulus=255)
@@ -829,9 +853,9 @@ def test_short_routing_is_earliest(modulus: int, step: int) -> None:
 def test_missing_head_raise_uses_reachable_nonfinal_chunks(
     head: int, rest: int, remaining: int
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import _Chain, _State
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     chain = _Chain(255, io_modulus=256)
     state = _State(head=head)
@@ -878,9 +902,9 @@ def test_read_calibration_reaches_earliest_safe_head(modulus: int) -> None:
 
 @pytest.mark.parametrize("row", [0, 1024, 2047])
 def test_equal_modulus_eleven_input_read_calibration(row: int) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian.generator import slow_acv_mammalian
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(20261014)
     table = "".join(str(rng.getrandbits(1)) for _ in range(2048))
@@ -924,10 +948,10 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
 @pytest.mark.parametrize("cell", [255, 256])
 @pytest.mark.parametrize("io", [255, 256])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_print_array_is_independent_of_every_input(cell, io, bit):
+def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> None:
     import esolangs
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.slow_acv_mammalian.generator import _program
+    from esolangs.runtime._evaluate import _evaluate
 
     table = bit * 256
     settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
@@ -945,9 +969,9 @@ def test_constant_print_array_is_independent_of_every_input(cell, io, bit):
 @pytest.mark.parametrize("cell", [255, 256])
 @pytest.mark.parametrize("io", [255, 256])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit):
-    from esolangs.interpreters.io import ScriptedIO
+def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit) -> None:
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     program = boolean.slow_acv_mammalian(bit * 8, cell_modulus=cell, io_modulus=io)
     stream = ScriptedIO("0101")
@@ -956,3 +980,18 @@ def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit):
         machine.step()
     assert stream.position() == 3
     assert stream.getvalue() == bit
+
+
+def test_equal_cells_reach_the_global_minimum() -> None:
+    for count in range(1, 33):
+        program = " ".join(["1111"] * count)
+        balanced = _balance_mammalian(program)
+        optimum = min(
+            (_mammalian(program, width) for width in range(1, len(program) + 1)),
+            key=balance_score,
+        )
+        assert balance_score(balanced) == balance_score(optimum)
+
+
+def test_balancing_an_empty_program_returns_it() -> None:
+    assert _balance_mammalian("") == ""

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+# language-owners: ["LaserFuck"]
 #: Verdicts that settle a column as linear.  Two spellings are in use -- the
 #: trimmed table wrote ``O(T)`` for LaserFuck and ``Linear`` for the rest --
 #: and both are affirmative, so both are read rather than one being normalized

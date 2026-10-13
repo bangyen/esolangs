@@ -3,8 +3,8 @@
 from functools import partial
 from typing import ClassVar
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.arrowqueue.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,

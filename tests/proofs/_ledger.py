@@ -184,19 +184,14 @@ def load(path: Path | None = None) -> Ledger:
     )
     assert count, f"{DOC} no longer states its own totals"
 
-    # "A Painter Ant, Alight, BIO, ... keep no tree route at all" -- the
-    # Size dispatch paragraph's exemption list, read rather than duplicated
-    # here so naming another generator in the prose also arms the test.
-    # Matched against whitespace-collapsed prose: the sentence is wrapped to
-    # 80 columns, so the names and the verb routinely straddle a line break.
-    exempt = re.search(
-        r"([\w,\-~/ ()]+?) keeps? no tree route at all",
-        " ".join(schemes.split()),
+    # Each exemption owns a bullet so language removal can cut it whole.
+    heading = (
+        "These generators keep no unconstrained tree route and have no subtree to fold:"
     )
-    assert exempt, "Size dispatch no longer names which rows lack a tree route"
-    names = frozenset(
-        part.strip() for part in re.split(r",| and ", exempt.group(1)) if part.strip()
-    )
+    assert heading in schemes, "Size dispatch no longer names its exemption list"
+    exemptions = schemes.split(heading, 1)[1]
+    names = frozenset(re.findall(r"^- ([^:\n]+):", exemptions, re.MULTILINE))
+    assert names, "Size dispatch no longer names which rows lack a tree route"
 
     cap = _section(text, "Resource-ceiling audit")
     exceptions = _section(text, "Exceptions and walls")

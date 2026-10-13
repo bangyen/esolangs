@@ -8,14 +8,14 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs._evaluate import _evaluate
-from tests.integration.cli.test_cli import call_main
-from tests.reference import REFERENCE
-from tests.runtime.vm.test_stepping_parity import _STEP_BUDGET, _row
+from esolangs.runtime._evaluate import _evaluate
+from tests.cli.test_cli import call_main
+from tests.runtime.test_stepping_parity import _STEP_BUDGET, _row
+from tests.support.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 
 
-def test_bound_template_language_runs_each_input_row():
+def test_bound_template_language_runs_each_input_row() -> None:
     language = esolangs.Language("RAM0")
     template = language.generate("0110", width=1)
     assert _evaluate(language.name, template, timeout=None, inputs=2) == "0110"
@@ -89,8 +89,8 @@ class TestStdinCannotHangTheCommandForever:
 
 @pytest.mark.medium
 def test_execution_does_not_require_examples_or_docstrings(monkeypatch) -> None:
-    from esolangs import _describe
-    from esolangs.tools import examples
+    from esolangs.generation import examples
+    from esolangs.registry import _describe
 
     def refuse_documentation(_language):
         raise AssertionError("execution requested documentation")

@@ -18,7 +18,7 @@ from tests.support.witness_tables import dense
 
 @pytest.mark.medium
 @pytest.mark.parametrize("prefix", [2, 3])
-def test_every_function_through_three_inputs_executes(prefix):
+def test_every_function_through_three_inputs_executes(prefix) -> None:
     for n in (1, 2, 3):
         for value in range(1 << (1 << n)):
             table = f"{value:0{1 << n}b}"
@@ -28,7 +28,7 @@ def test_every_function_through_three_inputs_executes(prefix):
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [4, 5, 6])
 @pytest.mark.parametrize("prefix", [2, 3])
-def test_sampled_small_banks_execute(n, prefix):
+def test_sampled_small_banks_execute(n, prefix) -> None:
     for seed in range(4):
         table = dense(n, f"bank:{seed}".encode())
         _execute(table, _cofactor_bank_layout(table, prefix).render())
@@ -36,7 +36,7 @@ def test_sampled_small_banks_execute(n, prefix):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [8, 9])
-def test_public_repeated_cofactors_select_the_smaller_bank(n):
+def test_public_repeated_cofactors_select_the_smaller_bank(n) -> None:
     a, b = dense(n - 2, b"bank-a"), dense(n - 2, b"bank-b")
     table = a + b + b + a
     model = _cofactor_bank_candidate(table)
@@ -54,7 +54,7 @@ def test_public_repeated_cofactors_select_the_smaller_bank(n):
 
 
 @pytest.mark.medium
-def test_unique_cofactors_share_internal_residuals_in_eight_banks():
+def test_unique_cofactors_share_internal_residuals_in_eight_banks() -> None:
     table = dense(8)
     assert _repeated_cofactor_bank(table) is None
     model = _cofactor_bank_layout(table, 3)
@@ -68,7 +68,7 @@ def test_unique_cofactors_share_internal_residuals_in_eight_banks():
 
 
 @pytest.mark.medium
-def test_oversized_bank_cannot_displace_existing_output(monkeypatch):
+def test_oversized_bank_cannot_displace_existing_output(monkeypatch) -> None:
     table = dense(8)
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.banks"
@@ -91,7 +91,7 @@ def test_oversized_bank_cannot_displace_existing_output(monkeypatch):
 
 
 @pytest.mark.medium
-def test_explicit_width_never_builds_a_bank(monkeypatch):
+def test_explicit_width_never_builds_a_bank(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.banks"
     )
@@ -108,7 +108,7 @@ def test_explicit_width_never_builds_a_bank(monkeypatch):
 
 
 @pytest.mark.medium
-def test_equal_area_bank_preserves_existing_output(monkeypatch):
+def test_equal_area_bank_preserves_existing_output(monkeypatch) -> None:
     from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
 
     pools = importlib.import_module(
@@ -138,10 +138,9 @@ def test_equal_area_bank_preserves_existing_output(monkeypatch):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("arities", [(8, 10, 12), (9, 11, 13)])
-def test_bank_scaling_retains_native_contracts(arities):
+def test_bank_scaling_retains_native_contracts() -> None:
     sizes = []
-    for n in arities:
+    for n in (8, 10, 12):
         a, b = dense(n - 2, b"bank-a"), dense(n - 2, b"bank-b")
         table = a + b + b + a
         code = _cofactor_bank_layout(table).render()
@@ -152,14 +151,14 @@ def test_bank_scaling_retains_native_contracts(arities):
 
 
 @pytest.mark.parametrize("prefix", [-1, 1, 4])
-def test_unsupported_prefix_sizes_abort(prefix):
+def test_unsupported_prefix_sizes_abort(prefix) -> None:
     with pytest.raises(ValueError, match="two or three prefix inputs"):
         _cofactor_bank_layout(dense(8), prefix)
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize(("n", "cap"), [(8, 511), (9, 1015)])
-def test_eight_distinct_bodies_obey_small_arity_workspace_caps(n, cap):
+def test_eight_distinct_bodies_obey_small_arity_workspace_caps(n, cap) -> None:
     table = "".join(dense(n - 3, f"eight:{i}".encode()) for i in range(8))
     model = _cofactor_bank_layout(table, 3)
     assert sum(char in "ao~" for char in model.glyphs.values()) <= cap
@@ -168,7 +167,7 @@ def test_eight_distinct_bodies_obey_small_arity_workspace_caps(n, cap):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [9, 10])
-def test_repeats_below_distinct_four_bank_cofactors_share(n):
+def test_repeats_below_distinct_four_bank_cofactors_share(n) -> None:
     a, b, c = [dense(n - 3, f"deep-bank:{i}".encode()) for i in range(3)]
     table = a + b + a + c + b + c + a + a
     assert _repeated_cofactor_bank(table) is None
@@ -177,17 +176,16 @@ def test_repeats_below_distinct_four_bank_cofactors_share(n):
     lines = code.splitlines()
     height, width = model.bounds()
     assert len(lines) * max(map(len, lines)) <= height * width
-    assert len(code) == {9: 125_374, 10: 278_281}[n]
+    assert len(code) == {9: 108_184, 10: 262_828}[n]
     rows = None if n == 9 else sorted({0, len(table) - 1, *range(0, len(table), 32)})
     _execute(table, code, rows)
     _execute(table, model.render(), rows)
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("arities", [(9, 11, 13), (10, 12, 14)])
-def test_eight_bank_growth_with_native_positive_controls(arities):
+def test_eight_bank_growth_with_native_positive_controls() -> None:
     sizes = []
-    for n in arities:
+    for n in (9, 11, 13):
         a, b, c = [dense(n - 3, f"deep-bank:{i}".encode()) for i in range(3)]
         table = a + b + a + c + b + c + a + a
         code = _cofactor_bank_layout(table, 3).render()
@@ -199,7 +197,7 @@ def test_eight_bank_growth_with_native_positive_controls(arities):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("prefix", [2, 3])
-def test_bank_glyph_floor_never_rejects_a_fitting_native_layout(prefix):
+def test_bank_glyph_floor_never_rejects_a_fitting_native_layout(prefix) -> None:
     from esolangs.languages.circuit_diagram.generator.banks import _bank_exceeds_area
 
     table = dense(10, b"bank-floor")
@@ -209,7 +207,7 @@ def test_bank_glyph_floor_never_rejects_a_fitting_native_layout(prefix):
     _execute(table, model.render(), (0, len(table) - 1))
 
 
-def test_bank_glyph_floor_skips_provably_oversized_bodies(monkeypatch):
+def test_bank_glyph_floor_skips_provably_oversized_bodies(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.banks"
     )

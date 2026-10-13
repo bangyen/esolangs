@@ -19,20 +19,25 @@ sub-protocol.  :func:`run_until_halt` proves nothing.
 from __future__ import annotations
 
 from collections.abc import Callable, Hashable, Sequence
+from dataclasses import dataclass
 from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
-from esolangs._execution import interpreter_errors, interpreter_module, prepare_call
-from esolangs._program import Program
-from esolangs._source import InputSource, ProgramSource, check_scale_for
-from esolangs._traits import trait, traits
-from esolangs._validate import check_whole
-from esolangs._vm_views import (
+from esolangs.registry import resolve
+from esolangs.runtime._execution import (
+    interpreter_errors,
+    interpreter_module,
+    prepare_call,
+)
+from esolangs.runtime._program import Program
+from esolangs.runtime._source import InputSource, ProgramSource, check_scale_for
+from esolangs.runtime._traits import trait, traits
+from esolangs.runtime._validate import check_whole
+from esolangs.runtime._vm_views import (
     machine_views,
 )
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.source_hints import with_hint
-from esolangs.registry import resolve
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 
@@ -104,6 +109,15 @@ def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> ob
     )
 
 
+def _checked_unwrap(
+    machine: object, protocol: type[Any], role: str, hint: str, limit: int | None
+) -> Any:
+    """Check ``limit`` when given, then unwrap to the detector's protocol."""
+    if limit is not None:
+        check_whole(limit, "limit")
+    return _unwrap(machine, protocol, role, hint=hint)
+
+
 def run_until_halt_or_cycle(
     machine: _StepMachine | VM, limit: int | None = None
 ) -> bool:
@@ -121,15 +135,14 @@ def run_until_halt_or_cycle(
     unbounded search; bound it when the machine may *grow* instead, which
     never repeats a state and so would not return.
     """
-    if limit is not None:
-        check_whole(limit, "limit")
     machine = cast(
         _StepMachine,
-        _unwrap(
+        _checked_unwrap(
             machine,
             _StepMachine,
             "steppable with a snapshot",
-            hint=("pass make_vm(...) or a machine with step, halted and snapshot"),
+            "pass make_vm(...) or a machine with step, halted and snapshot",
+            limit,
         ),
     )
     underlying = getattr(machine, "vm", machine)
@@ -183,17 +196,15 @@ def run_until_halt_or_all_branches_cycle(
     :class:`TimeoutError`.  Every state is kept, since branches merge.
     A language with no random instruction raises :class:`TypeError`.
     """
-    check_whole(limit, "limit")
     machine = cast(
         _BranchingStepMachine,
-        _unwrap(
+        _checked_unwrap(
             machine,
             _BranchingStepMachine,
             "branch-enumerable",
-            hint=(
-                "use a machine with branching_snapshot, "
-                "branching_halted and branching_successors"
-            ),
+            "use a machine with branching_snapshot, "
+            "branching_halted and branching_successors",
+            limit,
         ),
     )
     pending = [machine.branching_snapshot()]
@@ -271,17 +282,15 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     across the suite) -- and exhausting it raises
     :class:`TimeoutError`.  No call stack raises :class:`TypeError`.
     """
-    check_whole(limit, "limit")
     machine = cast(
         _FramedMachine,
-        _unwrap(
+        _checked_unwrap(
             machine,
             _FramedMachine,
             "framed",
-            hint=(
-                "use a machine with frames and frame_entry_key; "
-                "otherwise try exact-state cycle detection"
-            ),
+            "use a machine with frames and frame_entry_key; "
+            "otherwise try exact-state cycle detection",
+            limit,
         ),
     )
     keys: dict[int, Hashable] = {}
@@ -353,6 +362,32 @@ class _TapeMachine(Protocol):
         """Return the input cursor, so a reading loop is not a repeat."""
 
 
+#: One visit's ``(pointer, tape, input cursor)`` in the growth proof.
+_Snapshot = tuple[int, tuple[int, ...], int]
+
+
+@dataclass
+class _GrowthVisit:
+    """Per-``ip`` state for the growth proof.
+
+    Three certificates share one record: ``snapshot``/``lowest`` compare
+    two consecutive visits, ``origin``/``origin_low`` the first visit to
+    the current one, and the ``wave_*`` fields Brent's checkpoint for a
+    phase that begins after a transient.  Each ``*_low`` is the smallest
+    pointer seen over its certificate's interval; the proof is invalid
+    if the period ever reached the left edge.
+    """
+
+    snapshot: _Snapshot
+    lowest: int
+    origin: _Snapshot
+    origin_low: int
+    wave_before: _Snapshot
+    wave_low: int
+    wave_power: int
+    wave_length: int
+
+
 def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -> bool:
     """Step ``machine`` until it halts or provably grows without bound.
 
@@ -377,70 +412,67 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     never saw).  ``limit`` is in steps and raises :class:`TimeoutError`;
     no tape raises :class:`TypeError`.
     """
-    check_whole(limit, "limit")
     machine = cast(
         _TapeMachine,
-        _unwrap(
+        _checked_unwrap(
             machine,
             _TapeMachine,
             "a tape machine",
-            hint=(
-                "use a compatible rightward-growing tape machine; "
-                "otherwise try exact-state cycle detection"
-            ),
+            "use a compatible rightward-growing tape machine; "
+            "otherwise try exact-state cycle detection",
+            limit,
         ),
     )
-    # The last visit keeps the broad, one-period certificate.  ``origins``
-    # proves a steady wave after its first full phase, while ``waves`` is
-    # Brent's O(1)-per-position checkpoint for a phase that begins after a
-    # transient.  Both minima are updated on every step because the proof
+    # One record per position holds all three certificates.  ``snapshot``
+    # keeps the broad, one-period comparison; ``origin`` proves a steady
+    # wave after its first full phase; the ``wave_*`` fields are Brent's
+    # O(1)-per-position checkpoint for a phase that begins after a
+    # transient.  Every minimum is updated on each step because the proof
     # is invalid if the period ever reached the left edge.
-    last: dict[Hashable, tuple[int, tuple[int, ...], int]] = {}
-    lowest: dict[Hashable, int] = {}
-    origins: dict[Hashable, tuple[tuple[int, tuple[int, ...], int], int]] = {}
-    waves: dict[Hashable, tuple[tuple[int, tuple[int, ...], int], int, int, int]] = {}
+    visits: dict[Hashable, _GrowthVisit] = {}
     for _ in range(limit):
         if machine.halted:
             return True
         ip, ptr, tape = machine.ip, machine.ptr, machine.tape
-        for position in lowest:
-            lowest[position] = min(lowest[position], ptr)
-        for position, (before, low) in origins.items():
-            origins[position] = (before, min(low, ptr))
-        for position, (before, low, power, length) in waves.items():
-            waves[position] = (before, min(low, ptr), power, length)
+        for seen in visits.values():
+            seen.lowest = min(seen.lowest, ptr)
+            seen.origin_low = min(seen.origin_low, ptr)
+            seen.wave_low = min(seen.wave_low, ptr)
         cursor = machine.input_position()
-        current = (ptr, tape, cursor)
-        previous = last.get(ip)
-        if previous is not None and _grows_forever(previous, current, lowest[ip]):
-            return False
-        last[ip] = current
-        lowest[ip] = ptr
-
-        origin = origins.get(ip)
-        if origin is None:
-            origins[ip] = (current, ptr)
+        current: _Snapshot = (ptr, tape, cursor)
+        visit = visits.get(ip)
+        if visit is None:
+            visits[ip] = _GrowthVisit(
+                snapshot=current,
+                lowest=ptr,
+                origin=current,
+                origin_low=ptr,
+                wave_before=current,
+                wave_low=ptr,
+                wave_power=1,
+                wave_length=0,
+            )
         else:
-            before, low = origin
-            if _grows_forever(before, current, low):
+            if _grows_forever(visit.snapshot, current, visit.lowest):
                 return False
-
-        checkpoint = waves.get(ip)
-        if checkpoint is None:
-            waves[ip] = (current, ptr, 1, 0)
-        else:
-            before, low, power, length = checkpoint
+            if _grows_forever(visit.origin, current, visit.origin_low):
+                return False
             # Unreached: by ablation each of the three arms proves every
             # growth program in the suite alone.  Kept -- the corpus is a
             # handful of programs, and an idle arm may decide a shape not
             # yet written.
-            if _grows_forever(before, current, low):  # pragma: no cover - see above
+            if _grows_forever(  # pragma: no cover - see above
+                visit.wave_before, current, visit.wave_low
+            ):
                 return False
-            length += 1
-            if length == power:
-                waves[ip] = (current, ptr, power * 2, 0)
-            else:
-                waves[ip] = (before, low, power, length)
+            visit.snapshot = current
+            visit.lowest = ptr
+            visit.wave_length += 1
+            if visit.wave_length == visit.wave_power:
+                visit.wave_before = current
+                visit.wave_low = ptr
+                visit.wave_power *= 2
+                visit.wave_length = 0
         machine.step()
     if machine.halted:
         return True
@@ -534,17 +566,15 @@ def run_until_halt_or_value_growth(
     worst case, under a millisecond on the two programs this is for).
     Bounded values raise :class:`TypeError`: a climbing byte wraps.
     """
-    check_whole(limit, "limit")
     machine = cast(
         _AffineMachine,
-        _unwrap(
+        _checked_unwrap(
             machine,
             _AffineMachine,
             "an affine machine",
-            hint=(
-                "use a machine with unbounded affine values; wrapping "
-                "cells need exact-state cycle detection"
-            ),
+            "use a machine with unbounded affine values; wrapping "
+            "cells need exact-state cycle detection",
+            limit,
         ),
     )
     # One slack per step in a single log, and per key the last three steps
@@ -664,8 +694,8 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     Raises on exhausted steps or an active machine that never self-halts. Repeated
     completion is safe: the post-halt step is idempotent by the VM contract.
     """
-    from esolangs._validate import check_whole
     from esolangs.exceptions import ArgumentError, InterpreterLimitError
+    from esolangs.runtime._validate import check_whole
 
     if max_steps is not None:
         check_whole(max_steps, "max_steps")
@@ -940,7 +970,7 @@ def make_vm(
     :class:`UnknownLanguageError`. Text and raster use the same step interface. The
     program and ``stdin`` are checked as :func:`esolangs.run` checks them (an
     unfilled template otherwise runs to a confident ``'0'``), and the checked
-    value is what reaches the interpreter (:mod:`esolangs._validate`).
+    value is what reaches the interpreter (:mod:`esolangs.runtime._validate`).
     """
     from esolangs import _check_program
 

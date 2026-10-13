@@ -1,10 +1,6 @@
 """Boolean-function generator for BrainIf."""
 
-from dataclasses import dataclass
-
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
@@ -13,60 +9,32 @@ from esolangs.tools.helpers import (
     input_weights,
     read_at,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 
-@dataclass
-class _Cmd:
-    """A line emitted verbatim, apart from its ``goto`` placeholder."""
-
-    text: str
-
-
-@dataclass
-class _If:
-    """An ``if <char> goto <label>`` line, resolved once labels are known."""
-
-    char: int
-    label: int
-
-
-@dataclass
-class _MoveLeft:
-    """An ``if <char> move left`` line that also *defines* ``label``.
-
-    There is no rightward mirror: the build walks out over zeroed cells
-    before the tree runs, and every branch after that walks down.
-    """
-
-    char: int
-    label: int
-
-
-@dataclass
-class _GotoOut:
-    """An ``if <char> goto`` line aimed at the marker ``OUT<which>``."""
-
-    char: int
-    which: int
-
-
-@dataclass
-class _Out:
-    """A marker naming the next line ``OUT<which>``; it emits no line itself.
-
-    ``OUT0`` is the output tail; the rest are spans a later equal span jumps to.
-    """
-
-    which: int
-
-
-@dataclass
-class _End:
-    """The trailing blank line every program ends on."""
-
-
-_Entry = _Cmd | _If | _MoveLeft | _GotoOut | _Out | _End
+def _resolve(lines: list[str], width: int | None = None) -> str:
+    """Resolve zero-width ``@label`` markers and shorten commands for width."""
+    labels: dict[str, int] = {}
+    emitted: list[str] = []
+    for line in lines:
+        if line.startswith("@"):
+            labels[line[1:]] = len(emitted) + 1
+        else:
+            emitted.append(line)
+    for i, line in enumerate(emitted):
+        if "goto @" in line:
+            head, label = line.split("goto @")
+            emitted[i] = f"{head}goto {labels[label]}"
+    if width is not None and any(len(line) > width for line in emitted):
+        emitted = [
+            line.replace("increment", "inc")
+            .replace("move right", "right")
+            .replace("move left", "left")
+            for line in emitted
+        ]
+    return "\n".join(emitted)
 
 
 #: The most levels the tree may branch on before the linear lookup takes
@@ -97,10 +65,9 @@ def _brainif_zero_jumps(table: str) -> str:
     """Route small trees through unread zero cells before each branch jump."""
     n = _validate_truth_table(table)
     lines: list[str] = []
-    labels: dict[str, int] = {}
 
     def mark(label: str) -> None:
-        labels[label] = len(lines) + 1
+        lines.append(f"@{label}")
 
     # Cell0 stays zero for the output escape; cell1 holds 48, cell2 is
     # the final zero landing, and input cells lie above it. Two-input
@@ -140,10 +107,7 @@ def _brainif_zero_jumps(table: str) -> str:
     tree(0, len(table), 0)
     mark("done")
     lines.append("")
-    return "\n".join(
-        line.split("@")[0] + str(labels[line.split("@")[1]]) if "@" in line else line
-        for line in lines
-    )
+    return _resolve(lines)
 
 
 def _residual_layers(table: str) -> list[list[tuple[int, int]]]:
@@ -179,85 +143,77 @@ def _brainif_dag(table: str) -> str:
     # dropped ones between it and the kept input before it.
     skips = [b - a - 1 for a, b in zip([-1, *kept], kept, strict=False)][::-1]
     lines: list[str] = []
-    addresses: dict[tuple[int, int], int] = {}
-
-    def reads(depth: int) -> list[str]:
-        """Read every input this layer owns, ending on its own bit."""
+    for depth in reversed(range(len(layers))):
         first = (
             ["if 0 input"]
             if depth == len(layers) - 1
             else ["if 48 increment", "if 49 input"]
         )
-        return first + ["if 48 increment", "if 49 input"] * skips[depth]
-
-    for depth in reversed(range(len(layers))):
-        for node in range(len(layers[depth])):
-            addresses[depth, node] = len(lines) + 1
-            lines.extend([""] * (len(reads(depth)) + 2))
-    outputs = [len(lines) + 1]
-    lines.append("if 49 move right")
+        reads = first + ["if 48 increment", "if 49 input"] * skips[depth]
+        for node, children in enumerate(layers[depth]):
+            lines.append(f"@node_{depth}_{node}")
+            lines.extend(reads)
+            for char, child in zip((48, 49), children, strict=True):
+                target = f"node_{depth - 1}_{child}" if depth else f"out_{child}"
+                lines.append(f"if {char} goto @{target}")
+    lines.extend(["@out_0", "if 49 move right"])
     lines.extend(f"if {i} increment" for i in range(48))
-    lines.extend(["if 48 output", ""])
-    outputs.append(len(lines) + 1)
-    lines.extend(["if 48 increment", "if 49 output", ""])
-    end = len(lines) + 1
-    lines[outputs[1] - 2] = f"if 48 goto {end}"
-    lines[-1] = f"if 49 goto {end}"
-    for depth, layer in enumerate(layers):
-        for node, (zero, one) in enumerate(layer):
-            children = [
-                addresses[depth - 1, child] if depth else outputs[child]
-                for child in (zero, one)
-            ]
-            block = reads(depth)
-            block.extend([f"if 48 goto {children[0]}", f"if 49 goto {children[1]}"])
-            start = addresses[depth, node] - 1
-            lines[start : start + len(block)] = block
-    return "\n".join(lines)
+    lines.extend(
+        [
+            "if 48 output",
+            "if 48 goto @done",
+            "@out_1",
+            "if 48 increment",
+            "if 49 output",
+            "if 49 goto @done",
+            "@done",
+        ]
+    )
+    return _resolve(lines)
 
 
-def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[_Entry]:
+def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[str]:
     """Emit symbolic tree entries with one shared output tail."""
     # Initial zero skips the two-line output trampoline.  Leaves return with
     # 48/49 to line 2, whose guards forward to the wide output-tail address,
     # rendered twice rather than once per leaf.
-    entries: list[_Entry] = [
-        _Cmd("if 0 goto 4"),
-        _GotoOut(_ASCII_ZERO, 0),
-        _GotoOut(_ASCII_ONE, 0),
+    entries: list[str] = [
+        "if 0 goto 4",
+        f"if {_ASCII_ZERO} goto @out_0",
+        f"if {_ASCII_ONE} goto @out_0",
     ]
     # The answer byte goes on cell 0 and the inputs above it, read from the
     # far end back down.
-    entries += [_Cmd(f"if {v} increment") for v in range(_ASCII_ZERO)]
-    entries.append(_Cmd(f"if {_ASCII_ZERO} move right"))
-    entries += [_Cmd("if 0 move right") for _ in range(n - 1)]
+    entries += [f"if {v} increment" for v in range(_ASCII_ZERO)]
+    entries.append(f"if {_ASCII_ZERO} move right")
+    entries += ["if 0 move right" for _ in range(n - 1)]
 
     next_label = 0
     shared: dict[tuple[int, str], int] = {}
 
-    def build(lo: int, hi: int, k: int) -> list[_Entry]:
+    def build(lo: int, hi: int, k: int) -> list[str]:
         """Emit a table span, entered with the pointer on cell n-k+1."""
         rest = n - (k - 1)
         span = (k, truth_table[lo:hi])
         # Entered on an unread cell (0), or on the answer byte (48) once
         # every input is read, so one guarded jump reuses an equal span.
         if prune and span in shared:
-            return [_GotoOut(_ASCII_ZERO if rest == 0 else 0, shared[span])]
+            return [f"if {_ASCII_ZERO if rest == 0 else 0} goto @out_{shared[span]}"]
         body = _span(lo, hi, k, rest)
         if prune and len(body) > 1:
             shared[span] = len(shared) + 1
-            body.insert(0, _Out(shared[span]))
+            body.insert(0, f"@out_{shared[span]}")
         return body
 
-    def _span(lo: int, hi: int, k: int, rest: int) -> list[_Entry]:
+    def _span(lo: int, hi: int, k: int, rest: int) -> list[str]:
         if rest == 0:
             # The answer byte is 48: add one iff the entry is a 1 and join
             # the trampoline line whose guard that byte passes.
             if truth_table[lo] == "0":
-                return [_Cmd(f"if {_ASCII_ZERO} goto 2")]
+                return [f"if {_ASCII_ZERO} goto 2"]
             return [
-                _Cmd(f"if {_ASCII_ZERO} increment"),
-                _Cmd(f"if {_ASCII_ONE} goto 3"),
+                f"if {_ASCII_ZERO} increment",
+                f"if {_ASCII_ONE} goto 3",
             ]
         middle = (lo + hi) // 2
         if truth_table[lo:middle] == truth_table[middle:hi] and (
@@ -266,82 +222,38 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[_Ent
             # The halves agree, so this input cannot change the answer: read
             # it, step past it and build the one half both values share.
             return [
-                _Cmd("if 0 input"),
-                _Cmd(f"if {_ASCII_ZERO} move left"),
-                _Cmd(f"if {_ASCII_ONE} move left"),
+                "if 0 input",
+                f"if {_ASCII_ZERO} move left",
+                f"if {_ASCII_ONE} move left",
                 *build(lo, middle, k + 1),
             ]
         # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
         # bit it selects is the table's usual most-significant-first one --
         # the reads are in input order even though the pointer walks down.
         nonlocal next_label
-        l0, l1 = next_label, next_label + 1
-        next_label += 2
+        label = next_label
+        next_label += 1
         sub0 = build(lo, middle, k + 1)
         sub1 = build(middle, hi, k + 1)
         return [
-            _Cmd("if 0 input"),
-            _If(_ASCII_ONE, l1),
-            _MoveLeft(_ASCII_ZERO, l0),
+            "if 0 input",
+            f"if {_ASCII_ONE} goto @branch_{label}",
+            f"if {_ASCII_ZERO} move left",
             *sub0,
-            _MoveLeft(_ASCII_ONE, l1),
+            f"@branch_{label}",
+            f"if {_ASCII_ONE} move left",
             *sub1,
         ]
 
     entries += build(0, len(truth_table), 1)
     # One shared tail: the answer cell already holds the byte to print, so
     # this is two lines rather than a climb per digit.
-    entries.append(_Out(0))
-    entries.append(_Cmd(f"if {_ASCII_ZERO} output"))
-    entries.append(_Cmd(f"if {_ASCII_ONE} output"))
-    entries.append(_End())
+    entries.append("@out_0")
+    entries.append(f"if {_ASCII_ZERO} output")
+    entries.append(f"if {_ASCII_ONE} output")
+    entries.append("")
 
     return entries
-
-
-def _brainif_resolve(entries: list[_Entry], width: int | None) -> str:
-    """Resolve symbolic addresses and shorten commands when a width requires it."""
-    # ``_Out`` markers emit no line: each targets the next line that does.
-    labels: dict[int, int] = {}
-    out_labels: dict[int, int] = {}
-    line_no = 0
-    for entry in entries:
-        if isinstance(entry, _Out):
-            out_labels[entry.which] = line_no + 1
-            continue
-        line_no += 1
-        if isinstance(entry, _MoveLeft):
-            labels[entry.label] = line_no
-
-    lines: list[str] = []
-    for entry in entries:
-        if isinstance(entry, _Cmd):
-            lines.append(entry.text)
-        elif isinstance(entry, _GotoOut):
-            # A leaf reaches the tail holding 48 or 49: one goto for each.
-            lines.append(f"if {entry.char} goto {out_labels[entry.which]}")
-        elif isinstance(entry, _If):
-            lines.append(f"if {entry.char} goto {labels[entry.label]}")
-        elif isinstance(entry, _MoveLeft):
-            lines.append(f"if {entry.char} move left")
-        elif isinstance(entry, _Out):
-            continue
-        else:
-            # _End, the trailing blank line.  The fallback rather than an
-            # ``isinstance``, so an ``_Entry`` variant without a branch here
-            # is a type error: mypy narrows this to ``_End``.
-            _: _End = entry
-            lines.append("")
-    if width is not None and any(len(line) > width for line in lines):
-        # The language's own short spellings, as the linear path uses
-        # throughout: line count is unchanged, so goto targets stay valid.
-        lines = [
-            line.replace("increment", "inc")
-            .replace("move right", "right")
-            .replace("move left", "left")
-            for line in lines
-        ]
-    return "\n".join(lines)
 
 
 def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) -> str:
@@ -369,7 +281,7 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
             return _brainif_linear(projected, weights)
         return _brainif_linear(truth_table)
     entries = _brainif_tree_entries(truth_table, n, prune=prune)
-    return _brainif_resolve(entries, width)
+    return _resolve(entries, width)
 
 
 #: Levels whose walk becomes a marker-terminated ``goto`` loop instead of
@@ -490,7 +402,7 @@ def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
     the interpreter matches by substring.
 
     ``weights`` gives each input's row weight (see
-    :func:`~esolangs.tools.helpers.input_weights`); an ignored input, weight 0,
+    :func:`~esolangs.generation.helpers.input_weights`); an ignored input, weight 0,
     is read and stepped past, and ``truth_table`` is then its projection.
     The default is every input essential.
     """
@@ -500,10 +412,9 @@ def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
     size = len(cells)
     strip = _Strip(cells, weights)
     lines: list[str] = []
-    labels: dict[str, int] = {}
 
     def mark(name: str) -> None:
-        labels[name] = len(lines) + 1
+        lines.append(f"@{name}")
 
     def guard(residue: int, modulus: int | None, suffix: str) -> None:
         """Emit one guarded line per value the named cell may hold."""
@@ -537,7 +448,7 @@ def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
         mark(far)
         lines.append(f"if {_ASCII_ZERO} left")
         if i in strip.levels:
-            _emit_loop(lines, labels, strip, i, size)
+            _emit_loop(lines, strip, i, size)
         else:
             for k in range(weights[i]):
                 guard(size - 2 - i - k, known, "left")
@@ -559,16 +470,10 @@ def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
     lines.append(f"if {_ASCII_ONE} output")
     mark("done")
     lines.append("")
-    for i, line in enumerate(lines):
-        if "goto @" in line:
-            head, name = line.split("goto @")
-            lines[i] = f"{head}goto {labels[name]}"
-    return "\n".join(lines)
+    return _resolve(lines)
 
 
-def _emit_loop(
-    lines: list[str], labels: dict[str, int], strip: _Strip, level: int, size: int
-) -> None:
+def _emit_loop(lines: list[str], strip: _Strip, level: int, size: int) -> None:
     """Emit level ``level``'s walk as a loop that halts on its own marker.
 
     Three groups, entered and left on parity ``P``: cross one cell, cross a
@@ -580,7 +485,7 @@ def _emit_loop(
     parity = (size - 2 - level) % 2
     own = {strip.value[level], strip.value[level] + 1}
     crossable = sorted(strip.alphabet[parity] - own)
-    labels[name] = len(lines) + 1
+    lines.append(f"@{name}")
     lines.extend(f"if {v} left" for v in crossable)
     lines.extend(f"if {v} left" for v in sorted(strip.alphabet[1 - parity]))
     lines.extend(f"if {v} goto @{name}" for v in crossable)

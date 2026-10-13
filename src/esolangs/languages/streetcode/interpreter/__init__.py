@@ -13,9 +13,12 @@ corner heads down the side road, not into the turn); a dead end turns the
 car across the street in two steps, and a ``U`` on the cell where that
 turn lands does not reverse it again.
 
-Movement is pure and lives in :mod:`.geometry`; the mutable run
-lives in :class:`_Machine`.  :func:`_drive` is the whole of movement in one
-signature, ``_drive(grid, state, arrival_cell, current_cell)``, which lets
+Movement is pure and lives in :mod:`.geometry`; the run itself is the pure
+:func:`_advance`, which takes the whole run and the one input value a step
+needs and returns the next run and any character to print.
+:class:`_Machine` is the shell that reads and writes.  :func:`_drive` is the
+whole of movement in one signature,
+``_drive(grid, state, arrival_cell, current_cell)``, which lets
 :meth:`_Machine._drive_states` enumerate the state space.
 
 Errors: a malformed program raises :class:`ValueError` at construction
@@ -32,12 +35,10 @@ the command table's ``=``/``_`` move CP, and ``<``/``>`` are nops.
 
 import functools
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Literal, Self, assert_never
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.streetcode.interpreter.geometry import (
     _DELTA,
     _NO_LATCHES,
@@ -55,6 +56,9 @@ from esolangs.languages.streetcode.interpreter.geometry import (
 from esolangs.languages.streetcode.interpreter.geometry import (
     _State as _GeometryState,
 )
+from esolangs.runtime._drive import drive
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 
 class _State(_GeometryState):
@@ -63,14 +67,127 @@ class _State(_GeometryState):
 
 type _Edges = dict[tuple[int, int], _State | Literal["halt"] | None]
 
+#: The whole of a run the pure transition owns: the car, the cell pointer,
+#: the sparse tape, and whether the car has halted.  A tuple of values, so a
+#: snapshot and the transition can pass one around without aliasing a live
+#: machine field.
+type _Run = tuple[_State, int, Mapping[int, int], bool]
+
+
+def _advance(
+    run: _Run,
+    grid: _Grid,
+    graph: dict[_State, _Edges] | None,
+    value: int | None = None,
+) -> tuple[_Run, int | None]:
+    """Return the run after one cell, and the character ``O`` prints, if any.
+
+    Pure: the grid and the drive-state graph are constants of the run, the
+    input character arrives already read as ``value``, and output is
+    returned rather than written.  The tape and the car are rebuilt, never
+    edited, so the state handed in is untouched.
+    """
+    state, cp, cells, done = run
+    if done:
+        return run, None
+    # A private, mutable copy: the immutable mapping handed in is never
+    # touched, and every return re-freezes what this step built.
+    cells = dict(cells)
+
+    def frozen(
+        car: _State, pointer: int, tape: Mapping[int, int], *, halted: bool
+    ) -> _Run:
+        return (car, pointer, MappingProxyType(tape), halted)
+
+    op = grid.op_at(state.row, state.col)
+    if op == "HALT":
+        return frozen(state, cp, cells, halted=True), None
+
+    # The cell on arrival, before this square's instruction, so a turning
+    # square's ``=`` sets up the road ahead without deciding it.
+    arrival_cell = cells.get(cp, 0)
+
+    def cell() -> int:
+        return cells.get(cp, 0)
+
+    if op == "INC":
+        cells = {**cells, cp: cell() + 1}
+    elif op == "DEC":
+        cells = {**cells, cp: cell() - 1}
+    elif op == "RIGHT":
+        cp += 1
+    elif op == "LEFT":
+        if not cp:
+            raise HaltError(
+                "'_' at cell 0 would move the unsigned CP below zero",
+                hint="move right with '=' before moving left with '_'",
+            )
+        cp -= 1
+    elif op == "IN":
+        if value is None:
+            raise HaltError(
+                "input transition requires a value",
+                hint="read the character before applying the input transition",
+            )
+        cells = {**cells, cp: value}
+    elif op == "OUT":
+        character = cell()
+        try:
+            chr(character)
+        except ValueError:
+            raise HaltError(
+                hint="keep character output values between 0 and 1114111"
+            ) from None
+        # The car still drives; the character is the caller's to write.
+    elif op == "TURN":
+        turned = _drive(grid, state, arrival_cell, arrival_cell)
+        if turned is None or turned == "halt":
+            raise HaltError(
+                f"a U-turn at {arrival_cell} has nowhere to end: the "
+                f"street has no opposite lane, which is narrower than "
+                f"the spec allows",
+                hint="widen the street so a U-turn has an opposite lane",
+            )
+        return frozen(turned, cp, cells, halted=done), None
+    elif op == "NOP":
+        # ``C``, space and every undefined character fold to NOP (see
+        # ``_Op``).
+        pass
+    else:
+        # Unreachable, and checked to be: ``_Op`` is exhausted by the arms
+        # above, so this is the checker's exhaustiveness proof.
+        assert_never(op)
+
+    current_cell = cell()
+    edges = None if graph is None else graph.get(state)
+    successor = (
+        _drive(grid, state, arrival_cell, current_cell)
+        if edges is None
+        else edges[int(arrival_cell != 0), int(current_cell != 0)]
+    )
+
+    output = cell() if op == "OUT" else None
+
+    if successor == "halt":
+        return frozen(state, cp, cells, halted=True), output
+    if successor is None:
+        if edges is None:
+            return frozen(state, cp, cells, halted=True), output
+        raise AssertionError(
+            f"no successor for {(state.row, state.col)} heading"
+            f" {state.heading}: the drive-state graph outlived"
+            " the totality check"
+        )
+    return frozen(successor, cp, cells, halted=done), output
+
 
 class _Machine:
-    """Per-run Streetcode state: the car, its heading, and the cell list.
+    """Per-run Streetcode shell: the car, its heading, and the cell list.
 
-    ``step()`` runs the cell under the car, then drives one cell by the
-    rules in ``the implementation``; ``halted`` once ``;`` runs or the car
-    has nowhere to go.  The only mutable thing in the module: the rules
-    return a new :class:`_State`, and ``step`` stores what comes back.
+    ``step`` is the shell: it reads the one input character an ``I`` cell
+    needs, hands the run to the pure :func:`_advance`, stores the run that
+    comes back, and writes any character an ``O`` cell produced.  ``halted``
+    is true once ``;`` runs or the car has nowhere to go.
     """
 
     def __init__(self, code: list[str], io: IO) -> None:
@@ -186,14 +303,6 @@ class _Machine:
             self._input_reads,
             tuple(self.grid),
         )
-
-    def _cell(self) -> int:
-        """Return the CPth cell's value, defaulting to 0 if untouched."""
-        return self.cells.get(self.cp, 0)
-
-    def _set_cell(self, value: int) -> None:
-        """Write the CPth cell, replacing the tape rather than editing it."""
-        self.cells = {**self.cells, self.cp: value}
 
     def _block(self, cell: _ReachableCell) -> tuple[str, ...]:
         """Return the three-by-three neighbourhood around a reachable cell.
@@ -533,106 +642,28 @@ class _Machine:
         return None
 
     def step(self) -> None:
-        """Execute the cell under the car, then drive it one cell further."""
+        """Execute the cell under the car, then drive it one cell further.
+
+        The shell: it reads the one input character an ``I`` cell needs and
+        writes the one an ``O`` cell produces, then hands the values to
+        :func:`_advance` and stores the run it returns.
+        """
         if self._done:
             return
         op = self.grid.op_at(self.row, self.col)
-        if op == "HALT":
-            self._done = True
-            return
-
-        # The driving state as the car arrives, for the graph lookup
-        # below.  An instruction moves CP and the tape but never the car,
-        # its heading or the latches, and ``U`` returns before the lookup.
-        state = self._state
-
-        # The cell on arrival, before this square's instruction, so a
-        # turning square's ``=`` sets up the road ahead without deciding it.
-        # Passed, not kept: it would look like snapshot state.
-        arrival_cell = self._cell()
-
-        if op == "INC":
-            self._set_cell(self._cell() + 1)
-        elif op == "DEC":
-            self._set_cell(self._cell() - 1)
-        elif op == "RIGHT":
-            self.cp += 1
-        elif op == "LEFT":
-            # An error, not a clamp: the CP is unsigned, so the cell it
-            # would name does not exist.  See the module docstring.
-            if not self.cp:
-                raise HaltError(
-                    "'_' at cell 0 would move the unsigned CP below zero",
-                    hint="move right with '=' before moving left with '_'",
-                )
-            self.cp -= 1
-        elif op == "IN":
-            self._set_cell(self.io.input_char())
+        value = None
+        if op == "IN":
+            value = self.io.input_char()
             self._input_reads += 1
-        elif op == "OUT":
-            try:
-                self.io.print_char(chr(self._cell()))
-            except ValueError:
-                raise HaltError(
-                    hint="keep character output values between 0 and 1114111"
-                ) from None
-        elif op == "TURN":
-            # The U-turn ends in the lane now on the right; turning in
-            # place leaves the car in the oncoming lane, where the hug's
-            # two right turns cancel it.  Old-heading latches are void.
-            # Via :func:`_drive` so the run and the graph agree; ``None``
-            # (no opposite lane) is a malformed street.
-            turned = _drive(self.grid, state, arrival_cell, arrival_cell)
-            if turned is None or turned == "halt":
-                raise HaltError(
-                    f"a U-turn at {arrival_cell} has nowhere to end: the "
-                    f"street has no opposite lane, which is narrower than "
-                    f"the spec allows",
-                    hint="widen the street so a U-turn has an opposite lane",
-                )
-            self._state = turned
-            return
-        elif op == "NOP":
-            # ``C``, space and every undefined character fold to NOP (see
-            # ``_Op``).  Spelled out rather than fallen through, so the
-            # ``else`` below is the checker's exhaustiveness proof.
-            pass
-        else:
-            # Unreachable, and checked to be: a glyph added to ``_Op``
-            # without an arm here fails the type check rather than
-            # silently behaving as a no-op.
-            assert_never(op)
-
-        # A memo of :func:`_drive` over every reachable state, keyed on the
-        # two reads' zero-ness; a miss (non-street geometry, or a state the
-        # search never enumerated) falls through to :func:`_drive` itself.
-        current_cell = self._cell()
-        edges = None if self._graph is None else self._graph.get(state)
-        successor = (
-            _drive(self.grid, state, arrival_cell, current_cell)
-            if edges is None
-            else edges[int(arrival_cell != 0), int(current_cell != 0)]
+        (self._state, self.cp, frozen, self._done), output = _advance(
+            (self._state, self.cp, MappingProxyType(self.cells), self._done),
+            self.grid,
+            self._graph,
+            value,
         )
-
-        if successor == "halt":
-            self._done = True
-            return
-        if successor is None:
-            if edges is None:
-                # No graph vouched for this state, so running out of road
-                # is the car's ordinary dead end: stop.
-                self._done = True
-                return
-            # ``_validate_total`` rejects a wedged state, so reaching one
-            # here means the graph and the validator disagree -- a bug in
-            # this module.  Halting quietly would hand back a truncated
-            # run as though it were the answer.
-            raise AssertionError(
-                f"no successor for {(self.row, self.col)} heading"
-                f" {self.heading}: the drive-state graph outlived"
-                " the totality check"
-            )
-        self._state = successor
+        self.cells = dict(frozen)
+        if output is not None:
+            self.io.print_char(chr(output))
 
     @staticmethod
     @functools.lru_cache(maxsize=16)

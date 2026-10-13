@@ -1,18 +1,122 @@
 # Boolean-generator coverage proofs
 
-The standalone [Polynomial proof](polynomial.tex) has a
-[Markdown companion](polynomial.md) for implementation bounds, measurements
-and counterexamples. [Factor](factor.md) proves `Theta(T log T)` text;
-[FRACTRAN](fractran.md) proves a super-linear address budget but linear
-language complexity through packing, trading characters for steps.
-[brainfuck-count](brainfuck-count.md) bounds distinct behaviours of
-`C`-character programs. [Vandevelo](vandevelo-sparse-tail.md) proves
-Ω(T log n) characters for the shipped bounded-sparse-cube construction;
-universal linear size and generation time remain open. Polynomial's lower bound imports
-Corollary 3.4 of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex), the companion
-manuscript bounding the coefficient mass of a polynomial multiple.
-`tests/proofs/test_citations.py` holds the numbered cross-references
-between them to the labels they name.
+Construction summaries use `T = 2**n` table entries; logarithms have a
+fixed base unless specified. Detailed derivations and research history are
+archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
+
+- Polynomial: <a id="polynomial-bound"></a> worst-case expanded integer-polynomial
+  source is `Theta(T**2 / log T)`. Ordered input overwrites the register;
+  maximal-width tables force `Omega(T/log T)` distinct positive real instruction
+  roots even with repeated roots, arbitrary read counts, operand signs and
+  unrecognized cofactors. Every multiple of their root product pays
+  `Omega(r**2 log r)` coefficient digits for `r` distinct roots. An uncapped
+  residual DAG has `O(T/log T)` states and at most six instructions per state;
+  multiplying its factors gives the matching text upper bound. Product notation
+  is outside this expanded-source model. The public 1934-instruction cap
+  still refuses some tables.
+  For worst-case minimum length `C_P(n)`, the limiting bracket for
+  `C_P(n)*n/T**2` is `(13/4)*log10(2)` through `(325/8)*log10(2)`
+  (0.978 through 12.23); the factor-12.5 gap and existence of the limit remain open.
+  Corollary 3.4 (Logarithmic mass) of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex) supplies the mass bound.
+  Lemma 2.1, Corollary 2.3 and Theorem 4.2 of [coefficient-mass-complex](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass-complex.tex) supply multisection and sign refinements.
+  Proposition 2.1 of [coefficient-mass-attainment](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass-attainment.tex) gives the confluent attainment construction.
+  With rendered length `L`, fixed libmpdec uncapped generation costs
+  `Theta((T**2/log T)**log2(3))` word operations; within the direct-FNT range
+  admitted by the public cap it is `Theta(T**2)`. Generated-family cold parsing
+  has the conservative bit bound `O(L**2 + D**4 M(H + D log D))`, where
+  `D` is degree, `H` coefficient bit length and `M` integer multiplication.
+  Arbitrary-source parsing is deterministic polynomial time in source length
+  `s`, except that an all-zero source with largest written exponent `E > 2s`
+  returns `E` instructions in `O(E)` output work. Sparse parsing avoids a
+  degree-sized list, uses gap splitting and exact integer/Gaussian-root recovery;
+  nearest-plane recovery is unique when the lattice minimum exceeds
+  `sqrt(16/3)*B` for a candidate norm bound `B`.
+  The separate common-norm Gaussian-factor result assumes
+  `a_j**2+c_j**2=R`, distinct prime powers `c_j=p_j**b_j`, `b_j>=2`, and
+  `Q(y)=prod(y**2-2(a_j**2-c_j**2)*y+R**2)` over `K>=2` factors.
+  Every nonzero integer multiple has at least `(K+3)/2` terms. Raw factors and
+  scaled reciprocal or anti-reciprocal multiples have logarithmic coefficient
+  mass at least `K**2*log(R)/16 >= K**2*log(K)/4`; arbitrary multiples remain
+  conjectural, and general register roots need not share a norm.
+  Controls: `src/esolangs/languages/polynomial/tests/test_boolean_polynomial.py`,
+  its `tests/proofs/test_polynomial_negatives.py`, and
+  `src/esolangs/languages/polynomial/tests/proof_polynomial.py`.
+- Factor: <a id="factor-bound"></a> worst-case decimal source has
+  `Theta(T log T)` digits for both the language and generator. A prime's residue
+  modulo 11 selects one of eight commands and its exponent is a run length.
+  Weighted exponent counting admits only `exp(O(D/log D))` behaviours at
+  `D` digits, forcing the lower bound; a linear decoded tree and short
+  prime windows supply the upper bound. Ignored residues and leading zeros
+  add no behaviours. The limiting bracket for minimum digits divided by
+  `T*n` is 0.11701409 through 0.29229475, with existence and sharp constant open.
+  Generation is bounded by `O(T + Q log log Q + D**log2(3))`, where `Q`
+  is the largest selected prime; a matching time lower bound is not established.
+  Generated-source cold decoding is polynomial; arbitrary-integer factorization
+  is not covered. Controls: `src/esolangs/languages/factor/tests/`.
+- FRACTRAN: <a id="fractran-bound"></a> worst-case Boolean source is `Theta(T)`.
+  The counting floor is `T/log2(15)-O(1)` characters. A shared decision diagram
+  stores `C=sum_d min(2**d, 2**(2**(n-d)))=O(T/log T)` states,
+  at most `C+n+1` primes and `2C+n` fractions. Its first-match rule branches
+  on an input prime; leaf fractions produce the answer and trailing fractions
+  clear unread set inputs. Runs fire at most `n+1` fractions on
+  `O(n log n)`-bit values. Distinct row addresses instead cost
+  `Theta(T log T)` text; that is a construction bound, not a language bound.
+  Indexed execution and literal scanning have different costs. The experimental
+  direct-mapping chunk construction gives `O(T)` bit work for generation,
+  sparse-factor loading and execution, with `O(T)` persistent source/index bits;
+  materializing the initial integer is outside this sparse-factor contract.
+  It does not replace the public decision-diagram generator.
+  Controls: `src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py`
+  and `src/esolangs/languages/fractran/tests/proofs/deep/`.
+- brainfuck: <a id="brainfuck-behaviours"></a> the exponential growth rate
+  of distinct behaviours of programs of at most `C` characters remains open.
+  On the repository's bi-infinite wrapping-byte tape, over all inputs,
+  the `liminf B(C)**(1/C)` lower bound is 4.24200 with EOF error and 3.79003
+  with EOF keep; corresponding `limsup` upper bounds are 6.885 and 7.1949.
+  For every fixed nonempty finite input set, the lower bound is 3.36614.
+  Rewrite automata and rational Perron inequalities certify upper bounds;
+  distinguishable output and nested-loop families supply lower bounds.
+  The old 7.0341 and 7.0194 certificates excluded legal `[-[]]` and are invalid
+  behaviour bounds. Exact arithmetic cannot repair an unsound rewrite.
+  Controls: `src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_count.py`
+  checks contextual rewrites, independent automata and positive counterexamples.
+- Malbolge: <a id="malbolge-bound"></a> the shipped hashed cascade reaches
+  fourteen inputs, positional addressing reaches fifteen and sixteen, and
+  seventeen remains open. Finite source space excludes some eighteen-input
+  tables, so mathematical totality is impossible. The load law allows at most
+  two final rows per answer cell; a one-cell-per-row-pair construction cannot
+  cover seventeen in the 59,049-cell store. This is not a universal seventeen-input
+  obstruction. Table-free memoized planning and one-pass fill are separate:
+  fill is `Theta(T+59049)`, with exactly half a cell assignment per row in the
+  positional build. Prefix sharing makes generation `Theta(T+59049)` through
+  ten inputs. Wider cold planners are separate searches; their finite-domain
+  measurements do not prove an asymptotic generation bound.
+  A native three-field capture control ran from reset over all 4,096 legal
+  record-and-neighbor glyph combinations at one fixed record address: 59,049
+  characters, 3,187 instruction cells and at most 3,607 steps. It preserved
+  the record and neighbor; seven cases matched Python and C whole states,
+  and an omitted-fold negative control failed. These scratch measurements
+  do not establish an integrated generator. The seventeen-input prefix,
+  native Boolean decoder placement and named source-symbol rules remain
+  unverified; the shipped cap stays sixteen.
+  Controls: `src/esolangs/languages/malbolge/tests/`; archived
+  seventeen-input tools are available at `09ab2fad:scripts/malbolge17/`.
+- Vandevelo: <a id="vandevelo-sparse-bound"></a> the shipped fixed-candidate
+  sparse construction has worst-case `Omega(T log n)` characters, not `O(T)`.
+  For `n>=100`, take `m` as the largest odd integer at most `T/n` and output
+  one exactly on unsigned inputs below `m`. Both affine shortcuts reject the
+  odd cardinalities, and the sparse route is selected. Each cube has dimension
+  at most 48, so at least `T/(2n*2**48)` disjoint cubes are required. Every
+  guard retains at least `n/2` independent equations and distinct identifiers;
+  the 66-character identifier alphabet forces
+  `L_n >= (T/2**51)*floor(log_66(n/4))`. Writing the source also forces
+  super-linear character work. This does not bound every legal program,
+  executed command count, or a construction with a growing candidate limit;
+  universal linear source and generation remain open. The finite odd-prefix
+  controls at eight and nine inputs executed 768 rows, using five/nine ones,
+  cube dimensions `(2,0)`/`(3,0)` and 204/221 characters. Those measurements
+  check the route, not the asymptotic bound. Controls remain in
+  `src/esolangs/languages/vandevelo/tests/`.
 
 The ledger records coverage of every `2**n`-bit table for every finite `n`.
 “Total” means mathematical coverage. Ignore explicit digit, instruction,
@@ -29,8 +133,12 @@ and `test_schemes.py` checks lookup and parameterized rows (`tree` and
 `all_generators.py` checks every construction: flipping each table row
 changes the emitted program at the tested arities, and each construction
 completes an arity ladder on both table shapes. This checks the counting half
-of each scheme. A Painter Ant, ArrowQueue, Container and BIO also have
-construction-specific proofs.
+of each scheme.
+
+- A Painter Ant also has construction-specific proofs.
+- ArrowQueue also has construction-specific proofs.
+- Container also has construction-specific proofs.
+- BIO also has construction-specific proofs.
 
 `python -m tests.proofs.deep <band>` selects declared cost bands: `verify`
 for the local gate, `ci` for the registry battery, `by-hand` for expensive
@@ -45,63 +153,70 @@ characters per table entry past each generator's last route change and holds
 every generator to it except those the scaling audit or this
 document's `cap` and `exception` rows already exempt. Exceeding the bound is
 evidence against linearity; passing it is not a
-proof. Factor passes at x2.11 despite its language-level super-linear bound
-([factor](factor.md)).  Polynomial's block-incidence lemma forces
-`Omega(T/log T)` distinct real instruction-root values even when roots
-repeat, and the slack certificate prices every multiple of their distinct-root
-product, giving `Omega(T**2 / log T)` for every program, whatever its read
-count: only the last two reads before a routing position can carry a residual
-that depends on its next input and not on it alone.  The argument is in
-[polynomial](polynomial.md).
+proof.
+
+- Factor passes at x2.11 despite its language-level super-linear bound
+  ([summary](#factor-bound)).
+
+- Polynomial's block-incidence lemma forces
+  `Omega(T/log T)` distinct real instruction-root values even when roots
+  repeat, and the slack certificate prices every multiple of their distinct-root
+  product, giving `Omega(T**2 / log T)` for every program, whatever its read
+  count: only the last two reads before a routing position can carry a residual
+  that depends on its next input and not on it alone.  The argument is in
+  [summary](#polynomial-bound).
 
 A `linear` row is within a constant of the worst-case optimum. A language with `c`
 source characters has fewer than `c**(L+1)` programs of length at most `L`,
 against `2**T` tables of length `T`, so some table needs
 `L >= T / log2(c)` characters -- `T/3` for brainfuck's eight commands.
-Factor at `Theta(T log T)` and Polynomial at `Theta(T**2 / log T)` provably
-exceed that floor; the `open` rows may also exceed it.
+The `open` rows may exceed that floor.
+
+- Factor at `Theta(T log T)` provably exceeds the counting floor.
+- Polynomial at `Theta(T**2 / log T)` provably exceeds the counting floor.
 
 
-Fargo's build bound uses a word RAM with `Theta(log T)`-bit words; input and
-output characters are charged. It does not claim linear bit complexity.
-For `T = 2**n`, its packing width is `w = max(2, 2**floor(log2(n)))`.
-For `n >= 2`, `n/2 < w <= n`. The within-word butterfly takes
-`(T/w) log2(w)` word operations, and the remaining transform takes
-`(T/w) (n - log2(w))`: together `T*n/w < 2T`. Mask construction costs
-`O(w log w)` characters; packing and unpacking cost `O(T)`.
+- Fargo:
+  Fargo's build bound uses a word RAM with `Theta(log T)`-bit words; input and
+  output characters are charged. It does not claim linear bit complexity.
+  For `T = 2**n`, its packing width is `w = max(2, 2**floor(log2(n)))`.
+  For `n >= 2`, `n/2 < w <= n`. The within-word butterfly takes
+  `(T/w) log2(w)` word operations, and the remaining transform takes
+  `(T/w) (n - log2(w))`: together `T*n/w < 2T`. Mask construction costs
+  `O(w log w)` characters; packing and unpacking cost `O(T)`.
 
-The arm rule uses the same truth functions and coefficient counts as the
-unpacked emitter. Counts come from a derived table: start with `[0]` and
-append every existing count plus one, `w/2` times. Its `2**(w/2)` entries
-are at most `sqrt(T)`; two lookups count a word. Above word width, each
-logical level scans `O(T/w)` words, for `O(T*n/w)` work. Below it, scalar
-nodes use a fixed number of word operations and lookups; their binary tree
-has at most `2T-1` nodes. The bounded five-input alternatives add only
-constant-size work.
+  The arm rule uses the same truth functions and coefficient counts as the
+  unpacked emitter. Counts come from a derived table: start with `[0]` and
+  append every existing count plus one, `w/2` times. Its `2**(w/2)` entries
+  are at most `sqrt(T)`; two lookups count a word. Above word width, each
+  logical level scans `O(T/w)` words, for `O(T*n/w)` work. Below it, scalar
+  nodes use a fixed number of word operations and lookups; their binary tree
+  has at most `2T-1` nodes. The bounded five-input alternatives add only
+  constant-size work.
 
-Identity-order literal indices at height `k` need `O(log(k+1))` characters;
-at most `O(T/2**k)` nodes emit them. Their sum is `O(T)`. Other orders can
-repeat high indices at leaves and emit `Theta(T log n)` characters, so their
-append-only emitters stop as soon as they cannot beat the identity source.
-The best source only shrinks. Four named permutations cost `O(T)` by index
-doubling, and each reordered emitter writes at most that linear budget.
-Thus both order selection and the final join stay inside the build bound.
+  Identity-order literal indices at height `k` need `O(log(k+1))` characters;
+  at most `O(T/2**k)` nodes emit them. Their sum is `O(T)`. Other orders can
+  repeat high indices at leaves and emit `Theta(T log n)` characters, so their
+  append-only emitters stop as soon as they cannot beat the identity source.
+  The best source only shrinks. Four named permutations cost `O(T)` by index
+  doubling, and each reordered emitter writes at most that linear budget.
+  Thus both order selection and the final join stay inside the build bound.
 
-For narrow output above five inputs, a bottom-up pass ranks prefix nodes
-using integer child IDs. Nodes are bucketed by syntax height, at most `2n+2`.
-Stable radix passes with `2**ceil(n/2)` bins intern each bucket by operator
-and child ranks. There are a constant number of passes per bucket, so total
-work is `O(T + n sqrt(T)) = O(T)`, without a hash-table assumption.
-At logical height `k` there are at most `T/2**k` occurrences
-and `2**(2**k)` truth functions. A deterministic arm/ANF rule produces only
-a constant number of wrapper nodes per function, plus `O(n)` literals.
-Split the height sum at `m = floor(log2(n/2))`: lower levels total
-`O(sqrt(T))` distinct nodes, upper levels `O(T/n)`. Since `sqrt(T)` and `n`
-are `O(T/n)`, there are `O(T/n)` definitions. Each label needs `O(n)`
-characters and is built with one final join, so both naming and definition
-text cost `O(T)`. Expanding a definition recovers the original expression;
-no source loop or additional input read is introduced. Default programs are
-unchanged; executed scaling regressions cover both layouts.
+  For narrow output above five inputs, a bottom-up pass ranks prefix nodes
+  using integer child IDs. Nodes are bucketed by syntax height, at most `2n+2`.
+  Stable radix passes with `2**ceil(n/2)` bins intern each bucket by operator
+  and child ranks. There are a constant number of passes per bucket, so total
+  work is `O(T + n sqrt(T)) = O(T)`, without a hash-table assumption.
+  At logical height `k` there are at most `T/2**k` occurrences
+  and `2**(2**k)` truth functions. A deterministic arm/ANF rule produces only
+  a constant number of wrapper nodes per function, plus `O(n)` literals.
+  Split the height sum at `m = floor(log2(n/2))`: lower levels total
+  `O(sqrt(T))` distinct nodes, upper levels `O(T/n)`. Since `sqrt(T)` and `n`
+  are `O(T/n)`, there are `O(T/n)` definitions. Each label needs `O(n)`
+  characters and is built with one final join, so both naming and definition
+  text cost `O(T)`. Expanding a definition recovers the original expression;
+  no source loop or additional input read is introduced. Default programs are
+  unchanged; executed scaling regressions cover both layouts.
 
 ## Proof schemes
 
@@ -161,59 +276,89 @@ smaller table and restoring the omitted, equal-width placeholders preserves
 every row.  This is only an optimization unless the cited inner construction
 is itself total.
 
-**Size dispatch.**  Some lookup rows ship two routes: a folded decision tree
-for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container;
-BrainIf's tree counts only the inputs it branches on — and the lookup above it.  Streetcode builds both at five inputs and keeps
-the shorter, so its crossover is where the two meet rather than a constant.
-BrainIf also competes with its input-forgetting residual DAG, proved below.
-Suffolk competes with a NOR cofactor DAG within its workspace ledger.
-Each route is total on its own domain and the lookup
-carries the universal claim, so the tree below the crossover is a size
-optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, BIO, B-tapemark,
-bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
-Cyclic tag, ///, Subleq, Dimensional, EGL, Eval, Fish, Flowchart,
-Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
-Thue and Unsquare keep no tree route at all: A Painter
-Ant's
-answer strip is smaller than a tree at every arity, Alight indexes a string
-literal, bit~ lands the pointer on one tape cell an entry and walks the
-bit it finds home, Bitwise Cyclic Tag has no branch to fold a tree into --
-the commands it runs are a fixed cyclic sequence, so every table of a given
-arity whose inputs all matter emits the same length, Befunge and Fish read one grid cell per table
-entry with `g`, BIO's
-telescope is one nested level per row whatever the table says (a degenerate
-table only spares it the flat edges' adjustments, under the fold threshold
-once the doubling between the input runs is in the text), B-tapemark copies
-one mark per row onto the blank grid and walks the pointer to it, Circlefuck
-deletes the entries before the one the index names and prints what the
-deletions leave under the pointer, Clockwise
-writes one cell per entry in a countdown row and stops the pointer on the
-one the index names, Collatz
-Multiverse writes one cell per four table rows at every arity, Dimensional
-paints one cell an entry along dimension 1 and a bare `>` displaces the
-pointer onto it by the bit it is standing on, EGL paints one
-cell an entry and walks a pointer to it, Eval is one linear
-lookup at every arity, Flowchart pushes one deque entry a row and walks
-the cursor to it (its tree is the width-constrained route), Forbin paints a
-128-entry block as one call's argument list at every arity and its branches above seven inputs choose a block rather
-than route a table, Packlang paints one array block and indexes it at every
-arity, Minsky Swap's `~`
-cascade routes the index to one of two shared leaves with a one-digit target
-per row, Modulous pushes the whole table as one string literal and spends
-the row index popping it down to the answer, NoComment switches between two lookups at four inputs, Qoibl divides one
-literal by the power of two its reads build,
-SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
-row whatever the table says,
-Unsquare pushes the whole table onto the stack a cell a row and pops the row
-index off the top of it, Thue makes the table its starting state and rewrites
-every adjacent pair down to one per input; none has a subtree to
-fold.  Collatz Multiverse, Eval, NoComment and Unsquare fold a degenerate
-table anyway, because their lookup route is what shrinks it -- Unsquare through
-`essential_inputs`, which halves its table, and Collatz
-Multiverse because a table with few distinct nibbles needs fewer cell
-constants and a shorter decoder; that is why the fold discriminator
-in `test_schemes.py` carries them as documented exceptions.
+**Size dispatch.** Some lookup rows ship a folded decision tree through a
+fixed crossover (normally `n <= 4`) and a lookup above it. Each route is total
+on its own domain; the lookup carries the universal claim, so the tree is a
+size optimization rather than part of the proof. A width-constrained build
+may take the tree at any arity.
+
+- Container uses a folded tree through `n <= 6`.
+- BrainIf's tree counts only branched-on inputs. It also competes with its
+  input-forgetting residual DAG, proved below.
+- Streetcode builds both routes at five inputs and keeps the shorter, so its
+  crossover is where the two meet rather than a constant.
+- Suffolk competes with a NOR cofactor DAG within its workspace ledger.
+
+- Befunge reads one grid cell per table entry with `g`.
+
+These generators keep no unconstrained tree route and have no subtree to fold:
+
+- A Painter Ant: Its answer strip is smaller than a tree at every arity.
+  Its corridor stops at the trailing run of equal answers (36.4% saving).
+  An ignored input costs a bare `SN` through `input_weights`.
+- Alight: Indexes a string literal.
+- BIO: Its telescope has one nested level per row whatever the table says. A
+  degenerate table only spares the flat edges’ adjustments, below the fold
+  threshold once doubling between input runs is included.
+  Parks its index while an ignored setter runs.
+- B-tapemark: Copies one mark per row onto the blank grid and walks the pointer
+  to it.
+- bit~: Lands the pointer on one tape cell per entry and walks the bit home.
+  Indexes the projected table it is handed.
+- Bitwise Cyclic Tag: Has no branch to fold a tree into: commands run in a fixed
+  cyclic sequence. Every table of a given arity whose inputs all matter emits
+  the same length.
+  An ignored input costs a bare `0` through `input_weights`.
+- Circlefuck: Deletes entries before the indexed one and prints what remains
+  under the pointer.
+  Tabulates only essential inputs.
+- Clockwise: Writes one cell per entry in a countdown row and stops on the
+  indexed cell.
+  An ignored input reads seven bits before the next input overwrites them.
+- Collatz Multiverse: Writes one cell per four table rows at every arity.
+  Degenerate tables with few distinct nibbles need fewer cell constants and a
+  shorter decoder; the fold discriminator in `test_schemes.py` records this
+  exception.
+- Cyclic tag: Alternating table-bit and empty productions select the indexed
+  answer.
+  An ignored input costs an empty rule through `input_weights`.
+- ///: Fixed substitution sweeps select the indexed table entry.
+  An ignored input costs an `X`-deleted bit through `input_weights`.
+- Subleq: A packed decoder selects the indexed table bit.
+- Dimensional: Paints one cell per entry along dimension 1; a bare `>` displaces
+  the pointer by the bit it stands on. Painting only as far as the last
+  essential input makes a constant-zero tail cheaper (6.9% on the best
+  one-dependency table), without a subtree.
+- EGL: Paints one cell per entry and walks a pointer to it.
+- Eval: Uses a linear lookup at every arity. Its lookup shrinks degenerate
+  tables; the fold discriminator in `test_schemes.py` records this exception.
+- Fish: Reads one grid cell per table entry with `g`.
+  An ignored input is read and popped with `i~`.
+- Flowchart: Pushes one deque entry per row and walks the cursor to it. Its tree
+  is the width-constrained route.
+  An ignored input skips its eight bits.
+- Forbin: Paints a 128-entry block as one call’s argument list at every arity;
+  branches above seven inputs choose a block rather than route a table.
+  An ignored input is read into the scratch name through `input_weights`.
+- Minsky Swap: Its `~` cascade routes the index to two shared leaves with a one-
+  digit target per row.
+  An ignored input costs a drained `~ ~` through `input_weights`.
+- Modulous: Pushes the whole table as a string literal and spends the row index
+  popping down to the answer.
+- NoComment: Switches between two lookups at four inputs. Its lookup shrinks
+  degenerate tables; the fold discriminator in `test_schemes.py` records this
+  exception.
+- Packlang: Paints one array block and indexes it at every arity.
+  An ignored input is read bare.
+- Qoibl: Divides one literal by the power of two its reads build.
+- SLOW ACV MAMMALIAN: Its read chain emits one fixed-width leaf slot per row
+  whatever the table says.
+- Thue: Makes the table its starting state and rewrites every adjacent pair down
+  to one per input.
+- Unsquare: Pushes one stack cell per row and pops the row index off the top.
+  Pushes only cells the essential inputs address.
+  `essential_inputs` halves degenerate tables; the fold discriminator in
+  `test_schemes.py` records this exception.
 
 ## Generator ledger
 
@@ -244,18 +389,26 @@ most x1.5 an input, `linear` at most x2.15, `T log T` (T cells of `log T`-bit
 values) at most x2.5; `unmeasured` says why.  `tests/proofs/deep/execution.py`
 and `tests/proofs/deep/workspace.py` measure halting rows on parity tables,
 and a `poly n` cell on a seeded dense table too: parity has n ANF terms and
-hid Fargo's, Forþ's, INTERCAL's, Vandevelo's, S\*bleq's and 6-5's `T`.  That
-dense series runs to n=12 and its increments, which cancel a fixed overhead,
-may grow at most x1.4 an input: NoComment's `T/32`-byte stack read x1.00 on
-the ratio behind a 32,768-bit tape and x1.99 on the increments, SLOW ACV
-MAMMALIAN x1.43.  Vandevelo is exempt from the increments: its registers grow
-~sqrt(T) until an n*n cap binds at n=14, past what the band can step.  A
-`poly n` cell also names its mechanism, read from the generator.  A cell
+can hide a generator's T-dependent work. The dense series runs to n=12; its
+increments, which cancel fixed overhead, may grow at most x1.4 an input.
+A `poly n` cell also names its mechanism, read from the generator. A cell
 that opens `worst` gives a formula derived from the code and reached by some
-table; `at most`, one never exceeded.  `bl(x)` is the bit length of x, `L`
-the program's length and `T` is 2^n.  `tests/proofs/test_execution_formulas.py`
-and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
-`at most` is also proved for every n.
+table; `at most`, one never exceeded. `bl(x)` is the bit length of x, `L`
+the program's length and `T` is 2^n. `tests/proofs/test_execution_formulas.py`
+and `tests/proofs/test_workspace_formulas.py` run them at small n.
+
+- Fargo's T-dependent work was hidden by parity.
+- Forþ's T-dependent work was hidden by parity.
+- INTERCAL's T-dependent work was hidden by parity.
+- Vandevelo's T-dependent work was hidden by parity. It is exempt from the
+  increments: registers grow ~sqrt(T) until an n*n cap binds at n=14, past
+  what the band can step.
+- S*bleq's T-dependent work was hidden by parity.
+- 6-5's T-dependent work was hidden by parity.
+- NoComment's `T/32`-byte stack read x1.00 on the ratio behind a 32,768-bit
+  tape and x1.99 on the increments.
+- SLOW ACV MAMMALIAN read x1.43 on the increments.
+- Painfuck's `at most` formula is also proved for every n.
 
 <!-- PROOF-STATUS:START -->
 
@@ -281,8 +434,8 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | /// | parameterized lookup | binary-to-unary substitutions form the row index; T escaped sweeps consume indexed entries before decoding one answer and deleting the suffix | linear: T fixed-size sweeps and 2T table characters | linear: worst 6T + n + 19 steps: rule parses, failed searches and substitutions | linear: worst 8L + 56 + 8max(0,T-15) bits: the program string, rewritten in place |
 | Subleq | finite lookup | shared direct-jump residual DAG or packed decoder with interned chunk payloads | linear: O(T/n) residuals or packed chunks, O(n)-digit addresses or payloads | linear: at most 8T + (7n+5)(⌊T/n⌋-1) + 23n - 6 steps: bank selection adds two | linear: at most max(T+2C+(C+2)bl(B+17+2C)+I·bl(B)+(2I-1)bl(B+17)+R, M·max(7,bl(M))+bl(M)+bl(n)) bits: decoder or tree, M=19+10n+6D |
 | BrainIf | tree | equal cofactors share one layered DAG node, and an ignored input is read by the next layer's nodes; spatial lookup remains a candidate | linear: O(T/n) nodes with O(n)-digit addresses | poly n: worst 4n + 50 commands, one DAG path and a tail | poly n: worst 13 + bl(lines) + bl(n) bits: two cells, a line cursor |
-| Circlefuck | linear lookup | the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer | linear: bounded dependency scan and canonical residual IDs | linear: worst (2n+13)T + 63n + 89 + 2S to n = 7, S the codes of program characters 1..n | linear: worst 6L + 10n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the tape |
-| Circuit Diagram | tree | finite planar routing with fixed-size shared cofactor pools | linear: prefix H-layout side C sqrt(T), fixed-size cofactor pools | poly n: worst 2n + 1 commands; at most 2n + 2 past n = 8 | linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses |
+| Circlefuck | linear lookup | the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer | linear: bounded dependency scan and canonical residual IDs | linear: worst (2n+13)T + 94n + 89 + 2S to n = 7, S the codes of program characters 1..n | linear: worst 6L + 12n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the tape |
+| Circuit Diagram | tree | complete residual folds or a strictly smaller emitted fallback | linear: emitted text; fixed-order residual DAGs costed before rendering | poly n: worst 2n + 1 commands; at most 2n + 2 past n = 8 | linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses |
 | Clockwise | linear lookup | the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit | linear: five table rows of 2T columns, doubling gadgets whose widths halve downward | linear: worst 10T + 20n + 30 steps: the pointer's path to the last row | poly n: worst 57n + 50 + bl(2n+14) + bl(2^(n+1)+9n+1) bits: 7n-character queue |
 | Collatz Multiverse | finite lookup | an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it | linear: one line per four rows, a 64-cell decoder, 3n index lines | linear: at most T/4 + 3n + 130 lines to n = 8: one step per line, no branching | T log T: at most ⌈T/4⌉(bl(⌊L/17⌋)+6) + 64(bl(⌊L/17⌋)+1) + (n²+168)(8n+bl(L)+9)/2 + 2bl(L) + 115 bits: arrays, registers |
 | Container | finite lookup | the table is the prefix sum of its own steps, summed against a row counter that is live for one tick | linear: one line per step in the table, halting in 2n+2 ticks | poly n: worst 2n + 2 commands, a threshold build past n = 6 | poly n: worst 25n + 154 + bl(2n+2) + 2bl(n) bits, n in 7..24 |
@@ -293,7 +446,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | Dimensional | linear lookup | a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1 | linear: 2T table characters plus at most a fixed gadget per input | linear: at most 15T - 8n + 37 commands: paint 2T + 2, then 13 per index unit doubled | T log T: worst Σ_{k<T} bl(k) + 5T + n(n-1)/2 + 4n + 6 + bl(2T+20n+56) + bl(2n-1) bits |
 | EGL | finite lookup | row 1 is painted with the table and each essential input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell | linear: T painted cells, guard weights sum to T - 1 | linear: worst 3T + 52n + 3 commands: paint at most T-1 ones; weights sum to T-1 | linear: worst 2T + 2n + 7 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of T |
 | Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: T literal plus halving `;` runs under T | linear: worst 2T + 13n + 1 commands: one per program character, then the final frame pop | linear: worst 8L + T + n + 2 + bl(L) bits: frame program text and a stack |
-| Factor | tree | Brainfuck tree over the essential inputs followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence; unused level flags defer repeated residuals in depth order | lower bound: tight language and generated Theta(T log T) ([factor](factor.md)) | poly n: worst 265n + 231 commands; the prelude is at most 247n + 240 past n=1 | poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(51·2^(n-2)+16n+14) bits |
+| Factor | tree | Brainfuck tree over the essential inputs followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence; unused level flags defer repeated residuals in depth order | lower bound: tight language and generated Theta(T log T) ([summary](#factor-bound)) | poly n: worst 265n + 231 commands; the prelude is at most 247n + 240 past n=1 | poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(51·2^(n-2)+16n+14) bits |
 | FALSE | tree | — | linear: 12 characters an internal node, two a leaf | poly n: at most min(12n + 69, 10n + 99) commands, 26 stored lambdas | poly n: at most (2n+56)(n+4) + n + 1 + bl(n) bits: 26 lambdas |
 | Fish | finite lookup | the inputs form a Horner row index and `g` reads that column from the table row | linear: T table cells, one g at the index | poly n: worst 9n + 9 commands, n Horner reads and one `g` | poly n: worst n + 13 + bl(9n+8) + bl(n) bits: one stack, x |
 | Fargo | tree | finite folded layout | linear: word-packed transform and emission | linear: at most 5T + 1 commands past n = 5, else 15T/2 - 4: each token runs once | linear: at most 16(L - 3) + bl(L) + 11 bits past n = 5: one frame's tokens, pending calls |
@@ -307,8 +460,8 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | INTERCAL | parameterized tree | equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree | linear: reverse-depth numbering confines long names near the root | linear: at most 2n + 3 + Σ_{0<l<n} min(2^l, 2^(2^(n-l)) - 2) statements, one per named node | linear: at most 9S - 18 + Σ_{k≤S-2} bl(k) + bl(S) bits, S the Execution bound: one keyed bit per variable |
 | Jaune | finite lookup | a spatial table reached with two labels, against a hoisted tree that lays out each distinct subtable once and jumps to it | linear: two cells per row, unary weights sum T - 1 | poly n: at most 8n - 2 commands, one root-to-leaf path | poly n: at most n + 1 + bl(5·2^n+5n-4) + bl(n-1) + bl(2n-1) bits |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T | linear: at most 18T + 56n + 5 commands past n = 4: one pass along the weighted row | linear: at most 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells |
-| Line | tree | finite decision trees can store only essential inputs; guarded ancestor returns share a residual through a consumed input | linear: alternating subtree extents bound rectangular area by O(T) | poly n: worst 5n commands; shared returns retain this bound | poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) bits past n = 4 |
-| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([malbolge-scaling](malbolge-scaling.md)) | measured: fixed 59049-cell store through n <= 16 | unmeasured: worst 478n + 1459 steps for n ≤ 10; eleven to sixteen are separate builds | poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag |
+| Line | tree | finite decision trees preserve totality; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback | linear: complete residual models and area-admitted rasters cost O(T) | poly n: worst 5n commands; complete folds retain this bound | poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) bits past n = 4 |
+| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound)) | measured: fixed 59049-cell store through n <= 16 | unmeasured: worst 478n + 1459 steps for n ≤ 10; eleven to sixteen are separate builds | poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag |
 | Minifuck | parameterized construction | affine or two-residual byte accumulator; budgeted stored residuals; total positional `_mux` fallback | linear: shared tape text admitted within the positional mux budget | linear: at most L commands: straight-line, the cursor never moves back | linear: worst 6T + 30 + bl(6T+28) + bl(6T+30) + bl(L) bits past n = 4: a tape bit-integer |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity whose inputs all matter renders to the same length (an ignored input's stage is a bare `~ ~`) | linear: cascade routes to two shared leaves, one-digit targets | linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down | poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor |
 | Modulous | linear lookup | the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard | linear: T-character literal, one read block an input | linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded | linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack |
@@ -318,7 +471,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1) | poly n: at most ceil(3n^2 / 4) + 20n + 4 commands, one path | poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n |
 | Piet | finite lookup | each table entry is pushed and an input index selects its output; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels | linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation | linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack |
 | Piet++ | finite lookup | Piet's lookup recoloured into Piet++ deltas: each table entry is pushed and an input index rolls its output up; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels | linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation | linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack |
-| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) | unmeasured: exempt as a cap row | poly n: at most bl(min(10T-7,1934) + 10) + 1 + max(bl(n+3), bl(49(M-1))) + 2bl(n) bits, M = max_k min(2^k, 2^(2^(n-k))) |
+| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([summary](#polynomial-bound)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([summary](#polynomial-bound)) | unmeasured: exempt as a cap row | poly n: at most bl(min(10T-7,1934) + 10) + 1 + max(bl(n+3), bl(49(M-1))) + 2bl(n) bits, M = max_k min(2^k, 2^(2^(n-k))) |
 | Qoibl | linear lookup | the table is one binary literal, divided by the power of two the reads build | linear: T-bit literal, one squaring statement per input | poly n: worst n + 2 commands, one statement per input | linear: worst T + 3 + bl(n) + bl(n+2) bits: variables 0 and 1 |
 | RAM0 | parameterized tree | the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out, and the straight-line lookup is kept as a candidate | linear: O(T/n) distinct subtables, O(n) commands each | poly n: worst n^2 + 8n + 5 commands, one root-to-leaf path | poly n: worst n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a)) bits, S the token count |
 | ROTfuck | finite lookup | every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count | linear: bounded dependency scan and canonical residual IDs | linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: NAND's all-ones row, walks quadratic per digit | linear: at most 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n) bits: 2T + 7 cells |
@@ -380,7 +533,7 @@ Symbols the formula cells use:
   computes at most one table, so some 18-input tables have no Malbolge program;
   no generator can be total under this interpreter's language semantics.  The shipped
   construction reaches sixteen inputs, one below that wall:
-  [malbolge-scaling](malbolge-scaling.md) measures why the hashed cascade stopped at
+  [summary](#malbolge-bound) measures why the hashed cascade stopped at
   fourteen (the depth a truth table forces climbs past any decoder pass count as the
   answer-cell load rises), gives the positional build that covers fifteen and sixteen with
   no collisions, and shows why seventeen is beyond any build spending a cell per row
@@ -400,35 +553,41 @@ The remaining `cap` rows do have a uniform lift argument.
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
 
-Grapheme left this section when its tree did: the table is one int-mode
-literal and the index is an accumulator, so no arity needs a second variable
-and there is nothing left to run out of.  6-5 left when its walk stopped
-spending a label per input.
-NoComment left when its rows stopped living on the tape: the index is pushed
-as byte-sized stage amounts, a chain of uniform six-command groups pops and
-skips its way to the row's group, and every group after it adds the
-difference between its row and the next, so the landing cell telescopes to
-`table[index]` on six cells at any arity.
-`8n` names the n-th `4` of the program and the operand characters stop at
-35, so a walk that branches every bit with its own jump ends at 35 inputs;
-the looped walk (`_six_five_looped`) marks each row with its 2-adic
-valuation in sixes, and a bit's advance is a loop to the first row past
-the pointer whose mark reads zero — the first row whose valuation is
-exactly `n-1-i`, which is the row `2**(n-1-i)` ahead, because the pointer
-stands on an even multiple of that stride.  The marks are kept at
-`6 * (v - (n-1-i))` by `n-1` decrement passes before the first bit and one
-increment pass after each, so every loop tests a sentinel or a zero and
-the label bill is the loop count, sixteen.  The marks sum to `2**n - n - 1`,
-so the program is linear; every row of every table at seven inputs and
-under has been executed, and the dispatch reaches the loop only past 35.
-Factor left when its digit budget was retired: the budget (4300, then
-16000, then 500000 digits) was a size policy pinned to the arity the
-suite swept, never a ceiling of the language's -- the generator renders
-the integer and the interpreter parses it with CPython's conversion
-guard lifted on both sides -- so the lift argument above *is* the
-construction.  Parity at thirteen inputs is 966568 digits, built in
-three seconds with the prime powers multiplied as a balanced tree, and
-the interpreter decodes it to the tree the generator encoded.
+### Retired resource ceilings
+
+- Grapheme left this section when its tree did: the table is one int-mode
+  literal and the index is an accumulator, so no arity needs a second variable
+  and there is nothing left to run out of.
+
+- 6-5 left when its walk stopped
+  spending a label per input.
+  `8n` names the n-th `4` of the program and the operand characters stop at
+  35, so a walk that branches every bit with its own jump ends at 35 inputs;
+  the looped walk (`_six_five_looped`) marks each row with its 2-adic
+  valuation in sixes, and a bit's advance is a loop to the first row past
+  the pointer whose mark reads zero — the first row whose valuation is
+  exactly `n-1-i`, which is the row `2**(n-1-i)` ahead, because the pointer
+  stands on an even multiple of that stride.  The marks are kept at
+  `6 * (v - (n-1-i))` by `n-1` decrement passes before the first bit and one
+  increment pass after each, so every loop tests a sentinel or a zero and
+  the label bill is the loop count, sixteen.  The marks sum to `2**n - n - 1`,
+  so the program is linear; every row of every table at seven inputs and
+  under has been executed, and the dispatch reaches the loop only past 35.
+
+- NoComment left when its rows stopped living on the tape: the index is pushed
+  as byte-sized stage amounts, a chain of uniform six-command groups pops and
+  skips its way to the row's group, and every group after it adds the
+  difference between its row and the next, so the landing cell telescopes to
+  `table[index]` on six cells at any arity.
+
+- Factor left when its digit budget was retired: the budget (4300, then
+  16000, then 500000 digits) was a size policy pinned to the arity the
+  suite swept, never a ceiling of the language's -- the generator renders
+  the integer and the interpreter parses it with CPython's conversion
+  guard lifted on both sides -- so the lift argument above *is* the
+  construction.  Parity at thirteen inputs is 966568 digits, built in
+  three seconds with the prime powers multiplied as a balanced tree, and
+  the interpreter decodes it to the tree the generator encoded.
 
 <!-- PROOF-TOTALS:START -->
 
@@ -445,10 +604,11 @@ Every other row is `Total` or theoretically total past a resource ceiling.
 Call a layered construction input-forgetting when, just before each read,
 its data store and pointer depend only on depth; the control location carries
 the residual function. Ordered reads alone do not imply this property:
-`,>,>,<<.` reaches one cursor with four stores after two reads. The shipped
-BrainIf residual-DAG candidate does satisfy it. Its first input cell is zero;
-before each later read, `if 48 increment` maps the prior Boolean byte to 49.
-The one input then overwrites it. No earlier input remains in the store.
+`,>,>,<<.` reaches one cursor with four stores after two reads.
+
+- BrainIf's residual-DAG candidate satisfies it. Its first input cell is zero;
+  before each later read, `if 48 increment` maps the prior Boolean byte to 49.
+  The one input then overwrites it. No earlier input remains in the store.
 
 After `k` reads, distinct residual functions require distinct states: equal
 states would execute identically on every common suffix. At depth `k` there
@@ -465,251 +625,253 @@ the total is below `12T/n`. For a matching lower bound, at remaining depth
 There are `T/2**(r+1) >= T/(2n)` prefixes and enough different residuals
 by maximality of `r`; every input-forgetting realization needs that width.
 
-BrainIf emits four lines per DAG node, three at the root. Destinations have
-`O(n)` digits, so the worst-case source is `O(T)`. Two shared output tails
-add constant text. A run consumes exactly `n` inputs in order and executes
-at most `4n+50` lines. The zero tail moves to a virgin cell only when the
-last byte is 49, then builds 48; the one tail increments 48 if needed and
-prints 49. All gotos go forward, so termination is structural.
-Interning and writing the labels cost `O(T)` in the repository's
-`Theta(n)`-bit table/index word model. This does not assert linear bit work.
+- BrainIf emits four lines per DAG node, three at the root. Destinations have
+  `O(n)` digits, so the worst-case source is `O(T)`. Two shared output tails
+  add constant text. A run consumes exactly `n` inputs in order and executes
+  at most `4n+50` lines. The zero tail moves to a virgin cell only when the
+  last byte is 49, then builds 48; the one tail increments 48 if needed and
+  prints 49. All gotos go forward, so termination is structural.
+  Interning and writing the labels cost `O(T)` in the repository's
+  `Theta(n)`-bit table/index word model. This does not assert linear bit work.
 
-The public generator keeps the shorter source against the tree/spatial
-candidate; width requests retain that older route. Every three-input table
-shrinks: total characters `319576 -> 291524` (8.78%), summed executed
-lines `134984 -> 74440` (44.85%), with no table growing or slowing.
-All 2,120 rows through three inputs execute; constants, parity and four
-seeded tables per arity four through six also execute every row. A separate
-200-table five-input sample gives `573675 -> 360230` characters and
-`1501446 -> 280080` lines. Full-store boundary checks confirm erasure before
-the next read. The controls are in `tests/proofs/test_research_tracks.py`.
+  The public generator keeps the shorter source against the tree/spatial
+  candidate; width requests retain that older route. Every three-input table
+  shrinks: total characters `319576 -> 291524` (8.78%), summed executed
+  lines `134984 -> 74440` (44.85%), with no table growing or slowing.
+  All 2,120 rows through three inputs execute; constants, parity and four
+  seeded tables per arity four through six also execute every row. A separate
+  200-table five-input sample gives `573675 -> 360230` characters and
+  `1501446 -> 280080` lines. Full-store boundary checks confirm erasure before
+  the next read. The controls are in `tests/proofs/test_research_tracks.py`.
 
 
-## Vandevelo identifier and fallback audit
+## Identifier and fallback audit
 
-The construction bounds register upkeep by `O(T)` lines, but identifiers
-cost `O(log n)` characters per occurrence. Command count is proved linear
-below. The build's charge leaves child rebuilds unbounded, and
-dual-basis core work has only a super-linear aggregate bound. The
-audit marks size `Measured`, keeping its regression gate without claiming
-an asymptotic proof.
+- Vandevelo: <a id="vandevelo-identifier-and-fallback-audit"></a>
 
-The audit counts identifier characters, sampled fallback calls, pair draws
-and the cosets each draw visits. A forced
-six-input span-invariant control fires the fallback once: four draws over
-its three cosets. Its selected direction has exactly eight pairs, checked
-directly. The default corpus executes 66 tables through six inputs and
-2,772 rows across original and renamed programs; one fallback call draws
-five times and visits 30 cosets.
+  The construction bounds register upkeep by `O(T)` lines, but identifiers
+  cost `O(log n)` characters per occurrence. Command count is proved linear
+  below. The build's charge leaves child rebuilds unbounded, and
+  dual-basis core work has only a super-linear aggregate bound. The
+  audit marks size `Measured`, keeping its regression gate without claiming
+  an asymptotic proof.
 
-The tested naming rule assigns the shortest existing names to the most
-frequent identifiers, replacing tokens simultaneously. On `Random(0)`'s
-12-input dense table, source shrinks from 32,269 to 31,942 characters
-(1.01%); its 4,414 identifier occurrences occupy 5,273 characters before
-renaming. Sixteen evenly spaced input rows, including both endpoints,
-execute under both spellings and match the table. The Vandevelo profiler that
-measured it was removed; it ran with `--min-inputs 12 --max-inputs 12
---random-cases 1 --sample-rows 16`.
-The rule misses the 5% shipping threshold and retains growing identifier
-lengths, so it remains an experiment. Neither gap is closed by this audit.
+  The audit counts identifier characters, sampled fallback calls, pair draws
+  and the cosets each draw visits. A forced
+  six-input span-invariant control fires the fallback once: four draws over
+  its three cosets. Its selected direction has exactly eight pairs, checked
+  directly. The default corpus executes 66 tables through six inputs and
+  2,772 rows across original and renamed programs; one fallback call draws
+  five times and visits 30 cosets.
 
-The clause bound holds for every table. Its proof needs one direction
-per level holding half the pigeonhole average, on two chains: the first,
-which sets the opening phase, and the certified one, which alone may drop
-it. `_assure` checks that at every level of both. When no candidate
-qualifies, it finds one in `O(|S| * (j + 1))` work. Bucket the coset
-representatives by all but `a` free coordinates, with `2**a >= 2**(m+1)/q`
-in a quotient of dimension `m` holding `q` cosets. Cauchy--Schwarz puts
-`(2**a - 1)` times the threshold inside buckets, so about `2*q` pair
-differences reach it by pigeonhole. Such a direction gives
-quotient density `eps' >= eps**2/4`, so `log2(1/eps) + 2` at most doubles
-a level, and the chain's cubes exceed `n/(2*(log2(1/eps) + 2))` points.
-Over the density bands `(2**-(i+1), 2**-i]` that is under `16*2**n/n`
-dense clauses; the sparse tail, below density `1/max(48, n)`, adds at most
-`2**n/n`. On a corpus through n=13 `_assure` checked 1,712 levels and
-never computed, so output is byte-identical. With candidates and the
-sampled fallback disabled, it alone keeps n=8 and n=10 random tables under
-`T/n` clauses (`tests/generators/test_boolean_vandevelo.py`).
+  The tested naming rule assigns the shortest existing names to the most
+  frequent identifiers, replacing tokens simultaneously. On `Random(0)`'s
+  12-input dense table, source shrinks from 32,269 to 31,942 characters
+  (1.01%); its 4,414 identifier occurrences occupy 5,273 characters before
+  renaming. Sixteen evenly spaced input rows, including both endpoints,
+  execute under both spellings and match the table. The Vandevelo profiler that
+  measured it was removed; it ran with `--min-inputs 12 --max-inputs 12
+  --random-cases 1 --sample-rows 16`.
+  The rule misses the 5% shipping threshold and retains growing identifier
+  lengths, so it remains an experiment. Neither gap is closed by this audit.
 
-Commands per row are therefore linear. A halting row fails one part of
-each guard, and every value is a strict boolean. So a register toggle
-costs five commands, a part at most five, and an input read one. Upkeep
-is at most the constraints' total weight, `4*n*C + 4*T` with `C` clauses,
-and parts are at most `n*C`. With `C <= 17*2**n/n`, a row runs under
-`25*n*C + 20*T + n + 1 = O(T)` commands, so the execution-time cell is
-Linear. The affine, coset and complement paths emit at most `n` parts
-in all.
+  The clause bound holds for every table. Its proof needs one direction
+  per level holding half the pigeonhole average, on two chains: the first,
+  which sets the opening phase, and the certified one, which alone may drop
+  it. `_assure` checks that at every level of both. When no candidate
+  qualifies, it finds one in `O(|S| * (j + 1))` work. Bucket the coset
+  representatives by all but `a` free coordinates, with `2**a >= 2**(m+1)/q`
+  in a quotient of dimension `m` holding `q` cosets. Cauchy--Schwarz puts
+  `(2**a - 1)` times the threshold inside buckets, so about `2*q` pair
+  differences reach it by pigeonhole. Such a direction gives
+  quotient density `eps' >= eps**2/4`, so `log2(1/eps) + 2` at most doubles
+  a level, and the chain's cubes exceed `n/(2*(log2(1/eps) + 2))` points.
+  Over the density bands `(2**-(i+1), 2**-i]` that is under `16*2**n/n`
+  dense clauses; the sparse tail, below density `1/max(48, n)`, adds at most
+  `2**n/n`. On a corpus through n=13 `_assure` checked 1,712 levels and
+  never computed, so output is byte-identical. With candidates and the
+  sampled fallback disabled, it alone keeps n=8 and n=10 random tables under
+  `T/n` clauses (`tests/generators/test_boolean_vandevelo.py`).
 
-Generation time is measured flat but not proved linear. A node holds one
-representative per coset of its span, so its work is its coset count,
-which at least halves a level. That retires the near-full wall: with `k`
-zeros the first chain keeps two cosets for `n - log2(k) - 1` levels, and
-nodes that held points paid at least `T*(n - log2(k) - 2)`. Output is
-byte-identical. Element visits per entry at n=10..14: three zeros
-2,700--3,200 (was 16,800--23,600), eight zeros 3,400--3,800 (was
-19,000--28,400), density 0.9 2,400--2,700 (was 7,700--8,700), dense
-500--900 (was 940--1,920), quadratic forms 110--120 (was 220--320).
-Best-of-three time, three zeros, n=11..15: 290--332 us a row, against
-1,237--1,696 at n=11..14 before; dense 76--108.
+  Commands per row are therefore linear. A halting row fails one part of
+  each guard, and every value is a strict boolean. So a register toggle
+  costs five commands, a part at most five, and an input read one. Upkeep
+  is at most the constraints' total weight, `4*n*C + 4*T` with `C` clauses,
+  and parts are at most `n*C`. With `C <= 17*2**n/n`, a row runs under
+  `25*n*C + 20*T + n + 1 = O(T)` commands, so the execution-time cell is
+  Linear. The affine, coset and complement paths emit at most `n` parts
+  in all.
 
-Generation time cannot be linear before output size is. It includes
-writing the result, and the result is only `O(T log n)` characters, the
-identifier gap above. Even counted in word operations, four build terms
-escape the charge. A child rebuilt after it empties scans its parent's
-`q` cosets, and a rebuild need follow only one parent coset's removal,
-so these scans are bounded only by `q**2` a node. `certify` rebuilds the
-same way, and the clause bound needs it to. The children built under one
-node total at most its cosets, so cosets built cost at most the level
-above a level, `O(T*n)` a chain. Halving needs both halves of each child
-coset to leave together, and a cube harvested across the chain's span
-removes one. Measured, the levels do halve: three zeros at n=14 build
-12.96, 6.47, 3.23 and 1.61 `T` cosets at levels one to four. Rebuilding
-in `extend` only after a node loses three quarters would make the bound
-geometric. Over a 433-table corpus through n=13 that costs 2.5% of
-emitted size, and 4--6% at n=11..13. Certification now discards pairless
-candidates on every call but refills a pool only when removals reach a
-quarter of the current size. If `r` cosets left since the last refill,
-its representative scan costs `q <= 4*r`; summing over disjoint refresh
-epochs charges those scans to removals. `_assure` still runs at every
-level, preserving the half-average guarantee. Across 354 tables through
-n=9, refresh calls fell from 14,298 to 13,992; their summed node sizes
-fell from 110,943 to 108,907 cosets. No program grew and both builds
-matched all 3,590 executed rows. The exact `_assure` fallback sorts its
-representatives, costing `O(q log q)` per call; repeated assurance and
-child rebuilding remain uncharged. A separate untried fix keeps a
-level while its direction holds half the average, rebuilding only on a
-crossing. Historically, `certify`
-inclusive is 0.003s of a 0.53s build at n=13 and 0.184s of 6.27s at n=16,
-under 3%, so the fix moves no gate: the axis is proof-shaped, and the
-refresh cost it would trim is mostly `extend` and `run` -- 17% at n=16.
-`_nearest`'s sparse fallback lists points. Listing
-representatives costs cosets but moves sizes from -9% to +14% a table,
-+0.9% in total. The fourth term, the core build, is below.
+  Generation time is measured flat but not proved linear. A node holds one
+  representative per coset of its span, so its work is its coset count,
+  which at least halves a level. That retires the near-full wall: with `k`
+  zeros the first chain keeps two cosets for `n - log2(k) - 1` levels, and
+  nodes that held points paid at least `T*(n - log2(k) - 2)`. Output is
+  byte-identical. Element visits per entry at n=10..14: three zeros
+  2,700--3,200 (was 16,800--23,600), eight zeros 3,400--3,800 (was
+  19,000--28,400), density 0.9 2,400--2,700 (was 7,700--8,700), dense
+  500--900 (was 940--1,920), quadratic forms 110--120 (was 220--320).
+  Best-of-three time, three zeros, n=11..15: 290--332 us a row, against
+  1,237--1,696 at n=11..14 before; dense 76--108.
 
-The dual-basis completion's other terms charge to the output. Column
-extraction costs `n*dim` a clause and the echelon reduction at most `n` a
-dual, while the clause's guard alone writes `n - dim` parts of `O(log n)`
-characters. Cubes of dimension above `2*log2(n)` pay from their own
-`2**dim` points. So these terms are linear in `T` plus the output, and the
-character-level time gap coincides with the identifier gap. Measured on
-seed 0, n=12..16: 2.0--2.5 `T` for columns and 0.75--0.91 `T` for
-reduction.
+  Generation time cannot be linear before output size is. It includes
+  writing the result, and the result is only `O(T log n)` characters, the
+  identifier gap above. Even counted in word operations, four build terms
+  escape the charge. A child rebuilt after it empties scans its parent's
+  `q` cosets, and a rebuild need follow only one parent coset's removal,
+  so these scans are bounded only by `q**2` a node. `certify` rebuilds the
+  same way, and the clause bound needs it to. The children built under one
+  node total at most its cosets, so cosets built cost at most the level
+  above a level, `O(T*n)` a chain. Halving needs both halves of each child
+  coset to leave together, and a cube harvested across the chain's span
+  removes one. Measured, the levels do halve: three zeros at n=14 build
+  12.96, 6.47, 3.23 and 1.61 `T` cosets at levels one to four. Rebuilding
+  in `extend` only after a node loses three quarters would make the bound
+  geometric. Over a 433-table corpus through n=13 that costs 2.5% of
+  emitted size, and 4--6% at n=11..13. Certification now discards pairless
+  candidates on every call but refills a pool only when removals reach a
+  quarter of the current size. If `r` cosets left since the last refill,
+  its representative scan costs `q <= 4*r`; summing over disjoint refresh
+  epochs charges those scans to removals. `_assure` still runs at every
+  level, preserving the half-average guarantee. Across 354 tables through
+  n=9, refresh calls fell from 14,298 to 13,992; their summed node sizes
+  fell from 110,943 to 108,907 cosets. No program grew and both builds
+  matched all 3,590 executed rows. The exact `_assure` fallback sorts its
+  representatives, costing `O(q log q)` per call; repeated assurance and
+  child rebuilding remain uncharged. A separate untried fix keeps a
+  level while its direction holds half the average, rebuilding only on a
+  crossing. Historically, `certify`
+  inclusive is 0.003s of a 0.53s build at n=13 and 0.184s of 6.27s at n=16,
+  under 3%, so the fix moves no gate: the axis is proof-shaped, and the
+  refresh cost it would trim is mostly `extend` and `run` -- 17% at n=16.
+  `_nearest`'s sparse fallback lists points. Listing
+  representatives costs cosets but moves sizes from -9% to +14% a table,
+  +0.9% in total. The fourth term, the core build, is below.
 
-The core build stores distinct pair sums and queries each distinct nonzero
-column against the core, preserving the old triple cache's first witness.
-A later core input cannot precede that witness, so repeated columns reuse
-it. With `u <= min(n, 2**dim - 1)` distinct columns and core size `c`,
-work is `O(n + u*c)` and cache entries are `O(u + c**2)`. Since
-`c <= 1 + sqrt(2*2**dim)`, the disjoint cubes and `C <= 17*T/n` give
-`sum(n*c) <= 17*T + sqrt(34)*T*sqrt(n)` by Cauchy--Schwarz. Cache
-insertions and witness-cache upkeep total `O(T)`. Core queries stop once
-the ascending core passes the current witness's last input: later triples
-cannot precede it. On all 276 tables through three inputs and 24 seeded
-tables per arity at n=4..8, this reduces pair lookups from 3,744 to 3,615
-with byte-identical emitted programs. The queries still have only an
-`O(T*sqrt(n))` bound. The former triple cache cost `c**3/3` a clause. A core with no relation of weight four or less can hold all `n`
-inputs: the extended-BCH columns `(1, x, x**3)` over GF(16) do, with
-`dim = 9`. Half the cosets of that subspace at n=16 reach a 16-input core,
-but the peel merges coset pairs into cubes of dimension 10--12. That gives
-12 clauses and `0.13*T` work in the former triple cache. Any two cosets of a subspace form a
-cube of one dimension more. Blocking that merge leaves a Sidon set of
-cosets, too sparse to matter, and globally popular directions do not see
-planted cubes. On random tables the greedy core stops at about
-`(6*2**dim)**(1/3)` inputs: at most 6 to n=16, and a flat `0.43*T` in
-the former cache. No executed table exceeds a constant; the new query
-bound is still super-linear.
+  The dual-basis completion's other terms charge to the output. Column
+  extraction costs `n*dim` a clause and the echelon reduction at most `n` a
+  dual, while the clause's guard alone writes `n - dim` parts of `O(log n)`
+  characters. Cubes of dimension above `2*log2(n)` pay from their own
+  `2**dim` points. So these terms are linear in `T` plus the output, and the
+  character-level time gap coincides with the identifier gap. Measured on
+  seed 0, n=12..16: 2.0--2.5 `T` for columns and 0.75--0.91 `T` for
+  reduction.
 
-What linear text would take. While no guard part reads `Inp`, every value
-is affine and a guard hangs on one coset. A coset of codimension `c` needs
-`c` parts with independent values, so at least `c` distinct live names
-and at least `c*(log65(c) - 1)` characters. `O(T)` text therefore needs
-cubes of `Omega(n log n)` points on average. A random set of density 1/2
-holds cosets only up to `2**d ~ (d+1)*(n-d)`, about `n*log2(n)` points
-(first moment). So the cover must stay within a constant factor of the
-largest coset, where the chain above finds `n/(4*log2(1/eps))`. That is
-the greedy-versus-maximum gap of cliques in random graphs, and no
-polynomial search is known to close it. The one way to repeat a name
-within a line is a lazy `r -> Inp?`, which reads afresh on each access.
-A guard that fails midway has then consumed a data-dependent prefix and
-misaligns every later read. Alignment survives only if each row passes
-at most one reading gate, and then each gate class gets one prefix
-pattern. Neither route is a lower bound: no language-wide `Omega(T log
-n)` is proved, and counting gives only `Omega(T)`.
+  The core build stores distinct pair sums and queries each distinct nonzero
+  column against the core, preserving the old triple cache's first witness.
+  A later core input cannot precede that witness, so repeated columns reuse
+  it. With `u <= min(n, 2**dim - 1)` distinct columns and core size `c`,
+  work is `O(n + u*c)` and cache entries are `O(u + c**2)`. Since
+  `c <= 1 + sqrt(2*2**dim)`, the disjoint cubes and `C <= 17*T/n` give
+  `sum(n*c) <= 17*T + sqrt(34)*T*sqrt(n)` by Cauchy--Schwarz. Cache
+  insertions and witness-cache upkeep total `O(T)`. Core queries stop once
+  the ascending core passes the current witness's last input: later triples
+  cannot precede it. On all 276 tables through three inputs and 24 seeded
+  tables per arity at n=4..8, this reduces pair lookups from 3,744 to 3,615
+  with byte-identical emitted programs. The queries still have only an
+  `O(T*sqrt(n))` bound. The former triple cache cost `c**3/3` a clause. A core with no relation of weight four or less can hold all `n`
+  inputs: the extended-BCH columns `(1, x, x**3)` over GF(16) do, with
+  `dim = 9`. Half the cosets of that subspace at n=16 reach a 16-input core,
+  but the peel merges coset pairs into cubes of dimension 10--12. That gives
+  12 clauses and `0.13*T` work in the former triple cache. Any two cosets of a subspace form a
+  cube of one dimension more. Blocking that merge leaves a Sidon set of
+  cosets, too sparse to matter, and globally popular directions do not see
+  planted cubes. On random tables the greedy core stops at about
+  `(6*2**dim)**(1/3)` inputs: at most 6 to n=16, and a flat `0.43*T` in
+  the former cache. No executed table exceeds a constant; the new query
+  bound is still super-linear.
 
-Both routes meet an open problem. A guard is one term of a DNF of
-parities, so the minimum term count is Cohen and Shinkar's `DNF+(f)`
-([ECCC TR14-099](https://eccc.weizmann.ac.il/report/2014/099/)). They
-prove `DNF+(f) <= O(2**n/n)` for every `f`, tight only up to `O(log n)`.
-A random `f` has `2**n/(n*log n)` w.h.p., and no function is known to
-need more. Take tables whose cubes have dimension at most
-`2*log2(n) - 2*log2(log2(n))`. A term there costs about `n - k` distinct
-names, about `log65(n)` characters each. The short-relation basis keeps
-its upkeep at `O(n)` names from `O(n**2)` identifiers. So a coset program
-costs `Theta(DNF+(f) * n * log n)` characters. Linear output for every
-table therefore needs `DNF+ = O(2**n/(n log n))` for all `f`. A
-super-linear lower bound on any such table needs `DNF+(f) = omega(2**n/(n
-log n))`. Either one settles the open factor. Guards that read `Inp` only
-add programs, so they make a lower bound harder, not easier. The size
-cell stays `Measured`.
+  What linear text would take. While no guard part reads `Inp`, every value
+  is affine and a guard hangs on one coset. A coset of codimension `c` needs
+  `c` parts with independent values, so at least `c` distinct live names
+  and at least `c*(log65(c) - 1)` characters. `O(T)` text therefore needs
+  cubes of `Omega(n log n)` points on average. A random set of density 1/2
+  holds cosets only up to `2**d ~ (d+1)*(n-d)`, about `n*log2(n)` points
+  (first moment). So the cover must stay within a constant factor of the
+  largest coset, where the chain above finds `n/(4*log2(1/eps))`. That is
+  the greedy-versus-maximum gap of cliques in random graphs, and no
+  polynomial search is known to close it. The one way to repeat a name
+  within a line is a lazy `r -> Inp?`, which reads afresh on each access.
+  A guard that fails midway has then consumed a data-dependent prefix and
+  misaligns every later read. Alignment survives only if each row passes
+  at most one reading gate, and then each gate class gets one prefix
+  pattern. Neither route is a lower bound: no language-wide `Omega(T log
+  n)` is proved, and counting gives only `Omega(T)`.
 
-The open factor depends on one extremal function. Let `D(n, delta)` be
-the least, over sets of density `delta`, of the largest affine flat
-inside. Cohen and Shinkar's chain gives `D >= log2(n) - log2(log2(1/delta))
-- 2`, and random sets give `D <= log2(n) + log2(log2(n)) + O(1)`. If
-`D(n, 1/2) <= log2(n) + c`, that set's indicator needs `Omega(2**n/n)`
-terms and their upper bound is tight. If `D(n, delta) >= log2(n) +
-log2(log2(n)) - log2(log2(1/delta)) - O(1)` for every `delta`, the peel
-gives `O(2**n/(n log n))` for every table. SAT data (Glucose, every affine
-`d`-flat forbidden, `0` in the set) on the largest density with no
-`d`-flat:
+  Both routes meet an open problem. A guard is one term of a DNF of
+  parities, so the minimum term count is Cohen and Shinkar's `DNF+(f)`
+  ([ECCC TR14-099](https://eccc.weizmann.ac.il/report/2014/099/)). They
+  prove `DNF+(f) <= O(2**n/n)` for every `f`, tight only up to `O(log n)`.
+  A random `f` has `2**n/(n*log n)` w.h.p., and no function is known to
+  need more. Take tables whose cubes have dimension at most
+  `2*log2(n) - 2*log2(log2(n))`. A term there costs about `n - k` distinct
+  names, about `log65(n)` characters each. The short-relation basis keeps
+  its upkeep at `O(n)` names from `O(n**2)` identifiers. So a coset program
+  costs `Theta(DNF+(f) * n * log n)` characters. Linear output for every
+  table therefore needs `DNF+ = O(2**n/(n log n))` for all `f`. A
+  super-linear lower bound on any such table needs `DNF+(f) = omega(2**n/(n
+  log n))`. Either one settles the open factor. Guards that read `Inp` only
+  add programs, so they make a lower bound harder, not easier. The size
+  cell stays `Measured`.
 
-| n | `d=3` | `d=4` |
-| --- | --- | --- |
-| 4 | 11/16, exact | |
-| 5 | 18/32, exact | |
-| 6 | at least 29/64; 32/64 undecided at 300 s | |
-| 7 | at least 44/128 | 64/128 reached |
-| 8 | | 128/256 reached |
+  The open factor depends on one extremal function. Let `D(n, delta)` be
+  the least, over sets of density `delta`, of the largest affine flat
+  inside. Cohen and Shinkar's chain gives `D >= log2(n) - log2(log2(1/delta))
+  - 2`, and random sets give `D <= log2(n) + log2(log2(n)) + O(1)`. If
+  `D(n, 1/2) <= log2(n) + c`, that set's indicator needs `Omega(2**n/n)`
+  terms and their upper bound is tight. If `D(n, delta) >= log2(n) +
+  log2(log2(n)) - log2(log2(1/delta)) - O(1)` for every `delta`, the peel
+  gives `O(2**n/(n log n))` for every table. SAT data (Glucose, every affine
+  `d`-flat forbidden, `0` in the set) on the largest density with no
+  `d`-flat:
 
-An independent recursive flat finder confirms the `n=7` and `n=8`
-half-density sets have largest flat 3. It recovers a planted 3-flat and
-gives 1 on the Sidon set `{0,2,3,4,8,13}`; the same SAT model at `d=2`
-gives the known Sidon maxima 6, 7, 9 and 12 for n=4..7. So `D(7, 1/2) <=
-3` and `D(8, 1/2) <= 3 = log2(8)`. Random half-density sets reach 4 in
-six of ten draws at n=7 and in five of five at n=8. The algebraic set
-`{x : Tr(1/x) = 1}` in GF(2**n) reaches 2, 3, 3, 4 and 4 at n=5..9, no
-better than random. So at n=7 and 8 the extremal sets sit a dimension
-below random, the side that would make `Omega(2**n/n)` the truth. These
-sizes cannot separate `log n` from `log n + log log n`, and the SAT sets
-(degree 6 and 7, no translation symmetry) suggest no family.
+  | n | `d=3` | `d=4` |
+  | --- | --- | --- |
+  | 4 | 11/16, exact | |
+  | 5 | 18/32, exact | |
+  | 6 | at least 29/64; 32/64 undecided at 300 s | |
+  | 7 | at least 44/128 | 64/128 reached |
+  | 8 | | 128/256 reached |
 
-The lower side has better constants than the chain. Bastioni, Giannoni and
-Lobillo-Olmedo (arXiv 2605.05455, section 6) count affine 2-planes by
-Fourier, at least `(s**4/2**n - 3s**2 + 2s)/24`, and quotient by the most
-popular 2-dimensional direction. Mixing that step with the chain's
-one-dimensional step, from the Sidon base `s(s-1)/2 <= 2**n - 1`, forces
-a 3-flat in every half-density set from n=7, a 4-flat from n=12, a 5-flat
-from n=21 and a 6-flat from n=38. That is about `log2(n) + 0.2` against the
-chain's `log2(n) - 2`, the same rate with a better constant. With the
-SAT-exact bases above a 3-flat is forced from n=6. Since `D` cannot drop
-as `n` grows (one hyperplane half keeps density `1/2`), this pins
-`D(6, 1/2) = D(7, 1/2) = D(8, 1/2) = 3`. There the extremal value sits on
-the density-increment bound, a dimension below random.
+  An independent recursive flat finder confirms the `n=7` and `n=8`
+  half-density sets have largest flat 3. It recovers a planted 3-flat and
+  gives 1 on the Sidon set `{0,2,3,4,8,13}`; the same SAT model at `d=2`
+  gives the known Sidon maxima 6, 7, 9 and 12 for n=4..7. So `D(7, 1/2) <=
+  3` and `D(8, 1/2) <= 3 = log2(8)`. Random half-density sets reach 4 in
+  six of ten draws at n=7 and in five of five at n=8. The algebraic set
+  `{x : Tr(1/x) = 1}` in GF(2**n) reaches 2, 3, 3, 4 and 4 at n=5..9, no
+  better than random. So at n=7 and 8 the extremal sets sit a dimension
+  below random, the side that would make `Omega(2**n/n)` the truth. These
+  sizes cannot separate `log n` from `log n + log log n`, and the SAT sets
+  (degree 6 and 7, no translation symmetry) suggest no family.
 
-A Delsarte bound moves the 4-flat threshold to n=11. A Sidon set of
-size `N` in `F_2^9` gives the even code of the columns `(1, a)`: dimension
-at least `N - 10` and no words of weight 2 or 4. At `N = 32` an exact
-rational dual certificate bounds such codes by 3,710,516.55, below
-`2**22`, so every 32 points of `F_2^9` hold a 2-flat. A 1024-point set in
-`F_2^11` has a difference `v` with `|S & (S+v)| >= 1024*1023/2047`, so at
-least 512 (the count is even), which leaves 256 cosets in `F_2^10`. The same
-step leaves 32 in `F_2^9`. That 2-flat lifts twice, so `D(11, 1/2) >= 4`.
-`D(9, 1/2)` and `D(10, 1/2)` are 3 or 4. At n=9 four local searches
-(Metropolis, steepest tabu, noise, clause weighting) all stall at 530 to
-620 4-flats. Every linear group tried with at most 44 orbits admits no
-invariant 256-point set without a 4-flat, 12 groups in all. Groups with
-60 to 80 orbits, Frobenius among them, were undecided at the time
-limit.
+  The lower side has better constants than the chain. Bastioni, Giannoni and
+  Lobillo-Olmedo (arXiv 2605.05455, section 6) count affine 2-planes by
+  Fourier, at least `(s**4/2**n - 3s**2 + 2s)/24`, and quotient by the most
+  popular 2-dimensional direction. Mixing that step with the chain's
+  one-dimensional step, from the Sidon base `s(s-1)/2 <= 2**n - 1`, forces
+  a 3-flat in every half-density set from n=7, a 4-flat from n=12, a 5-flat
+  from n=21 and a 6-flat from n=38. That is about `log2(n) + 0.2` against the
+  chain's `log2(n) - 2`, the same rate with a better constant. With the
+  SAT-exact bases above a 3-flat is forced from n=6. Since `D` cannot drop
+  as `n` grows (one hyperplane half keeps density `1/2`), this pins
+  `D(6, 1/2) = D(7, 1/2) = D(8, 1/2) = 3`. There the extremal value sits on
+  the density-increment bound, a dimension below random.
+
+  A Delsarte bound moves the 4-flat threshold to n=11. A Sidon set of
+  size `N` in `F_2^9` gives the even code of the columns `(1, a)`: dimension
+  at least `N - 10` and no words of weight 2 or 4. At `N = 32` an exact
+  rational dual certificate bounds such codes by 3,710,516.55, below
+  `2**22`, so every 32 points of `F_2^9` hold a 2-flat. A 1024-point set in
+  `F_2^11` has a difference `v` with `|S & (S+v)| >= 1024*1023/2047`, so at
+  least 512 (the count is even), which leaves 256 cosets in `F_2^10`. The same
+  step leaves 32 in `F_2^9`. That 2-flat lifts twice, so `D(11, 1/2) >= 4`.
+  `D(9, 1/2)` and `D(10, 1/2)` are 3 or 4. At n=9 four local searches
+  (Metropolis, steepest tabu, noise, clause weighting) all stall at 530 to
+  620 4-flats. Every linear group tried with at most 44 orbits admits no
+  invariant 256-point set without a 4-flat, 12 groups in all. Groups with
+  60 to 80 orbits, Frobenius among them, were undecided at the time
+  limit.
 
 ## Scaling status
 

@@ -10,10 +10,10 @@ that no known interpreter, the reference included, implements it.
 
 from __future__ import annotations
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 type _State = tuple[str, int, tuple[str, ...]]
 type _Effect = str | None

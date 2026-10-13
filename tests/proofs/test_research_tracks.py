@@ -5,9 +5,8 @@ import itertools
 import pytest
 import sympy
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import _Machine
-from tests.proofs._research_dag import read_prune
+from esolangs.runtime.io import ScriptedIO
 
 
 def test_finite_input_entropy_certificate() -> None:
@@ -172,3 +171,16 @@ def test_proportional_read_budget_rate() -> None:
     assert min(tested, key=rate) == 0.1
     assert rate(0.1) > lam
     assert k + lam > 7.0347 > lam
+
+
+def read_prune(code: str, visited: set[int]) -> str:
+    """Delete unseen reads, then cancel universally sound adjacent pairs."""
+    stack: list[str] = []
+    for position, char in enumerate(code):
+        if char == "," and position not in visited:
+            continue
+        if stack and stack[-1] + char in {"+-", "-+", "><"}:
+            stack.pop()
+        else:
+            stack.append(char)
+    return "".join(stack)

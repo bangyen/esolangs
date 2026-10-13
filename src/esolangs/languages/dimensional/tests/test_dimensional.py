@@ -4,8 +4,9 @@ import importlib
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
+import esolangs.debugger as debugger_api
 from esolangs.languages.dimensional.interpreter import _Machine as Dimensional
+from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_lines
@@ -118,8 +119,8 @@ class TestDimensional:
 
     def test_the_selected_axis_is_the_one_asked_for(self) -> None:
         """``$AXIS`` sets the axis to exactly ``AXIS``, clamped below at 2."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.dimensional.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         def axis_after(program: str) -> int:
             machine = _Machine(program, ScriptedIO(""))
@@ -175,8 +176,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
     from esolangs.languages.dimensional.interpreter import _Machine
+    from esolangs.runtime.io import IO
 
     return _Machine(code, IO())
 
@@ -205,8 +206,8 @@ def test_a_malformed_literal_rejects_the_program_before_it_runs() -> None:
 def test_reading_memory_does_not_allocate_a_slot() -> None:
     """Pins ``memory`` as a pure view: an unvisited slot reads 0 and the
     snapshot (which freezes the tape tree) does not change."""
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dimensional.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine(">1.", ScriptedIO(""))
     machine.step()
@@ -217,8 +218,8 @@ def test_reading_memory_does_not_allocate_a_slot() -> None:
 
 def test_memory_view_follows_a_raised_tape() -> None:
     """On a 3-level tape an unvisited slot reads 0; a written one reads back."""
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.dimensional.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine("$3>1+", ScriptedIO(""))
     machine.step()
@@ -229,7 +230,7 @@ def test_memory_view_follows_a_raised_tape() -> None:
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_rejected_with_hint("Dimensional", "x", "base-16 integer", stdin="oops")
 
 
@@ -237,3 +238,15 @@ def test_dimensional_looping_run_is_detected_as_a_cycle() -> None:
     # cell starts nonzero and the loop body never changes it
     machine = Dimensional("+[]", ScriptedIO())
     assert run_until_halt_or_cycle(machine) is False
+
+
+class TestDimensionalVM:
+    def test_byte_value_exposed(self) -> None:
+        vm = debugger_api.make_vm("Dimensional", "++.")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()
+        assert vm.memory == [1]
+        vm.step()
+        assert vm.memory == [2]
+        vm.step()
+        assert vm.output == "\x02"

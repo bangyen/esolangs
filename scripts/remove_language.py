@@ -20,7 +20,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from removal_mentions import drop_owned_comments, mention_edit
+
     from esolangs.registry import Language
+else:
+    _mentions = importlib.import_module(
+        f"{__package__ + '.' if __package__ else ''}removal_mentions"
+    )
+    mention_edit = _mentions.mention_edit
+    drop_owned_comments = _mentions.drop_owned_comments
 
 ROOT = Path(__file__).parents[1]
 #: Where a language's own test and script files live.
@@ -240,12 +248,19 @@ def _drop_entries(
     return len(spans)
 
 
-def _drop_inline_items(path: Path, keys: set[str]) -> int:
-    """Cut each item keyed by ``keys`` that shares its line with others.
+def _drop_matching_items(
+    path: Path,
+    extract: Callable[
+        [ast.AST, Callable[[ast.AST], tuple[int, int]]],
+        tuple[list[tuple[int, int, str | None]], bytes] | None,
+    ],
+    wanted: set[str],
+) -> int:
+    """Cut each container item whose value is in ``wanted``, one per pass.
 
-    ``frozenset({"A Painter Ant", "Suffolk"})`` holds two languages on one
-    line, which :func:`_drop_entries` leaves.  Cut by column instead, with
-    the separating comma; a container left empty is spelled empty.
+    ``extract(node, span)`` returns the ``(lo, hi, value)`` items and the
+    empty-container spelling for a node it recognizes, else None.  One cut
+    per pass because the byte offsets shift after each write.
     """
     cuts = 0
     while True:
@@ -265,25 +280,12 @@ def _drop_inline_items(path: Path, keys: set[str]) -> int:
 
         cut: tuple[int, int, bytes] | None = None
         for node in ast.walk(ast.parse(source)):
-            if isinstance(node, ast.Dict) and None not in node.keys:
-                items = [
-                    (span(k)[0], span(v)[1], isinstance(k, ast.Constant) and k.value)
-                    for k, v in zip(node.keys, node.values, strict=True)
-                    if k is not None
-                ]
-                empty = b"{}"
-            elif isinstance(node, ast.List | ast.Set | ast.Tuple):
-                items = [
-                    (*span(e), isinstance(e, ast.Constant) and e.value)
-                    for e in node.elts
-                ]
-                empty = {ast.List: b"[]", ast.Set: b"set()", ast.Tuple: b"()"}[
-                    type(node)
-                ]
-            else:
+            extracted = extract(node, span)
+            if extracted is None:
                 continue
+            items, empty = extracted
             for i, (lo, hi, value) in enumerate(items):
-                if not isinstance(value, str) or value not in keys:
+                if value not in wanted:
                     continue
                 if len(items) == 1:
                     cut = (*span(node), empty)
@@ -301,13 +303,47 @@ def _drop_inline_items(path: Path, keys: set[str]) -> int:
         cuts += 1
 
 
+def _inline_items(
+    node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
+) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
+    """Extract string-constant items from a dict, list, set, or tuple."""
+    if isinstance(node, ast.Dict) and None not in node.keys:
+        items = [
+            (span(k)[0], span(v)[1], k.value if isinstance(k, ast.Constant) else None)
+            for k, v in zip(node.keys, node.values, strict=True)
+            if k is not None
+        ]
+        return items, b"{}"
+    if isinstance(node, ast.List | ast.Set | ast.Tuple):
+        items = [
+            (*span(e), e.value if isinstance(e, ast.Constant) else None)
+            for e in node.elts
+        ]
+        empty = {ast.List: b"[]", ast.Set: b"set()", ast.Tuple: b"()"}[type(node)]
+        return items, empty
+    return None
+
+
+def _drop_inline_items(path: Path, keys: set[str]) -> int:
+    """Cut each item keyed by ``keys`` that shares its line with others.
+
+    ``frozenset({"A Painter Ant", "Suffolk"})`` holds two languages on one
+    line, which :func:`_drop_entries` leaves.  Cut by column instead, with
+    the separating comma; a container left empty is spelled empty.
+    """
+    return _drop_matching_items(path, _inline_items, keys)
+
+
 def _drop_json(path: Path, prune: Callable[[object], object]) -> None:
     """Rewrite ``path`` through ``prune``, keeping its indent and escaping."""
     text = path.read_text(encoding="utf-8")
-    indent = len(text.split("\n", 2)[1]) - len(text.split("\n", 2)[1].lstrip())
+    second = text.split("\n", 2)[1] if "\n" in text else ""
+    indent = len(second) - len(second.lstrip())
     pruned = prune(json.loads(text))
     out = json.dumps(pruned, indent=indent, ensure_ascii=text.isascii())
-    path.write_text(out + "\n" * text.endswith("\n"), encoding="utf-8")
+    if text.endswith("\n"):
+        out += "\n"
+    path.write_text(out, encoding="utf-8")
 
 
 def _drop_toml(path: Path, name: str) -> None:
@@ -347,7 +383,12 @@ def _drop_bullets(path: Path, name: str) -> None:
     line that only separated the bullet from the next goes as well.
     """
     text = path.read_text(encoding="utf-8")
-    bullet = rf"(?m)^- \[?(?:\*\*)?{re.escape(name)}(?:\*\*)?\]?(?!\w).*\n(?:  .*\n)*"
+    token = re.escape(name)
+    label = rf"(?:\[{token}\]\([^\n]*?\)|\*\*{token}:?\*\*|{token})"
+    bullet = (
+        rf"(?im)^- {label}(?=\s|:|['\u2019]s\b|$).*(?:\n|$)"
+        r"(?:  .*(?:\n|$)|\n(?=(?:\n)*  ))*"
+    )
 
     def cut(match: re.Match[str]) -> str:
         before = text[: match.start()]
@@ -357,6 +398,16 @@ def _drop_bullets(path: Path, name: str) -> None:
 
     text = re.sub(bullet, cut, text).replace("\0\n", "")
     path.write_text(text, encoding="utf-8")
+
+
+def _drop_doc_entries(path: Path, name: str) -> None:
+    """Drop language-owned bullets and rows whose first cell names it."""
+    _drop_bullets(path, name)
+    token = re.escape(name)
+    label = rf"(?:\[{token}\]\([^\n]*?\)|\*\*{token}\*\*|{token})"
+    row = rf"(?im)^\|\s*{label}\s*\|.*(?:\n|$)"
+    text = path.read_text(encoding="utf-8")
+    path.write_text(re.sub(row, "", text), encoding="utf-8")
 
 
 def _owned_scripts(lang: Language) -> list[Path]:
@@ -402,6 +453,27 @@ def _declaring_module(lang: Language) -> str | None:
         ):
             return module_name
     return None
+
+
+def _owned_evidence(name: str) -> set[Path]:
+    """Return standalone proof documents cited exclusively by this language."""
+    manifest = ROOT / "src/esolangs/proof_status.toml"
+    if not manifest.is_file():
+        return set()
+    data = tomllib.loads(manifest.read_text(encoding="utf-8"))
+    owners: dict[Path, set[str]] = {}
+    proofs = (ROOT / "docs/proofs").resolve()
+    for group in ("ledger", "audit"):
+        for row in data.get(group, []):
+            relative = row.get("evidence", "").partition("#")[0]
+            path = (ROOT / relative).resolve()
+            if (
+                path.is_relative_to(proofs)
+                and path.name != "index.md"
+                and path.is_file()
+            ):
+                owners.setdefault(path, set()).add(row["generator"])
+    return {path for path, names in owners.items() if names == {name}}
 
 
 def _owned_module_paths(lang: Language) -> tuple[set[str], set[Path]]:
@@ -636,6 +708,35 @@ def _names_used(tree: ast.AST) -> set[str]:
     return used
 
 
+def _name_items(
+    node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
+) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
+    """Extract ``ast.Name`` items from a dict, list, or set."""
+    if isinstance(node, ast.Dict):
+        if None in node.keys:
+            return None
+        items = [
+            (
+                span(key)[0],
+                span(value)[1],
+                key.id if isinstance(key, ast.Name) else None,
+            )
+            for key, value in zip(node.keys, node.values, strict=True)
+            if key is not None
+        ]
+        return items, b"{}"
+    if isinstance(node, ast.List | ast.Set):
+        items = [
+            (
+                *span(element),
+                element.id if isinstance(element, ast.Name) else None,
+            )
+            for element in node.elts
+        ]
+        return items, {ast.List: b"[]", ast.Set: b"set()"}[type(node)]
+    return None
+
+
 def _drop_name_items(path: Path, names: set[str]) -> int:
     """Cut each ``ast.Name`` element named in ``names`` from a container.
 
@@ -643,65 +744,7 @@ def _drop_name_items(path: Path, names: set[str]) -> int:
     ``_token_patterns`` dict name wrappers directly, so the membership must go
     before the definition reads as dead.
     """
-    cuts = 0
-    while True:
-        source = path.read_bytes()
-        starts = [0]
-        for line in source.splitlines(keepends=True):
-            starts.append(starts[-1] + len(line))
-
-        def at(line: int, col: int, starts: list[int] = starts) -> int:
-            return starts[line - 1] + col
-
-        def span(node: ast.AST) -> tuple[int, int]:
-            return (
-                at(node.lineno, node.col_offset),  # type: ignore[attr-defined]
-                at(node.end_lineno, node.end_col_offset),  # type: ignore[attr-defined]
-            )
-
-        cut: tuple[int, int, bytes] | None = None
-        for node in ast.walk(ast.parse(source)):
-            if isinstance(node, ast.Dict):
-                if None in node.keys:
-                    continue
-                items = [
-                    (
-                        span(key)[0],
-                        span(value)[1],
-                        key.id if isinstance(key, ast.Name) else None,
-                    )
-                    for key, value in zip(node.keys, node.values, strict=True)
-                    if key is not None
-                ]
-                empty = b"{}"
-            elif isinstance(node, ast.List | ast.Set):
-                items = [
-                    (
-                        *span(element),
-                        element.id if isinstance(element, ast.Name) else None,
-                    )
-                    for element in node.elts
-                ]
-                empty = {ast.List: b"[]", ast.Set: b"set()"}[type(node)]
-            else:
-                continue
-            for index, (lo, hi, value) in enumerate(items):
-                if value not in names:
-                    continue
-                if len(items) == 1:
-                    cut = (*span(node), empty)
-                elif index + 1 < len(items):
-                    cut = (lo, items[index + 1][0], b"")
-                else:
-                    cut = (items[index - 1][1], hi, b"")
-                break
-            if cut:
-                break
-        if cut is None:
-            return cuts
-        lo, hi, text = cut
-        path.write_bytes(source[:lo] + text + source[hi:])
-        cuts += 1
+    return _drop_matching_items(path, _name_items, names)
 
 
 def _drop_dead_code(path: Path, external: set[str]) -> int:
@@ -804,32 +847,21 @@ _EDITED = (
     "tests/proofs/test_execution_formulas.py",
     "tests/proofs/test_workspace_formulas.py",
     "tests/proofs/test_schemes.py",
-    "tests/integration/api/test_interpreter_only_admissions.py",
+    "tests/api/test_interpreter_only_admissions.py",
     "tests/proofs/test_bands.py",
 )
 
 
-def _mention_edit(mention: str) -> str:
-    """Label a leftover mention by the edit it needs.
-
-    ``git grep -n`` prints ``path:line:text`` and the path decides the kind.
-    The tool never rewrites these itself: a runnable example needs a
-    replacement language (Alight's ``expression_syntax`` has no successor),
-    and a comment or prose line needs a sentence a human stands behind.
-    """
-    path = mention.split(":", 1)[0]
-    if path == "src/esolangs/cli/help.py":
-        return "example: choose a replacement language"
-    if path.startswith("docs/") or path.endswith(".md"):
-        return "prose: reword or drop the mention"
-    return "comment: reword or drop the mention"
+def _mention_edit(mention: str, name: str | None = None) -> str:
+    """Classify a raw hit from this checkout."""
+    return mention_edit(ROOT, mention, name)
 
 
 def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
 
-    reference = tests_attr("integration.api.test_language_coupling", "REFERENCE")
+    reference = tests_attr("api.test_language_coupling", "REFERENCE")
     if name == reference:
         raise ValueError(
             f"{reference} is the reference language: shared tests, the example "
@@ -847,9 +879,14 @@ def remove(name: str) -> list[str]:
     doomed: set[Path] = {
         *module_paths,
         ROOT / "src/esolangs/languages" / lang.id / "tests",
-        ROOT / "src/esolangs/languages" / lang.id / "examples",
+        *(
+            path
+            for path in (ROOT / "src/esolangs/languages" / lang.id).iterdir()
+            if path.suffix in {".txt", ".png", ".gz"}
+        ),
         *_owned_scripts(lang),
     }
+    doomed |= _owned_evidence(name)
     doomed |= _dead_test_files(doomed, _gone_modules(doomed), users)
     doomed |= _orphans(doomed, users)
     # A ``src`` module the remaining code imports stays, minus its
@@ -973,8 +1010,20 @@ def remove(name: str) -> list[str]:
         "tests/support/fixtures/canonical_folding_catalogue.toml",
     ):
         _drop_toml(ROOT / relative, name)
-    for relative in ("docs/limitations.md", "docs/proofs/index.md"):
-        _drop_bullets(ROOT / relative, name)
+    tracked = subprocess.run(
+        ["git", "ls-files"], cwd=ROOT, check=True, capture_output=True, text=True
+    ).stdout.splitlines()
+    for relative in tracked:
+        path = ROOT / relative
+        if path.is_file() and (
+            path.suffix in {".py", ".toml", ".yaml", ".yml"} or path.name == "justfile"
+        ):
+            drop_owned_comments(path, name)
+    documents = [ROOT / "README.md", ROOT / "docs/proofs/index.md"]
+    documents += sorted((ROOT / "docs").glob("*.md"))
+    for path in documents:
+        if path.is_file() and path.name != "CHANGELOG.md":
+            _drop_doc_entries(path, name)
     _drop_from_series(ROOT / "docs/proofs/index.md", name, "keeps? no tree route")
     tuning = ROOT / "tests/support/fixtures/deep_arities.toml"
     tuning.write_text(
@@ -986,7 +1035,7 @@ def remove(name: str) -> list[str]:
         encoding="utf-8",
     )
     # A cut entry can leave its import unused; the linter knows which.
-    shared = ["src/esolangs/tools/wrap.py"]
+    shared = ["src/esolangs/generation/wrap.py"]
     touched = [
         *[str(p.relative_to(ROOT)) for p in module_paths - doomed],
         *edited,
@@ -1007,8 +1056,13 @@ def remove(name: str) -> list[str]:
     if wrapper is not None and not any(
         other is not lang and other.wrap is lang.wrap for other in LANGUAGES.values()
     ):
-        exclusive = True
-        _drop_name_items(ROOT / "src/esolangs/tools/wrap.py", {wrapper})
+        exclusive = not any(
+            wrapper in used
+            for relative, used in used_by_file.items()
+            if relative.startswith("src/")
+            and relative != "src/esolangs/generation/wrap.py"
+        )
+        _drop_name_items(ROOT / "src/esolangs/generation/wrap.py", {wrapper})
     for relative in shared:
         _drop_dead_code(ROOT / relative, external_for(relative))
     subprocess.run(
@@ -1030,7 +1084,7 @@ def remove(name: str) -> list[str]:
         [
             sys.executable,
             "-c",
-            "from tests.integration.api.test_language_coupling import lower_recorded; "
+            "from tests.api.test_language_coupling import lower_recorded; "
             "lower_recorded()",
         ],
         cwd=ROOT,
@@ -1088,7 +1142,7 @@ def remove(name: str) -> list[str]:
     # needs: the tool cannot rewrite prose or a runnable example without
     # inventing a claim, so the edit stays with the caller.
     mentions = [
-        f"[{_mention_edit(line)}] {line}"
+        f"[{_mention_edit(line, name)}] {line}"
         for line in grep.stdout.splitlines()
         if not line.startswith(("scripts/remove_language.py:", "docs/CHANGELOG.md:"))
     ]

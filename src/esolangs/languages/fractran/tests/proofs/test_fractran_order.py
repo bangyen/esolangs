@@ -9,7 +9,7 @@ from collections import Counter
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.fractran.generator import PAIR, _primes, fractran
 from esolangs.languages.fractran.interpreter import _choose, _Machine, _parse
 from esolangs.languages.fractran.interpreter import index as fractran_index
@@ -24,7 +24,7 @@ from esolangs.languages.fractran.tests.proofs._fractran_order import (
     reader,
     stream_template,
 )
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import row_bits
 
 

@@ -7,12 +7,12 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
-from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
-from tests.integration.api.test_api_contracts import XOR
-from tests.integration.cli.test_cli import call_main
-from tests.reference import REFERENCE
+from esolangs.runtime._evaluate import _evaluate
+from tests.api.test_api_contracts import XOR
+from tests.cli.test_cli import call_main
 from tests.support.cli_support import call_both
+from tests.support.reference import REFERENCE
 from tests.support.stdin_check import _check_stdin
 from tests.support.witness_tables import witnesses
 
@@ -38,7 +38,7 @@ class TestGraphemeReadsWhatTheDocsNowSay:
         }
 
 
-def test_conversion_reaches_debugger_and_bound_language():
+def test_conversion_reaches_debugger_and_bound_language() -> None:
     settings = DialectSettings(integer_conversion="after_each_letter")
     language = esolangs.Language("Grapheme")
     assert language.run("FAFY", settings=settings) == "10"
@@ -49,7 +49,7 @@ def test_conversion_reaches_debugger_and_bound_language():
 
 # The dialect is machine-wide; one string call and one Z rewind witness it.
 @pytest.mark.parametrize("source", ["EFAFYEG", "FZFHFAFYMHZ"])
-def test_called_code_uses_selected_conversion(source):
+def test_called_code_uses_selected_conversion(source) -> None:
     assert (
         esolangs.run(
             "Grapheme",
@@ -60,7 +60,7 @@ def test_called_code_uses_selected_conversion(source):
     )
 
 
-def test_numeric_and_function_conversion_remain_literal():
+def test_numeric_and_function_conversion_remain_literal() -> None:
     assert (
         esolangs.run(
             "Grapheme",
@@ -71,7 +71,7 @@ def test_numeric_and_function_conversion_remain_literal():
     )
 
 
-def test_string_skip_count_uses_conversion():
+def test_string_skip_count_uses_conversion() -> None:
     source = "FZFEAEFZFV" + "P" * 9 + "TY"
     settings = DialectSettings(integer_conversion="after_each_letter")
     assert esolangs.run("Grapheme", source, settings=settings) == "0"
@@ -79,12 +79,12 @@ def test_string_skip_count_uses_conversion():
 
 
 @pytest.mark.parametrize(("source", "expected"), [("FAFDY", "1"), ("EABEDY", "AB")])
-def test_unset_names_read_as_themselves(source, expected):
+def test_unset_names_read_as_themselves(source, expected) -> None:
     assert esolangs.run("Grapheme", source) == expected
 
 
 @pytest.mark.medium
-def test_generated_corpus():
+def test_generated_corpus() -> None:
     settings = DialectSettings(integer_conversion="after_each_letter")
     for n in range(1, 4):
         for table in witnesses(n):
@@ -96,7 +96,7 @@ def test_generated_corpus():
 
 
 @pytest.mark.medium
-def test_prose_conversion_at_six_inputs():
+def test_prose_conversion_at_six_inputs() -> None:
     table = "".join(str(row.bit_count() & 1) for row in range(64))
     source = esolangs.generate(
         "Grapheme",
@@ -106,7 +106,7 @@ def test_prose_conversion_at_six_inputs():
     assert _evaluate("Grapheme", source, inputs=6) == table
 
 
-def test_metadata():
+def test_metadata() -> None:
     settings = esolangs.describe("Grapheme")["dialect_settings"]
     assert settings["integer_conversion"]["default"] == "between_letters"
     assert settings["integer_conversion"]["choices"] == (
@@ -216,7 +216,7 @@ def test_the_wrong_alphabet_is_warned_about() -> None:
         esolangs.run("Grapheme", program, stdin="0\n1\n", timeout=10)
 
 
-def test_a_zero_line_reads_as_true_so_zero_is_percent():
+def test_a_zero_line_reads_as_true_so_zero_is_percent() -> None:
     assert esolangs.encode_inputs("Grapheme", [1, 0, 1]) == "A\n%\nA\n"
     assert (
         _evaluate("Grapheme", esolangs.generate("Grapheme", "10010110"), inputs=3)

@@ -27,15 +27,11 @@ from operator import is_not
 from pathlib import Path
 from typing import Any, BinaryIO, cast
 
-import esolangs
-import esolangs.debugger as debugger_api
-from esolangs._describe import LanguageInfo
-from esolangs._validate import check_timeout
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import LANGUAGES
-from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
-
+# scripts/ holds the sibling `verify` package. Redundant when run as
+# `python scripts/benchmark.py` (the script's directory is already first),
+# but required when imported as `scripts.benchmark`, e.g. by tests.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from verify.process import (
     EXCERPT_BYTES,
     MAX_LOG_BYTES,
@@ -43,6 +39,14 @@ from verify.process import (
     spool,
     stop_process_tree,
 )
+
+import esolangs
+import esolangs.debugger as debugger_api
+from esolangs.registry import LANGUAGES
+from esolangs.registry._describe import LanguageInfo
+from esolangs.runtime._validate import check_timeout
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
@@ -170,21 +174,32 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
             and type(next(iter(value))) is tuple
             and set(map(type, value)) == {tuple}
         ):
+            # language-owners: ["Streetcode"]
             # Records of ints (a sparse tape's address-value pairs) count
             # as the flat run they hold; Streetcode re-sorts its every write.
             items = list(chain.from_iterable(value))
         try:
+            # language-owners: ["SLOW ACV MAMMALIAN"]
             # A flat run of ints (a tape, an array) counts in C: magnitude
             # bits, one more for each zero, one more for each negative --
             # _integer_bits per item, and bools agree.  SLOW ACV MAMMALIAN
             # rebuilds its 23 arrays every step, so identity memo cannot help.
             total = (
                 sum(map(int.bit_length, items))
-                + sum(map((0).__eq__, items))
-                + sum(map((0).__gt__, items))
+                + sum(x == 0 for x in items)
+                + sum(x < 0 for x in items)
             )
         except TypeError:
-            total = sum(state_bits(item, memo) for item in value)
+            # The n=8 mixed-frame profile made 15.5M calls to state_bits.
+            # Primitive fields need no recursive dispatch.
+            total = 0
+            for item in value:
+                if type(item) is int:
+                    total += (item.bit_length() or 1) + (item < 0)
+                elif type(item) is str:
+                    total += 8 * len(item)
+                else:
+                    total += state_bits(item, memo)
     elif is_dataclass(value):
         total = sum(state_bits(getattr(value, f.name), memo) for f in fields(value))
     elif hasattr(value, "__dict__"):
@@ -246,6 +261,7 @@ class WrittenState:
                 and isinstance(part, frozenset)
                 and isinstance(last, frozenset)
             ):
+                # language-owners: ["A Painter Ant"]
                 # A frozenset counts as the sum of its items, so a painted
                 # cell recounts the change, not A Painter Ant's whole grid.
                 now += state_bits(part - last, memo)
@@ -256,15 +272,18 @@ class WrittenState:
                 and isinstance(last, tuple)
                 and len(part) == len(last)
                 and part
-                and isinstance(part[0], tuple)
             ):
-                # A chunked store (Malbolge's memory, a persistent tape):
-                # a tuple counts as the sum of its items, and an unwritten
-                # chunk is the same object, so recount only the new ones.
+                # language-owners: ["Malbolge", "Streetcode"]
+                # Tuples count as the sum of their items: recount changed
+                # chunks or integer cells rather than the whole persistent store.
                 # A store rebuilt wholesale (Streetcode re-sorts its records)
                 # moves most items, and one count in C beats that walk.
                 changed = list(compress(range(len(part)), map(is_not, part, last)))
-                if 8 * len(changed) < len(part):
+                additive = isinstance(part[0], tuple) or all(
+                    type(part[i]) in (int, bool) and type(last[i]) in (int, bool)
+                    for i in changed
+                )
+                if additive and 8 * len(changed) < len(part):
                     for i in changed:
                         now += state_bits(part[i], memo)
                         now -= state_bits(last[i], memo)

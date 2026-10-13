@@ -3,17 +3,18 @@
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_vm
 from esolangs.exceptions import TemplateError
+from esolangs.generation.wrap import wrap_program
 from esolangs.languages.slashes.generator import _is_unfilled_template
+from esolangs.runtime._evaluate import _evaluate
 from scripts.benchmark import WrittenState
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("inputs", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_root_deletes_inputs_without_selecting_a_table(inputs, bit):
+def test_constant_root_deletes_inputs_without_selecting_a_table(inputs, bit) -> None:
     table = bit * (1 << inputs)
     template = esolangs.generate("///", table)
     assert len(template) == inputs + 9
@@ -40,10 +41,14 @@ def test_constant_root_deletes_inputs_without_selecting_a_table(inputs, bit):
 
 
 @pytest.mark.parametrize("suffix", ["", "0", "$", "$2", "$x0", "ab0"])
-def test_constant_recognizer_does_not_reserve_other_literal_dollars(suffix):
+def test_constant_recognizer_does_not_reserve_other_literal_dollars(suffix) -> None:
     assert not _is_unfilled_template("/a///b//" + suffix)
 
 
-def test_partly_filled_constant_still_requires_its_remaining_input():
+def test_partly_filled_constant_still_requires_its_remaining_input() -> None:
     assert _is_unfilled_template("/a///b//a$b1")
     assert esolangs.run("///", "$0") == "$0"
+
+
+def test_unwrappable_source_is_untouched() -> None:
+    assert wrap_program("iiiioddo", "slashes", 4) == "iiiioddo"

@@ -8,7 +8,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import DialectSettings
-from esolangs._evaluate import _evaluate
+from esolangs.runtime._evaluate import _evaluate
 
 
 class TestEveryDumpSaysWhereTheAnswerIs:
@@ -28,7 +28,7 @@ class TestEveryDumpSaysWhereTheAnswerIs:
 
 
 @pytest.mark.parametrize("template", [False, True])
-def test_text_pickle_retains_settings(template):
+def test_text_pickle_retains_settings(template) -> None:
     settings = DialectSettings()
     source = esolangs.generate("Bitdeque", "0110", settings=settings)
     if not template:
@@ -41,7 +41,7 @@ def test_text_pickle_retains_settings(template):
     assert esolangs.run("Bitdeque", restored) == "1"
 
 
-def test_settings_through_plain_text_and_template_override():
+def test_settings_through_plain_text_and_template_override() -> None:
     settings = DialectSettings()
     template = esolangs.generate("Bitdeque", "0110", settings=settings)
     assert not hasattr(str(template), "settings")
@@ -62,7 +62,7 @@ def test_settings_through_plain_text_and_template_override():
 
 
 @pytest.mark.parametrize("plain", [False, True])
-def test_balanced_bitdeque_setters(plain):
+def test_balanced_bitdeque_setters(plain) -> None:
     settings = DialectSettings()
     table = "10010110"
     program = esolangs.generate("Bitdeque", table, balance=True, settings=settings)
@@ -76,7 +76,7 @@ def test_balanced_bitdeque_setters(plain):
 
 
 @pytest.mark.medium
-def test_filled_template_becomes_portable_text():
+def test_filled_template_becomes_portable_text() -> None:
     source = esolangs.generate("Bitdeque", "0110", settings=DialectSettings())
     filled = esolangs.instantiate("Bitdeque", source, [1, 0])
     document = esolangs.dump_program("Bitdeque", filled)
@@ -84,7 +84,7 @@ def test_filled_template_becomes_portable_text():
     assert esolangs.run("Bitdeque", esolangs.load_program("Bitdeque", document)) == "1"
 
 
-def test_foreign_language_is_rejected():
+def test_foreign_language_is_rejected() -> None:
     source = esolangs.generate("Bitdeque", "0110", settings=DialectSettings())
     with pytest.raises(esolangs.ProgramError):
         esolangs.dump_program("Brainfuck", source)
@@ -103,7 +103,7 @@ def test_foreign_language_is_rejected():
         ("setters", []),
     ],
 )
-def test_invalid_template_fields(field, value):
+def test_invalid_template_fields(field, value) -> None:
     document = json.loads(
         esolangs.dump_program("Bitdeque", esolangs.generate("Bitdeque", "0110"))
     )
@@ -113,7 +113,7 @@ def test_invalid_template_fields(field, value):
 
 
 @pytest.mark.medium
-def test_bound_language_round_trip():
+def test_bound_language_round_trip() -> None:
     language = esolangs.Language("Bitdeque")
     source = language.generate("0110", settings=DialectSettings())
     document = language.dump_program(source)

@@ -3,13 +3,16 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.fargo.interpreter import (
+    _advance,
+    _Frame,
     _is_literal,
     _Machine,
     _parse_program,
+    _State,
     run,
 )
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
@@ -321,3 +324,34 @@ def test_bad_programs_carry_a_repair_hint() -> None:
     assert_halts_with_hint(
         "Fargo", "% 0 nope 1\n", "undefined function", "define the function"
     )
+
+
+class TestPureTransition:
+    """``_advance`` is a function of its arguments, and only of them."""
+
+    def test_same_state_and_inputs_give_the_same_result(self) -> None:
+        state = _State(0, 0, 0, ())
+        calls = [("$",)]
+        assert _advance(state, {}, calls) == _advance(state, {}, calls)
+
+    def test_the_transition_leaves_its_arguments_unchanged(self) -> None:
+        frame = _Frame(("$",))
+        state = _State(0, 7, 0, (frame,))
+        calls = [("$",)]
+        _advance(state, {}, calls)
+        assert state == _State(0, 7, 0, (frame,))
+        assert calls == [("$",)]
+        assert frame.pos == 0
+        assert frame.result == 0
+
+    def test_the_transition_reports_the_write_instead_of_printing(self) -> None:
+        """No port is reachable from ``_advance``: ``$``'s write is a value."""
+        state = _State(0, 7, 0, (_Frame(("$",)),))
+        new_state, effect = _advance(state, {}, [("$",)])
+        assert effect == 7
+        assert new_state.output == 7
+
+    def test_a_transition_that_writes_nothing_reports_no_effect(self) -> None:
+        state = _State(0, 0, 0, ())
+        _new_state, effect = _advance(state, {}, [("0",)])
+        assert effect is None

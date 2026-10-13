@@ -42,9 +42,9 @@ def test_degenerate_column_rules_execute_or_decline() -> None:
 def test_every_ignored_input_drops_from_the_lookup() -> None:
     """Interior inputs 1 and 4, and trailing input 6, leave the table index."""
     from esolangs import generate
-    from esolangs._evaluate import _evaluate
     from esolangs.languages.minifuck.generator import _reduce
     from esolangs.languages.minifuck.generator.mux import _mux_lookup
+    from esolangs.runtime._evaluate import _evaluate
 
     inner = "0110100110010111"
     bits = ((r >> 6 - i & 1 for i in (0, 2, 3, 5)) for r in range(128))
@@ -95,8 +95,8 @@ def test_balanced_reduced_lookups_keep_their_floor(
     table: str, characters: int, width: int
 ) -> None:
     from esolangs import generate
-    from esolangs._evaluate import _evaluate
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
+    from esolangs.runtime._evaluate import _evaluate
 
     template = generate("Minifuck", table, balance=True)
     assert balance_score(template) <= (0, characters, width)
@@ -146,7 +146,7 @@ def test_probe_frame_refuses_a_pointer_outside_its_low_byte() -> None:
 def test_narrow_layout_drops_ignored_inputs() -> None:
     """A width-1 layout drops ignored inputs: under half a fully essential one."""
     from esolangs import generate
-    from esolangs._evaluate import _evaluate
+    from esolangs.runtime._evaluate import _evaluate
 
     table = "0110" * 8
     narrow = generate("Minifuck", table, width=1)

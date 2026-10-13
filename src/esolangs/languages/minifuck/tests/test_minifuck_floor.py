@@ -3,10 +3,10 @@
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import TEMPLATE_CHAR, mark_runs
+from esolangs.generation.wrap import wrap_program
 from esolangs.languages.minifuck.generator import _solve, minifuck
 from esolangs.languages.minifuck.generator.sim import PAIR
-from esolangs.tools.helpers import TEMPLATE_CHAR, mark_runs
-from esolangs.tools.wrap import wrap_program
 
 
 # Widths 1 and 3 build the same program.

@@ -5,9 +5,13 @@ A grid has no subtrees to fold or share.
 
 from math import isqrt
 
+from esolangs.generation.helpers import (
+    _parity_bias,
+    _validate_truth_table,
+    input_weights,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import _parity_bias, _validate_truth_table, input_weights
 
 
 def fish(truth_table: str, width: int | None = None) -> str:
@@ -70,7 +74,7 @@ def balance_fish(truth_table: str, default: str) -> str:
             if threshold > 0:
                 boundary = max(0, (constant // threshold).bit_length() - 1)
                 exponents.update((boundary, boundary + 1, boundary + 2))
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     candidates = [default]
     candidates.extend(

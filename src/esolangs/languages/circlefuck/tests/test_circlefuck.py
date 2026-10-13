@@ -71,8 +71,8 @@ class TestCirclefuck:
 
 class TestStepMachine:
     def test_step_tracks_cells_and_pointers(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circlefuck.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("+.@", ScriptedIO())
         assert (machine.ind, machine.ptr, machine.cells) == (0, 0, (43, 46, 64))
@@ -94,8 +94,8 @@ class TestStepMachine:
                 parse(source)
 
     def test_unmatched_taken_brackets_suspend(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circlefuck.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         for code in ("\\0[.@", "]@"):
             machine = _Machine(code, ScriptedIO())
@@ -115,8 +115,8 @@ class TestStepMachine:
 
     def test_insert_leaves_the_cursor_on_the_cell_after_the_new_one(self) -> None:
         """``{`` steps the cursor past the cell it just pushed forward."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circlefuck.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("+{+.@", ScriptedIO())
         machine.step()  # + raises cell 0
@@ -126,8 +126,8 @@ class TestStepMachine:
 
     def test_edits_keep_the_instruction_successor(self) -> None:
         """Edits shift the instruction cursor before its normal advance."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circlefuck.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("<{abc@", ScriptedIO())
         machine.step()
@@ -144,8 +144,8 @@ class TestStepMachine:
 
     def test_state_reports_the_fields_and_copies_the_tape(self) -> None:
         """``state`` is an observer, so it must not alias the live tape."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.circlefuck.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("+.@", ScriptedIO())
         before = machine.state
@@ -171,8 +171,8 @@ class TestStepMachine:
 
 
 def _machine(code: str) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.circlefuck.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 
@@ -201,8 +201,8 @@ def test_a_decimal_escape_takes_ascii_digits_only() -> None:
 
 def test_halting_on_at_changes_the_snapshot() -> None:
     """Pins ``done`` in the snapshot: ``@`` changes nothing else."""
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.circlefuck.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine("@", ScriptedIO(""))
     before = machine.snapshot()

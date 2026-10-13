@@ -2,15 +2,15 @@
 
 from math import ceil
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     grid_width,
     read_at,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 
 # The ring's own columns: 3 descends at the start, 2 climbs into the first
 # gadget, 0 climbs home.  Column 1 is the gap that keeps the three apart.

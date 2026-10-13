@@ -73,19 +73,26 @@ its sub-evaluations, so ``step()`` advances exactly one node and a
 recursion pushes one frame per lap -- the granularity the ancestor check
 needs to prove ``x? = x & x?`` hangs.
 
+The semantics are a pure transition: :func:`_advance` maps an immutable
+:class:`_State` (the definitions, the globals, the frame tuple, the line
+cursor) plus the explicit input values a line may read to a new state and
+the text it asks to print.  ``step`` is the shell: it reads the tokens the
+line asks for, applies the transition, and writes what it returns.  A
+line binds every free variable before evaluating it, so the number of
+reads is not known ahead of evaluation; each :data:`_NeedInput` reads one
+more token and retries the deterministic transition.
+
 Input numbers are whitespace-delimited tokens; the spec does not define their
 text framing.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, replace
+from types import MappingProxyType
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import format_integer
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.algebraic_programming_language.interpreter._parse import (
     _as_number,
     _Bin,
@@ -104,12 +111,17 @@ from esolangs.languages.algebraic_programming_language.interpreter._parse import
     _split_definition,
     _tokens,
 )
+from esolangs.runtime._drive import drive
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
+from esolangs.runtime.source_hints import syntax_error
 
 
+@dataclass(frozen=True)
 class _Frame:
     """One call in progress: its body, its bindings, and its cursor.
 
-    ``work`` is an explicit stack of (node, resolved-operands) pairs
+    ``work`` is an explicit stack of ``(node, resolved operands)`` pairs
     standing in for what Python recursion would keep on its own stack, so
     a single ``step()`` resolves one node and returns.  ``stmt`` indexes
     the definition's body, since a multiline function prints every
@@ -119,37 +131,69 @@ class _Frame:
     whose result goes to STDOUT; ``assign`` names the variable an
     assignment line binds instead.  Both are false/None for an ordinary
     call, whose value simply returns to its caller.
+
+    Frozen with tuple collections, so a step returns new frames rather
+    than editing the ones it was handed -- the old state a caller holds
+    stays intact.
     """
 
-    def __init__(
-        self,
-        definition: _Definition,
-        args: dict[str, object],
-        *,
-        printing: bool,
-        assign: str | None,
-    ) -> None:
-        self.fn = definition
-        self.locals = args
-        self.stmt = 0
-        self.work: list[tuple[_Node, list[object]]] = []
-        self.value: object = 0
-        self.returned = False
-        self.printing = printing
-        self.assign = assign
+    fn: _Definition
+    locals: Mapping[str, object]
+    stmt: int
+    work: tuple[tuple[_Node, tuple[object, ...]], ...]
+    value: object
+    returned: bool
+    printing: bool
+    assign: str | None
 
     def __repr__(self) -> str:
         """Identify the frame by its function and cursor."""
         return f"<frame {self.fn.name} @{self.stmt}>"
 
 
-@dataclass
-class _State:
-    """Every changing value in an Algebraic Programming Language run."""
+class _NeedInput(Exception):  # noqa: N818 - an internal resumption signal
+    """Signals that a line needs one more input token than supplied.
 
-    defs: dict[str, _Definition]
-    globals: dict[str, object]
-    frames: list[_Frame]
+    Raised by :func:`_start_line` when binding a free variable finds the
+    explicit input tuple exhausted.  ``effects`` is the output already
+    computed before the read (empty for a line start, which never prints).
+    The shell reads one more token and calls :func:`_advance` again; the
+    transition is deterministic, so the retry reaches the same point with
+    the new value.
+    """
+
+    def __init__(self, effects: tuple[str, ...] = ()) -> None:
+        super().__init__()
+        self.effects = effects
+
+
+class _Fault(Exception):  # noqa: N818 - an internal resumption signal
+    """Carries the output prefix computed before a fault, and the fault."""
+
+    def __init__(self, effects: tuple[str, ...], error: BaseException) -> None:
+        super().__init__(str(error))
+        self.effects = effects
+        self.error = error
+
+
+def _frozen[T](mapping: Mapping[str, T]) -> Mapping[str, T]:
+    """Return ``mapping`` as an immutable mapping, sharing an existing freeze."""
+    return (
+        mapping if isinstance(mapping, MappingProxyType) else MappingProxyType(mapping)
+    )
+
+
+@dataclass(frozen=True)
+class _State:
+    """Every changing value in an Algebraic Programming Language run.
+
+    A value, not a record: the dictionaries are copied before a write, the
+    frames are an immutable tuple, and :func:`_advance` returns a new one.
+    """
+
+    defs: Mapping[str, _Definition]
+    globals: Mapping[str, object]
+    frames: tuple[_Frame, ...]
     line: int
     steps: int = 0
 
@@ -171,23 +215,25 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.lines = _blocks(code)
-        self.state = _State({}, {}, [], 0)
+        self.lines = tuple(_blocks(code))
+        self.state = _State(MappingProxyType({}), MappingProxyType({}), (), 0)
         # Identity -> (serial, object): holding the object keeps its id
         # from being reused, so a serial names one object for the run.
         self._serials: dict[int, tuple[int, object]] = {}
 
     @property
     def defs(self) -> dict[str, _Definition]:
-        return self.state.defs
+        """The definitions, as a fresh dict for the VM's views."""
+        return dict(self.state.defs)
 
     @property
     def globals(self) -> dict[str, object]:
-        return self.state.globals
+        """The global bindings, as a fresh dict for the VM's views."""
+        return dict(self.state.globals)
 
     @property
     def frames(self) -> list[_Frame]:
-        return self.state.frames
+        return list(self.state.frames)
 
     @property
     def line(self) -> int:
@@ -195,7 +241,7 @@ class _Machine:
 
     @line.setter
     def line(self, value: int) -> None:
-        self.state.line = value
+        self.state = replace(self.state, line=value)
 
     @property
     def halted(self) -> bool:
@@ -209,7 +255,7 @@ class _Machine:
     @property
     def ip(self) -> tuple[int, ...]:
         """The line cursor followed by each live frame's statement index."""
-        return (self.line, *(f.stmt for f in self.frames))
+        return (self.line, *(f.stmt for f in self.state.frames))
 
     @property
     def memory(self) -> list[int]:
@@ -222,13 +268,13 @@ class _Machine:
         """
         return [
             int(v) if isinstance(v, (int, float)) else 0
-            for _, v in sorted(self.globals.items())
+            for _, v in sorted(self.state.globals.items())
         ]
 
     @property
     def stack(self) -> list[object]:
         """The live call stack, outermost first."""
-        return list(self.frames)
+        return list(self.state.frames)
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
@@ -249,7 +295,7 @@ class _Machine:
         """
         return (
             self.line,
-            tuple(sorted((k, self._key(v)) for k, v in self.globals.items())),
+            tuple(sorted((k, self._key(v)) for k, v in self.state.globals.items())),
             tuple(
                 (
                     self._key(f.fn),
@@ -262,7 +308,7 @@ class _Machine:
                     f.returned,
                     tuple(sorted((k, self._key(v)) for k, v in f.locals.items())),
                 )
-                for f in self.frames
+                for f in self.state.frames
             ),
             self.io.progress(),
         )
@@ -305,66 +351,39 @@ class _Machine:
         return ("integer", value)
 
     def step(self) -> None:
-        """Advance the program by one definition, read, or expression node."""
+        """Advance the program by one definition, read, or expression node.
+
+        The shell: it reads the tokens the line asks for, applies the pure
+        transition, and prints what the transition asks it to.  Binding a
+        line's free variables can need any number of reads, so they cannot
+        be hoisted; each :data:`_NeedInput` flushes the output computed before
+        it, reads one more token, and retries.  A fault flushes the same
+        prefix before it is re-raised.
+        """
         if self.halted:
             return
-        if self.frames:
-            self._step_frame(self.frames[-1])
-            return
-        self._start_line()
+        inputs: list[_Number] = []
+        flushed = 0
+        while True:
+            try:
+                state, out = _advance(self.state, self.lines, inputs, self._WORK_LIMIT)
+            except _NeedInput as need:
+                flushed = self._flush(need.effects, flushed)
+                inputs.append(self._read_number())
+                continue
+            except _Fault as fault:
+                self._flush(fault.effects, flushed)
+                raise fault.error from None
+            break
+        self.state = state
+        if out is not None:
+            self._flush((out,), flushed)
 
-    def _start_line(self) -> None:
-        """Consume one logical line: define a name, or begin evaluating."""
-        text = self.lines[self.line]
-        self.line += 1
-        self.state.steps = 0
-        split = _split_definition(text)
-        if split is None:
-            node = _Parser(_tokens(text), self.defs).parse()
-            self._bind_inputs(node)
-            self._push(_Definition("", [], [node]), {}, printing=True)
-            return
-        lhs, rhs = split
-        name, params = _parse_lhs(lhs)
-        if not params and _is_lower(name):
-            # ``n = 7``: a plain assignment.  It binds rather than
-            # prints and takes no input, so its body runs in a frame
-            # flagged to assign the result instead of printing it.
-            self._push(_Definition("", [], _body(rhs, self.defs)), {}, assign=name)
-            return
-        # The name is registered *before* its body is parsed, so a
-        # definition can refer to itself: the wiki's truth machine is
-        # ``x? = x & x?``, whose body names the very operator being
-        # defined, and the parser can only match ``?`` against a pattern
-        # it already knows.
-        definition = _Definition(name, params, [("lit", 0)])
-        self.defs[name] = definition
-        definition.body = _body(rhs, self.defs)
-        definition.control = [_contains_return(node) for node in definition.body]
-
-    def _push(
-        self,
-        definition: _Definition,
-        args: dict[str, object],
-        *,
-        printing: bool = False,
-        assign: str | None = None,
-    ) -> None:
-        """Push a frame for ``definition`` and queue its first statement."""
-        frame = _Frame(definition, args, printing=printing, assign=assign)
-        frame.work.append((definition.body[0], []))
-        self.frames.append(frame)
-
-    def _bind_inputs(self, node: _Node) -> None:
-        """Bind every unbound variable in ``node`` from input, in order.
-
-        The spec's example asks for ``a, b, d, c, e`` across two lines,
-        which is first-appearance order with bindings persisting, so the
-        walk is left-to-right and skips names already bound.
-        """
-        for name in _free_variables(node):
-            if name not in self.globals:
-                self.globals[name] = self._read_number()
+    def _flush(self, effects: tuple[str, ...], flushed: int) -> int:
+        """Print ``effects`` past ``flushed``; return the new flush count."""
+        for text in effects[flushed:]:
+            self.io.print_str(text)
+        return len(effects)
 
     def _read_number(self) -> _Number:
         """Read one whitespace-delimited numeric token."""
@@ -377,184 +396,324 @@ class _Machine:
                 hint="supply a decimal number as input",
             ) from exc
 
-    def _step_frame(self, frame: _Frame) -> None:
-        """Resolve one node of ``frame``'s current expression."""
-        self.state.steps += 1
-        if self.state.steps > self._WORK_LIMIT:
-            raise HaltError(
-                "expression exceeded the evaluation budget",
-                hint="reduce nesting or repeated evaluation to fit the budget",
-            )
-        if not frame.work:
-            self._advance(frame)
-            return
-        node, done = frame.work[-1]
-        # Narrowed on ``node`` itself rather than through a ``kind`` local,
-        # so mypy can discriminate the tuple union: binding the tag to a
-        # variable first loses the link between it and the node's shape.
-        if node[0] == "lit":
-            self._resolve(frame, node[1])
-            return
-        if node[0] == "var":
-            self._resolve(frame, self._lookup(frame, node[1]))
-            return
-        if node[0] == "ref":
-            self._resolve(frame, self._lookup_function(node[1]))
-            return
-        if node[0] == "neg":
-            if not done:
-                self._descend(frame, node[1])
-            else:
-                self._resolve(frame, -_as_number(done[0]))
-            return
-        if node[0] == "ret":
-            if not done:
-                self._descend(frame, node[1])
-                return
-            # ``$`` exits the function immediately, so the rest of the
-            # expression around it is abandoned rather than resumed.
-            frame.returned = True
-            frame.value = done[0]
-            frame.work.clear()
-            return
-        if node[0] == "bin":
-            self._step_binary(frame, node, done)
-            return
-        self._step_call(frame, node, done)
 
-    def _lookup(self, frame: _Frame, name: str) -> object:
-        """Resolve a variable against the frame's locals, then the globals."""
-        if name in frame.locals:
-            return frame.locals[name]
-        if name in self.globals:
-            return self.globals[name]
-        raise syntax_error(
-            f"unknown variable {name!r}",
-            "define the lowercase variable before reading it",
+def _set_top(state: _State, frame: _Frame) -> _State:
+    """Return ``state`` with its innermost frame replaced by ``frame``."""
+    return replace(state, frames=(*state.frames[:-1], frame))
+
+
+def _push_work(frame: _Frame, node: _Node) -> _Frame:
+    """Return ``frame`` with ``node`` queued as the next sub-evaluation."""
+    return replace(frame, work=(*frame.work, (node, ())))
+
+
+def _pop_work(frame: _Frame) -> _Frame:
+    """Return ``frame`` with its innermost work item dropped."""
+    return replace(frame, work=frame.work[:-1])
+
+
+def _append_done(frame: _Frame, value: object) -> _Frame:
+    """Return ``frame`` with ``value`` delivered to its innermost node."""
+    node, done = frame.work[-1]
+    return replace(frame, work=(*frame.work[:-1], (node, (*done, value))))
+
+
+def _format_value(value: object) -> str:
+    """Render one result the way the wiki's examples read, plus a newline."""
+    number = _as_number(value)
+    text = format_integer(number) if isinstance(number, int) else _format_float(number)
+    return text + "\n"
+
+
+def _advance(
+    state: _State,
+    lines: Sequence[str],
+    inputs: Sequence[_Number] = (),
+    work_limit: int = 1 << 20,
+) -> tuple[_State, str | None]:
+    """Return the state after one step, and the text to print, if any.
+
+    Pure: ``lines`` and ``inputs`` are parameters, and a write leaves as
+    the returned string.  A line whose input binding needs a value the
+    explicit ``inputs`` does not hold raises :data:`_NeedInput`; any other
+    fault raises :data:`_Fault`, so the shell can flush any output prefix
+    (always empty here, since this language prints only at a step's end)
+    before re-raising.
+    """
+    try:
+        if state.frames:
+            return _step_frame(state, work_limit)
+        return _start_line(state, lines, inputs)
+    except _NeedInput:
+        raise _NeedInput(()) from None
+    except _Fault:
+        raise
+    except BaseException as exc:
+        raise _Fault((), exc) from None
+
+
+def _start_line(
+    state: _State, lines: Sequence[str], inputs: Sequence[_Number]
+) -> tuple[_State, str | None]:
+    """Consume one logical line: define a name, or begin evaluating."""
+    text = lines[state.line]
+    line = state.line + 1
+    split = _split_definition(text)
+    if split is None:
+        node = _Parser(_tokens(text), state.defs).parse()
+        globals_ = _bind_inputs(node, state.globals, inputs)
+        definition = _Definition("", [], [node])
+        frame = _Frame(
+            definition,
+            MappingProxyType({}),
+            0,
+            ((node, ()),),
+            0,
+            returned=False,
+            printing=True,
+            assign=None,
         )
+        return (
+            replace(
+                state,
+                globals=globals_,
+                frames=(*state.frames, frame),
+                line=line,
+                steps=0,
+            ),
+            None,
+        )
+    lhs, rhs = split
+    name, params = _parse_lhs(lhs)
+    if not params and _is_lower(name):
+        # ``n = 7``: a plain assignment.  It binds rather than
+        # prints and takes no input, so its body runs in a frame
+        # flagged to assign the result instead of printing it.
+        body = _body(rhs, state.defs)
+        definition = _Definition("", [], body)
+        frame = _Frame(
+            definition,
+            MappingProxyType({}),
+            0,
+            ((body[0], ()),),
+            0,
+            returned=False,
+            printing=False,
+            assign=name,
+        )
+        return (
+            replace(state, frames=(*state.frames, frame), line=line, steps=0),
+            None,
+        )
+    # The name is registered *before* its body is parsed, so a
+    # definition can refer to itself: the wiki's truth machine is
+    # ``x? = x & x?``, whose body names the very operator being
+    # defined, and the parser can only match ``?`` against a pattern
+    # it already knows.
+    definition = _Definition(name, params, [("lit", 0)])
+    defs = _frozen({**state.defs, name: definition})
+    definition.body = _body(rhs, defs)
+    definition.control = [_contains_return(node) for node in definition.body]
+    return replace(state, defs=defs, line=line, steps=0), None
 
-    def _lookup_function(self, name: str) -> object:
-        """Resolve a bare uppercase name to the definition it refers to.
 
-        Only the globals are searched.  A ``ref`` node's name is
-        uppercase by construction and every parameter is validated
-        lowercase, so a bare name can never be a local; a *parameter*
-        holding a function is called as ``c()``, which resolves through
-        ``_step_call``'s own locals lookup instead.
-        """
-        if name in self.defs:
-            return self.defs[name]
+def _bind_inputs(
+    node: _Node, globals_: Mapping[str, object], inputs: Sequence[_Number]
+) -> Mapping[str, object]:
+    """Bind every unbound variable in ``node`` from input, in order.
+
+    The spec's example asks for ``a, b, d, c, e`` across two lines,
+    which is first-appearance order with bindings persisting, so the
+    walk is left-to-right and skips names already bound.  Each read is
+    the next explicit value; running out raises :data:`_NeedInput`.
+    """
+    out = dict(globals_)
+    pos = 0
+    for name in _free_variables(node):
+        if name not in out:
+            if pos >= len(inputs):
+                raise _NeedInput
+            out[name] = inputs[pos]
+            pos += 1
+    return _frozen(out)
+
+
+def _step_frame(state: _State, work_limit: int) -> tuple[_State, str | None]:
+    """Resolve one node of the innermost frame's current expression."""
+    steps = state.steps + 1
+    if steps > work_limit:
+        raise HaltError(
+            "expression exceeded the evaluation budget",
+            hint="reduce nesting or repeated evaluation to fit the budget",
+        )
+    state = replace(state, steps=steps)
+    frame = state.frames[-1]
+    if not frame.work:
+        return _next_statement(state)
+    node, done = frame.work[-1]
+    # Narrowed on ``node`` itself rather than through a ``kind`` local,
+    # so mypy can discriminate the tuple union: binding the tag to a
+    # variable first loses the link between it and the node's shape.
+    if node[0] == "lit":
+        return _resolve(state, frame, node[1])
+    if node[0] == "var":
+        return _resolve(state, frame, _lookup(frame, node[1], state.globals))
+    if node[0] == "ref":
+        return _resolve(state, frame, _lookup_function(node[1], state.defs))
+    if node[0] == "neg":
+        if not done:
+            return _descend(state, frame, node[1])
+        return _resolve(state, frame, -_as_number(done[0]))
+    if node[0] == "ret":
+        if not done:
+            return _descend(state, frame, node[1])
+        # ``$`` exits the function immediately, so the rest of the
+        # expression around it is abandoned rather than resumed.
+        frame = replace(frame, returned=True, value=done[0], work=())
+        return _set_top(state, frame), None
+    if node[0] == "bin":
+        return _step_binary(state, frame, node, done)
+    return _step_call(state, frame, node, done)
+
+
+def _lookup(frame: _Frame, name: str, globals_: Mapping[str, object]) -> object:
+    """Resolve a variable against the frame's locals, then the globals."""
+    if name in frame.locals:
+        return frame.locals[name]
+    if name in globals_:
+        return globals_[name]
+    raise syntax_error(
+        f"unknown variable {name!r}",
+        "define the lowercase variable before reading it",
+    )
+
+
+def _lookup_function(name: str, defs: Mapping[str, _Definition]) -> object:
+    """Resolve a bare uppercase name to the definition it refers to.
+
+    Only the globals are searched.  A ``ref`` node's name is
+    uppercase by construction and every parameter is validated
+    lowercase, so a bare name can never be a local; a *parameter*
+    holding a function is called as ``c()``, which resolves through
+    :func:`_step_call`'s own locals lookup instead.
+    """
+    if name in defs:
+        return defs[name]
+    raise syntax_error(
+        f"unknown function {name!r}",
+        "define this uppercase function before referring to it",
+    )
+
+
+def _descend(state: _State, frame: _Frame, node: _Node) -> tuple[_State, str | None]:
+    """Queue ``node`` as the next sub-evaluation of the current one."""
+    return _set_top(state, _push_work(frame, node)), None
+
+
+def _step_binary(
+    state: _State, frame: _Frame, node: _Bin, done: tuple[object, ...]
+) -> tuple[_State, str | None]:
+    """Resolve one stage of a binary operator, short-circuiting & and |.
+
+    ``&`` and ``|`` evaluate their left side first and skip the right
+    entirely when it cannot change the answer, which is what makes
+    ``x & $0`` a conditional: the ``$`` on the right never runs unless
+    ``x`` is truthy.
+    """
+    op = node[1]
+    if not done:
+        return _descend(state, frame, node[2])
+    if len(done) == 1:
+        left = done[0]
+        if op == "&" and not _truthy(left):
+            return _resolve(state, frame, 0)
+        if op == "|" and _truthy(left):
+            return _resolve(state, frame, left)
+        return _descend(state, frame, node[3])
+    left, right = done[0], done[1]
+    if op in ("&", "|"):
+        # The left operand did not decide the answer, so the value is
+        # the right one as evaluated.
+        return _resolve(state, frame, right)
+    return _resolve(state, frame, _arith(op, _as_number(left), _as_number(right)))
+
+
+def _step_call(
+    state: _State, frame: _Frame, node: _Call, done: tuple[object, ...]
+) -> tuple[_State, str | None]:
+    """Evaluate a call's arguments, then push the callee's frame."""
+    name, args = node[1], node[2]
+    if len(done) < len(args):
+        return _descend(state, frame, args[len(done)])
+    # A name bound to a *value* is a parameter holding a function,
+    # which is how the wiki's ``WHILE(x, c)`` calls ``x()``.
+    target = frame.locals.get(name)
+    definition = target if isinstance(target, _Definition) else state.defs.get(name)
+    if definition is None:
         raise syntax_error(
             f"unknown function {name!r}",
-            "define this uppercase function before referring to it",
+            ("define the called function or pass a defined function as the parameter"),
         )
-
-    def _descend(self, frame: _Frame, node: _Node) -> None:
-        """Queue ``node`` as the next sub-evaluation of the current one."""
-        frame.work.append((node, []))
-
-    def _step_binary(self, frame: _Frame, node: _Bin, done: list[object]) -> None:
-        """Resolve one stage of a binary operator, short-circuiting & and |.
-
-        ``&`` and ``|`` evaluate their left side first and skip the right
-        entirely when it cannot change the answer, which is what makes
-        ``x & $0`` a conditional: the ``$`` on the right never runs unless
-        ``x`` is truthy.
-        """
-        op = node[1]
-        if not done:
-            self._descend(frame, node[2])
-            return
-        if len(done) == 1:
-            left = done[0]
-            if op == "&" and not _truthy(left):
-                self._resolve(frame, 0)
-                return
-            if op == "|" and _truthy(left):
-                self._resolve(frame, left)
-                return
-            self._descend(frame, node[3])
-            return
-        left, right = done[0], done[1]
-        if op in ("&", "|"):
-            # The left operand did not decide the answer, so the value is
-            # the right one as evaluated.
-            self._resolve(frame, right)
-            return
-        self._resolve(frame, _arith(op, _as_number(left), _as_number(right)))
-
-    def _step_call(self, frame: _Frame, node: _Call, done: list[object]) -> None:
-        """Evaluate a call's arguments, then push the callee's frame."""
-        name, args = node[1], node[2]
-        if len(done) < len(args):
-            self._descend(frame, args[len(done)])
-            return
-        # A name bound to a *value* is a parameter holding a function,
-        # which is how the wiki's ``WHILE(x, c)`` calls ``x()``.
-        target = frame.locals.get(name)
-        definition = target if isinstance(target, _Definition) else self.defs.get(name)
-        if definition is None:
-            raise syntax_error(
-                f"unknown function {name!r}",
-                (
-                    "define the called function or pass a defined function as "
-                    "the parameter"
-                ),
-            )
-        if len(done) != len(definition.params):
-            raise syntax_error(
-                f"{definition.name!r} takes {len(definition.params)} "
-                f"argument(s), got {len(done)}",
-                (
-                    "pass exactly the number of arguments declared in the "
-                    "function header"
-                ),
-            )
-        frame.work.pop()
-        self._push(definition, dict(zip(definition.params, done, strict=True)))
-
-    def _resolve(self, frame: _Frame, value: object) -> None:
-        """Finish the innermost node, handing ``value`` to its parent."""
-        frame.work.pop()
-        frame.value = value
-        if frame.work:
-            frame.work[-1][1].append(value)
-
-    def _advance(self, frame: _Frame) -> None:
-        """Move to the frame's next statement, or return from it."""
-        if not frame.returned and frame.stmt + 1 < len(frame.fn.body):
-            # Every statement but the last prints, per the wiki's
-            # MULTILINE example -- unless it carries a ``$``, which makes
-            # it a conditional return rather than a printed value.
-            if not frame.fn.control[frame.stmt]:
-                self._print(frame.value)
-            frame.stmt += 1
-            frame.work.append((frame.fn.body[frame.stmt], []))
-            return
-        self._pop(frame)
-
-    def _pop(self, frame: _Frame) -> None:
-        """Return the frame's value to its caller, printing or assigning it."""
-        value = frame.value
-        self.frames.pop()
-        if frame.assign is not None:
-            self.globals[frame.assign] = value
-        if not self.frames:
-            if frame.printing:
-                self._print(value)
-            return
-        parent = self.frames[-1]
-        parent.value = value
-        if parent.work:
-            parent.work[-1][1].append(value)
-
-    def _print(self, value: object) -> None:
-        """Write one result, formatted the way the wiki's examples read."""
-        number = _as_number(value)
-        text = (
-            format_integer(number) if isinstance(number, int) else _format_float(number)
+    if len(done) != len(definition.params):
+        raise syntax_error(
+            f"{definition.name!r} takes {len(definition.params)} "
+            f"argument(s), got {len(done)}",
+            ("pass exactly the number of arguments declared in the function header"),
         )
-        self.io.print_str(text + "\n")
+    frame = _pop_work(frame)
+    pushed = _Frame(
+        definition,
+        _frozen(dict(zip(definition.params, done, strict=True))),
+        0,
+        ((definition.body[0], ()),),
+        0,
+        returned=False,
+        printing=False,
+        assign=None,
+    )
+    return replace(state, frames=(*state.frames[:-1], frame, pushed)), None
+
+
+def _resolve(state: _State, frame: _Frame, value: object) -> tuple[_State, str | None]:
+    """Finish the innermost node, handing ``value`` to its parent."""
+    frame = _pop_work(frame)
+    frame = replace(frame, value=value)
+    if frame.work:
+        frame = _append_done(frame, value)
+    return _set_top(state, frame), None
+
+
+def _next_statement(state: _State) -> tuple[_State, str | None]:
+    """Move to the frame's next statement, or return from it."""
+    frame = state.frames[-1]
+    if not frame.returned and frame.stmt + 1 < len(frame.fn.body):
+        # Every statement but the last prints, per the wiki's
+        # MULTILINE example -- unless it carries a ``$``, which makes
+        # it a conditional return rather than a printed value.
+        out = None if frame.fn.control[frame.stmt] else _format_value(frame.value)
+        stmt = frame.stmt + 1
+        frame = replace(frame, stmt=stmt, work=(*frame.work, (frame.fn.body[stmt], ())))
+        return _set_top(state, frame), out
+    return _pop(state)
+
+
+def _pop(state: _State) -> tuple[_State, str | None]:
+    """Return the frame's value to its caller, printing or assigning it."""
+    frame = state.frames[-1]
+    value = frame.value
+    frames = state.frames[:-1]
+    globals_ = (
+        state.globals
+        if frame.assign is None
+        else _frozen({**state.globals, frame.assign: value})
+    )
+    if not frames:
+        out = _format_value(value) if frame.printing else None
+        return replace(state, frames=frames, globals=globals_), out
+    parent = replace(frames[-1], value=value)
+    if parent.work:
+        parent = _append_done(parent, value)
+    return replace(state, frames=(*frames[:-1], parent), globals=globals_), None
 
 
 def _format_float(value: float) -> str:

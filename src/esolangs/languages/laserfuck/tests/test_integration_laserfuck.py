@@ -7,24 +7,24 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs._execution import interpreter_module
 from esolangs.cli import HELP
+from esolangs.runtime._execution import interpreter_module
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
-from tests.integration.cli.test_cli import call_main
-from tests.reference import REFERENCE
-from tests.runtime.vm.test_vm import _run_all, assert_random_steps_reproduce
-from tests.runtime.vm.test_vm_protocol import assert_starts_downward
+from tests.cli.test_cli import call_main
+from tests.runtime.test_vm import _run_all, assert_random_steps_reproduce
+from tests.runtime.test_vm_protocol import assert_starts_downward
 from tests.support.cli_support import call_both
 from tests.support.generator_support import evaluate_generated, overruns
+from tests.support.reference import REFERENCE
 
 
-def test_bound_execution_passes_the_seed():
+def test_bound_execution_passes_the_seed() -> None:
     language = esolangs.Language("LaserFuck")
     assert [language.run("o+++.\n", seed=0) for _ in range(6)] == ["3"] * 6
 
 
 @pytest.mark.medium
-def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit():
+def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit() -> None:
     seeds = [*range(8), 10**5000, -(10**5000)]  # strings are refused now
     direct = [
         esolangs.run("LaserFuck", "o+++.\n", seed=seed, timeout=5) for seed in seeds
@@ -57,10 +57,10 @@ class TestLaserFuck:
         assert vm.output == "\x01"
 
     def test_dump_output_matches_interpreter(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.randomness import Seeded
         from esolangs.languages.laserfuck.interpreter import _Machine as _LFMachine
         from esolangs.languages.laserfuck.interpreter import run as lf_run
+        from esolangs.runtime.io import ScriptedIO
+        from esolangs.runtime.randomness import Seeded
 
         program = "\u00ff   x\n    +\n    o"
         io_obj = ScriptedIO()

@@ -1,30 +1,35 @@
 """addsubjump generator tests."""
 
 import random
+from collections.abc import Iterator
 
 import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs.generation.helpers import in_input_order
 from esolangs.languages import generators as boolean
 from esolangs.languages.addsubjump.generator import (
     _addsubjump_ordered,
     _addsubjump_packed,
     addsubjump,
 )
-from esolangs.languages.addsubjump.tests.runners import (
-    run_addsubjump,
-    run_addsubjump_from,
-)
-from esolangs.tools.helpers import in_input_order
+from tests.generators.boolean_runners import _run_from, _runner
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits, witnesses
 
+run_addsubjump = _runner("addsubjump")
+
+
+def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
+    """Run an AddSubJump program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.languages.addsubjump.interpreter", program, feed)
+
 
 @pytest.mark.medium
-def test_packed_projection_executes_every_three_input_table():
-    from esolangs._evaluate import _evaluate
+def test_packed_projection_executes_every_three_input_table() -> None:
     from esolangs.languages.addsubjump.generator import _addsubjump_packed
+    from esolangs.runtime._evaluate import _evaluate
 
     for value in range(256):
         table = f"{value:08b}"
@@ -36,12 +41,12 @@ def test_packed_projection_executes_every_three_input_table():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("kind", ["zero", "one", "first", "last", "ends"])
-def test_wide_packed_projection_keeps_reads_and_old_balanced_score(kind):
-    from esolangs._evaluate import _evaluate
-    from esolangs.interpreters.io import ScriptedIO
+def test_wide_packed_projection_keeps_reads_and_old_balanced_score(kind) -> None:
+    from esolangs.generation.wrap import balance_program, balance_score
     from esolangs.languages.addsubjump.generator import _addsubjump_packed
     from esolangs.languages.addsubjump.interpreter import _Machine
-    from esolangs.tools.wrap import balance_program, balance_score
+    from esolangs.runtime._evaluate import _evaluate
+    from esolangs.runtime.io import ScriptedIO
     from esolangs.vm import run_until_halt_or_cycle
 
     table = (
@@ -81,9 +86,9 @@ def test_wide_packed_projection_keeps_reads_and_old_balanced_score(kind):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("essential", range(1, 8))
-def test_packed_projection_indexes_nonadjacent_coordinates(essential):
-    from esolangs._evaluate import _evaluate
+def test_packed_projection_indexes_nonadjacent_coordinates(essential) -> None:
     from esolangs.languages.addsubjump.generator import _addsubjump_packed
+    from esolangs.runtime._evaluate import _evaluate
 
     used = [*range(essential - 1), 7]
     table = "".join(

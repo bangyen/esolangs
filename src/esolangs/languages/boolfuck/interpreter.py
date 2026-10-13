@@ -5,10 +5,11 @@ are ignored; unmatched brackets raise ValueError. Unicode input is reduced
 modulo 256, matching the package's byte interfaces.
 """
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import match_brackets
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.bits import flush_byte, put_bit, take_bit
+from esolangs.runtime.brackets import match_brackets
+from esolangs.runtime.io import IO
 
 # pc, pointer, buffered input byte, remaining input bits, output byte, output bits
 type _State = tuple[int, int, int, int, int, int]
@@ -76,23 +77,22 @@ class _Machine:
                 except EOFError:
                     incoming = 0
                 remaining = 8
-            if incoming & 1:
+            (incoming, remaining), read = take_bit((incoming, remaining))
+            if read:
                 self.ones.add(ptr)
             else:
                 self.ones.discard(ptr)
-            incoming >>= 1
-            remaining -= 1
         elif command == ";":
-            outgoing |= bit << used
-            used += 1
-            if used == 8:
-                self.io.print_char(chr(outgoing))
-                outgoing = used = 0
+            (outgoing, used), full = put_bit((outgoing, used), bit)
+            if full is not None:
+                self.io.print_char(chr(full))
         self.state = _advance(
             (pc, ptr, incoming, remaining, outgoing, used), command, bit, self.brackets
         )
-        if self.state[0] >= len(self.code) and used:
-            self.io.print_char(chr(outgoing))
+        if self.state[0] >= len(self.code):
+            full = flush_byte((outgoing, used))
+            if full is not None:
+                self.io.print_char(chr(full))
             pc, ptr, incoming, remaining, _outgoing, _used = self.state
             self.state = (pc, ptr, incoming, remaining, 0, 0)
 

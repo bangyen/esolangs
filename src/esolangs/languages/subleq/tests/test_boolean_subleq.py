@@ -3,10 +3,10 @@
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages.subleq.generator import subleq
 from esolangs.languages.subleq.interpreter import _Machine
-from esolangs.tools.packed_decoder import packed_decoder
+from esolangs.runtime.io import ScriptedIO
 
 
 def _execute_count(program: str, text: str) -> tuple[str, int, int]:
@@ -39,7 +39,7 @@ def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> Non
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [1, 2, 3])
-def test_public_candidate_computes_every_small_table(n):
+def test_public_candidate_computes_every_small_table(n) -> None:
     for value in range(1 << (1 << n)):
         table = f"{value:0{1 << n}b}"
         public = subleq(table)
@@ -51,7 +51,7 @@ def test_public_candidate_computes_every_small_table(n):
 
 
 @pytest.mark.medium
-def test_shared_parity_uses_direct_jumps_at_sixteen_inputs():
+def test_shared_parity_uses_direct_jumps_at_sixteen_inputs() -> None:
     n = 16
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     program = subleq(table)

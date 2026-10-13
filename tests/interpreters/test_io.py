@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.cursorless_io import PositionlessIO
 
 
@@ -174,7 +174,7 @@ def test_line_exhaustion_counts_only_actual_line_delimiters(separator: str) -> N
 @pytest.mark.parametrize(
     "method", ["input_char", "input_str", "input_token", "input_num", "input_all"]
 )
-def test_progress_tracks_consumption_and_stays_stable_at_eof(io_type, method):
+def test_progress_tracks_consumption_and_stays_stable_at_eof(io_type, method) -> None:
     source = io_type("1")
     assert source.progress() == 0
     getattr(source, method)()
@@ -187,7 +187,7 @@ def test_progress_tracks_consumption_and_stays_stable_at_eof(io_type, method):
     assert source.progress() == 1
 
 
-def test_interactive_empty_line_advances_progress():
+def test_interactive_empty_line_advances_progress() -> None:
     source = IO()
     with patch("builtins.input", side_effect=["", EOFError]):
         assert source.input_str() == ""

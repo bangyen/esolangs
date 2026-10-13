@@ -77,10 +77,10 @@ jobs:
     # command that report prints.
     # Preserve the native construction cap without competing xdist workers.
     - name: Check the preserving certificate without competing workers
-      run: uv run python -m pytest src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci.shard --duration-output certificate-durations.json
+      run: uv run python -m pytest src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci.shard --duration-output notes/ci/certificate-durations.json
 
     - name: Test with pytest (full suite, including the slow band)
-      run: uv run python -m pytest -n auto -k "not test_preserving_certificate" -p scripts.ci.shard --duration-output test-durations.json
+      run: uv run python -m pytest -n auto -k "not test_preserving_certificate" -p scripts.ci.shard --duration-output notes/ci/test-durations.json
 
     - name: Retain measured test durations
       if: always()
@@ -88,8 +88,8 @@ jobs:
       with:
         name: test-durations-${{ matrix.python-version }}
         path: |
-          test-durations*.json
-          certificate-durations*.json
+          notes/ci/test-durations*.json*
+          notes/ci/certificate-durations*.json*
 
     - name: Retain worker and verification logs
       if: always()
@@ -176,7 +176,7 @@ jobs:
       run: uv sync --group dev --python 3.12
 
     # A generator route that was replaced keeps its own tests green; three
-    # sat unread for months.  Reports any tools/ name, or any private name
+    # sat unread for months.  Reports any generation/ name, or any private name
     # elsewhere in src/, that nothing in src/ or scripts/ reads.  <2s.
     - name: Check for definitions nothing reads
       run: uv run python checks/check_dead_definitions.py

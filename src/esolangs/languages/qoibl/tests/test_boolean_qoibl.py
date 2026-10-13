@@ -6,12 +6,14 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.qoibl.tests.runners import run_qoibl
+from tests.generators.boolean_runners import _runner
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,
 )
 from tests.support.witness_tables import witnesses
+
+run_qoibl = _runner("qoibl", lines=True)
 
 
 class TestQoibl:
@@ -24,8 +26,9 @@ class TestQoibl:
                 assert run_qoibl(program, list(format(row, "03b"))) == table[row]
 
     @pytest.mark.medium
-    @pytest.mark.parametrize("n", [5, pytest.param(8, marks=pytest.mark.slow)])
-    @pytest.mark.parametrize("width", [1, 3, 13])
+    @pytest.mark.parametrize(
+        ("n", "width"), [(5, 3), (5, 13), pytest.param(8, 1, marks=pytest.mark.slow)]
+    )
     def test_narrow_horner_larger_literals(self, n: int, width: int) -> None:
         rng = random.Random(20260930 + n)
         for table in (
@@ -88,11 +91,11 @@ def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.qoibl, range(7, 11), 800)
 
 
-def test_qoibl_affine_row_envelope_minima():
+def test_qoibl_affine_row_envelope_minima() -> None:
     from itertools import product
 
-    from esolangs.languages.qoibl.generator.balance import _best_width
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.qoibl.generator import _best_width
 
     for negative, constant, positive, extra in product(
         [32, 45, 60], [1, 5, 15], [-1, 4, 12], [0, 10, 30]

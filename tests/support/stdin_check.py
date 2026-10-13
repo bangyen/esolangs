@@ -1,9 +1,9 @@
 """Test oracle for the stdin half of the Boolean I/O contract."""
 
 from esolangs.exceptions import ArgumentError, TruthTableError
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry import LANGUAGES, resolve
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.runtime.source_hints import with_hint
 
 
 def _validate_shape_for_evaluate(truth_table: str) -> int:
@@ -24,7 +24,7 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
     name = resolve(language)
     lang = LANGUAGES[name]
     contract = lang.contract
-    if lang.boolean is None or contract.parameterized:
+    if lang.boolean is None or lang.parameterized:
         raise ArgumentError(
             f"{name} embeds its inputs in the program and reads no stdin; "
             f"there is nothing to check"
@@ -41,6 +41,7 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
     if truth_table is not None:
         wanted = _validate_shape_for_evaluate(truth_table)
         if shape == "char_stream_padded" and wanted % 2 and wanted > 1:
+            # language-owners: ["Taglate"]
             # Taglate's pad is a digit the program reads like any other, so
             # an odd input count above one costs an extra character.  Read off
             # the shape, which is where that fact already lives.
@@ -124,6 +125,7 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
         return
     stray = [line for line in lines if line not in (zero, one)]
     if stray:
+        # language-owners: ["Grapheme"]
         # Phrased around the alphabet rather than the stray count, because
         # the useful half is what this language *does* spell its bits with:
         # a reader who fed 0/1 lines to Grapheme needs '%' and 'A', not a

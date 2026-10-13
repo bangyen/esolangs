@@ -8,7 +8,7 @@ right-hand side substitutes a line of input; a ``~`` prefix prints the rest.
 
 Which occurrence of which rule is the spec's choice, and it is random, so this
 interpreter *draws* it through the shared
-:mod:`~esolangs.interpreters.randomness` hook rather than pinning a tie-break:
+:mod:`~esolangs.runtime.randomness` hook rather than pinning a tie-break:
 pinned, overlapping rules would compute whatever this file preferred.  ``rng``
 fixes the draw for reproducibility, and the branching protocol below lets the
 hang proof search *every* draw, as a random-branch language does.  A program whose
@@ -35,11 +35,11 @@ from __future__ import annotations
 from bisect import bisect_left, bisect_right
 from itertools import accumulate
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.randomness import Randomness, draw
+from esolangs.runtime.source_hints import syntax_error
 
 _SEPARATOR = "::="
 #: The right-hand side that reads a line of input instead of text.
@@ -318,6 +318,15 @@ def _starts(text: str, lhs: str, low: int, high: int) -> list[int]:
     return out
 
 
+def _advance_indexed(
+    rules: tuple[_Rule, ...], match: tuple[int, int, int], line: str | None = None
+) -> tuple[tuple[int, int, int, str], str | None]:
+    """Return a block rewrite effect and any output, without editing the text."""
+    rule, block, at = match
+    replacement, output = _rewrite(rules[rule][1], line)
+    return (rule, block, at, replacement), output
+
+
 class _Machine:
     """The run state: the rewritten string, against fixed rules."""
 
@@ -385,10 +394,12 @@ class _Machine:
         count = sum(self._text.totals)
         if not count:
             return
-        rule, block, index = self._text.select(draw(self._rng, count))
-        rhs = self.rules[rule][1]
-        replacement, out = _rewrite(rhs, self.io.input_str() if rhs == _INPUT else None)
-        self._text.replace(rule, block, index, replacement)
+        match = self._text.select(draw(self._rng, count))
+        rhs = self.rules[match[0]][1]
+        effect, out = _advance_indexed(
+            self.rules, match, self.io.input_str() if rhs == _INPUT else None
+        )
+        self._text.replace(*effect)
         if out is not None:
             self.io.print_str(out)
 

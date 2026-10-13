@@ -5,22 +5,22 @@ import re
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
-from esolangs.registry import LANGUAGES
-from esolangs.tools.wrap import (
+from esolangs.generation.wrap import (
     DEFAULT_WIDTH,
-    _bio,
     balance_program,
     balance_score,
 )
+from esolangs.languages.bio.wrapping import _balance_bio, _bio
+from esolangs.registry import LANGUAGES
+from esolangs.runtime._evaluate import _evaluate
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_root_keeps_setters_without_index_save_loops(bit):
+def test_constant_root_keeps_setters_without_index_save_loops(bit) -> None:
     from esolangs.debugger import make_vm
+    from esolangs.generation.helpers import input_weights, mark_runs, unmark
     from esolangs.languages.bio.generator import BIO_PAIR, _bio
-    from esolangs.tools.helpers import input_weights, mark_runs, unmark
 
     table = bit * 256
     template = esolangs.generate("BIO", table)
@@ -51,9 +51,9 @@ class TestParameterizedBIO:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
+        from esolangs.generation.helpers import runs
         from esolangs.languages import generators
         from esolangs.languages.bio.generator import BIO_PAIR
-        from esolangs.tools.helpers import runs
 
         template = generators.bio("0110")
         # one four-character unit per input; the doubling between them
@@ -80,7 +80,7 @@ class TestParameterizedBIO:
             assert len(setters) == n
 
 
-def test_bio_balance_keeps_source_that_does_not_tile_commands():
+def test_bio_balance_keeps_source_that_does_not_tile_commands() -> None:
     assert balance_program("not BIO", "bio") == "not BIO"
 
 
@@ -134,6 +134,17 @@ def test_bio_indent_stops_growing_before_it_crowds_the_line() -> None:
     lines = _bio(program, 20).split("\n")
     assert max(len(line) for line in lines) <= 20
     assert _bio_tokens("\n".join(lines)) == _bio_tokens(program)
+
+
+def test_balance_covers_both_span_regimes() -> None:
+    """Sibling loops pick the cap regime; a wide mixed-length ramp the other."""
+    for program in (
+        "0ix{" + "0ix{0oy; 1oy;};" * 6 + "};",
+        "0ix{" * 2 + "0ox; 1ox;0oy; " * 6 + "};" * 2,
+    ):
+        balanced = _balance_bio(program)
+        assert _bio_tokens(balanced) == _bio_tokens(program)
+        assert balance_score(balanced) <= balance_score(_bio(program, DEFAULT_WIDTH))
 
 
 def test_bio_indent_leaves_no_trailing_whitespace() -> None:

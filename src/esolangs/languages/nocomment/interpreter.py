@@ -22,11 +22,11 @@ raises.
 
 from __future__ import annotations
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 # Finite by specification: the wiki defines pointer overflow as moving "to
 # the opposite end of memory" and says "the memory space needs to be static".

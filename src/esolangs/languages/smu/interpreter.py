@@ -42,11 +42,12 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import unmatched
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.bits import flush_byte, put_bit, take_bit
+from esolangs.runtime.brackets import unmatched
+from esolangs.runtime.io import IO
 
 #: New program counter, strings popped, strings pushed, and an assignment.
 type _Effect = tuple[int, int, tuple[str, ...], tuple[str, str] | None]
@@ -178,9 +179,9 @@ class _Machine:
             except EOFError:
                 return "="
             self.remaining = 8
-        bit = self.incoming & 1
-        self.incoming >>= 1
-        self.remaining -= 1
+        (self.incoming, self.remaining), bit = take_bit(
+            (self.incoming, self.remaining)
+        )
         return "|+"[bit]
 
     def _write(self, text: str) -> None:
@@ -191,19 +192,20 @@ class _Machine:
             )
         for char in text:
             if char in _BITS:
-                self.outgoing |= _BITS[char] << self.used
-                self.used += 1
-                if self.used == 8:
-                    self.io.print_char(chr(self.outgoing))
-                    self.outgoing = self.used = 0
+                (self.outgoing, self.used), full = put_bit(
+                    (self.outgoing, self.used), _BITS[char]
+                )
+                if full is not None:
+                    self.io.print_char(chr(full))
 
     def _end_run(self) -> None:
         """Output the top string and load the next one, or halt."""
         if self._stack:
             self._write(self._stack.pop())
         if not self._stack:
-            if self.used:
-                self.io.print_char(chr(self.outgoing))
+            full = flush_byte((self.outgoing, self.used))
+            if full is not None:
+                self.io.print_char(chr(full))
                 self.outgoing = self.used = 0
             self.done = True
             return

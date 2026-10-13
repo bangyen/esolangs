@@ -1,14 +1,14 @@
 """Shared residuals stored once on a scratch-separated binary tape."""
 
-from esolangs.languages.minifuck.generator.pool import _READS
-from esolangs.languages.minifuck.generator.sim import _MINIFUCK_INPUT, PAIR
-from esolangs.languages.minifuck.generator.states import _emit
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
     subtree_ids,
 )
+from esolangs.languages.minifuck.generator.pool import _READS
+from esolangs.languages.minifuck.generator.sim import _MINIFUCK_INPUT, PAIR
+from esolangs.languages.minifuck.generator.states import _emit
 
 # Two double flips preserve the crossed cell and cancel both neighbor carries.
 _RIGHT = "[x<[x<[x<[x"

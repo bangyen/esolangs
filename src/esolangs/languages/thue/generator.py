@@ -22,16 +22,16 @@ from collections import Counter
 from math import isqrt
 from string import ascii_letters
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _residual_ids,
     _validate_truth_table,
     essential_inputs,
     read_at,
     subtree_ids,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 
 #: Entries are ``a``/``b`` so a ``0``/``1`` input line is never mistaken for
 #: one; ``L``/``E`` are sentinels, ``M``/``R`` and the read ``0``/``1`` markers.

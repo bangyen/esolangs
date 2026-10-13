@@ -25,8 +25,8 @@ def _parameterized_generators():
 
 def _embedded_inputs(gen: object, template: str, n: int) -> list[int]:
     """The inputs ``template`` embeds, in the order it embeds them."""
-    from esolangs.tools.examples import BOOLEAN_EXAMPLES
-    from esolangs.tools.helpers import runs
+    from esolangs.generation.examples import BOOLEAN_EXAMPLES
+    from esolangs.generation.helpers import runs
 
     example = next(e for e in BOOLEAN_EXAMPLES.values() if e.generator is gen)
     spans = runs(template, example.char, example.setters(template, n))
@@ -109,7 +109,7 @@ def _drawing(template: str) -> str:
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
     """No fill may spell a 0 shorter than a 1, or the length leaks the input."""
 
-    from esolangs.tools import examples as ex
+    from esolangs.generation import examples as ex
 
     fills = [
         (name, getattr(ex, name))
@@ -121,7 +121,7 @@ def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
     for name, fill in fills:
         gen_name = name.removeprefix("_fill_")
         gen = getattr(ex, gen_name, None) or getattr(
-            importlib.import_module("esolangs.tools"), gen_name, None
+            importlib.import_module("esolangs.generation"), gen_name, None
         )
         if gen is None:  # pragma: no cover - fill without a same-named generator
             continue

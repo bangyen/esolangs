@@ -5,9 +5,9 @@ import random
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.subleq.interpreter import _Machine
 from esolangs.languages.subleq.interpreter import run as run_subleq
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import subleq as oracle
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
@@ -38,7 +38,7 @@ def _corpus():
 
 
 @pytest.mark.parametrize("stdin", STDINS)
-def test_bounded_programs_match_the_oracle(stdin):
+def test_bounded_programs_match_the_oracle(stdin) -> None:
     for code in _corpus():
         agrees(_Machine, oracle, code, stdin)
 
@@ -52,7 +52,7 @@ def test_bounded_programs_match_the_oracle(stdin):
         ("6 -1 0 6 6 -1 -1", "\xff"),
     ],
 )
-def test_oracle_controls(code, outcome):
+def test_oracle_controls(code, outcome) -> None:
     result = agrees(_Machine, oracle, code, "\x81")
     if isinstance(outcome, str):
         assert (result.halted, result.output) == (True, outcome)

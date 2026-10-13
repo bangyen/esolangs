@@ -8,9 +8,10 @@ from itertools import pairwise
 
 import pytest
 
-from esolangs.interpreters.io import IO
+import esolangs
+from esolangs.generation.helpers import TEMPLATE_CHAR
 from esolangs.languages.nocomment.generator import PAIR
-from esolangs.tools.helpers import TEMPLATE_CHAR
+from esolangs.runtime.io import IO
 from tests.support.witness_tables import row_bits
 
 
@@ -51,28 +52,11 @@ class TestParameterizedNoComment:
             got = self.run_nocomment(self.instantiate(template, bits))
             assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
 
-    # The chain falls through six commands per row past the landing, so a
-    # full sweep is Theta(4**n) commands: up to 2.4s at n=9 and 6.9s at n=10 (the
-    # tape-resident decode this replaced took 9.3s and 29.0s).  n=9 still
-    # exceeds the one-second budget every other case is held to, so both
-    # are slow-marked: CI's `test` matrix job runs pytest unfiltered, so a
-    # slow-marked case runs there like any other.  (The separate `-m slow`
-    # job is scoped to a narrower file and never selects
-    # these.)  n=11 is sampled rather than swept: a bit's stages are a
-    # uniform loop keyed on nothing but its weight, and n=10 already has a
-    # bit pushing a full stage 16, 8, 4, 2 times and once, and a bit at
-    # every partial stage from 16 rows down to one; n=11 only pushes the
-    # full stage more often.
-    @pytest.mark.parametrize(
-        "n",
-        [
-            pytest.param(9, marks=pytest.mark.slow),
-            pytest.param(10, marks=pytest.mark.slow),
-        ],
-    )
-    def test_wide_arity_is_exact(self, n: int) -> None:
-        """Past a byte-sized index the stack-chain decode still computes the table."""
-        self._check_wide_arity(n, range(2**n))
+    # The n=10 sweep costs ~6.9s and covers every full and partial stage
+    # exercised at n=9; n=11 needs only carry-boundary samples.
+    @pytest.mark.slow
+    def test_ten_input_chain_executes_every_row(self) -> None:
+        self._check_wide_arity(10, range(2**10))
 
     @pytest.mark.slow  # ~1s: the same decode at n=11, sampled
     def test_the_widest_arity_is_exact_on_sampled_rows(self) -> None:
@@ -194,3 +178,11 @@ def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
     assert_constant_balanced_shape(
         "NoComment", "nocomment", table, _program(table, keep_constant_input=True)
     )
+
+
+def test_nocomment_builds_at_the_arity_that_escaped() -> None:
+    """The escape's subject is gone: n=12 is a template, not a refusal."""
+    n = 12
+    table = "".join(str(bin(r).count("1") % 2) for r in range(2**n))
+    template = esolangs.generate("NoComment", table)
+    assert template.inputs == 12

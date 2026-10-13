@@ -6,9 +6,11 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.modulous.tests.runners import run_modulous
+from tests.generators.boolean_runners import _runner
 from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import witnesses
+
+run_modulous = _runner("modulous", newline=True)
 
 
 class TestModulous:

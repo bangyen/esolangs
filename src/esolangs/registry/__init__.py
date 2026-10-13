@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from esolangs.exceptions import TemplateError, UnknownLanguageError
+from esolangs.generation.helpers import MOST_INPUTS, Setters
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
 from esolangs.registry._table import LANGUAGES, Generator, Language, SourceKind
-from esolangs.tools.helpers import MOST_INPUTS, Setters
 
 if TYPE_CHECKING:
-    from esolangs.tools.examples import BooleanExample
+    from esolangs.generation.examples import BooleanExample
 
 
 __all__ = [
@@ -71,17 +71,17 @@ INTERPRETERS = {
 
 @cache
 def example_stems() -> dict[str, str]:
-    """Return canonical id -> the ``examples/`` filename stem, per language.
+    """Return canonical id -> the example filename stem, per language.
 
-    The stems are dash-separated display names (``a-painter-ant``); every
-    internal reference is the underscored slug (``a_painter_ant``), and a few
+    The stems are dash-separated display names; every
+    internal reference is the canonical ID, and a few
     match neither by hand.  Deriving the map from the same example table
-    :meth:`~esolangs.tools.examples.BooleanExample.build` uses keeps the two
+    :meth:`~esolangs.generation.examples.BooleanExample.build` uses keeps the two
     from drifting: a mismatch is a missing key, not a silently empty example
     list, which once left a fifth of the registry reporting none.  The import
     is deferred because ``examples`` imports this module.
     """
-    from esolangs.tools import examples as _examples
+    from esolangs.generation import examples as _examples
 
     return {
         canonical_id(stem.replace("-", " ")): stem
@@ -90,7 +90,7 @@ def example_stems() -> dict[str, str]:
 
 
 def _examples_by_id() -> dict[str, BooleanExample]:
-    from esolangs.tools import examples as _examples
+    from esolangs.generation import examples as _examples
 
     return {
         canonical_id(stem.replace("-", " ")): example
@@ -110,7 +110,10 @@ def template_body(language_id: str, text: str) -> str:
 
     A template is all program; no remaining language carries a header.
     """
-    body = _examples_by_id()[language_id].body
+    example = _examples_by_id().get(language_id)
+    if example is None:
+        raise TemplateError(f"unknown language: {language_id}")
+    body = example.body
     return text if body is None else body(text)
 
 
@@ -121,8 +124,11 @@ def template_setters(language_id: str, template: str, n: int) -> Setters:
     or the rendered run form -- the setters read what they need from it,
     which for the two-route generators is the route's prefix.
     """
-    setters = _examples_by_id()[language_id].setters
-    if setters is None:  # pragma: no cover -- _examples_by_id keeps only setters
+    example = _examples_by_id().get(language_id)
+    if example is None:
+        raise TemplateError(f"unknown language: {language_id}")
+    setters = example.setters
+    if setters is None:
         raise TemplateError(
             f"{language_id} reads its inputs rather than embedding them"
         )
@@ -142,8 +148,8 @@ def render_template(
     wrapper breaks every run of the same length the same way, so the wrapped
     template is the wrapped form of every program it fills to.
     """
-    from esolangs.tools.helpers import mark_runs, unmark
-    from esolangs.tools.wrap import wrap_program
+    from esolangs.generation.helpers import mark_runs, unmark
+    from esolangs.generation.wrap import wrap_program
 
     char = template_char(language_id)
     if char is None:
@@ -172,7 +178,7 @@ def recover_setters(language_id: str, template: str) -> Setters:
     is the one value at which the widths sum to what the text holds.  The
     runs are then checked against it like any other template.
     """
-    from esolangs.tools.helpers import runs
+    from esolangs.generation.helpers import runs
 
     char = template_char(language_id)
     if char is None:
@@ -194,9 +200,7 @@ def recover_setters(language_id: str, template: str) -> Setters:
 
 def parameterized_ids() -> frozenset[str]:
     """Return the canonical ids whose boolean generator emits a template."""
-    return frozenset(
-        lang.id for lang in LANGUAGES.values() if lang.contract.parameterized
-    )
+    return frozenset(lang.id for lang in LANGUAGES.values() if lang.parameterized)
 
 
 # Canonical id -> display name, the index :func:`resolve` matches against.

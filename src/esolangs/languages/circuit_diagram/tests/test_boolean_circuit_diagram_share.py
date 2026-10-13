@@ -6,7 +6,6 @@ import hashlib
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
@@ -22,6 +21,7 @@ from esolangs.languages.circuit_diagram.interpreter import _Machine
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import nested_dense
 
 
@@ -43,14 +43,17 @@ def _area(model) -> int:
 
 
 class TestCircuitDiagramShareScope:
-    """The wall: a smaller shared fold the node cutoff refuses to admit."""
+    """Complete interval folds beyond the former quadratic node cutoff."""
 
-    def test_shared_fold_is_smaller_but_rejected_by_the_node_cutoff(self) -> None:
+    @pytest.mark.medium
+    def test_complete_shared_fold_passes_the_former_node_cutoff(self) -> None:
         table = _dense(8)
         nodes = len(_dag(table, 8)[0])
         assert nodes**2 > 4 * len(table)  # over the admission cutoff
         assert _area(_circuit_diagram_model(table, None)) < _area(_h_term_layout(table))
-        assert _linear_shared_layout(table, 8) is None
+        model = _linear_shared_layout(table, 8)
+        assert model is not None
+        _execute(table, model.render())
 
     @pytest.mark.medium
     def test_the_public_build_admits_smaller_cofactor_candidates(self) -> None:

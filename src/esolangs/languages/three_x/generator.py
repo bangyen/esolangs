@@ -4,15 +4,15 @@ from collections import Counter
 from fractions import Fraction
 from functools import cache
 
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
     in_input_order,
     read_at,
 )
-from esolangs.tools.wrap import _bracket_literal
+from esolangs.generation.wrap import _bracket_literal
+from esolangs.registry._language import Language
 
 __all__ = ["three_x"]
 

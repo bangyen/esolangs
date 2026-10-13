@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from esolangs.languages.sstack.generator._binary import _inline_metrics, _Metric
-from esolangs.tools.helpers import subtree_ids
-from esolangs.tools.shared_block import repeated_definitions
+from esolangs.generation.helpers import subtree_ids
+from esolangs.generation.shared_block import repeated_definitions
+from esolangs.languages.sstack.generator._binary import (
+    _decoder as _radix_decoder,
+)
+from esolangs.languages.sstack.generator._binary import (
+    _inline_metrics,
+    _prefix,
+)
 
 _PROLOGUE = '"49/b""48/c""1/f""2/g""3/a"'
 type _Emit = Callable[[str | int], None]
@@ -17,42 +23,6 @@ def _width(classes: int) -> int:
     while capacity < classes:
         width, capacity = width + 1, capacity * 3
     return width
-
-
-def _decoder(
-    width: int, bodies: tuple[_Metric, ...], emit: _Emit | None = None
-) -> tuple[int, dict[int, int]]:
-    def visit(bit: int, labels: tuple[int, ...]) -> tuple[int, dict[int, int]]:
-        if bit < 0:
-            target = labels[0]
-            if emit is not None:
-                emit(target)
-            return bodies[target].chars, {target: bodies[target].commands}
-        divisor = 3**bit
-        arms = [
-            (value, tuple(label for label in labels if label // divisor % 3 == value))
-            for value in (2, 1, 0)
-        ]
-        arms = [(value, group) for value, group in arms if group]
-        if len(arms) == 1 and bit < width - 1:
-            if emit is not None:
-                emit("~e~")
-            chars, tails = visit(bit - 1, arms[0][1])
-            return chars + 3, {target: cost + 1 for target, cost in tails.items()}
-        chars, costs = 0, {}
-        for value, group in arms:
-            if emit is not None:
-                emit("[e\\" + "fga"[value] + "/~e~")
-            size, tails = visit(bit - 1, group)
-            if emit is not None:
-                emit("]")
-            chars += size + 9
-            costs.update(
-                {target: cost + 3 + len(arms) for target, cost in tails.items()}
-            )
-        return chars, costs
-
-    return visit(width - 1, tuple(range(len(bodies))))
 
 
 def best_ternary_bank(
@@ -93,42 +63,11 @@ def best_ternary_bank(
     selected = {(d, ids[d][row >> (n - d)]): i for i, (d, row) in enumerate(blocks)}
     metrics = _inline_metrics(ids)
     bodies = tuple(metrics[d][ids[d][row >> (n - d)]] for d, row in blocks)
-    decoder_chars, tails = _decoder(width, bodies)
+    decoder_chars, tails = _radix_decoder(width, bodies, radix=3)
 
     inactive = (len(blocks) - 1) // 3 ** (width - 1) + 1
 
-    def prefix(depth: int, block: int, emit: _Emit | None = None) -> _Metric:
-        key = ids[depth][block]
-        target = selected.get((depth, key))
-        if target is not None:
-            if emit is not None:
-                for bit in range(width):
-                    emit(f'"{1 + target // 3**bit % 3}/e"')
-            return _Metric(5 * width, width + tails[target])
-        if key < 2:
-            if emit is not None:
-                emit(";d;" * (n - depth) + (":b:" if key else ":c:"))
-            value = metrics[depth][key]
-            return _Metric(value.chars, value.commands + inactive)
-        zero, one = ids[depth + 1][2 * block : 2 * block + 2]
-        if zero == one:
-            if emit is not None:
-                emit(";d;")
-            value = prefix(depth + 1, 2 * block, emit)
-            return _Metric(3 + value.chars, 1 + value.commands)
-        if emit is not None:
-            emit(";a;[a\\b/~a~")
-        right = prefix(depth + 1, 2 * block + 1, emit)
-        if emit is not None:
-            emit("][a\\c/~a~")
-        left = prefix(depth + 1, 2 * block, emit)
-        if emit is not None:
-            emit("]")
-        return _Metric(
-            21 + left.chars + right.chars, 6 + max(left.commands, right.commands)
-        )
-
-    tree = prefix(0, 0)
+    tree = _prefix(ids, metrics, selected, width, tails, radix=3, inactive=inactive)
     chars = len(_PROLOGUE) + tree.chars + decoder_chars
     commands = 5 + tree.commands
     if chars >= size_limit or commands > command_budget:
@@ -146,8 +85,8 @@ def best_ternary_bank(
         else:
             out.append(piece)
 
-    prefix(0, 0, emit)
-    _decoder(width, bodies, emit)
+    _prefix(ids, metrics, selected, width, tails, radix=3, inactive=inactive, emit=emit)
+    _radix_decoder(width, bodies, emit, radix=3)
     program = "".join(out)
     if len(program) != chars:
         raise ValueError("emitted SStack ternary bank disagrees with its price")

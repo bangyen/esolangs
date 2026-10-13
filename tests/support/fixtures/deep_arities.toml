@@ -1,31 +1,33 @@
-# Per-generator tuning for tests/proofs/deep: arity ceilings below each
+# Per-generator tuning for tests/proofs/deep: arity ceilings against each
 # module's MAX_ARITY default, and exemptions.  Optional: a generator left out
 # gets the default.  Keys are language ids.
 
 [linearity]
 # Builds measured in seconds, each set to the lowest arity that still clears
 # MIN_RUNGS past its last route change.
-circuit_diagram = 10
+# Default H routing starts at eight: three rungs per parity need thirteen (6.8s).
+circuit_diagram = 13
 factor = 11
+# Normalized gates start at nine; both three-rung parity windows need fourteen.
+boolfuck = 14
 polynomial = 9
 streetcode = 10
-line = 6  # native Line at n=6 already renders millions of pixels
+# Line uses the default twelve: the six-input cap mixed small-tree and tree layouts.
 
 [execution]
-# Factor, Line and Circuit Diagram: time is load, not commands (152s, 99s,
-# 27s to n=12).  AddSubJump jumps 39 -> 965 commands at n=6, so it climbs to
-# 10 to keep MIN_RUNGS past it.
-addsubjump = 10
+# Loading, not command count, sets the measured ceilings below.
+addsubjump = 10  # n=6 jumps 39 -> 965 commands; keep MIN_RUNGS above it.
 b_tapemark = 7
-circuit_diagram = 7
+circuit_diagram = 7  # Loading through n=12 costs 27s.
 container = 6
-factor = 7
-line = 6
+factor = 7  # Loading through n=12 costs 152s.
+line = 6  # Loading through n=12 costs 99s.
 flowchart = 8
 one_two_three = 8
 polynomial = 7
 
 [workspace]
+# language-owners: ["BFStack", "FALSE"]
 # Written state is recounted every step, so a rung costs ~4x the last.
 # Lowered where a generator's top rung passed ~3s; FALSE and BFStack keep 9,
 # since their poly n fit (x1.49, x1.48) is steeper lower down.
@@ -49,6 +51,7 @@ taglate = 7
 unlambda = 6
 
 [workspace_step_exempt]
+# language-owners: ["SLOW ACV MAMMALIAN", "Vandevelo"]
 # poly n rows whose dense increments may grow past STEP_GROWTH at the
 # measured arities.  Vandevelo's registers grow ~sqrt(T) until the n*n cap
 # binds at n=14: written bits 2450, 3361, 3872, 4419, 4998 at n=13..17,

@@ -3,9 +3,9 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import Seeded
 from esolangs.languages.befunge.interpreter import _advance, _Machine, run
+from esolangs.runtime.io import IO
+from esolangs.runtime.randomness import Seeded
 from esolangs.vm import run_until_halt
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
@@ -50,7 +50,7 @@ def test_a_zero_divisor_reads_the_result() -> None:
     assert run_befunge("10/.@", "7\n") == "7 "
     assert run_befunge("10%.@", "8\n") == "8 "
     for command in "/%":
-        state = ((0, 0, 1, 0), ((command,),), (1, 0), False, False)
+        state = ((0, 0, 1, 0), ((command,),), (0, (1, None)), False, False)
         with pytest.raises(HaltError, match="needs a result"):
             _advance(state)
 
@@ -77,9 +77,9 @@ def test_both_conditionals_turn_the_pointer() -> None:
         ("|", (0, 1), (0, -1)),
     ):
         grid = ((command,),)
-        moved, _ = _advance(((0, 0, 1, 0), grid, (0,), False, False))
+        moved, _ = _advance(((0, 0, 1, 0), grid, (0, None), False, False))
         assert moved[0][2:4] == zero
-        moved, _ = _advance(((0, 0, 1, 0), grid, (1,), False, False))
+        moved, _ = _advance(((0, 0, 1, 0), grid, (1, None), False, False))
         assert moved[0][2:4] == nonzero
 
 
@@ -90,15 +90,17 @@ def test_bridge_skips_the_next_cell() -> None:
 
 def test_put_writes_and_get_reads_the_grid() -> None:
     """``p`` pops y, x, v and writes a byte; ``g`` reads one back."""
-    wrote, _ = _advance(((0, 0, 1, 0), (("p",), (" ",)), (64, 0, 1), False, False))
+    wrote, _ = _advance(
+        ((0, 0, 1, 0), (("p",), (" ",)), (1, (0, (64, None))), False, False)
+    )
     assert wrote[1][1][0] == "@"
-    read, _ = _advance(((0, 0, 1, 0), (("g",), ("@",)), (0, 1), False, False))
-    assert read[2] == (64,)
+    read, _ = _advance(((0, 0, 1, 0), (("g",), ("@",)), (1, (0, None)), False, False))
+    assert read[2] == (64, None)
 
 
 def test_put_outside_the_grid_is_ignored() -> None:
     # The stack is (v, x, y) with y on top; both coordinates are off a 1x1 grid.
-    moved, _ = _advance(((0, 0, 1, 0), (("p",),), (65, 5, 5), False, False))
+    moved, _ = _advance(((0, 0, 1, 0), (("p",),), (5, (5, (65, None))), False, False))
     assert moved[1] == (("p",),)
 
 
@@ -111,7 +113,7 @@ def test_random_direction_uses_the_supplied_draw() -> None:
     # Right, down, left, up is the documented draw order; each moves one cell
     # from the `?` at (1,1).
     grid = ("...", ".?.", "...")
-    state = ((1, 1, 1, 0), tuple(tuple(row) for row in grid), (), False, False)
+    state = ((1, 1, 1, 0), tuple(tuple(row) for row in grid), None, False, False)
     for direction, (x, y) in enumerate(((2, 1), (1, 2), (0, 1), (1, 0))):
         moved, _ = _advance(state, random_dir=direction)
         assert moved[0][:2] == (x, y)
@@ -127,7 +129,7 @@ def test_empty_program_is_rejected() -> None:
         run([], IO())
 
 
-def test_a_repeated_push_uses_the_mutable_runtime_stack() -> None:
+def test_a_repeated_push_keeps_the_persistent_stack() -> None:
     """The one-cell source executes once per 80-column playfield lap."""
     machine = _Machine(["1"], IO())
     assert run_until_halt(machine, 20_000) is False
@@ -135,7 +137,7 @@ def test_a_repeated_push_uses_the_mutable_runtime_stack() -> None:
 
 
 def test_a_done_state_is_its_own_successor() -> None:
-    done = ((0, 0, 1, 0), (("@",),), (), False, True)
+    done = ((0, 0, 1, 0), (("@",),), None, False, True)
     assert _advance(done) == (done, None)
 
 
@@ -154,17 +156,17 @@ def test_the_four_heading_commands_set_the_direction() -> None:
         ("^", (0, -1)),
         ("v", (0, 1)),
     ):
-        moved, _ = _advance(((0, 0, 0, 0), ((command,),), (), False, False))
+        moved, _ = _advance(((0, 0, 0, 0), ((command,),), None, False, False))
         assert moved[0][2:4] == heading
 
 
 def test_reads_past_the_end_halt() -> None:
     with pytest.raises(HaltError, match="random draw"):
-        _advance(((0, 0, 1, 0), (("?",),), (), False, False))
+        _advance(((0, 0, 1, 0), (("?",),), None, False, False))
     # ``_advance`` is called with no character supplied; the shell's read
     # raises EOF before this guard, so this is a direct-call contract.
     with pytest.raises(HaltError, match="no input left"):
-        _advance(((0, 0, 1, 0), (("~",),), (), False, False))
+        _advance(((0, 0, 1, 0), (("~",),), None, False, False))
 
 
 def test_the_branching_protocol_forks_the_draw() -> None:
@@ -187,7 +189,7 @@ def test_the_branching_protocol_forks_the_draw() -> None:
 
 
 def test_advance_refuses_input_the_shell_did_not_supply() -> None:
-    empty = ((0, 0, 1, 0), (("&",),), (), False, False)
+    empty = ((0, 0, 1, 0), (("&",),), None, False, False)
     with pytest.raises(HaltError, match="no input left"):
         _advance(empty)
 
@@ -220,19 +222,24 @@ def test_the_branch_search_refuses_a_zero_divisor_read() -> None:
     assert machine.branching_successors(machine.branching_snapshot(), 4) is None
 
 
-def test_division_keeps_the_mutable_runtime_stack() -> None:
-    """``/`` and ``%`` push onto the list, not a rebuilt tuple (O(1) per push)."""
+def test_division_preserves_its_input_state() -> None:
     machine = _Machine(["42/1%"], IO())
-    for _ in range(3):
-        machine.step()
-    assert isinstance(machine.state[2], list)
     for _ in range(2):
         machine.step()
-    assert isinstance(machine.state[2], list)
+    before = machine.state
+    first = _advance(before)
+    assert _advance(before) == first
+    assert before[2] == (2, (4, None))
+    machine.step()
+    assert machine.stack == [2]
+    for _ in range(2):
+        machine.step()
+    assert machine.stack == [0]
+    assert before[2] == (2, (4, None))
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_rejected_with_hint(
         "Befunge",
         "&@",

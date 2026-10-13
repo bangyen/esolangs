@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from esolangs.settings import DialectSettings
 
 from esolangs.exceptions import MissingDependencyError, ProgramError
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 from . import png
 
@@ -93,7 +93,7 @@ def _assign(
 ) -> Raster:
     """Initialize ``raster``'s fields; the one path both constructors share."""
     if scale is not None:
-        from esolangs._validate import check_scale
+        from esolangs.runtime._validate import check_scale
 
         check_scale(scale)
     object.__setattr__(raster, "_rows", rows)
@@ -223,7 +223,7 @@ class Raster:
 
     def _normalized(self, scale: int | None = None) -> Rows:
         """Return cached codel rows; explicit and detected scales stay distinct."""
-        from esolangs._validate import check_scale
+        from esolangs.runtime._validate import check_scale
 
         from .scale import normalize
 
@@ -237,7 +237,7 @@ class Raster:
 
     def upscaled(self, scale: int) -> Raster:
         """Replicate pixels into solid squares, preserving language ownership."""
-        from esolangs._validate import check_scale
+        from esolangs.runtime._validate import check_scale
 
         check_scale(scale)
         if scale == 1:
@@ -274,8 +274,8 @@ class Raster:
             metadata = png.read_metadata(data)
             if metadata is None:
                 return cls(decoded)
-            from esolangs._validate import check_scale
             from esolangs.registry import resolve
+            from esolangs.runtime._validate import check_scale
             from esolangs.settings import DialectSettings
 
             language = metadata.get("language")

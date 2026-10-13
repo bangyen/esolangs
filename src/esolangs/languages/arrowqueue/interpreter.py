@@ -14,9 +14,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 # (d_row, d_col) per heading, in the clockwise order right, down, left, up.
 DELTA = [(0, 1), (1, 0), (0, -1), (-1, 0)]

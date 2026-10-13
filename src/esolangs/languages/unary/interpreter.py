@@ -10,13 +10,20 @@ both directions. Exhausted character input stores zero, as in the
 wiki's cat example.
 """
 
-from esolangs._drive import drive
-from esolangs._source import ProgramSource, _read_container, text_source
 from esolangs.compressed import CompressedText
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.brainfuck.interpreter import _Machine as _BFMachine
+from esolangs.languages.brainfuck.interpreter import _State as _BFState
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime._source import ProgramSource, _read_container, text_source
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
+
+
+def _at_eof(state: _BFState) -> _BFState:
+    """Return the comma successor with Unary's zero EOF value."""
+    ind, ptr, tape, _acc, _dirty = state
+    return ind + 1, ptr, tape, 0, True
 
 
 class _UnaryBFMachine(_BFMachine):
@@ -25,11 +32,7 @@ class _UnaryBFMachine(_BFMachine):
             super().step()
         except EOFError:
             # Only comma reads input; it has no jump and replaces the cell.
-            ind, ptr, tape, _acc, _dirty = self.state
-            self.state = (ind + 1, ptr, tape, 0, True)
-
-
-type _State = _UnaryBFMachine
+            self.state = _at_eof(self.state)
 
 
 def load_source(source: ProgramSource) -> str | CompressedText:
@@ -69,41 +72,11 @@ def decode(code: str | CompressedText) -> str:
     )
 
 
-class _Machine:
-    """The decoded Brainfuck machine."""
+class _Machine(_UnaryBFMachine):
+    """Decode Unary, then run it as Brainfuck with zero-valued EOF."""
 
     def __init__(self, code: str | CompressedText, io: IO) -> None:
-        self.io = io
-        self.state: _State = _UnaryBFMachine(decode(code), io)
-
-    @property
-    def halted(self) -> bool:
-        return self.state.halted
-
-    @property
-    def ip(self) -> int:
-        return self.state.ip
-
-    @property
-    def memory(self) -> list[int]:
-        return self.state.memory
-
-    @property
-    def ptr(self) -> int:
-        return self.state.ptr
-
-    @property
-    def tape(self) -> tuple[int, ...]:
-        return self.state.tape
-
-    def input_position(self) -> int:
-        return self.state.input_position()
-
-    def snapshot(self) -> tuple[object, ...]:
-        return self.state.snapshot()
-
-    def step(self) -> None:
-        self.state.step()
+        super().__init__(decode(code), io)
 
 
 def run(code: str | CompressedText | ProgramSource, io: IO) -> None:

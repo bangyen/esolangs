@@ -14,14 +14,15 @@ language; the screens (``constant.py``, ``ignored_input.py``) bound the pieces.
 
 from __future__ import annotations
 
-import inspect
 import tomllib
 from pathlib import Path
 
 from esolangs.registry import LANGUAGES
+from tests.generators.source_support import generator_symbols as _source
 
-IGNORED = ("essential_inputs", "read_at", "constant_span_test")
-CONSTANT = ("constant_span_test",)
+RESIDUALS = ("subtree_ids", "_residual_ids", "SubtreeDiagram")
+IGNORED = ("essential_inputs", "read_at", "constant_span_test", *RESIDUALS)
+CONSTANT = ("constant_span_test", *RESIDUALS)
 
 CATALOGUE = (
     Path(__file__).parents[1] / "support/fixtures" / "canonical_folding_catalogue.toml"
@@ -33,29 +34,9 @@ def _catalogue() -> tuple[dict[str, str], dict[str, str]]:
     return data.get("ignored", {}), data.get("constant", {})
 
 
-def _source(name: str) -> str:
-    """The defining module, its package siblings, and the shared helpers."""
-    fn = LANGUAGES[name].boolean
-    assert fn is not None
-    path = Path(inspect.getsourcefile(fn))
-    # A package generator is one file among its package's; a single-file
-    # generator's own directory is the category, and the shared helpers live
-    # at the tools root beside it.
-    directories = (
-        [path.parent] if path.name == "__init__.py" else [path.parent, path.parents[1]]
-    )
-    if path.name == "generator.py":
-        directories.append(Path(__file__).parents[2] / "src/esolangs/tools")
-    siblings = {
-        sibling for directory in directories for sibling in directory.glob("*.py")
-    }
-    parts = [path.read_text(encoding="utf-8")]
-    parts.extend(
-        sibling.read_text(encoding="utf-8")
-        for sibling in sorted(siblings)
-        if sibling != path and not sibling.name.startswith("__")
-    )
-    return "\n".join(parts)
+def _native() -> tuple[dict[str, str], dict[str, str]]:
+    data = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))
+    return data.get("ignored_local", {}), data.get("constant_local", {})
 
 
 def _generators() -> set[str]:
@@ -73,12 +54,21 @@ def _lacking(helpers: tuple[str, ...]) -> set[str]:
 def test_the_catalogue_covers_exactly_the_exceptions() -> None:
     """The only generators without a helper are the declared ones."""
     ignored, constant = _catalogue()
-    assert _lacking(IGNORED) == set(ignored), sorted(_lacking(IGNORED) - set(ignored))
-    assert _lacking(CONSTANT) == set(constant), sorted(
-        _lacking(CONSTANT) - set(constant)
+    ignored_local, constant_local = _native()
+    assert _lacking(IGNORED) == set(ignored) | set(ignored_local), sorted(
+        _lacking(IGNORED) - set(ignored) - set(ignored_local)
+    )
+    assert _lacking(CONSTANT) == set(constant) | set(constant_local), sorted(
+        _lacking(CONSTANT) - set(constant) - set(constant_local)
     )
 
 
 def test_declared_exceptions_state_a_reason() -> None:
     ignored, constant = _catalogue()
     assert all(reason.strip() for reason in (*ignored.values(), *constant.values()))
+
+
+def test_native_mechanisms_are_referenced() -> None:
+    ignored, constant = _native()
+    for name, mechanism in (*ignored.items(), *constant.items()):
+        assert mechanism in _source(name), (name, mechanism)

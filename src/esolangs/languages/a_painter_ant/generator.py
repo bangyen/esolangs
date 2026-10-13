@@ -11,17 +11,17 @@ ant counts through every row, so no subtree folds or is shared.
 Constant roots restore each input to one white origin, then leave it black or white.
 """
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import (
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
     mark_runs,
     unmark,
 )
-from esolangs.tools.wrap import balance_program, wrap_chars
+from esolangs.generation.wrap import balance_program, wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language, Shape
 
 __all__ = ["a_painter_ant"]
 

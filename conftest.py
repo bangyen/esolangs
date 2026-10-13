@@ -40,7 +40,7 @@ _reject_stale_install()
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """Give every test its hard stop and require evidence for weekly cost."""
     # The nested collection probe took 2.64s alone, 22.8s under late pool load.
-    items.sort(key=lambda item: not item.nodeid.startswith("tests/tooling/scripts/"))
+    items.sort(key=lambda item: not item.nodeid.startswith("tests/tooling/"))
     for item in items:
         markers = {marker.name for marker in item.iter_markers()}
         evidence = item.get_closest_marker("cost_evidence")
@@ -100,7 +100,7 @@ def _repair_coverage_lock() -> Generator[None, None, None]:
 @pytest.fixture
 def spawned(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
     """Every worker process the isolated runner starts, in order."""
-    from esolangs import _isolated
+    from esolangs.runtime import _isolated
 
     children: list[Any] = []
     popen = _isolated.subprocess.Popen

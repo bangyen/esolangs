@@ -4,9 +4,9 @@ import sys
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.factor.interpreter import _Machine as Factor
 from esolangs.languages.factor.interpreter import decode, run
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
@@ -104,20 +104,20 @@ class TestRun:
 class TestStepMachine:
     def test_a_program_with_no_digits_is_the_number_one(self) -> None:
         """No digits means 1, which factors to nothing and runs no commands."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.factor.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
-        assert _Machine("", ScriptedIO()).bf.code == ""
-        assert _Machine("no digits here", ScriptedIO()).bf.code == ""
+        assert _Machine("", ScriptedIO()).code == ""
+        assert _Machine("no digits here", ScriptedIO()).code == ""
 
     def test_step_tracks_the_decoded_tape(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.factor.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("15", ScriptedIO())
-        assert (machine.bf.ind, list(machine.bf.tape)) == (0, [0])
+        assert (machine.ind, list(machine.tape)) == (0, [0])
         machine.step()  # + increments the cell
-        assert list(machine.bf.tape) == [1]
+        assert list(machine.tape) == [1]
         machine.step()  # . prints it
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
@@ -172,6 +172,10 @@ class TestFactorint:
             # batch has to survive a residue that keeps shrinking under it,
             # and a later chunk's gcd has to still find 20011.
             pytest.param(2**9000 * 3**40 * 20011, id="across-chunks"),
+            pytest.param(
+                2**9000 * 3**41 * 5**40 * 7**3 * 20011**2,
+                id="successive-batch-dropouts",
+            ),
         ],
     )
     def test_the_batched_chunk_answers_what_the_divisions_would(
@@ -187,8 +191,8 @@ class TestFactorint:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.factor.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 
@@ -209,3 +213,14 @@ def test_factor_grows_the_tape_without_halting() -> None:
     assert run_until_halt_or_growth(Factor("2429007", ScriptedIO())) is False
     assert decode(19803) == "+[>]"
     assert run_until_halt_or_growth(Factor("19803", ScriptedIO())) is True
+
+
+def test_delegation_exposes_an_immutable_state() -> None:
+    from esolangs.languages.factor.interpreter import _Machine
+
+    machine = _Machine("5", ScriptedIO(""))
+    before = machine.state
+    machine.step()
+    assert isinstance(before, tuple)
+    assert before != machine.state
+    assert before == (0, 0, (0,), 0, False)

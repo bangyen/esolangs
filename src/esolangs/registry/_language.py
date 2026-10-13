@@ -8,17 +8,18 @@ module imports nothing from the package, so any generator can import it.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from esolangs._program import Program
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
+from esolangs.runtime._program import Program
 
 # ``generator(truth_table)`` returns a program computing it; the few that lay
 # out two dimensions also take a ``width``, hence ``...``.
 Generator = Callable[..., Program]
+ProofFormula = tuple[Callable[[int, str], float], bool, tuple[int, ...]]
 Payload = tuple[tuple[int, ...], tuple[int, ...], int, int]
 
 
@@ -99,6 +100,9 @@ class Language:
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
     wrap: Callable[[str, int], str] | None = None
+    wrap_multiline: bool = False
+    #: ``wrap_balance(program)``: a language-owned source reflow for balance.
+    wrap_balance: Callable[[str], str] | None = None
     #: Why ``wrap`` is absent, when a break would change the program.
     no_wrap: str = ""
     #: Whether a template is one of the generator's ``layout(width)``s of
@@ -122,6 +126,8 @@ class Language:
     layout_switch: tuple[int, ...] = ()
     #: Executable baseline controls when the default corpus exceeds a proved cap.
     benchmark_tables: tuple[str, ...] = ()
+    proof_execution: ProofFormula | None = None
+    proof_workspace: ProofFormula | None = None
     # Shared sweeps that run long for it: marked slow, or left to its tests.
     slow_scaling: bool = False
     slow_stepping: bool = False
@@ -139,12 +145,14 @@ class Language:
         """Fill the id from the name when none is given."""
         if not self.id:
             object.__setattr__(self, "id", canonical_id(self.name))
-        # Embedded inputs are what a template example says: one fact, once.
-        template = self.example.pair is not None or self.example.setters is not None
-        if self.contract.parameterized and not template:
-            raise ValueError(f"{self.name}: parameterized follows example=")
-        object.__setattr__(
-            self, "contract", replace(self.contract, parameterized=template)
-        )
         if self.wrap is not None and self.no_wrap:
             raise ValueError(f"{self.name}: wrap and no_wrap exclude each other")
+
+    @property
+    def parameterized(self) -> bool:
+        """Whether the example embeds its inputs (a template to fill).
+
+        Derived from ``example=``: a ``pair`` or ``setters`` means the
+        program is a template whose bits are embedded, not read.
+        """
+        return self.example.pair is not None or self.example.setters is not None

@@ -2,11 +2,15 @@
 
 import random
 
+import pytest
+
+from esolangs.generation.wrap import balance_program, balance_score, wrap_program
 from esolangs.languages import generators as boolean
-from esolangs.languages.decleq.tests.runners import run_decleq
-from esolangs.tools.wrap import balance_program, balance_score, wrap_program
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import parity as _parity
 from tests.support.witness_tables import row_bits
+
+run_decleq = _runner("decleq")
 
 
 class TestDecleq:
@@ -85,7 +89,7 @@ class TestDecleq:
         assert sum(len(boolean.decleq(t)) for t in tables) == 326_910
 
 
-def test_mixed_digit_operands_share_one_grid_cell():
+def test_mixed_digit_operands_share_one_grid_cell() -> None:
     # All three subleq OISCs share wrap_grid, so the language is not an axis.
     language = "decleq"
     for count in range(3, 65):
@@ -101,3 +105,13 @@ def test_mixed_digit_operands_share_one_grid_cell():
         )
         assert balance_score(balanced) == balance_score(optimum)
         assert balanced.split() == program.split()
+
+
+@pytest.mark.parametrize("width", [0, -1])
+def test_nonpositive_width_does_not_wrap(width: int) -> None:
+    assert wrap_program("a b c", "decleq", width) == "a b c"
+
+
+def test_multiline_source_is_untouched() -> None:
+    program = "line one\nline two"
+    assert wrap_program(program, "decleq", 4) == program

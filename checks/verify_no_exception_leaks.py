@@ -4,7 +4,7 @@
 :class:`HaltError` "instead of leaking an incidental Python error", and a
 structurally malformed program is rejected with :class:`ValueError`.
 Exhausted input raises :class:`EOFError` (the repo-wide convention), and
-Container halts by exiting, so :class:`SystemExit` is its documented end.
+An exit-based halt makes :class:`SystemExit` a documented end.
 Anything else reaching the caller -- IndexError, TypeError, OverflowError,
 KeyError -- is a bug in the interpreter, not in the program it was given.
 
@@ -57,20 +57,20 @@ sys.path.insert(0, str(_ROOT / "scripts"))
 
 from verify.process import write_text
 
-from esolangs._program import Program
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.raster import Raster
 from esolangs.registry import INTERPRETERS, LANGUAGES, example_stems
+from esolangs.runtime._program import Program
 from esolangs.vm import make_vm, run_until_halt
 
 # Exceptions an interpreter is allowed to raise at the API boundary.
 #
 # ``RecursionError`` was here from this script's first commit, undefended by
 # ``exceptions.py`` or any doc -- the one entry with no documented backing.
-# It let a *host* limit escape as an interpreter's answer.  Both languages
-# that needed it have since been fixed: Eval runs nested programs on a frame
-# stack, and Forbin converts the one natively-recursive path it has left.
+# It let a *host* limit escape as an interpreter's answer. Nested execution
+# now uses explicit frames, and native recursion failures become interpreter
+# limits at the API boundary.
 ALLOWED = (EsolangError, ValueError, EOFError, SystemExit)
 
 GENERIC = [
@@ -144,6 +144,7 @@ GENERIC = [
     "\n".join(["1"] * 8),
 ]
 
+# language-owners: ["Back", "Circlefuck"]
 # Programs are bounded by *steps*, not by a wall clock.  Most malformed
 # programs for a grid or beam language loop forever by construction (11 of
 # 14 generic fragments do, for Back and Circlefuck), so a wall-clock bound
@@ -164,6 +165,7 @@ _STEP_CAP = int(os.environ.get("LEAKSWEEP_STEP_CAP", 0)) or 20000
 #: unchanged; only the number of runs that pay for it is.
 _CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 
+# language-owners: ["Befunge", "Factor"]
 # Lowering the final cap would miss late exceptions.  The optimizations below
 # instead bound Factor's pre-step arithmetic and make Befunge's pushes O(1),
 # leaving all 20,000 steps intact.  Measurements are in the verification history.
@@ -227,7 +229,7 @@ def _select(
         return langs, "shared interpreter machinery changed"
     if any(
         name.startswith("src/esolangs/")
-        and "/examples/" not in name
+        and pathlib.Path(name).suffix not in {".txt", ".png", ".gz"}
         and not (_ROOT / name).is_file()
         for name in changed
     ):
@@ -236,7 +238,7 @@ def _select(
         pathlib.Path(name).stem
         for name in changed
         if name.startswith("src/esolangs/languages/")
-        and "/examples/" in name
+        and len(pathlib.Path(name).parts) == 5
         and pathlib.Path(name).suffix in {".txt", ".png"}
     }
     stems = example_stems()
@@ -270,6 +272,7 @@ def _drive(lang: str, program: Program, stdin: str, cap: int) -> bool:
     return run_until_halt(make_vm(lang, program, stdin=stdin), cap)
 
 
+# language-owners: ["Befunge", "Circlefuck"]
 #: Wall-clock a language's worker gets before the parent kills it.
 #:
 #: The slowest workers (123, Befunge, Circlefuck) take 8-10s locally and
@@ -371,8 +374,8 @@ _USE_CACHE = os.environ.get("LEAKSWEEP_CACHE", "1") != "0"
 def _examples_by_slug() -> dict[str, list[Program]]:
     """Return the shipped example programs keyed by canonical language ID.
 
-    The filenames are dash-separated display names (``a-painter-ant``) and
-    every lookup here is the underscored slug (``a_painter_ant``), so the
+    The filenames use dash-separated display names and
+    every lookup here uses the canonical ID, so the
     two are bridged by ``example_stems()`` rather than by the stem alone.
     Keying on the stem silently gave sixteen of the sixty-two languages no
     example to sweep -- the exact failure that helper's docstring warns
@@ -383,10 +386,10 @@ def _examples_by_slug() -> dict[str, list[Program]]:
     by_slug: dict[str, list[Program]] = {}
     directory = _ROOT / "src" / "esolangs" / "languages"
     for slug, stem in example_stems().items():
-        path = directory / slug / "examples" / f"{stem}.txt"
+        path = directory / slug / f"{stem}.txt"
         if path.exists():
             by_slug.setdefault(slug, []).append(path.read_text())
-        image = directory / slug / "examples" / f"{stem}.png"
+        image = directory / slug / f"{stem}.png"
         if image.exists():
             from esolangs.raster.scale import normalize
 
@@ -436,7 +439,7 @@ def _sources(
         imports = {}
     if not module.startswith("esolangs."):
         module = "esolangs." + (
-            module if module.startswith("interpreters.") else "interpreters." + module
+            module if module.startswith("runtime.") else "runtime." + module
         )
     entry = _module_path(module)
     if entry is None:
@@ -463,7 +466,7 @@ def _sources(
         # Shared inputs already invalidate every language; expanding registry
         # imports here would also pull in every unrelated generator.
         if (path in shared and path.is_relative_to(pkg / "registry")) or path == (
-            pkg / "tools" / "__init__.py"
+            pkg / "generation" / "__init__.py"
         ):
             continue
         if path not in imports:
@@ -560,9 +563,8 @@ def _worker(target: str) -> None:
     """Sweep one language and print its result as JSON on stdout.
 
     Runs in a child process so the parent can kill it: an interpreter can
-    spend unbounded time inside a single uninterruptible C call (Factor
-    factors its program with sympy before a step runs), which no step cap
-    or in-process alarm can bound.
+    spend unbounded time inside a single uninterruptible C call, including
+    pre-step symbolic arithmetic, which no step cap or in-process alarm can bound.
     """
     langs = sorted(INTERPRETERS)
     slug_of = {name: LANGUAGES[name].id for name in langs}

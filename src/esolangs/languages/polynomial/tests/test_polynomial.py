@@ -10,7 +10,6 @@ from contextlib import redirect_stdout
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import IO
 from esolangs.languages.polynomial import interpreter as polynomial_module
 from esolangs.languages.polynomial.interpreter import (
     brackets,
@@ -30,6 +29,7 @@ from esolangs.languages.polynomial.interpreter.roots import (
     _squarefree_mod,
     prime,
 )
+from esolangs.runtime.io import IO
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.support.paths import ROOT
@@ -236,8 +236,8 @@ class TestPolynomialExecution:
         assert machine.reg == -1  # left the loop on EOF, not as a "cycle"
 
     def test_eof_reads_as_minus_one(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.polynomial.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("f(x) = x^2+16", ScriptedIO())
         machine.step()
@@ -788,8 +788,8 @@ class TestStepMachine:
         assert _machine("f(x) = x^2+4").memory == [0]
 
     def test_step_tracks_register_and_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.polynomial.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("f(x) = x^2+4", ScriptedIO())
         assert (machine.ind, machine.reg) == (0, 0)
@@ -801,8 +801,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.polynomial.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 

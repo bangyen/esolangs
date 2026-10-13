@@ -3,14 +3,14 @@
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.fractran.generator import PAIR as FRACTRAN_PAIR
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.fractran.interpreter import run as run_fractran
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.wrap import balance_program, balance_score
+from esolangs.runtime._evaluate import _evaluate
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.reader_support import _TABLES
 from tests.support.generator_support import evaluate_generated
 from tests.support.witness_tables import row_bits as _bits
@@ -163,7 +163,7 @@ def test_nonuniform_cells_retain_tokens(program: str) -> None:
     assert balance_score(balanced) <= balance_score(program)
 
 
-def test_fractran_parity_representation_omits_empty_width_regimes():
+def test_fractran_parity_representation_omits_empty_width_regimes() -> None:
     from esolangs.languages.fractran.generator import _balance as _fractran
 
     parity = esolangs.generate("FRACTRAN", "0110", width=4)

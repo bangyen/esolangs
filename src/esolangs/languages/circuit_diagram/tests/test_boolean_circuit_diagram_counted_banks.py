@@ -20,21 +20,21 @@ def _sparse_classes():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("start", [0, 101])
-def test_counted_mask_banks_execute_every_class(start):
+def test_counted_mask_banks_execute_class_and_prefix_boundaries() -> None:
     table, pairs = _sparse_classes()
     old_bound = 202 * (211 + 114 + 2) - 1
     assert old_bound > 2 * len(table) + 8 * 15 + 111
     code = circuit_diagram(table)
     lines = code.splitlines()
-    assert len(lines) * max(map(len, lines)) == 8_749_827
+    assert len(lines) * max(map(len, lines)) == 3_961_697
     rows = sorted(
         {
             0,
             len(table) - 1,
             *(
-                (index << 7) + row
-                for index in range(start, start + 101)
+                (prefix << 7) + row
+                for prefix in (0, 1, 100, 101, 127, 128, 201, 202, 255)
+                for index in (prefix % len(pairs),)
                 for row in (
                     *pairs[index],
                     next(row for row in range(128) if row not in pairs[index]),
@@ -42,9 +42,9 @@ def test_counted_mask_banks_execute_every_class(start):
             ),
         }
     )
-    assert _execute(table, code, rows) == 20
+    assert _execute(table, code, rows) == 30
 
 
-def test_counted_banks_still_obey_the_area_ceiling():
+def test_counted_banks_still_obey_the_area_ceiling() -> None:
     table, _ = _sparse_classes()
     assert _residual_class_bank_candidate(table, ceiling=100) is None

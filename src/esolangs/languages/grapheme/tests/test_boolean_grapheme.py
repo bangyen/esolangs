@@ -4,15 +4,14 @@ import importlib
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages import generators as boolean
 from esolangs.languages.grapheme.generator import (
     _grapheme_literal,
     _grapheme_push65,
     _grapheme_table,
 )
-from esolangs.languages.grapheme.interpreter import run
-from esolangs.languages.grapheme.interpreter._dialect import GraphemeDialect
+from esolangs.languages.grapheme.interpreter import GraphemeDialect, run
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.test_boolean_contract import _one_minterm
 from tests.support.generator_support import evaluate_generated
 
@@ -66,7 +65,7 @@ class TestGraphemeTable:
 
 
 @pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
-def test_generator_literals_are_exact(mode):
+def test_generator_literals_are_exact(mode) -> None:
     dialect = GraphemeDialect(integer_conversion=mode)
     for value in (0, 1, 2, 5, 13, 16, 106, 1006, 1263460, 5666666, 9999996):
         io = ScriptedIO("")

@@ -2,10 +2,10 @@
 
 from math import gcd
 
-from esolangs._validate import check_scale
 from esolangs.exceptions import ProgramError
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.raster import Pixel, Rows
+from esolangs.runtime._validate import check_scale
+from esolangs.runtime.source_hints import syntax_error
 
 
 def detect_scale(rows: Rows) -> int:

@@ -48,12 +48,12 @@ for the bounded all-branches detector in :mod:`esolangs.vm`.
 from dataclasses import dataclass
 from typing import cast
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.randomness import Randomness, draw
+from esolangs.runtime.source_hints import with_hint
 
 # The two substitution cycles, in the order the cross-check scans them.
 _CYCLES = ("pevkjzwr", "yuctsobqihald")
@@ -207,7 +207,7 @@ def _advance(
     n: int,
     reads: tuple[str | int, ...],
     coins: tuple[int, ...],
-) -> tuple[_State, list[_Effect]]:
+) -> tuple[_State, tuple[_Effect, ...]]:
     """Return the state after one step, and what it wants written.
 
     Pure.  Writes are collected, not performed, because the repeat counter
@@ -379,7 +379,7 @@ def _advance(
             if rep <= 0:
                 break
         elif c == "e":
-            return ((tape, loop, ptr, n, 0, origin), effects)
+            return ((tape, loop, ptr, n, 0, origin), tuple(effects))
         elif c == "v" and ind < n:
             # "Do next command if value on tape is zero": else skip it.
             # Either way the next command is consumed once.
@@ -402,7 +402,7 @@ def _advance(
             c = prog[ind] if found else _NUL
             ind = val
 
-    return ((tape, loop, ptr, ind, rep + 1, origin), effects)
+    return ((tape, loop, ptr, ind, rep + 1, origin), tuple(effects))
 
 
 class _Machine:

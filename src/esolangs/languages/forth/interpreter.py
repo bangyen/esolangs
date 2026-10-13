@@ -27,12 +27,15 @@ The spec asks for a string without defining its delimiter; comma reads one
 line, excluding its newline, and pushes its Unicode code points.
 """
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from operator import add, mul, sub
+from types import MappingProxyType
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 
 def _wrap32(value: int) -> int:
@@ -48,6 +51,15 @@ def _trunc_div(a: int, b: int) -> int:
 def _trunc_mod(a: int, b: int) -> int:
     """C++-style remainder (the sign of the dividend)."""
     return a - _trunc_div(a, b) * b
+
+
+_BINARY: dict[str, Callable[[int, int], int]] = {
+    "+": add,
+    "-": sub,
+    "*": mul,
+    "/": _trunc_div,
+    "%": _trunc_mod,
+}
 
 
 @dataclass(frozen=True)
@@ -72,7 +84,7 @@ class _Frame:
 #: scope the way completing it would, and only at the top level does it
 #: mean the run failed.  ``run`` reads it after the loop.
 type _Frames = tuple[_Frame, ...]
-type _State = tuple[tuple[int, ...], dict[int, str], _Frames, bool]
+type _State = tuple[tuple[int, ...], Mapping[int, str], _Frames, bool]
 
 
 def _top(stack: tuple[int, ...]) -> int:
@@ -200,15 +212,11 @@ def _advance(state: _State, line: str | None = None) -> _State:
         scope, pc = found
         frames = (*frames[:-1], _at(frame, pc))
         state = (stack, table, frames, error)
-        if char == "(":
+        if char in "([":
             if _top(stack):
-                return (stack, table, (*frames, _Frame(scope)), error)
+                return (stack, table, (*frames, _Frame(scope, loop=char == "[")), error)
             return state
-        if char == "[":
-            if _top(stack):
-                return (stack, table, (*frames, _Frame(scope, 0, loop=True)), error)
-            return state
-        return (stack, {**table, _top(stack): scope}, frames, error)
+        return (stack, MappingProxyType({**table, _top(stack): scope}), frames, error)
     if char in "+-*/%v":
         if len(stack) < 2:
             return _abort(state)
@@ -217,23 +225,12 @@ def _advance(state: _State, line: str | None = None) -> _State:
         # Both operands are consumed before the divisor is tested, so a
         # zero-divisor abort leaves the stack without them.
         popped = (rest, table, frames, error)
-        if char == "+":
-            return ((*rest, _wrap32(one + two)), table, frames, error)
-        if char == "-":
-            return ((*rest, _wrap32(one - two)), table, frames, error)
-        if char == "*":
-            return ((*rest, _wrap32(one * two)), table, frames, error)
-        if char == "/":
-            if two == 0:
-                return _abort(popped)
-            return ((*rest, _wrap32(_trunc_div(one, two))), table, frames, error)
-        if char == "%":
-            if two == 0:
-                return _abort(popped)
-            return ((*rest, _wrap32(_trunc_mod(one, two))), table, frames, error)
-        # The arm admits only ``+-*/%v`` and the other five are handled, so
-        # this is ``v``: the swap.
-        return ((*rest, two, one), table, frames, error)
+        if char == "v":
+            return ((*rest, two, one), table, frames, error)
+        if char in "/%" and two == 0:
+            return _abort(popped)
+        return ((*rest, _wrap32(_BINARY[char](one, two))), table, frames, error)
+
     return state
 
 
@@ -248,7 +245,7 @@ class _Machine:
         """Start with the top-level ``code`` as the only frame."""
         self.io = io
         self.stack: tuple[int, ...] = ()
-        self.table: dict[int, str] = {}
+        self.table: Mapping[int, str] = MappingProxyType({})
         self.frames: tuple[_Frame, ...] = (_Frame(code),)
         self._input_reads = 0
         self.error = False  # the top-level scope aborted (status 3)

@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 import esolangs
+from esolangs.generation.wrap import WRAPPERS
 from esolangs.registry import LANGUAGES
-from esolangs.tools.wrap import WRAPPERS
 from tests.support.witness_tables import row_bits
 
 # Narrow enough to break somewhere in almost every program, and coprime-ish

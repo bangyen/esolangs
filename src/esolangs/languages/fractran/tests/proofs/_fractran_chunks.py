@@ -2,11 +2,11 @@
 
 from collections.abc import Iterator
 
+from esolangs.generation.helpers import TEMPLATE_CHAR
 from esolangs.languages.fractran.tests.proofs._fractran_order import (
     _linear_primes,
     bit_decoder,
 )
-from esolangs.tools.helpers import TEMPLATE_CHAR
 
 
 def chunk_width(n: int) -> int:

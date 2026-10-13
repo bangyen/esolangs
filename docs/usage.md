@@ -18,11 +18,17 @@ The API handles language I/O conventions using [`describe`](#describe) metadata.
 
 `encode` and `read-answer` wrap `run` for one input row:
 
-```bash
-esolangs generate LaserFuck 0110 > prog.txt
-esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck  # prints 1
-esolangs generate Modulous 0110 > modulous.txt
-```
+- LaserFuck:
+
+  ```bash
+  esolangs generate LaserFuck 0110 > prog.txt
+  esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck  # prints 1
+  ```
+- Modulous:
+
+  ```bash
+  esolangs generate Modulous 0110 > modulous.txt
+  ```
 
 ## Work with one language
 
@@ -41,15 +47,18 @@ info = bf.describe()
 It also binds `instantiate`; use the package functions across languages.
 `balance=True` minimizes the rendered width/height difference across supported
 layouts, breaking ties by source length (raster pixel area), then width.
-It excludes `width`. Line compares forward and reverse input-test orders;
-Piet folds its path with stack-neutral turns. Both construct O(T) pixels
-for a truth table of length T.
-Raster generators accept `scale=1` (CLI: `--scale N`), applied after layout.
-Both interpreters detect enlargement. Piet chooses the largest uniform codel
-grid anchored at the image origin; `run(..., scale=N)` or `--scale N`
-overrides detection. Use `scale=1` for native images whose blocks also fit a
-larger grid. The committed Piet example uses 80-pixel codels (960×560),
-comparable in area to native Line (680×800).
+It excludes `width`. Raster generators accept `scale=1` (CLI: `--scale N`),
+applied after layout.
+
+- Line compares forward and reverse input-test orders for balance. It
+  constructs O(T) pixels for a truth table of length T and detects
+  enlargement. Its committed example occupies 680×800 native pixels.
+- Piet folds its path with stack-neutral turns for balance. It constructs
+  O(T) pixels for a truth table of length T and detects enlargement by the
+  largest uniform codel grid anchored at the origin. `run(..., scale=N)` or
+  `--scale N` overrides detection; use `scale=1` for native images whose
+  blocks also fit a larger grid. Its committed example uses 80-pixel codels
+  (960×560).
 
 ## Run XOR
 
@@ -67,24 +76,24 @@ output = esolangs.run("brainfuck", program, stdin=stdin)
 assert esolangs.read_answer("brainfuck", output) == "1"
 ```
 
-Some languages embed inputs in their source instead:
+- Minifuck embeds inputs in its source:
 
-```python
-template = esolangs.generate("Minifuck", table)
-program = esolangs.instantiate("Minifuck", template, [1, 0])
-output = esolangs.run("Minifuck", program)
-assert esolangs.read_answer("Minifuck", output) == "1"
-```
+  ```python
+  template = esolangs.generate("Minifuck", table)
+  program = esolangs.instantiate("Minifuck", template, [1, 0])
+  output = esolangs.run("Minifuck", program)
+  assert esolangs.read_answer("Minifuck", output) == "1"
+  ```
 
-Raster languages return an image source:
+- Piet returns an image source:
 
-```python
-raster = esolangs.generate("Piet", table)
-assert isinstance(raster, esolangs.Raster)
-raster.to_png()
-stdin = esolangs.encode_inputs("Piet", [0, 1])
-assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin)) == "1"
-```
+  ```python
+  raster = esolangs.generate("Piet", table)
+  assert isinstance(raster, esolangs.Raster)
+  raster.to_png()
+  stdin = esolangs.encode_inputs("Piet", [0, 1])
+  assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin)) == "1"
+  ```
 
 To step through a text program and inspect its state:
 
@@ -138,9 +147,11 @@ measured row to answer correctly.
 
 Build language-specific stdin with `encode_inputs`:
 
-```python
-esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
-```
+- Taglate:
+
+  ```python
+  esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
+  ```
 
 <!-- INPUT-SHAPES:START -->
 
@@ -218,9 +229,9 @@ option. Parent source loading is outside the cap; exhaustion raises
 
 Untrusted programs need all three bounds: `isolated=True`, a `timeout` and,
 on Linux, `max_memory`. A timeout alone does not bound memory, and a program
-can grow faster than any timeout fires (Underload's `(x)(~:*~:^):^` doubles a
-string past a gigabyte in under a second). Elsewhere, cap the process
-yourself.
+can grow faster than any timeout fires. Elsewhere, cap the process yourself.
+
+- Underload's `(x)(~:*~:^):^` doubles a string past a gigabyte in under a second.
 
 `run(language, program, stdin=stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with
@@ -297,7 +308,7 @@ The package is beta until 1.0: a 0.x minor release may still break the
 surface below, and [CHANGELOG.md](CHANGELOG.md) lists every break. The
 public API is `esolangs.__all__` and `esolangs.debugger.__all__`, plus the
 documented CLI; every other module (`esolangs.vm`, `esolangs.registry`,
-`esolangs.tools`, `esolangs.interpreters`, ...) is internal. From 1.0, within
+`esolangs.generation`, `esolangs.runtime`, ...) is internal. From 1.0, within
 a major release, compatibility covers:
 
 - public names, their signatures (required arguments positional, optional

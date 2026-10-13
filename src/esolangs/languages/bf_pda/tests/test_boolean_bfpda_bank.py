@@ -4,8 +4,15 @@ import random
 
 import pytest
 
-from esolangs.languages.bf_pda.generator import _bfpda_tree, _prepare, _reflected, bfpda
-from esolangs.languages.bf_pda.generator._bank import _body_metrics, _price, best_bank
+from esolangs.generation.helpers import reflected_table
+from esolangs.languages.bf_pda.generator import (
+    _bfpda_tree,
+    _body_metrics,
+    _prepare,
+    _price,
+    best_bank,
+    bfpda,
+)
 from esolangs.languages.bf_pda.tests.test_boolean_bfpda import _execute_bank
 
 
@@ -13,7 +20,7 @@ def _fixture(words, pattern, core_bits):
     depth = (len(pattern)).bit_length() - 1
     ignored = 16 - depth - core_bits
     blocks = tuple(word * (1 << ignored) for word in words)
-    table = _reflected("".join(blocks[int(label)] for label in pattern), 16)
+    table = reflected_table("".join(blocks[int(label)] for label in pattern), 16)
     context = _prepare(table)
     states = tuple(dict.fromkeys(context.ids[depth]))
     metric = _price(context, depth, states, _body_metrics(context))
@@ -43,7 +50,9 @@ def _rows(start, stop, depth, core_bits, ignored):
         (tuple(f"{word:04b}" for word in range(1, 9)), "0123456776543210"),
     ],
 )
-def test_non_power_of_two_words_and_three_bit_words_cover_all_paths(words, pattern):
+def test_non_power_of_two_words_and_three_bit_words_cover_all_paths(
+    words, pattern
+) -> None:
     table, candidate, metric, depth, ignored = _fixture(words, pattern, 2)
     assert metric.commands <= 162
     assert len(bfpda(table)) <= len(candidate)
@@ -56,7 +65,7 @@ def test_non_power_of_two_words_and_three_bit_words_cover_all_paths(words, patte
 @pytest.mark.medium
 @pytest.mark.parametrize("seed", [73031, 73032, 73033])
 @pytest.mark.parametrize("start", range(0, 512, 64))
-def test_four_class_cap_bank_covers_every_essential_row(seed, start):
+def test_four_class_cap_bank_covers_every_essential_row(seed, start) -> None:
     rng = random.Random(seed)
     words = tuple("".join(str(rng.randrange(2)) for _ in range(64)) for _ in range(4))
     table, candidate, metric, depth, ignored = _fixture(words, "01233021", 6)
@@ -71,25 +80,25 @@ def test_four_class_cap_bank_covers_every_essential_row(seed, start):
 
 
 @pytest.mark.parametrize("classes", [("0001",), ("0001", "0001")])
-def test_invalid_labels_abort(classes):
+def test_invalid_labels_abort(classes) -> None:
     with pytest.raises(ValueError, match="distinct residuals"):
         _bfpda_tree("0001" * 8, classes=classes, class_depth=3)
 
 
-def test_word_must_fit_the_retired_stack():
+def test_word_must_fit_the_retired_stack() -> None:
     classes = ("0001", "0110", "0011", "0101")
     with pytest.raises(ValueError, match="retired stack"):
-        _bfpda_tree(_reflected("".join(classes), 4), classes=classes)
+        _bfpda_tree(reflected_table("".join(classes), 4), classes=classes)
 
 
-def test_bank_keeps_existing_paths_when_no_candidate_is_admissible():
-    table = _reflected("0001011000110101", 4)
+def test_bank_keeps_existing_paths_when_no_candidate_is_admissible() -> None:
+    table = reflected_table("0001011000110101", 4)
     context = _prepare(table)
     assert best_bank(table, context, 42, 10000) is None
     assert best_bank(table, context, 10000, 0) is None
 
 
-def test_emitter_drift_aborts(monkeypatch):
+def test_emitter_drift_aborts(monkeypatch) -> None:
     from importlib import import_module
 
     module = import_module("esolangs.languages.bf_pda.generator")
@@ -98,3 +107,11 @@ def test_emitter_drift_aborts(monkeypatch):
     monkeypatch.setattr(module, "_bfpda_tree", lambda *_args, **_kwargs: (".", 1))
     with pytest.raises(ValueError, match="disagrees with its price"):
         best_bank(table, _prepare(table), 162, 10000)
+
+
+def test_two_class_bank_keeps_separate_prefix_and_body_admission() -> None:
+    table = "00000100"
+    context = _prepare(table)
+    # Correlating tails prices this at 46; its former classifier admission is 47.
+    assert best_bank(table, context, 46, 10000) is None
+    assert best_bank(table, context, 47, 10000) is not None

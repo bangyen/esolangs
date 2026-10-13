@@ -6,7 +6,6 @@ import sys
 
 from esolangs import _check_runnable, describe
 from esolangs.cli.args import (
-    _check_count,
     _errors,
     _fail,
     _integer,
@@ -27,14 +26,15 @@ from esolangs.cli.hints import (
 )
 from esolangs.cli.io import (
     _null_context,
-    _portable_language,
     _read_program,
     _read_stdin,
-    _UnboundedNotice,
+    _resolve_target,
+    _termination_notice,
+    _unbounded_notice,
 )
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
-from esolangs.interpreters.source_hints import error_text
+from esolangs.runtime.source_hints import error_text
 from esolangs.settings import dialect_options
 
 
@@ -62,15 +62,7 @@ def _debug(rest: list[str]) -> None:
     # the language the timeout's value and the complaint landed on the file.
     limit = _timeout_of(options)
     rest = _split_positional(rest, set(), options_taken | {"--portable"})
-    if not (portable and len(rest) == 1):
-        _check_count("debug", rest, 2)
-    content = None
-    if portable and len(rest) == 1:
-        path = rest[0]
-        with _errors():
-            language, content = _portable_language(path, limit)
-    else:
-        language, path = rest[0], rest[1]
+    language, path, content = _resolve_target("debug", rest, limit, portable=portable)
     numbers = {
         name: _integer(options[name], name)
         for name in ("--steps", "--watch-cell", "--break-at")
@@ -141,14 +133,10 @@ def _debug(rest: list[str]) -> None:
     # as a bound here as much as ``--timeout`` does, so a run that has one
     # is not told to pass one.
     bounded = steps is not None or limit is not None
-    if describe(language)["answer_mode"] == "termination" and not bounded:
-        sys.stderr.write(
-            f"{describe(language)['name']}: this language answers 1 by not "
-            f"terminating, so a program with that answer will run until you "
-            f"stop it; pass --timeout SECONDS or --steps N to bound it\n"
-        )
+    if facts["answer_mode"] == "termination" and not bounded:
+        _termination_notice(facts["name"], "--timeout SECONDS or --steps N")
     try:
-        with _UnboundedNotice("debug") if not bounded else _null_context():
+        with _unbounded_notice("debug") if not bounded else _null_context():
             reason = dbg.run(max_steps=steps, timeout=limit)
     except Exception as exc:
         fault = f"{type(exc).__name__}: {error_text(exc)}"

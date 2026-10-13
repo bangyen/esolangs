@@ -5,7 +5,6 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import run as run_brainfuck
 from esolangs.languages.factor.generator import _program, factor
 from esolangs.languages.factor.interpreter import run
@@ -20,6 +19,7 @@ from esolangs.languages.factor.tests.proofs._factor_semantic import (
     delete_pattern,
     first_output,
 )
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import witnesses
 
 

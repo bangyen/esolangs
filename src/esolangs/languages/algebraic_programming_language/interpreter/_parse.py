@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from math import isfinite
 from typing import Literal
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.memory import parse_integer
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.memory import parse_integer
+from esolangs.runtime.source_hints import syntax_error
 
 # The only datatype is a number, but a *function* reaches an expression
 # slot too: the wiki's ``WHILE(x, c)`` takes its condition and body as
@@ -26,7 +27,7 @@ _Ref = tuple[Literal["ref"], str]
 _Neg = tuple[Literal["neg"], "_Node"]
 _Ret = tuple[Literal["ret"], "_Node"]
 _Bin = tuple[Literal["bin"], str, "_Node", "_Node"]
-_Call = tuple[Literal["call"], str, list["_Node"]]
+_Call = tuple[Literal["call"], str, tuple["_Node", ...]]
 _Node = _Lit | _Var | _Ref | _Neg | _Ret | _Bin | _Call
 
 # The spec allows accented Latin, Cyrillic, and Greek letters as well, so
@@ -131,7 +132,7 @@ class _Parser:
     stack, because only evaluation can recurse without bound.
     """
 
-    def __init__(self, tokens: list[str], defs: dict[str, _Definition]) -> None:
+    def __init__(self, tokens: list[str], defs: Mapping[str, _Definition]) -> None:
         self.tokens = tokens
         self.defs = defs
         self.ind = 0
@@ -287,7 +288,7 @@ class _Parser:
 
     def _try_pattern(
         self, definition: _Definition, left: _Node | None
-    ) -> list[_Node] | None:
+    ) -> tuple[_Node, ...] | None:
         r"""Match ``definition``'s pattern, with ``left`` filling a leading slot.
 
         The pattern is the operator's stored name with ``\0`` marking each
@@ -319,7 +320,7 @@ class _Parser:
                 return None
             self.take()
             ind += 1
-        return args
+        return tuple(args)
 
     def _atom(self) -> _Node:
         """Parse a literal, name, call, or bracketed expression."""
@@ -366,7 +367,7 @@ class _Parser:
             "use a number, lowercase variable or uppercase function call here",
         )
 
-    def _arguments(self) -> list[_Node]:
+    def _arguments(self) -> tuple[_Node, ...]:
         """Parse a parenthesised, comma-separated argument list."""
         self.expect("(")
         args: list[_Node] = []
@@ -376,7 +377,7 @@ class _Parser:
                 self.take()
                 args.append(self.expr())
         self.expect(")")
-        return args
+        return tuple(args)
 
 
 def _split_definition(line: str) -> tuple[str, str] | None:
@@ -511,7 +512,7 @@ def _blocks(code: str) -> list[str]:
     return out
 
 
-def _body(rhs: str, defs: dict[str, _Definition]) -> list[_Node]:
+def _body(rhs: str, defs: Mapping[str, _Definition]) -> list[_Node]:
     """Parse a definition's right-hand side into its list of statements."""
     text = rhs.strip()
     if text.startswith("{"):

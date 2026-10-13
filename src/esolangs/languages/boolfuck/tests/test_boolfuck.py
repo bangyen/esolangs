@@ -5,9 +5,9 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.boolfuck.generator import boolfuck
 from esolangs.languages.boolfuck.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import boolfuck as oracle
 from tests.support.raises import assert_rejected_with_hint
@@ -42,7 +42,7 @@ def test_all_three_input_tables(n: int) -> None:
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_rejected_with_hint("Boolfuck", "[", "close this '[' with ']'")
 
 
@@ -58,7 +58,7 @@ def _corpus():
 
 
 @pytest.mark.parametrize("stdin", STDINS)
-def test_bounded_programs_match_the_oracle(stdin):
+def test_bounded_programs_match_the_oracle(stdin) -> None:
     for code in _corpus():
         agrees(_Machine, oracle, code, stdin)
 
@@ -66,7 +66,7 @@ def test_bounded_programs_match_the_oracle(stdin):
 @pytest.mark.parametrize(
     ("code", "output"), [("[", None), ("]", None), (",;" * 8, "\x81"), ("+;", "\x01")]
 )
-def test_oracle_controls(code, output):
+def test_oracle_controls(code, output) -> None:
     result = agrees(_Machine, oracle, code, "\x81")
     assert result.output == output if output else isinstance(result, ValueError)
     assert not agrees(_Machine, oracle, "+[]", "").halted  # a cap is not a halt

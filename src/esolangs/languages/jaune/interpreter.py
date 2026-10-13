@@ -29,11 +29,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.persistent import (
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.persistent import (
     Chunked,
     append,
     chunked,
@@ -43,7 +43,7 @@ from esolangs.interpreters.persistent import (
     prepend,
     put,
 )
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 # The two command shapes, kept apart by their operators.  Because no
 # operator appears in both, comparing ``cmd.op`` discriminates the union:

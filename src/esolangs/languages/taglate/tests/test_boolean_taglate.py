@@ -4,11 +4,22 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.taglate.tests.runners import run_taglate
-from esolangs.tools.wrap import (
-    _taglate,
-)
+from esolangs.languages.taglate.wrapping import _taglate
 from tests.support.witness_tables import row_bits, witnesses
+
+
+def run_taglate(program: str, inputs: list[str]) -> str:
+    import esolangs
+
+    return esolangs.run("Taglate", program, stdin="".join(inputs))
+
+
+def test_execution_bound_splits_on_input_parity() -> None:
+    from esolangs.languages.taglate.proof_formulas import execution
+
+    # Even n takes the closed form directly; odd n routes through m = n + 1.
+    assert execution(4, "") == 353
+    assert execution(5, "") == 1070
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])
@@ -16,8 +27,8 @@ from tests.support.witness_tables import row_bits, witnesses
 def test_constant_reads_the_ghost_and_real_inputs_before_printing(
     n: int, bit: str
 ) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.taglate.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     table = bit * (1 << n)
     programs = [esolangs.generate("Taglate", table, width=w) for w in (None, 1, 20)]

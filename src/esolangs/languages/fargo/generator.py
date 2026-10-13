@@ -26,14 +26,14 @@ form stays a candidate on every fitting path.
 
 from string import ascii_lowercase
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_shape,
     _validate_truth_table,
     short_name,
 )
-from esolangs.tools.wrap import balance_score
+from esolangs.generation.wrap import balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 __all__ = ["fargo"]
 

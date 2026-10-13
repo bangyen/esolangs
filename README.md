@@ -30,7 +30,7 @@ A table lists outputs for inputs `00, 01, 10, 11` in order, so `0110` is XOR:
 ```bash
 pip install esolangs
 esolangs generate brainfuck 0110 > xor.bf
-for i in 00 01 10 11; do printf $i | esolangs run brainfuck xor.bf; echo " <- $i"; done
+for i in 00 01 10 11; do printf $i | esolangs run --timeout 5 brainfuck xor.bf; echo " <- $i"; done
 # 0 <- 00
 # 1 <- 01
 # 1 <- 10
@@ -51,15 +51,21 @@ python -m pip install esolangs
 
 esolangs --help
 esolangs list
-esolangs generate Suffolk 0110 > program.txt
-printf '01' | esolangs run Suffolk program.txt
-
 esolangs generate brainfuck 0110 > bf.txt
 printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 ```
 
-The Polynomial interpreter needs the optional mathematics extra:
-`pip install 'esolangs[math]'`.  PNG loading and saving need
+- Suffolk:
+
+  ```bash
+  esolangs generate Suffolk 0110 > program.txt
+  printf '01' | esolangs run Suffolk program.txt
+  ```
+
+- Polynomial needs the optional mathematics extra:
+  `pip install 'esolangs[math]'`.
+
+PNG loading and saving need
 `pip install 'esolangs[image]'`; in-memory raster programs need neither extra.
 
 ## Python API
@@ -69,14 +75,17 @@ import esolangs
 
 program = esolangs.generate("brainfuck", "0110")
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-output = esolangs.run("brainfuck", program, stdin=stdin)
+output = esolangs.run("brainfuck", program, stdin=stdin, max_steps=10_000)
 assert esolangs.read_answer("brainfuck", output) == "1"
 ```
 
-Use `isolated=True` for a bounded run on Windows or worker threads.
+Use `max_steps` to bound commands, or `timeout` to bound wall time.
+On Windows or worker threads, use `isolated=True, timeout=5`; isolation also
+supports `max_output` and Linux-only `max_memory` limits.
 
-Use the intended language: Suffolk source may run as brainfuck with a wrong
-answer. Use
+- Suffolk source may run as brainfuck with a wrong answer.
+
+Use
 [`encode_inputs`](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program)
 to build stdin.
 
@@ -99,16 +108,19 @@ Feeding it the two adjacent input characters prints their XOR.
 
 Ready-to-run programs for each of the 80
 languages with a boolean generator live in
-each language's [`examples/` directory](https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).
+each language's [directory](https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).
 
 <!-- EXAMPLES:END -->
 
 ## Implemented languages
 
-Familiar languages include [brainfuck](https://esolangs.org/wiki/brainfuck),
-[Befunge](https://esolangs.org/wiki/Befunge), [Piet](https://esolangs.org/wiki/Piet),
-[INTERCAL](https://esolangs.org/wiki/INTERCAL), and
-[Malbolge](https://esolangs.org/wiki/Malbolge).
+Familiar languages include:
+
+- [brainfuck](https://esolangs.org/wiki/brainfuck)
+- [Befunge](https://esolangs.org/wiki/Befunge)
+- [Piet](https://esolangs.org/wiki/Piet)
+- [INTERCAL](https://esolangs.org/wiki/INTERCAL)
+- [Malbolge](https://esolangs.org/wiki/Malbolge)
 
 See the [complete language catalog](https://github.com/bangyen/esolangs/blob/main/docs/languages.md).
 

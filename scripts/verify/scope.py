@@ -20,6 +20,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import Protocol
 
+# scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from verify.process import run_bounded
 
@@ -28,9 +29,9 @@ ROOT = Path(__file__).resolve().parents[2]
 # Changing any of these changes how *every* interpreter reads, steps, or
 # reports, so touching one sweeps the whole registry rather than nothing.
 SHARED_INTERPRETER = (
-    "interpreters/io.py",
-    "interpreters/memory.py",
-    "interpreters/brackets.py",
+    "runtime/io.py",
+    "runtime/memory.py",
+    "runtime/brackets.py",
     "exceptions.py",
     "vm.py",
     "raster/__init__.py",
@@ -41,6 +42,7 @@ SHARED_INTERPRETER = (
     "registry/_table.py",
     "registry/_contracts.py",
     "registry/_language.py",
+    "registry/_describe.py",
 )
 
 # The checking machinery itself.  A change here can alter what every step
@@ -127,7 +129,7 @@ def widens_to_everything(changed: list[str]) -> str | None:
 
 
 TOOLING_INTEGRATIONS = {
-    "tests/tooling/scripts/test_ci_coverage.py": (
+    "tests/tooling/test_ci_coverage.py": (
         ("test_combining_shards_retains_every_branch",),
         (
             ".github/workflows/",
@@ -148,16 +150,13 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
             ".coveragerc",
             "conftest.py",
             "tests/__init__.py",
-            "tests/tooling/scripts/script_support.py",
+            "tests/tooling/script_support.py",
             "setup.cfg",
             "pytest.ini",
             "tox.ini",
         }
         or path.startswith("tests/support/fixtures/")
-        or (
-            path.startswith("tests/tooling/scripts/")
-            and Path(path).name == "conftest.py"
-        )
+        or (path.startswith("tests/tooling/") and Path(path).name == "conftest.py")
         for path in changed
     ):
         return []
@@ -166,7 +165,7 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
         for suite, (tests, dependencies) in TOOLING_INTEGRATIONS.items()
         if not any(
             path == suite
-            or path.startswith((*dependencies, "tests/tooling/scripts/__init__.py"))
+            or path.startswith((*dependencies, "tests/tooling/__init__.py"))
             for path in changed
         )
         for test in tests
@@ -175,7 +174,6 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
 
 CACHED_STEPS = frozenset(
     {
-        "bandit",
         "generated docs",
         "deep proofs (verify band)",
         "dead definitions",
@@ -184,7 +182,6 @@ CACHED_STEPS = frozenset(
     }
 )
 _DISTRIBUTIONS = {
-    "bandit": {"bandit", "stevedore", "pyyaml"},
     "python checks": {
         "pillow",
         "sympy",
@@ -211,10 +208,7 @@ def _feed(digest: _Digest, value: bytes) -> None:
 
 def runtime_digest(step: str) -> str:
     """Hash the interpreter, dependency inventory and the check's tool sources."""
-    modules = {
-        "bandit": ("bandit.core.extension_loader",),
-        "python checks": ("ast", "PIL.Image", "pylint.lint"),
-    }
+    modules = {"python checks": ("ast", "PIL.Image", "pylint.lint")}
     for name in modules[step]:
         importlib.import_module(name)
     digest = hashlib.sha256()
@@ -228,8 +222,7 @@ def runtime_digest(step: str) -> str:
         name = distribution.metadata["Name"].lower().replace("_", "-")
         _feed(digest, f"{name}:{distribution.version}".encode())
         selected = name in _DISTRIBUTIONS[step] or any(
-            entry.group.startswith(("bandit", "pylint"))
-            for entry in distribution.entry_points
+            entry.group.startswith("pylint") for entry in distribution.entry_points
         )
         for file in distribution.files or ():
             if file.suffix == ".pyc":
@@ -250,9 +243,7 @@ def runtime_digest(step: str) -> str:
     return digest.hexdigest()
 
 
-def _tree(
-    root: Path, *, bandit: bool = False
-) -> tuple[str, dict[str, tuple[int, int, int]]]:
+def _tree(root: Path) -> tuple[str, dict[str, tuple[int, int, int]]]:
     """Return the digest of every git-visible input, plus its stat tuple.
 
     ``git ls-files`` lists tracked and untracked-unignored files, so no
@@ -269,13 +260,7 @@ def _tree(
         check=True,
     )
     paths = {root / name for name in result.stdout.split("\0") if name}
-    paths.update(root / name for name in (".bandit", ".pylintrc", "setup.cfg"))
-    if bandit:
-        paths = {
-            path
-            for path in paths
-            if path.is_relative_to(root / "src") or path == root / ".bandit"
-        }
+    paths.update(root / name for name in (".pylintrc", "setup.cfg"))
     for path in tuple(paths):
         if path.is_symlink() and path.is_dir():
             if not path.resolve().is_relative_to(root.resolve()):
@@ -302,10 +287,9 @@ class VerifiedCache:
     """Reuse clean runs; publish new entries only after input stability checks."""
 
     def __init__(self, root: Path) -> None:
-        """Snapshot the tree, and the bandit-scoped inputs, at construction."""
+        """Snapshot the tree at construction."""
         self.root = root
         self.initial = _tree(root)
-        self.bandit = _tree(root, bandit=True)[0]
         self.pending: list[tuple[Path, dict[str, str | int]]] = []
         self.runtimes: dict[str, tuple[list[str], dict[str, str], str]] = {}
 
@@ -313,19 +297,9 @@ class VerifiedCache:
         """Return a key, or decline caching when the runtime cannot be verified."""
         if env.get("VERIFY_CLEAN_CACHE", "1") == "0":
             return None
-        if step == "bandit":
-            if cmd[:4] != ["uv", "run", "--no-sync", "--with"]:
-                return None
-            prefix = [*cmd[:5], "python"]
-        else:
-            if "python" not in Path(cmd[0]).name:
-                return None
-            prefix = [cmd[0]]
-        query = [
-            *prefix,
-            str(Path(__file__).resolve()),
-            "bandit" if step == "bandit" else "python checks",
-        ]
+        if "python" not in Path(cmd[0]).name:
+            return None
+        query = [cmd[0], str(Path(__file__).resolve()), "python checks"]
         query_key = json.dumps([query, sorted(env.items())])
         if query_key in self.runtimes:
             runtime = self.runtimes[query_key][2]
@@ -350,24 +324,7 @@ class VerifiedCache:
         return self._key(step, cmd, env, runtime)
 
     def _key(self, step: str, cmd: list[str], env: dict[str, str], runtime: str) -> str:
-        # Only the known source scan has an audited dependency footprint.
-        inputs = (
-            self.bandit
-            if step == "bandit"
-            and cmd
-            == [
-                "uv",
-                "run",
-                "--no-sync",
-                "--with",
-                "bandit",
-                "bandit",
-                "-r",
-                "src",
-                "-q",
-            ]
-            else self.initial[0]
-        )
+        inputs = self.initial[0]
         return hashlib.sha256(
             json.dumps(
                 [step, cmd, sorted(env.items()), inputs, runtime],
@@ -452,19 +409,19 @@ class VerifiedCache:
 # A step absent from this table is always run: it is either cheap enough not to
 # matter or it guards the whole tree.  Prefixes are repo-relative.
 STEP_SCOPE: dict[str, tuple[str, ...]] = {
-    "bandit": ("src/",),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "checks/"),
     "dead definitions": ("src/", "scripts/", "checks/"),
     # Only a generator, an interpreter (the step counts are executed), or the
     # baseline itself can move these numbers.
     "generator size baseline": (
         "src/esolangs/languages/",
-        "src/esolangs/tools/",
-        "src/esolangs/interpreters/",
+        "src/esolangs/generation/",
+        "src/esolangs/runtime/",
         "checks/check_generator_sizes.py",
         "scripts/benchmark.py",
         "tests/support/fixtures/generator_sizes.json",
     ),
+    # language-owners: ["ArrowQueue", "BIO"]
     # The union of what the two proofs in this band read: ArrowQueue's lemmas
     # import the generator and nothing else, and BIO's also parse the emitted
     # program and instantiate it through the shipped fill.  The runner is in
@@ -472,7 +429,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "deep proofs (verify band)": (
         "src/esolangs/languages/bio/generator.py",
         "src/esolangs/languages/arrowqueue/generator.py",
-        "src/esolangs/tools/examples.py",
+        "src/esolangs/generation/examples.py",
         "tests/proofs/deep/",
         "src/esolangs/languages/",
     ),
@@ -503,9 +460,6 @@ def _scope_plan(*, full: bool) -> tuple[set[str] | None, str]:
         return None, "--full requested"
     if os.environ.get("VERIFY_FULL", "0") not in ("", "0"):
         return None, "VERIFY_FULL set"
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from verify.scope import widens_to_everything
-
     changed = list(_scope_changed_files())
     reason = widens_to_everything(changed)
     if reason is not None:
@@ -535,10 +489,10 @@ def _is_collected(path: str) -> bool:
 
 
 INTERPRETER_CONTRACT_TESTS = (
-    "tests/runtime/vm/test_vm_protocol.py",
-    "tests/runtime/vm/test_stepping_parity.py",
-    "tests/integration/api/test_api_contracts.py",
-    "tests/generators/test_interpreter_conventions.py",
+    "tests/runtime/test_vm_protocol.py",
+    "tests/runtime/test_stepping_parity.py",
+    "tests/api/test_api_contracts.py",
+    "tests/interpreters/test_interpreter_conventions.py",
     "tests/interpreters/test_io.py",
     "tests/interpreters/test_input_convention.py",
 )
@@ -576,7 +530,7 @@ def _generator_test_scope(module: str) -> list[str] | None:
     needles = {name for name, owner in owners.items() if owner == module}
     # A generator importing this one makes its language suite relevant too.
     dependents = {module}
-    tools_root = ROOT / "src/esolangs/tools"
+    tools_root = ROOT / "src/esolangs/generation"
     sources = {
         source: source.read_text(encoding="utf-8")
         for source in (

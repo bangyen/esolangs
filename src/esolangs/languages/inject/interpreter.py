@@ -33,13 +33,14 @@ moves every later line, the executing one included.  Output is collected
 """
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
+from types import MappingProxyType
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 # A label line is exactly a name and a semicolon; the semicolon is not part
 # of the name.  Surrounding whitespace is not significant -- the wiki's own
@@ -86,7 +87,7 @@ type _Spans = Mapping[str, tuple[int, int]]
 #:
 #: The lines are *in* here because they are the memory: ``readto`` and
 #: ``inject`` rewrite the running program, and the spans move with them.
-type _State = tuple[Sequence[str], _Spans, int, bool]
+type _State = tuple[tuple[str, ...], _Spans, int, bool]
 
 
 def _span(spans: _Spans, name: str) -> tuple[int, int]:
@@ -124,7 +125,7 @@ def _replaced(state: _State, name: str, body: list[str]) -> _State:
     ):
         raise HaltError("a rewrite cannot remove another block's delimiters")
     if not shift:
-        return (grown, spans, ind, done)
+        return (tuple(grown), spans, ind, done)
     if begin < ind:
         if ind + shift + 1 < 0:
             raise HaltError("rewrite would move the pointer before the program")
@@ -137,7 +138,7 @@ def _replaced(state: _State, name: str, body: list[str]) -> _State:
         label: (b + shift * (b > begin), e + shift * (e > begin))
         for label, (b, e) in spans.items()
     }
-    return (grown, moved, ind, done)
+    return (tuple(grown), MappingProxyType(moved), ind, done)
 
 
 def _begins_block(state: _State, index: int) -> str | None:
@@ -205,7 +206,9 @@ def _injected(state: _State, rest: str) -> _State:
     return _replaced(state, name, body)
 
 
-def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[str]]:
+def _advance(
+    state: _State, line_in: str | None = None
+) -> tuple[_State, tuple[str, ...]]:
     """Return the state after one line, and everything it printed.
 
     Pure; ``send`` reports its lines, ``readto``'s line arrives as ``line_in``.
@@ -216,14 +219,14 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
     # A blank line and a label line are both no-ops: control runs straight
     # through a block's delimiters.
     if not line or _LABEL.fullmatch(line):
-        return (lines, spans, ind + 1, done), []
+        return (lines, spans, ind + 1, done), ()
 
     command, _, rest = line.partition(" ")
     rest = rest.strip()
-    output: list[str] = []
+    output: tuple[str, ...] = ()
 
     if command == "send":
-        output = [text + "\n" for text in _contents(state, rest)]
+        output = tuple(text + "\n" for text in _contents(state, rest))
     elif command == "readto":
         # EOF (``None``) empties the block; a blank line is one empty line.
         state = _replaced(state, rest, [] if line_in is None else [line_in])
@@ -317,7 +320,12 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (self.lines, self.spans, self.ind, self.done)
+        return (
+            tuple(self.lines),
+            MappingProxyType(dict(self.spans)),
+            self.ind,
+            self.done,
+        )
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""

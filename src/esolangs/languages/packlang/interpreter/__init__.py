@@ -77,10 +77,9 @@ Further decisions for gaps the wiki leaves open:
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass, replace
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
 from esolangs.languages.packlang.interpreter._parse import (
     _DECR,
     _INCR,
@@ -104,6 +103,8 @@ from esolangs.languages.packlang.interpreter._values import (
     _set,
     _truth,
 )
+from esolangs.runtime._drive import drive
+from esolangs.runtime.io import IO
 
 # There is no recursion ceiling.  A call pushes a frame rather than
 # recursing natively, so a runaway program grows the frame list on the
@@ -117,13 +118,8 @@ from esolangs.languages.packlang.interpreter._values import (
 type _Slot = tuple[str, object]
 type _Store = tuple[_Slot, ...]
 
-#: The whole run state as a value: the statement cursor, the variable
-#: store, and the function's value so far.  The parsed program is constant
-#: for a run, so it is not part of the state; :class:`_Frame` is this tuple
-#: with names, and :meth:`_Frame.key` is the tuple itself.
-type _State = tuple[int, _Store, int]
 
-
+@dataclass(frozen=True)
 class _Frame:
     """One call frame: the function, its cursor, and its own variables.
 
@@ -134,19 +130,20 @@ class _Frame:
     call it contains, each time with one more resolved.
     """
 
-    __slots__ = ("func", "pc", "pending", "result", "returned", "store")
-
-    def __init__(self, func: _Function, store: _Store, pc: int = 0) -> None:
-        self.func = func
-        self.store = store
-        self.pc = pc
-        self.result = 0
-        self.pending: _Expr | None = None
-        self.returned: int | None = None
+    func: _Function
+    store: _Store
+    pc: int = 0
+    result: int = 0
+    pending: _Expr | None = None
+    returned: int | None = None
 
     def key(self) -> tuple[object, ...]:
         """Return the frame as a hashable value for :meth:`snapshot`."""
         return (self.func.package, self.func.name, self.pc, self.store, self.result)
+
+
+#: The active call frames, including suspended expressions and return values.
+type _State = tuple[_Frame, ...]
 
 
 def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
@@ -332,7 +329,7 @@ def _type_of(name: str, func: _Function, program: _Program) -> _Type:
     return func.locals.get(name) or program.types.get((func.package, name)) or _Type()
 
 
-def _advance(
+def _statement(
     frame: _Frame,
     program: _Program,
     byte: int | None,
@@ -402,9 +399,11 @@ def _advance(
     elif op == _VALUE:  # pragma: no branch
         result = _evaluate(_node(stmt[1]), store, program, package)
 
-    new = _Frame(frame.func, store, pc)
-    new.result = result
-    return new, out, False
+    return (
+        replace(frame, store=store, pc=pc, result=result, pending=None, returned=None),
+        out,
+        False,
+    )
 
 
 def _write(
@@ -487,6 +486,52 @@ def _resolved(frame: _Frame) -> tuple[object, ...]:
     return tuple(parts)
 
 
+def _resolve(frame: _Frame, program: _Program) -> tuple[_Frame, _Frame | None]:
+    """Return the updated caller and any callee it needs to enter."""
+    expr = _expression_of(frame.func.body[frame.pc])
+    if expr is None:
+        return frame, None
+    working = frame.pending if frame.pending is not None else expr
+    package = frame.func.package
+    if frame.returned is not None:
+        call = _pending_call(working, frame.store, program, package)
+        # A value is waiting only because a call was found and stepped,
+        # so the same search finds it again here.
+        if call is not None:  # pragma: no branch
+            working = _substitute(working, call, frame.returned)
+        frame = replace(frame, returned=None)
+    call = _pending_call(working, frame.store, program, package)
+    if call is None:
+        frame = replace(frame, pending=working)
+        return frame, None
+    frame = replace(frame, pending=working)
+    func = _callee(call, program, package)
+    values = [
+        _evaluate(_node(arg), frame.store, program, package) for arg in _node(call[2])
+    ]
+    return frame, _entered(func, values, program)
+
+
+def _advance(
+    frames: _State, program: _Program, byte: int | None = None
+) -> tuple[_State, str | None, bool]:
+    """Return immutable call frames, any output, and whether input is needed."""
+    if not frames:
+        return frames, None, False
+    frame = frames[-1]
+    if frame.pc >= len(frame.func.body):
+        callers = frames[:-1]
+        if callers:
+            callers = (*callers[:-1], replace(callers[-1], returned=frame.result))
+        return callers, None, False
+    frame, callee = _resolve(frame, program)
+    callers = (*frames[:-1], frame)
+    if callee is not None:
+        return (*callers, callee), None, False
+    result, output, wants_read = _statement(frame, program, byte, _resolved(frame))
+    return (*callers[:-1], result), output, wants_read
+
+
 class _Machine:
     """The run state: a stack of call frames and the parsed program.
 
@@ -542,7 +587,7 @@ class _Machine:
         # _parse raises when a program has no entry, so this cannot be None.
         if entry is None:
             raise AssertionError("entry is not None")
-        self.frames = [_Frame(entry, _initial_store(entry, self.program))]
+        self.frames: _State = (_Frame(entry, _initial_store(entry, self.program)),)
 
     @property
     def frame(self) -> _Frame:
@@ -612,67 +657,17 @@ class _Machine:
         ``IndexError``: ``run_until_halt_or_cycle`` steps once more after
         the halt to prove it stayed there.
         """
-        if self.halted:
-            return
-        frame = self.frame
-        if frame.pc >= len(frame.func.body):
-            self._finish(frame)
-            return
-        if self._resolve(frame):
-            return
-        prepared = _resolved(frame)
-        result, out, wants_read = _advance(frame, self.program, None, prepared)
+        frames, out, wants_read = _advance(self.frames, self.program)
         if wants_read:
-            # Packlang alone defines exhausted input as newline.  Keep that
-            # exception here rather than changing the shared input port.
             try:
                 byte = self.io.input_char()
                 self._input_reads += 1
             except EOFError:
                 byte = 10
-            result, out, _ = _advance(frame, self.program, byte, prepared)
-        result.pending = None
-        result.returned = None
-        self.frames[-1] = result
+            frames, out, _ = _advance(self.frames, self.program, byte)
+        self.frames = frames
         if out is not None:
             self.io.print_char(out)
-
-    def _resolve(self, frame: _Frame) -> bool:
-        """Push a frame for the next unresolved call, if the statement has one.
-
-        Returns whether this step was spent starting a call, in which case
-        the statement stays put and is re-entered once the value is in.
-        """
-        expr = _expression_of(frame.func.body[frame.pc])
-        if expr is None:
-            return False
-        working = frame.pending if frame.pending is not None else expr
-        package = frame.func.package
-        if frame.returned is not None:
-            call = _pending_call(working, frame.store, self.program, package)
-            # A value is waiting only because a call was found and stepped,
-            # so the same search finds it again here.
-            if call is not None:  # pragma: no branch
-                working = _substitute(working, call, frame.returned)
-            frame.returned = None
-        call = _pending_call(working, frame.store, self.program, package)
-        if call is None:
-            frame.pending = working
-            return False
-        frame.pending = working
-        func = _callee(call, self.program, package)
-        values = [
-            _evaluate(_node(arg), frame.store, self.program, package)
-            for arg in _node(call[2])
-        ]
-        self.frames.append(_entered(func, values, self.program))
-        return True
-
-    def _finish(self, frame: _Frame) -> None:
-        """Pop a finished frame, delivering its value to the caller."""
-        self.frames.pop()
-        if self.frames:
-            self.frames[-1].returned = frame.result
 
 
 def run(code: str, io: IO, *, literal_policy: str = "decimal") -> None:

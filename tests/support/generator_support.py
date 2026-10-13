@@ -1,11 +1,12 @@
 """Generator round-trip checks for the development suite."""
 
+import random
 from itertools import pairwise
 
 import esolangs
-from esolangs._evaluate import _DEFAULT, _Default, _evaluate
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime._evaluate import _DEFAULT, _Default, _evaluate
+from esolangs.runtime.io import ScriptedIO
 from tests.support.stdin_check import _validate_shape_for_evaluate
 from tests.support.witness_tables import parity, row_bits
 
@@ -34,6 +35,27 @@ def probe_table(name: str, default: str = "0110") -> str:
             table for table in lang.benchmark_tables if "0" in table and "1" in table
         )
     return default
+
+
+def multiple_tables() -> list[str]:
+    """A fixed corpus of 128-bit truth tables for residual-structure tests.
+
+    Two structured tables plus six seeded random ones, so the medium-marked
+    parametrized tests exercise repeated bands across identical inputs.
+    """
+    rng = random.Random(88417)
+    a, b = "00010111", "01101001"
+    four = (
+        "0001011101101001",
+        "0110100100010111",
+        "1010110010001101",
+        "1101001010010010",
+    )
+    return [
+        a + b + b + a + a + b + a + b,
+        "".join(four[(row // 4 + row % 4) % 4] for row in range(16)),
+        *("".join(str(rng.randrange(2)) for _ in range(128)) for _ in range(6)),
+    ]
 
 
 def evaluate_generated(
@@ -124,7 +146,7 @@ def run_lines(run, program: str, bits: str) -> tuple[str, int]:
 
 def assert_constant_balanced_shape(language, language_id, table, legacy):
     """Check that a projected constant retains its legacy balanced shape."""
-    from esolangs.tools.wrap import balance_program, balance_score
+    from esolangs.generation.wrap import balance_program, balance_score
 
     assert balance_score(
         esolangs.generate(language, table, balance=True)

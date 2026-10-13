@@ -46,18 +46,19 @@ class TestParameterizedBfpda:
 
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
-    from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected
+    from esolangs.generation.helpers import reflected_table
+    from esolangs.languages.bf_pda.generator import _bfpda_tree
     from tests.support.generator_support import assert_shared_program
 
     a, b = "0001" * 16, "0110" * 16
-    table = _reflected(a + b + b + a, 8)
+    table = reflected_table(a + b + b + a, 8)
     plain, _ = _bfpda_tree(table)
     assert_shared_program("BF-PDA", table, plain, 82, lambda _: 3 * 8 + 4)
 
 
 def _execute_bank(table, template, rows):
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.bf_pda.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
     from tests.generators.fills import fill
 
@@ -85,12 +86,13 @@ def _execute_bank(table, template, rows):
 
 
 @pytest.mark.medium
-def test_deeper_classifier_is_selected_only_within_command_bound():
-    from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected, bfpda
+def test_deeper_classifier_is_selected_only_within_command_bound() -> None:
+    from esolangs.generation.helpers import reflected_table
+    from esolangs.languages.bf_pda.generator import _bfpda_tree, bfpda
 
     for n, admitted in ((8, False), (10, True)):
         blocks = ("0001" * (1 << (n - 5)), "0110" * (1 << (n - 5)))
-        table = _reflected("".join(blocks[int(bit)] for bit in "00101110"), n)
+        table = reflected_table("".join(blocks[int(bit)] for bit in "00101110"), n)
         candidate, commands = _bfpda_tree(table, classes=blocks, class_depth=3)
         program = bfpda(table)
         assert (program == candidate) == admitted
@@ -98,7 +100,7 @@ def test_deeper_classifier_is_selected_only_within_command_bound():
         _execute_bank(table, program, range(1 << n))
 
 
-def test_classifier_cannot_exceed_retired_stack_space():
+def test_classifier_cannot_exceed_retired_stack_space() -> None:
     from esolangs.languages.bf_pda.generator import _bfpda_tree
 
     with pytest.raises(ValueError, match="two consumed inputs"):
@@ -106,11 +108,12 @@ def test_classifier_cannot_exceed_retired_stack_space():
 
 
 @pytest.mark.medium
-def test_deeper_classifier_preserves_a_constant_class():
-    from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected, bfpda
+def test_deeper_classifier_preserves_a_constant_class() -> None:
+    from esolangs.generation.helpers import reflected_table
+    from esolangs.languages.bf_pda.generator import _bfpda_tree, bfpda
 
     blocks = ("0" * 128, "0110" * 32)
-    table = _reflected("".join(blocks[int(bit)] for bit in "00101110"), 10)
+    table = reflected_table("".join(blocks[int(bit)] for bit in "00101110"), 10)
     candidate, price = _bfpda_tree(table, classes=blocks, class_depth=3)
     assert price <= 102
     assert _execute_bank(table, candidate, range(1024)) <= price
@@ -120,14 +123,15 @@ def test_deeper_classifier_preserves_a_constant_class():
 @pytest.mark.medium
 @pytest.mark.parametrize("seed", [73027, 73028, 73029])
 @pytest.mark.parametrize("start", range(0, 2048, 128))
-def test_cap_classifier_covers_every_essential_row(seed, start):
-    from esolangs.languages.bf_pda.generator import _bfpda_tree, _reflected, bfpda
+def test_cap_classifier_covers_every_essential_row(seed, start) -> None:
+    from esolangs.generation.helpers import reflected_table
+    from esolangs.languages.bf_pda.generator import _bfpda_tree, bfpda
 
     rng = random.Random(seed)
     blocks = tuple(
         "".join(str(rng.randrange(2)) for _ in range(256)) * 32 for _ in range(2)
     )
-    table = _reflected("".join(blocks[int(bit)] for bit in "00101110"), 16)
+    table = reflected_table("".join(blocks[int(bit)] for bit in "00101110"), 16)
     candidate, price = _bfpda_tree(table, classes=blocks, class_depth=3)
     assert bfpda(table) == candidate
     plain, _ = _bfpda_tree(table)

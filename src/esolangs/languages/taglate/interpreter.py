@@ -22,9 +22,9 @@ spec.  Exhausted input raises :class:`EOFError`.
 from functools import lru_cache
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import unmatched
-from esolangs.interpreters.io import IO
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.brackets import unmatched
+from esolangs.runtime.io import IO
 
 _SINGLE = frozenset("abcdefhijt")
 
@@ -266,27 +266,31 @@ class _Machine:
             raise
 
 
+def _advance_bulk(state: _State, tokens: list[str]) -> _State | None:
+    """Return a batched rotation/pop successor, or None for another command."""
+    queue, ind = state
+    tok = tokens[ind]
+    if tok not in ("e", "f") or not queue:
+        return None
+    end = ind + 1
+    while end < len(tokens) and tokens[end] == tok:
+        end += 1
+    if tok == "e":
+        offset = (end - ind) % len(queue)
+        return queue[offset:] + queue[:offset], end
+    consumed = min(end - ind, len(queue))
+    return queue[consumed:], ind + consumed
+
+
 def run(code: list[str], io: IO) -> None:
-    """Run a Taglate program seeded by the first line's queue."""
+    """Run Taglate, applying pure batched rotation/pop transitions."""
     machine = _Machine(code, io)
     while not machine.halted:
-        tok = machine.tokens[machine.ind]
-        if tok not in ("e", "f") or not machine.queue:
+        moved = _advance_bulk((machine.queue, machine.ind), machine.tokens)
+        if moved is None:
             machine.step()
-            continue
-        end = machine.ind + 1
-        while end < len(machine.tokens) and machine.tokens[end] == tok:
-            end += 1
-        if tok == "e":
-            # Rotations compose modulo the nonempty queue's length.
-            offset = (end - machine.ind) % len(machine.queue)
-            machine.queue = machine.queue[offset:] + machine.queue[:offset]
-            machine.ind = end
         else:
-            # Stop at the first empty pop, retaining its original cursor.
-            consumed = min(end - machine.ind, len(machine.queue))
-            machine.queue = machine.queue[consumed:]
-            machine.ind += consumed
+            machine.queue, machine.ind = moved
 
 
 if __name__ == "__main__":

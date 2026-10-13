@@ -18,18 +18,17 @@ decoded brainfuck machine.
 import math
 import re
 
-from esolangs._digits import digit_limit_for
-from esolangs._drive import drive
 from esolangs.factor_primes import isprime64 as _isprime64
 from esolangs.factor_primes import prime_segments
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
 from esolangs.languages.brainfuck.interpreter import _Machine as _BFMachine
+from esolangs.runtime._digits import digit_limit_for
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
 
 #: Factor has no execution state beyond the Brainfuck machine it decodes to.
-type _State = _BFMachine
 
 
 #: Sieve batch size for :func:`_factorint`; not a ceiling.
@@ -90,7 +89,16 @@ def _factorint(number: int) -> dict[int, int]:
                 for prime in active:
                     factors[prime] = factors.get(prime, 0) + 1
                 divided = True
-                common = math.gcd(number, common)
+                # Exact quotient batches avoid a gcd while every active prime
+                # survives: the native block control fell from 57.1s to 48.1s.
+                # Once a prime drops out, gcd(remainder, common) finds survivors.
+                quotient, remainder = divmod(number, common)
+                while not remainder:
+                    number = quotient
+                    for prime in active:
+                        factors[prime] += 1
+                    quotient, remainder = divmod(number, common)
+                common = math.gcd(remainder, common)
         # A barren chunk (gcd 1) still walks its primes so the root exit in
         # the loop is still asked; only the division is saved.
         for prime in primes:
@@ -130,61 +138,18 @@ def decode(number: int) -> str:
     return "".join(_RESIDUE[p % 11] * exp for p, exp in factors if p % 11 in _RESIDUE)
 
 
-class _Machine:
-    """Per-run Factor state: the decoded brainfuck machine.
+class _Machine(_BFMachine):
+    """Decode Factor, then run it as Brainfuck.
 
-    ``halted`` and the snapshot are the underlying machine's.
+    Inheriting brainfuck's ``_Machine`` keeps Factor's ``_TapeMachine``
+    eligibility: the VM view is the decoded machine's.
     """
 
     def __init__(self, code: str, io: IO) -> None:
         """Decode ``code`` and reset the underlying brainfuck machine."""
-        self.io = io
         digits = re.sub(r"[^0-9]", "", code)
         number = _parse(digits) if digits else 1
-        self.state: _State = _BFMachine(decode(number), io)
-
-    @property
-    def bf(self) -> _State:
-        """The delegated Brainfuck state."""
-        return self.state
-
-    @property
-    def halted(self) -> bool:
-        return self.bf.halted
-
-    # VM view of the decoded brainfuck machine.
-
-    @property
-    def ip(self) -> int:
-        """The current instruction position."""
-        return self.bf.ind
-
-    @property
-    def memory(self) -> list[int]:
-        """The addressable cells."""
-        return list(self.bf.tape)
-
-    # Forwarded: Factor inherits brainfuck's ``_TapeMachine`` eligibility.
-
-    @property
-    def ptr(self) -> int:
-        """The decoded machine's cell pointer."""
-        return self.bf.ptr
-
-    @property
-    def tape(self) -> tuple[int, ...]:
-        """The decoded machine's committed cells."""
-        return self.bf.tape
-
-    def input_position(self) -> int:
-        """Report the decoded machine's input cursor."""
-        return self.bf.input_position()
-
-    def step(self) -> None:
-        self.bf.step()
-
-    def snapshot(self) -> tuple[object, ...]:
-        return self.bf.snapshot()
+        super().__init__(decode(number), io)
 
 
 def run(code: str, io: IO) -> None:

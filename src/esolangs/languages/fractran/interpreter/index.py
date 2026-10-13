@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
-import sys
 from bisect import bisect_left, bisect_right
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cache
 from itertools import pairwise
@@ -17,73 +17,6 @@ _POWER = re.compile(r"^(\d+)(?:\^(\d+))?$")
 
 #: Every source may name bases up to this, however short it is.
 SMALL_BASE = 256
-
-
-class _DecimalReader:
-    """Parse shared prefixes and descending exponent progressions exactly."""
-
-    def __init__(self, max_step: int) -> None:
-        self.max_step = max_step
-        self.values: dict[str, int] = {"": 0}
-        self.previous: dict[int, tuple[str, int]] = {}
-        self.steps: dict[int, tuple[int, int]] = {}
-
-    def _prefix(self, text: str) -> int:
-        pending = []
-        prefix = text
-        while prefix not in self.values:
-            pending.append(prefix)
-            prefix = prefix[:-1]
-        value = self.values[prefix]
-        for prefix in reversed(pending):
-            value = 10 * value + int(prefix[-1])
-            self.values[prefix] = value
-        return value
-
-    @staticmethod
-    def _decrement(text: str, zeros: int) -> str:
-        digits = bytearray(text, "ascii")
-        position = len(digits) - 1 - zeros
-        while position >= 0:
-            if digits[position] > ord("0"):
-                digits[position] -= 1
-                return digits.decode("ascii").lstrip("0") or "0"
-            digits[position] = ord("9")
-            position -= 1
-        return ""
-
-    def read(self, base: int, text: str, *, progression: bool = False) -> int:
-        limit = sys.get_int_max_str_digits()
-        if limit and len(text) > limit:
-            return int(text)  # Preserve Python's decimal-input limit.
-        text = text.lstrip("0") or "0"
-        if len(text) > self.max_step:
-            # Cache generated word-sized fields, not every prefix of an
-            # arbitrary long literal, whose prefix storage would be quadratic.
-            self.previous.pop(base, None)
-            self.steps.pop(base, None)
-            return int(text)
-        if not progression:
-            return self._prefix(text)
-        old = self.previous.get(base)
-        step = self.steps.get(base)
-        if (
-            old is not None
-            and step is not None
-            and old[0].isascii()
-            and text == self._decrement(old[0], step[1])
-        ):
-            value = old[1] - step[0]
-            self.values[text] = value
-        else:
-            value = self._prefix(text)
-            self.steps.pop(base, None)
-            if old is not None and 0 < old[1] - value <= self.max_step:
-                stride = str(old[1] - value)
-                if stride[0] == "1" and not stride[1:].strip("0"):
-                    self.steps[base] = old[1] - value, len(stride) - 1
-        self.previous[base] = text, value
-        return value
 
 
 def integer(value: Factors) -> int:
@@ -177,12 +110,11 @@ def compile_index(code: str) -> Index | None:
     )
 
     terms: dict[str, tuple[int, int]] = {}
-    decimals = _DecimalReader(len(code).bit_length())
     maximum = 1
     for position, (_offset, token) in enumerate(tokens):
         head, slash, tail = token.partition("/")
         products = (token,) if position == 0 else (head, tail if slash else "1")
-        for product_index, text in enumerate(products):
+        for text in products:
             for term in text.split("*"):
                 if term in terms:
                     continue
@@ -192,13 +124,10 @@ def compile_index(code: str) -> Index | None:
                 base = int(match[1])
                 if not 1 <= base <= limit:
                     return None
-                exponent = (
-                    1
-                    if match[2] is None
-                    else decimals.read(
-                        base, match[2], progression=position > 0 and product_index == 1
-                    )
-                )
+                # int() parses the exponent exactly -- including Unicode
+                # decimal digits -- and enforces Python's decimal-input
+                # limit itself, so no bespoke reader is needed here.
+                exponent = 1 if match[2] is None else int(match[2])
                 terms[term] = base, exponent
                 maximum = max(maximum, base)
     # Sieve actual bases, never the quadratic admission limit. Cap scratch
@@ -303,6 +232,17 @@ class _Minimum:
         return result
 
 
+type FactorWrites = tuple[tuple[int, int, int], ...]
+
+
+def factor_writes(value: Mapping[int, int], delta: Factors) -> FactorWrites:
+    """Return each changed prime's old and new exponent, without mutating value."""
+    return tuple(
+        (prime, value.get(prime, 0), value.get(prime, 0) + change)
+        for prime, change in delta
+    )
+
+
 class Cursor:
     """Maintain exact guard eligibility while changing only affected exponents."""
 
@@ -404,14 +344,17 @@ class Cursor:
         return (None, 0) if rule == self.absent else (rule, 1)
 
     def advance(self, rule: int) -> None:
-        """Update exponents and guards whose secondary thresholds were crossed."""
+        """Apply a rule through the pure exponent-write calculation."""
+        self.apply(rule, factor_writes(self.value, self.index.rules[rule][1]))
+
+    def apply(self, rule: int, writes: FactorWrites) -> None:
+        """Apply exponent writes and refresh affected guard indexes."""
         if rule >= self.cleanup_start:
             # Pure removal cannot enable an earlier failed guard. Once this
             # suffix fires, retain its priority with a forward scan alone.
             self.cleanup_position = rule
-            for prime, delta in self.index.rules[rule][1]:
+            for prime, _old, new in writes:
                 self.factor_updates += 1
-                new = self.value.get(prime, 0) + delta
                 if new:
                     self.value[prime] = new
                 else:
@@ -419,10 +362,8 @@ class Cursor:
             self.version += 1
             return
         dirty = set()
-        for prime, delta in self.index.rules[rule][1]:
+        for prime, old, new in writes:
             self.factor_updates += 1
-            old = self.value.get(prime, 0)
-            new = old + delta
             if new:
                 self.value[prime] = new
             else:

@@ -10,9 +10,15 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.qoibl import interpreter as qoibl
-from esolangs.languages.qoibl.interpreter import _Machine, run, tokenize
+from esolangs.languages.qoibl.interpreter import (
+    _advance,
+    _Machine,
+    _NeedInput,
+    run,
+    tokenize,
+)
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import EmptyProgramContract, SnapshotContract
 from tests.interpreters.runner import run_printing
 
@@ -111,15 +117,15 @@ class TestQoiblBehaviour:
         from esolangs.languages.qoibl.interpreter import _eval
 
         with pytest.raises(HaltError, match="variable index"):
-            _eval(["we", "yeeeeeeee", "we", "y", "we"], {}, lambda: 0, lambda _s: None)
+            _eval(["we", "yeeeeeeee", "we", "y", "we"], {}, (), 0, [])
         with pytest.raises(HaltError, match="variable index"):
-            _eval(["qe", "yeeeeeeee", "qe"], {}, lambda: 0, lambda _s: None)
+            _eval(["qe", "yeeeeeeee", "qe"], {}, (), 0, [])
         # 2**20000 has 6021 digits, past CPython's 4300-digit str() cap: the
         # diagnostic used to raise ValueError instead of HaltError (a7f6680e).
         with pytest.raises(
             HaltError, match=r"variable index 3980276840\d{6011} is outside"
         ):
-            _eval(["qe", "y" + "e" * 20000, "qe"], {}, lambda: 0, lambda _s: None)
+            _eval(["qe", "y" + "e" * 20000, "qe"], {}, (), 0, [])
 
     def test_division_by_zero(self) -> None:
         from esolangs.exceptions import HaltError
@@ -227,8 +233,8 @@ class TestQoiblIncompleteTokens:
 
     def test_stepping_an_empty_statement_advances_the_cursor(self) -> None:
         """An empty statement is a no-op, not a parse of nothing."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.qoibl.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         state = _Machine("w", ScriptedIO(""))
         assert state.code == ([],)
@@ -290,7 +296,7 @@ class TestQoiblParserGuards:
         from esolangs.languages.qoibl.interpreter import _eval
 
         with pytest.raises(ValueError, match="invalid literal"):
-            _eval(["zz"], {"e": 1}, lambda: 0, lambda _s: None)
+            _eval(["zz"], {"e": 1}, (), 0, [])
 
 
 # 1.9s over 51 tests: runs the generated program.
@@ -382,8 +388,99 @@ class TestTheTokenizerCarriesItsOwnStack:
         ),
     ],
 )
-def test_qoibl_hand_built_expression_guards(function, expression, message, hint):
+def test_qoibl_hand_built_expression_guards(
+    function, expression, message, hint
+) -> None:
     with pytest.raises(ValueError, match=message) as caught:
-        getattr(qoibl, function)(expression, {}, lambda: 0, lambda _: None)
+        getattr(qoibl, function)(expression, {}, (), 0, [])
     assert str(caught.value) == message
     assert hint in caught.value.__notes__[0]
+
+
+class TestPureTransition:
+    """``_advance`` is a function of its arguments, and only of them."""
+
+    def test_same_state_and_inputs_give_the_same_result(self) -> None:
+        state = ({1: 2}, 0)
+        code = (["tt", "qe", "y", "qe", "tt"],)
+        assert _advance(state, code) == _advance(state, code)
+        assert _advance(state, code) == (({1: 2}, 1), (chr(2),))
+
+    def test_the_transition_leaves_its_arguments_unchanged(self) -> None:
+        var = {1: 5}
+        state = (var, 0)
+        inputs = (65,)
+        _advance(state, (["we", "y", "we", "et", "we"],), inputs)
+        assert var == {1: 5}
+        assert state == ({1: 5}, 0)
+        assert inputs == (65,)
+
+    def test_a_read_comes_from_the_explicit_input(self) -> None:
+        code = (["we", "y", "we", "et", "we"], ["tt", "qe", "y", "qe", "tt"])
+        state, out = _advance(({}, 0), code, (66,))
+        assert out == ()
+        state, out = _advance(state, code, ())
+        assert out == ("B",)
+
+    def test_an_unfed_read_asks_for_input_rather_than_reading(self) -> None:
+        with pytest.raises(_NeedInput):
+            _advance(({}, 0), (["we", "y", "we", "et", "we"],), ())
+
+    def test_the_transition_reports_output_instead_of_printing(self) -> None:
+        """No port is reachable from ``_advance``: output is a value."""
+        _state, out = _advance(({}, 0), (["tt", "y", "tt"],))
+        assert out == (chr(1),)
+
+
+class _EventIO(ScriptedIO):
+    """A ``ScriptedIO`` that records each read and write in order."""
+
+    def __init__(self, stdin: str = "") -> None:
+        super().__init__(stdin)
+        self.events: list[tuple[str, str]] = []
+
+    def print_char(self, char: str) -> None:
+        self.events.append(("out", char))
+        super().print_char(char)
+
+    def input_char(self, prompt: str = "Input: ") -> int:
+        self.events.append(("in", ""))
+        return super().input_char(prompt)
+
+
+class TestOutputOrdering:
+    """Output computed before a later read or fault is still written."""
+
+    def test_output_before_eof_is_written_and_ordered(self) -> None:
+        """``we tt y tt we et we`` prints chr(1), then reads and hits EOF."""
+        io = _EventIO("")
+        with pytest.raises(EOFError):
+            run(["we tt y tt we et we"], io)
+        assert io.events == [("out", chr(1)), ("in", "")]
+
+    def test_output_before_a_halt_is_written_and_ordered(self) -> None:
+        """The same target prints before the value's division by zero halts."""
+        from esolangs.exceptions import HaltError
+
+        io = _EventIO("")
+        with pytest.raises(HaltError, match="division by zero"):
+            run(["we tt y tt we e ry yy ry qe e qe we"], io)
+        assert io.events == [("out", chr(1))]
+
+    def test_a_later_statement_still_prints_before_its_own_fault(self) -> None:
+        """Two statements: the first prints, the second prints then faults."""
+        from esolangs.exceptions import HaltError
+
+        io = _EventIO("")
+        with pytest.raises(HaltError, match="division by zero"):
+            run(
+                [
+                    "tt y tt",
+                    "we tt yyeeeee tt we e ry yy ry e we",
+                ],
+                io,
+            )
+        assert io.events == [
+            ("out", chr(1)),
+            ("out", chr(96)),
+        ]

@@ -7,7 +7,7 @@ import pytest
 from esolangs.languages.circuit_diagram.generator.columns import _FreeColumns
 
 
-def test_successors_survive_growth_recycling_and_band_reset():
+def test_successors_survive_growth_recycling_and_band_reset() -> None:
     rng = random.Random(8109)
     allocator = _FreeColumns()
     free = set()
@@ -27,7 +27,7 @@ def test_successors_survive_growth_recycling_and_band_reset():
             free.remove(expected)
 
 
-def test_a_double_release_aborts():
+def test_a_double_release_aborts() -> None:
     allocator = _FreeColumns()
     allocator.add(6)
     with pytest.raises(AssertionError, match="released twice"):

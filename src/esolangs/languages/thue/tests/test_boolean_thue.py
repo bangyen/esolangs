@@ -6,12 +6,12 @@ import random
 import pytest
 
 from esolangs import generate
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import Seeded
 from esolangs.languages import generators as boolean
 from esolangs.languages.thue.generator import thue
 from esolangs.languages.thue.interpreter import _Machine, _matches
 from esolangs.languages.thue.interpreter import run as run_thue
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.randomness import Seeded
 from tests.generators.reader_support import _TABLES, assert_emissions_grow_by_a_line
 from tests.support.witness_tables import row_bits as _bits
 from tests.support.witness_tables import witnesses

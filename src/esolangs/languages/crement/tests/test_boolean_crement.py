@@ -6,11 +6,11 @@ from itertools import pairwise, product
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
 from esolangs.exceptions import TruthTableError
+from esolangs.generation.helpers import TEMPLATE_CHAR, best_input_order, runs
 from esolangs.languages.crement.generator import PAIR, _crement_ordered, crement
 from esolangs.languages.crement.interpreter import _Machine
-from esolangs.tools.helpers import TEMPLATE_CHAR, best_input_order, runs
+from esolangs.runtime._evaluate import _evaluate
 from esolangs.vm import run_until_halt_or_cycle
 from tests.generators.fills import fill
 from tests.generators.sample_tables import five_input_sample
@@ -172,7 +172,13 @@ class TestCrementSharing:
 
 
 @pytest.mark.parametrize("table", ["00", "0011"])
-def test_narrow_balance_regime_edge_executes(table):
+def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Crement", table, balance=True)
     assert _evaluate("Crement", balanced, inputs=len(table).bit_length() - 1) == table
+
+
+# language-owners: ["ArrowQueue", "Vandevelo"]
+# The shared verifier's timeout floor was measured across 123, ArrowQueue,
+# Crement and Vandevelo on 0110, 0001, 10010110 and 00010111: 0.000s,
+# every halting row sub-millisecond; its 1s bound has 1000x headroom.

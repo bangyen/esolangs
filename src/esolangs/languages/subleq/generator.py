@@ -7,12 +7,12 @@ residuals have O(n)-digit addresses. Packed chunks remain the source-size floor.
 
 from typing import Any
 
+from esolangs.generation.branch_decoder import hoisted_tree
+from esolangs.generation.helpers import _validate_truth_table, in_input_order
+from esolangs.generation.packed_decoder import _packed_build, packed_decoder
+from esolangs.generation.wrap import balance_program, balance_score, wrap_grid
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Payload, Shape
-from esolangs.tools.branch_decoder import hoisted_tree
-from esolangs.tools.helpers import _validate_truth_table, in_input_order
-from esolangs.tools.packed_decoder import _packed_build, packed_decoder
-from esolangs.tools.wrap import balance_program, balance_score, wrap_grid
 
 
 def subleq(truth_table: str) -> str:

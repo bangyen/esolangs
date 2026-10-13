@@ -2,11 +2,11 @@
 
 import pytest
 
-from esolangs._evaluate import _evaluate
 from esolangs.languages.line.generator import line
 from esolangs.languages.line.generator.forward import streaming_canvas
 from esolangs.languages.line.tests import test_boolean_line_forward as controls
 from esolangs.languages.line.tests.test_boolean_line_forward import _check
+from esolangs.runtime._evaluate import _evaluate
 from tests.support.witness_tables import dense, parity
 
 
@@ -22,7 +22,7 @@ def streaming_check(monkeypatch):
 )
 def test_every_admitted_three_input_stream_executes(
     start, expected, streaming_check, tmp_path
-):
+) -> None:
     admitted = 0
     for value in range(start, start + 64):
         table = f"{value:08b}"
@@ -34,7 +34,9 @@ def test_every_admitted_three_input_stream_executes(
 
 
 @pytest.mark.medium
-def test_two_input_streams_fit_the_smallest_command_bound(streaming_check, tmp_path):
+def test_two_input_streams_fit_the_smallest_command_bound(
+    streaming_check, tmp_path
+) -> None:
     admitted = 0
     for value in range(16):
         table = f"{value:04b}"
@@ -49,7 +51,7 @@ def test_two_input_streams_fit_the_smallest_command_bound(streaming_check, tmp_p
 @pytest.mark.parametrize(
     "kind", [pytest.param("dense", marks=pytest.mark.slow), "parity", "majority"]
 )
-def test_eight_input_streams_execute_all_rows(kind, streaming_check, tmp_path):
+def test_eight_input_streams_execute_all_rows(kind, streaming_check, tmp_path) -> None:
     table = (
         dense(8)
         if kind == "dense"
@@ -71,7 +73,7 @@ def test_eight_input_streams_execute_all_rows(kind, streaming_check, tmp_path):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("kept", [(0, 1), (1, 4), (4, 5)])
-def test_ignored_inputs_and_constant_drains(kept, streaming_check, tmp_path):
+def test_ignored_inputs_and_constant_drains(kept, streaming_check, tmp_path) -> None:
     table = "".join(
         str(int(all(row >> (5 - bit) & 1 for bit in kept))) for row in range(64)
     )
@@ -79,17 +81,19 @@ def test_ignored_inputs_and_constant_drains(kept, streaming_check, tmp_path):
 
 
 @pytest.mark.medium
-def test_scaled_streaming_crossings(streaming_check, tmp_path):
+def test_scaled_streaming_crossings(streaming_check, tmp_path) -> None:
     streaming_check(parity(7), tmp_path, scale=2)
 
 
-def test_constant_and_single_input_tables_keep_existing_layout():
+def test_constant_and_single_input_tables_keep_existing_layout() -> None:
     for table in ("00000000", "11111111", "01", "10"):
         assert streaming_canvas(table, 10**9) is None
 
 
 @pytest.mark.medium
-def test_adjacent_constant_and_test_free_reader_profiles(streaming_check, tmp_path):
+def test_adjacent_constant_and_test_free_reader_profiles(
+    streaming_check, tmp_path
+) -> None:
     profiles = [
         a + b for a in ("0000", "1111", "0110") for b in ("0000", "1111", "0110")
     ]

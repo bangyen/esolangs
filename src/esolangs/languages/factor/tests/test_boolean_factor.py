@@ -5,8 +5,10 @@ import sys
 import pytest
 
 from esolangs.languages import generators as boolean
-from esolangs.languages.factor.tests.runners import run_factor
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
+
+run_factor = _runner("factor")
 
 
 class TestFactor:
@@ -26,9 +28,9 @@ class TestFactor:
         """The integer's factorization is a brainfuck program for the table."""
         import sympy
 
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.brainfuck.interpreter import run as run_bf
         from esolangs.languages.factor.generator import _BF_RESIDUE
+        from esolangs.runtime.io import ScriptedIO
 
         table = "0110"
         n = 2
@@ -44,7 +46,7 @@ class TestFactor:
 
     def test_builds_above_the_greedy_order_cap(self) -> None:
         """Past ``_GREEDY_ORDER_MAX_ARITY`` only the identity order is built."""
-        from esolangs.tools.helpers import _GREEDY_ORDER_MAX_ARITY
+        from esolangs.generation.helpers import _GREEDY_ORDER_MAX_ARITY
 
         n = _GREEDY_ORDER_MAX_ARITY + 1
         table = "0" * (2**n - 1) + "1"
@@ -111,9 +113,9 @@ def test_one_input_not_stays_within_the_command_ledger(bit, expected) -> None:
 
 
 @pytest.mark.medium
-def test_multiple_residuals_reduce_encoded_size_within_ledger():
-    from esolangs._digits import digit_limit_for
+def test_multiple_residuals_reduce_encoded_size_within_ledger() -> None:
     from esolangs.languages.factor.generator import _encode, _program
+    from esolangs.runtime._digits import digit_limit_for
     from tests.support.generator_support import assert_shared_program
 
     n = 10
@@ -145,7 +147,7 @@ def test_multiple_residuals_reduce_encoded_size_within_ledger():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_projection_skips_ascii_normalization(bit):
+def test_constant_projection_skips_ascii_normalization(bit) -> None:
     from esolangs.languages.factor.generator import _factor
     from tests.support.generator_support import assert_shared_program
 
@@ -167,7 +169,7 @@ def test_constant_projection_skips_ascii_normalization(bit):
 
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_projection_retains_balanced_encoding(n, bit):
+def test_constant_projection_retains_balanced_encoding(n, bit) -> None:
     from esolangs.languages.factor.generator import _factor
     from tests.support.generator_support import assert_constant_balanced_shape
 
@@ -178,7 +180,7 @@ def test_constant_projection_retains_balanced_encoding(n, bit):
 
 
 @pytest.mark.medium
-def test_factor_bank_compares_decimal_encodings_and_executes_within_ledger():
+def test_factor_bank_compares_decimal_encodings_and_executes_within_ledger() -> None:
     from esolangs.languages.factor.generator import _encode, _program
     from tests.support.generator_support import assert_shared_program
 

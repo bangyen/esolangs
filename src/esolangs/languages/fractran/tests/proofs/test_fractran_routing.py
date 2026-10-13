@@ -6,8 +6,8 @@ from collections import Counter
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.fractran.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 
 
 @pytest.mark.medium

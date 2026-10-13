@@ -1,7 +1,7 @@
 """Packlang store lookup and checked scalar/expression values."""
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.source_hints import keyword_hint
+from esolangs.runtime.source_hints import keyword_hint
 
 type _Expr = tuple[object, ...]
 type _Store = tuple[tuple[str, object], ...]

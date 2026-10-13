@@ -6,8 +6,8 @@ import sys
 import pytest
 
 import esolangs
+from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.registry import LANGUAGES, parameterized_ids, resolve
-from esolangs.tools.examples import BOOLEAN_EXAMPLES
 from tests.support.pick import spread
 
 
@@ -15,7 +15,7 @@ def test_examples_derive_the_registered_io_contract() -> None:
     for stem, example in BOOLEAN_EXAMPLES.items():
         lang = LANGUAGES[resolve(stem.replace("-", " "))]
         contract = lang.contract
-        assert contract.parameterized == (example.fill is not None), stem
+        assert lang.parameterized == (example.fill is not None), stem
         for field in (
             "alphabet",
             "input_shape",
@@ -47,7 +47,7 @@ def test_stripped_docstrings_preserve_all_answer_mechanisms() -> None:
     readers = [name for name in names if esolangs.describe(name)["reads_input"]]
     code = f"""
 import esolangs
-from esolangs._evaluate import _evaluate
+from esolangs.runtime._evaluate import _evaluate
 from tests.support.stdin_check import _check_stdin
 from tests.support.generator_support import probe_table
 for name in {names!r}:

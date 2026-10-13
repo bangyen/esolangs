@@ -2,9 +2,9 @@
 
 import pytest
 
-from esolangs.interpreters.io import IO
 from esolangs.languages.streetcode.interpreter import _Machine, run
 from esolangs.languages.streetcode.tests.streetcode_support import run_street
+from esolangs.runtime.io import IO
 from tests.support.paths import ROOT
 
 
@@ -252,7 +252,7 @@ class TestStreetcodeStreetWidth:
         "path",
         [
             "src/esolangs/languages/streetcode/tests/fixtures/streetcode_hello.txt",
-            "src/esolangs/languages/streetcode/examples/streetcode.txt",
+            "src/esolangs/languages/streetcode/streetcode.txt",
         ],
     )
     def test_shipped_examples_are_accepted(self, path: str) -> None:

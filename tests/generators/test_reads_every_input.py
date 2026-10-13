@@ -4,9 +4,9 @@ import pytest
 
 import esolangs
 from esolangs import vm
-from esolangs.interpreters.io import ScriptedIO
-from tests.reference import REFERENCE
+from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import assert_proved_resource_cap
+from tests.support.reference import REFERENCE
 
 IGNORING = ["0101", "01100110", "0011", "00111100", "".join(c * 2 for c in "0110" * 8)]
 INFOS = {n: esolangs.describe(n) for n in esolangs.list_languages()}
@@ -37,7 +37,7 @@ GENERATED = [
 
 
 @pytest.mark.medium
-def test_the_audit_sees_unread_input(monkeypatch):
+def test_the_audit_sees_unread_input(monkeypatch) -> None:
     assert _audit(REFERENCE, ",.", 2, monkeypatch) == (4, 4, 0)
 
 
@@ -53,7 +53,7 @@ def test_the_audit_sees_unread_input(monkeypatch):
     ],
     ids=str,
 )
-def test_every_input_is_read(monkeypatch, name, path):
+def test_every_input_is_read(monkeypatch, name, path) -> None:
     built = 0
     for table in IGNORING:
         n = (len(table) - 1).bit_length()

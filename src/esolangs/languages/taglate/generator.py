@@ -7,15 +7,16 @@ a 1, so a constant half or repeat has nothing to fold or share.
 from itertools import pairwise
 from math import isqrt
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
-from esolangs.tools.wrap import _taglate
+from esolangs.languages.taglate.proof_formulas import execution, workspace
+from esolangs.languages.taglate.wrapping import _taglate, same_layout
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 
 def _reorder_tt(tt: str, n: int) -> str:
@@ -298,7 +299,7 @@ def _seed_commands(seed: str) -> str:
 
 def taglate(truth_table: str, width: int | None = None) -> str:
     """Return Taglate code; narrow seeds bootstrap an empty queue."""
-    from esolangs.tools.wrap import wrap_program
+    from esolangs.generation.wrap import wrap_program
 
     program = _taglate_raw(truth_table)
     if width is None:
@@ -311,7 +312,7 @@ def taglate(truth_table: str, width: int | None = None) -> str:
 
 def balance_taglate(table: str, default: str) -> str:
     """Compare the square crossing for literal and bootstrapped queues."""
-    from esolangs.tools.wrap import balance_score
+    from esolangs.generation.wrap import balance_score
 
     if len(set(table)) == 1:
         return min(
@@ -324,7 +325,7 @@ def balance_taglate(table: str, default: str) -> str:
 
 def _balanced(default: str) -> str:
     """Compare literal and bootstrapped folds of one queue construction."""
-    from esolangs.tools.wrap import balance_score, wrap_program
+    from esolangs.generation.wrap import balance_score, wrap_program
 
     seed, _, commands = default.partition("\n")
     candidates = [default]
@@ -348,6 +349,8 @@ def _balanced(default: str) -> str:
 LANGUAGE = Language(
     "Taglate",
     "taglate",
+    proof_execution=(execution, True, (3, 4)),
+    proof_workspace=(workspace, True, (3, 5)),
     category="queue_based",
     boolean=taglate,
     split=True,
@@ -363,5 +366,7 @@ LANGUAGE = Language(
     # Both concatenate before tokenizing (Taglate after the queue seed; A
     # Painter Ant drops whitespace), so no break can land inside a command.
     wrap=_taglate,
+    wrap_multiline=True,
+    same_layout=same_layout,
     balance=balance_taglate,
 )

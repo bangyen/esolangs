@@ -5,10 +5,10 @@ import itertools
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import _Machine as BFMachine
 from esolangs.languages.unary.generator import _decoded, unary
 from esolangs.languages.unary.interpreter import _Machine, decode
+from esolangs.runtime.io import ScriptedIO
 
 
 def _answer(machine: BFMachine | _Machine) -> tuple[str, int]:
@@ -69,3 +69,9 @@ def test_compressed_budget_admits_nine_reads_but_blocks_raw_export() -> None:
         assert _answer(_Machine(source, ScriptedIO(bit * 9))) == ("0", 9)
     with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
         str(source)
+
+
+def test_distribution_smoke_uses_an_admitted_table() -> None:
+    from scripts.ci.release import _generator
+
+    _generator("Unary", math_extra=False, image_extra=False)

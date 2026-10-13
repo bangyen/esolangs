@@ -13,11 +13,12 @@ an error.  :func:`_advance` is pure over an immutable ``_State`` and
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import lru_cache
 
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import match_brackets as matches
-from esolangs.interpreters.io import IO
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.brackets import match_brackets as matches
+from esolangs.runtime.io import IO
 
 #: ``(ind, ptr, tape, acc, dirty)``: an immutable value, rebound per step.
 #: ``acc`` is the true cell under the pointer; while ``dirty``, ``tape[ptr]``
@@ -177,7 +178,7 @@ class _Machine:
 
 @lru_cache(maxsize=16)
 def _compile(code: str) -> tuple[_Op, ...]:
-    """Return compact operations for the mutable run path."""
+    """Return compact operations for the effect-driven run path."""
     brackets = matches(code)
     ops: list[_Op] = []
     op_at: dict[int, int] = {}
@@ -224,45 +225,78 @@ def _compile(code: str) -> tuple[_Op, ...]:
     return tuple(ops)
 
 
+#: The compiled cursor and pointer; the shell owns the byte buffer.
+type _CompiledState = tuple[int, int]
+type _TapeEffects = tuple[int, int, tuple[tuple[int, int], ...]]
+
+
+def _advance_compiled(
+    state: _CompiledState,
+    ops: tuple[_Op, ...],
+    tape: Sequence[int],
+    byte: int | None = None,
+) -> tuple[_CompiledState, _TapeEffects, str | None, bool]:
+    """Return cursor, tape edits, output, and whether a byte is needed.
+
+    The borrowed tape is read-only here; edits leave as values so the shell
+    keeps O(1) cell writes without copying the buffer per command.
+    """
+    ind, ptr = state
+    prefix = suffix = 0
+    writes: tuple[tuple[int, int], ...] = ()
+    output = None
+    if ind >= len(ops):
+        return state, (prefix, suffix, writes), output, False
+    opcode, arg = ops[ind]
+    if opcode == _ADD:
+        writes = ((ptr, (tape[ptr] + arg) % 256),)
+    elif opcode == _RIGHT:
+        ptr += arg
+        suffix = max(0, ptr + 1 - len(tape))
+    elif opcode == _LEFT:
+        ptr -= arg
+        if ptr < 0:
+            # Doubling preserves linear growth when the program marches left.
+            prefix = max(-ptr, len(tape))
+            ptr += prefix
+    elif opcode == _OUTPUT:
+        output = chr(tape[ptr])
+    elif opcode == _INPUT:
+        if byte is None:
+            return state, (prefix, suffix, writes), output, True
+        writes = ((ptr, byte % 256),)
+    elif (opcode == _OPEN and tape[ptr] == 0) or (opcode == _CLOSE and tape[ptr] != 0):
+        ind = arg
+    elif opcode == _CLEAR:
+        writes = ((ptr, 0),)
+    elif opcode == _TRANSFER_RIGHT:
+        suffix = int(ptr + 1 == len(tape))
+        neighbor = 0 if suffix else tape[ptr + 1]
+        writes = ((ptr + 1, (neighbor + tape[ptr] * arg) % 256), (ptr, 0))
+    return (ind + 1, ptr), (prefix, suffix, writes), output, False
+
+
 def run(code: str, io: IO) -> None:
-    """Run compact operations over mutable local state."""
+    """Run compact operations, applying the pure core's tape and IO effects."""
     ops = _compile(code)
     tape = bytearray(1)
-    ptr = 0
-    ind = 0
-    output = io.print_char
-    input_char = io.input_char
-    while ind < len(ops):
-        opcode, arg = ops[ind]
-        if opcode == _ADD:
-            tape[ptr] = (tape[ptr] + arg) % 256
-        elif opcode == _RIGHT:
-            ptr += arg
-            if ptr >= len(tape):
-                tape.extend(bytes(ptr + 1 - len(tape)))
-        elif opcode == _LEFT:
-            ptr -= arg
-            if ptr < 0:
-                # At least double: a program marching left stays linear.
-                grow = max(-ptr, len(tape))
-                tape[0:0] = bytes(grow)
-                ptr += grow
-        elif opcode == _OUTPUT:
-            output(chr(tape[ptr]))
-        elif opcode == _INPUT:
-            tape[ptr] = input_char() % 256
-        elif (opcode == _OPEN and tape[ptr] == 0) or (
-            opcode == _CLOSE and tape[ptr] != 0
-        ):
-            ind = arg
-        elif opcode == _CLEAR:
-            tape[ptr] = 0
-        elif opcode == _TRANSFER_RIGHT:
-            if ptr + 1 == len(tape):
-                tape.append(0)
-            tape[ptr + 1] = (tape[ptr + 1] + tape[ptr] * arg) % 256
-            tape[ptr] = 0
-        ind += 1
+    state: _CompiledState = (0, 0)
+    while state[0] < len(ops):
+        moved, effects, output, wants_read = _advance_compiled(state, ops, tape)
+        if wants_read:
+            moved, effects, output, _ = _advance_compiled(
+                state, ops, tape, io.input_char()
+            )
+        prefix, suffix, writes = effects
+        if prefix:
+            tape[0:0] = bytes(prefix)
+        if suffix:
+            tape.extend(bytes(suffix))
+        for at, value in writes:
+            tape[at] = value
+        state = moved
+        if output is not None:
+            io.print_char(output)
 
 
 if __name__ == "__main__":

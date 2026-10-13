@@ -18,8 +18,9 @@ Input framing is unspecified; this interpreter reads consecutive Unicode
 character codes, narrowing to its byte cells.
 """
 
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 #: Width of the print window: ``.`` reads cells 0-7 as one binary byte.
 _WIDTH = 8
@@ -195,17 +196,7 @@ class _Machine:
 
 def run(code: str, io: IO) -> None:
     """Run a Minifuck program."""
-    tape = 0
-    length = _WIDTH
-    ptr = 0
-    ind = 0
-    while ind < len(code):
-        tape, length, ptr, skipped, char, reads = _step(code[ind], tape, length, ptr)
-        ind += 2 if skipped else 1
-        if char is not None:
-            io.print_char(char)
-        elif reads:
-            _, tape, _, _, _ = _load((code, tape, length, ptr, ind), io.input_char())
+    drive(_Machine(code, io))
 
 
 if __name__ == "__main__":

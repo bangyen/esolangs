@@ -8,10 +8,10 @@ import esolangs
 from esolangs import vm
 from esolangs.exceptions import HaltError
 from esolangs.vm import make_vm
-from tests.integration.cli.test_cli import call_main
-from tests.reference import REFERENCE
-from tests.runtime.vm.test_vm import assert_random_steps_reproduce
+from tests.cli.test_cli import call_main
+from tests.runtime.test_vm import assert_random_steps_reproduce
 from tests.support.cli_support import _failure, call_both
+from tests.support.reference import REFERENCE
 
 
 class TestModulousSaysWhatWentWrong:
@@ -33,7 +33,7 @@ class TestModulousSaysWhatWentWrong:
 
 
 @pytest.mark.medium
-def test_vm_runtime_error_keeps_its_hint():
+def test_vm_runtime_error_keeps_its_hint() -> None:
     vm = make_vm("Modulous", "[JMP F]", stdin="")
     with pytest.raises(esolangs.ProgramError, match="missing operand") as caught:
         vm.step()
@@ -42,7 +42,7 @@ def test_vm_runtime_error_keeps_its_hint():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("command", ["run", "debug"])
-def test_cli_prints_runtime_hints(command, tmp_path: Path, capsys):
+def test_cli_prints_runtime_hints(command, tmp_path: Path, capsys) -> None:
     source = tmp_path / "bad.mod"
     source.write_text("[JMP F]", encoding="utf-8")
     args = [command, "--timeout", "1", "Modulous", str(source)]
@@ -55,7 +55,7 @@ def test_cli_prints_runtime_hints(command, tmp_path: Path, capsys):
 
 
 @pytest.mark.medium
-def test_hints_do_not_discard_partial_output():
+def test_hints_do_not_discard_partial_output() -> None:
     with pytest.raises(esolangs.ProgramError, match="missing operand") as caught:
         esolangs.run("Modulous", "[PSH INT 65][PRT][JMP F]", timeout=1)
     assert caught.value.partial_output == "A"
@@ -65,7 +65,7 @@ def test_hints_do_not_discard_partial_output():
 
 @pytest.mark.parametrize("isolated", [False, True])
 @pytest.mark.medium
-def test_runtime_error_keeps_partial_output_and_one_hint(isolated):
+def test_runtime_error_keeps_partial_output_and_one_hint(isolated) -> None:
     with pytest.raises(HaltError) as caught:
         esolangs.run("Modulous", "[PSH INT 65][PRT][SWP]", isolated=isolated)
     assert str(caught.value) == "SWP needs two values on the stack and there are 0"
@@ -75,7 +75,7 @@ def test_runtime_error_keeps_partial_output_and_one_hint(isolated):
 
 
 @pytest.mark.medium
-def test_vm_displays_runtime_hints():
+def test_vm_displays_runtime_hints() -> None:
     machine = make_vm("Modulous", "[SWP]", stdin="")
     with pytest.raises(HaltError) as caught:
         machine.step()
@@ -83,7 +83,7 @@ def test_vm_displays_runtime_hints():
 
 
 @pytest.mark.medium
-def test_cli_displays_runtime_hints(tmp_path, capsys):
+def test_cli_displays_runtime_hints(tmp_path, capsys) -> None:
     source = tmp_path / "runtime.mod"
     source.write_text("[SWP]")
     with pytest.raises(SystemExit):
@@ -92,7 +92,7 @@ def test_cli_displays_runtime_hints(tmp_path, capsys):
 
 
 @pytest.mark.medium
-def test_fixed_input_does_not_make_branch_input_forkable():
+def test_fixed_input_does_not_make_branch_input_forkable() -> None:
     source = "[INP INT][PRT INT][END]"
     with pytest.raises(TimeoutError) as caught:
         vm.run_until_halt_or_all_branches_cycle(
@@ -184,7 +184,7 @@ class TestOutputSurvivesAFailure:
 )
 def test_isolated_cli_preserves_error_hint_and_partial_output(
     language, source, hint, code, output, tmp_path: Path, capsys
-):
+) -> None:
     path = tmp_path / "program.txt"
     path.write_text(source)
     direct = _failure(["run", language, str(path)], capsys, code)
@@ -196,7 +196,7 @@ def test_isolated_cli_preserves_error_hint_and_partial_output(
 
 
 @pytest.mark.medium
-def test_halt_and_cycle_verdicts_are_unchanged():
+def test_halt_and_cycle_verdicts_are_unchanged() -> None:
     assert vm.run_until_halt_or_cycle(vm.make_vm(REFERENCE, "+."), limit=10) is True
     assert vm.run_until_halt_or_cycle(vm.make_vm(REFERENCE, "+[]"), limit=10) is False
     assert (

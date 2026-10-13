@@ -6,8 +6,8 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.decleq.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -155,8 +155,8 @@ class TestOperandRange:
 
 class TestStepMachine:
     def test_step_tracks_memory_and_pointer(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.decleq.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("-2 5 9 9 9 65 0 0", ScriptedIO())
         assert (machine.pc, list(machine.memory)) == (0, [-2, 5, 9, 9, 9, 65, 0, 0])
@@ -170,8 +170,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.decleq.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 

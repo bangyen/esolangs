@@ -2,9 +2,9 @@
 
 import pytest
 
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages import generators as boolean
 from esolangs.languages.unlambda.generator import unlambda
-from esolangs.tools.helpers import _validate_truth_table
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import (
     _read_answer,

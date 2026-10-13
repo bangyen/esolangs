@@ -13,25 +13,52 @@ pushes a space, as it stores spaces as 0.
 Invalid instructions, stack underflow, and division by zero raise
 :class:`~esolangs.exceptions.HaltError`; an empty program raises
 :class:`ValueError`.
+
+:func:`_advance` is a pure transition over an immutable :data:`_Core`: it
+reads the codebox, stack scopes, registers and quote mode and returns the
+next core plus the requested output effect, never touching the ports. The
+``i`` value arrives already read, and ``x``'s direction already drawn.
+:meth:`_Machine.step` is the shell that reads input, draws, applies the
+transition and writes the effect; :meth:`snapshot` freezes the core with the
+input cursor for cycle detection.
 """
 
 from __future__ import annotations
 
-import copy
 import math
-from collections.abc import Sequence
-from typing import cast
+from collections.abc import Mapping, Sequence
+from types import MappingProxyType
+from typing import Never, cast
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.memory import format_integer
-from esolangs.interpreters.randomness import FirstDraw, Randomness, draw
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
+from esolangs.runtime.randomness import Randomness, draw
+from esolangs.runtime.source_hints import syntax_error
 
 type Number = int | float
+#: The immutable semantic state: x, y, dx, dy, the codebox mapping, the stack
+#: scopes, the registers, the quote mode, the halt flag, and the box bounds.
+type _Core = tuple[
+    int,
+    int,
+    int,
+    int,
+    Mapping[tuple[int, int], int],
+    tuple[tuple[Number, ...], ...],
+    tuple[Number | None, ...],
+    str | None,
+    bool,
+    int,
+    int,
+]
+#: The hashable snapshot: a core with its codebox flattened and the input
+#: cursor appended, which is what the cycle detector stores.
 type _State = tuple[object, ...]
+#: ``(kind, value)``: ``"char"`` is a codepoint to print, ``"num"`` its text.
+type _Effect = tuple[str, object] | None
 
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
 _NOP = " \0"
@@ -80,8 +107,245 @@ def _calculate(command: str, left: Number, right: Number) -> Number:
     return result
 
 
+def _fail(hint: str = "check the operand bounds for this instruction") -> Never:
+    raise HaltError("something smells fishy...", hint=hint)
+
+
+def _pop(
+    stack: list[Number], hint: str = "push a value before removing the stack top"
+) -> Number:
+    if not stack:
+        _fail(hint)
+    return stack.pop()
+
+
+def _moved(
+    x: int, y: int, dx: int, dy: int, width: int, height: int
+) -> tuple[int, int]:
+    """Return the cell one step along ``(dx, dy)``, wrapping the box."""
+    return (x + dx) % width, (y + dy) % height
+
+
+def _written(
+    cells: Mapping[tuple[int, int], int], key: tuple[int, int], value: int
+) -> Mapping[tuple[int, int], int]:
+    """Return ``cells`` with ``key`` set to ``value``, as a fresh mapping."""
+    updated = dict(cells)
+    updated[key] = value
+    return MappingProxyType(updated)
+
+
+def _advance(
+    state: _Core,
+    char_input: int | None = None,
+    random_dir: int | None = None,
+) -> tuple[_Core, _Effect]:
+    """Return the next core and any output effect for the cell at the IP.
+
+    Pure.  ``char_input`` is what ``i`` pushes (``None`` is EOF, so -1);
+    ``random_dir`` is the draw ``x`` selects from.  The shell supplies both.
+    """
+    x, y, dx, dy, cells, packed, register_tuple, quote, halted, width, height = state
+    if halted:
+        return state, None
+    command = _character(cells.get((x, y), 0))
+    stacks: list[tuple[Number, ...]] = list(packed)
+    registers: list[Number | None] = list(register_tuple)
+    stack: list[Number] = list(stacks[-1])
+    effect: _Effect = None
+    commit = True
+
+    if quote is not None:
+        if command == quote:
+            quote = None
+        else:
+            stack.append(ord(command))
+    elif command in "'\"":
+        quote = command
+    elif command in "0123456789abcdef":
+        stack.append(int(command, 16))
+    elif command in "+-*,%()=":
+        right, left = _pop(stack), _pop(stack)
+        stack.append(_calculate(command, left, right))
+    elif command in "><^v":
+        dx, dy = {">": (1, 0), "<": (-1, 0), "^": (0, -1), "v": (0, 1)}[command]
+    elif command == "/":
+        dx, dy = -dy, -dx
+    elif command == "\\":
+        dx, dy = dy, dx
+    elif command == "|":
+        dx = -dx
+    elif command == "_":
+        dy = -dy
+    elif command == "#":
+        dx, dy = -dx, -dy
+    elif command == "x":
+        if random_dir is None:
+            _fail("supply a randomness source for this operation")
+        dx, dy = _DIRECTIONS[random_dir]
+    elif command == "!":
+        x, y = _moved(x, y, dx, dy, width, height)
+    elif command == "?":
+        if _pop(stack) == 0:
+            x, y = _moved(x, y, dx, dy, width, height)
+    elif command == ".":
+        ty, tx = _integer(_pop(stack)), _integer(_pop(stack))
+        if tx < 0 or ty < 0:
+            _fail()
+        x, y = tx, ty
+    elif command == ":":
+        value = _pop(stack)
+        stack.extend((value, value))
+    elif command == "~":
+        _pop(stack)
+    elif command == "$":
+        one, two = _pop(stack), _pop(stack)
+        stack.extend((one, two))
+    elif command == "@":
+        one, two, three = _pop(stack), _pop(stack), _pop(stack)
+        stack.extend((one, three, two))
+    elif command == "}":
+        if not stack:
+            _fail("push a value before rotating the stack")
+        stack.insert(0, stack.pop())
+    elif command == "{":
+        if not stack:
+            _fail("push a value before rotating the stack")
+        stack.append(stack.pop(0))
+    elif command == "r":
+        stack.reverse()
+    elif command == "l":
+        stack.append(len(stack))
+    elif command == "[":
+        count = _integer(_pop(stack))
+        if count < 0 or count > len(stack):
+            _fail("use a stack split count from 0 to the current stack length")
+        moved = stack[-count:] if count else []
+        if count:
+            del stack[-count:]
+        stacks[-1] = tuple(stack)
+        stacks.append(tuple(moved))
+        registers.append(None)
+        commit = False
+    elif command == "]":
+        if len(stacks) == 1:
+            stack.clear()
+            registers[0] = None
+        else:
+            popped = stacks.pop()
+            registers.pop()
+            stacks[-1] = (*stacks[-1], *popped)
+            commit = False
+    elif command == "&":
+        if registers[-1] is None:
+            registers[-1] = _pop(stack)
+        else:
+            stack.append(registers[-1])
+            registers[-1] = None
+    elif command == "g":
+        gy, gx = _integer(_pop(stack)), _integer(_pop(stack))
+        stack.append(cells.get((gx, gy), 0))
+    elif command == "p":
+        py, px, value = (
+            _integer(_pop(stack)),
+            _integer(_pop(stack)),
+            _integer(_pop(stack)),
+        )
+        cells = _written(cells, (px, py), value)
+        if px >= 0:
+            width = max(width, px + 1)
+        if py >= 0:
+            height = max(height, py + 1)
+    elif command == "i":
+        stack.append(-1 if char_input is None else char_input)
+    elif command == "o":
+        effect = ("char", _character(_pop(stack)))
+    elif command == "n":
+        value = _pop(stack)
+        if isinstance(value, float):
+            if not math.isfinite(value):
+                _fail()
+            if value.is_integer():
+                value = int(value)
+        effect = (
+            "num",
+            format_integer(value) if isinstance(value, int) else str(value),
+        )
+    elif command == ";":
+        return (
+            (x, y, dx, dy, cells, packed, register_tuple, quote, True, width, height),
+            None,
+        )
+    elif command not in _NOP:
+        _fail("use an instruction documented by esolangs describe --spec Fish")
+
+    if commit:
+        stacks[-1] = tuple(stack)
+    x, y = _moved(x, y, dx, dy, width, height)
+    return (
+        (
+            x,
+            y,
+            dx,
+            dy,
+            cells,
+            tuple(stacks),
+            tuple(registers),
+            quote,
+            halted,
+            width,
+            height,
+        ),
+        effect,
+    )
+
+
+def _freeze(core: _Core, progress: int) -> _State:
+    """Return ``core`` as the hashable snapshot the cycle detector stores."""
+    x, y, dx, dy, cells, stacks, registers, quote, halted, width, height = core
+    return (
+        x,
+        y,
+        dx,
+        dy,
+        tuple(sorted(cells.items())),
+        stacks,
+        registers,
+        quote,
+        halted,
+        width,
+        height,
+        progress,
+    )
+
+
+def _thaw(state: _State) -> tuple[_Core, int]:
+    """Invert :func:`_freeze` for a branching successor."""
+    (x, y, dx, dy, cells, stacks, registers, quote, halted, width, height, progress) = (
+        state
+    )
+    return (
+        (
+            cast(int, x),
+            cast(int, y),
+            cast(int, dx),
+            cast(int, dy),
+            MappingProxyType(
+                dict(cast(tuple[tuple[tuple[int, int], int], ...], cells))
+            ),
+            cast(tuple[tuple[Number, ...], ...], stacks),
+            cast(tuple[Number | None, ...], registers),
+            cast(str | None, quote),
+            cast(bool, halted),
+            cast(int, width),
+            cast(int, height),
+        ),
+        cast(int, progress),
+    )
+
+
 class _Machine:
-    """Mutable Fish codebox, stack scopes, registers, and instruction pointer."""
+    """Fish shell: one immutable :data:`_Core`, rebound per step."""
 
     reproducible_seed = 0
     ip_shape = "grid"
@@ -97,42 +361,82 @@ class _Machine:
         self.code = code
         self.io = io
         self._rng = rng
-        self.cells = {
+        cells = {
             (x, y): ord(char)
             for y, row in enumerate(code)
             for x, char in enumerate(row)
         }
-        self.width, self.height = width, len(code)
-        self.x = self.y = 0
-        self.dx, self.dy = 1, 0
-        self.stacks: list[list[Number]] = [[]]
-        self.registers: list[Number | None] = [None]
-        self.quote: str | None = None
-        self.halted = False
+        self.state: _Core = (
+            0,
+            0,
+            1,
+            0,
+            MappingProxyType(cells),
+            ((),),
+            (None,),
+            None,
+            False,
+            width,
+            len(code),
+        )
+
+    @property
+    def halted(self) -> bool:
+        return self.state[8]
 
     @property
     def ip(self) -> tuple[int, ...] | None:
-        return None if self.halted else (self.y, self.x, self.dx, self.dy)
+        if self.halted:
+            return None
+        return (self.state[1], self.state[0], self.state[2], self.state[3])
+
+    @property
+    def x(self) -> int:
+        return self.state[0]
+
+    @property
+    def y(self) -> int:
+        return self.state[1]
+
+    @property
+    def dx(self) -> int:
+        return self.state[2]
+
+    @property
+    def dy(self) -> int:
+        return self.state[3]
+
+    @property
+    def cells(self) -> Mapping[tuple[int, int], int]:
+        return self.state[4]
+
+    @property
+    def stacks(self) -> list[list[Number]]:
+        return [list(stack) for stack in self.state[5]]
+
+    @property
+    def registers(self) -> list[Number | None]:
+        return list(self.state[6])
+
+    @property
+    def quote(self) -> str | None:
+        return self.state[7]
+
+    @property
+    def width(self) -> int:
+        return self.state[9]
+
+    @property
+    def height(self) -> int:
+        return self.state[10]
 
     @property
     def stack(self) -> list[object]:
-        return list(self.stacks[-1])
+        return list(self.state[5][-1])
 
-    def snapshot(self) -> tuple[object, ...]:
-        return (
-            self.x,
-            self.y,
-            self.dx,
-            self.dy,
-            tuple(sorted(self.cells.items())),
-            tuple(map(tuple, self.stacks)),
-            tuple(self.registers),
-            self.quote,
-            self.halted,
-            self.width,
-            self.height,
-            self.io.progress(),
-        )
+    def snapshot(self) -> _State:
+        """Return the complete internal state, hashable for cycle detection."""
+        return _freeze(self.state, self.io.progress())
 
     def branching_snapshot(self) -> _State:
         """Return immutable state for exhaustive ``x`` branch search."""
@@ -142,18 +446,6 @@ class _Machine:
         """Report whether an immutable state has executed ``;``."""
         return bool(cast(_State, state)[8])
 
-    def _restore(self, state: _State) -> None:
-        self.x, self.y = cast(int, state[0]), cast(int, state[1])
-        self.dx, self.dy = cast(int, state[2]), cast(int, state[3])
-        cells, stacks, registers = state[4], state[5], state[6]
-        self.quote = cast(str | None, state[7])
-        self.halted = cast(bool, state[8])
-        self.cells = dict(cast(tuple[tuple[tuple[int, int], int], ...], cells))
-        self.width, self.height = cast(int, state[9]), cast(int, state[10])
-        packed = cast(tuple[tuple[Number, ...], ...], stacks)
-        self.stacks = [list(stack) for stack in packed]
-        self.registers = list(cast(tuple[Number | None, ...], registers))
-
     def branching_successors(
         self, state: object, _limit: int
     ) -> tuple[_State, ...] | None:
@@ -161,169 +453,44 @@ class _Machine:
         current = cast(_State, state)
         if self.branching_halted(current):
             return (current,)
-        x, y = cast(int, current[0]), cast(int, current[1])
-        frozen_cells = cast(tuple[tuple[tuple[int, int], int], ...], current[4])
-        command = _character(dict(frozen_cells).get((x, y), 0))
-        interpreting = current[7] is None
+        core, progress = _thaw(current)
+        command = _character(core[4].get((core[0], core[1]), 0))
+        interpreting = core[7] is None
         if interpreting and command == "i":
             return None
         choices = range(4) if interpreting and command == "x" else range(1)
         successors = []
         for choice in choices:
-            branch = copy.deepcopy(self)
-            branch._restore(current)  # noqa: SLF001 - same-class state fork
-            branch.io = ScriptedIO("")
-            branch._rng = FirstDraw(choice)  # noqa: SLF001 - same-class state fork
-            branch.step()
-            successors.append((*branch.snapshot()[:-1], current[-1]))
+            moved, _effect = _advance(core, random_dir=choice)
+            successors.append(_freeze(moved, progress))
         return tuple(successors)
 
-    def _fail(
-        self, hint: str = "check the operand bounds for this instruction"
-    ) -> None:
-        raise HaltError("something smells fishy...", hint=hint)
-
-    def _pop(self) -> Number:
-        if not self.stacks[-1]:
-            self._fail("push a value before removing the stack top")
-        return self.stacks[-1].pop()
-
-    def _advance(self, count: int = 1) -> None:
-        for _ in range(count):
-            self.x = (self.x + self.dx) % self.width
-            self.y = (self.y + self.dy) % self.height
-
     def step(self) -> None:
+        """Execute one instruction, reading, drawing and writing as the shell.
+
+        The transition is :func:`_advance`; this method supplies ``i``'s
+        value, ``x``'s draw, and the effect's write.
+        """
         if self.halted:
             return
-        command = _character(self.cells.get((self.x, self.y), 0))
-        stack = self.stacks[-1]
-        if self.quote is not None:
-            if command == self.quote:
-                self.quote = None
-            else:
-                stack.append(ord(command))
-            self._advance()
-            return
-        if command in "'\"":
-            self.quote = command
-        elif command in "0123456789abcdef":
-            stack.append(int(command, 16))
-        elif command in "+-*,%()=":
-            right, left = self._pop(), self._pop()
-            stack.append(_calculate(command, left, right))
-        elif command in "><^v":
-            self.dx, self.dy = {
-                ">": (1, 0),
-                "<": (-1, 0),
-                "^": (0, -1),
-                "v": (0, 1),
-            }[command]
-        elif command == "/":
-            self.dx, self.dy = -self.dy, -self.dx
-        elif command == "\\":
-            self.dx, self.dy = self.dy, self.dx
-        elif command == "|":
-            self.dx = -self.dx
-        elif command == "_":
-            self.dy = -self.dy
-        elif command == "#":
-            self.dx, self.dy = -self.dx, -self.dy
-        elif command == "x":
-            self.dx, self.dy = _DIRECTIONS[draw(self._rng, 4)]
-        elif command == "!":
-            self._advance()
-        elif command == "?":
-            if self._pop() == 0:
-                self._advance()
-        elif command == ".":
-            y, x = _integer(self._pop()), _integer(self._pop())
-            if x < 0 or y < 0:
-                self._fail()
-            self.x, self.y = x, y
-        elif command == ":":
-            value = self._pop()
-            stack.extend((value, value))
-        elif command == "~":
-            self._pop()
-        elif command == "$":
-            one, two = self._pop(), self._pop()
-            stack.extend((one, two))
-        elif command == "@":
-            one, two, three = self._pop(), self._pop(), self._pop()
-            stack.extend((one, three, two))
-        elif command == "}":
-            if not stack:
-                self._fail("push a value before rotating the stack")
-            stack.insert(0, stack.pop())
-        elif command == "{":
-            if not stack:
-                self._fail("push a value before rotating the stack")
-            stack.append(stack.pop(0))
-        elif command == "r":
-            stack.reverse()
-        elif command == "l":
-            stack.append(len(stack))
-        elif command == "[":
-            count = _integer(self._pop())
-            if count < 0 or count > len(stack):
-                self._fail("use a stack split count from 0 to the current stack length")
-            moved = stack[-count:] if count else []
-            if count:
-                del stack[-count:]
-            self.stacks.append(moved)
-            self.registers.append(None)
-        elif command == "]":
-            if len(self.stacks) == 1:
-                stack.clear()
-                self.registers[0] = None
-            else:
-                moved = self.stacks.pop()
-                self.registers.pop()
-                self.stacks[-1].extend(moved)
-        elif command == "&":
-            if self.registers[-1] is None:
-                self.registers[-1] = self._pop()
-            else:
-                stack.append(self.registers[-1])
-                self.registers[-1] = None
-        elif command == "g":
-            y, x = _integer(self._pop()), _integer(self._pop())
-            stack.append(self.cells.get((x, y), 0))
-        elif command == "p":
-            y, x, value = (
-                _integer(self._pop()),
-                _integer(self._pop()),
-                _integer(self._pop()),
-            )
-            self.cells[(x, y)] = value
-            if x >= 0:
-                self.width = max(self.width, x + 1)
-            if y >= 0:
-                self.height = max(self.height, y + 1)
-        elif command == "i":
+        core = self.state
+        command = _character(core[4].get((core[0], core[1]), 0))
+        interpreting = core[7] is None
+        char_input: int | None = None
+        if interpreting and command == "i":
             try:
-                stack.append(self.io.input_char())
+                char_input = self.io.input_char()
             except EOFError:
-                stack.append(-1)
-        elif command == "o":
-            self.io.print_char(_character(self._pop()))
-        elif command == "n":
-            value = self._pop()
-            if isinstance(value, float):
-                if not math.isfinite(value):
-                    self._fail()
-                if value.is_integer():
-                    value = int(value)
-            self.io.print_str(
-                format_integer(value) if isinstance(value, int) else str(value)
-            )
-        elif command == ";":
-            self.halted = True
-            return
-        elif command not in _NOP:
-            self._fail("use an instruction documented by esolangs describe --spec Fish")
-        self._advance()
+                char_input = None
+        random_dir = draw(self._rng, 4) if interpreting and command == "x" else None
+        core, effect = _advance(core, char_input, random_dir)
+        self.state = core
+        if effect is not None:
+            kind, value = effect
+            if kind == "char":
+                self.io.print_char(cast(str, value))
+            else:
+                self.io.print_str(cast(str, value))
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:

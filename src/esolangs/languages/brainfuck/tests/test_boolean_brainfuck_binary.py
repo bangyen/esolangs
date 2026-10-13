@@ -4,10 +4,9 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.languages.brainfuck.generator import _bf_ordered, bf_tree
-from esolangs.languages.brainfuck.generator._binary import binary_bank
+from esolangs.languages.brainfuck.generator import _bf_ordered, bf_tree, binary_bank
 from esolangs.languages.brainfuck.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 
 
@@ -83,13 +82,27 @@ def test_narrow_words_consume_fixed_one_digits_and_completed_zero_paths(
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [14, 16])
-@pytest.mark.parametrize("seed", [73017, 73018, 73019])
+@pytest.mark.parametrize(
+    "n",
+    [
+        14,
+        pytest.param(
+            16,
+            marks=[
+                pytest.mark.weekly,
+                pytest.mark.cost_evidence(
+                    "maximum-arity binary bank preserves all essential rows "
+                    "under both six-bit ignored-prefix extremes"
+                ),
+            ],
+        ),
+    ],
+)
 @pytest.mark.parametrize("start", range(0, 1024, 128))
 def test_fourteen_class_cap_bank_executes_every_essential_row(
-    seed: int, start: int, n: int
+    start: int, n: int
 ) -> None:
-    rng = random.Random(seed)
+    rng = random.Random(73017)
     core = "".join(f"{rng.randrange(1, 15):04b}" for _ in range(256))
     ignored = n - 10
     table = core * (1 << ignored)

@@ -4,11 +4,11 @@ import random
 
 import pytest
 
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 
 @pytest.mark.medium
-def test_affine_stream_all_small_coefficients_within_ledger():
+def test_affine_stream_all_small_coefficients_within_ledger() -> None:
     from esolangs.debugger import make_vm
     from esolangs.languages.brainfuck.generator import _affine_stream
     from scripts.benchmark import WrittenState
@@ -48,7 +48,7 @@ def test_affine_stream_all_small_coefficients_within_ledger():
 
 
 @pytest.mark.medium
-def test_affine_stream_reduces_cap_parity_within_ledger():
+def test_affine_stream_reduces_cap_parity_within_ledger() -> None:
     from esolangs.languages.brainfuck.generator import _bf_ordered
     from tests.support.generator_support import assert_shared_program
 
@@ -88,10 +88,10 @@ def test_shared_residual_executes_within_ledger() -> None:
 
 
 @pytest.mark.medium
-def test_multiple_residual_dispatches_match_outputs_and_command_prices():
+def test_multiple_residual_dispatches_match_outputs_and_command_prices() -> None:
     from esolangs.debugger import make_vm
-    from esolangs.tools.shared_block import repeated_blocks
-    from esolangs.tools.shared_flag import flag_tree_body
+    from esolangs.generation.shared_block import repeated_blocks
+    from esolangs.generation.shared_flag import flag_tree_body
 
     rng = random.Random(722026)
     tables = ["".join(str(rng.randrange(2)) for _ in range(64)) for _ in range(12)]
@@ -120,18 +120,18 @@ def test_multiple_residual_dispatches_match_outputs_and_command_prices():
 
 
 @pytest.mark.parametrize("blocks", [((1, 0), (1, 4)), ((2, 0), (1, 0)), ((3, 0),)])
-def test_deferred_flags_require_ordered_distinct_levels(blocks):
-    from esolangs.tools.shared_flag import flag_tree_body
+def test_deferred_flags_require_ordered_distinct_levels(blocks) -> None:
+    from esolangs.generation.shared_flag import flag_tree_body
 
     with pytest.raises(ValueError, match="deferred levels"):
         flag_tree_body("01101001", (0, 1, 2), 4, 6, shared_blocks=blocks)
 
 
 @pytest.mark.medium
-def test_multiple_residuals_reduce_guarded_parity_within_ledger():
+def test_multiple_residuals_reduce_guarded_parity_within_ledger() -> None:
     import esolangs
-    from esolangs.tools.shared_block import repeated_block
-    from esolangs.tools.shared_flag import flag_tree_body
+    from esolangs.generation.shared_block import repeated_block
+    from esolangs.generation.shared_flag import flag_tree_body
     from tests.support.generator_support import assert_shared_program
 
     n = 10

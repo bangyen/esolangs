@@ -263,22 +263,22 @@ qualification = """\
     against one `}` apiece leaves the entry it names under the pointer"""
 scaling = "linear: bounded dependency scan and canonical residual IDs"
 execution = """\
-    linear: worst (2n+13)T + 63n + 89 + 2S to n = 7, S the codes of program \
+    linear: worst (2n+13)T + 94n + 89 + 2S to n = 7, S the codes of program \
     characters 1..n"""
 workspace = """\
-    linear: worst 6L + 10n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the \
+    linear: worst 6L + 12n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the \
     tape"""
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
 generator = "Circuit Diagram"
 labels = ["tree"]
-qualification = "finite planar routing with fixed-size shared cofactor pools"
-scaling = "linear: prefix H-layout side C sqrt(T), fixed-size cofactor pools"
+qualification = "complete residual folds or a strictly smaller emitted fallback"
+scaling = "linear: emitted text; fixed-order residual DAGs costed before rendering"
 execution = "poly n: worst 2n + 1 commands; at most 2n + 2 past n = 8"
 workspace = """\
     linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses"""
-evidence = "docs/proofs/index.md#generator-ledger"
+evidence = "docs/proofs/circuit-diagram-sharing.md"
 
 [[ledger]]
 generator = "Clockwise"
@@ -445,7 +445,7 @@ qualification = """\
     segmented-sieve encoding; fixed-modulus short intervals bound its adaptive \
     residue sequence; unused level flags defer repeated residuals in depth order"""
 scaling = """\
-    lower bound: tight language and generated Theta(T log T) ([factor](factor.md))"""
+    lower bound: tight language and generated Theta(T log T) ([summary](#factor-bound))"""
 execution = "poly n: worst 265n + 231 commands; the prelude is at most 247n + 240 past n=1"
 workspace = "poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(51·2^(n-2)+16n+14) bits"
 evidence = "docs/proofs/index.md#generator-ledger"
@@ -625,14 +625,14 @@ evidence = "docs/proofs/index.md#generator-ledger"
 generator = "Line"
 labels = ["tree"]
 qualification = """\
-    finite decision trees can store only essential inputs; guarded ancestor \
-    returns share a residual through a consumed input"""
-scaling = "linear: alternating subtree extents bound rectangular area by O(T)"
-execution = "poly n: worst 5n commands; shared returns retain this bound"
+    finite decision trees preserve totality; complete ordered residual folds share \
+    every state unless their exact pixel area exceeds the fallback"""
+scaling = "linear: complete residual models and area-admitted rasters cost O(T)"
+execution = "poly n: worst 5n commands; complete folds retain this bound"
 workspace = """\
     poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) \
     bits past n = 4"""
-evidence = "docs/proofs/index.md#generator-ledger"
+evidence = "docs/proofs/line-sharing.md"
 
 [[ledger]]
 generator = "Malbolge"
@@ -645,7 +645,7 @@ qualification = """\
     copies of that table selected by inputs twelve and thirteen cover fourteen; \
     fifteen and sixteen replace the hash with a positional address, three input bits \
     per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open \
-    ([malbolge-scaling](malbolge-scaling.md))"""
+    ([summary](#malbolge-bound))"""
 scaling = "measured: fixed 59049-cell store through n <= 16"
 execution = """\
     unmeasured: worst 478n + 1459 steps for n ≤ 10; eleven to sixteen are separate \
@@ -782,12 +782,12 @@ labels = ["tree", "cap"]
 qualification = """\
     each finite instruction list has a finite prime-product encoding; every program \
     for a maximal-width table needs Omega(T/log T) distinct real roots \
-    ([polynomial](polynomial.md))"""
+    ([summary](#polynomial-bound))"""
 scaling = """\
     lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped \
     residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real \
     roots and the slack certificate prices every multiple \
-    ([polynomial](polynomial.md))"""
+    ([summary](#polynomial-bound))"""
 execution = "unmeasured: exempt as a cap row"
 workspace = """\
     poly n: at most bl(min(10T-7,1934) + 10) + 1 + max(bl(n+3), bl(49(M-1))) + 2bl(n) \
@@ -1097,21 +1097,21 @@ generator = "Factor"
 totality = "Total"
 generation_time = "Language lower bound"
 output_size = "Language lower bound"
-evidence = "docs/proofs/factor.md#language-lower-bound"
+evidence = "docs/proofs/index.md#factor-bound"
 
 [[audit]]
 generator = "Malbolge"
 totality = "Exception"
 generation_time = "Open"
 output_size = "Linear"
-evidence = "docs/proofs/malbolge-scaling.md#generation-time"
+evidence = "docs/proofs/index.md#malbolge-bound"
 
 [[audit]]
 generator = "Polynomial"
 totality = "Cap"
 generation_time = "Language lower bound"
 output_size = "Language lower bound"
-evidence = "docs/proofs/polynomial.md#construction-and-cold-parse-time"
+evidence = "docs/proofs/index.md#polynomial-bound"
 
 [[audit]]
 generator = "Vandevelo"

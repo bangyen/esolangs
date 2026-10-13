@@ -13,9 +13,9 @@ from inspect import signature
 from time import monotonic
 from typing import Literal, get_args
 
-from esolangs._source import InputSource, ProgramSource
-from esolangs._validate import _argument_repr, check_timeout, check_whole
 from esolangs.exceptions import ArgumentError
+from esolangs.runtime._source import InputSource, ProgramSource
+from esolangs.runtime._validate import _argument_repr, check_timeout, check_whole
 from esolangs.settings import DialectSettings
 from esolangs.vm import VM, complete_vm, make_vm, run_until_halt
 

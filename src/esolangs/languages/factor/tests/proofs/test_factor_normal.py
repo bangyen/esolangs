@@ -6,7 +6,6 @@ from itertools import pairwise
 import pytest
 import sympy
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.brainfuck.interpreter import _Machine
 from esolangs.languages.brainfuck.interpreter import run as run_bf
 from esolangs.languages.factor.interpreter import run
@@ -18,6 +17,7 @@ from esolangs.languages.factor.tests.proofs._factor_normal import (
     normalize,
 )
 from esolangs.languages.factor.tests.proofs.test_factor_print import _render
+from esolangs.runtime.io import ScriptedIO
 
 
 def test_normal_word_matrix() -> None:

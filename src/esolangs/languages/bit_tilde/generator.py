@@ -4,11 +4,14 @@ Entries are planted left to right, so a skip loop has no terminator ahead of
 it: a constant or repeated span costs a ``>`` per cell.
 """
 
+from esolangs.generation.constant_projection import (
+    balanced_projection,
+    projected_inputs,
+)
+from esolangs.generation.helpers import _validate_truth_table, read_at
+from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.constant_projection import balanced_projection, projected_inputs
-from esolangs.tools.helpers import _validate_truth_table, read_at
-from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["bit_tilde"]
 

@@ -8,15 +8,15 @@ residual survives the admitted nine-command source budget.
 
 from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import GeneratorCapError
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     decision_tree_body,
     essential_inputs,
     move_text,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 _MAX_SOURCE = 256 * 1024 * 1024
 _LIMITS = TextLimits(32 * 1024 * 1024, _MAX_SOURCE, 256 * 1024)

@@ -22,12 +22,12 @@ from collections.abc import Sequence
 from ctypes import c_long, sizeof
 from typing import cast
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.randomness import Randomness, draw
+from esolangs.runtime.source_hints import syntax_error
 
 #: ``?`` picks one, in the order the shell's draw maps to: right, down, left, up.
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
@@ -38,28 +38,33 @@ _MIN_VALUE = -(1 << (_LONG_BITS - 1))
 _MAX_VALUE = (1 << (_LONG_BITS - 1)) - 1
 type _Cursor = tuple[int, int, int, int]
 type _Grid = tuple[tuple[str, ...], ...]
-type _Stack = tuple[int, ...] | list[int]
+#: Persistent cons cells keep push/pop O(1) without changing old states.
+type _Stack = tuple[int, _Stack] | None
 type _State = tuple[_Cursor, _Grid, _Stack, bool, bool]
 type _Effect = tuple[str, int] | None
 
 
 def _pop(stack: _Stack) -> tuple[int, _Stack]:
     """Return the top and the rest; an empty stack reads as 0."""
-    if not stack:
-        return 0, stack
-    if isinstance(stack, list):
-        return stack.pop(), stack
-    return stack[-1], stack[:-1]
+    return (0, None) if stack is None else stack
 
 
 def _push(stack: _Stack, *values: int) -> _Stack:
-    """Push onto a runtime list or an immutable branching state."""
+    """Return a stack with the values pushed in order."""
     if any(value < _MIN_VALUE or value > _MAX_VALUE for value in values):
         raise HaltError("Befunge integer exceeds signed-long range")
-    if isinstance(stack, list):
-        stack.extend(values)
-        return stack
-    return (*stack, *values)
+    for value in values:
+        stack = (value, stack)
+    return stack
+
+
+def _values(stack: _Stack) -> tuple[int, ...]:
+    """Return the stack in bottom-to-top order without recursive traversal."""
+    values = []
+    while stack is not None:
+        value, stack = stack
+        values.append(value)
+    return tuple(reversed(values))
 
 
 def _advance(
@@ -230,7 +235,7 @@ class _Machine:
         rows.extend(" " * _WIDTH for _ in range(_HEIGHT - len(rows)))
         self.grid = tuple(tuple(row) for row in rows)
         self.code, self.io, self._rng = code, io, rng
-        self.state: _State = ((0, 0, 1, 0), self.grid, [], False, False)
+        self.state: _State = ((0, 0, 1, 0), self.grid, None, False, False)
 
     @property
     def halted(self) -> bool:
@@ -247,16 +252,15 @@ class _Machine:
 
     @property
     def stack(self) -> list[object]:
-        return list(self.state[2])
+        return list(_values(self.state[2]))
 
     def snapshot(self) -> tuple[object, ...]:
         cursor, grid, stack, string, done = self.state
-        return (*cursor, grid, tuple(stack), string, done, self.io.progress())
+        return (*cursor, grid, _values(stack), string, done, self.io.progress())
 
     def branching_snapshot(self) -> _State:
         """Return the current state as the hang search's starting point."""
-        cursor, grid, stack, string, done = self.state
-        return cursor, grid, tuple(stack), string, done
+        return self.state
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has reached ``@``."""
@@ -279,7 +283,7 @@ class _Machine:
         interpreting = not current[3]
         if interpreting and command in "~&":
             return None
-        if interpreting and command in "/%" and (not current[2] or current[2][-1] == 0):
+        if interpreting and command in "/%" and (not current[2] or current[2][0] == 0):
             # Zero divisors read a result too; predicting a halt loses that input.
             return None
         if interpreting and command == "?":
@@ -298,7 +302,7 @@ class _Machine:
         # `0/` read while `/` halted, on the same divisor.
         needs_number = interpreting and (
             command == "&"
-            or (command in "/%" and (not self.state[2] or self.state[2][-1] == 0))
+            or (command in "/%" and (not self.state[2] or self.state[2][0] == 0))
         )
         number_input = None
         if needs_number:

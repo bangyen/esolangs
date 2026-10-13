@@ -2,17 +2,16 @@
 
 A top-level def, class or constant is *dead* when no ``ast.Name`` or
 ``ast.Attribute`` outside its own definition, and outside import
-statements, names it.  Two routes (Minifuck's staged and sculpted) and the
-Eval reorder catalog sat that way, each with a test suite of
-its own, because a replaced construction keeps its tests green.
+statements, names it. Replaced constructions can keep their own tests green
+while no production code reaches them.
 
 The rule is deliberately narrow:
 
-- every top-level name in ``src/esolangs/tools/`` (the generators, where
+- every top-level name in ``src/esolangs/generation/`` (the generators, where
   the dead routes accumulated), and
 - every leading-underscore name anywhere else in ``src/``.
 
-A public name outside ``tools/`` is package API and may be consumed by the
+A public name outside ``generation/`` is package API and may be consumed by the
 suite alone (``vm.py``'s termination provers), so it is not judged here.
 Dunder names are protocol hooks.  ``from m import x as y`` counts a use of
 ``y`` as a use of ``x``.  Tests are not read: a name only a test reaches is
@@ -85,7 +84,7 @@ def _judged(path: pathlib.Path, root: pathlib.Path, name: str) -> bool:
     """Whether ``name`` defined in ``path`` is one this check reports."""
     if name.startswith("__") and name.endswith("__"):
         return False
-    if root / "src" / "esolangs" / "tools" in path.parents or (
+    if root / "src" / "esolangs" / "generation" in path.parents or (
         root / "src" / "esolangs" / "languages" in path.parents
         and ("generator" in path.parts or path.stem == "generator")
     ):

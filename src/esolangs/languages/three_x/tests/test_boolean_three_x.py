@@ -3,6 +3,9 @@
 import itertools
 
 from esolangs.languages import generators as boolean
+from esolangs.languages.three_x.generator import _level
+from esolangs.languages.three_x.tests.formulas import _key
+from scripts.benchmark import state_bits
 
 
 class TestThreeX:
@@ -43,9 +46,9 @@ class TestThreeX:
     def test_every_input_order_computes_the_table(self) -> None:
         """The permuted build computes the original table on the original stream."""
 
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.three_x.generator import _three_x_ordered
         from esolangs.languages.three_x.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         def permuted(table: str, perm: tuple[int, ...]) -> str:
             out = []
@@ -104,9 +107,9 @@ class TestThreeX:
 
     def test_constant_ladder_is_the_grammar_shortest_first(self) -> None:
         """Keys are the shortest ``C ::= 3 | C C C x`` programs, by length."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.three_x.generator import _constants
         from esolangs.languages.three_x.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         codes = _constants(13)
         assert [len(c) for c in codes] == [1, 4, 7, 7] + [10] * 4 + [13] * 5
@@ -135,9 +138,9 @@ class TestThreeX:
 
     def test_repeated_blocks_are_written_once(self) -> None:
         """Three copies of one block cost one block, and the program still runs."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.three_x.generator import _three_x_emit
         from esolangs.languages.three_x.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         a, b = "0010110111010001", "1101001000101110"
         table = a + a + b + a
@@ -148,3 +151,14 @@ class TestThreeX:
             io = ScriptedIO("\n".join(str((combo >> (5 - k)) & 1) for k in range(6)))
             run(program, io)
             assert io.getvalue().strip() == table[combo]
+
+
+def test_three_x_keys_fit_their_bound() -> None:
+    """K(i) covers the 41 shortest constants, every key through n = 20."""
+    keys: list = []
+    length = 0
+    while len(keys) < 41:
+        length += 1
+        keys.extend(_level(length))
+    for i, value in enumerate(keys[:41], 1):
+        assert state_bits(value, {}) <= _key(i), (i, value)

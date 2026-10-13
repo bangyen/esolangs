@@ -19,7 +19,7 @@ changes (`test-full` includes slow tests; weekly probes run separately with
 `python scripts/docs/generate.py examples`.
 
 CI checks the wheel on Linux, macOS and Windows: packaged examples, CLI I/O,
-Line/Piet PNG execution, and installation with and without the mathematics extra.
+PNG execution, and installation with and without the mathematics extra.
 
 ## What makes a candidate worth adding
 
@@ -27,29 +27,44 @@ A new language must add an uncovered construction, branch mechanism,
 answer convention, or input interface:
 
 - **Construction shape** -- decision tree (the default), minterm sum
-  (`bfstack`, `vandevelo`), ANF/XOR-of-products (`fargo`), grid walk (`laserfuck`, `a_painter_ant`, `streetcode`).
+  and ANF/XOR-of-products, grid walk.
 - **Branch mechanism** -- explicit conditional, value-testable jump, skip
-  guard, implicit comparator, pointer displacement (`123`).
-- **Answer convention** -- print 0/1, landing colour (`a_painter_ant`),
-  position-encoded (`minifuck`),
-  termination as the answer (`123`, ArrowQueue, Crement, Vandevelo).
-- **Input interface** -- read-and-route, bit-addressable index (`fargo`),
+  guard, implicit comparator, pointer displacement.
+- **Answer convention** -- print 0/1, landing colour, position-encoded,
+  termination as the answer.
+- **Input interface** -- read-and-route, bit-addressable index,
   parameterized embed.
+
+- BFStack uses a minterm sum.
+- Vandevelo uses a minterm sum and answers by termination.
+- Fargo uses ANF/XOR-of-products and a bit-addressable input index.
+- LaserFuck uses a grid walk.
+- A Painter Ant uses a grid walk and answers by landing colour.
+- Streetcode uses a grid walk.
+- 123 branches by pointer displacement and answers by termination.
+- Minifuck gives a position-encoded answer.
+- ArrowQueue answers by termination.
+- Crement answers by termination.
 
 These are generator tests. A language whose specification precludes a
 generator qualifies only through the fame threshold under Curation in
 [limitations](limitations.md). Such languages are interpreter-only, marked
-`int` by `esolangs list --details`; Deadfish, HQ9+ and Nope. qualify.
+`int` by `esolangs list --details`.
+
+- Deadfish qualifies as interpreter-only.
+- HQ9+ qualifies as interpreter-only.
+- Nope. qualifies as interpreter-only.
+
 Curation also defines removal independently of admission. Generator audit
-axes never remove a language; a stalled row moves to the
-[roadmap](roadmap.md#parked)'s Parked section.
+axes never remove a language; a stalled row stays open on the
+[roadmap](roadmap.md).
 
 ## Layout
 
 | Path | Holds |
 | --- | --- |
-| `src/esolangs/interpreters/` | shared runtime machinery |
-| `src/esolangs/tools/` | shared generator helpers |
+| `src/esolangs/runtime/` | shared runtime machinery |
+| `src/esolangs/generation/` | shared generator helpers |
 | `src/esolangs/languages/<id>/` | interpreter, generator, tests, fixtures and examples |
 | `src/esolangs/registry/` | the source of truth for public integration |
 | `tests/` | shared contracts, infrastructure and proof runners |
@@ -75,12 +90,13 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   answer `contract`; `resolve` normalizes spelling, and `RUNNERS` selects
   whole-source or split-line input. A language with a generator declares
   its own `LANGUAGE = Language(...)` at the end of its generator module, and
-  the registry collects those; only interpreter-only languages are listed
+  generated exports collect those explicitly for the registry. Only
+  interpreter-only languages are listed
   in `registry/_table.py`. `esolangs.languages.generators`'s imports come from
   the declarations (`scripts/docs/generate.py`, run by `generate.py docs`
   and by `check`).
 - Interpreters and generators live in `src/esolangs/languages/<id>/`, each
-  as a module or package. Shared generator helpers live in `src/esolangs/tools/`.
+  as a module or package. Shared generator helpers live in `src/esolangs/generation/`.
   Most generators return runnable source;
   input-embedding languages return a `$`-run template for `instantiate`.
   `encode_inputs` handles stdin conventions, and `read_answer` reads printed
@@ -90,16 +106,15 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   and calls its `run(code, io)`; `make_vm` exposes its
   step-capable machine to the debugger and the hang proofs.
 - Each language’s `tests/` holds its unit and integration suites, fixtures
-  and proofs; its `examples/` holds packaged programs. Shared contracts and
+  and proofs; packaged examples live beside its modules. Shared contracts and
   proof infrastructure live in `tests/`; `scripts/` holds development tools.
 
 ## Interpreter conventions
 
-Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
+Start from `src/esolangs/runtime/_template.py`. Every interpreter:
 
 - Exposes `run(code, io)` with required `IO`; uses `io` for all I/O.
-  Most grids receive lines via registry `split=True`; A Painter Ant,
-  B-tapemark and EGL receive whole source.
+  Most grids receive lines via registry `split=True`.
 - Raises `ValueError` for a malformed program and `HaltError` for an
   invalid runtime operation, where the spec has one. An empty program the
   spec calls malformed declares its error as `empty_program=` in the
@@ -125,6 +140,10 @@ Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
 - Documents spec-gap decisions in its docstring (`suffolk.py`); never defines
   away invalid operations.
 - Provides a `__main__` block calling `run(data, IO())`.
+
+- A Painter Ant receives whole source.
+- B-tapemark receives whole source.
+- EGL receives whole source.
 
 `tests/test_interpreter_conventions.py` checks the module docstring names
 the language and mentions `EOF`, `HaltError` or `ValueError` wherever the
@@ -182,10 +201,10 @@ by size, breaking ties by steps. Bound the per-piece upside before choosing.
    so the list matches what the suite enforces. It then runs the
    seconds-long checks `finish` would otherwise fail late: the language's
    own tests, its committed example, the generator's shape, the ledger's
-   word limits and fold measure, its formula rows, and bandit on its
-   sources. It lists the generated files it refreshed.
+   word limits and fold measure, and its formula rows. It lists the generated
+   files it refreshed.
    Optional: the wiki page's own examples, with their stated output, go in
-   `src/esolangs/languages/<id>/tests/fixtures/wiki_examples/<id>.toml` (schema in
+   `src/esolangs/languages/<id>/tests/fixtures/wiki_examples.toml` (schema in
    `tests/interpreters/test_published_programs.py`).
    To try a program that may loop, bound it:
    `esolangs.run("Name", program, stdin=..., max_steps=10_000)` or
@@ -205,8 +224,13 @@ by size, breaking ties by steps. Bound the per-piece upside before choosing.
    still lists don't stop it: it reports them, runs the gate anyway, and
    fails.
 
+A comment cohort can declare `# language-owners: ["Name", "Other"]`.
+Removal drops that contiguous comment block when any owner goes; keep shared
+invariants outside it. Language-specific Markdown belongs in canonical-name
+bullets with indented continuations.
+
 To take a language out, `just remove-language "Name"` deletes what `check`
-asks for and every test file `tests/integration/api/test_language_coupling.py` counts as
+asks for and every test file `tests/api/test_language_coupling.py` counts as
 the language's own (committed or not), prunes the helper modules only it
 imported and the per-language code the shared generators and
 `wrap.py` no longer reference, drops its wiki fixtures, timing rows and
@@ -220,7 +244,7 @@ shared tests, the examples and `scripts/docs/generate.py` spell out, so
 A language should live in its own files: its generator module's
 `LANGUAGE`, its interpreter, and its own test files. A fact another file
 keys by a language's name (a list of names in a shared test, a branch on
-an id) is coupling, and `tests/integration/api/test_language_coupling.py` holds each
+an id) is coupling, and `tests/api/test_language_coupling.py` holds each
 file's count of them to `tests/support/fixtures/coupling.toml`, which only goes
 down. Put such a fact on `Language`, or the test in the language's own
 test file under `src/esolangs/languages/<id>/tests/`: `test_<id>.py` for
@@ -228,7 +252,7 @@ its interpreter, `test_boolean_<id>.py` for its generator, and
 `test_integration_<id>.py` for its API, CLI, VM and debugger checks. A shared file states a language's own facts, never a second
 language's: an example or comparison that names another language (`as in
 X`, `unlike X`, `X's axis`) is coupling in prose too, and
-`tests/integration/api/test_language_coupling.py` rejects it.
+`tests/api/test_language_coupling.py` rejects it.
 
 ### The Boolean I/O contract
 
@@ -237,9 +261,12 @@ A generated program reads the inputs and prints the answer the way its
 default is one `0`/`1` line per input and a printed `0`/`1`. Every program
 reads all n inputs, in order, even when the table is constant or ignores an
 input. `input_shape="char_stream"` reads the bits as bare characters, and also
-covers languages whose stdin packs bits into bytes (Boolfuck, Smu): each
+covers languages whose stdin packs bits into bytes: each
 input is then the byte `'0'` (0x30) or `'1'` (0x31), whose low bit is the
 input's value, so a program that reads low bit first takes that bit and must
 read and drop the byte's other seven before the next input (see
-`src/esolangs/languages/smu/generator.py`). `answer_mode` covers state-dump and
-termination answers.
+the language's generator). `answer_mode` covers state-dump and termination
+answers.
+
+- Boolfuck packs input bits into bytes.
+- Smu packs input bits into bytes.

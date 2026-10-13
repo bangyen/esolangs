@@ -16,7 +16,7 @@ def centered_check(monkeypatch):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("start", [0, 64, 128, 192])
-def test_centered_three_input_graphs_execute(start, centered_check, tmp_path):
+def test_centered_three_input_graphs_execute(start, centered_check, tmp_path) -> None:
     admitted = 0
     for value in range(start, start + 64):
         table = f"{value:08b}"
@@ -30,7 +30,7 @@ def test_centered_three_input_graphs_execute(start, centered_check, tmp_path):
 @pytest.mark.parametrize(
     "kind", [pytest.param("dense", marks=pytest.mark.slow), "parity", "majority"]
 )
-def test_centered_eight_input_graphs_execute(kind, centered_check, tmp_path):
+def test_centered_eight_input_graphs_execute(kind, centered_check, tmp_path) -> None:
     table = (
         dense(8)
         if kind == "dense"
@@ -46,5 +46,5 @@ def test_centered_eight_input_graphs_execute(kind, centered_check, tmp_path):
 
 
 @pytest.mark.medium
-def test_centered_scaled_crossings(centered_check, tmp_path):
+def test_centered_scaled_crossings(centered_check, tmp_path) -> None:
     centered_check(parity(7), tmp_path, scale=2)

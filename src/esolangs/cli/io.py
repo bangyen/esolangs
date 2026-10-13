@@ -9,12 +9,13 @@ from __future__ import annotations
 import json
 import sys
 import threading
+from collections.abc import Callable
 from contextlib import AbstractContextManager, nullcontext
 
 from esolangs import _read_source, load_program
-from esolangs._program import Program
-from esolangs._source import _FileSource
 from esolangs.cli.args import (
+    _check_count,
+    _errors,
     _fail,
 )
 from esolangs.cli.hints import (
@@ -23,6 +24,8 @@ from esolangs.cli.hints import (
 )
 from esolangs.exceptions import EsolangError, ProgramError
 from esolangs.registry import resolve
+from esolangs.runtime._program import Program
+from esolangs.runtime._source import _FileSource
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 
@@ -52,39 +55,44 @@ _READ_DEADLINE = 10.0
 _UNBOUNDED_NOTICE_AFTER = 10.0
 
 
-class _UnboundedNotice:
-    """Print one line if an unbounded run is still going after a while.
+class _DelayedNotice:
+    """Print one line if the wrapped wait is still going after a while.
 
-    ``run`` and ``debug`` take no bound by default, but several languages
-    loop forever by design; one reader killed a silent spin after eight
-    CPU-minutes.  A timer fires once, names the flag, and is cancelled
-    when the run finishes.
+    The timer fires once and is cancelled when the wait finishes,
+    whether it finished or raised.
     """
 
-    def __init__(self, command: str) -> None:
-        """Arm the notice for ``command``, which names the flag to pass."""
-        self._timer = threading.Timer(
-            _UNBOUNDED_NOTICE_AFTER, self._say, args=(command,)
-        )
+    def __init__(self, after: float, message: str) -> None:
+        """Arm the notice to write ``message`` after ``after`` seconds."""
+        self._timer = threading.Timer(after, sys.stderr.write, args=(message,))
         self._timer.daemon = True
 
-    @staticmethod
-    def _say(command: str) -> None:
-        """Write the one line, from the timer thread."""
-        sys.stderr.write(
-            f"still running after {_UNBOUNDED_NOTICE_AFTER:.0f}s with no bound; "
-            f"several of these languages loop forever by design -- "
-            f"`esolangs {command} --timeout SECONDS` stops one\n"
-        )
-
-    def __enter__(self) -> _UnboundedNotice:
+    def __enter__(self) -> None:
         """Start the timer."""
         self._timer.start()
-        return self
 
     def __exit__(self, *_exc: object) -> None:
-        """Cancel it, whether the run finished or raised."""
+        """Cancel it."""
         self._timer.cancel()
+
+
+def _unbounded_notice(command: str) -> _DelayedNotice:
+    """Notice for an unbounded ``command`` run still going after a while."""
+    return _DelayedNotice(
+        _UNBOUNDED_NOTICE_AFTER,
+        f"still running after {_UNBOUNDED_NOTICE_AFTER:.0f}s with no bound; "
+        f"several of these languages loop forever by design -- "
+        f"`esolangs {command} --timeout SECONDS` stops one\n",
+    )
+
+
+def _waiting_notice(hint: str = "") -> _DelayedNotice:
+    """Notice for stdin still not delivering after a while."""
+    return _DelayedNotice(
+        _WAITING_NOTICE_AFTER,
+        f"still waiting for input on stdin after {_WAITING_NOTICE_AFTER:.0f}s; "
+        f"nothing has closed it{hint}\n",
+    )
 
 
 def _read_program(
@@ -130,9 +138,80 @@ def _portable_language(path: str, timeout: float | None = None) -> tuple[str, by
     return resolve(value["language"]), content
 
 
+def _resolve_target(
+    command: str, rest: list[str], timeout: float | None, *, portable: bool
+) -> tuple[str, str, bytes | None]:
+    """Split positionals into ``(language, path, content)``.
+
+    With ``--portable`` and a single positional, that positional is a
+    document carrying its own language; otherwise the positionals are
+    the language and the program path.
+    """
+    if not (portable and len(rest) == 1):
+        _check_count(command, rest, 2)
+    if portable and len(rest) == 1:
+        path = rest[0]
+        with _errors():
+            language, content = _portable_language(path, timeout)
+    else:
+        language, path = rest[0], rest[1]
+        content = None
+    return language, path, content
+
+
 def _note(message: str) -> None:
     """Write one advisory line to stderr, without Python's warning framing."""
     sys.stderr.write(f"{message}\n")
+
+
+def _termination_notice(name: str, bounds: str) -> None:
+    """Warn that a termination-mode language answers 1 by not halting.
+
+    ``bounds`` names how this command can bound the run, e.g.
+    ``"--timeout SECONDS"`` or ``"--timeout SECONDS or --steps N"``.
+    """
+    _note(
+        f"{name}: this language answers 1 by not terminating, so a "
+        f"program with that answer will run until you stop it; pass "
+        f"{bounds} to bound it"
+    )
+
+
+def _slurp_thread[SlurpT](
+    work: Callable[[], SlurpT],
+    timeout: float | None,
+    *,
+    notice: AbstractContextManager[None] | None = None,
+    on_timeout: Callable[[], None],
+) -> SlurpT:
+    """Run ``work`` on a daemon thread, abandoning it after ``timeout``.
+
+    ``notice`` wraps the join when the wait deserves announcing; a slow
+    thread is left to ``on_timeout`` (which exits).  An exception raised
+    by ``work`` is re-raised on the caller's thread.
+    """
+    box: list[SlurpT | BaseException] = []
+
+    def _slurp() -> None:
+        try:
+            box.append(work())
+        except BaseException as exc:
+            box.append(exc)
+
+    reader = threading.Thread(target=_slurp, daemon=True)
+    reader.start()
+    if notice is None:
+        reader.join(timeout)
+    else:
+        with notice:
+            reader.join(timeout)
+    if reader.is_alive():
+        on_timeout()
+    # A finished thread always appended; a live one exited above.
+    result = box[0]
+    if isinstance(result, BaseException):
+        raise result
+    return result
 
 
 def _bounded_read(path: str, timeout: float | None) -> bytes:
@@ -141,30 +220,23 @@ def _bounded_read(path: str, timeout: float | None) -> bytes:
     Only acquisition runs on the daemon thread; interpreter decoding follows
     on the caller's thread. The cap applies before any decoding.
     """
-    box: list[bytes | BaseException] = []
+    waited = timeout if timeout is not None else _READ_DEADLINE
 
-    def _slurp() -> None:
+    def _read_file() -> bytes:
         try:
             with open(path, "rb") as handle:
-                box.append(handle.read(_MAX_PROGRAM_BYTES + 1))
-        except BaseException as exc:
-            box.append(exc)
+                return handle.read(_MAX_PROGRAM_BYTES + 1)
+        except OSError as exc:
+            _fail(f"cannot read {path}: {exc}")
 
-    reader = threading.Thread(target=_slurp, daemon=True)
-    reader.start()
-    waited = timeout if timeout is not None else _READ_DEADLINE
-    reader.join(waited)
-    if reader.is_alive():
+    def _on_timeout() -> None:
         _fail(
             f"gave up reading {path} after {waited:.0f}s -- it is not "
             f"delivering data (a FIFO with no writer, or a device)",
             _TIMEOUT_EXIT,
         )
-    result = box[0] if box else b""
-    if isinstance(result, OSError):
-        _fail(f"cannot read {path}: {result}")
-    if isinstance(result, BaseException):
-        raise result
+
+    result = _slurp_thread(_read_file, waited, on_timeout=_on_timeout)
     if len(result) > _MAX_PROGRAM_BYTES:
         _fail(
             f"{path} is larger than the {_MAX_PROGRAM_BYTES // 1024} KiB this "
@@ -211,59 +283,27 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
     """
     if sys.stdin.isatty():
         return ""
-    box: list[str | BaseException] = []
 
-    def _slurp() -> None:
+    def _read_text() -> str:
         try:
-            box.append(sys.stdin.read())
-        except BaseException as exc:
-            box.append(exc)
+            return sys.stdin.read()
+        except UnicodeDecodeError as exc:
+            _fail(f"cannot read stdin: not text ({_decode_note(exc)})")
 
-    reader = threading.Thread(target=_slurp, daemon=True)
-    reader.start()
-    with _WaitingNotice(hint):
-        reader.join(timeout)
-    if reader.is_alive():
+    def _on_timeout() -> None:
         _fail(
             f"no input arrived on stdin within {timeout:.0f}s, and nothing "
             f"closed it{hint}",
             _TIMEOUT_EXIT,
         )
-    result = box[0] if box else ""
-    if isinstance(result, UnicodeDecodeError):
-        _fail(f"cannot read stdin: not text ({_decode_note(result)})")
-    if isinstance(result, BaseException):
-        raise result
+
+    result = _slurp_thread(
+        _read_text, timeout, notice=_waiting_notice(hint), on_timeout=_on_timeout
+    )
     hidden = _smuggled_bytes(result)
     if hidden is not None:
         _fail(f"cannot read stdin: not text ({_decode_note(hidden)})")
     return result
-
-
-class _WaitingNotice:
-    """Say, once, that this command is waiting for input that is not coming."""
-
-    def __init__(self, hint: str = "") -> None:
-        """Arm the notice, mentioning ``hint`` if there is one."""
-        self._timer = threading.Timer(_WAITING_NOTICE_AFTER, self._say, args=(hint,))
-        self._timer.daemon = True
-
-    @staticmethod
-    def _say(hint: str) -> None:
-        """Write the one line, from the timer thread."""
-        sys.stderr.write(
-            f"still waiting for input on stdin after "
-            f"{_WAITING_NOTICE_AFTER:.0f}s; nothing has closed it{hint}\n"
-        )
-
-    def __enter__(self) -> _WaitingNotice:
-        """Start the timer."""
-        self._timer.start()
-        return self
-
-    def __exit__(self, *_exc: object) -> None:
-        """Cancel it."""
-        self._timer.cancel()
 
 
 def _write_output(text: str) -> None:

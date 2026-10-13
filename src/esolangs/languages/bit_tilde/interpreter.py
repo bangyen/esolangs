@@ -19,10 +19,10 @@ backstop covers it.
 
 from __future__ import annotations
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import unmatched
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.brackets import unmatched
+from esolangs.runtime.io import IO
 
 #: One instant of a run: ``(ind, cell, tape)`` -- the code cursor, the
 #: pointer, and the bit pool.  A value, not a record: every transition below

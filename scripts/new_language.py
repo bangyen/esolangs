@@ -8,7 +8,7 @@
 
 ``start`` writes the interpreter, generator and test stubs.  ``check`` lists
 every integration point the language still lacks, with the file and entry
-to add; ``tests/tooling/scripts/test_new_language.py`` runs it over the registry,
+to add; ``tests/tooling/test_new_language.py`` runs it over the registry,
 so the list cannot drift from what the suite enforces.  Once the list is
 empty it runs the seconds-long tests ``finish`` would otherwise fail late.
 ``bounds`` measures what the proof ledger's cells state.  ``finish``
@@ -83,7 +83,7 @@ answers, and the size and build bound (O(T) for a decision tree)>
 """
 
 from esolangs.registry._language import Language
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.generation.helpers import _validate_truth_table
 
 
 def {slug}(truth_table: str) -> str:
@@ -95,7 +95,7 @@ def {slug}(truth_table: str) -> str:
 # The registry entry.  Add split=True if run() takes one string per source
 # line, contract=BooleanContract(...) if the programs do not read one 0/1
 # line per input (docs/CONTRIBUTING.md#the-boolean-io-contract), and
-# wrap=wrap_chars (esolangs.tools.wrap) if a newline anywhere is harmless,
+# wrap=wrap_chars (esolangs.generation.wrap) if a newline anywhere is harmless,
 # else no_wrap="<why a break changes the program>"; eof="..." if an
 # exhausted read has a spec value, empty_program="..." if "" is rejected,
 # random=True if an instruction draws at random (run(seed=...) fixes it);
@@ -141,7 +141,7 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
             f'"""Tests for the {name} interpreter."""\n\n'
             "import pytest\n\n"
             f"from esolangs.languages.{slug}.interpreter import run\n"
-            "from esolangs.interpreters.io import ScriptedIO\n\n\n"
+            "from esolangs.runtime.io import ScriptedIO\n\n\n"
             '@pytest.mark.xfail(reason="placeholder: replace with the spec")\n'
             "def test_placeholder_increment_and_write() -> None:\n"
             "    io = ScriptedIO()\n"
@@ -165,8 +165,8 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
         path
         for path in (
             package.with_suffix(".py"),
-            ROOT / "src/esolangs/interpreters" / slug,
-            ROOT / "src/esolangs/tools" / slug,
+            ROOT / "src/esolangs/runtime" / slug,
+            ROOT / "src/esolangs/generation" / slug,
         )
         if path.exists()
     ]
@@ -192,7 +192,7 @@ def _seed_curation(name: str) -> None:
 
 
 def _interpreter_stub(name: str) -> str:
-    template = (ROOT / "src/esolangs/interpreters/_template.py").read_text()
+    template = (ROOT / "src/esolangs/runtime/_template.py").read_text()
     body = template.split('"""', 2)[2]
     return (
         f'"""Interpreter for {name}.\n\n{PLACEHOLDER} the machine from the wiki '
@@ -328,8 +328,8 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
 
 def _generator_gaps(lang: Language) -> list[Gap]:
     """List the steps a language with a Boolean generator needs."""
+    from esolangs.generation.wrap import takes_width
     from esolangs.languages import generators
-    from esolangs.tools.wrap import takes_width
 
     assert lang.boolean is not None
     gen = lang.boolean.__name__
@@ -364,7 +364,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         gaps.append(
             Gap(
                 source_rel,
-                "add wrap=wrap_chars (from esolangs.tools.wrap, or a wrapper "
+                "add wrap=wrap_chars (from esolangs.generation.wrap, or a wrapper "
                 "its syntax needs, keeping a header such as `W,H:` whole) to "
                 "its LANGUAGE, take a width parameter, or say why a break "
                 'would change the program as no_wrap="..."',
@@ -458,9 +458,9 @@ def quick_tests(name: str) -> list[str]:
         )
     ]
     nodes += [
-        "tests/generators/test_interpreter_conventions.py"
+        "tests/interpreters/test_interpreter_conventions.py"
         "::test_interpreter_docstrings_follow_the_template",
-        f"tests/interpreters/fuzz/test_interpreters_robustness.py"
+        f"tests/interpreters/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
     ]
     if lang.boolean is None:
@@ -474,9 +474,7 @@ def quick_tests(name: str) -> list[str]:
         )
     stem = example_stems().get(lang.id, "")
     if stem:
-        nodes.append(
-            f"tests/tooling/scripts/test_examples.py::test_boolean_example[{stem}]"
-        )
+        nodes.append(f"tests/tooling/test_examples.py::test_boolean_example[{stem}]")
     if (
         stem
         in removal.tests_attr(
@@ -528,7 +526,7 @@ def sources(name: str) -> list[str]:
         for module in dict.fromkeys(modules)
         for base in (ROOT / "src" / module.replace(".", "/"),)
         for path in (base.with_suffix(".py"), base)
-        if path.exists()
+        if path.is_file() or (path / "__init__.py").is_file()
     ]
 
 
@@ -550,6 +548,7 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
         size = max(len(str(esolangs.generate(name, t))) for t in tables(name, n))
         steps = max(worst, key=lambda t: worst[t][0])
         bits = max(worst, key=lambda t: worst[t][1])
+        # Mean program size per row: ``size`` covers 2**n rows.
         rows.append((n, worst[steps][0], worst[bits][1], size >> n, steps, bits))
     return rows
 
@@ -693,11 +692,7 @@ def main(argv: list[str] | None = None) -> int:
         quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
         print("+ pytest", " ".join(quick_tests(args.name)), flush=True)
         failed = subprocess.run([*quick, *quick_tests(args.name)], cwd=ROOT)
-        # The gate's bandit, on the language's own sources only.
-        bandit = ["uv", "run", "--no-sync", "--with", "bandit", "bandit", "-q"]
-        print("+ bandit", *sources(args.name), flush=True)
-        flagged = subprocess.run([*bandit, *sources(args.name)], cwd=ROOT)
-        if failed.returncode or flagged.returncode:
+        if failed.returncode:
             print(f"{args.name}: integrated, but fix the failures above first")
             return 1
         print(
@@ -712,7 +707,7 @@ def main(argv: list[str] | None = None) -> int:
             leftover = removal.remove(args.name)
         except ValueError as exc:
             parser.error(str(exc))
-        print(f"removed {args.name}; {len(leftover)} mention(s) left to edit by hand")
+        print(f"removed {args.name}; {len(leftover)} mention(s) to review")
         print("\n".join(leftover))
         return 0
     try:

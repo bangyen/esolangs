@@ -3,7 +3,6 @@
 import pytest
 
 from esolangs.exceptions import HaltError, ProgramError
-from esolangs.interpreters.io import IO
 from esolangs.languages.crement.interpreter import (
     _advance,
     _Instruction,
@@ -13,6 +12,7 @@ from esolangs.languages.crement.interpreter import (
     _State,
     run,
 )
+from esolangs.runtime.io import IO
 from esolangs.vm import run_until_halt_or_cycle
 
 

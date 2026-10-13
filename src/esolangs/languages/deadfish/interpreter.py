@@ -29,9 +29,9 @@ neither ``EOFError`` nor :class:`~esolangs.exceptions.HaltError` arises.
 
 from __future__ import annotations
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 #: ``(ind, value)``: the code position and the one accumulator.
 type _State = tuple[int, int]

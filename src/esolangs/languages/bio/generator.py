@@ -3,10 +3,8 @@
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language, Shape
-from esolangs.tools.constant_projection import balanced_projection
-from esolangs.tools.helpers import (
+from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -14,8 +12,11 @@ from esolangs.tools.helpers import (
     mark_runs,
     unmark,
 )
-from esolangs.tools.wrap import _bio as _wrap_bio
-from esolangs.tools.wrap import balance_program
+from esolangs.generation.wrap import balance_program
+from esolangs.languages.bio.wrapping import _balance_bio
+from esolangs.languages.bio.wrapping import _bio as _wrap_bio
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language, Shape
 
 __all__ = ["BIO_PAIR", "bio"]
 
@@ -119,5 +120,6 @@ LANGUAGE = Language(
     shape=Shape.LOOKUP,
     contract=BooleanContract(),
     wrap=_wrap_bio,
+    wrap_balance=_balance_bio,
     example=Example(pair=BIO_PAIR),
 )

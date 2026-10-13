@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.b_tapemark.interpreter import (
     _advance,
     _Grid,
@@ -10,6 +9,7 @@ from esolangs.languages.b_tapemark.interpreter import (
     _read,
     run,
 )
+from esolangs.runtime.io import ScriptedIO
 
 
 def execute(source: str, stdin: str = "") -> str:

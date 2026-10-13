@@ -3,9 +3,9 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.smu.generator import smu
 from esolangs.languages.smu.interpreter import preprocess, run
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import witnesses
 
 CAT = "x(+|)xg()+gy(g)ybx=(=)y=xy+x=ba(bxggxg)aa(|=)=a(+=)=baxg"

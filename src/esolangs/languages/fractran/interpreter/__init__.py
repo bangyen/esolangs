@@ -29,19 +29,22 @@ from here: a program's inputs are in its starting value.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import cast
 
-from esolangs._drive import drive
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.languages.fractran.interpreter.index import (
     Cursor,
     Factors,
+    FactorWrites,
     Index,
     advance,
     compile_index,
+    factor_writes,
     integer,
 )
+from esolangs.runtime._drive import drive
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 #: A fraction, as the numerator and denominator it was written with.
 type _Fraction = tuple[int, int]
@@ -122,6 +125,29 @@ def _advance(
         return (value, True), None if printed else value
     numerator, denominator = fractions[index]
     return (value * numerator // denominator, printed), None
+
+
+def _advance_sparse(
+    state: tuple[Factors, bool], index: Index, choice: int | None
+) -> tuple[tuple[Factors, bool], int | None]:
+    """Return the next immutable sparse exponents and any final value."""
+    factors, printed = state
+    if choice is None:
+        return (factors, True), None if printed else integer(factors)
+    return (advance(factors, index.rules[choice][1]), printed), None
+
+
+def _advance_indexed(
+    value: Mapping[int, int], index: Index, choice: int | None, *, printed: bool = False
+) -> tuple[bool, FactorWrites, int | None]:
+    """Return the print flag, exponent edits, and any final value.
+
+    The borrowed exponent map is read-only; the shell applies edits and
+    updates its guard indexes without copying every exponent per command.
+    """
+    if choice is None:
+        return True, (), None if printed else integer(tuple(value.items()))
+    return printed, factor_writes(value, index.rules[choice][1]), None
 
 
 class _Machine:
@@ -242,17 +268,16 @@ class _Machine:
         index = self._next()
         if self._index is None:
             self._state, out = _advance(self._state, self.fractions, index)
-        elif index is None:
-            out = None if self.printed else self.value
-            self.printed = True
         elif self._cursor is None:
-            self._scan_factors = advance(
-                self._scan_factors, self._index.rules[index][1]
+            (self._scan_factors, self.printed), out = _advance_sparse(
+                (self._scan_factors, self.printed), self._index, index
             )
-            out = None
         else:
-            self._cursor.advance(index)
-            out = None
+            self.printed, writes, out = _advance_indexed(
+                self._cursor.value, self._index, index, printed=self.printed
+            )
+            if index is not None:
+                self._cursor.apply(index, writes)
         if out is not None:
             self.io.print_num(out)
 

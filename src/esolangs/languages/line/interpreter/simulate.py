@@ -36,7 +36,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime.source_hints import syntax_error
 
 from .extract import OpCall, Stroke, Vertex, classify_ops
 
@@ -259,13 +259,31 @@ def _advance(
     return (node, at + 1, pointer, tape), output
 
 
+def _needs_input(program: tuple[_Frame, ...], state: _State) -> bool:
+    """Whether the next step reads a number, so the shell must feed one.
+
+    Pure: reading the opcode is not evaluating it.  Naming the question
+    separately keeps ``_advance`` free of any caller it would have to ask.
+    """
+    node, at = state[0], state[1]
+    if node is None:
+        return False
+    frame = program[node]
+    return at < len(frame.ops) and frame.ops[at][0] == "i"
+
+
 def _drive(program: tuple[_Frame, ...], io: IO) -> _Tape:
+    """Shell: step the pure :func:`_advance`, feeding input and writing output.
+
+    The node semantics live in ``_advance`` and are effects-shaped: it takes
+    the input value a read needs and returns the number an ``o`` node writes.
+    This loop only asks that pure question, reads one value from ``io`` when
+    it comes up, hands it over, and writes what comes back.
+    """
     state: _State = (0, 0, 0, ())
     node = state[0]
     while node is not None:
-        at = state[1]
-        frame = program[node]
-        value = io.read() if at < len(frame.ops) and frame.ops[at][0] == "i" else None
+        value = io.read() if _needs_input(program, state) else None
         state, output = _advance(state, program, value)
         if output is not None:
             io.write(output)

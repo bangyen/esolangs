@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.generation.helpers import _validate_truth_table
 
-from . import _Builder, _dag, _mux, _Value
+from . import _Builder, _dag, _emit_dag
 from .layout import _Layout
 
 type _Forest = tuple[_Layout, list[tuple[int, int] | None]]
@@ -86,12 +86,7 @@ def _suffix_forest(words: list[str], inputs: int) -> _Forest:
     # Reserve one four-column gate group per live result. A fixed 128-column
     # cap forced repeated carries: the eight-root n=14 probe timed out at 30s.
     builder.limit = builder.band_start + 4 * peak + 8
-    values: dict[int, _Value] = {0: "0", 1: "1"}
-    for level, zero, one, node in ops:
-        signal = _mux(builder, selectors[inputs - 1 - level], values[zero], values[one])
-        values[node] = signal
-        if isinstance(signal, int) and signal in builder.stride_of:
-            builder.pending[signal] = reads.get(node, 0)
+    values = _emit_dag(builder, selectors, (ops, dag[1], needed, reads))
     sources: list[int | None] = []
     for root in roots:
         if root == 1:

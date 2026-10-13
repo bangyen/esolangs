@@ -7,8 +7,8 @@ from difflib import get_close_matches
 
 from esolangs import LanguageInfo
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
-from esolangs.interpreters.source_hints import error_text
 from esolangs.registry import SUGGESTION_CUTOFF
+from esolangs.runtime.source_hints import error_text
 
 # A watched cell's history longer than this is printed abridged: the whole
 # thing was one line of 486 comma-separated values for a 486-step program,
@@ -104,11 +104,7 @@ def _swapped_hint(language: str, table: str) -> str:
 
     A power-of-two run of 0s and 1s in the language slot is a swap.
     """
-    looks_like_table = bool(language) and not set(language) - {"0", "1"}
-    if not looks_like_table:
-        return ""
-    n = len(language).bit_length() - 1
-    if len(language) != 2**n or n < 1:
+    if not _looks_like_a_table(language):
         return ""
     return (
         f"; {language!r} looks like a truth table -- the language comes "

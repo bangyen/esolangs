@@ -14,11 +14,12 @@ proves it.
 """
 
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Literal
 
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 # ``(dx, dy)``; named so a heading stays distinct from its character.
 _Heading = Literal["n", "e", "s", "w"]
@@ -37,11 +38,10 @@ _INSTRUCTIONS = "".join(h + h.upper() for h in _MOVE) + "pP"
 _HEADING: dict[str, _Heading] = {h: h for h in _MOVE}
 
 
-#: ``(grid, x, y, ip)``; ``visited`` is bookkeeping, not state.  A
-#: read-only ``Mapping``, not a frozen copy: freezing to a ``frozenset``
-#: turned a 0.1s test into 134s on thousand-cell grids.
+#: The shell's grid is borrowed read-only; freezing it per step turned a
+#: 0.1s test into 134s on thousand-cell grids. Paint leaves as an effect.
 type _Grid = Mapping[tuple[int, int], int]
-type _State = tuple[_Grid, int, int, int]
+type _State = tuple[int, int, int]
 
 #: ``(x, y, ip, paint)``, paint = ``(cell, colour)`` or None.  One write
 #: per step instead of a grid copy; :meth:`_Machine._restore` applies it.
@@ -53,14 +53,16 @@ def _colour(grid: _Grid, cell: tuple[int, int]) -> int:
     return grid.get(cell, 0)
 
 
-def _advance(state: _State, command: str) -> _Move:
+def _advance(state: _State, grid: _Grid, program: str) -> _Move:
     """Return the position after one instruction, plus any paint it made.
 
-    Pure; the cursor advance is the caller's.  The paint comes back as
+    Pure; the paint comes back as
     ``(cell, colour)`` rather than a rewritten grid (O(grid) per paint made a
     walk O(n**2) over thousands of cells).  A refused move is not an error.
     """
-    grid, x, y, ip = state
+    x, y, ip = state
+    command = program[ip]
+    ip = (ip + 1) % len(program)
     if command == "p":
         return (x, y, ip, ((x, y), 0))
     if command == "P":
@@ -144,7 +146,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (self.grid, self.x, self.y, self.ip)
+        return (self.x, self.y, self.ip)
 
     def _restore(self, move: _Move) -> None:
         """Write a transition's result back onto the machine's fields.
@@ -174,7 +176,7 @@ class _Machine:
     def step(self) -> None:
         """Execute one instruction, or render once the run is interrupted.
 
-        The cursor wraps modulo the program length here; ``dumped`` keeps the
+        The transition wraps the cursor modulo the program length; ``dumped`` keeps the
         render to one.  The render branch does not advance, or the picture
         would be one instruction past the boundary.
         """
@@ -186,8 +188,7 @@ class _Machine:
         # ``run`` never steps an empty program; this guards direct callers.
         if not self.prog:  # pragma: no cover - run() never steps an empty program
             return
-        x, y, _ip, paint = _advance(self._state, self.prog[self.ip])
-        self._restore((x, y, (self.ip + 1) % len(self.prog), paint))
+        self._restore(_advance(self._state, MappingProxyType(self.grid), self.prog))
 
     def render(self) -> str:
         """Render the visited bounding box, marking the ant's cell.

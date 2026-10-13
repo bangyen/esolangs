@@ -7,10 +7,11 @@ import pytest
 
 import esolangs
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
+from tests.proofs._ledger import load
 from tests.support.cli_support import _failure
 
 
-def test_generator_cap_hint_reaches_cli(capsys):
+def test_generator_cap_hint_reaches_cli(capsys) -> None:
     _, err = _failure(["generate", "Befunge", "0010" * (1 << 12)], capsys)
     assert "fixed 80x25 grid" in err
     assert err.count("hint:") == 1
@@ -46,7 +47,7 @@ def test_befunge_grid_refusal_is_catchable() -> None:
 
 
 @pytest.mark.parametrize("wrapped", ["vm", "machine", "debugger"])
-def test_random_snapshot_cannot_prove_a_cycle(wrapped):
+def test_random_snapshot_cannot_prove_a_cycle(wrapped) -> None:
     from esolangs.debugger import make_debugger
     from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
 
@@ -67,3 +68,10 @@ def test_random_snapshot_cannot_prove_a_cycle(wrapped):
 
 def test_it_reads_numeric_tokens_on_the_same_line() -> None:
     assert_reads_tokens_on_one_line("Befunge")
+
+
+def test_befunge_refusal_is_an_explicit_totality_exception() -> None:
+    """The fixed-torus refusal must not disappear from the totality audit."""
+    with pytest.raises(esolangs.GeneratorCapError, match="at most thirteen inputs"):
+        esolangs.generate("Befunge", "01" * 8192)
+    assert "exception" in load().by_name()["Befunge"].labels

@@ -9,9 +9,9 @@ and no text. + increments an unbounded accumulator. No input, EOFError,
 ValueError or HaltError arises.
 """
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
 
 type _State = tuple[int, int]
 

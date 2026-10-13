@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from esolangs.tools.helpers import subtree_ids
-from esolangs.tools.shared_block import _repeated_blocks
+from esolangs.generation.helpers import subtree_ids
+from esolangs.generation.shared_block import _repeated_blocks
 
 _PROLOGUE = '"49/b""48/c"'
 _REFERENCES = '"1/f""2/g"'
@@ -57,7 +57,11 @@ def _inline_metrics(ids: list[list[int]]) -> list[dict[int, _Metric]]:
 
 
 def _decoder(
-    width: int, bodies: tuple[_Metric, ...], emit: _Emit | None = None
+    width: int,
+    bodies: tuple[_Metric, ...],
+    emit: _Emit | None = None,
+    *,
+    radix: int = 2,
 ) -> tuple[int, dict[int, int]]:
     def visit(bit: int, labels: tuple[int, ...]) -> tuple[int, dict[int, int]]:
         if bit < 0:
@@ -65,9 +69,13 @@ def _decoder(
             if emit is not None:
                 emit(target)
             return bodies[target].chars, {target: bodies[target].commands}
+        divisor = radix**bit
         arms = [
-            (value, tuple(label for label in labels if (label >> bit) & 1 == value))
-            for value in (1, 0)
+            (
+                value,
+                tuple(label for label in labels if label // divisor % radix == value),
+            )
+            for value in range(radix - 1, -1, -1)
         ]
         arms = [(value, group) for value, group in arms if group]
         # Only an active parent reaches a fixed digit. Pop it without a test;
@@ -81,7 +89,7 @@ def _decoder(
         costs = {}
         for value, group in arms:
             if emit is not None:
-                emit("[e\\" + ("g" if value else "f") + "/~e~")
+                emit("[e\\" + "fga"[value] + "/~e~")
             size, tails = visit(bit - 1, group)
             if emit is not None:
                 emit("]")
@@ -94,11 +102,63 @@ def _decoder(
     return visit(width - 1, tuple(range(len(bodies))))
 
 
+def _prefix(
+    ids: list[list[int]],
+    metrics: list[dict[int, _Metric]],
+    selected: dict[tuple[int, int], int],
+    width: int,
+    tails: dict[int, int],
+    *,
+    radix: int = 2,
+    inactive: int = 2,
+    stop_depth: int | None = None,
+    emit: _Emit | None = None,
+) -> _Metric:
+    n = len(ids) - 1
+
+    def visit(level: int, block: int) -> _Metric:
+        key = ids[level][block]
+        if (level, key) in selected or level == stop_depth or key < 2:
+            if (level, key) in selected:
+                target = selected[level, key]
+                if emit is not None:
+                    for bit in range(width):
+                        emit(f'"{1 + (target // radix**bit % radix)}/e"')
+                return _Metric(5 * width, width + tails[target])
+            if emit is not None:
+                if level == stop_depth:
+                    emit(block << (n - level))
+                else:
+                    emit(";d;" * (n - level) + (":b:" if key else ":c:"))
+            value = metrics[level][key]
+            return _Metric(value.chars, value.commands + inactive)
+        zero, one = ids[level + 1][2 * block : 2 * block + 2]
+        if zero == one:
+            if emit is not None:
+                emit(";d;")
+            left = visit(level + 1, 2 * block)
+            return _Metric(3 + left.chars, 1 + left.commands)
+        if emit is not None:
+            emit(";a;[a\\b/~a~")
+        right = visit(level + 1, 2 * block + 1)
+        if emit is not None:
+            emit("][a\\c/~a~")
+        left = visit(level + 1, 2 * block)
+        if emit is not None:
+            emit("]")
+        return _Metric(
+            21 + left.chars + right.chars, 6 + max(left.commands, right.commands)
+        )
+
+    return visit(0, 0)
+
+
 def _price(
     ids: list[list[int]],
     metrics: list[dict[int, _Metric]],
     depth: int,
     rows: tuple[int, ...],
+    emit: _Emit | None = None,
 ) -> _Plan:
     n = len(ids) - 1
     width = (len(rows) - 1).bit_length()
@@ -106,23 +166,15 @@ def _price(
     bodies = tuple(metrics[depth][key] for key in selected)
     decoder_chars, tails = _decoder(width, bodies)
 
-    def prefix(level: int, block: int) -> _Metric:
-        key = ids[level][block]
-        if level == depth or key < 2:
-            if level == depth and key in selected:
-                return _Metric(5 * width, width + tails[selected[key]])
-            value = metrics[level][key]
-            return _Metric(value.chars, value.commands + 2)
-        zero, one = ids[level + 1][2 * block : 2 * block + 2]
-        left = prefix(level + 1, 2 * block)
-        if zero == one:
-            return _Metric(3 + left.chars, 1 + left.commands)
-        right = prefix(level + 1, 2 * block + 1)
-        return _Metric(
-            21 + left.chars + right.chars, 6 + max(left.commands, right.commands)
-        )
-
-    value = prefix(0, 0)
+    value = _prefix(
+        ids,
+        metrics,
+        {(depth, key): target for key, target in selected.items()},
+        width,
+        tails,
+        stop_depth=depth,
+        emit=emit,
+    )
     return _Plan(
         depth, rows, _Metric(22 + value.chars + decoder_chars, 4 + value.commands)
     )
@@ -153,31 +205,13 @@ def _render(
         return bodies[key]
 
     out = [_PROLOGUE]
-    pending: list[str | tuple[int, int]] = [(0, 0)]
-    while pending:
-        item = pending.pop()
-        if isinstance(item, str):
-            out.append(item)
-            continue
-        level, block = item
-        key = ids[level][block]
-        unread = n - level
-        if level == depth:
-            if key in selected:
-                target = selected[key]
-                out.extend(f'"{1 + ((target >> bit) & 1)}/e"' for bit in range(width))
-            else:
-                out.append(body(block << unread))
-        elif key < 2:
-            out.append(";d;" * unread + (":b:" if key else ":c:"))
-        elif ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]:
-            out.append(";d;")
-            pending.append((level + 1, 2 * block))
-        else:
-            out.append(";a;[a\\b/~a~")
-            pending.extend(
-                ["]", (level + 1, 2 * block), "][a\\c/~a~", (level + 1, 2 * block + 1)]
-            )
+    _price(
+        ids,
+        metrics,
+        depth,
+        rows,
+        lambda item: out.append(item if isinstance(item, str) else body(item)),
+    )
     out.append(_REFERENCES)
 
     def emit(item: str | int) -> None:

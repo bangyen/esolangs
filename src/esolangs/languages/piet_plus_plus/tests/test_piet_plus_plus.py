@@ -2,12 +2,38 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.languages.piet_plus_plus.interpreter import _COMMANDS, run
+from esolangs.languages.piet_plus_plus.interpreter import (
+    _COMMANDS,
+    _advance,
+    _Machine,
+    _NeedInputError,
+    run,
+)
 from esolangs.raster import Raster
+from esolangs.runtime.io import ScriptedIO
 
 _DELTA = {name: delta for delta, name in _COMMANDS.items()}
 BLACK = (0, 0, 0)
+
+
+class _EventIO(ScriptedIO):
+    """A ``ScriptedIO`` that logs each read and write in order."""
+
+    def __init__(self, stdin: str = "") -> None:
+        super().__init__(stdin)
+        self.events: list[str] = []
+
+    def input_char(self, prompt: str = "Input: ") -> int:
+        self.events.append("read")
+        return super().input_char(prompt)
+
+    def input_token(self, prompt: str = "Input: ") -> str:
+        self.events.append("read")
+        return super().input_token(prompt)
+
+    def _write(self, value: object) -> None:
+        self.events.append(f"write:{value}")
+        super()._write(value)
 
 
 def strip(*commands: tuple[str, int]) -> Raster:
@@ -45,6 +71,94 @@ def execute(program: Raster, stdin: str = "") -> str:
     io = ScriptedIO(stdin)
     run(program, io)
     return io.getvalue()
+
+
+def test_advance_is_pure_and_repeatable() -> None:
+    """The transition is a function of its core and leaves it unchanged."""
+    program = strip(
+        ("push_int", 3), ("push_int", 4), ("multiply", 1), ("out_integer", 1)
+    )
+    machine = _Machine(program, ScriptedIO(""))
+    core = machine.state
+    writes_before = dict(core[7])
+    first, first_effect = _advance(core)
+    second, second_effect = _advance(core)
+    assert first == second
+    assert first_effect == second_effect
+    assert core[3] == machine.state[3]
+    assert dict(core[7]) == writes_before
+
+
+def test_advance_returns_output_instead_of_writing() -> None:
+    """``out`` reports an effect; the transition owns no port."""
+    program = strip(
+        ("push_int", 3), ("push_int", 4), ("multiply", 1), ("out_integer", 1)
+    )
+    io = ScriptedIO("")
+    machine = _Machine(program, io)
+    effect = None
+    for _ in range(30):
+        core, effect = _advance(machine.state)
+        machine.state = core
+        if effect:
+            break
+    assert effect == ("out", (12,), True)
+    assert io.getvalue() == ""
+
+
+def test_advance_requests_input_rather_than_reading() -> None:
+    """An ``in`` command raises instead of touching the port."""
+    program = strip(("in_character", 1), ("out_character", 1))
+    io = ScriptedIO("A")
+    machine = _Machine(program, io)
+
+    def step_to_input() -> None:
+        for _ in range(30):
+            core, _effect = _advance(machine.state)
+            machine.state = core
+
+    with pytest.raises(_NeedInputError) as caught:
+        step_to_input()
+    assert caught.value.effects is None  # one command per step: no prefix
+    assert io.getvalue() == ""
+    assert io.position() == 0
+
+
+def test_a_fault_is_rethrown_after_flushing_its_prefix() -> None:
+    """The shell writes the carried prefix, then re-raises the cause."""
+    from types import MappingProxyType
+
+    from esolangs.languages.piet_plus_plus.interpreter import _FaultError
+
+    program = strip(("push_int", 1), ("out_integer", 1))
+    machine = _Machine(program, ScriptedIO(""))
+    # An empty image is malformed; the traversal raises, and the shell must
+    # surface that cause after writing the (empty) prefix exactly once.
+    machine.state = ((0, 0), 0, -1, (), (), False, (), MappingProxyType({}))
+    with pytest.raises(IndexError):
+        machine.step()
+    with pytest.raises(_FaultError) as caught:
+        _advance(machine.state)
+    assert isinstance(caught.value.cause, IndexError)
+    assert caught.value.effects is None
+
+
+def test_an_input_step_reads_before_the_write_it_feeds() -> None:
+    """The retry kernel never defers or duplicates the output."""
+    program = strip(("in_character", 1), ("out_character", 1))
+    io = _EventIO("A")
+    run(program, io)
+    assert io.events == ["read", "write:A"]
+    assert io.getvalue() == "A"
+
+
+def test_an_input_step_at_eof_writes_nothing_and_keeps_going() -> None:
+    """EOF is ignored, and no pending output is dropped or repeated."""
+    program = strip(("in_character", 1), ("out_character", 1), ("out_character", 1))
+    io = _EventIO("")
+    run(program, io)
+    assert io.getvalue() == ""
+    assert io.events == ["read"]
 
 
 def test_xkcd_random_number_prints_four() -> None:
@@ -221,11 +335,28 @@ def test_a_black_start_halts_at_once() -> None:
     assert execute(Raster(((BLACK, BLACK),))) == ""
 
 
-def test_entry_point_shares_the_run() -> None:
-    from esolangs.languages.piet_plus_plus import interpreter as piet_plus_plus
-    from esolangs.languages.piet_plus_plus.interpreter import __main__ as entry
+def test_entry_point_executes_a_generated_program(tmp_path) -> None:
+    import subprocess
+    import sys
 
-    assert entry.run is piet_plus_plus.run
+    import esolangs
+
+    program = esolangs.generate("Piet++", "01", scale=1)
+    path = tmp_path / "identity.png"
+    path.write_bytes(program.to_png())
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "esolangs.languages.piet_plus_plus.interpreter",
+            str(path),
+        ],
+        input=b"1\n",
+        capture_output=True,
+        timeout=10,
+        check=True,
+    )
+    assert result.stdout == b"Input: 1"
 
 
 @pytest.mark.parametrize("scale", [1, 2, 3])

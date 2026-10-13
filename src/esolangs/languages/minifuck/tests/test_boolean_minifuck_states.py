@@ -6,15 +6,15 @@ import random
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.minifuck.generator import _affine_mask, minifuck_setters
 from esolangs.languages.minifuck.generator.states import _emit, state_setters, two_state
 from esolangs.languages.minifuck.interpreter import _Machine
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime.io import ScriptedIO
 
 
 @pytest.mark.medium
-def test_every_small_two_state_table_runs():
+def test_every_small_two_state_table_runs() -> None:
     served = nonlinear = 0
     for n in range(1, 4):
         for values in itertools.product("01", repeat=1 << n):
@@ -38,7 +38,7 @@ def test_every_small_two_state_table_runs():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("junk", [0, 1, 2, 7])
-def test_every_update_ignores_scratch_bits(junk):
+def test_every_update_ignores_scratch_bits(junk) -> None:
     for values in itertools.product((0, 1), repeat=4):
         template = _emit([[0, 1, 0, 1], list(values)], 0)
         for row, expected in enumerate(values):
@@ -58,7 +58,7 @@ def test_every_update_ignores_scratch_bits(junk):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("seed", [79, 93, 168, 196])
-def test_public_nonlinear_state_layouts_run_every_eight_input_row(seed):
+def test_public_nonlinear_state_layouts_run_every_eight_input_row(seed) -> None:
     # These chains have agreeing setter orientations, so the byte accumulator
     # is admissible; a mixed chain declines to the positional decoder.
     n = 8
@@ -84,10 +84,10 @@ def test_public_nonlinear_state_layouts_run_every_eight_input_row(seed):
             assert esolangs.run("Minifuck", source) == expected
 
 
-def test_three_residuals_are_refused():
+def test_three_residuals_are_refused() -> None:
     assert two_state("00010111") is None
 
 
 @pytest.mark.parametrize("header", ["g", "g2g", "g00g", "q\n"])
-def test_malformed_state_headers_do_not_change_legacy_setters(header):
+def test_malformed_state_headers_do_not_change_legacy_setters(header) -> None:
     assert state_setters(header, 1) is None

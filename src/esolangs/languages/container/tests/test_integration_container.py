@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 import esolangs
-from tests.reference import REFERENCE
+from tests.support.reference import REFERENCE
 
 
 @pytest.mark.parametrize("container", ["bytes", "stream"])

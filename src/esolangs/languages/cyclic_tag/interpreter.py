@@ -8,10 +8,10 @@ read, so EOFError does not arise. Appends are effects to avoid copying the queue
 
 from __future__ import annotations
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 #: ``(head, read, answer, printed)``: program position, leftmost live data-bit,
 #: the final deleted bit, and whether it is printed.  The program is fixed

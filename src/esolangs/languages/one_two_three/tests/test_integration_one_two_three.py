@@ -8,13 +8,13 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
-from esolangs._isolated import _worker
 from esolangs.exceptions import ArgumentError
-from tests.integration.cli.test_cli import _program, call_main
-from tests.reference import REFERENCE
+from esolangs.runtime._evaluate import _evaluate
+from esolangs.runtime._isolated import _worker
+from tests.cli.test_cli import _program, call_main
 from tests.support.cli_support import _LOOPS, call_both
 from tests.support.generator_support import evaluate_generated, verify_generated
+from tests.support.reference import REFERENCE
 
 
 class TestTheTerminationProofFallsBackToTheClock:
@@ -43,7 +43,7 @@ class TestTerminationTimeoutIsUndecided:
     def test_vm_construction_is_timed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import time
 
-        from esolangs import _evaluate
+        from esolangs.runtime import _evaluate
 
         def slow_machine(*_args: object, **_kwargs: object) -> None:
             time.sleep(1)
@@ -79,7 +79,9 @@ def test_termination_diagnostic_does_not_score_a_timeout() -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("isolated", [False, True])
-def test_termination_answers_still_require_a_proof_with_a_total_budget(isolated):
+def test_termination_answers_still_require_a_proof_with_a_total_budget(
+    isolated,
+) -> None:
     source = esolangs.generate("123", "0110")
     assert (
         _evaluate(
@@ -91,7 +93,7 @@ def test_termination_answers_still_require_a_proof_with_a_total_budget(isolated)
 
 def test_capped_termination_worker_reports_overflow_instead_of_divergence(
     monkeypatch, capsys
-):
+) -> None:
     import io
     import sys
 

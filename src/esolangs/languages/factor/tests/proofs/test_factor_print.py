@@ -6,10 +6,10 @@ import sys
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.factor.generator import _encode
 from esolangs.languages.factor.interpreter import run
 from esolangs.languages.factor.tests.proofs._factor_print import printed_program
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import witnesses
 
 

@@ -8,8 +8,8 @@ from tests.support.generator_support import evaluate_generated
 @pytest.mark.parametrize("program", ["++4:", "--4?", "-4?", "+12+", "v:", "v$"])
 def test_jaune_wrapping_preserves_signed_operands_and_runs(program: str) -> None:
     """A split run must not turn its last arithmetic command into a sign."""
+    from esolangs.generation.wrap import wrap_program
     from esolangs.languages.jaune.interpreter import _parse
-    from esolangs.tools.wrap import wrap_program
 
     for width in range(1, 17):
         assert _parse(wrap_program(program, "jaune", width)) == _parse(program)

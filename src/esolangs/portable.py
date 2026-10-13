@@ -7,11 +7,11 @@ import json
 from dataclasses import asdict
 from typing import Any
 
-from esolangs._program import Program
 from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, resolve, template_char
+from esolangs.runtime._program import Program
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
 
@@ -96,6 +96,68 @@ def _settings(value: Any, language: str) -> DialectSettings | None:
     return settings
 
 
+def _load_png(
+    value: dict[str, Any], name: str, settings: DialectSettings | None
+) -> Program:
+    """Restore a ``png`` document's raster."""
+    return Raster.from_png(
+        base64.b64decode(value["source"], validate=True)
+    ).tagged(name, settings=settings)
+
+
+def _load_gzip(
+    value: dict[str, Any], name: str, settings: DialectSettings | None
+) -> Program:
+    """Restore a ``gzip`` document's compressed text."""
+    limits = value.get("limits")
+    if limits is not None:
+        if not isinstance(limits, dict) or set(limits) != {
+            "plain_chars",
+            "generation_chars",
+            "gzip_bytes",
+        }:
+            raise ValueError("invalid compressed text limits")
+        limits = TextLimits(**limits)
+    return CompressedText(
+        base64.b64decode(value["source"], validate=True), limits=limits
+    ).tagged(name, settings=settings)
+
+
+def _load_text(
+    value: dict[str, Any], name: str, settings: DialectSettings | None
+) -> Program:
+    """Restore a ``text`` document's source."""
+    return _Tagged(value["source"], name, settings)
+
+
+def _load_template(
+    value: dict[str, Any], name: str, settings: DialectSettings | None
+) -> Program:
+    """Restore a ``template`` document's template and setters."""
+    if not isinstance(value["char"], str) or len(value["char"]) != 1:
+        raise ValueError("template char must be one character")
+    if value["char"] != template_char(LANGUAGES[name].id):
+        raise ValueError("template char does not match the language")
+    pairs = value["setters"]
+    if not isinstance(pairs, list) or any(
+        not isinstance(pair, list)
+        or len(pair) != 2
+        or any(not isinstance(item, str) for item in pair)
+        for pair in pairs
+    ):
+        raise ValueError("setters must be pairs of strings")
+    return _Template(value["source"], name, value["char"], pairs, settings)
+
+
+#: Source-kind dispatch for :func:`load_program`.
+_LOADERS = {
+    "png": _load_png,
+    "gzip": _load_gzip,
+    "text": _load_text,
+    "template": _load_template,
+}
+
+
 def load_program(language: str, document: str) -> Program:
     """Restore version-1 JSON as tagged source for the requested language."""
     from esolangs import _read_source
@@ -108,9 +170,10 @@ def load_program(language: str, document: str) -> Program:
         if not isinstance(value, dict):
             raise ValueError("document must be an object")
         fields = {"format", "version", "language", "settings", "kind", "source"}
-        if value.get("kind") == "gzip" and "limits" in value:
+        kind = value.get("kind")
+        if kind == "gzip" and "limits" in value:
             fields.add("limits")
-        if value.get("kind") == "template":
+        if kind == "template":
             fields |= {"char", "setters"}
         if set(value) != fields:
             raise ValueError("unexpected or missing fields")
@@ -125,42 +188,9 @@ def load_program(language: str, document: str) -> Program:
         if not isinstance(value["source"], str):
             raise ValueError("source must be a string")
         settings = _settings(value["settings"], name)
-        source: Program
-        if value["kind"] == "png":
-            source = Raster.from_png(
-                base64.b64decode(value["source"], validate=True)
-            ).tagged(name, settings=settings)
-        elif value["kind"] == "gzip":
-            limits = value.get("limits")
-            if limits is not None:
-                if not isinstance(limits, dict) or set(limits) != {
-                    "plain_chars",
-                    "generation_chars",
-                    "gzip_bytes",
-                }:
-                    raise ValueError("invalid compressed text limits")
-                limits = TextLimits(**limits)
-            source = CompressedText(
-                base64.b64decode(value["source"], validate=True), limits=limits
-            ).tagged(name, settings=settings)
-        elif value["kind"] == "text":
-            source = _Tagged(value["source"], name, settings)
-        elif value["kind"] == "template":
-            if not isinstance(value["char"], str) or len(value["char"]) != 1:
-                raise ValueError("template char must be one character")
-            if value["char"] != template_char(LANGUAGES[name].id):
-                raise ValueError("template char does not match the language")
-            pairs = value["setters"]
-            if not isinstance(pairs, list) or any(
-                not isinstance(pair, list)
-                or len(pair) != 2
-                or any(not isinstance(item, str) for item in pair)
-                for pair in pairs
-            ):
-                raise ValueError("setters must be pairs of strings")
-            source = _Template(value["source"], name, value["char"], pairs, settings)
-        else:
+        if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
+        source = _LOADERS[kind](value, name, settings)
         return _read_source(name, source)
     except (ValueError, TypeError) as error:
         raise ProgramError(f"invalid portable program: {error}") from error

@@ -7,8 +7,10 @@ import pytest
 
 import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.forbin.tests.runners import run_forbin_boolean
+from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import witnesses
+
+run_forbin_boolean = _runner("forbin")
 
 
 class TestForbinBoolean:
@@ -69,9 +71,9 @@ class TestForbinBoolean:
 
     def test_compact_variables_skip_keywords_without_duplicates(self) -> None:
         """Filtering a reserved word does not reuse its successor's name."""
-        from esolangs.languages.forbin.generator import _FORBIN_RESERVED, _forbin_name
+        from esolangs.languages.forbin.generator import _FORBIN_RESERVED, _forbin_names
 
-        names = [_forbin_name(i) for i in range(600)]
+        names = list(itertools.islice(_forbin_names(), 600))
         assert len(set(names)) == len(names)
         assert not set(names) & _FORBIN_RESERVED
 
@@ -120,12 +122,12 @@ def test_forbin_skips_keywords_at_length_boundaries(
 ) -> None:
     import importlib
 
-    from esolangs.languages.forbin.generator import _forbin_name
+    from esolangs.languages.forbin.generator import _forbin_names
 
     module = importlib.import_module("esolangs.languages.forbin.generator")
     monkeypatch.setattr(module, "_FORBIN_ALPHABET", "ab")
     monkeypatch.setattr(module, "_FORBIN_RESERVED", {"a", "ab", "bbb"})
-    names = [_forbin_name(index) for index in range(12)]
+    names = list(itertools.islice(_forbin_names(), 12))
     assert names == [
         "b",
         "aa",

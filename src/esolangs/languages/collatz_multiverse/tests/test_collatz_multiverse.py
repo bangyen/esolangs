@@ -5,8 +5,8 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.collatz_multiverse.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,

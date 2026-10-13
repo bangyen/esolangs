@@ -5,9 +5,16 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw
-from esolangs.languages.intercal.interpreter import _expression, _Machine, run
+from esolangs.languages.intercal.interpreter import (
+    _advance,
+    _expression,
+    _Machine,
+    _NeedDraw,
+    _NeedInput,
+    run,
+)
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import run_until_halt_or_all_branches_cycle
 from tests.interpreters.runner import run_program
 from tests.support.paths import ROOT
@@ -507,7 +514,7 @@ def test_c_intercal_test2_multiplies_with_its_library_copy() -> None:
 
     Its library copy splits ``#`` from ``0`` across a line; test2.chk is XXXV.
     """
-    path = ROOT / "src/esolangs/languages/intercal/tests/fixtures" / "intercal_test2.i"
+    path = ROOT / "src/esolangs/languages/intercal/tests" / "intercal_test2.i"
     assert _run(path.read_text(encoding="utf-8"), "FIVE\nSEVEN\n") == "XXXV\n"
 
 
@@ -535,3 +542,100 @@ def test_a_come_from_finishing_fires_what_comes_from_it(target: str) -> None:
     assert (
         run_until_halt_or_all_branches_cycle(_Machine(source, ScriptedIO(""))) is False
     )
+
+
+class TestPureTransition:
+    """``_advance`` is a function of its arguments, and only of them."""
+
+    def test_same_state_and_draws_give_the_same_result(self) -> None:
+        machine = _Machine("PLEASE READ OUT #1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
+        program = machine._program  # noqa: SLF001
+        state = machine.state
+        assert _advance(state, program, (), ()) == _advance(state, program, (), ())
+
+    def test_the_transition_leaves_its_arguments_unchanged(self) -> None:
+        machine = _Machine("PLEASE READ OUT #1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
+        program = machine._program  # noqa: SLF001
+        state = machine.state
+        scalars = dict(state.scalars)
+        _advance(state, program, (), ())
+        assert machine.state == state
+        assert dict(state.scalars) == scalars
+
+    def test_the_transition_reports_output_instead_of_printing(self) -> None:
+        """No port is reachable from ``_advance``: ``READ OUT`` is a value."""
+        machine = _Machine("PLEASE READ OUT #1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
+        program = machine._program  # noqa: SLF001
+        _state, effects, _used = _advance(machine.state, program, (), ())
+        assert effects == ("I\n",)
+
+    def test_a_chance_qualifier_asks_for_a_draw_rather_than_drawing(self) -> None:
+        machine = _Machine(
+            "PLEASE DO %30 GIVE UP\nDO GIVE UP\nDO GIVE UP", ScriptedIO("")
+        )
+        program = machine._program  # noqa: SLF001
+        with pytest.raises(_NeedDraw):
+            _advance(machine.state, program, (), ())
+
+    def test_an_unfed_read_asks_for_input_rather_than_reading(self) -> None:
+        machine = _Machine("PLEASE WRITE IN .1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
+        program = machine._program  # noqa: SLF001
+        with pytest.raises(_NeedInput):
+            _advance(machine.state, program, (), ())
+
+    def test_a_read_comes_from_the_explicit_input(self) -> None:
+        machine = _Machine("PLEASE WRITE IN .1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
+        program = machine._program  # noqa: SLF001
+        state, _effects, _used = _advance(machine.state, program, (), ("ONE\n",))
+        assert state.scalars[(".", 1)] == 1
+
+    def test_a_draw_request_carries_the_output_prefix(self) -> None:
+        """A READ OUT that fires a ``%`` COME FROM draws after it prints."""
+        source = (
+            "PLEASE ,1 <- #1\n"
+            "DO STASH ,1 + .1\n"
+            "DO %30 COME FROM (2)\n"
+            "(2) DO READ OUT #1"
+        )
+        machine = _Machine(source, ScriptedIO(""))
+        program = machine._program  # noqa: SLF001
+        for _ in range(3):
+            machine.step()
+        with pytest.raises(_NeedDraw) as caught:
+            _advance(machine.state, program, (), ())
+        assert caught.value.effects == ("I\n",)
+
+
+class _StopRun(Exception):  # noqa: N818 - a test sentinel
+    """Stops a run at its first draw so the prefix can be inspected."""
+
+
+class _DrawRecorder:
+    """Records the output written before each draw, then stops the run."""
+
+    def __init__(self, io: ScriptedIO) -> None:
+        self.io = io
+        self.before: list[str] = []
+
+    def randbelow(self, _upper: int) -> int:
+        self.before.append(self.io.getvalue())
+        raise _StopRun
+
+
+def _step_until_stopped(machine: _Machine) -> None:
+    """Step ``machine`` until its recorder raises to stop the run."""
+    while not machine.halted:
+        machine.step()
+
+
+def test_output_before_a_draw_is_flushed() -> None:
+    """The shell writes the READ OUT text before it services the draw."""
+    source = (
+        "PLEASE ,1 <- #1\nDO STASH ,1 + .1\nDO %30 COME FROM (2)\n(2) DO READ OUT #1"
+    )
+    io = ScriptedIO("")
+    recorder = _DrawRecorder(io)
+    machine = _Machine(source, io, recorder)
+    with pytest.raises(_StopRun):
+        _step_until_stopped(machine)
+    assert recorder.before == ["I\n"]

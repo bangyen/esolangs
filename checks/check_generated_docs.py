@@ -28,7 +28,7 @@ def _manifest_is_stale() -> bool:
     """Return whether the committed examples manifest differs from its render.
 
     Only the manifest: regenerating every example program would make this
-    check as slow as ``tests/tooling/scripts/test_examples.py``, which covers them.
+    check as slow as ``tests/tooling/test_examples.py``, which covers them.
     """
     manifest = examples.LANGUAGES_DIR / "EXAMPLES.md"
     return manifest.read_text(encoding="utf-8") != (examples.boolean_manifest_text())

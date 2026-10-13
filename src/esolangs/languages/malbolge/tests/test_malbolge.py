@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.malbolge.interpreter import (
     _EOF,
     _WORDS,
@@ -13,6 +12,7 @@ from esolangs.languages.malbolge.interpreter import (
     _op,
     run,
 )
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
 

@@ -27,36 +27,7 @@ from functools import cache, partial
 from math import isqrt
 from typing import Any, TypedDict, cast
 
-from esolangs._answers import encode_inputs, read_answer
-from esolangs._describe import (
-    LanguageInfo,
-    describe,
-    list_languages,
-)
-from esolangs._execution import (
-    check_signal_timeout,
-    interpreter_errors,
-    interpreter_module,
-    prepare_call,
-)
-from esolangs._isolated import run_isolated as _run_isolated
 from esolangs._language import Language
-from esolangs._program import Program, RunnerProgram
-from esolangs._source import (
-    InputSource,
-    ProgramSource,
-    _FileSource,
-    check_input,
-    check_scale_for,
-    text_source,
-)
-from esolangs._validate import (
-    check_bits,
-    check_scale,
-    check_seed,
-    check_timeout,
-    check_width,
-)
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import (
     ArgumentError,
@@ -73,8 +44,17 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.generation.helpers import mark_runs, same_up_to_wrapping, unmark
+
+# Imported private: it takes a *generator function*, not a language name, so
+# a caller reaching for ``esolangs.takes_width(language)`` got False for
+# every language in the registry, contradicting both its own docstring and
+# ``describe(...)["width_aware"]`` -- which is the question they were asking.
+from esolangs.generation.wrap import (
+    balance_program,
+    wrap_program,
+)
+from esolangs.generation.wrap import takes_width as _takes_width
 from esolangs.portable import dump_program, load_program
 from esolangs.raster import Raster
 from esolangs.registry import (
@@ -88,19 +68,39 @@ from esolangs.registry import (
     template_body,
     template_char,
 )
+from esolangs.registry._describe import (
+    LanguageInfo,
+    describe,
+    list_languages,
+)
+from esolangs.runtime._answers import encode_inputs, read_answer
+from esolangs.runtime._execution import (
+    check_signal_timeout,
+    interpreter_errors,
+    interpreter_module,
+    prepare_call,
+)
+from esolangs.runtime._isolated import run_isolated as _run_isolated
+from esolangs.runtime._program import Program, RunnerProgram
+from esolangs.runtime._source import (
+    InputSource,
+    ProgramSource,
+    _FileSource,
+    check_input,
+    check_scale_for,
+    text_source,
+)
+from esolangs.runtime._validate import (
+    check_bits,
+    check_scale,
+    check_seed,
+    check_timeout,
+    check_width,
+)
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
-from esolangs.tools.helpers import mark_runs, same_up_to_wrapping, unmark
-
-# Imported private: it takes a *generator function*, not a language name, so
-# a caller reaching for ``esolangs.takes_width(language)`` got False for
-# every language in the registry, contradicting both its own docstring and
-# ``describe(...)["width_aware"]`` -- which is the question they were asking.
-from esolangs.tools.wrap import (
-    balance_program,
-    wrap_program,
-)
-from esolangs.tools.wrap import takes_width as _takes_width
 
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
@@ -591,7 +591,7 @@ def _run_bounded(
     with ``partial_output``. Works on Windows and worker threads; loading
     and individual steps cannot be interrupted.
     """
-    from esolangs._validate import check_whole
+    from esolangs.runtime._validate import check_whole
 
     check_whole(max_steps, "max_steps")
     check_timeout(timeout)
@@ -673,11 +673,11 @@ def run(
     check_scale_for(language, scale)
     check_seed(seed)
     check_timeout(timeout)
-    from esolangs._isolated import check_memory
+    from esolangs.runtime._isolated import check_memory
 
     check_memory(max_memory, isolated=isolated)
     if max_output is not None:
-        from esolangs._validate import check_whole
+        from esolangs.runtime._validate import check_whole
 
         check_whole(max_output, "max_output")
         if not isolated:
@@ -692,31 +692,19 @@ def run(
                 ("use isolation with timeout, or use max_steps without isolation"),
             )
         deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
-        if max_output is not None or max_memory is not None:
-            return _run_isolated(
-                language,
-                program,
-                stdin,
-                deadline,
-                seed=seed,
-                scale=scale,
-                max_output=max_output,
-                max_memory=max_memory,
-                settings=settings,
-            )
-        if settings is not None:
-            return _run_isolated(
-                language,
-                program,
-                stdin,
-                deadline,
-                seed=seed,
-                scale=scale,
-                settings=settings,
-            )
-        if scale is None:
-            return _run_isolated(language, program, stdin, deadline, seed=seed)
-        return _run_isolated(language, program, stdin, deadline, seed=seed, scale=scale)
+        # Every option defaults to None, so passing them unconditionally
+        # matches the old per-combination cascade exactly.
+        return _run_isolated(
+            language,
+            program,
+            stdin,
+            deadline,
+            seed=seed,
+            scale=scale,
+            max_output=max_output,
+            max_memory=max_memory,
+            settings=settings,
+        )
     if max_steps is not None:
         if seed is not None:
             raise with_hint(
@@ -738,7 +726,7 @@ def run(
     # Before ``_run``, so every ValueError from the run is the
     # interpreter's.  The message names both routes out for a worker
     # thread.  Not a silent fallback to stepping: two paths for one
-    # function is how they diverged (``tests/runtime/vm/test_stepping_parity.py``).
+    # function is how they diverged (``tests/runtime/test_stepping_parity.py``).
     check_signal_timeout(
         timeout,
         "the timeout guard uses SIGALRM and needs a Unix main thread; "

@@ -12,21 +12,27 @@ loop where that is shorter, any other entry is painted one by one.
 
 import re
 from itertools import groupby
+from math import isqrt
 
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import (
+from esolangs.generation.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    input_weights,
+)
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import (
     _DIMENSIONAL_COMMAND,
     _dimensional,
     balance_score,
     wrap_program,
 )
+from esolangs.registry._language import Language, Shape
 
 __all__ = ["dimensional"]
 
 _INDEX, _PLANE = 1, 3
-_DOUBLE = "{1<1>2>2}{2<2>1}"
+# Double on the return pass: 9 steps per unit instead of 13.
+_DOUBLE = "{1<1>2}{2<2>1>1}"
 _COUNTER, _SPARE = 4, 5
 _COUNT_DOUBLE = (
     f"{{{_COUNTER}<{_COUNTER}>{_SPARE}>{_SPARE}}}{{{_SPARE}<{_SPARE}>{_COUNTER}}}"
@@ -95,22 +101,23 @@ def _count(count: int) -> str:
 
 
 def _advance(length: int) -> str:
-    """Return the shortest commands moving ``length`` along dimension 1.
+    """Move along dimension 1 using unary, counted, or balanced-stride commands."""
+    bare = f">{_INDEX}" * length
+    # Nine is the first zero run that a counted loop shortens.
+    if length < 9:
+        return bare
 
-    ``m`` steps a pass under a counter of ``length // m``, the rest bare.
-    """
-    best = f">{_INDEX}" * length
-    for m in range(1, length // 2 + 1):
-        count, rest = divmod(length, m)
-        loop = (
+    def counted(stride: int) -> str:
+        count, rest = divmod(length, stride)
+        return (
             _count(count)
             + f"{{{_COUNTER}<{_COUNTER}"
-            + f">{_INDEX}" * m
+            + f">{_INDEX}" * stride
             + "}"
             + f">{_INDEX}" * rest
         )
-        best = min(best, loop, key=len)
-    return best
+
+    return min(bare, counted(max(1, isqrt(length))), key=len)
 
 
 def _dimensional_bare(table: str, n: int) -> str:

@@ -25,22 +25,25 @@ import heapq
 from collections.abc import Callable
 from itertools import product
 
-from esolangs.languages.rotfuck.interpreter._dialect import (
-    ROTATIONS,
-    ROTFUCK_CYCLES,
+from esolangs.generation.constant_projection import (
+    balanced_projection,
+    projected_inputs,
 )
-from esolangs.languages.rotfuck.interpreter._dialect import (
-    rotation as validate_rotation,
-)
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, Shape
-from esolangs.tools.constant_projection import balanced_projection, projected_inputs
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     read_at,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.rotfuck.interpreter import (
+    ROTATIONS,
+    ROTFUCK_CYCLES,
+)
+from esolangs.languages.rotfuck.interpreter import (
+    rotation as validate_rotation,
+)
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, Shape
 
 __all__ = ["rotfuck"]
 

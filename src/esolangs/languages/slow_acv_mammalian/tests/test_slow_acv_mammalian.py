@@ -4,11 +4,11 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.slow_acv_mammalian.interpreter import (
     _Machine as SlowAcvMammalian,
 )
 from esolangs.languages.slow_acv_mammalian.interpreter import run
+from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_printing
@@ -47,8 +47,8 @@ class TestMammalian:
 
     def test_accept_appends_a_newline(self) -> None:
         """ACCEPT appends a newline byte, narrowed like other input."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         def accepted(stdin: str) -> list[int]:
             machine = _Machine("ACCEPT", ScriptedIO(stdin))
@@ -66,8 +66,8 @@ class TestMammalian:
         self, io_modulus: int | None, printed: str
     ) -> None:
         """PRONOUNCE prints ``acc`` modulo 255 ("modulo 255"), or 256 if asked."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         # SEED puts 1 in lst[0]; ACCEPT folds 0xff against acc 0 and appends
         # it; DIGEST xors the accumulator with the sum, giving 256.
@@ -81,8 +81,8 @@ class TestMammalian:
 
     def test_seed_wraps_its_register_at_a_byte(self) -> None:
         """``SEED``'s addition wraps too, at the same 256."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("CONSUME ACCEPT SEED", ScriptedIO("\xff\n"))
         while not machine.halted:
@@ -100,7 +100,7 @@ class TestMammalian:
         assert machine.ptr == 0
 
     def test_fast_run_covers_each_control_branch(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.runtime.io import ScriptedIO
 
         run(
             "CONSUME SEED CONFLAGRATE EXCRETE CONSUME FISSION DIGEST SPRINT",
@@ -243,8 +243,8 @@ class TestLeapfrog:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import IO
 
     return _Machine(code, IO())
 
@@ -266,8 +266,8 @@ def test_conflagrate_uses_cell_modulus(cell_modulus: int) -> None:
 
 @pytest.mark.parametrize("io_modulus", [255])
 def test_excrete_uses_io_modulus_without_changing_seed(io_modulus: int) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     machine = _Machine("EXCRETE SEED", ScriptedIO(), io_modulus=io_modulus)
     machine.acc = 256
@@ -288,8 +288,8 @@ def test_excrete_uses_io_modulus_without_changing_seed(io_modulus: int) -> None:
     ],
 )
 def test_unsupported_moduli_are_rejected_before_execution(settings) -> None:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine, run
+    from esolangs.runtime.io import ScriptedIO
 
     for entry in (_Machine, run):
         with pytest.raises(ValueError, match="modulus must"):

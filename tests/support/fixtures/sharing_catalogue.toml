@@ -6,8 +6,21 @@
 [local]
 "Circuit Diagram" = "_dag"  # hash-consed mux fold
 "Dig" = "_dig_indexed_shared"  # indexed six-input leaf classes
-"Line" = "shared_tree"  # guarded ancestor return
 "Polynomial" = "_polynomial_states"  # ordered BDD over equal residuals
+
+"3x" = "_three_x_emit" # defer repeated blocks behind flags
+"BrainIf" = "_brainif_dag" # residual states emitted once
+"Fargo" = "_definition_program" # intern expressions into definitions
+"INTERCAL" = "_intercal_shared" # named shared diagram variables
+"Streetcode" = "_streetcode_shared_half" # equal sibling cofactors drawn once
 
 [exempt]
 "Piet" = "a strip has no jump, so a repeated subtable cannot be shared"
+"ArrowQueue" = "Horner marker cascade; no subtable is drawn"
+"Collatz Multiverse" = "indexed packed cells, with no subtable branch"
+"Eval" = "one literal table halved by position"
+"Grapheme" = "one integer table literal"
+"Piet++" = "lookup strip has no subtable calls"
+"Taglate" = "indexed table reduction, with no subtable branch"
+"Vandevelo" = "sum of affine-coset guards, with no subtable branch"
+"bit~" = "planted lookup entries, with no subtable branch"

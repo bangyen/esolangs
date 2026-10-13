@@ -1,11 +1,15 @@
 """Circlefuck boolean generation: the deleting lookup and its index."""
 
 import random
+import warnings
 
 import pytest
 
+import esolangs
 from esolangs.languages import generators as boolean
-from esolangs.languages.circlefuck.tests.runners import run_circlefuck
+from tests.generators.boolean_runners import _runner
+
+run_circlefuck = _runner("circlefuck")
 
 
 def _rows(program: str, table: str, n: int) -> None:
@@ -18,13 +22,13 @@ def _rows(program: str, table: str, n: int) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit):
+def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> None:
     import esolangs
-    from esolangs._evaluate import _evaluate
-    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.generation.wrap import balance_program, balance_score
     from esolangs.languages.circlefuck.generator import _program
     from esolangs.languages.circlefuck.interpreter import _Machine
-    from esolangs.tools.wrap import balance_program, balance_score
+    from esolangs.runtime._evaluate import _evaluate
+    from esolangs.runtime.io import ScriptedIO
 
     table = bit * (1 << n)
     program = esolangs.generate("Circlefuck", table)
@@ -102,3 +106,10 @@ class TestCirclefuck:
         )
         _rows(boolean.circlefuck("11111111"), "11111111", 3)
         _rows(boolean.circlefuck("11110000"), "11110000", 3)
+
+
+def test_run_warns_when_input_runs_out() -> None:
+    program = boolean.circlefuck("10")  # reads one input bit
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        esolangs.run("Circlefuck", program, stdin="")

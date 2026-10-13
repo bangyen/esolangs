@@ -1,8 +1,8 @@
 """Covers :mod:`esolangs.languages.eval.generator`."""
 
+from esolangs.generation.helpers import TEMPLATE_CHAR
 from esolangs.languages import generators as boolean
 from esolangs.languages.eval.generator import PAIR
-from esolangs.tools.helpers import TEMPLATE_CHAR
 from tests.support.witness_tables import row_bits
 
 #: One input's run, as the template spells it.
@@ -13,8 +13,8 @@ class TestEvalBoolean:
     """Input-by-substitution boolean generator for the no-input language Eval."""
 
     def run_eval(self, prog: str) -> str:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.eval.interpreter import run
+        from esolangs.runtime.io import ScriptedIO
 
         io_ = ScriptedIO("")
         run(prog, io_)
@@ -59,9 +59,9 @@ class TestEvalBoolean:
 
     def test_reordering_is_not_part_of_the_lookup(self) -> None:
         """The free staged order is always shortest for the linear lookup."""
+        from esolangs.generation.helpers import permute_truth_table
         from esolangs.languages import generators
         from esolangs.languages.eval.generator import _eval_ordered
-        from esolangs.tools.helpers import permute_truth_table
 
         # Staging pushes X0 first, so the free arrangement's split order is
         # the reversal -- the no-ops build is not the identity permutation.
@@ -74,12 +74,12 @@ class TestEvalBoolean:
 
     def test_reorder_cost_selects_the_emitted_template(self) -> None:
         """The pricing model matches every candidate and picks the shortest."""
+        from esolangs.generation.helpers import permute_truth_table
         from esolangs.languages.eval.generator import _eval_ordered
         from esolangs.languages.eval.tests.eval_support import (
             _eval_cost,
             _eval_stack_programs,
         )
-        from esolangs.tools.helpers import permute_truth_table
 
         for n in (1, 2, 3):
             for value in range(2 ** (2**n)):

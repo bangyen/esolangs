@@ -39,12 +39,12 @@ from functools import cache
 from itertools import product
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2, _crazy
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import _validate_truth_table
-from esolangs.tools.wrap import wrap_chars
+from esolangs.runtime.source_hints import with_hint
 
 from .core import (
     _ACTIVE,
@@ -328,7 +328,7 @@ def _thirteen_program(truth_table: str) -> str:
 # least 81 leaves a value that ``j`` lands inside the window); that keeps the
 # main code under the level-3 region.
 _FOURTEEN_N = 14
-#: Fifteen and sixteen inputs: :mod:`esolangs.tools.malbolge.digits`.
+#: Fifteen and sixteen inputs: :mod:`esolangs.generation.malbolge.digits`.
 MAX_INPUTS = _DIGITS_N
 #: ``g`` values of the extra state cells 5, 6 and 7.
 _F_EXTRA = (57, 75, 119)

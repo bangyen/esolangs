@@ -3,7 +3,7 @@
 # These independent construction oracles deliberately mirror generated programs.
 # pylint: disable=duplicate-code
 
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
 
 
 def _residual_levels(truth_table: str, n: int) -> list[list[str]]:

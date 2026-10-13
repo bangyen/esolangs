@@ -1,7 +1,7 @@
 """Tests for the Deadfish interpreter."""
 
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.deadfish.interpreter import _Machine, run
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import SnapshotContract, StateViewContract
 from tests.interpreters.runner import run_program
 

@@ -1,19 +1,24 @@
 """Covers :mod:`esolangs.languages.six_five.generator`."""
 
 import importlib
+from collections.abc import Iterator
 from itertools import permutations
 
 import pytest
 
 import esolangs
 from esolangs import run
+from esolangs.generation.examples import BOOLEAN_EXAMPLES
+from esolangs.generation.helpers import permute_truth_table
+from esolangs.generation.wrap import (
+    _six_five,
+)
 from esolangs.languages import generators as boolean
 from esolangs.languages.six_five.generator import (
     _SIX_FIVE_TEST,
     _SIX_FIVE_TREE_NORMALIZE,
     _six_five_chosen,
     _six_five_const,
-    _six_five_dag_cost,
     _six_five_guarded,
     _six_five_hoisted,
     _six_five_markers,
@@ -21,15 +26,17 @@ from esolangs.languages.six_five.generator import (
     _six_five_stream_ordered,
     _six_five_walk,
 )
-from esolangs.languages.six_five.tests.runners import run_six_five, run_six_five_from
-from esolangs.tools.examples import BOOLEAN_EXAMPLES
-from esolangs.tools.helpers import permute_truth_table
-from esolangs.tools.wrap import (
-    _six_five,
-)
+from tests.generators.boolean_runners import _run_from, _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.witness_tables import dense as _dense
 from tests.support.witness_tables import row_bits, witnesses
+
+run_six_five = _runner("six_five")
+
+
+def run_six_five_from(program: str, feed: Iterator[str]) -> str:
+    """Run a 6-5 program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.languages.six_five.interpreter", program, feed)
 
 
 def _leaves(table: str) -> int:
@@ -120,31 +127,26 @@ class TestSixFive:
 
         assert reads_on_each_path(program) == {n}
 
-    def test_marker_precheck_matches_emitted_tree(self) -> None:
-        """The label count is what the emitted tree actually allocates."""
-
-        def plain(table: str) -> str:
-            return _six_five_chosen(table, _six_five_orders(table), share=False)
-
-        for table in ("1" + "0" * 63, "1" * 64, "1" * 127 + "0", "1" * 48 + "0" * 16):
-            assert _six_five_markers(table) == _markers(plain(table))
-        # An AND's last test copies its bit, so it prints and spends no label.
-        for table in ("0" * 63 + "1", "0" * 255 + "1"):
-            assert _six_five_markers(table) - 1 == _markers(plain(table))
-
-        # And the bound itself, over every n == 3 table: reordering can only
-        # fold more subtrees, never fewer, so the unshared winner never
-        # allocates more labels than the stream-order count.
+    def test_marker_precheck_bounds_emitted_tree(self) -> None:
+        """The precheck bounds an unshared tree in the same input order."""
+        for table in ("1" + "0" * 63, "1" * 64, "1" * 127 + "0"):
+            assert _markers(_six_five_stream_ordered(table)) == _six_five_markers(table)
+        # A copied bit or an inversion followed by reads needs no branch label.
+        for table in ("0" * 63 + "1", "0" * 255 + "1", "1" * 48 + "0" * 16):
+            assert (
+                _markers(_six_five_stream_ordered(table))
+                == _six_five_markers(table) - 1
+            )
         for value in range(256):
             table = format(value, "08b")
-            assert _markers(plain(table)) <= _six_five_markers(table)
+            assert _markers(_six_five_stream_ordered(table)) <= _six_five_markers(table)
 
     def test_folding_is_still_per_order_even_though_sharing_is_not(self) -> None:
         """Parity resists folding under every order, and is built anyway."""
         parity = "".join(str(bin(row).count("1") % 2) for row in range(64))
         for perm in permutations(range(6)):
             assert _six_five_markers(permute_truth_table(parity, perm)) == 63
-        assert _six_five_dag_cost(parity) == 12 <= 35
+        assert _markers(boolean.six_five(parity)) <= 35
         assert boolean.six_five(parity)
 
     def test_reordering_widens_what_renders(self) -> None:
@@ -189,24 +191,34 @@ class TestSixFive:
         """Sharing inverts which table is the worst case."""
         parity6 = "".join(str(bin(row).count("1") % 2) for row in range(64))
         assert _six_five_markers(parity6) == 63 > 35
-        assert _six_five_dag_cost(parity6) == 12 <= 35
+        assert _markers(boolean.six_five(parity6)) <= 35
         assert boolean.six_five(parity6)
 
         parity10 = "".join(str(bin(row).count("1") % 2) for row in range(1024))
-        assert _six_five_dag_cost(parity10) == 20 <= 35
+        assert _markers(boolean.six_five(parity10)) <= 35
         assert boolean.six_five(parity10)
+
+    def test_dense_seven_inputs_fit_the_shared_layout(self) -> None:
+        """The actual layout fits where the retired DAG precheck rejected it."""
+        table = _dense(7)
+        program = boolean.six_five(table)
+        assert _six_five_markers(table) > 35
+        assert _markers(program) <= 35
+        assert len(program) < len(_six_five_walk(table).removesuffix("0"))
+        for row in range(128):
+            feed = iter(format(row, "07b"))
+            assert run_six_five_from(program, feed) == table[row]
+            assert not list(feed)
 
     def test_a_table_whose_distinct_subtrees_overflow_takes_the_walk(self) -> None:
         """A table past the shared budget goes on the tape instead."""
-        dense7 = _dense(7)
-        assert _six_five_dag_cost(dense7) > 35
-        program = boolean.six_five(dense7)
-        assert program == _six_five_walk(dense7).removesuffix("0")  # halts at its end
-        assert _markers(program) == 7
-        for combo in range(128):
-            bits = [(combo >> (6 - i)) & 1 for i in range(7)]
-            got = run_six_five(program, [str(b) for b in bits])
-            assert got == dense7[combo], f"inputs {bits}"
+        table = _dense(8)
+        program = boolean.six_five(table)
+        assert program == _six_five_walk(table).removesuffix("0")
+        assert _markers(program) == 8
+        for combo in range(0, 256, 3):
+            got = run_six_five(program, list(format(combo, "08b")))
+            assert got == table[combo], f"row {combo}"
 
     def test_an_ignored_input_on_the_walk_is_one_read(self) -> None:
         """``B1`` and its stride: five characters, never another table.
@@ -222,8 +234,8 @@ class TestSixFive:
                 dense7[row >> (low + 1) << low | row & ((1 << low) - 1)]
                 for row in range(256)
             )
-            program = boolean.six_five(table)
-            assert len(program) - len(boolean.six_five(dense7)) == 5, at
+            program = _six_five_walk(table).removesuffix("0")
+            assert len(program) - len(_six_five_walk(dense7).removesuffix("0")) == 5, at
             assert _markers(program) == 7
             for combo in range(0, 256, 3):
                 bits = [str((combo >> (7 - i)) & 1) for i in range(8)]
@@ -295,28 +307,6 @@ class TestSixFive:
         # the hoisted builds' cheaper nodes beat the stream build's inverts;
         # 209 once a tree jumps to the subtrees it repeats.
         assert improved == 203  # the rest tie, keeping the old emission
-
-    def test_dag_count_does_not_compare_descendants(self) -> None:
-        """Nested keys compared n*T leaves even with cached tuple hashes."""
-        comparisons = 0
-
-        class Bit(str):
-            __hash__ = str.__hash__
-
-            def __eq__(self, other: object) -> bool:
-                nonlocal comparisons
-                comparisons += 1
-                return super().__eq__(other)
-
-        class Table(str):
-            def __getitem__(self, index: int | slice) -> str:
-                return Bit(super().__getitem__(index))
-
-        for n in range(3, 13):
-            comparisons = 0
-            table = Table("".join(str(row.bit_count() % 2) for row in range(1 << n)))
-            assert _six_five_dag_cost(table) == 2 * n
-            assert comparisons <= 2 * len(table)
 
     def test_the_guarded_walk_has_linear_source(self) -> None:
         for n in range(1, 13):

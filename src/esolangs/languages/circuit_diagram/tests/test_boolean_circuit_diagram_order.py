@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs.generation.helpers import permute_truth_table
 from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
@@ -11,7 +12,6 @@ from esolangs.languages.circuit_diagram.generator import (
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
-from esolangs.tools.helpers import permute_truth_table
 
 
 def _margulis_cofactors(log_side):
@@ -46,7 +46,7 @@ def _margulis_cofactors(log_side):
 
 
 @pytest.mark.medium
-def test_every_three_input_function_with_permuted_physical_ports():
+def test_every_three_input_function_with_permuted_physical_ports() -> None:
     for value in range(256):
         table = f"{value:08b}"
         rotated = permute_truth_table(table, (2, 0, 1))
@@ -56,7 +56,9 @@ def test_every_three_input_function_with_permuted_physical_ports():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("log_side", [1, 2, 3])
-def test_named_orders_avoid_literal_expander_routing_within_existing_bounds(log_side):
+def test_named_orders_avoid_literal_expander_routing_within_existing_bounds(
+    log_side,
+) -> None:
     table = _margulis_cofactors(log_side)
     n = len(table).bit_length() - 1
     if log_side >= 2:
@@ -71,7 +73,7 @@ def test_named_orders_avoid_literal_expander_routing_within_existing_bounds(log_
 
 
 @pytest.mark.medium
-def test_rotated_projection_preserves_original_read_order():
+def test_rotated_projection_preserves_original_read_order() -> None:
     core = _margulis_cofactors(1)
     kept = [0, 2, 3, 4, 6, 7, 8, 10, 11]
     table = "".join(
@@ -87,6 +89,6 @@ def test_rotated_projection_preserves_original_read_order():
 @pytest.mark.parametrize(
     ("order", "ports"), [([0, 1], 3), ([0, 0, 1], 3), ([0, 1, 3], 3)]
 )
-def test_invalid_fold_ports_abort(order, ports):
+def test_invalid_fold_ports_abort(order, ports) -> None:
     with pytest.raises(ValueError, match="distinct original ports"):
         _circuit_diagram_model("00010111", None, input_order=order, port_inputs=ports)

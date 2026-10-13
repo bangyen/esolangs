@@ -6,9 +6,9 @@ from itertools import product
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.a_painter_ant.generator import PAIR, a_painter_ant
 from esolangs.languages.a_painter_ant.interpreter import run as run_a_painter_ant
-from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from tests.generators.fills import fill
 from tests.support.witness_tables import parity as _parity
 
@@ -94,7 +94,7 @@ class TestAPainterAnt:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_roots_keep_one_origin(bit: str) -> None:
     """A constant table restores each input to one white origin, then leaves it."""
-    from esolangs._evaluate import _evaluate
+    from esolangs.runtime._evaluate import _evaluate
 
     table = bit * 8
     assert a_painter_ant(table) == "P" + "$S" * 3 + ("p" if bit == "0" else "")
@@ -127,12 +127,12 @@ class TestAPainterAntTrace:
             run("nPx", 1)
 
     def test_trace_agrees_with_the_interpreter(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.a_painter_ant.tests.a_painter_ant_trace import (
             box,
             cycle_stable,
             first_divergence,
         )
+        from esolangs.runtime.io import ScriptedIO
 
         for value in range(16):
             table = format(value, "04b")

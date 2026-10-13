@@ -5,6 +5,7 @@ import random
 import pytest
 
 from esolangs.languages import generators as boolean
+from tests.support.generator_support import multiple_tables
 
 
 class TestPainfuck:
@@ -38,30 +39,14 @@ def test_shared_residual_executes_within_ledger() -> None:
     )
 
 
-def _multiple_tables():
-    rng = random.Random(88417)
-    a, b = "00010111", "01101001"
-    four = (
-        "0001011101101001",
-        "0110100100010111",
-        "1010110010001101",
-        "1101001010010010",
-    )
-    return [
-        a + b + b + a + a + b + a + b,
-        "".join(four[(row // 4 + row % 4) % 4] for row in range(16)),
-        *("".join(str(rng.randrange(2)) for _ in range(128)) for _ in range(6)),
-    ]
-
-
 @pytest.mark.medium
-@pytest.mark.parametrize("table", _multiple_tables())
-def test_multiple_flags_execute_with_their_native_command_price(table):
+@pytest.mark.parametrize("table", multiple_tables())
+def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
     import esolangs
     from esolangs.debugger import make_vm
+    from esolangs.generation.helpers import permute_truth_table
+    from esolangs.generation.shared_block import repeated_bank, repeated_blocks
     from esolangs.languages.painfuck.generator import _painfuck_shared
-    from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.shared_block import repeated_bank, repeated_blocks
     from scripts.benchmark import WrittenState
 
     n = len(table).bit_length() - 1
@@ -97,9 +82,9 @@ def test_multiple_flags_execute_with_their_native_command_price(table):
 # 4.9s on 3.12 alone (n=16), at the 5s medium ceiling; the loaded CI faster
 # shard pushed it past the 15s scaled limit.
 @pytest.mark.slow
-def test_multiple_flags_reduce_dense_cap_program_within_ledger():
+def test_multiple_flags_reduce_dense_cap_program_within_ledger() -> None:
+    from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.painfuck.generator import _painfuck_tree
-    from esolangs.tools.shared_block import repeated_block
     from tests.support.generator_support import assert_shared_program
 
     n = 16

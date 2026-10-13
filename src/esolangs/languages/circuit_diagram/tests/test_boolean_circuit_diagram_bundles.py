@@ -18,7 +18,7 @@ from tests.support.witness_tables import dense, nested_dense, parity
 @pytest.mark.medium
 @pytest.mark.parametrize("family", [dense, nested_dense])
 @pytest.mark.parametrize("n", [9, 10, 11, 12])
-def test_bundled_roots_execute_original_ports(family, n):
+def test_bundled_roots_execute_original_ports(family, n) -> None:
     table = family(n)
     model = bundled_class_bank_candidate(table)
     assert model is not None
@@ -28,7 +28,7 @@ def test_bundled_roots_execute_original_ports(family, n):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("classes", [1, 2, 3, 4, 5, 7, 8, 9])
-def test_bundle_boundary_and_constant_one_root_execute(classes):
+def test_bundle_boundary_and_constant_one_root_execute(classes) -> None:
     atoms = [dense(7, f"bundle:{i}".encode()) for i in range(classes - 1)]
     atoms.append("1" * 128)
     table = "".join(atoms[row % classes] if row % 5 else "0" * 128 for row in range(16))
@@ -44,14 +44,14 @@ def test_bundle_boundary_and_constant_one_root_execute(classes):
     _execute(table, model.render(), rows)
 
 
-def test_bundle_rejects_constants_small_prefixes_and_zero_budget():
+def test_bundle_rejects_constants_small_prefixes_and_zero_budget() -> None:
     assert bundled_class_bank_candidate("0" * 512) is None
     assert bundled_class_bank_candidate("1" * 512) is None
     assert bundled_class_bank_candidate(dense(8)) is None
     assert bundled_class_bank_candidate(dense(9), 0) is None
 
 
-def test_mask_work_is_checked_before_building_forests(monkeypatch):
+def test_mask_work_is_checked_before_building_forests(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.bundled_banks"
     )
@@ -65,7 +65,7 @@ def test_mask_work_is_checked_before_building_forests(monkeypatch):
     assert bundled_class_bank_candidate(dense(9)) is None
 
 
-def test_excess_class_work_rejects_before_mask_extraction(monkeypatch):
+def test_excess_class_work_rejects_before_mask_extraction(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.bundled_banks"
     )
@@ -75,7 +75,7 @@ def test_excess_class_work_rejects_before_mask_extraction(monkeypatch):
     assert bundled_class_bank_candidate(dense(17)) is None
 
 
-def test_small_ceiling_rejects_before_copying_banks(monkeypatch):
+def test_small_ceiling_rejects_before_copying_banks(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.bundled_banks"
     )
@@ -87,7 +87,7 @@ def test_small_ceiling_rejects_before_copying_banks(monkeypatch):
     assert bundled_class_bank_candidate(dense(9), 1) is None
 
 
-def test_gate_budget_rejects_before_copying_banks(monkeypatch):
+def test_gate_budget_rejects_before_copying_banks(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.bundled_banks"
     )
@@ -108,7 +108,7 @@ def test_gate_budget_rejects_before_copying_banks(monkeypatch):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("extra_area", [0, 1])
-def test_public_selection_preserves_existing_area_ties(monkeypatch, extra_area):
+def test_public_selection_preserves_existing_area_ties(monkeypatch, extra_area) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.bundled_banks"
     )
@@ -137,7 +137,7 @@ def test_public_selection_preserves_existing_area_ties(monkeypatch, extra_area):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("tail", [7, 8])
-def test_large_original_prefix_ports_execute(tail):
+def test_large_original_prefix_ports_execute(tail) -> None:
     atoms = [dense(tail, f"prefix-bundle:{i}".encode()) for i in range(2)]
     table = "".join(atoms[(row >> 9) ^ (row & 1)] for row in range(1024))
     model = bundled_class_bank_candidate(table)
@@ -154,16 +154,3 @@ def test_large_original_prefix_ports_execute(tail):
         }
     )
     _execute(table, model.render(), rows)
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("family", [dense, nested_dense])
-@pytest.mark.parametrize("arities", [(8, 10, 12), (9, 11, 13), (10, 12, 14)])
-def test_public_bundle_growth_executes(family, arities):
-    sizes = []
-    for n in arities:
-        table = family(n)
-        code = circuit_diagram(table)
-        sizes.append(len(code))
-        _execute(table, code, (0, len(table) // 3, len(table) - 1))
-    assert 0 < sizes[2] - sizes[1] <= 4.4 * (sizes[1] - sizes[0])

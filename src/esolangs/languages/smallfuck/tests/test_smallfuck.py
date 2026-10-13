@@ -6,8 +6,8 @@ from functools import partial
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.smallfuck.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import smallfuck as oracle
@@ -67,7 +67,7 @@ def _corpus():
 
 
 @pytest.mark.parametrize("stdin", STDINS)
-def test_bounded_programs_match_the_oracle(stdin):
+def test_bounded_programs_match_the_oracle(stdin) -> None:
     for code in _corpus():
         agrees(_Machine, oracle, code, stdin, dump=True)
 
@@ -76,7 +76,23 @@ def test_bounded_programs_match_the_oracle(stdin):
     ("code", "output"),
     [("[", None), ("]", None), ("][", None), (">>*", "1"), ("<", "0"), (">", "0")],
 )
-def test_oracle_controls(code, output):
+def test_oracle_controls(code, output) -> None:
     result = agrees(_Machine, oracle, code, "\x81", dump=True)
     assert result.output == output if output else isinstance(result, ValueError)
     assert not agrees(_Machine, oracle, "*[]", "", dump=True).halted
+
+
+def test_transition_preserves_its_state_and_reports_output() -> None:
+    from esolangs.languages.smallfuck.interpreter import _advance
+
+    machine = _Machine(">>*", ScriptedIO(""))
+    state = machine.state
+    first = _advance(state, machine.code, machine.brackets)
+    assert _advance(state, machine.code, machine.brackets) == first
+    assert machine.state == state
+    assert machine.io.getvalue() == ""
+    halted = (3, 2, (0, 0, 1), False)
+    assert _advance(halted, machine.code, machine.brackets) == (
+        (3, 2, (0, 0, 1), True),
+        "1",
+    )

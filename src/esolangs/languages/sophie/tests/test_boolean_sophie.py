@@ -2,18 +2,26 @@
 
 import random
 import re
+from collections.abc import Iterator
 
 import pytest
 
+from esolangs.generation.helpers import _ASCII_ONE, _ASCII_ZERO
 from esolangs.languages import generators as boolean
-from esolangs.languages.sophie.tests.runners import run_sophie, run_sophie_from
 from esolangs.languages.sophie.tests.sophie_support import (
     _residual_levels,
     _sophie_dag,
     _sophie_tree,
 )
-from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO
+from tests.generators.boolean_runners import _run_from, _runner
 from tests.support.witness_tables import row_bits
+
+run_sophie = _runner("sophie")
+
+
+def run_sophie_from(program: str, feed: Iterator[str]) -> str:
+    """Run a Sophie program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.languages.sophie.interpreter", program, feed)
 
 
 def _printed_once(program: str) -> str:

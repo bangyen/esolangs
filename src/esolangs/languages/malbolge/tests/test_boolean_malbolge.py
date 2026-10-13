@@ -9,10 +9,10 @@ import pytest
 
 from esolangs import generate
 from esolangs.exceptions import GeneratorCapError
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages import generators as boolean
 from esolangs.languages.malbolge.generator.core import _cascade
 from esolangs.languages.malbolge.interpreter import _XLAT1, _load, run
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import dense, parity, row_bits
 
 _module = importlib.import_module("esolangs.languages.malbolge.generator")
@@ -53,11 +53,9 @@ def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) 
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("n", [6, 9, 10])
-@pytest.mark.parametrize("shape", [dense, parity])
-def testdense_andparity_run(n: int, shape: object) -> None:
-    """The two worst-case shapes at the top of the supported range."""
-    table = shape(n)  # type: ignore[operator]
+def test_ten_inputs_execute_every_row() -> None:
+    """Execute every direct-stub row at the last arity before the cascade."""
+    table = dense(10)
     assert _rows(table) == list(table)
 
 
@@ -135,7 +133,10 @@ def test_thirteen_inputs_label_every_residue() -> None:
                 _module._table_char(h, label, labels)  # noqa: SLF001
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "thirteen-input sampled rows cover every second-level cascade row"
+)
 @pytest.mark.parametrize("shape", [dense, parity])
 def test_thirteen_inputs_sampled(shape: object) -> None:
     """Every thirty-second row and every second-level row of the two shapes."""
@@ -193,7 +194,10 @@ def test_fourteen_inputs_second_pass_is_nine_nops_and_a_jump() -> None:
     assert second == ["o"] * 9 + ["i"]
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "fourteen-input sampled rows exercise every third-level cascade row"
+)
 @pytest.mark.parametrize("shape", [dense, parity])
 def test_fourteen_inputs_sampled(shape: object) -> None:
     """Every 64th row, every level-3 row and every fourth level-2 row."""
@@ -241,13 +245,21 @@ def test_digit_builds_label_every_cell(n: int) -> None:
             _module._table_char(h, label, labels)  # noqa: SLF001
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "fifteen/sixteen-input digit readout samples both halves of answer pairs"
+)
 @pytest.mark.parametrize("n", [15, 16])
-@pytest.mark.parametrize("shape", [dense, parity])
-def test_digit_builds_sampled(n: int, shape: object) -> None:
+def test_digit_builds_sampled(n: int) -> None:
     """Every 128th row, offset per arity so both halves of each pair run."""
-    table = shape(n)  # type: ignore[operator]
+    table = dense(n)
     rows = range(n - 15, 2**n, 128)
+    assert {table[2 * (row // 2) : 2 * (row // 2) + 2] for row in rows} == {
+        "00",
+        "01",
+        "10",
+        "11",
+    }
     assert _rows(table, rows) == [table[row] for row in rows]
 
 

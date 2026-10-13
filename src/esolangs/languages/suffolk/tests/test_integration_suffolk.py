@@ -14,8 +14,8 @@ from esolangs.vm import (
     run_until_halt_or_cycle,
     run_until_halt_or_value_growth,
 )
-from tests.integration.cli.test_cli import run_cli
-from tests.runtime.vm.test_stepping_parity import _STEP_BUDGET, _row
+from tests.cli.test_cli import run_cli
+from tests.runtime.test_stepping_parity import _STEP_BUDGET, _row
 from tests.support.generator_support import evaluate_generated
 
 
@@ -40,7 +40,7 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
         assert "does not promise" in esolangs.describe("Suffolk")["spec"]
 
 
-def test_isolated_evaluation_requires_a_deadline():
+def test_isolated_evaluation_requires_a_deadline() -> None:
     with pytest.raises(esolangs.ArgumentError, match="finite"):
         evaluate_generated("Suffolk", "0110", None, isolated=True)
 
@@ -54,7 +54,7 @@ def test_value_growth_detector_accepts_eof_halt_at_step_limit(limit: int) -> Non
 
 
 @pytest.mark.medium
-def test_a_non_self_halting_machine_can_already_be_finished():
+def test_a_non_self_halting_machine_can_already_be_finished() -> None:
 
     vm = make_vm("Suffolk", ",", stdin="1")
     assert not vm.self_halts

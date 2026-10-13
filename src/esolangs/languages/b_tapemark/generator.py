@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from esolangs.generation.helpers import _validate_truth_table, grid_width, input_weights
+from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
-from esolangs.tools.helpers import _validate_truth_table, grid_width, input_weights
-from esolangs.tools.wrap import balance_score
 
 #: The stage, row by row, with its run of ``|`` left out.  The two ``*``
 #: copy a ``\`` and a ``%`` onto the blank grid beside the pointer, ``-``

@@ -1,9 +1,11 @@
+"""6-5 interpreter behavior."""
+
 import importlib
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.six_five.interpreter import _Machine as SixFive
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_lines
@@ -35,8 +37,8 @@ class TestSixFive:
 
     def test_the_two_moves_are_different_sizes(self) -> None:
         """``1`` goes right by two, ``3`` left by one, and the tape follows."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.six_five.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         # 1 lands on cell 2, growing the tape to three; 3 steps back to 1
         machine = _Machine("166666666A366666666A0", ScriptedIO())
@@ -78,8 +80,8 @@ class TestSixFive:
 
     def test_left_of_cell_zero_is_a_fresh_zero_cell(self) -> None:
         """``3`` at cell 0 grows the tape left; ``1`` then lands past start."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.six_five.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         # 8 on the start cell, then 3 grows a zero cell and prints it
         assert run_and_capture("66666666366666666A0") == "0"
@@ -96,7 +98,7 @@ class TestSixFive:
 
     def test_the_marker_index_is_the_scan_taken_once(self) -> None:
         """``8n`` lands where a scan for the n-th ``4`` would, from the index."""
-        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.runtime.io import ScriptedIO
 
         machine = sixfive._Machine("4A82A40", ScriptedIO(""))  # noqa: SLF001
         assert machine.markers == (0, 4)
@@ -157,8 +159,8 @@ class TestComments:
 
 class TestStepMachine:
     def test_step_tracks_tape_cell_and_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.six_five.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("55A", ScriptedIO())
         assert (machine.ind, machine.cell, machine.tape) == (0, 0, (0,))
@@ -176,8 +178,8 @@ class TestStepMachine:
         self,
     ) -> None:
         """A bare ``7`` compares against zero and skips on a match."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.six_five.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("7", ScriptedIO())
         machine.step()
@@ -185,8 +187,8 @@ class TestStepMachine:
 
     def test_a_marker_jump_lands_past_the_marker_it_found(self) -> None:
         """``8n`` leaves the cursor after the ``4``, not on it."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.six_five.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("81A4A0", ScriptedIO())
         machine.step()  # 81 jumps to just after the first 4
@@ -194,8 +196,8 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.languages.six_five.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
 
     return _Machine(code, ScriptedIO())
 

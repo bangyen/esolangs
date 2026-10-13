@@ -17,10 +17,7 @@ from itertools import islice
 from typing import Any
 
 from esolangs.factor_primes import prime_segments
-from esolangs.languages.fractran.interpreter.index import SMALL_BASE
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
@@ -28,8 +25,11 @@ from esolangs.tools.helpers import (
     same_tokens,
     subtree_ids,
 )
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _join_tokens, balance_score, wrap_space_delimited
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _join_tokens, balance_score, wrap_space_delimited
+from esolangs.languages.fractran.interpreter.index import SMALL_BASE
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Example, Language
 
 #: How each input is set: the exponent of its prime in the starting value.
 #: One digit wide, so the run is one :data:`TEMPLATE_CHAR`.
@@ -166,7 +166,7 @@ def fractran(truth_table: str, width: int | None = None) -> str:
 
     Halts at 1 or 2 for zero or one; input-prime exponents are filled by ``PAIR``.
     """
-    from esolangs.tools.wrap import wrap_program
+    from esolangs.generation.wrap import wrap_program
 
     n = _validate_truth_table(truth_table)
     program = _plain(truth_table, n)

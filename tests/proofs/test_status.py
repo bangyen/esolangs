@@ -1,3 +1,5 @@
+"""Proof status records and consistency."""
+
 import tomllib
 from pathlib import Path
 
@@ -57,7 +59,9 @@ def test_invalid_status_cannot_grant_an_exemption(case: str) -> None:
         status.validate(data)
 
 
-def test_heading_targets_ignore_code_and_number_duplicates(tmp_path, monkeypatch):
+def test_heading_targets_ignore_code_and_number_duplicates(
+    tmp_path, monkeypatch
+) -> None:
     monkeypatch.setattr(status, "ROOT", tmp_path)
     (tmp_path / "proof.md").write_text(
         "# A `proof`: bound\n\n```\n## False target\n```\n## A proof: bound\n"
@@ -74,7 +78,24 @@ def test_heading_targets_ignore_code_and_number_duplicates(tmp_path, monkeypatch
             status.validate(data)
 
 
-def test_ledger_evidence_can_name_a_whole_file():
+def test_ledger_evidence_can_name_a_whole_file() -> None:
     data = tomllib.loads(status.MANIFEST.read_text())
     data["ledger"][0]["evidence"] = "docs/proofs/index.md"
     status.validate(data)
+
+
+def test_owned_evidence_anchor_is_required(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(status, "ROOT", tmp_path)
+    document = tmp_path / "proof.md"
+    document.write_text(
+        '# Bounds\n\n- Example: <a id="example-bound"></a> finite construction.\n'
+        '\n```html\n<a id="code-only"></a>\n```\n'
+    )
+    data = tomllib.loads(status.MANIFEST.read_text())
+    data["ledger"] = []
+    data["audit"] = [data["audit"][0]]
+    data["audit"][0]["evidence"] = "proof.md#example-bound"
+    status.validate(data)
+    document.write_text('# Bounds\n\n```html\n<a id="example-bound"></a>\n```\n')
+    with pytest.raises(ValueError, match="missing evidence anchor"):
+        status.validate(data)

@@ -3,9 +3,9 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw
-from esolangs.languages.fish.interpreter import _Machine, run
+from esolangs.languages.fish.interpreter import _advance, _Machine, run
+from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.randomness import FirstDraw
 from tests.support.raises import assert_halts_with_hint
 
 
@@ -13,6 +13,72 @@ def _run(source: str, stdin: str = "", rng: object = None) -> str:
     io = ScriptedIO(stdin)
     run(source.splitlines(), io, rng=rng)
     return io.getvalue()
+
+
+def _state(
+    cells: dict[tuple[int, int], int],
+    stack: tuple[object, ...] = (),
+    *,
+    dx: int = 1,
+    dy: int = 0,
+    width: int = 1,
+    height: int = 1,
+    quote: str | None = None,
+) -> tuple[object, ...]:
+    """Build an explicit Fish core for the pure transition."""
+    return (
+        0,
+        0,
+        dx,
+        dy,
+        cells,
+        (stack,),
+        (None,),
+        quote,
+        False,
+        width,
+        height,
+    )
+
+
+def test_advance_is_pure_and_repeatable() -> None:
+    """The transition leaves its argument alone and is a function of it."""
+    cells = {(0, 0): ord("p")}
+    state = _state(cells, (ord("A"), 0, 0))
+    moved, effect = _advance(state)
+    again, again_effect = _advance(state)
+    assert moved == again
+    assert effect == again_effect
+    # The input mapping is not written through: ``p`` copies on write.
+    assert cells == {(0, 0): ord("p")}
+    assert moved[4][(0, 0)] == ord("A")
+
+
+def test_advance_returns_output_instead_of_writing() -> None:
+    """``n``/``o`` report an effect; the transition owns no port."""
+    moved, effect = _advance(_state({(0, 0): ord("n")}, (65,)))
+    assert effect == ("num", "65")
+    assert moved[5] == ((),)
+    moved, effect = _advance(_state({(0, 0): ord("o")}, (65,)))
+    assert effect == ("char", "A")
+
+
+def test_advance_takes_its_random_draw_as_an_argument() -> None:
+    """``x`` uses the supplied direction; the same call repeats."""
+    state = _state({(0, 0): ord("x")})
+    first, _ = _advance(state, random_dir=2)
+    second, _ = _advance(state, random_dir=2)
+    assert first == second
+    assert first[2:4] == (-1, 0)
+
+
+def test_advance_takes_its_input_value_as_an_argument() -> None:
+    """``i`` pushes the supplied codepoint, and -1 when the shell saw EOF."""
+    state = _state({(0, 0): ord("i")})
+    read, _ = _advance(state, char_input=65)
+    assert read[5] == ((65,),)
+    eof, _ = _advance(state, char_input=None)
+    assert eof[5] == ((-1,),)
 
 
 def test_literals_arithmetic_comparison_and_output() -> None:
@@ -81,10 +147,21 @@ def test_errors_are_fishy() -> None:
     for source in (*errors, "\t;", "1a60p 2n;"):
         with pytest.raises(HaltError, match="fishy"):
             _run(source)
-    fractional = _Machine(["p"], ScriptedIO(""))
-    fractional.stacks[-1].extend((2.5, 0, 0))
+    fractional = (
+        0,
+        0,
+        1,
+        0,
+        {(0, 0): ord("p")},
+        ((2.5, 0, 0),),
+        (None,),
+        None,
+        False,
+        1,
+        1,
+    )
     with pytest.raises(HaltError, match="fishy"):
-        fractional.step()
+        _advance(fractional)
 
 
 def test_integral_floats_print_without_a_decimal_point() -> None:
@@ -175,10 +252,21 @@ def test_movement_mirrors_jump_and_trampolines() -> None:
         ("_", (0, 1), (0, -1)),
         ("#", (1, 0), (-1, 0)),
     ):
-        machine = _Machine([command], ScriptedIO(""))
-        machine.dx, machine.dy = start
-        machine.step()
-        assert (machine.dx, machine.dy) == expected
+        state = (
+            0,
+            0,
+            start[0],
+            start[1],
+            {(0, 0): ord(command)},
+            ((),),
+            (None,),
+            None,
+            False,
+            1,
+            1,
+        )
+        moved, _ = _advance(state)
+        assert moved[2:4] == expected
 
 
 #: The wiki's four Hello, world! programs, its one-space indent removed.
@@ -229,5 +317,5 @@ def test_the_wiki_quines_print_their_source() -> None:
 
 
 @pytest.mark.medium
-def test_hints_for_bad_programs_and_input():
+def test_hints_for_bad_programs_and_input() -> None:
     assert_halts_with_hint("Fish", "+", "something smells fishy", "push a value")

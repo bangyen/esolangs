@@ -27,6 +27,12 @@ Evaluation uses an explicit ``_Frame`` stack: recursion is Fargo's only
 loop, native recursion would hit Python's limit, and the growing stack is
 what :func:`esolangs.vm.run_until_halt_or_ancestor` proves a hang on.
 
+The semantics are a pure transition: :func:`_advance` maps an immutable
+``_State`` (the two numbers, the top-level cursor, the frame tuple) plus
+the parsed definitions to a new state and the number ``$`` asks to print.
+``step`` is the shell that performs that one write.  The input number is
+read once before the run, so no read reaches the transition.
+
 Its initial number is a whitespace-delimited integer token; the spec does not
 define text framing.
 """
@@ -36,11 +42,11 @@ from __future__ import annotations
 from collections.abc import Hashable
 from dataclasses import dataclass, replace
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.source_hints import syntax_error
 
 # The wiki renders the truth machine with zero-width spaces inside two of
 # its lines; they are invisible presentation, not syntax, so the tokenizer
@@ -201,18 +207,27 @@ def _parse_definition(
     return _Def(name, tuple(params), tuple(rest[index:]))
 
 
-@dataclass
+@dataclass(frozen=True)
 class _State:
-    """Every changing value in a Fargo run."""
+    """Every changing value in a Fargo run.
+
+    A value, not a record: the frame stack is an immutable tuple and
+    :func:`_advance` returns a new state rather than editing this one.
+    """
 
     number: int
     output: int
     ind: int
-    frames: list[_Frame]
+    frames: tuple[_Frame, ...]
 
 
 class _Machine:
-    """One Fargo run: the definitions, the two numbers, and the call stack."""
+    """One Fargo run: the definitions, the two numbers, and the call stack.
+
+    The run state is an immutable :class:`_State`; :func:`_advance` is the
+    semantics, and :meth:`step` is the shell that performs the effect it
+    returns.
+    """
 
     #: Whether a read past the end of the input yields a *value* here
     #: rather than raising.  A few languages do; the rest raise
@@ -235,8 +250,8 @@ class _Machine:
         self.io = io
         self.defs, self.calls = _parse_program(code)
         for definition in self.defs.values():
-            self._check_outer_call(definition)
-        self.state = _State(self._read_input(), 0, 0, [])
+            _check_outer_call(definition, self.defs)
+        self.state = _State(self._read_input(), 0, 0, ())
 
     @property
     def number(self) -> int:
@@ -248,7 +263,7 @@ class _Machine:
 
     @output.setter
     def output(self, value: int) -> None:
-        self.state.output = value
+        self.state = replace(self.state, output=value)
 
     @property
     def ind(self) -> int:
@@ -256,11 +271,11 @@ class _Machine:
 
     @ind.setter
     def ind(self, value: int) -> None:
-        self.state.ind = value
+        self.state = replace(self.state, ind=value)
 
     @property
     def frames(self) -> list[_Frame]:
-        return self.state.frames
+        return list(self.state.frames)
 
     def _read_input(self) -> int:
         """Read the input number, treating empty or invalid input as 0."""
@@ -289,7 +304,7 @@ class _Machine:
     @property
     def stack(self) -> list[object]:
         """The stack."""
-        return list(self.frames)
+        return list(self.state.frames)
 
     def snapshot(self) -> Hashable:
         """Return the complete internal state, hashable for cycle detection.
@@ -313,7 +328,7 @@ class _Machine:
                     ),
                     tuple(sorted((k, repr(v)) for k, v in frame.binds)),
                 )
-                for frame in self.frames
+                for frame in self.state.frames
             ),
             self.io.progress(),
         )
@@ -330,312 +345,381 @@ class _Machine:
             self.io.progress(),
         )
 
-    def _lookup(self, name: str, frame: _Frame | None) -> _Func:
-        """Resolve ``name`` to a callable in ``frame``'s scope."""
-        if frame is not None and (bound := frame.bound(name)) is not None:
-            value = bound
-            if isinstance(value, _Func):
-                return value
-            raise HaltError(
-                f"calling non-function argument {name!r}",
-                hint="pass a callable function argument before invoking it",
-            )
-        if name in _BUILTINS:
-            return _BUILTINS[name]
-        if name in self.defs:
-            definition = self.defs[name]
-            raw = tuple(
-                index
-                for index, parameter in enumerate(definition.params)
-                if _bare_name(parameter) != parameter
-            )
-            return _Func(name, len(definition.params), raw)
-        raise HaltError(
-            f"calling undefined function {name!r}",
-            hint="define the function before calling it; check its spelling",
-        )
-
-    def _check_outer_call(
-        self, definition: _Def, binds: dict[str, _Value] | None = None
-    ) -> None:
-        """Require one expression; bound functions supply their arity at invocation."""
-        parameters = {_bare_name(parameter) for parameter in definition.params}
-        raw_parameters = {
-            _bare_name(parameter)
-            for parameter in definition.params
-            if _bare_name(parameter) != parameter
-        }
-        head = definition.code[0] if definition.code else ":"
-        if (
-            _bare_name(head) != head
-            or _is_literal(head)
-            or (head in parameters and head not in raw_parameters)
-        ):
-            # A literal, raw name or value argument is no call (``f0 101``).
-            raise syntax_error(
-                f"function {definition.name!r} has no outer call",
-                "start the code with a function call",
-            )
-        pending = [False]
-        for index, token in enumerate(definition.code):
-            if not pending:
-                raise syntax_error(
-                    f"function {definition.name!r} has more than one outer call",
-                    "nest calls as arguments of one outer prefix call",
-                )
-            raw = pending.pop()
-            bare = _bare_name(token)
-            if bare != token or _is_literal(bare) or raw:
-                continue
-            if bare in parameters:
-                if binds is None and bare not in raw_parameters:
-                    # Wiki: an unmarked argument is a value, so
-                    # ``myFn x y z otherFn x y z anotherFn x`` is malformed.
-                    continue
-                if binds is None:
-                    # Each remaining token supplies at most one owed argument.
-                    # Extra tokens may belong to this parameter's unknown arity.
-                    if len(definition.code) - index < len(pending) + 1:
-                        break
-                    return
-                value = binds[bare]
-                if not isinstance(value, _Func):
-                    continue
-                fn = value
-            elif bare in _BUILTINS:
-                fn = _BUILTINS[bare]
-            elif bare in self.defs:
-                target = self.defs[bare]
-                fn = _Func(
-                    bare,
-                    len(target.params),
-                    tuple(
-                        i
-                        for i, parameter in enumerate(target.params)
-                        if _bare_name(parameter) != parameter
-                    ),
-                )
-            else:
-                continue
-            pending.extend(i in fn.raw for i in reversed(range(fn.arity)))
-        else:
-            if not pending:
-                return
-        raise syntax_error(
-            f"function {definition.name!r} has no outer call",
-            "supply every argument required by the outer prefix call",
-        )
-
     def step(self) -> None:
-        """Execute one command, advancing the machine."""
+        """Execute one command, advancing the machine.
+
+        The shell: the input number was read once before the run, so the
+        only port left is ``$``'s write, performed from the effect the pure
+        transition returns.
+        """
         if self.halted:
             return
-        if not self.frames:
-            self.frames.append(_Frame(self.calls[self.ind]))
-            self.ind += 1
-            return
-        frame = self.frames[-1]
-        if frame.pos >= len(frame.tokens):
-            self._finish(frame)
-            return
-        token = frame.tokens[frame.pos]
-        frame = replace(frame, pos=frame.pos + 1)
-        self._retop(frame)
-        self._consume(frame, token)
+        self.state, effect = _advance(self.state, self.defs, self.calls)
+        if effect is not None:
+            self.io.print_num(effect)
 
-    def _retop(self, frame: _Frame) -> None:
-        """Replace the top of the frame stack with ``frame``.
 
-        The stack stays a list: depth is unbounded, so rebuilding it per step
-        would be quadratic.
-        """
-        self.frames[-1] = frame
+def _retop(frames: tuple[_Frame, ...], frame: _Frame) -> tuple[_Frame, ...]:
+    """Return ``frames`` with its top replaced by ``frame``."""
+    return (*frames[:-1], frame)
 
-    def _consume(self, frame: _Frame, token: str) -> None:
-        """Handle one token: a literal, a raw function, or a call."""
-        if _is_literal(token):
-            self._supply(frame, int(token, 2))
-            return
-        if token.startswith(":") and len(token) > 1:
-            name = token.removeprefix(":")
-            self._supply(frame, self._lookup(name, frame))
-            return
-        if self._wants_raw(frame):
-            # The waiting call takes this parameter unevaluated, so the
-            # name is passed along as a function instead of being run.
-            self._supply(frame, self._lookup(token, frame))
-            return
-        if frame.binds and (bound := frame.bound(token)) is not None:
-            value = bound
-            if not isinstance(value, _Func):
-                self._supply(frame, value)
-                return
-        fn = self._lookup(token, frame)
-        if fn.arity == 0:
-            self._invoke(frame, fn, [])
-            return
-        self._retop(replace(frame, pending=(*frame.pending, (fn, ()))))
 
-    def _wants_raw(self, frame: _Frame) -> bool:
-        """Whether the innermost waiting call takes its next argument raw."""
-        if not frame.pending:
-            return False
-        fn, args = frame.pending[-1]
-        return len(args) in fn.raw
-
-    def _supply(self, frame: _Frame, value: _Value) -> None:
-        """Deliver ``value`` to whichever call is waiting for it.
-
-        Replaces the top frame, so callers re-read the top afterwards.
-        """
-        frame = self.frames[-1]
-        if not frame.pending:
-            self._retop(replace(frame, result=value))
-            return
-        fn, args = frame.pending[-1]
-        # A raw slot takes whatever arrives unchanged: a function to invoke
-        # later, or a plain value ``:`` will simply yield.
-        args = (*args, value)
-        # ``==`` rather than ``>=``, and the two cannot be told apart: an
-        # argument arrives one at a time and the call is popped the moment
-        # it is full, so the count never passes the arity without landing
-        # on it.  Instrumenting this comparison over the corpus sees 16
-        # deliveries and no overshoot.
-        if len(args) == fn.arity:
-            self._retop(replace(frame, pending=frame.pending[:-1]))
-            self._invoke(self.frames[-1], fn, list(args))
-            return
-        self._retop(replace(frame, pending=(*frame.pending[:-1], (fn, args))))
-
-    def _invoke(self, frame: _Frame, fn: _Func, args: list[_Value]) -> None:
-        """Apply ``fn`` to ``args``, pushing a frame for a user function."""
-        if fn.name in _BUILTINS and fn.name not in self.defs:
-            result = self._builtin(frame, fn, args)
-            if not isinstance(result, _Pending):
-                self._supply(frame, result)
-            return
-        definition = self.defs[fn.name]
-        binds = tuple(
-            zip(
-                (_bare_name(parameter) for parameter in definition.params),
-                args,
-                strict=True,
-            )
+def _lookup(name: str, frame: _Frame | None, defs: dict[str, _Def]) -> _Func:
+    """Resolve ``name`` to a callable in ``frame``'s scope."""
+    if frame is not None and (bound := frame.bound(name)) is not None:
+        value = bound
+        if isinstance(value, _Func):
+            return value
+        raise HaltError(
+            f"calling non-function argument {name!r}",
+            hint="pass a callable function argument before invoking it",
         )
-        self._check_outer_call(definition, dict(binds))
-        self.frames.append(_Frame(definition.code, fn_name=fn.name, binds=binds))
+    if name in _BUILTINS:
+        return _BUILTINS[name]
+    if name in defs:
+        return _defined(name, defs)
+    raise HaltError(
+        f"calling undefined function {name!r}",
+        hint="define the function before calling it; check its spelling",
+    )
 
-    def _finish(self, frame: _Frame) -> None:
-        """Pop a finished frame, delivering its value to its caller.
 
-        Definitions are checked again once parameter arities are bound.
-        """
-        if frame.pending:
+def _defined(name: str, defs: dict[str, _Def]) -> _Func:
+    """Return a definition's arity and unevaluated argument positions."""
+    definition = defs[name]
+    raw = tuple(
+        index
+        for index, parameter in enumerate(definition.params)
+        if _bare_name(parameter) != parameter
+    )
+    return _Func(name, len(definition.params), raw)
+
+
+def _check_outer_call(
+    definition: _Def, defs: dict[str, _Def], binds: dict[str, _Value] | None = None
+) -> None:
+    """Require one expression; bound functions supply their arity at invocation."""
+    parameters = {_bare_name(parameter) for parameter in definition.params}
+    raw_parameters = {
+        _bare_name(parameter)
+        for parameter in definition.params
+        if _bare_name(parameter) != parameter
+    }
+    head = definition.code[0] if definition.code else ":"
+    if (
+        _bare_name(head) != head
+        or _is_literal(head)
+        or (head in parameters and head not in raw_parameters)
+    ):
+        # A literal, raw name or value argument is no call (``f0 101``).
+        raise syntax_error(
+            f"function {definition.name!r} has no outer call",
+            "start the code with a function call",
+        )
+    # Whether each still-expected argument is passed raw (unevaluated);
+    # the body must fill every slot with exactly one outer prefix call.
+    expected_raw = [False]
+    finished = True
+    for index, token in enumerate(definition.code):
+        if not expected_raw:
             raise syntax_error(
-                "call wants more args",
-                "supply every argument required by the pending prefix call",
+                f"function {definition.name!r} has more than one outer call",
+                "nest calls as arguments of one outer prefix call",
             )
-        self.frames.pop()
-        if self.frames:
-            self._supply(self.frames[-1], frame.result)
-
-    def _number(self, value: _Value) -> int:
-        """Coerce ``value`` to an integer, refusing an array or function."""
-        if isinstance(value, int):
-            return value
-        raise HaltError(
-            "expected a number, got an array or function",
-            hint="use a numeric value in this expression",
-        )
-
-    def _builtin(
-        self, frame: _Frame, fn: _Func, args: list[_Value]
-    ) -> _Value | _Pending:
-        """Apply one builtin to its finished arguments."""
-        name = fn.name
-        if name == "<":
-            return self._number(args[0]) >> 1
-        if name == ">":
-            return self._number(args[0]) << 1
-        if name == "&":
-            return self._number(args[0]) & self._number(args[1])
-        if name == "|":
-            return self._number(args[0]) | self._number(args[1])
-        if name == "^":
-            return self._number(args[0]) ^ self._number(args[1])
-        if name == "[]":
-            return (args[0],)
-        if name == "+[]":
-            return self._array(args[0]) + self._array(args[1])
-        if name == "[?]":
-            return self._index(args[0], args[1])
-        if name == "@":
-            return self._bit(args[0])
-        if name == "%":
-            self._set_bit(args[0], args[1])
-            return 0
-        if name == "$":
-            self.io.print_num(self.output)
-            return 0
-        return self._conditional(frame, args)
-
-    def _array(self, value: _Value) -> tuple[_Value, ...]:
-        """Coerce ``value`` to an array, refusing anything else."""
-        if isinstance(value, tuple):
-            return value
-        raise HaltError(
-            "expected an array", hint="pass an array value to this operation"
-        )
-
-    def _index(self, array: _Value, which: _Value) -> _Value:
-        """Return the ``which``th element of ``array``."""
-        items = self._array(array)
-        pos = self._number(which)
-        if not 0 <= pos < len(items):
-            raise HaltError(
-                f"array index {pos} out of range",
-                hint="keep the index within the array bounds",
-            )
-        return items[pos]
-
-    def _bit(self, which: _Value) -> int:
-        """Return the ``which``th bit of the input number (LSB = 0th).
-
-        No negative guard: literals match ``/[0-1]+/``, ``@`` yields 0 or 1,
-        and every operator preserves non-negativity.
-        """
-        return (self.number >> self._number(which)) & 1
-
-    def _set_bit(self, which: _Value, value: _Value) -> None:
-        """Set the ``which``th bit of the output number (LSB = 0th)."""
-        pos = self._number(which)
-        if self._number(value) & 1:
-            self.output |= 1 << pos
+        raw = expected_raw.pop()
+        bare = _bare_name(token)
+        if bare != token or _is_literal(bare) or raw:
+            continue
+        if bare in parameters:
+            if binds is None and bare not in raw_parameters:
+                # Wiki: an unmarked argument is a value, so
+                # ``myFn x y z otherFn x y z anotherFn x`` is malformed.
+                continue
+            if binds is None:
+                # Each remaining token supplies at most one owed argument.
+                # Extra tokens may belong to this parameter's unknown arity.
+                if len(definition.code) - index < len(expected_raw) + 1:
+                    finished = False
+                    break
+                return
+            value = binds[bare]
+            if not isinstance(value, _Func):
+                continue
+            fn = value
+        elif bare in _BUILTINS:
+            fn = _BUILTINS[bare]
+        elif bare in defs:
+            fn = _defined(bare, defs)
         else:
-            self.output &= ~(1 << pos)
+            continue
+        expected_raw.extend(i in fn.raw for i in reversed(range(fn.arity)))
+    if finished and not expected_raw:
+        return
+    raise syntax_error(
+        f"function {definition.name!r} has no outer call",
+        "supply every argument required by the outer prefix call",
+    )
 
-    def _conditional(self, frame: _Frame, args: list[_Value]) -> _Value | _Pending:
-        """``: x y`` -- do ``y`` iff ``x`` is nonzero.
 
-        ``y`` arrives raw; a zero guard yields 0 without touching it.
-        Invoking a user body pushes a frame that supplies the waiting slot
-        later, so this returns :data:`_PENDING` rather than a second value.
-        """
-        if not self._number(args[0]):
-            return 0
-        body = args[1]
-        if not isinstance(body, _Func):
-            return body
-        if body.arity:
-            raise HaltError(
-                f"conditional body {body.name!r} takes {body.arity} argument(s)",
-                hint="pass the conditional body its declared number of arguments",
-            )
-        self._invoke(frame, body, [])
-        # Either way the value is already accounted for: a user function's
-        # arrives when its pushed frame finishes, and a zero-arity builtin
-        # body (``: 1 $``) was supplied by ``_invoke`` itself.
-        return _PENDING
+def _wants_raw(frame: _Frame) -> bool:
+    """Whether the innermost waiting call takes its next argument raw."""
+    if not frame.pending:
+        return False
+    fn, args = frame.pending[-1]
+    return len(args) in fn.raw
+
+
+def _advance(
+    state: _State, defs: dict[str, _Def], calls: list[tuple[str, ...]]
+) -> tuple[_State, int | None]:
+    """Return the state after one command, and the number to print, if any.
+
+    Pure: ``defs`` and ``calls`` are parameters, the frame stack is a value,
+    and ``$``'s write leaves as the returned effect instead of reaching a
+    port.
+    """
+    number, output, ind, frames = state.number, state.output, state.ind, state.frames
+    if not frames:
+        return _State(number, output, ind + 1, (_Frame(calls[ind]),)), None
+    frame = frames[-1]
+    if frame.pos >= len(frame.tokens):
+        frames, output, effect = _finish(frames, number, output, defs)
+        return _State(number, output, ind, frames), effect
+    token = frame.tokens[frame.pos]
+    frames = _retop(frames, replace(frame, pos=frame.pos + 1))
+    frames, output, effect = _consume(frames, frames[-1], token, number, output, defs)
+    return _State(number, output, ind, frames), effect
+
+
+def _consume(
+    frames: tuple[_Frame, ...],
+    frame: _Frame,
+    token: str,
+    number: int,
+    output: int,
+    defs: dict[str, _Def],
+) -> tuple[tuple[_Frame, ...], int, int | None]:
+    """Handle one token: a literal, a raw function, or a call."""
+    if _is_literal(token):
+        return _supply(frames, int(token, 2), number, output, defs)
+    if token.startswith(":") and len(token) > 1:
+        name = token.removeprefix(":")
+        return _supply(frames, _lookup(name, frame, defs), number, output, defs)
+    if _wants_raw(frame):
+        # The waiting call takes this parameter unevaluated, so the
+        # name is passed along as a function instead of being run.
+        return _supply(frames, _lookup(token, frame, defs), number, output, defs)
+    if frame.binds and (bound := frame.bound(token)) is not None:
+        value = bound
+        if not isinstance(value, _Func):
+            return _supply(frames, value, number, output, defs)
+    fn = _lookup(token, frame, defs)
+    if fn.arity == 0:
+        return _invoke(frames, frame, fn, (), number, output, defs)
+    return (
+        _retop(frames, replace(frame, pending=(*frame.pending, (fn, ())))),
+        output,
+        None,
+    )
+
+
+def _supply(
+    frames: tuple[_Frame, ...],
+    value: _Value,
+    number: int,
+    output: int,
+    defs: dict[str, _Def],
+) -> tuple[tuple[_Frame, ...], int, int | None]:
+    """Deliver ``value`` to whichever call is waiting for it.
+
+    Replaces the top frame, so callers re-read the top afterwards.
+    """
+    frame = frames[-1]
+    if not frame.pending:
+        return _retop(frames, replace(frame, result=value)), output, None
+    fn, args = frame.pending[-1]
+    # A raw slot takes whatever arrives unchanged: a function to invoke
+    # later, or a plain value ``:`` will simply yield.
+    args = (*args, value)
+    # ``==`` rather than ``>=``, and the two cannot be told apart: an
+    # argument arrives one at a time and the call is popped the moment
+    # it is full, so the count never passes the arity without landing
+    # on it.  Instrumenting this comparison over the corpus sees 16
+    # deliveries and no overshoot.
+    if len(args) == fn.arity:
+        frames = _retop(frames, replace(frame, pending=frame.pending[:-1]))
+        return _invoke(frames, frames[-1], fn, args, number, output, defs)
+    return (
+        _retop(frames, replace(frame, pending=(*frame.pending[:-1], (fn, args)))),
+        output,
+        None,
+    )
+
+
+def _invoke(
+    frames: tuple[_Frame, ...],
+    frame: _Frame,
+    fn: _Func,
+    args: list[_Value] | tuple[_Value, ...],
+    number: int,
+    output: int,
+    defs: dict[str, _Def],
+) -> tuple[tuple[_Frame, ...], int, int | None]:
+    """Apply ``fn`` to ``args``, pushing a frame for a user function."""
+    if fn.name in _BUILTINS and fn.name not in defs:
+        result, frames, output, effect = _builtin(
+            frames, frame, fn, args, number, output, defs
+        )
+        if isinstance(result, _Pending):
+            return frames, output, effect
+        frames, output, supplied = _supply(frames, result, number, output, defs)
+        return frames, output, effect if effect is not None else supplied
+    definition = defs[fn.name]
+    binds = tuple(
+        zip(
+            (_bare_name(parameter) for parameter in definition.params),
+            args,
+            strict=True,
+        )
+    )
+    _check_outer_call(definition, defs, dict(binds))
+    return (
+        (*frames, _Frame(definition.code, fn_name=fn.name, binds=binds)),
+        output,
+        None,
+    )
+
+
+def _finish(
+    frames: tuple[_Frame, ...], number: int, output: int, defs: dict[str, _Def]
+) -> tuple[tuple[_Frame, ...], int, int | None]:
+    """Pop a finished frame, delivering its value to its caller.
+
+    Definitions are checked again once parameter arities are bound.
+    """
+    frame = frames[-1]
+    if frame.pending:
+        raise syntax_error(
+            "call wants more args",
+            "supply every argument required by the pending prefix call",
+        )
+    frames = frames[:-1]
+    if frames:
+        return _supply(frames, frame.result, number, output, defs)
+    return frames, output, None
+
+
+def _number(value: _Value) -> int:
+    """Coerce ``value`` to an integer, refusing an array or function."""
+    if isinstance(value, int):
+        return value
+    raise HaltError(
+        "expected a number, got an array or function",
+        hint="use a numeric value in this expression",
+    )
+
+
+def _builtin(
+    frames: tuple[_Frame, ...],
+    frame: _Frame,
+    fn: _Func,
+    args: list[_Value] | tuple[_Value, ...],
+    number: int,
+    output: int,
+    defs: dict[str, _Def],
+) -> tuple[_Value | _Pending, tuple[_Frame, ...], int, int | None]:
+    """Apply one builtin to its finished arguments."""
+    name = fn.name
+    if name == "<":
+        return _number(args[0]) >> 1, frames, output, None
+    if name == ">":
+        return _number(args[0]) << 1, frames, output, None
+    if name == "&":
+        return _number(args[0]) & _number(args[1]), frames, output, None
+    if name == "|":
+        return _number(args[0]) | _number(args[1]), frames, output, None
+    if name == "^":
+        return _number(args[0]) ^ _number(args[1]), frames, output, None
+    if name == "[]":
+        return (args[0],), frames, output, None
+    if name == "+[]":
+        return _array(args[0]) + _array(args[1]), frames, output, None
+    if name == "[?]":
+        return _index(args[0], args[1]), frames, output, None
+    if name == "@":
+        return _bit(number, args[0]), frames, output, None
+    if name == "%":
+        return 0, frames, _set_bit(output, args[0], args[1]), None
+    if name == "$":
+        return 0, frames, output, output
+    return _conditional(frames, frame, args, number, output, defs)
+
+
+def _array(value: _Value) -> tuple[_Value, ...]:
+    """Coerce ``value`` to an array, refusing anything else."""
+    if isinstance(value, tuple):
+        return value
+    raise HaltError("expected an array", hint="pass an array value to this operation")
+
+
+def _index(array: _Value, which: _Value) -> _Value:
+    """Return the ``which``th element of ``array``."""
+    items = _array(array)
+    pos = _number(which)
+    if not 0 <= pos < len(items):
+        raise HaltError(
+            f"array index {pos} out of range",
+            hint="keep the index within the array bounds",
+        )
+    return items[pos]
+
+
+def _bit(number: int, which: _Value) -> int:
+    """Return the ``which``th bit of the input number (LSB = 0th).
+
+    No negative guard: literals match ``/[0-1]+/``, ``@`` yields 0 or 1,
+    and every operator preserves non-negativity.
+    """
+    return (number >> _number(which)) & 1
+
+
+def _set_bit(output: int, which: _Value, value: _Value) -> int:
+    """Return ``output`` with the ``which``th bit set (LSB = 0th)."""
+    pos = _number(which)
+    if _number(value) & 1:
+        return output | (1 << pos)
+    return output & ~(1 << pos)
+
+
+def _conditional(
+    frames: tuple[_Frame, ...],
+    frame: _Frame,
+    args: list[_Value] | tuple[_Value, ...],
+    number: int,
+    output: int,
+    defs: dict[str, _Def],
+) -> tuple[_Value | _Pending, tuple[_Frame, ...], int, int | None]:
+    """``: x y`` -- do ``y`` iff ``x`` is nonzero.
+
+    ``y`` arrives raw; a zero guard yields 0 without touching it.
+    Invoking a user body pushes a frame that supplies the waiting slot
+    later, so this returns :data:`_PENDING` rather than a second value.
+    """
+    if not _number(args[0]):
+        return 0, frames, output, None
+    body = args[1]
+    if not isinstance(body, _Func):
+        return body, frames, output, None
+    if body.arity:
+        raise HaltError(
+            f"conditional body {body.name!r} takes {body.arity} argument(s)",
+            hint="pass the conditional body its declared number of arguments",
+        )
+    frames, output, effect = _invoke(frames, frame, body, (), number, output, defs)
+    # Either way the value is already accounted for: a user function's
+    # arrives when its pushed frame finishes, and a zero-arity builtin
+    # body (``: 1 $``) was supplied by ``_invoke`` itself.
+    return _PENDING, frames, output, effect
 
 
 def run(code: str, io: IO) -> None:

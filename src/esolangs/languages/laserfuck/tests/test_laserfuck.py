@@ -6,10 +6,10 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw
 from esolangs.languages.laserfuck.interpreter import _Machine as Laserfuck
 from esolangs.languages.laserfuck.interpreter import run
+from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
 from tests.interpreters.contract import SnapshotContract
 from tests.support.paths import ROOT
@@ -123,8 +123,8 @@ class TestLaserFuck:
 
     def test_cells_wrap_at_signed_32_bit_bounds(self) -> None:
         """The fixed-width tape wraps in signed two's-complement order."""
-        from esolangs.interpreters.persistent import chunked, flatten
         from esolangs.languages.laserfuck.interpreter import _advance
+        from esolangs.runtime.persistent import chunked, flatten
 
         def advance(value: int, op: str) -> int:
             state = (chunked(((value, 0),)), 0, ((0, 0, 3),), 0, False, (0, 0, 0))
@@ -205,8 +205,8 @@ class TestSurvivorGaps:
 
     def test_the_tape_dumps_once_however_far_it_is_stepped(self) -> None:
         """The post-halt step dumps the tape, and only the first one does."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.languages.laserfuck.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
 
         io_obj = ScriptedIO()
         machine = _Machine(["o+x"], io_obj, rng=FirstDraw(3))
@@ -268,8 +268,8 @@ class TestSnapshotProgress:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
     from esolangs.languages.laserfuck.interpreter import _Machine
+    from esolangs.runtime.io import IO
 
     return _Machine(code, IO(), rng=FirstDraw(3))
 

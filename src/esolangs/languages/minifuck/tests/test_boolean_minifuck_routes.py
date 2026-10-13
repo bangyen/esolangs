@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs.generation.helpers import essential_inputs
 from esolangs.languages.minifuck.generator import _solve
 from esolangs.languages.minifuck.generator.mux import _MUX_MIN_ARITY, _mux, _mux_lookup
 from esolangs.languages.minifuck.generator.sim import _MINIFUCK_INPUT, PAIR
@@ -14,7 +15,6 @@ from esolangs.languages.minifuck.tests.minifuck_support import (
     _mux_separate,
     run_count,
 )
-from esolangs.tools.helpers import essential_inputs
 from tests.support.witness_tables import row_bits
 
 

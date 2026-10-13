@@ -4,11 +4,11 @@ import random
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.slashes.generator import slashes
 from esolangs.languages.slashes.interpreter import _Machine as SlashMachine
 from esolangs.languages.slashes.interpreter import run as run_slashes
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import witnesses
 
 

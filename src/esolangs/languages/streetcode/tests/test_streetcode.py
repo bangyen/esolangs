@@ -7,7 +7,6 @@ from contextlib import redirect_stdout
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.languages.streetcode.interpreter import _Machine, run
 from esolangs.languages.streetcode.interpreter.geometry import (
     _ReachableCell,
@@ -18,6 +17,7 @@ from esolangs.languages.streetcode.tests.streetcode_support import (
     run_and_capture,
     run_street,
 )
+from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.support.raises import assert_rejected_with_hint
 
@@ -276,3 +276,37 @@ def test_a_counting_ring_program_drives_its_whole_lap() -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Streetcode", "zzz", "exactly one C")
+
+
+class TestPureTransition:
+    """``_advance`` runs one cell; ``step`` is only the read/write shell."""
+
+    def test_advance_is_pure_and_repeatable(self) -> None:
+        from esolangs.languages.streetcode.interpreter import _advance
+        from esolangs.languages.streetcode.tests.streetcode_support import street
+
+        machine = _Machine(street("C^O;"), ScriptedIO())
+        before = machine.snapshot()
+        run = (machine._state, machine.cp, machine.cells, machine._done)  # noqa: SLF001
+        first = _advance(run, machine.grid, machine._graph)  # noqa: SLF001
+        second = _advance(run, machine.grid, machine._graph)  # noqa: SLF001
+        # The run and the machine are both untouched, and nothing was written.
+        assert machine.snapshot() == before
+        assert machine.io.getvalue() == ""
+        assert first == second
+        assert first[1] is None
+
+    def test_output_is_returned_not_written(self) -> None:
+        from esolangs.languages.streetcode.interpreter import _advance
+
+        machine = _Machine(["C^O;"], ScriptedIO())
+        run = (machine._state, machine.cp, machine.cells, machine._done)  # noqa: SLF001
+        before = machine.snapshot()
+        output = None
+        for _ in range(4):
+            run, output = _advance(run, machine.grid, machine._graph)  # noqa: SLF001
+            if output is not None:
+                break
+        assert output is not None
+        assert machine.io.getvalue() == ""
+        assert machine.snapshot() == before

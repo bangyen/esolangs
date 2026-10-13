@@ -19,7 +19,7 @@ def packed_check(monkeypatch):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("start", [0, 64, 128, 192])
-def test_packed_three_input_graphs_execute(start, packed_check, tmp_path):
+def test_packed_three_input_graphs_execute(start, packed_check, tmp_path) -> None:
     admitted = 0
     for value in range(start, start + 64):
         table = f"{value:08b}"
@@ -33,7 +33,7 @@ def test_packed_three_input_graphs_execute(start, packed_check, tmp_path):
 @pytest.mark.parametrize(
     "kind", [pytest.param("dense", marks=pytest.mark.slow), "parity", "majority"]
 )
-def test_packed_eight_input_graphs_execute(kind, packed_check, tmp_path):
+def test_packed_eight_input_graphs_execute(kind, packed_check, tmp_path) -> None:
     table = (
         dense(8)
         if kind == "dense"
@@ -55,7 +55,7 @@ def test_packed_eight_input_graphs_execute(kind, packed_check, tmp_path):
 )
 def test_public_packed_improvements_execute(
     n, index, area, old, packed_check, tmp_path
-):
+) -> None:
     table = _sample(n, index + 1, 11 + n)[index]
     measured, _ = packed_check(table, tmp_path)
     assert measured == area < old
@@ -65,11 +65,11 @@ def test_public_packed_improvements_execute(
 
 
 @pytest.mark.medium
-def test_packed_scaled_crossings(packed_check, tmp_path):
+def test_packed_scaled_crossings(packed_check, tmp_path) -> None:
     packed_check(parity(7), tmp_path, scale=2)
 
 
-def test_packed_excessive_layer_work_rejects_before_routing(monkeypatch):
+def test_packed_excessive_layer_work_rejects_before_routing(monkeypatch) -> None:
     from importlib import import_module
 
     forward = import_module("esolangs.languages.line.generator.forward")

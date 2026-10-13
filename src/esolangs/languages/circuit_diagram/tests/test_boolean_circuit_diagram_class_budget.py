@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.languages.circuit_diagram.generator import circuit_diagram
 from esolangs.languages.circuit_diagram.generator.banks import (
     _class_bank_layout,
@@ -13,6 +12,7 @@ from esolangs.languages.circuit_diagram.interpreter import _Machine
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
+from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import dense
 
 
@@ -27,7 +27,7 @@ def _sixteen_classes(n):
     )
 
 
-def test_complete_two_input_basis_has_fourteen_gates_plus_complements():
+def test_complete_two_input_basis_has_fourteen_gates_plus_complements() -> None:
     words = [f"{value:04b}" for value in range(1, 15)]
     model, endpoints = _suffix_forest(words, 2)
     assert sum(char in "ao~xX" for char in model.glyphs.values()) == 16
@@ -51,7 +51,7 @@ def test_complete_two_input_basis_has_fourteen_gates_plus_complements():
 
 
 @pytest.mark.medium
-def test_sixteen_classes_share_beyond_the_old_cap_and_execute():
+def test_sixteen_classes_share_beyond_the_old_cap_and_execute() -> None:
     table = _sixteen_classes(13)
     assert len({table[i : i + 128] for i in range(0, len(table), 128)}) == 16
     model = _residual_class_bank_candidate(table)
@@ -65,7 +65,7 @@ def test_sixteen_classes_share_beyond_the_old_cap_and_execute():
 
 
 @pytest.mark.slow
-def test_sixteen_eight_input_roots_keep_the_smaller_separate_layout():
+def test_sixteen_eight_input_roots_keep_the_smaller_separate_layout() -> None:
     table = _sixteen_classes(14)
     separate = _class_bank_layout(table, shared=False)
     shared = _class_bank_layout(table, shared=True)
@@ -81,8 +81,11 @@ def test_sixteen_eight_input_roots_keep_the_smaller_separate_layout():
     _execute(table, shared.render(), rows)
 
 
-@pytest.mark.slow
-def test_atom_mask_bound_admits_129_classes_across_carry_boundaries():
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "dense 129-class admission crosses the selector carry boundary"
+)
+def test_atom_mask_bound_admits_129_classes_across_carry_boundaries() -> None:
     atoms = [dense(7, f"too-many:{i}".encode()) for i in range(129)]
     table = "".join(atoms[row % 129] for row in range(256))
     old_gate_bound = 129 * (512 + 8 + 114 + 2) - 1
@@ -103,9 +106,12 @@ def test_atom_mask_bound_admits_129_classes_across_carry_boundaries():
     _execute(table, model.render(), rows)
 
 
-@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "sixteen-class banks retain both high-arity parity growth bounds"
+)
 @pytest.mark.parametrize("arities", [(11, 13, 15), (12, 14, 16)])
-def test_larger_class_banks_keep_both_parity_growth_bounds(arities):
+def test_larger_class_banks_keep_both_parity_growth_bounds(arities) -> None:
     sizes = []
     for n in arities:
         table = _sixteen_classes(n)

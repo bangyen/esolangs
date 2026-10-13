@@ -32,22 +32,30 @@ Malformed input, connections, or source
 raise :class:`~esolangs.exceptions.HaltError`. ``◘`` uses the shared randomness
 hook, so callers may inject a reproducible source. A branch from another
 program is rejected with :class:`ValueError`.
+
+:func:`_advance` is a pure transition over an immutable :data:`_Core`.  It
+consumes input characters and ``◘`` draws from explicit tuples and returns the
+requested print effects; it never touches the ports.  When it runs out of an
+explicit input or draw it raises :class:`_NeedInputError`/:class:`_NeedDrawError`, and
+:meth:`_Machine.step` -- the shell -- supplies one more from the port or the
+draw source and retries.  A retry is sound because the transition is pure.
 """
 
 from __future__ import annotations
 
-import copy
 from collections import defaultdict
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from itertools import product
+from types import MappingProxyType
 from typing import Literal
 
-from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import with_hint
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.io import IO
+from esolangs.runtime.randomness import Randomness, draw
+from esolangs.runtime.source_hints import with_hint
 
 type _Point = tuple[int, int]
 type _Channel = Literal["execution", "data"]
@@ -98,6 +106,8 @@ class _Pointer:
     paused: bool = False
 
 
+type _Cells = Mapping[tuple[int, int], int]
+type _Core = tuple[tuple[_Pointer, ...], _Cells, int, bool, bool]
 type _State = tuple[
     tuple[_Pointer, ...],
     tuple[tuple[_Point, int], ...],
@@ -110,19 +120,446 @@ type _State = tuple[
 ]
 
 
-class _BranchDraw:
-    """A finite sequence of merge choices for one exhaustive branch."""
+class _NeedInputError(Exception):
+    """The transition needs one more input character to finish its step.
 
-    def __init__(self, choices: tuple[int, ...]) -> None:
-        self.choices = iter(choices)
+    ``effects`` is the immutable prefix of prints the transition already
+    produced; the shell flushes it before reading.
+    """
 
-    def randbelow(self, upper: int) -> int:
-        """Return the next enumerated choice."""
-        return next(self.choices) % upper
+    def __init__(self, effects: tuple[int, ...] = ()) -> None:
+        super().__init__(effects)
+        self.effects = effects
+
+
+class _NeedDrawError(Exception):
+    """The transition needs one more random draw to finish its step.
+
+    ``effects`` is the immutable prefix of prints the transition already
+    produced; the shell flushes it before drawing.
+    """
+
+    def __init__(self, upper: int = 0, effects: tuple[int, ...] = ()) -> None:
+        super().__init__(upper)
+        self.upper = upper
+        self.effects = effects
+
+
+class _FaultError(Exception):
+    """A transition fault carrying the prints produced before it.
+
+    The shell flushes ``effects`` and re-raises ``cause``, so output that
+    preceded the fault survives exactly as it did before the retry kernel.
+    """
+
+    def __init__(self, cause: BaseException, effects: tuple[int, ...]) -> None:
+        super().__init__(cause)
+        self.cause = cause
+        self.effects = effects
+
+
+def _char(grid: tuple[str, ...], point: _Point) -> str:
+    x, y = point
+    if 0 <= y < len(grid) and 0 <= x < len(grid[y]):
+        return grid[y][x]
+    return " "
+
+
+def _incoming(pointer: _Pointer) -> str | None:
+    if pointer.previous is None:
+        return None
+    delta = (
+        pointer.position[0] - pointer.previous[0],
+        pointer.position[1] - pointer.previous[1],
+    )
+    return _DIRECTION.get(delta)
+
+
+def _neighbors(grid: tuple[str, ...], point: _Point, channel: _Channel) -> list[_Point]:
+    here = _char(grid, point)
+    alphabet = _SINGLE if channel == "execution" else _DOUBLE
+    directions = _PORTS.get(here, "EWNS" if here in _NODES else "")
+    neighbors = []
+    for direction in directions:
+        dx, dy = _STEP[direction]
+        there = (point[0] + dx, point[1] + dy)
+        other = _char(grid, there)
+        wire = other in alphabet and _OPPOSITE[direction] in _PORTS[other]
+        # A wire's end reaches a node; touching nodes are not connected.
+        if wire or (other in _NODES and here not in _NODES):
+            neighbors.append(there)
+    return neighbors
+
+
+def _exits(grid: tuple[str, ...], pointer: _Pointer, channel: _Channel) -> list[_Point]:
+    return [
+        point
+        for point in _neighbors(grid, pointer.position, channel)
+        if point != pointer.previous
+    ]
+
+
+def _directed_exit(
+    grid: tuple[str, ...], pointer: _Pointer, direction: str, channel: _Channel
+) -> list[_Point]:
+    dx, dy = _STEP[direction]
+    target = (pointer.position[0] + dx, pointer.position[1] + dy)
+    return [target] if target in _neighbors(grid, pointer.position, channel) else []
+
+
+def _router_direction(cell: str, pointer: _Pointer) -> str | None:
+    incoming = _incoming(pointer)
+    if pointer.channel == "data":
+        if pointer.value is None:
+            return incoming
+        return (_WHITE_SIDE[cell], _BLACK_SIDE[cell])[pointer.value]
+    if incoming is None:
+        return None
+    black = _BLACK_SIDE[cell]
+    white = _WHITE_SIDE[cell]
+    if _OPPOSITE[incoming] == white:
+        return incoming
+    if _OPPOSITE[incoming] == black:
+        return black
+    return {"N": "E", "E": "S", "S": "W", "W": "N"}[incoming]
+
+
+def _at(cursor: int, axis: Literal["row", "column"], index: int) -> _Point:
+    return (cursor, index) if axis == "column" else (index, cursor)
+
+
+def _stack_axis(
+    cells: Mapping[tuple[int, int], int],
+    cursor: int,
+    axis: Literal["row", "column"],
+) -> list[_Point]:
+    """Return the stack's occupied cells, beginning (at the axis) first."""
+    along = 1 if axis == "column" else 0
+    line = 0 if axis == "column" else 1
+    return sorted((p for p in cells if p[line] == cursor), key=lambda p: p[along])
+
+
+def _head(
+    cells: Mapping[tuple[int, int], int],
+    cursor: int,
+    axis: Literal["row", "column"],
+    value: int | None,
+) -> tuple[dict[_Point, int], int | None]:
+    """Push (``value``) or pop the head of the ``axis`` stack at ``cursor``."""
+    working = dict(cells)
+    along = 1 if axis == "column" else 0
+    points = _stack_axis(cells, cursor, axis)
+    if value is None:
+        result = working.pop(_at(cursor, axis, 0), None)
+        for point in points:
+            if point[along]:
+                working[_at(cursor, axis, point[along] - 1)] = working.pop(point)
+        return working, result
+    for point in reversed(points):
+        working[_at(cursor, axis, point[along] + 1)] = working.pop(point)
+    working[_at(cursor, axis, 0)] = value
+    return working, None
+
+
+def _tail(
+    cells: Mapping[tuple[int, int], int],
+    cursor: int,
+    axis: Literal["row", "column"],
+    value: int | None,
+) -> tuple[dict[_Point, int], int | None]:
+    """Push (``value``) or pop the tail of the ``axis`` stack at ``cursor``."""
+    working = dict(cells)
+    along = 1 if axis == "column" else 0
+    points = _stack_axis(cells, cursor, axis)
+    if value is None:
+        return working, (working.pop(points[-1]) if points else None)
+    working[_at(cursor, axis, points[-1][along] + 1 if points else 0)] = value
+    return working, None
+
+
+def _ordered_groups(
+    grid: tuple[str, ...], pointers: tuple[_Pointer, ...]
+) -> list[tuple[_Point, list[_Pointer]]]:
+    groups: dict[_Point, list[_Pointer]] = defaultdict(list)
+    for pointer in pointers:
+        groups[pointer.position].append(pointer)
+    return sorted(
+        groups.items(),
+        key=lambda item: (
+            _PRIORITY.get(_char(grid, item[0]), 1),
+            item[0][1],
+            item[0][0],
+        ),
+    )
+
+
+@dataclass
+class _Step:
+    """Mutable workspace for one pure transition; never escapes :func:`_advance`."""
+
+    grid: tuple[str, ...]
+    cells: dict[_Point, int]
+    cursor: int
+    #: One entry per read the shell has answered: a codepoint, or ``None``
+    #: for a read that hit EOF.  Every ``◇`` costs one entry, even past EOF,
+    #: so the IO sees the same reads as the single-pass original.
+    inputs: tuple[int | None, ...]
+    draws: tuple[int, ...]
+    set_ended: bool
+    following: list[_Pointer] = field(default_factory=list)
+    effects: list[int] = field(default_factory=list)
+    halting: bool = False
+    at: int = 0
+    drawn: int = 0
+
+    def _read_char(self) -> int | None:
+        if self.at < len(self.inputs):
+            value = self.inputs[self.at]
+            self.at += 1
+            return value
+        raise _NeedInputError
+
+    def _read_bit(self) -> int | None:
+        """Return the current set's next bit, or ``None`` past its end."""
+        char = None if self.set_ended else self._read_char()
+        while char is not None and char != 10 and chr(char).isspace():
+            char = self._read_char()
+        if char == 10:
+            self.set_ended = True
+        if char is None or char == 10:
+            return None
+        if chr(char) not in "01":
+            raise HaltError(
+                "thisthat input must be a bit",
+                hint="supply input bits as 0 or 1 characters, a set per line",
+            )
+        return int(chr(char))
+
+    def _draw(self, upper: int) -> int:
+        if self.drawn < len(self.draws):
+            value = self.draws[self.drawn]
+            self.drawn += 1
+            return value % upper
+        raise _NeedDrawError(upper)
+
+    def _emit(
+        self,
+        pointer: _Pointer,
+        exits: list[_Point],
+        channel: _Channel,
+        value: int | None = None,
+    ) -> None:
+        self.following.extend(
+            _Pointer(exit_, pointer.position, channel, value) for exit_ in exits
+        )
+
+    def _pass(self, pointer: _Pointer) -> None:
+        self._emit(
+            pointer,
+            _exits(self.grid, pointer, pointer.channel),
+            pointer.channel,
+            pointer.value,
+        )
+
+    def _send(self, pointer: _Pointer, value: int | None) -> None:
+        """Send ``value`` down the data wires and go on down the execution ones."""
+        self._emit(pointer, _exits(self.grid, pointer, "data"), "data", value)
+        self._emit(pointer, _exits(self.grid, pointer, "execution"), "execution")
+
+    def _merge(self, cell: str, arrived: list[_Pointer]) -> None:
+        if cell == "◈":
+            if len(arrived) < 2:
+                self.following.extend(arrived)
+                return
+            for pointer in arrived:
+                self._pass(pointer)
+            return
+        groups = (
+            [p for p in arrived if p.channel == "execution"],
+            [p for p in arrived if p.channel == "data"],
+        )
+        for pointers in groups:
+            if not pointers:
+                continue
+            if cell in "□■▦" and pointers[0].channel == "execution":
+                value = {"□": 0, "■": 1, "▦": None}[cell]
+                for pointer in pointers:
+                    self._send(pointer, value)
+                continue
+            chosen = pointers[0]
+            if cell == "◘" and len(pointers) > 1:
+                chosen = pointers[self._draw(len(pointers))]
+            if chosen.channel == "execution":
+                value = None
+            else:
+                bits = [pointer.value for pointer in pointers]
+                if cell == "◘":
+                    value = int(not all(bit == 1 for bit in bits))
+                elif cell == "□":
+                    value = int(not any(bit == 1 for bit in bits))
+                elif cell == "■":
+                    value = int(any(bit == 1 for bit in bits))
+                else:
+                    value = sum(bit == 1 for bit in bits) % 2
+            channel: _Channel = "execution" if chosen.channel == "execution" else "data"
+            self._emit(chosen, _exits(self.grid, chosen, channel), channel, value)
+
+    def _advance_one(self, pointer: _Pointer) -> None:
+        cell = _char(self.grid, pointer.position)
+        if cell in _SINGLE | _DOUBLE:
+            channel: _Channel = "execution" if cell in _SINGLE else "data"
+            value = pointer.value if channel == "data" else None
+            self._emit(pointer, _exits(self.grid, pointer, channel), channel, value)
+        elif cell == "▣":
+            self._emit(pointer, _exits(self.grid, pointer, "execution"), "execution")
+        elif cell == "◉":
+            self.halting = True
+        elif cell in _ARROWS:
+            direction = _ARROW_DIRECTION[cell]
+            incoming = _incoming(pointer)
+            if cell in "△▷▽◁" and incoming not in (
+                None,
+                direction,
+                _OPPOSITE[direction],
+            ):
+                direction = incoming
+            exits = [
+                point
+                for point in _directed_exit(
+                    self.grid, pointer, direction, pointer.channel
+                )
+                if point != pointer.previous
+            ]
+            self._emit(pointer, exits, pointer.channel, pointer.value)
+        elif cell == "◯":
+            self._pass(pointer)
+        elif cell == "◔":
+            if pointer.paused:
+                self._pass(pointer)
+            else:
+                self.following.append(
+                    _Pointer(
+                        pointer.position,
+                        pointer.previous,
+                        pointer.channel,
+                        pointer.value,
+                        paused=True,
+                    )
+                )
+        elif cell == "◇":
+            if pointer.channel == "execution":
+                self._send(pointer, self._read_bit())
+            elif pointer.value is not None:
+                self.effects.append(pointer.value)
+            elif self.set_ended:
+                self.set_ended = False
+            else:
+                while self._read_char() not in (None, 10):
+                    pass
+        elif cell in "◧⬓◨⬒":
+            axis: Literal["row", "column"] = "column" if cell in "⬓⬒" else "row"
+            operation = _tail if cell in "◨⬒" else _head
+            if pointer.channel == "execution":
+                self.cells, value = operation(self.cells, self.cursor, axis, None)
+                self._send(pointer, value)
+            else:
+                if pointer.value is not None:
+                    self.cells, _ = operation(
+                        self.cells, self.cursor, axis, pointer.value
+                    )
+                self._emit(
+                    pointer, _exits(self.grid, pointer, "execution"), "execution"
+                )
+        elif cell in "◹◺":
+            if pointer.channel == "data" and pointer.value != 1:
+                return
+            moved = cell == "◹" or self.cursor > 0
+            if moved:
+                self.cursor += 1 if cell == "◹" else -1
+            if pointer.channel == "execution":
+                self._send(pointer, int(moved))
+            else:
+                self._emit(
+                    pointer, _exits(self.grid, pointer, "execution"), "execution"
+                )
+        elif cell in _BLACK_SIDE:
+            route_direction = _router_direction(cell, pointer)
+            exits = (
+                []
+                if route_direction is None
+                else _directed_exit(self.grid, pointer, route_direction, "execution")
+            )
+            self._emit(pointer, exits, "execution")
+        elif cell in "□■▦":
+            self._send(pointer, {"□": 0, "■": 1, "▦": None}[cell])
+        else:
+            raise HaltError(
+                f"unsupported thisthat cell: {cell!r}",
+                hint="use cells documented by esolangs describe --spec thisthat",
+            )
+
+
+def _advance(
+    core: _Core,
+    grid: tuple[str, ...],
+    inputs: tuple[int | None, ...] = (),
+    draws: tuple[int, ...] = (),
+) -> tuple[_Core, tuple[int, ...]]:
+    """Return the next core and the numbers a ``◇`` printed this cycle.
+
+    Pure.  ``inputs``/``draws`` are the values the shell has supplied so
+    far; running short raises :class:`_NeedInputError`/``_NeedDrawError``
+    carrying the prints collected so far, so the shell can flush them and
+    add one value.  Any other fault is wrapped in :class:`_FaultError` with the
+    same prefix.
+    """
+    pointers, cells, cursor, halted, set_ended = core
+    if halted:
+        return core, ()
+    step = _Step(
+        grid=grid,
+        cells=dict(cells),
+        cursor=cursor,
+        inputs=inputs,
+        draws=draws,
+        set_ended=set_ended,
+    )
+    try:
+        for position, arrived in _ordered_groups(grid, pointers):
+            cell = _char(grid, position)
+            is_data_gate = cell in "□■▦" and any(p.channel == "data" for p in arrived)
+            if cell in "◘◈" or is_data_gate:
+                step._merge(cell, arrived)  # noqa: SLF001 - same-module workspace
+            else:
+                for pointer in arrived:
+                    step._advance_one(pointer)  # noqa: SLF001 - same-module workspace
+    except _NeedInputError as need:
+        need.effects = tuple(step.effects)
+        raise
+    except _NeedDrawError as need:
+        need.effects = tuple(step.effects)
+        raise
+    except Exception as error:
+        raise _FaultError(error, tuple(step.effects)) from error
+    if step.halting:
+        return (
+            ((), MappingProxyType(step.cells), step.cursor, True, step.set_ended),
+            tuple(step.effects),
+        )
+    return (
+        (
+            tuple(step.following),
+            MappingProxyType(step.cells),
+            step.cursor,
+            halted,
+            step.set_ended,
+        ),
+        tuple(step.effects),
+    )
 
 
 class _Machine:
-    """A cycle-synchronous thisthat machine with a shared planar bistack."""
+    """thisthat shell: one immutable :data:`_Core`, rebound per cycle."""
 
     ip_shape = "grid"
 
@@ -131,8 +568,8 @@ class _Machine:
     ) -> None:
         self.io = io if io is not None else IO()
         self.rng = rng
-        self.width = max(map(len, code), default=0)
-        self.grid = tuple(line.ljust(self.width) for line in code)
+        width = max(map(len, code), default=0)
+        self.grid = tuple(line.ljust(width) for line in code)
         starts = tuple(
             _Pointer((x, y), None)
             for y, line in enumerate(self.grid)
@@ -155,129 +592,50 @@ class _Machine:
                 f"unsupported thisthat cell: {min(unknown)!r}",
                 hint="use cells documented by esolangs describe --spec thisthat",
             )
-        self.pointers: tuple[_Pointer, ...] = starts
-        self.cells: dict[_Point, int] = {}
-        self.cursor = 0
-        self._halted = False
-        self._halting = False
+        self.state: _Core = (starts, MappingProxyType({}), 0, False, False)
         self._input_reads = 0
-        self._set_ended = False
 
-    def _char(self, point: _Point) -> str:
-        x, y = point
-        if 0 <= y < len(self.grid) and 0 <= x < self.width:
-            return self.grid[y][x]
-        return " "
+    @property
+    def pointers(self) -> tuple[_Pointer, ...]:
+        return self.state[0]
 
-    def _neighbors(self, point: _Point, channel: _Channel) -> list[_Point]:
-        here = self._char(point)
-        alphabet = _SINGLE if channel == "execution" else _DOUBLE
-        directions = _PORTS.get(here, "EWNS" if here in _NODES else "")
-        neighbors = []
-        for direction in directions:
-            dx, dy = _STEP[direction]
-            there = (point[0] + dx, point[1] + dy)
-            other = self._char(there)
-            wire = other in alphabet and _OPPOSITE[direction] in _PORTS[other]
-            # A wire's end reaches a node; touching nodes are not connected.
-            if wire or (other in _NODES and here not in _NODES):
-                neighbors.append(there)
-        return neighbors
+    @pointers.setter
+    def pointers(self, value: tuple[_Pointer, ...]) -> None:
+        self.state = (value, self.state[1], self.state[2], self.state[3], self.state[4])
 
-    def _exits(self, pointer: _Pointer, channel: _Channel) -> list[_Point]:
-        return [
-            point
-            for point in self._neighbors(pointer.position, channel)
-            if point != pointer.previous
-        ]
+    @property
+    def cells(self) -> _Cells:
+        return self.state[1]
 
-    def _directed_exit(
-        self, pointer: _Pointer, direction: str, channel: _Channel
-    ) -> list[_Point]:
-        dx, dy = _STEP[direction]
-        target = (pointer.position[0] + dx, pointer.position[1] + dy)
-        return [target] if target in self._neighbors(pointer.position, channel) else []
-
-    def _emit(
-        self,
-        following: list[_Pointer],
-        pointer: _Pointer,
-        exits: list[_Point],
-        channel: _Channel,
-        value: int | None = None,
-    ) -> None:
-        following.extend(
-            _Pointer(exit_, pointer.position, channel, value) for exit_ in exits
+    @cells.setter
+    def cells(self, value: Mapping[tuple[int, int], int]) -> None:
+        self.state = (
+            self.state[0],
+            MappingProxyType(dict(value)),
+            self.state[2],
+            self.state[3],
+            self.state[4],
         )
 
-    def _send(
-        self, following: list[_Pointer], pointer: _Pointer, value: int | None
-    ) -> None:
-        """Send ``value`` down the data wires and go on down the execution ones."""
-        self._emit(following, pointer, self._exits(pointer, "data"), "data", value)
-        self._emit(following, pointer, self._exits(pointer, "execution"), "execution")
+    @property
+    def cursor(self) -> int:
+        return self.state[2]
 
-    def _read_char(self) -> str | None:
-        try:
-            char = chr(self.io.input_char())
-        except EOFError:
-            return None
-        # Counted for the snapshot: an IO without a cursor still moves on.
-        self._input_reads += 1
-        return char
+    @cursor.setter
+    def cursor(self, value: int) -> None:
+        self.state = (self.state[0], self.state[1], value, self.state[3], self.state[4])
 
-    def _read_bit(self) -> int | None:
-        """Return the current set's next bit, or ``None`` past its end."""
-        char = None if self._set_ended else self._read_char()
-        while char is not None and char != "\n" and char.isspace():
-            char = self._read_char()
-        if char == "\n":
-            self._set_ended = True
-        if char in (None, "\n"):
-            return None
-        if char not in "01":
-            raise HaltError(
-                "thisthat input must be a bit",
-                hint="supply input bits as 0 or 1 characters, a set per line",
-            )
-        return int(char)
+    @property
+    def _halted(self) -> bool:
+        return self.state[3]
 
-    def _at(self, axis: Literal["row", "column"], index: int) -> _Point:
-        return (self.cursor, index) if axis == "column" else (index, self.cursor)
-
-    def _stack_axis(self, axis: Literal["row", "column"]) -> list[_Point]:
-        """Return the stack's occupied cells, beginning (at the axis) first."""
-        along = 1 if axis == "column" else 0
-        line = 0 if axis == "column" else 1
-        return sorted(
-            (p for p in self.cells if p[line] == self.cursor), key=lambda p: p[along]
-        )
-
-    def _head(self, axis: Literal["row", "column"], value: int | None) -> int | None:
-        along = 1 if axis == "column" else 0
-        points = self._stack_axis(axis)
-        if value is None:
-            result = self.cells.pop(self._at(axis, 0), None)
-            for point in points:
-                if point[along]:
-                    self.cells[self._at(axis, point[along] - 1)] = self.cells.pop(point)
-            return result
-        for point in reversed(points):
-            self.cells[self._at(axis, point[along] + 1)] = self.cells.pop(point)
-        self.cells[self._at(axis, 0)] = value
-        return None
-
-    def _tail(self, axis: Literal["row", "column"], value: int | None) -> int | None:
-        along = 1 if axis == "column" else 0
-        points = self._stack_axis(axis)
-        if value is None:
-            return self.cells.pop(points[-1]) if points else None
-        self.cells[self._at(axis, points[-1][along] + 1 if points else 0)] = value
-        return None
+    @property
+    def _set_ended(self) -> bool:
+        return self.state[4]
 
     @property
     def halted(self) -> bool:
-        return self._halted or not self.pointers
+        return self.state[3] or not self.state[0]
 
     @property
     def ip(self) -> tuple[int, ...]:
@@ -294,46 +652,28 @@ class _Machine:
     def stack(self) -> list[object]:
         return [self.cursor, *sorted(self.cells.items())]
 
-    def snapshot(self) -> tuple[object, ...]:
+    def snapshot(self) -> _State:
+        pointers, cells, cursor, halted, set_ended = self.state
         return (
-            self.pointers,
-            tuple(sorted(self.cells.items())),
-            self.cursor,
-            self._halted,
+            pointers,
+            tuple(sorted(cells.items())),
+            cursor,
+            halted,
             self.io.progress(),
             self._input_reads,
             self.grid,
-            self._set_ended,
+            set_ended,
         )
 
     def branching_snapshot(self) -> _State:
         """Return immutable state for exhaustive random-merge search."""
-        return (
-            self.pointers,
-            tuple(sorted(self.cells.items())),
-            self.cursor,
-            self._halted,
-            self.io.progress(),
-            self._input_reads,
-            self.grid,
-            self._set_ended,
-        )
+        return self.snapshot()
 
     def branching_halted(self, state: object) -> bool:
         """Report whether a branch halted or lost every pointer."""
         if not isinstance(state, tuple) or len(state) != 8:
             return False
         return bool(state[3]) or not state[0]
-
-    def _restore(self, state: _State) -> None:
-        if state[6] != self.grid:
-            raise ValueError("branch belongs to another thisthat program")
-        self.pointers = state[0]
-        self.cells = dict(state[1])
-        self.cursor = state[2]
-        self._halted = state[3]
-        self._input_reads = state[5]
-        self._set_ended = state[7]
 
     def branching_successors(
         self, state: object, limit: int
@@ -344,26 +684,18 @@ class _Machine:
         current: _State = state
         if self.branching_halted(current):
             return (current,)
-        pointers = current[0]
+        pointers, cells, cursor, halted, progress, reads, grid, set_ended = current
+        if grid != self.grid:
+            raise ValueError("branch belongs to another thisthat program")
         if any(
-            self._char(pointer.position) == "◇"
+            _char(grid, pointer.position) == "◇"
             and (pointer.channel == "execution" or pointer.value is None)
             for pointer in pointers
         ):
             return None
-        groups: dict[_Point, list[_Pointer]] = defaultdict(list)
-        for pointer in pointers:
-            groups[pointer.position].append(pointer)
         radices: list[int] = []
-        for position, arrived in sorted(
-            groups.items(),
-            key=lambda item: (
-                _PRIORITY.get(self._char(item[0]), 1),
-                item[0][1],
-                item[0][0],
-            ),
-        ):
-            if self._char(position) != "◘":
+        for position, arrived in _ordered_groups(grid, pointers):
+            if _char(grid, position) != "◘":
                 continue
             for channel in ("execution", "data"):
                 count = sum(pointer.channel == channel for pointer in arrived)
@@ -382,219 +714,126 @@ class _Machine:
                     "feasible or reduce simultaneous random merges"
                 ),
             )
+        core: _Core = (
+            pointers,
+            MappingProxyType(dict(cells)),
+            cursor,
+            halted,
+            set_ended,
+        )
         choices = product(*(range(radix) for radix in radices)) if radices else [()]
         successors = []
         for branch_choices in choices:
-            branch = copy.deepcopy(self)
-            branch._restore(current)  # noqa: SLF001 - same-class state fork
-            branch.rng = _BranchDraw(tuple(branch_choices))
-            branch.step()
-            successors.append(branch.branching_snapshot())
+            new_core, _effects = _advance(core, grid, draws=tuple(branch_choices))
+            new_pointers, new_cells, new_cursor, new_halted, new_ended = new_core
+            successors.append(
+                (
+                    new_pointers,
+                    tuple(sorted(new_cells.items())),
+                    new_cursor,
+                    new_halted,
+                    progress,
+                    reads,
+                    grid,
+                    new_ended,
+                )
+            )
         return tuple(successors)
 
-    def _incoming(self, pointer: _Pointer) -> str | None:
-        if pointer.previous is None:
-            return None
-        delta = (
-            pointer.position[0] - pointer.previous[0],
-            pointer.position[1] - pointer.previous[1],
-        )
-        return _DIRECTION.get(delta)
+    def _head(self, axis: Literal["row", "column"], value: int | None) -> int | None:
+        cells, result = _head(self.cells, self.cursor, axis, value)
+        self.cells = cells
+        return result
+
+    def _tail(self, axis: Literal["row", "column"], value: int | None) -> int | None:
+        cells, result = _tail(self.cells, self.cursor, axis, value)
+        self.cells = cells
+        return result
 
     def _router_direction(self, cell: str, pointer: _Pointer) -> str | None:
-        incoming = self._incoming(pointer)
-        if pointer.channel == "data":
-            if pointer.value is None:
-                return incoming
-            return (_WHITE_SIDE[cell], _BLACK_SIDE[cell])[pointer.value]
-        if incoming is None:
-            return None
-        black = _BLACK_SIDE[cell]
-        white = _WHITE_SIDE[cell]
-        if _OPPOSITE[incoming] == white:
-            return incoming
-        if _OPPOSITE[incoming] == black:
-            return black
-        return {"N": "E", "E": "S", "S": "W", "W": "N"}[incoming]
+        return _router_direction(cell, pointer)
+
+    def _workspace(self, following: list[_Pointer]) -> _Step:
+        return _Step(
+            grid=self.grid,
+            cells=dict(self.cells),
+            cursor=self.cursor,
+            inputs=(),
+            draws=(),
+            set_ended=self.state[4],
+            following=following,
+        )
 
     def _merge(
         self, cell: str, arrived: list[_Pointer], following: list[_Pointer]
     ) -> None:
-        if cell == "◈":
-            if len(arrived) < 2:
-                following.extend(arrived)
+        saved = list(following)
+        draws: tuple[int, ...] = ()
+        while True:
+            following[:] = saved
+            step = self._workspace(following)
+            step.draws = draws
+            try:
+                step._merge(cell, arrived)  # noqa: SLF001 - same-module workspace
                 return
-            for pointer in arrived:
-                self._emit(
-                    following,
-                    pointer,
-                    self._exits(pointer, pointer.channel),
-                    pointer.channel,
-                    pointer.value,
-                )
-            return
-        groups = (
-            [p for p in arrived if p.channel == "execution"],
-            [p for p in arrived if p.channel == "data"],
-        )
-        for pointers in groups:
-            if not pointers:
-                continue
-            if cell in "□■▦" and pointers[0].channel == "execution":
-                value = {"□": 0, "■": 1, "▦": None}[cell]
-                for pointer in pointers:
-                    self._send(following, pointer, value)
-                continue
-            chosen = pointers[0]
-            if cell == "◘" and len(pointers) > 1:
-                chosen = pointers[draw(self.rng, len(pointers))]
-            if chosen.channel == "execution":
-                value = None
-            else:
-                bits = [pointer.value for pointer in pointers]
-                if cell == "◘":
-                    value = int(not all(bit == 1 for bit in bits))
-                elif cell == "□":
-                    value = int(not any(bit == 1 for bit in bits))
-                elif cell == "■":
-                    value = int(any(bit == 1 for bit in bits))
-                else:
-                    value = sum(bit == 1 for bit in bits) % 2
-            channel: _Channel = "execution" if chosen.channel == "execution" else "data"
-            self._emit(following, chosen, self._exits(chosen, channel), channel, value)
+            except _NeedDrawError as need:
+                draws = (*draws, draw(self.rng, need.upper))
 
     def _advance_one(self, pointer: _Pointer, following: list[_Pointer]) -> None:
-        cell = self._char(pointer.position)
-        if cell in _SINGLE | _DOUBLE:
-            channel: _Channel = "execution" if cell in _SINGLE else "data"
-            value = pointer.value if channel == "data" else None
-            self._emit(
-                following, pointer, self._exits(pointer, channel), channel, value
-            )
-        elif cell == "▣":
-            self._emit(
-                following, pointer, self._exits(pointer, "execution"), "execution"
-            )
-        elif cell == "◉":
-            self._halting = True
-        elif cell in _ARROWS:
-            direction = _ARROW_DIRECTION[cell]
-            incoming = self._incoming(pointer)
-            if cell in "△▷▽◁" and incoming not in (
-                None,
-                direction,
-                _OPPOSITE[direction],
-            ):
-                direction = incoming
-            exits = [
-                point
-                for point in self._directed_exit(pointer, direction, pointer.channel)
-                if point != pointer.previous
-            ]
-            self._emit(following, pointer, exits, pointer.channel, pointer.value)
-        elif cell == "◯":
-            self._emit(
-                following,
-                pointer,
-                self._exits(pointer, pointer.channel),
-                pointer.channel,
-                pointer.value,
-            )
-        elif cell == "◔":
-            if pointer.paused:
-                self._emit(
-                    following,
-                    pointer,
-                    self._exits(pointer, pointer.channel),
-                    pointer.channel,
-                    pointer.value,
-                )
-            else:
-                following.append(
-                    _Pointer(
-                        pointer.position,
-                        pointer.previous,
-                        pointer.channel,
-                        pointer.value,
-                        paused=True,
-                    )
-                )
-        elif cell == "◇":
-            if pointer.channel == "execution":
-                self._send(following, pointer, self._read_bit())
-            elif pointer.value is not None:
-                self.io.print_num(pointer.value)
-            elif self._set_ended:
-                self._set_ended = False
-            else:
-                while self._read_char() not in (None, "\n"):
-                    pass
-        elif cell in "◧⬓◨⬒":
-            axis: Literal["row", "column"] = "column" if cell in "⬓⬒" else "row"
-            operation = self._tail if cell in "◨⬒" else self._head
-            if pointer.channel == "execution":
-                self._send(following, pointer, operation(axis, None))
-            else:
-                if pointer.value is not None:
-                    operation(axis, pointer.value)
-                self._emit(
-                    following, pointer, self._exits(pointer, "execution"), "execution"
-                )
-        elif cell in "◹◺":
-            if pointer.channel == "data" and pointer.value != 1:
+        saved = list(following)
+        draws: tuple[int, ...] = ()
+        while True:
+            following[:] = saved
+            step = self._workspace(following)
+            step.draws = draws
+            try:
+                step._advance_one(pointer)  # noqa: SLF001 - same-module workspace
                 return
-            moved = cell == "◹" or self.cursor > 0
-            if moved:
-                self.cursor += 1 if cell == "◹" else -1
-            if pointer.channel == "execution":
-                self._send(following, pointer, int(moved))
-            else:
-                self._emit(
-                    following, pointer, self._exits(pointer, "execution"), "execution"
-                )
-        elif cell in _BLACK_SIDE:
-            route_direction = self._router_direction(cell, pointer)
-            exits = (
-                []
-                if route_direction is None
-                else self._directed_exit(pointer, route_direction, "execution")
-            )
-            self._emit(following, pointer, exits, "execution")
-        elif cell in "□■▦":
-            self._send(following, pointer, {"□": 0, "■": 1, "▦": None}[cell])
-        else:
-            raise HaltError(
-                f"unsupported thisthat cell: {cell!r}",
-                hint="use cells documented by esolangs describe --spec thisthat",
-            )
+            except _NeedDrawError as need:
+                draws = (*draws, draw(self.rng, need.upper))
+
+    def _flush(self, effects: tuple[int, ...], flushed: int) -> None:
+        """Write the prints beyond ``flushed``; a prefix is written once."""
+        for value in effects[flushed:]:
+            self.io.print_num(value)
 
     def step(self) -> None:
+        """Execute one cycle, reading, drawing and writing as the shell.
+
+        Each request or fault carries the prints collected before it; this
+        flushes that prefix exactly once before asking for another value or
+        re-raising the fault, so output order and partial output match the
+        single-pass original.
+        """
         if self.halted:
             return
-        groups: dict[_Point, list[_Pointer]] = defaultdict(list)
-        for pointer in self.pointers:
-            groups[pointer.position].append(pointer)
-        following: list[_Pointer] = []
-        ordered = sorted(
-            groups.items(),
-            key=lambda item: (
-                _PRIORITY.get(self._char(item[0]), 1),
-                item[0][1],
-                item[0][0],
-            ),
-        )
-        for position, arrived in ordered:
-            cell = self._char(position)
-            is_data_gate = cell in "□■▦" and any(p.channel == "data" for p in arrived)
-            if cell in "◘◈" or is_data_gate:
-                self._merge(cell, arrived, following)
+        inputs: tuple[int | None, ...] = ()
+        draws: tuple[int, ...] = ()
+        flushed = 0
+        while True:
+            try:
+                core, effects = _advance(self.state, self.grid, inputs, draws=draws)
+            except _NeedInputError as need:
+                self._flush(need.effects, flushed)
+                flushed = len(need.effects)
+                # One IO attempt per ``◇`` read, EOF included, so the port
+                # sees exactly the reads the single-pass original made.
+                try:
+                    inputs = (*inputs, self.io.input_char())
+                    self._input_reads += 1
+                except EOFError:
+                    inputs = (*inputs, None)
+            except _NeedDrawError as need:
+                self._flush(need.effects, flushed)
+                flushed = len(need.effects)
+                draws = (*draws, draw(self.rng, need.upper))
+            except _FaultError as fault:
+                self._flush(fault.effects, flushed)
+                raise fault.cause from None
             else:
-                for pointer in arrived:
-                    self._advance_one(pointer, following)
-        if self._halting:
-            self._halted = True
-            following.clear()
-        self.pointers = tuple(following)
+                self.state = core
+                self._flush(effects, flushed)
+                return
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:

@@ -3,15 +3,15 @@
 import pytest
 
 import esolangs
-from esolangs._evaluate import _evaluate
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages import generators as boolean
 from esolangs.languages.bitwise_cyclic_tag.generator import PAIR as BCT_PAIR
 from esolangs.languages.bitwise_cyclic_tag.interpreter import (
     _Machine as BctMachine,
 )
 from esolangs.languages.bitwise_cyclic_tag.interpreter import run as run_bct
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.runtime._evaluate import _evaluate
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.reader_support import _TABLES
 from tests.support.witness_tables import parity as _parity
 from tests.support.witness_tables import row_bits as _bits
@@ -70,7 +70,7 @@ def test_bitwise_cyclic_tag_walks_forward_in_a_fixed_number_of_steps() -> None:
 
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_deletes_inputs_and_literal_answer(n, bit):
+def test_constant_deletes_inputs_and_literal_answer(n, bit) -> None:
     table = bit * (1 << n)
     template = esolangs.generate("Bitwise Cyclic Tag", table)
     assert template == "0," + "$" * n + bit

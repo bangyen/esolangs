@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from esolangs.interpreters.source_hints import syntax_error
 from esolangs.raster import png
+from esolangs.runtime.source_hints import syntax_error
 
 from . import lattice
 from . import mask as mask_module
@@ -146,7 +146,7 @@ def normalize_scale(mask: Mask, scale: int | None = None) -> Mask:
     if scale is None:
         scale = detect_scale(mask)
     else:
-        from esolangs._validate import check_scale
+        from esolangs.runtime._validate import check_scale
 
         check_scale(scale)
         bounds = mask.bounds()

@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 import esolangs.languages.generators as boolean
+from esolangs.generation.helpers import runs
 from esolangs.registry import BY_BOOLEAN
-from esolangs.tools.helpers import runs
 from tests.proofs._ledger import Ledger, Row, load
 from tests.support.source_support import source_units
 
@@ -32,27 +32,10 @@ _PARITY = "01101001"
 #: on the table.  The threshold is the existing shape discriminator's.
 _FOLD = 0.05
 
-#: Lookup rows with no tree route that the fold discriminator cannot see:
-#: their *lookup* route is what shrinks a degenerate table, so they fold like a
-#: tree would.  Eval is one linear lookup at every arity, NoComment switches
-#: between two lookups at four inputs, and Collatz Multiverse spends a constant
-#: and a decoder group on each distinct nibble its table holds,
-#: bit~ indexes the projected table it is handed, Circlefuck tabulates its
-#: essential inputs alone, Dimensional paints only as far as its last one, so
-#: a table whose tail is constant zero is cheaper (6.9% on the best
-#: one-dependency table) with no subtree involved, A Painter Ant's corridor
-#: stops where the trailing run of equal answers starts (36.4%), and Unsquare
-#: pushes only the cells the essential inputs address.  Cyclic tag, Bitwise
-#: Cyclic Tag, ///, A Painter Ant, Forbin and Minsky Swap weight only the
-#: essential inputs (``input_weights``): an ignored one costs an empty rule, a
-#: bare ``0``, an ``X``-deleted bit, a bare ``SN``, a read into the scratch
-#: name or a drained ``~ ~``; Fish reads and pops it (``i~``), Packlang reads
-#: it bare, Flowchart skips its eight bits and Clockwise reads its seven
-#: before the next input's overwrite them; BIO parks its index while an
-#: ignored setter runs.  Named rather
-#: than derived because the proxy is structural and these are its known blind
-#: spot; a further such row has to be added here, which is the point -- the
-#: equality below then fails until the prose and this set agree.
+#: Lookup routes can shrink degenerate tables without branching. Their
+#: mechanisms are documented in the ledger's per-language exemption bullets.
+#: Named rather than derived: these are the structural proxy's known blind
+#: spots, and the equality below requires the prose and this set to agree.
 _FOLDS_WITHOUT_TREE = frozenset(
     {
         "///",

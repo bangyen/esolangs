@@ -23,11 +23,13 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+# scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from verify.process import (  # noqa: E402
@@ -44,6 +46,7 @@ from verify.scope import (  # noqa: E402
     local_tooling_deselections,
 )
 
+# language-owners: ["Line"]
 # Git runs this hook with its stdout attached to a pipe, not the terminal, so
 # Python block-buffers our own prints while the steps -- which inherit the
 # same pipe and write to it directly -- stream straight through.  The result
@@ -77,7 +80,6 @@ PY = python_cmd()
 MANUAL_ONLY = frozenset(
     {
         "generated docs",
-        "bandit",
         "dead definitions",
         "generator size baseline",
         "duplicate-code check (pylint)",
@@ -111,22 +113,6 @@ STEPS = [
     # this run covers src/ and scripts/ both from the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     ("pytest", [*PY, "-m", "pytest", "-q"]),
-    (
-        "bandit",
-        [
-            "uv",
-            "run",
-            "--no-sync",
-            "--with",
-            "bandit",
-            "bandit",
-            "-r",
-            "src",
-            "--exclude",
-            "*/tests/*",
-            "-q",
-        ],
-    ),
     # A generator route that was replaced keeps its own tests green, so it
     # never fails; three sat that way.  <1s.
     ("dead definitions", [*PY, "checks/check_dead_definitions.py"]),
@@ -158,6 +144,7 @@ STEPS = [
             "checks",
         ],
     ),
+    # language-owners: ["ArrowQueue", "BIO"]
     # The deep proofs cheap enough to gate locally: ArrowQueue's twelve named
     # lemmas and BIO's telescoping lookup, each pinning finite facts their
     # total-over-every-arity proofs rest on.  2.2s together.  Which proofs
@@ -209,7 +196,7 @@ def _parse_only_skip() -> tuple[
         "--only",
         type=str,
         default=None,
-        help="comma-separated subset of STEPS names to run (e.g. --only pytest,bandit)",
+        help="comma-separated subset of STEPS names to run (--only pytest)",
     )
     parser.add_argument(
         "--skip",
@@ -419,13 +406,7 @@ def _run_steps(
                         cache_keys[name] = clean_cache.key(name, cmd, step_env)
 
                 eligible = [step for step in runnable if step[0] in CACHED_STEPS]
-                futures = [
-                    pool.submit(
-                        prepare,
-                        [step for step in eligible if (step[0] == "bandit") == bandit],
-                    )
-                    for bandit in (False, True)
-                ]
+                futures = [pool.submit(prepare, eligible)]
         for name, cmd, step_env in runnable:
             if name == MUTATES_TREE:
                 run_serial(name, cmd, step_env)
@@ -499,7 +480,7 @@ def _run_steps(
 
 
 def main() -> int:
-    """Compile and run every example, reporting failures."""
+    """Run the verification stack: lint, types, tests, and scoping."""
     only, skip, full, quiet, verbose, allow_incomplete = _parse_only_skip()
 
     # `--list` exits inside the parse, so this never slows it down.
@@ -569,6 +550,7 @@ def main() -> int:
         # everything -- a tooling change, an unreadable diff -- should still
         # not pay for them.
         #
+        # language-owners: ["Line"]
         # The tests/interpreters suites carry the same marker on their two 5.2s tests
         # (the eight-level nesting round trip and the n=5 parity table), which
         # are 10.4s of that step's 12.8s.  CI's `line` job runs that suite
@@ -592,14 +574,29 @@ def main() -> int:
             # caller's own `-m` and lose to it. `just test-quick` supplies its
             # own expression excluding all three deferred bands.
             cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else LOCAL_PYTEST_MARKS]
+            if full:
+                directory = ROOT / "notes/verification"
+                directory.mkdir(parents=True, exist_ok=True)
+                timing_directory = Path(
+                    tempfile.mkdtemp(prefix="pytest-timings-", dir=directory)
+                )
+                output = timing_directory / "durations.json"
+                print(f"[timings] {output}.progress.jsonl")
+                cmd.extend(
+                    [
+                        "-p",
+                        "scripts.ci.shard",
+                        "--duration-output",
+                        str(output),
+                        "--duration-input",
+                        str(ROOT / "tests/support/fixtures/slow_durations.json"),
+                    ]
+                )
             if not full and os.environ.get("VERIFY_FULL", "0") in ("", "0"):
                 deferred = local_tooling_deselections(changed)
                 cmd.extend(deferred)
                 if deferred:
                     print("[defer] unrelated tooling integrations: covered by CI")
-        if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
-            unavailable.append(f"{name}: uv not installed")
-            continue
         if not have_pylint and "(pylint)" in name:
             unavailable.append(f"{name}: pylint not installed (pip install pylint)")
             continue

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.runtime.io import ScriptedIO
 
 
 @dataclass(frozen=True)

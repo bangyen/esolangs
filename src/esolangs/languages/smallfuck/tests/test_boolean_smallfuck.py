@@ -1,16 +1,15 @@
 """Executed tests for the Smallfuck banded-result tree."""
 
-import random
 from itertools import pairwise
 
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.smallfuck.generator import PAIR, smallfuck
 from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from tests.support.generator_support import run_filled
+from tests.support.generator_support import multiple_tables, run_filled
 
 
 def _run(table: str, row: int) -> str:
@@ -45,6 +44,14 @@ def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
     assert smallfuck("0001") == TEMPLATE_CHAR * 8 + "<<<<<<[*>>>[*<*>]]"
     assert smallfuck("0110").endswith("<<<]>[*>>[*<*>]]")
     assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 20145
+
+    table = multiple_tables()[0]
+    template = esolangs.generate("Smallfuck", table)
+    assert len(template) <= 637
+    for row, expected in enumerate(table):
+        bits = [int(bit) for bit in format(row, "06b")]
+        program = esolangs.instantiate("Smallfuck", template, bits)
+        assert esolangs.run("Smallfuck", program, max_steps=10_000) == expected
 
 
 @pytest.mark.medium
@@ -132,34 +139,18 @@ def test_complemented_shared_arm_contributes_its_constant_first() -> None:
     )
 
 
-def _multiple_tables():
-    rng = random.Random(88417)
-    a, b = "00010111", "01101001"
-    four = (
-        "0001011101101001",
-        "0110100100010111",
-        "1010110010001101",
-        "1101001010010010",
-    )
-    return [
-        a + b + b + a + a + b + a + b,
-        "".join(four[(row // 4 + row % 4) % 4] for row in range(16)),
-        *("".join(str(rng.randrange(2)) for _ in range(128)) for _ in range(6)),
-    ]
-
-
 @pytest.mark.medium
-@pytest.mark.parametrize("table", _multiple_tables())
+@pytest.mark.parametrize("table", multiple_tables())
 @pytest.mark.parametrize("reverse", [False, True])
 @pytest.mark.parametrize("kind", ["levels", "first", "ranked"])
 @pytest.mark.parametrize("half", [0, 1])
 def test_multiple_residuals_preserve_bands_and_native_bounds(
     table, reverse, kind, half
-):
+) -> None:
     from esolangs.debugger import make_vm
+    from esolangs.generation.helpers import permute_truth_table
+    from esolangs.generation.shared_block import repeated_bank, repeated_blocks
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
-    from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.shared_block import repeated_bank, repeated_blocks
     from scripts.benchmark import WrittenState
 
     n = len(table).bit_length() - 1
@@ -211,7 +202,7 @@ def test_multiple_residuals_preserve_bands_and_native_bounds(
         (((1, 0), (1, 4)), (1, 2), "distinct residuals"),
     ],
 )
-def test_invalid_multiple_definitions_abort(blocks, flags, message):
+def test_invalid_multiple_definitions_abort(blocks, flags, message) -> None:
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
 
     with pytest.raises(ValueError, match=message):
@@ -219,9 +210,9 @@ def test_invalid_multiple_definitions_abort(blocks, flags, message):
 
 
 @pytest.mark.medium
-def test_multiple_residuals_reduce_tiled_cap_program_within_ledger():
+def test_multiple_residuals_reduce_tiled_cap_program_within_ledger() -> None:
+    from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
-    from esolangs.tools.shared_block import repeated_block
     from tests.support.generator_support import assert_shared_program
 
     n = 16
@@ -254,11 +245,11 @@ def test_multiple_residuals_reduce_tiled_cap_program_within_ledger():
 @pytest.mark.medium
 @pytest.mark.parametrize("swap_suffix", [False, True])
 @pytest.mark.parametrize("half", [0, 1])
-def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half):
+def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half) -> None:
     from esolangs.debugger import make_vm
+    from esolangs.generation.helpers import permute_truth_table
+    from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.smallfuck.generator import _paired_roots, _smallfuck_tree
-    from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.shared_block import repeated_block
     from scripts.benchmark import WrittenState
 
     table = "".join(f"{code:04b}" for code in range(16)) * 4
@@ -290,7 +281,7 @@ def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half):
         assert written.bits <= bound
 
 
-def test_pair_definitions_require_retired_levels_and_an_exclusive_mode():
+def test_pair_definitions_require_retired_levels_and_an_exclusive_mode() -> None:
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
 
     with pytest.raises(ValueError, match="two retired levels"):
@@ -302,7 +293,7 @@ def test_pair_definitions_require_retired_levels_and_an_exclusive_mode():
 
 
 @pytest.mark.parametrize("word", ["0001", "0100"])
-def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word):
+def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> None:
     from esolangs.languages.smallfuck.generator import _paired_roots, _smallfuck_tree
 
     complement = "".join("1" if bit == "0" else "0" for bit in word)

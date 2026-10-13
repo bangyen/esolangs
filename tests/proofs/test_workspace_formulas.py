@@ -11,6 +11,7 @@ import pytest
 
 import esolangs
 from esolangs.languages.sstack.interpreter import _parse
+from esolangs.registry import LANGUAGES
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
@@ -23,12 +24,6 @@ bl = int.bit_length
 def _floor1(x: int) -> int:
     """Bits of a non-negative int: zero still costs one."""
     return max(1, bl(x))
-
-
-def _taglate(n: int, p: str) -> int:
-    """Six-bit queue cells; odd n gets a ghost input, m even."""
-    m = 2 * -(-n // 2)
-    return 24 * 2**m + 12 * m + 12 + bl(m) + bl(len(p) - 4 * 2**m - 7 * m + 1)
 
 
 def _dig(n: int, p: str) -> int:
@@ -59,7 +54,7 @@ def _intercal(n: int) -> int:
 
 
 def _diagram_cap(n: int) -> int:
-    """Distinct subtables each depth can hold: FRACTRAN's most states."""
+    """Distinct subtables each depth can hold: the maximal state count."""
     return sum(min(1 << d, 1 << (1 << (n - d))) for d in range(n + 1))
 
 
@@ -195,7 +190,6 @@ _HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     ),
     "EGL": (_egl, True, (3, 5)),
     "Dig": (_dig, True, (5,)),
-    "Taglate": (_taglate, True, (3, 5)),
     "Grapheme": (_grapheme, True, (3, 5)),
     "BIO": (
         lambda n, _: (
@@ -357,7 +351,8 @@ _ARITIES: dict[str, tuple[int, ...]] = {
     "FALSE": (3, 5),
     "Sophie": (3, 6),
     "NoComment": (5,),
-    "6-5": (7,),
+    # Seven-input witnesses now use shared trees; eight exercises the walk.
+    "6-5": (8,),
     "Circlefuck": (3,),
     "Bitdeque": (5,),
     "ArrowQueue": (1, 6),
@@ -380,6 +375,11 @@ _ARITIES: dict[str, tuple[int, ...]] = {
 
 #: Generator -> (formula, exact?, arities): the ledger's own clause where
 #: it parses (``tests/proofs/_formula.py``), else ``_HAND``.
+_HAND.update(
+    (name, lang.proof_workspace)
+    for name, lang in LANGUAGES.items()
+    if lang.proof_workspace is not None
+)
 FORMULAS = ledger_formulas(
     lambda row: row.workspace_clause if " bits" in row.workspace_clause else "",
     _HAND,
@@ -388,11 +388,13 @@ FORMULAS = ledger_formulas(
 )
 
 
+# language-owners: ["6-5", "Container", "Fargo"]
 #: Smallest-arity cases that still measure past the medium band run alone
-#: (Container-7 5.7s; 6-5-7 4.9s and Fargo-6 4.6s overrun under load): the
+#: (Container-7 5.7s and Fargo-6 4.6s overrun under load; the 6-5 walk
+#: now starts in the eight-input witness corpus): the
 #: per-step state measurement dominates, so they run in the slow band.
 _SLOW_AT_MIN: frozenset[tuple[str, int]] = frozenset(
-    {("Container", 7), ("6-5", 7), ("Fargo", 6)}
+    {("Container", 7), ("6-5", 8), ("Fargo", 6)}
 )
 
 

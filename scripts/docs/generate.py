@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 
+# scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import argparse
@@ -30,10 +31,9 @@ def main() -> int:
             parser.error("docs takes no arguments")
         return docs_main()
     if args.target == "examples":
-        sys.argv = [sys.argv[0], *args.args]
         from docs.examples import examples_main
 
-        return examples_main()
+        return examples_main(args.args)
     raise AssertionError(args.target)
 
 
@@ -100,6 +100,7 @@ _SIZE_END = "<!-- COLLECTION-SIZE:END -->"
 _CENSUS_START = "<!-- CURATION-CENSUS:START -->"
 _CENSUS_END = "<!-- CURATION-CENSUS:END -->"
 
+# language-owners: ["Fargo", "Taglate"]
 #: The bit vector the stdin table is rendered for.  Three bits, because an
 #: odd count is what makes Taglate's padding visible -- at two it encodes
 #: like everything else, and Fargo's decimal and binary readings coincide
@@ -174,7 +175,7 @@ def render_examples_section() -> str:
     """Render the README's Examples paragraph between the markers.
 
     The count is the number of registered boolean generators, taken from
-    the registry rather than from ``ls examples/`` -- the same rule the rest
+    the registry rather than from a directory listing -- the same rule the rest
     of this script follows.  A separate sync test already pins that every
     generator has its committed file, so the registry is the source that
     cannot drift.
@@ -184,7 +185,7 @@ def render_examples_section() -> str:
         [
             f"Ready-to-run programs for each of the {count}",
             "languages with a boolean generator live in",
-            "each language's [`examples/` directory]"
+            "each language's [directory]"
             "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).",
         ]
     )
@@ -218,7 +219,7 @@ def render_contributor_tools_section() -> str:
             or source == colocated.with_suffix(".py").resolve()
         ):
             raise ValueError(f"{language.name}'s generator is outside {colocated}")
-    return "| `src/esolangs/tools/` | shared generator helpers |"
+    return "| `src/esolangs/generation/` | shared generator helpers |"
 
 
 def _reads_stdin() -> list[str]:
@@ -241,7 +242,7 @@ def render_input_shapes_section() -> str:
     Every cell is ``repr(encode_inputs(language, [1, 0, 1]))``, so the table
     is the encoder's own output rather than a description of it.  This
     replaced three hand-written prose copies of the same four exceptions;
-    one of them called Fargo's row index a bits-on-one-line input, returned
+    one of them called an integer row index a bits-on-one-line input, returned
     0 where the answer was 1, and was believed because it read plausibly.
     """
     reading = _reads_stdin()
@@ -379,7 +380,7 @@ def render_curation_census_section() -> str:
     """Render docs/limitations.md's census counts from the curation fixture.
 
     The fixture records one route per registry language;
-    ``tests/integration/api/test_interpreter_only_admissions.py`` holds its keys to the
+    ``tests/api/test_interpreter_only_admissions.py`` holds its keys to the
     registry, so the counts here are the registry's too.
     """
     census = tomllib.loads(CURATION.read_text(encoding="utf-8"))
@@ -500,7 +501,12 @@ LINE_LIMIT = 88
 def declared(root: pathlib.Path = ROOT) -> list[tuple[str, str]]:
     """Return canonical module and function names for declared generators."""
     found = []
-    for path in sorted((root / "src/esolangs/languages").rglob("*.py")):
+    languages = root / "src/esolangs/languages"
+    paths = (
+        *languages.glob("*/generator.py"),
+        *languages.glob("*/generator/__init__.py"),
+    )
+    for path in sorted(paths):
         text = path.read_text(encoding="utf-8")
         for statement in ast.parse(text).body:
             if not (
@@ -528,19 +534,24 @@ def render(root: pathlib.Path = ROOT) -> str:
     pairs = declared(root)
     lines = []
     for m, g in pairs:
-        # A generator named for its language may shadow a builtin (Eval).
-        comment = "  # noqa: A004 - the language's name" if hasattr(builtins, g) else ""
-        line = f"from {m} import {g}"
-        # Keep the block stable under `ruff format`: past the line limit, a
-        # trailing comma forces the multi-line form ruff would write anyway.
-        if len(line + comment) > LINE_LIMIT:
-            lines.append(f"from {m} import (\n    {g},{comment}\n)")
-        else:
-            lines.append(line + comment)
+        # language-owners: ["Eval"]
+        for name, alias in (("LANGUAGE", f"_{g.upper()}_LANGUAGE"), (g, "")):
+            comment = (
+                "  # noqa: A004 - the language's name"
+                if hasattr(builtins, name)
+                else ""
+            )
+            item = f"{name} as {alias}" if alias else name
+            line = f"from {m} import {item}"
+            if len(line + comment) > LINE_LIMIT:
+                lines.append(f"from {m} import (\n    {item},{comment}\n)")
+            else:
+                lines.append(line + comment)
     imports = "\n".join(lines)
     names = sorted(["BOOLEAN", *(g for _, g in pairs)])
     listed = "\n".join(f'    "{name}",' for name in names)
-    return f"{imports}\n\n__all__ = [\n{listed}\n]"
+    declarations = "\n".join(f"    _{g.upper()}_LANGUAGE," for _, g in pairs)
+    return f"{imports}\n\n_LANGUAGES = (\n{declarations}\n)\n\n__all__ = [\n{listed}\n]"
 
 
 def update_exports(

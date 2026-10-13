@@ -18,12 +18,12 @@ from esolangs.languages.circuit_diagram.generator.hpool import (
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
-from tests.support.witness_tables import dense, parity
+from tests.support.witness_tables import dense, nested_dense, parity
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [6, 7, 8])
-def test_retained_glyph_floors_bound_executed_layouts(n):
+def test_retained_glyph_floors_bound_executed_layouts(n) -> None:
     table = dense(n)
     for build, floor in (
         (_h_term_layout, _h_term_area_floor),
@@ -37,7 +37,7 @@ def test_retained_glyph_floors_bound_executed_layouts(n):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [7, 8])
-def test_direct_large_atoms_execute_every_row(n):
+def test_direct_large_atoms_execute_every_row(n) -> None:
     table = dense(n)
     model = _large_pool_layout(table)
     assert model is not None
@@ -46,7 +46,7 @@ def test_direct_large_atoms_execute_every_row(n):
 
 
 @pytest.mark.medium
-def test_large_pool_routes_mixed_constant_and_shared_atoms():
+def test_large_pool_routes_mixed_constant_and_shared_atoms() -> None:
     atom = dense(7)
     table = "0" * 128 + "1" * 128 + parity(7) + atom
     model = _large_pool_layout(table)
@@ -55,7 +55,7 @@ def test_large_pool_routes_mixed_constant_and_shared_atoms():
 
 
 @pytest.mark.medium
-def test_large_atom_preserves_gapped_original_ports():
+def test_large_atom_preserves_gapped_original_ports() -> None:
     atom = dense(7)
     order = [0, 1, 2, 3, 4, 6, 7]
     table = "".join(
@@ -67,7 +67,7 @@ def test_large_atom_preserves_gapped_original_ports():
     _execute(table, model.render())
 
 
-def test_large_pool_floor_rejects_before_atom_routing(monkeypatch):
+def test_large_pool_floor_rejects_before_atom_routing(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.hpool"
     )
@@ -81,13 +81,13 @@ def test_large_pool_floor_rejects_before_atom_routing(monkeypatch):
         _large_pool_layout(dense(9), input_order=[0] * 9, ceiling=1)
 
 
-def test_area_floors_without_retained_terms_are_zero():
+def test_area_floors_without_retained_terms_are_zero() -> None:
     assert _h_term_area_floor(1, 8) == 0
     assert _h_pool_area_floor(4, 8) == 0
 
 
 @pytest.mark.medium
-def test_direct_atom_exact_area_ceiling():
+def test_direct_atom_exact_area_ceiling() -> None:
     table = dense(8)
     model = _large_pool_layout(table)
     assert model is not None
@@ -98,7 +98,9 @@ def test_direct_atom_exact_area_ceiling():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("floor", [0, 10**12])
-def test_large_atom_displaces_older_layout_after_exact_comparison(monkeypatch, floor):
+def test_large_atom_displaces_older_layout_after_exact_comparison(
+    monkeypatch, floor
+) -> None:
     module = importlib.import_module("esolangs.languages.circuit_diagram.generator")
     monkeypatch.setattr(module, "_linear_shared_layout", lambda *_args: None)
     monkeypatch.setattr(module, "_h_term_area_floor", lambda *_args: floor)
@@ -113,13 +115,16 @@ def test_large_atom_displaces_older_layout_after_exact_comparison(monkeypatch, f
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("arities", [(8, 10, 12), (9, 11, 13)])
-def test_public_large_pool_growth_executes_positive_controls(arities):
+@pytest.mark.parametrize(
+    ("family", "arities"),
+    [(dense, (8, 10, 12)), (dense, (9, 11, 13)), (nested_dense, (8, 10, 12))],
+)
+def test_public_growth_executes_positive_controls(family, arities) -> None:
     sizes = []
     for n in arities:
-        table = dense(n)
+        table = family(n)
         code = circuit_diagram(table)
         rows = sorted({0, len(table) - 1, *range(0, len(table), len(table) // 32)})
         _execute(table, code, rows)
         sizes.append(len(code))
-    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) <= 4.4
+    assert 0 < sizes[2] - sizes[1] <= 4.4 * (sizes[1] - sizes[0])

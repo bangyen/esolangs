@@ -8,12 +8,38 @@ the source is too short to allocate it).
 
 from __future__ import annotations
 
-from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import match_brackets
-from esolangs.interpreters.io import IO
+from esolangs.runtime._drive import drive
+from esolangs.runtime._entry import script_main
+from esolangs.runtime.brackets import match_brackets
+from esolangs.runtime.io import IO
 
 type _State = tuple[int, int, tuple[int, ...], bool]
+
+
+def _advance(
+    state: _State, code: str, brackets: dict[int, int]
+) -> tuple[_State, str | None]:
+    """Return the next immutable state and any final tape output."""
+    ind, ptr, tape, dumped = state
+    if ind >= len(code):
+        if not dumped:
+            return (ind, ptr, tape, True), str(tape[2] if len(tape) > 2 else 0)
+        return state, None
+    command = code[ind]
+    if command == "*":
+        tape = (*tape[:ptr], 1 - tape[ptr], *tape[ptr + 1 :])
+    elif command == ">":
+        ptr += 1
+        if ptr >= len(code):
+            ind = len(code)
+    elif command == "<":
+        if ptr == 0:
+            ind = len(code)
+        else:
+            ptr -= 1
+    elif (command == "[" and tape[ptr] == 0) or (command == "]" and tape[ptr] != 0):
+        ind = brackets[ind]
+    return (ind + (ind < len(code)), ptr, tape, dumped), None
 
 
 class _Machine:
@@ -53,27 +79,9 @@ class _Machine:
         return (ind, ptr, tape)
 
     def step(self) -> None:
-        ind, ptr, tape, dumped = self.state
-        if ind >= self.size:
-            if not dumped:
-                self.io.print_str(str(tape[2] if len(tape) > 2 else 0))
-                self.state = (ind, ptr, tape, True)
-            return
-        command = self.code[ind]
-        if command == "*":
-            tape = (*tape[:ptr], 1 - tape[ptr], *tape[ptr + 1 :])
-        elif command == ">":
-            ptr += 1
-            if ptr >= self.size:
-                ind = self.size
-        elif command == "<":
-            if ptr == 0:
-                ind = self.size
-            else:
-                ptr -= 1
-        elif (command == "[" and tape[ptr] == 0) or (command == "]" and tape[ptr] != 0):
-            ind = self.brackets[ind]
-        self.state = (ind + (ind < self.size), ptr, tape, dumped)
+        self.state, output = _advance(self.state, self.code, self.brackets)
+        if output is not None:
+            self.io.print_str(output)
 
 
 def run(code: str, io: IO) -> None:

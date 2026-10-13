@@ -5,16 +5,18 @@ import random
 
 import pytest
 
+from esolangs.generation.helpers import in_input_order
 from esolangs.languages import generators as boolean
 from esolangs.languages.cvnc.generator import (
     _HALT_SQUARINGS,
     _direct,
     _halt,
 )
-from esolangs.languages.cvnc.tests.runners import run_cvnc
-from esolangs.tools.helpers import in_input_order
+from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.witness_tables import witnesses
+
+run_cvnc = _runner("cvnc", newline=True)
 
 
 def _leaves(program: str) -> int:
@@ -74,7 +76,7 @@ class TestCvnc:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Past the reach every gadget squares once more, until it fits."""
-        # ``esolangs.tools.cvnc`` resolves to the re-exported
+        # ``esolangs.generation.cvnc`` resolves to the re-exported
         # *function*, so the module has to be fetched by name.
         module = importlib.import_module("esolangs.languages.cvnc.generator")
         monkeypatch.setattr(module, "_HALT_SQUARINGS", 0)

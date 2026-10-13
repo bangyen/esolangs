@@ -12,14 +12,14 @@ from __future__ import annotations
 import re
 from string import ascii_lowercase
 
-from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.tools.helpers import (
+from esolangs.generation.helpers import (
     _validate_truth_table,
     subtree_ids,
 )
-from esolangs.tools.token_balance import balanced_token_width
-from esolangs.tools.wrap import _FALSE_COMMAND, _false, _join_tokens, balance_score
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _FALSE_COMMAND, _false, _join_tokens, balance_score
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 
 #: ``'0`` and ``'1`` differ in their low bit, so ``1&`` is the bit and ``?``
 #: takes any nonzero flag; ``$`` leaves a copy under it for the ``0`` test.
@@ -44,7 +44,7 @@ def false(truth_table: str, width: int | None = None) -> str:
     # spells that value with single-character operands when width is one.
     if width is None:
         return program
-    from esolangs.tools.wrap import wrap_program
+    from esolangs.generation.wrap import wrap_program
 
     if width == 1:
         program = program.replace("'0", "6 8*")
