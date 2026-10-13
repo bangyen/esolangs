@@ -441,20 +441,6 @@ def _execute(
     return result
 
 
-def _commands(
-    language: str,
-    program: esolangs.Program,
-    table: str,
-    row: int,
-    cap: int,
-) -> int | None:
-    """Return steps to halt for the size screens, checking the same artifact."""
-    result = _execute(language, program, table, row, cap, None, source_digest="")
-    if result["matches"] is False:
-        raise ValueError(f"{language} row {row}: wrong generated answer")
-    return cast("int | None", result["commands"])
-
-
 def _measure(
     language: str,
     table: str,

@@ -630,10 +630,6 @@ class _Machine:
         return self.state[3]
 
     @property
-    def _set_ended(self) -> bool:
-        return self.state[4]
-
-    @property
     def halted(self) -> bool:
         return self.state[3] or not self.state[0]
 

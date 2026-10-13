@@ -38,7 +38,7 @@ _SIX_FIVE_MAX_LABEL = 10 + len(string.ascii_uppercase) - 1
 
 #: A walk read's -40, 48/49 to the 8/9 its ``79`` names, in the fewest
 #: tokens: seven (``9`` is -6, ``2`` is -5), not eight ``2``s.
-_SIX_FIVE_NORMALIZE = "99999" + "22"
+_SIX_FIVE_NORMALIZE = "9999922"
 
 #: A tree read's 0 bit (1 is one more): under ``7n``'s cap of 35 by -17,
 #: three tokens as is each leaf's +16..+18, where 8/9 took seven.

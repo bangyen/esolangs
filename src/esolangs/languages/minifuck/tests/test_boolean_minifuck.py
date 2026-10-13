@@ -24,18 +24,6 @@ from esolangs.languages.minifuck.tests.minifuck_support import (
 from esolangs.runtime._evaluate import _evaluate
 
 
-def _slot_order(gen: object, table: str) -> list[int] | None:
-    """The run starts in the order ``gen`` emits them, or None."""
-
-    try:
-        template = gen(table)
-    except ValueError:
-        return None  # a generator need not cover every arity
-    n = len(table).bit_length() - 1
-    spans = runs(template, TEMPLATE_CHAR, (PAIR,) * n)
-    return [start for start, _end in spans]
-
-
 @pytest.mark.slow  # two closed-form builds plus eight interpreter runs each
 def test_minifuck_ignored_leading_inputs_compute_their_function() -> None:
     """A table that ignores its leading inputs computes, not merely emits in order."""
