@@ -5,7 +5,7 @@ and branches, allowing slower bands to cover the rest. Missing measurements
 still fail in strict mode; modules never imported always fail.
 
 This is the new-code bar.  CI's whole-tree drift floor is higher
-(``coverage report --fail-under=97``, over the fast and medium bands): it
+(``coverage report --fail-under=98``, over the fast and medium bands): it
 averages the settled tree, where a few uncovered lines barely move the
 number, while a per-file branch percentage is noisy at the sizes a change
 touches -- one missed branch can be several points.

@@ -69,7 +69,7 @@ def test_coverage_gate_requires_success_and_both_artifacts() -> None:
     commands = "\n".join(step.get("run", "") for step in gate["steps"])
     assert "test -f .coverage.shard-0" in commands
     assert "test -f .coverage.shard-1" in commands
-    assert "coverage report --fail-under=97" in commands
+    assert "coverage report --fail-under=98" in commands
     assert "check_diff_coverage.py --partial --strict" in commands
 
 
