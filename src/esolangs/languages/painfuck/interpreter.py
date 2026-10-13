@@ -201,6 +201,114 @@ def _skip_loop(prog: str, ind: int, n: int) -> int:
     return ind
 
 
+def _collapse_add(tape: tuple[int, ...], ptr: int, rep: int) -> tuple[int, ...]:
+    """Return the tape after ``rep`` ``p``s: ``+2`` each, as one closed form."""
+    return _set(tape, ptr, tape[ptr] + 2 * rep)
+
+
+def _collapse_sub(tape: tuple[int, ...], ptr: int, rep: int) -> tuple[int, ...]:
+    """Return the tape after ``rep`` ``s``s: ``-1`` each, as one closed form."""
+    return _set(tape, ptr, tape[ptr] - rep)
+
+
+def _collapse_right(
+    tape: tuple[int, ...], ptr: int, rep: int
+) -> tuple[tuple[int, ...], int]:
+    """Return the tape and pointer after ``rep`` ``r``s: ``+2`` each."""
+    ptr += 2 * rep
+    return _grow(tape, ptr), ptr
+
+
+def _collapse_left(
+    tape: tuple[int, ...], ptr: int, origin: int, rep: int
+) -> tuple[tuple[int, ...], int, int]:
+    """Return tape, pointer and origin after ``rep`` ``l``s, as one closed form.
+
+    Past the left edge the tape grows by the overshoot.
+    """
+    grown = max(0, rep - ptr)
+    return (0,) * grown + tape, ptr + grown - rep, origin + grown
+
+
+def _collapse_half(tape: tuple[int, ...], ptr: int, rep: int) -> tuple[int, ...]:
+    """Return the tape after ``rep`` ``h``s, as one closed form.
+
+    Repeated floor division by two is an arithmetic shift.  The author
+    specifies rounding negative odd values down.
+    """
+    return _set(tape, ptr, tape[ptr] >> rep)
+
+
+def _collapse_square_fixed(tape: tuple[int, ...], ptr: int) -> tuple[int, ...]:
+    """Return the tape after collapsing ``k`` at a fixed point (``|x| <= 1``).
+
+    Squaring has a closed form -- ``x ** (2 ** rep)`` -- but for ``|x| > 1``
+    the *result* has 2**rep times the bits, so no rewrite makes it
+    affordable (measured at 1.0x); the loop is not the cost there.  At the
+    fixed points it collapses.
+    """
+    return _set(tape, ptr, tape[ptr] * tape[ptr])
+
+
+def _collapse_print(tape: tuple[int, ...], ptr: int, c: str, rep: int) -> _Print:
+    """Return one effect carrying a repeated print's ``rep``.
+
+    A repeated print emits the same cell every time -- nothing in the loop
+    writes the tape -- so one effect carries the count rather than
+    appending ``rep`` identical ones.
+    """
+    value = tape[ptr] if c == "o" else tape[ptr] & 0xFF
+    return _Print(value, as_char=c == "u", count=rep)
+
+
+def _scan_c_run(prog: str, ind: int, n: int) -> tuple[str, int, int]:
+    """Consume a ``c`` run and any trailing ``t`` run.
+
+    Return ``(command, ind, rep)``.  A ``c`` run is one count: ``ccc`` is
+    ``7**3``.  A ``t`` run after the ``c`` run repeats the ``c`` itself:
+    ``ct`` is four ``c``s, ``7 ** 4``; ``ctt`` thirteen, ``7 ** 13``.  Read
+    here, not by the ``t`` executing (that made ``pt`` and ``ct`` unable to
+    both be right).  The run loop already pulled the next char into ``c``.
+    """
+    rep = 1
+    while True:
+        c = prog[ind] if ind < n else _NUL
+        ind += 1
+        rep *= 7
+        if c != "c":
+            break
+    adds = 0
+    if c == "t":
+        adds = 1
+        while ind < n and prog[ind] == "t":
+            ind += 1
+            adds += 1
+    if adds:
+        rep **= (3 ** (adds + 1) - 1) // 2
+        c = prog[ind] if ind < n else _NUL
+        ind += 1
+    return c, ind, rep
+
+
+def _scan_t_run(prog: str, ind: int) -> tuple[str, int]:
+    """Walk left over a ``t`` run and name its command.
+
+    Return ``(command, rep)``.  Each ``t`` contributes another power of
+    three: the author's ``ptto`` example is ``2 * (1 + 3 + 9) = 26``.  "The
+    last command" is the previous character of the program, so a ``t``
+    after a jump repeats the text before it.
+    """
+    rep = 1
+    found = False
+    while ind > 0:
+        ind -= 1
+        if prog[ind] != "t":
+            found = True
+            break
+        rep *= 3
+    return (prog[ind] if found else _NUL, rep)
+
+
 def _advance(
     state: _State,
     prog: str,
@@ -226,44 +334,36 @@ def _advance(
         # ``rep`` is exponential (7 per ``c``, 3 per ``t``; up to 3**15),
         # and these commands are affine in it, so the remaining iterations
         # are one closed form; the slow path below gives the same state.
-        # Inside the loop because ``c``/``t``/``y``/``v`` rebind ``c``
+        # Inside the loop because ``c``/``t``/``y``/``v`` rebind the command
         # mid-step -- a ``t`` run names its command only after multiplying.
         # Prints, reads, ``a``/``b`` and the rebinding commands keep their iterations.
         if rep > 1:
             if c == "p":
-                tape, rep = _set(tape, ptr, tape[ptr] + 2 * rep), 0
+                tape = _collapse_add(tape, ptr, rep)
+                rep = 0
                 continue
             if c == "s":
-                tape, rep = _set(tape, ptr, tape[ptr] - rep), 0
+                tape = _collapse_sub(tape, ptr, rep)
+                rep = 0
                 continue
             if c == "r":
-                ptr += 2 * rep
-                tape, rep = _grow(tape, ptr), 0
+                tape, ptr = _collapse_right(tape, ptr, rep)
+                rep = 0
                 continue
             if c == "l":
-                # Past the left edge the tape grows by the overshoot.
-                grown = max(0, rep - ptr)
-                tape, origin = (0,) * grown + tape, origin + grown
-                ptr, rep = ptr + grown - rep, 0
+                tape, ptr, origin = _collapse_left(tape, ptr, origin, rep)
+                rep = 0
                 continue
             if c == "h":
-                # Repeated floor division by two is an arithmetic shift.
-                # The author specifies rounding negative odd values down.
-                tape, rep = _set(tape, ptr, tape[ptr] >> rep), 0
+                tape = _collapse_half(tape, ptr, rep)
+                rep = 0
                 continue
             if c == "k" and -1 <= tape[ptr] <= 1:
-                # Squaring has a closed form -- ``x ** (2 ** rep)`` -- but
-                # for ``|x| > 1`` the *result* has 2**rep times the bits, so
-                # no rewrite makes it affordable (measured at 1.0x); the loop
-                # is not the cost there.  At the fixed points it collapses.
-                tape, rep = _set(tape, ptr, tape[ptr] * tape[ptr]), 0
+                tape = _collapse_square_fixed(tape, ptr)
+                rep = 0
                 continue
             if c in "ou":
-                # A repeated print emits the same cell every time -- nothing
-                # in the loop writes the tape -- so one effect carries the
-                # count rather than appending ``rep`` identical ones.
-                value = tape[ptr] if c == "o" else tape[ptr] & 0xFF
-                effects.append(_Print(value, as_char=c == "u", count=rep))
+                effects.append(_collapse_print(tape, ptr, c, rep))
                 rep = 0
                 continue
             if c in _IDEMPOTENT:
@@ -278,19 +378,23 @@ def _advance(
 
         rep -= 1
 
-        if c == "p":
+        # ``cmd`` is this iteration's command.  The rebinding commands
+        # (``c``, ``y``, ``v``, ``t``) write ``cmd``, never the loop's ``c``,
+        # which is only re-synced at the iteration boundary below.
+        cmd = c
+        if cmd == "p":
             tape = _set(tape, ptr, tape[ptr] + 2)
-        elif c == "s":
+        elif cmd == "s":
             tape = _set(tape, ptr, tape[ptr] - 1)
-        elif c == "r":
+        elif cmd == "r":
             ptr += 2
             tape = _grow(tape, ptr)
-        elif c == "l":
+        elif cmd == "l":
             if ptr:
                 ptr -= 1
             else:
                 tape, origin = (0, *tape), origin + 1
-        elif c == "i":
+        elif cmd == "i":
             try:
                 line = reader.take(line=True)
             except _NeedRead as want:
@@ -305,7 +409,7 @@ def _advance(
                     effects,
                     HaltError(hint="supply a decimal integer for i input"),
                 ) from None
-        elif c == "j":
+        elif cmd == "j":
             # ``j`` is answered with a character code, so this is already an int.
             try:
                 byte = reader.take(line=False)
@@ -314,16 +418,16 @@ def _advance(
                     line=False, state=(tape, loop, ptr, ind, rep, origin)
                 ) from want
             tape = _set(tape, ptr, int(str(byte)))
-        elif c == "o":
+        elif cmd == "o":
             effects.append(_Print(tape[ptr], as_char=False))
-        elif c == "u":
+        elif cmd == "u":
             effects.append(_Print(tape[ptr] & 0xFF, as_char=True))
-        elif c == "a":
+        elif cmd == "a":
             if tape[ptr] != 0:
                 loop = (*loop, ind - 1)
             else:
                 ind = _skip_loop(prog, ind, n)
-        elif c == "b":
+        elif cmd == "b":
             if not loop:
                 raise _Halted(
                     (tape, loop, ptr, ind, rep, origin),
@@ -335,37 +439,19 @@ def _advance(
                 )
             ind = loop[-1]
             loop = loop[:-1]
-        elif c == "k":
+        elif cmd == "k":
             tape = _set(tape, ptr, tape[ptr] * tape[ptr])
-        elif c == "z":
+        elif cmd == "z":
             tape = _set(tape, ptr, 0)
-        elif c == "h":
+        elif cmd == "h":
             tape = _set(tape, ptr, _half(tape[ptr]))
-        elif c == "w":
+        elif cmd == "w":
             tape = _set(tape, ptr, tape[ptr + 1] if ptr + 1 < len(tape) else 0)
-        elif c == "q":
+        elif cmd == "q":
             tape = _set(tape, ptr, tape[ptr - 1] if ptr else 0)
-        elif c == "c":
-            rep = 1
-            while c == "c":
-                c = prog[ind] if ind < n else _NUL
-                ind += 1
-                rep *= 7
-            # A ``t`` run after the ``c`` run repeats the ``c`` itself:
-            # ``ct`` is four ``c``s, ``7 ** 4``.  Read here, not by the
-            # ``t`` executing (that made ``pt`` and ``ct`` unable to both be
-            # right).  The run loop already pulled the next char into ``c``.
-            adds = 0
-            if c == "t":
-                adds = 1
-                while ind < n and prog[ind] == "t":
-                    ind += 1
-                    adds += 1
-            if adds:
-                rep **= (3 ** (adds + 1) - 1) // 2
-                c = prog[ind] if ind < n else _NUL
-                ind += 1
-        elif c == "y":
+        elif cmd == "c":
+            cmd, ind, rep = _scan_c_run(prog, ind, n)
+        elif cmd == "y":
             # ``y`` binds forward and each repeat flips separately, so the
             # count that runs is binomial (``cyp`` spans 0..14 by twos, not
             # ``{0, 2}``); the wiki states only ``rep`` 1, where both agree.
@@ -374,33 +460,22 @@ def _advance(
             owed = rep + 1
             rep = owed - sum(coin.take() for _ in range(owed))
             if ind < n:
-                c = prog[ind]
+                cmd = prog[ind]
                 ind += 1
             if rep <= 0:
                 break
-        elif c == "e":
+        elif cmd == "e":
             return ((tape, loop, ptr, n, 0, origin), tuple(effects))
-        elif c == "v" and ind < n:
+        elif cmd == "v" and ind < n:
             # "Do next command if value on tape is zero": else skip it.
             # Either way the next command is consumed once.
-            c, rep = prog[ind], int(tape[ptr] == 0)
+            cmd, rep = prog[ind], int(tape[ptr] == 0)
             ind += 1
-        elif c == "d":
+        elif cmd == "d":
             ptr = origin
-        elif c == "t":
-            # Each t contributes another power of three. The author's
-            # ptto example is 2 * (1 + 3 + 9) = 26.
-            val = ind
-            rep = 1
-            found = False
-            while ind > 0:
-                ind -= 1
-                if prog[ind] != "t":
-                    found = True
-                    break
-                rep *= 3
-            c = prog[ind] if found else _NUL
-            ind = val
+        elif cmd == "t":
+            cmd, rep = _scan_t_run(prog, ind)
+        c = cmd
 
     return ((tape, loop, ptr, ind, rep + 1, origin), tuple(effects))
 

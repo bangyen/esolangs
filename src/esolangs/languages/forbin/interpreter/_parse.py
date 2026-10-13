@@ -51,30 +51,30 @@ class _Parser:
     """Recursive-descent parser for Forbin source text."""
 
     def __init__(self, text: str) -> None:
-        self.t = text
-        self.i = 0
+        self.text = text
+        self.pos = 0
         self.n = len(text)
         self.initializers: list[_Statement] = []
         self._definition_scopes: list[dict[str, _Function]] = []
 
     def _skip_ws(self) -> None:
-        while self.i < self.n:
-            c = self.t[self.i]
+        while self.pos < self.n:
+            c = self.text[self.pos]
             if c in " \t\r\n":
-                self.i += 1
-            elif c == "/" and self.i + 1 < self.n and self.t[self.i + 1] == "/":
-                while self.i < self.n and self.t[self.i] not in "\r\n":
-                    self.i += 1
+                self.pos += 1
+            elif c == "/" and self.pos + 1 < self.n and self.text[self.pos + 1] == "/":
+                while self.pos < self.n and self.text[self.pos] not in "\r\n":
+                    self.pos += 1
             else:
                 return
 
     def _peek(self) -> str:
         self._skip_ws()
-        return self.t[self.i] if self.i < self.n else ""
+        return self.text[self.pos] if self.pos < self.n else ""
 
     def _fail(self, msg: str) -> NoReturn:
         raise syntax_error(
-            f"{msg} at position {self.i}",
+            f"{msg} at position {self.pos}",
             (
                 "use bit literals 0/1, identifiers, and balanced call "
                 "parentheses or block braces at this position"
@@ -83,30 +83,34 @@ class _Parser:
 
     def _expect(self, ch: str) -> None:
         self._skip_ws()
-        if self.i >= self.n or self.t[self.i] != ch:
+        if self.pos >= self.n or self.text[self.pos] != ch:
             self._fail(f"expected {ch!r}")
-        self.i += 1
+        self.pos += 1
 
     def _ident(self) -> str:
         self._skip_ws()
-        if self.i >= self.n or not (self.t[self.i].isalpha() or self.t[self.i] == "_"):
+        if self.pos >= self.n or not (
+            self.text[self.pos].isalpha() or self.text[self.pos] == "_"
+        ):
             self._fail("expected an identifier")
-        start = self.i
-        self.i += 1
-        while self.i < self.n and (self.t[self.i].isalnum() or self.t[self.i] == "_"):
-            self.i += 1
-        return self.t[start : self.i]
+        start = self.pos
+        self.pos += 1
+        while self.pos < self.n and (
+            self.text[self.pos].isalnum() or self.text[self.pos] == "_"
+        ):
+            self.pos += 1
+        return self.text[start : self.pos]
 
     def _value(self) -> _ValueNode:
         self._skip_ws()
-        if self.i >= self.n:
+        if self.pos >= self.n:
             self._fail("expected a value")
-        c = self.t[self.i]
+        c = self.text[self.pos]
         if c == "!":
-            self.i += 1
+            self.pos += 1
             return ("not", self._value())
         if c in "01":
-            self.i += 1
+            self.pos += 1
             return ("lit", int(c))
         if c == "{":  # a bare {code} block is a function literal (no args)
             body, nested = self._block()
@@ -114,8 +118,8 @@ class _Parser:
             fn.body, fn.nested = body, nested
             return ("fnlit", fn)
         if c == "(":
-            self.i += 1
-            save = self.i
+            self.pos += 1
+            save = self.pos
             first = self._ident()
             params = [first]
             while self._peek() == ",":
@@ -129,7 +133,7 @@ class _Parser:
                 fn = _Function("", params)
                 fn.body, fn.nested = body, nested
                 return ("fnlit", fn)
-            self.i = save
+            self.pos = save
             callee: _Var = ("var", self._ident())
             args: list[_ValueNode] = []
             self._skip_ws()
@@ -146,19 +150,19 @@ class _Parser:
     def _values(self) -> list[_ValueNode]:
         values = [self._value()]
         while self._peek() == ",":
-            self.i += 1
+            self.pos += 1
             values.append(self._value())
         return values
 
     def _semi(self) -> None:
         self._skip_ws()
         if self._peek() == ";":
-            self.i += 1
+            self.pos += 1
 
     def _pattern(self) -> _Star | _ValuePat:
         self._skip_ws()
         if self._peek() == "*":
-            self.i += 1
+            self.pos += 1
             return ("*",)
         return ("value", self._value())
 
@@ -175,10 +179,10 @@ class _Parser:
     def _for_spec(self) -> _ForSpec:
         self._skip_ws()
         if self._peek() == "(":
-            self.i += 1
+            self.pos += 1
             vars_ = [self._ident()]
             while self._peek() == ",":
-                self.i += 1
+                self.pos += 1
                 vars_.append(self._ident())
             self._expect(")")
         else:
@@ -186,7 +190,7 @@ class _Parser:
         self._expect(":")
         self._skip_ws()
         if self._peek() == "(":
-            self.i += 1
+            self.pos += 1
             items: list[_Pattern] = []
             if len(vars_) > 1 and self._peek() != "(":
                 shorthand: list[_Star | _ValuePat] = []
@@ -209,9 +213,9 @@ class _Parser:
             return ("iter", vars_, items)
         start = self._value()
         self._skip_ws()
-        if not self.t.startswith("..", self.i):
+        if not self.text.startswith("..", self.pos):
             self._fail("expected '..' or an iteration list")
-        self.i += 2
+        self.pos += 2
         end = self._value()
         return ("range", vars_[0], start, end)
 
@@ -222,15 +226,17 @@ class _Parser:
         while True:
             self._skip_ws()
             if self._peek() == ",":
-                self.i += 1
+                self.pos += 1
                 self._skip_ws()
-                if self.i < self.n and (
-                    self.t[self.i].isalpha() or self.t[self.i] == "_"
+                if self.pos < self.n and (
+                    self.text[self.pos].isalpha() or self.text[self.pos] == "_"
                 ):
                     params.append(self._ident())
                     continue
                 break
-            if self.i < self.n and (self.t[self.i].isalpha() or self.t[self.i] == "_"):
+            if self.pos < self.n and (
+                self.text[self.pos].isalpha() or self.text[self.pos] == "_"
+            ):
                 params.append(self._ident())
                 continue
             break
@@ -243,15 +249,15 @@ class _Parser:
         self._definition_scopes.append(nested)
         while True:
             self._skip_ws()
-            if self.i >= self.n:
+            if self.pos >= self.n:
                 self._fail("unterminated block, expected '}'")
-            if self.t[self.i] == "}":
-                self.i += 1
+            if self.text[self.pos] == "}":
+                self.pos += 1
                 self._definition_scopes.pop()
                 return stmts, nested
-            c = self.t[self.i]
+            c = self.text[self.pos]
             if c.isalpha() or c == "_":
-                save = self.i
+                save = self.pos
                 name, params = self._header()
                 self._skip_ws()
                 if self._peek() == "{":
@@ -259,22 +265,22 @@ class _Parser:
                     fn.body, fn.nested = self._block()
                     nested[name] = fn
                     continue
-                self.i = save
+                self.pos = save
             stmts.append(self._statement())
 
     def _statement(self) -> _Statement:
         self._skip_ws()
-        if self.t.startswith("return", self.i):
-            j = self.i + 6
-            if j >= self.n or not (self.t[j].isalnum() or self.t[j] == "_"):
-                self.i = j
+        if self.text.startswith("return", self.pos):
+            j = self.pos + 6
+            if j >= self.n or not (self.text[j].isalnum() or self.text[j] == "_"):
+                self.pos = j
                 value = self._value()
                 self._semi()
                 return ("return", value)
-        if self.t.startswith("for", self.i):
-            j = self.i + 3
-            if j >= self.n or not (self.t[j].isalnum() or self.t[j] == "_"):
-                self.i = j
+        if self.text.startswith("for", self.pos):
+            j = self.pos + 3
+            if j >= self.n or not (self.text[j].isalnum() or self.text[j] == "_"):
+                self.pos = j
                 spec = self._for_spec()
                 body, nested = self._block()
                 # Top-level parsing only admits definitions and assignments.
@@ -285,19 +291,19 @@ class _Parser:
         if self._peek() == "=":
             if first[0] != "var":
                 self._fail("assignment target must be a variable")
-            self.i += 1
+            self.pos += 1
             rhs = self._values()
             self._semi()
             return ("assign", [first[1]], rhs)
         if self._peek() == ",":
             values = [first]
             while self._peek() == ",":
-                self.i += 1
+                self.pos += 1
                 values.append(self._value())
             self._skip_ws()
             if self._peek() != "=":
                 self._fail("expected '=' after assignment targets")
-            self.i += 1
+            self.pos += 1
             # Collecting the names as they are checked keeps the target
             # list typed, which an ``all(...)`` over the values would not.
             names: list[str] = []
@@ -320,15 +326,15 @@ class _Parser:
         funcs: dict[str, _Function] = {}
         while True:
             self._skip_ws()
-            if self.i >= self.n:
+            if self.pos >= self.n:
                 return funcs
-            start = self.i
+            start = self.pos
             name, params = self._header()
             self._skip_ws()
             if self._peek() != "{":
                 if self._peek() != "=":
                     self._fail("expected '{' after function name")
-                self.i = start
+                self.pos = start
                 initializer = self._statement()
                 self.initializers.append(initializer)
                 continue

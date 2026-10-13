@@ -1,6 +1,8 @@
 """Boolean generator for three x."""
 
 from collections import Counter
+from dataclasses import dataclass
+from enum import Enum, auto
 from fractions import Fraction
 from functools import cache
 
@@ -83,8 +85,51 @@ _COMPLEMENT = _NEG_ONE + "#3#x"
 _SWAP = str.maketrans("01", "10")
 
 
-#: The result variable's marker; the others are ``("bit" | "not", depth)``.
-_RESULT = ("result", 0)
+class _Kind(Enum):
+    """The kind of one piece of the emit stream.
+
+    Declared in the same order as the variable names these replace
+    (``"bit" < "flag" < "not" < "result"``), so sorting names by
+    ``kind.value`` keeps the cheapest-key assignment byte-identical.
+    """
+
+    BIT = auto()
+    FLAG = auto()
+    NOT = auto()
+    RESULT = auto()
+    TEXT = auto()
+
+
+@dataclass(frozen=True)
+class _Piece:
+    """One unit of the emit stream: verbatim text or a named variable.
+
+    ``text`` carries the literal for :attr:`_Kind.TEXT`; ``depth`` carries
+    the variable's tree depth for the other kinds.
+    """
+
+    kind: _Kind
+    text: str = ""
+    depth: int = 0
+
+
+#: The result variable's marker; the other variables are ``_Piece`` values
+#: with kind BIT, NOT, or FLAG and their tree depth.
+_RESULT = _Piece(_Kind.RESULT)
+
+
+class _Top(Enum):
+    """What the emitted code leaves on top of the 3x stack inside a guard.
+
+    ``(`` does not pop its condition, and a nested guard's two exits both
+    leave a zero; a write leaves the top alone, so it is always known -- and
+    it is what closing the guard costs, nothing or ``33x``, against ``333x``
+    from a clean stack.
+    """
+
+    CLEAN = auto()  # program start: nothing known is on top
+    THREE = auto()  # the guard's own nonzero condition is on top
+    ZERO = auto()  # a nested guard closed; both exits left a zero
 
 
 #: Fewest rows of a block worth sharing.
@@ -191,16 +236,11 @@ def _three_x_emit(
     wins as it does for the result.
     """
     width = len(essential)
-    pieces: list[str | tuple[str, int]] = []
+    pieces: list[_Piece] = []
     constant = constant_span_test(table)
     patterns: dict[tuple[int, int], str] = {}
     flag_of = {block: i for i, block in enumerate(shares)}
-    # What the stack top holds inside the guard being emitted: 3 from the
-    # guard's own condition (``(`` does not pop it), or 0 once a nested guard
-    # has closed (both of its exits leave one).  A write leaves it alone, so
-    # it is always known -- and it is what the closing zero costs, nothing or
-    # ``33x``, against ``333x`` from a clean stack.
-    top = ""
+    top = _Top.CLEAN
 
     def pattern(rows: int, level: int) -> str:
         """Return the column a span of ``rows`` reads at its ``level``."""
@@ -209,14 +249,19 @@ def _three_x_emit(
             patterns[rows, level] = ("0" * half + "1" * half) * (rows // (2 * half))
         return patterns[rows, level]
 
-    def write(value: str, var: tuple[str, int] = _RESULT) -> None:
+    def write(value: str, var: _Piece = _RESULT) -> None:
         pieces.append(var)
-        pieces.append(("3" if value == "1" else _ZERO) + "v")
+        pieces.append(_Piece(_Kind.TEXT, ("3" if value == "1" else _ZERO) + "v"))
 
     def copy(level: int, *, complement: bool) -> None:
         pieces.append(_RESULT)
-        pieces.append(("not" if complement else "bit", essential[level]))
-        pieces.append("^v")
+        pieces.append(
+            _Piece(
+                _Kind.NOT if complement else _Kind.BIT,
+                depth=essential[level],
+            )
+        )
+        pieces.append(_Piece(_Kind.TEXT, "^v"))
 
     def settle(state: tuple[str, ...], keep: int = -1) -> tuple[str, ...]:
         """Clear every flag but ``keep``, writing only where it may be set."""
@@ -224,7 +269,7 @@ def _three_x_emit(
         for i in range(1, len(state)):
             want = "1" if i - 1 == keep else "0"
             if out[i] != want:
-                write(want, ("flag", i - 1))
+                write(want, _Piece(_Kind.FLAG, depth=i - 1))
                 out[i] = want
         return tuple(out)
 
@@ -258,12 +303,12 @@ def _three_x_emit(
         if table[lo:mid] == table[mid:hi]:
             return build(lo, mid, depth + 1, state)
         first = build(lo, mid, depth + 1, state)
-        pieces.append(("bit", essential[depth]))
-        pieces.append("^(")
-        top = "3"
+        pieces.append(_Piece(_Kind.BIT, depth=essential[depth]))
+        pieces.append(_Piece(_Kind.TEXT, "^("))
+        top = _Top.THREE
         second = build(mid, hi, depth + 1, first)
-        pieces.append(("" if top == "0" else "33x") + ")")
-        top = "0"
+        pieces.append(_Piece(_Kind.TEXT, ("" if top is _Top.ZERO else "33x") + ")"))
+        top = _Top.ZERO
         return tuple(x if x == y else "" for x, y in zip(first, second, strict=True))
 
     # Every flag starts set, as an unset variable reads 3.
@@ -274,41 +319,52 @@ def _three_x_emit(
         lo = next(
             at for at in range(0, len(table), size) if table[at : at + size] == block
         )
-        pieces.append(("flag", i))
-        pieces.append("^(")
-        top = "3"
+        pieces.append(_Piece(_Kind.FLAG, depth=i))
+        pieces.append(_Piece(_Kind.TEXT, "^("))
+        top = _Top.THREE
         build(lo, lo + len(block), width - len(block).bit_length() + 1, ("",))
-        pieces.append(("" if top == "0" else "33x") + ")")
-        top = "0"
-    pieces.append("3" + _ZERO)
+        pieces.append(_Piece(_Kind.TEXT, ("" if top is _Top.ZERO else "33x") + ")"))
+        top = _Top.ZERO
+    pieces.append(_Piece(_Kind.TEXT, "3" + _ZERO))
     pieces.append(_RESULT)
-    pieces.append("^x!")
+    pieces.append(_Piece(_Kind.TEXT, "^x!"))
 
     # The reads run in stream order and only the store target moves: stream
     # input ``i`` goes into the name the tree tests at depth ``perm.index(i)``.
     # A complement is stored only where the tree copies one.
-    named = {piece for piece in pieces if isinstance(piece, tuple)}
+    named = {piece for piece in pieces if piece.kind is not _Kind.TEXT}
     depth_of = {stream: depth for depth, stream in enumerate(perm)}
-    head: list[str | tuple[str, int]] = []
+    head: list[_Piece] = []
     for i in range(n):
-        head.append("?")
+        head.append(_Piece(_Kind.TEXT, "?"))
         depth = depth_of[i]
-        if ("bit", depth) in named or ("not", depth) in named:
-            head.append(_SCALE)
-            if ("not", depth) in named:
-                mark = ("not", depth)
-                head.extend([_COMPLEMENT, mark, "#v", mark, "^" + _COMPLEMENT])
-            head.extend([("bit", depth), "#v"])
+        if (
+            _Piece(_Kind.BIT, depth=depth) in named
+            or _Piece(_Kind.NOT, depth=depth) in named
+        ):
+            head.append(_Piece(_Kind.TEXT, _SCALE))
+            if _Piece(_Kind.NOT, depth=depth) in named:
+                mark = _Piece(_Kind.NOT, depth=depth)
+                head.extend(
+                    [
+                        _Piece(_Kind.TEXT, _COMPLEMENT),
+                        mark,
+                        _Piece(_Kind.TEXT, "#v"),
+                        mark,
+                        _Piece(_Kind.TEXT, "^" + _COMPLEMENT),
+                    ]
+                )
+            head.extend([_Piece(_Kind.BIT, depth=depth), _Piece(_Kind.TEXT, "#v")])
     pieces = head + pieces
 
     # The cheapest key to the most-read name: every use pays its key's
     # length, so this is a rearrangement, and the deep tree levels -- read
     # exponentially more often -- take the short end on their own.
-    uses = Counter(piece for piece in pieces if isinstance(piece, tuple))
-    order = sorted(uses, key=lambda name: (-uses[name], name))
+    uses = Counter(piece for piece in pieces if piece.kind is not _Kind.TEXT)
+    order = sorted(uses, key=lambda name: (-uses[name], name.kind.value, name.depth))
     keys = dict(zip(order, _constants(len(order)), strict=True))
     return "".join(
-        keys[piece] if isinstance(piece, tuple) else piece for piece in pieces
+        keys[piece] if piece.kind is not _Kind.TEXT else piece.text for piece in pieces
     )
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
+from dataclasses import dataclass, replace
 
 from esolangs.generation.helpers import (
     _residual_ids,
@@ -82,116 +83,104 @@ def _packed_join_lanes(
     return lanes, len(occupied)
 
 
+@dataclass(frozen=True, slots=True)
+class _CanvasOptions:
+    """Layered-stem layout switches for :func:`_forward_canvas`."""
+
+    destination_moves: bool = False
+    streaming: bool = False
+    centered: bool = False
+    median_order: bool = False
+    packed: bool = False
+    projected: bool = False
+
+
+# The seven canvases accumulate switches: each builds on the previous one,
+# except projected streaming, which branches off centered streaming.
+_FORWARD_OPTIONS = _CanvasOptions()
+_DESTINATION_OPTIONS = replace(_FORWARD_OPTIONS, destination_moves=True)
+_STREAMING_OPTIONS = replace(_DESTINATION_OPTIONS, streaming=True)
+_CENTERED_STREAMING_OPTIONS = replace(_STREAMING_OPTIONS, centered=True)
+_MEDIAN_STREAMING_OPTIONS = replace(_CENTERED_STREAMING_OPTIONS, median_order=True)
+_PACKED_STREAMING_OPTIONS = replace(_MEDIAN_STREAMING_OPTIONS, packed=True)
+_PROJECTED_STREAMING_OPTIONS = replace(_CENTERED_STREAMING_OPTIONS, projected=True)
+
+
 def forward_canvas(
     table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Return a smaller descending residual DAG with at most 5n commands."""
-    return _forward_canvas(table, old_area, unit=unit, destination_moves=False)
+    return _forward_canvas(table, old_area, _FORWARD_OPTIONS, unit=unit)
 
 
 def destination_canvas(
     table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Share pointer moves on destination stems with separated narrow forks."""
-    return _forward_canvas(table, old_area, unit=unit, destination_moves=True)
+    return _forward_canvas(table, old_area, _DESTINATION_OPTIONS, unit=unit)
 
 
 def streaming_canvas(
     table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Read in input order on shared stems, overwriting cell zero."""
-    return _forward_canvas(
-        table, old_area, unit=unit, destination_moves=True, streaming=True
-    )
+    return _forward_canvas(table, old_area, _STREAMING_OPTIONS, unit=unit)
 
 
 def centered_streaming_canvas(
     table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Center streamed layers on eight-unit columns to shorten arrivals."""
-    return _forward_canvas(
-        table,
-        old_area,
-        unit=unit,
-        destination_moves=True,
-        streaming=True,
-        centered=True,
-    )
+    return _forward_canvas(table, old_area, _CENTERED_STREAMING_OPTIONS, unit=unit)
 
 
 def median_streaming_canvas(
     table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Order centered streamed layers by the lower median incoming rail."""
-    return _forward_canvas(
-        table,
-        old_area,
-        unit=unit,
-        destination_moves=True,
-        streaming=True,
-        centered=True,
-        median_order=True,
-    )
+    return _forward_canvas(table, old_area, _MEDIAN_STREAMING_OPTIONS, unit=unit)
 
 
 def packed_streaming_canvas(
     table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Pack median-ordered arrivals and joins with per-stem precedence."""
-    return _forward_canvas(
-        table,
-        old_area,
-        unit=unit,
-        destination_moves=True,
-        streaming=True,
-        centered=True,
-        median_order=True,
-        packed=True,
-    )
+    return _forward_canvas(table, old_area, _PACKED_STREAMING_OPTIONS, unit=unit)
 
 
 def projected_streaming_canvas(
     table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Share essential residuals while draining ignored reads on their stems."""
-    return _forward_canvas(
-        table,
-        old_area,
-        unit=unit,
-        destination_moves=True,
-        streaming=True,
-        centered=True,
-        projected=True,
-    )
+    return _forward_canvas(table, old_area, _PROJECTED_STREAMING_OPTIONS, unit=unit)
 
 
 def _forward_canvas(
     table: str,
     old_area: int,
+    options: _CanvasOptions,
     *,
-    destination_moves: bool,
     unit: int = _UNIT,
-    streaming: bool = False,
-    centered: bool = False,
-    median_order: bool = False,
-    packed: bool = False,
-    projected: bool = False,
 ) -> tuple[Node, CanvasPlan] | None:
     original_n = _validate_truth_table(table)
     kept = (
         list(range(original_n))
-        if streaming and not projected
+        if options.streaming and not options.projected
         else essential_inputs(table, original_n)
     )
-    if projected and len(kept) == original_n:
+    if options.projected and len(kept) == original_n:
         return None
     n = len(kept)
     if n < 2:
         return None
-    reduced = table if streaming and not projected else read_at(table, kept, original_n)
+    reduced = (
+        table
+        if options.streaming and not options.projected
+        else read_at(table, kept, original_n)
+    )
     levels, children, constants = _residual_ids(
         reduced
-        if streaming
+        if options.streaming
         else permute_truth_table(reduced, tuple(range(n - 1, -1, -1))),
         n,
     )
@@ -208,7 +197,9 @@ def _forward_canvas(
     root = (0, levels[0][0])
     seen: set[State] = set()
     first: dict[State, Edge] = {}
-    incoming: list[list[tuple[Edge, State]]] = [[] for _ in range(n + int(streaming))]
+    incoming: list[list[tuple[Edge, State]]] = [
+        [] for _ in range(n + int(options.streaming))
+    ]
 
     def visit(state: State) -> None:
         if state in seen:
@@ -220,7 +211,7 @@ def _forward_canvas(
         arms = (0, 1) if children[residual][0] != children[residual][1] else (0,)
         for bit in arms:
             target = children[residual][bit]
-            if streaming or constants[target] is None:
+            if options.streaming or constants[target] is None:
                 edge = depth, residual, bit
                 dest = depth + 1, target
                 first.setdefault(dest, edge)
@@ -233,20 +224,20 @@ def _forward_canvas(
         return None
     # First-fit interval comparisons are quadratic within a layer; reject
     # before routing unless aggregate work is linear in the table.
-    if packed and sum(len(edges) ** 2 for edges in incoming) > 32 * len(table):
+    if options.packed and sum(len(edges) ** 2 for edges in incoming) > 32 * len(table):
         return None
     members = [
         [residual for residual in level if (depth, residual) in seen]
-        for depth, level in enumerate(levels if streaming else levels[:-1])
+        for depth, level in enumerate(levels if options.streaming else levels[:-1])
     ]
     gaps = {
         (depth, residual): (
             2
-            if streaming
+            if options.streaming
             or all(constants[children[residual][bit]] is None for bit in (0, 1))
             else 10
         )
-        if destination_moves
+        if options.destination_moves
         else 8
         for depth, level in enumerate(members)
         for residual in level
@@ -260,7 +251,7 @@ def _forward_canvas(
     join: dict[Edge, tuple[int, int]] = {}
     base = 0
     for depth, level in enumerate(members):
-        if median_order and depth:
+        if options.median_order and depth:
             parents: dict[int, list[int]] = {residual: [] for residual in level}
             for edge, dest in incoming[depth]:
                 parents[dest[1]].append(
@@ -283,10 +274,10 @@ def _forward_canvas(
         for index, residual in enumerate(level):
             gap = gaps[depth, residual]
             if index:
-                column += previous_gap + gap + 4 if destination_moves else 20
+                column += previous_gap + gap + 4 if options.destination_moves else 20
             columns[residual] = column
             previous_gap = gap
-        if centered:
+        if options.centered:
             # Eight-unit translation preserves node/rail residue separation.
             offset = -8 * (column // 16)
             columns = {residual: x + offset for residual, x in columns.items()}
@@ -320,7 +311,7 @@ def _forward_canvas(
         arrival_lanes, arrival_count = _join_lanes(arrivals)
         if depth == 0:
             arrival_count = 1
-        if packed:
+        if options.packed:
             # A join lands four units below its own arrival; unrelated
             # arrivals may reuse its row. Native dense8 saves 812,800 pixels.
             lanes, total = _packed_join_lanes(
@@ -348,24 +339,26 @@ def _forward_canvas(
             )
             forks[state] = (
                 base
-                + (20 if destination_moves else 16)
+                + (20 if options.destination_moves else 16)
                 + 2 * arrival_count
                 + 2 * lane_count
-                + (reader_height(depth) - 10 if streaming else 0),
+                + (reader_height(depth) - 10 if options.streaming else 0),
                 columns[residual],
             )
         for edge, dest in extras:
             join[edge] = (
-                base + (4 if packed else 8 + 2 * arrival_count) + 2 * lanes[edge],
+                base
+                + (4 if options.packed else 8 + 2 * arrival_count)
+                + 2 * lanes[edge],
                 entry[dest][1],
             )
         # The last leaf ends 15 units below its fork; the next entry starts
         # 16 below, retaining a full 20px gap for the 15px extraction probe.
         # Streaming has no inline leaves: the next arrival is eight units
         # below the prior fork, and its reader starts at least fourteen below.
-        base = forks[depth, level[-1]][0] + (4 if streaming else 12)
+        base = forks[depth, level[-1]][0] + (4 if options.streaming else 12)
 
-    if streaming:
+    if options.streaming:
         start = forks[root][0] - reader_height(0), forks[root][1]
         strokes = []
     else:
@@ -392,7 +385,7 @@ def _forward_canvas(
             return graph[state]
         depth, residual = state
         y, x = forks[state]
-        if streaming and depth == n:
+        if options.streaming and depth == n:
             value = constants[residual]
             if value is None:
                 raise ValueError("streaming terminal residual is not constant")
@@ -409,7 +402,7 @@ def _forward_canvas(
             return graph[state]
         is_fork = children[residual][0] != children[residual][1]
         node = Node("?" if is_fork else "<")
-        if streaming:
+        if options.streaming:
             reader = chain(*reads_at(depth))
             tail = reader
             while tail.next is not None:
@@ -417,10 +410,16 @@ def _forward_canvas(
             tail.next = node
             graph[state] = reader
         else:
-            graph[state] = Node("<", next=node) if destination_moves and depth else node
-        if streaming or (destination_moves and depth):
-            pre = _StemCursor(y - (reader_height(depth) if streaming else 9), x, (1, 0))
-            for op in reads_at(depth) if streaming else "<":
+            graph[state] = (
+                Node("<", next=node)
+                if options.destination_moves and depth
+                else node
+            )
+        if options.streaming or (options.destination_moves and depth):
+            pre = _StemCursor(
+                y - (reader_height(depth) if options.streaming else 9), x, (1, 0)
+            )
+            for op in reads_at(depth) if options.streaming else "<":
                 pre.emit_op(op)
             pre.advance((1, 0), 4)
             pre.finish()
@@ -436,20 +435,20 @@ def _forward_canvas(
             cursor.advance((1, 0), 4)
             target = children[residual][bit]
             value = constants[target]
-            if value is not None and not streaming:
+            if value is not None and not options.streaming:
                 correction = "" if value == bit else "+" if value else "-"
                 arm = chain(*correction, "o")
                 for op in correction + "o":
                     cursor.emit_op(op)
             else:
-                if not destination_moves:
+                if not options.destination_moves:
                     cursor.emit_op("<")
                 edge = depth, residual, bit
                 dest = depth + 1, target
                 tail = build(dest)
                 if edge in join:
                     tail = Node("", goto=tail)
-                arm = tail if destination_moves else Node("<", next=tail)
+                arm = tail if options.destination_moves else Node("<", next=tail)
                 ey, ex = join.get(edge, entry[dest])
                 cursor.advance((1, 0), ey - cursor.y)
                 dx = ex - cursor.x
@@ -461,9 +460,9 @@ def _forward_canvas(
                         forks[dest][0]
                         - (
                             reader_height(dest[0])
-                            if streaming
+                            if options.streaming
                             else 9
-                            if destination_moves
+                            if options.destination_moves
                             else 0
                         )
                         - cursor.y,
@@ -479,7 +478,7 @@ def _forward_canvas(
                 else:
                     node.nonzero = arm
             else:
-                if destination_moves:
+                if options.destination_moves:
                     node.op = ""
                     node.next = arm
                 else:
@@ -487,7 +486,7 @@ def _forward_canvas(
         return graph[state]
 
     decision = build(root)
-    if streaming:
+    if options.streaming:
         head = decision
     else:
         head = chain(*reads)

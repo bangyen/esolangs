@@ -76,7 +76,7 @@ def brackets(string: list[list[int]], pointer: int) -> int:
     """
     length = len(string[pointer]) == 1
     end = string[pointer][0] in [2, 6]
-    direct = (1, -1)[length and end]
+    direct = -1 if length and end else 1
     count = direct
     while count:
         pointer += direct
@@ -334,7 +334,8 @@ def _advance(
     rest = instruction[1:] if len(instruction) > 1 else []
     output: str | None = None
 
-    if two := ([*rest, 0])[0]:
+    two = ([*rest, 0])[0]
+    if two:
         if one:
             reg = _ARITH[two - 1](reg, one)
         elif two - 1:

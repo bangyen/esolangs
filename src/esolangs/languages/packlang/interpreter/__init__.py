@@ -89,13 +89,13 @@ from esolangs.languages.packlang.interpreter._parse import (
     _PRINT,
     _READ,
     _VALUE,
-    _Expr,
     _Function,
     _parse,
     _Program,
     _Type,
 )
 from esolangs.languages.packlang.interpreter._scope import _visible
+from esolangs.languages.packlang.interpreter._types import _Expr, _Store
 from esolangs.languages.packlang.interpreter._values import (
     _get,
     _int,
@@ -111,12 +111,6 @@ from esolangs.runtime.io import IO
 # heap and never touches Python's stack.  That class revisits no state, so
 # it is what ``esolangs.run``'s wall-clock ``timeout`` is for -- the same
 # reasoning ``grapheme.py`` and ``function_x_y.py`` record.
-
-
-#: One variable: its name and its value.  Arrays hold a tuple of values;
-#: scalars a single int.
-type _Slot = tuple[str, object]
-type _Store = tuple[_Slot, ...]
 
 
 @dataclass(frozen=True)
@@ -532,6 +526,53 @@ def _advance(
     return (*callers[:-1], result), output, wants_read
 
 
+def _program_key(program: _Program) -> tuple[tuple[object, ...], ...]:
+    """Return the parsed program as a hashable, order-canonical key.
+
+    :meth:`_Machine.snapshot` carries this so a repeated state proves a
+    loop; the key identifies the whole program -- every function with its
+    package, parameters, body, callees, and local types, plus the
+    dependency graph and the globals -- while saying nothing about how
+    the run has proceeded.  Every mapping is sorted by name before it is
+    packed, so the key is canonical: the same program always yields the
+    same key regardless of declaration order.
+    """
+    return (
+        tuple(
+            sorted(
+                (
+                    name,
+                    func.package,
+                    func.params,
+                    func.body,
+                    func.uses,
+                    tuple(
+                        sorted(
+                            (
+                                slot,
+                                kind.low,
+                                kind.high,
+                                kind.under,
+                                kind.over,
+                                kind.length,
+                            )
+                            for slot, kind in func.locals.items()
+                        )
+                    ),
+                )
+                for name, func in program.functions.items()
+            )
+        ),
+        tuple(sorted(program.dependencies.items())),
+        tuple(
+            sorted(
+                (key, kind.low, kind.high, kind.under, kind.over, kind.length)
+                for key, kind in program.globals.items()
+            )
+        ),
+    )
+
+
 class _Machine:
     """The run state: a stack of call frames and the parsed program.
 
@@ -549,44 +590,10 @@ class _Machine:
         self.io = io
         self.program = _parse(code, literal_policy)
         self._input_reads = 0
-        self._program_key = (
-            tuple(
-                sorted(
-                    (
-                        name,
-                        func.package,
-                        func.params,
-                        func.body,
-                        func.uses,
-                        tuple(
-                            sorted(
-                                (
-                                    slot,
-                                    kind.low,
-                                    kind.high,
-                                    kind.under,
-                                    kind.over,
-                                    kind.length,
-                                )
-                                for slot, kind in func.locals.items()
-                            )
-                        ),
-                    )
-                    for name, func in self.program.functions.items()
-                )
-            ),
-            tuple(sorted(self.program.dependencies.items())),
-            tuple(
-                sorted(
-                    (key, kind.low, kind.high, kind.under, kind.over, kind.length)
-                    for key, kind in self.program.globals.items()
-                )
-            ),
-        )
+        self._program_key = _program_key(self.program)
         entry = self.program.entry
         # _parse raises when a program has no entry, so this cannot be None.
-        if entry is None:
-            raise AssertionError("entry is not None")
+        assert entry is not None
         self.frames: _State = (_Frame(entry, _initial_store(entry, self.program)),)
 
     @property

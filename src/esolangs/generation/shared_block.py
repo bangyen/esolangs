@@ -8,14 +8,14 @@ from esolangs.generation.helpers import subtree_ids
 
 
 @dataclass(frozen=True, slots=True)
-class ContinuationCost:
+class ContinuationCost[KeyT]:
     """A local maximum plus its eventual normal or deferred continuation."""
 
     value: int
-    children: tuple[ContinuationCost, ...] = ()
-    target: int | None = None
+    children: tuple[ContinuationCost[KeyT], ...] = ()
+    target: KeyT | None = None
 
-    def evaluate(self, tails: dict[int | None, int]) -> int:
+    def evaluate(self, tails: dict[KeyT | None, int]) -> int:
         """Return the worst reachable cost with the supplied continuations."""
         return self.value + (
             max(child.evaluate(tails) for child in self.children)

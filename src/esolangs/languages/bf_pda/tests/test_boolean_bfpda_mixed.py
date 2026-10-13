@@ -6,9 +6,10 @@ import pytest
 
 from esolangs.generation.helpers import reflected_table
 from esolangs.languages.bf_pda.generator import (
-    _decoder,
+    _emit_decoder,
     _Metric,
     _prepare,
+    _price_decoder,
     best_mixed_bank,
     bfpda,
 )
@@ -24,9 +25,9 @@ _fill_bfpda = fill("BF-PDA")
 def test_decoder_consumes_each_bit_marker_pair(classes) -> None:
     width = (classes - 1).bit_length()
     pieces = []
-    size, tails = _decoder(
-        width, tuple(_Metric(1, 1) for _ in range(classes)), pieces.append
-    )
+    bodies = tuple(_Metric(1, 1) for _ in range(classes))
+    size, tails = _price_decoder(width, bodies)
+    _emit_decoder(width, bodies, pieces.append)
     decoder = "".join("." if isinstance(piece, int) else piece for piece in pieces)
     assert len(decoder) == size
     for label in range(classes):

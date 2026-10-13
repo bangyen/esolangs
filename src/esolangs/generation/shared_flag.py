@@ -199,7 +199,7 @@ def flag_tree_body(
         span = 1 << (n - i)
         return truth_table[combo] if is_constant(combo, combo + span) else None
 
-    def branch(i: int, combo: int) -> _Cost:
+    def branch(i: int, combo: int) -> _Cost[int]:
         """Emit one side of node ``i``: a folded leaf or the child subtree."""
         start = count
         value = constant(i + 1, combo)
@@ -211,7 +211,7 @@ def flag_tree_body(
         # value == "0": the leaf emits nothing
         return _Cost(count - start)
 
-    def node(i: int, combo: int) -> _Cost:
+    def node(i: int, combo: int) -> _Cost[int]:
         """Emit node ``i``: test bit ``i``, run one side, leave flag_i = 0."""
         start = count
         key = (i, ids[i][combo >> (n - i)])

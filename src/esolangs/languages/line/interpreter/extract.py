@@ -6,8 +6,7 @@ This module loads and normalizes an image to a 1px-stroke mask
 finds the arrowhead (:func:`find_cursor`), classifies each walked
 stroke's kinks (:func:`classify_ops`) and checks the walk covered the
 ink (:func:`coverage_gap`).  The walk itself is :mod:`lattice`'s
-star-probe, which replaced this module's region-adjacency walker (see
-its docstring): a 4-way crossing is not a local per-pixel question.
+star-probe: a 4-way crossing is not a local per-pixel question.
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from esolangs.runtime.source_hints import syntax_error
 
 from . import lattice
 from . import mask as mask_module
-from .lattice import _DIRS, _ink
+from .lattice import _DIRS, _ink, flatten
 from .mask import Mask
 
 
@@ -43,8 +42,8 @@ def load_binary(path: str) -> Mask:
     try:
         grey = png.read_grey(data)
     except Exception as exc:
-        # The same decode failures ``Raster.from_png`` wraps; here they used
-        # to escape as a bare ``zlib.error``/``struct.error``.
+        # Wrap the bare ``zlib.error``/``struct.error`` ``read_grey`` raises
+        # on bad input in a syntax error with a hint.
         raise syntax_error(
             f"cannot read {path}: {exc}",
             "check that the path points to a readable PNG drawing",
@@ -57,9 +56,8 @@ def crop_to_content(mask: Mask, margin: int = 2) -> Mask:
 
     ``margin`` blank pixels stay on every side so :func:`find_cursor`'s
     erosion sees real background.  One pass over row bitmasks
-    (:meth:`mask.Mask.bounds`): a 4600x4600 canvas with a 2000px border
-    measures 0.2ms, exact rather than quadrant-padded, and nothing downstream
-    reads absolute positions.  Raises :class:`ValueError` on a blank mask.
+    (:meth:`mask.Mask.bounds`); nothing downstream reads absolute
+    positions.  Raises :class:`ValueError` on a blank mask.
     """
     bounds = mask.bounds()
     if bounds is None:
@@ -138,10 +136,9 @@ def normalize_scale(mask: Mask, scale: int | None = None) -> Mask:
     """Downscale ``mask`` to 1px-wide strokes if it was rendered larger.
 
     One pixel per block of the :func:`detect_scale` grid, recovering the
-    exact original for a nearest-neighbour upscale.  The grid is anchored to
-    the first ink pixel: the crop's origin is not aligned to the stroke
-    width, and dividing from the corner dropped a fractional column at the
-    far edge (the addition example at 4x has crop width 1054).
+    exact original for a nearest-neighbour upscale.  The grid is anchored
+    to the first ink pixel, since the crop's origin is not aligned to the
+    stroke width.
     """
     if scale is None:
         scale = detect_scale(mask)
@@ -233,11 +230,9 @@ class Cursor:
 # path: a stroke interior has exactly 2, the triangle's outline 3+.
 _BLOB_NEIGHBOR_MIN = 3
 
-# Fraction of its bbox a real arrowhead fills: 0.46-0.61 over all 8
-# headings of render.py's own arrowhead (diagonal headings sit low; was
-# 0.41-0.55 under Pillow's polygon fill).  Deliberately wide, to reject
-# non-triangles: a solid square is 1.0, a crossing-stroke sliver well under
-# 0.25.  Multiple blobs inside it are ambiguous.
+# Fraction of its bbox a real arrowhead fills: deliberately wide, to
+# reject non-triangles -- a solid square is 1.0, a crossing-stroke sliver
+# well under 0.25.  Multiple blobs inside the range are ambiguous.
 _FILL_RATIO_RANGE = (0.25, 0.75)
 
 
@@ -286,14 +281,15 @@ def _cursor_candidate(mask: Mask, core: Mask) -> Cursor:
 def find_cursor(mask: Mask) -> Cursor:
     """Isolate the whole arrowhead shape via erosion + growth.
 
-    The arrowhead is the only multi-pixel-thick region.  :func:`_erode` finds
-    its interior (the largest, so a stray artifact is not mistaken), but the
-    1px outline and tips would be left behind (a 13-pixel stub once read as
-    a branch), so ``blob`` grows outward admitting a pixel only while it is
-    itself blob-like (``_BLOB_NEIGHBOR_MIN``): a fixed radius left outline or
-    ate the path, and a flood fill swallowed the drawing since the tip
-    touches the path.  Exactly one arrowhead-shaped blob is required: none
-    raises the shape error, two or more the ambiguity error.
+    The arrowhead is the only multi-pixel-thick region, so :func:`_erode`
+    finds its interior (the largest one, so a stray artifact is not
+    mistaken for the cursor).  ``blob`` then grows outward from that
+    interior, admitting a pixel only while it is itself blob-like
+    (``_BLOB_NEIGHBOR_MIN``): a plain flood fill would keep going where the
+    tip touches the path and swallow the drawing, while a fixed radius
+    would leave the 1px outline and the tips behind.  Exactly one
+    arrowhead-shaped blob is required: none raises the shape error, two or
+    more the ambiguity error.
     """
     thick = mask.erode()
     if not thick.any():
@@ -319,11 +315,8 @@ def find_cursor(mask: Mask) -> Cursor:
     )
 
 
-# The walker lives in lattice.py.  The region-adjacency walker it replaced
-# could not tell a merge into a *different* stroke's ink (no background
-# pixel between) from a continuation; three local pixel-geometry fixes were
-# tried and reverted (see lattice.py's docstring).  The 8-direction
-# vertex-star probe resolves it with a cleaner coverage gap on both fixtures.
+# The tree walk lives in lattice.py (8-direction vertex-star probes); these
+# aliases keep its types importable from extract.
 Stroke = lattice.Stroke
 Vertex = lattice.Vertex
 
@@ -393,9 +386,8 @@ def _direction_runs(vertices: list[Vertex]) -> list[tuple[int, int]]:
 
     One per leg, already maximal (:func:`lattice.walk_tree` never emits two
     consecutive vertices sharing a heading); ``length`` is the Chebyshev
-    distance, the pixel count :func:`lattice._walk_segment` advanced
-    (matches the old dense count except where :func:`lattice._snap` nudged
-    a vertex; see :func:`coverage_gap`).
+    distance -- the pixel count :func:`lattice._walk_segment` advanced
+    along that leg.
     """
     runs: list[tuple[int, int]] = []
     for i in range(len(vertices) - 1):
@@ -408,16 +400,12 @@ def _direction_runs(vertices: list[Vertex]) -> list[tuple[int, int]]:
 
 
 # Each opcode's kink as (relative_turn, unit_length) pairs (+1/-1 diagonal
-# jog, +2/-2 sideways; see the module docstring).  Mirrors render.py's
-# `_OPS` exactly -- both measured against Lineanim4/5/6/7/8/10/11.png --
-# and additionally checked against `fixtures/addition.png` and
-# `multiplication.png`, which caught `>`/`<` and `o` with their diagonal
-# and sideways legs in the wrong order.
+# jog, +2/-2 sideways).  Mirrors render.py's `_OPS` exactly.
 # Unit length matters, not just sign: `i`'s middle run is 2 units, which is
-# what separates it from `>` `>` back to back with no gap (this happens in
-# `addition.png`); both start `(+1, -2)`.  `+`/`-` are the only entries
-# whose leg length is not fixed -- it is the repeat count (see
-# :data:`DEFAULT_UNIT` and render.py's `_op_segments`).
+# what separates it from `>` `>` back to back with no gap; both start
+# `(+1, -2)`.  `+`/`-` are the only entries whose leg length is not fixed
+# -- it is the repeat count (see :data:`DEFAULT_UNIT` and render.py's
+# `_op_segments`).
 _FIXED_SIGNATURES: dict[tuple[tuple[int, int], ...], str] = {
     ((1, 1), (-2, 1)): ">",
     ((-1, 1), (2, 1)): "<",
@@ -434,9 +422,9 @@ _FIXED_BY_LENGTH: list[tuple[tuple[tuple[int, int], ...], str]] = sorted(
 # grid unit, so `classify_ops` takes it as a parameter.
 DEFAULT_UNIT = 20
 
-# Rounding slack for a run's unit count: wide enough for the +-1px a real
-# wiki image shows (addition.png's kinks measure 19px/39px against 20px),
-# narrow enough that an off-grid run is a structural difference.
+# Rounding slack for a run's unit count: wide enough for the +-1px error
+# scanned drawings show against the nominal unit, narrow enough that an
+# off-grid run is a structural difference.
 _UNIT_TOLERANCE = 0.15
 
 
@@ -480,24 +468,21 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
     Scans :func:`_direction_runs` against a dynamic heading, matching
     ``(relative_turn, unit_length)`` against :data:`_FIXED_SIGNATURES`
     longest first, or a lone ``+``/``-`` leg of any length (its repeat
-    count).  A 0-unit run is a noise pixel inside a kink (``addition.png``
-    has one) and is skipped; anything else unmatched is an ordinary corner
-    and updates the heading rather than raising -- a branch arm's post-branch
-    corner has exactly that shape.  Matching on units matters: two ``>``
-    back to back share ``i``'s ``(+1, -2)`` prefix.  One rejection: a match
-    whose final leg is the path's literal last run, since a complete opcode
-    ends with a straight run back to its heading (two ``multiplication.png``
-    arms cut off at a merge each gave a spurious ``+``/``-``); kept though
-    :mod:`lattice` has no merge gap, as a property of an incomplete kink.
+    count).  A 0-unit run is a noise pixel inside a kink and is skipped;
+    an off-unit run is an ordinary corner and updates the heading rather
+    than raising -- a branch arm's post-branch corner has exactly that
+    shape.  Matching on units matters: two ``>`` back to back share ``i``'s
+    ``(+1, -2)`` prefix.  One rejection: a match whose final leg is the
+    path's literal last run, since a complete opcode ends with a straight
+    run back to its heading; kept though :mod:`lattice` has no merge gap,
+    as a property of an incomplete kink.
     """
     runs = _direction_runs(vertices)
     if not runs:
         return []
 
     # ``heading`` updates at ordinary corners, as render.py's cursor does
-    # between opcodes: `multiplication.png`'s branch arm turns E then N
-    # before its first `>`, and relative to E its `>`/`>`/`o` are
-    # unrecognizable.  Only a run tested as a kink leg is unit-checked; a
+    # between opcodes.  Only a run tested as a kink leg is unit-checked; a
     # run that rounds to 0 (noise) or matches no template updates heading.
     heading = runs[0][0]
     calls: list[OpCall] = []
@@ -511,7 +496,7 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
             continue
         units = _round_units(r_len, unit)
         if units == 0:
-            # Noise (addition.png has one such pixel inside a diagonal leg).
+            # A stray noise pixel inside the kink.
             i += 1
             continue
         if units is None:
@@ -527,8 +512,8 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
             candidate = []
             ok = True
             j = i  # read position, distinct from the template leg count k:
-            # A noise run can sit between two legs (addition.png's `i`
-            # kinks each have one), so n legs may take more than n runs.
+            # A noise run can sit between two legs, so n legs may take
+            # more than n runs.
             for _ in range(n):
                 while j < len(runs) and _round_units(runs[j][1], unit) == 0:
                     j += 1
@@ -567,14 +552,10 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
 
     # A real opcode ends with a straight run back to its entry heading, so
     # a candidate whose last leg is the path's literal last run was a turn
-    # cut off entering a merge (two arms of `multiplication.png`, one
-    # spurious `-` each).  Only the last call can hit this.
+    # cut off at a merge.  Only the last call can hit this.
     if calls and ends_at_last_run:
         calls.pop()
     return calls
-
-
-flatten = lattice.flatten
 
 
 def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
@@ -582,9 +563,8 @@ def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
 
     Re-walks ``mask`` pixel by pixel along each heading (as
     :func:`lattice._walk_segment`) rather than assuming a straight line:
-    :func:`lattice._snap` can land a vertex a pixel off, and a pure replay
-    from ``(202, 159)`` in ``addition.png`` stops at ``(183, 178)``, one
-    short of ``(182, 178)``.  Each leg's endpoint vertex is marked too.
+    :func:`lattice._snap` can land a vertex a pixel off, so a straight-line
+    replay could stop one short.  Each leg's endpoint vertex is marked too.
     """
     canvas = Mask(*mask.shape)
     for vertices in vertex_lists:
@@ -603,9 +583,7 @@ def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
 
 
 # Deliberate gap between walked pixels and source ink: 2 arrowhead-tip
-# corners the blob threshold falls a pixel short of (see find_cursor).
-# Exactly 2 on both wiki images regardless of pivot count (1 and 3), since
-# lattice.py's vertices mark the true pivot pixel.
+# corners the blob growth falls a pixel short of (see find_cursor).
 _ARROWHEAD_TIP_GAP = 2
 
 
@@ -613,10 +591,9 @@ def coverage_gap(mask: Mask, cursor: Cursor, stroke: Stroke) -> int:
     """How many source-image ink pixels ``stroke`` leaves unaccounted for.
 
     XOR of :func:`_redraw` against the source, cursor blob excluded; a
-    perfect extraction returns exactly :data:`_ARROWHEAD_TIP_GAP` on both
-    fixtures (the old walker's gap also grew per pivot).  Larger means ink
-    was never walked: JPEG at quality 32 and below severs a 1px stroke and
-    the walker stops short with no other symptom.
+    perfect extraction returns exactly :data:`_ARROWHEAD_TIP_GAP`.  Larger
+    means ink was never walked: a severed 1px stroke stops the walker with
+    no other symptom.
     """
     vertex_lists = flatten(stroke)
     redrawn = _redraw(vertex_lists, mask)
@@ -627,7 +604,11 @@ def coverage_gap(mask: Mask, cursor: Cursor, stroke: Stroke) -> int:
 def extract_mask(
     mask: Mask, *, scale: int | None = None, unit: int = DEFAULT_UNIT
 ) -> Stroke:
-    """Extract a program using an explicit instruction unit (default 20px)."""
+    """Extract a program from ``mask`` with an explicit instruction unit.
+
+    Crops to content, normalizes scale, isolates the cursor, and walks the
+    path tree; raises when :func:`coverage_gap` finds unaccounted ink.
+    """
     if isinstance(unit, bool) or not isinstance(unit, int) or unit < 1:
         raise ValueError("Line unit must be a positive integer")
     mask = crop_to_content(mask)
@@ -652,12 +633,10 @@ def extract_mask(
 def extract(path: str, *, unit: int = DEFAULT_UNIT) -> Stroke:
     """Load a Line image and walk its full path tree, cursor auto-detected.
 
-    :func:`crop_to_content` and :func:`normalize_scale` run first: at 2x and
-    up the "3+ neighbours is arrowhead body" rule matches every stroke pixel
-    and cursor isolation swallows the drawing.  The tree is checked with
-    :func:`coverage_gap` and :class:`ValueError` raised on unwalked ink: a
-    JPEG-recompressed wiki image otherwise walks to completion with 85% of
-    the drawing unreached.  :func:`extract_tree` gives the best-effort tree.
+    :func:`crop_to_content` and :func:`normalize_scale` run first, since
+    cursor isolation assumes 1px strokes.  The tree is checked with
+    :func:`coverage_gap`, raising :class:`ValueError` on unwalked ink.
+    :func:`extract_tree` gives the best-effort tree.
     """
     return extract_mask(load_binary(path), unit=unit)
 

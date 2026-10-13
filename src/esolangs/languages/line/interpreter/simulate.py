@@ -19,13 +19,11 @@ leaves much unspecified; the choices here:
 
 Loops are drawn, not encoded: a stroke reconnects to a pixel it passed
 earlier.  :mod:`lattice`'s walker stops at an already-visited vertex as an
-unlinked dead end; :func:`_compile` recovers the link.  ``addition.png``'s
-loop-body arm merges into the *middle* of its stem's straight run
-(``(42, 159)`` between ``(62, 159)`` and ``(22, 159)``), which an
-exact-vertex match missed and reported loop-free; ``find_merge`` now
+unlinked dead end; :func:`_compile` recovers the link.  ``find_merge``
 checks a leaf's final vertex against every other stroke's final vertex
 and every straight leg (exact integer collinearity, since every segment
-is one of 8 compass directions).  Any *other* vertex is never a match:
+is one of 8 compass directions); an exact-vertex match alone would miss
+a merge into the middle of a leg.  Any *other* vertex is never a match:
 sibling arms share the fork's corner.  A match resumes from that point,
 running only the ops not yet run (:func:`extract.OpCall`'s ``index``).
 """
@@ -145,10 +143,8 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
                 return target, []
             for i in range(len(vertices) - 1):
                 v0, v1 = vertices[i], vertices[i + 1]
-                # Strictly interior, interior vertices excluded: sibling
-                # arms share the fork's corner (a synthetic test matched an
-                # unrelated arm), and a real merge lands inside a leg
-                # (addition.png's does).
+                # Strictly interior: sibling arms share the fork's corner,
+                # and a merge lands inside a leg.
                 dy, dx = v1.y - v0.y, v1.x - v0.x
                 oy, ox = py - v0.y, px - v0.x
                 if dy * ox - dx * oy != 0:
@@ -329,10 +325,9 @@ def run(
     Each stroke's ops run in order; a leaf halts unless its ``goto`` jumps
     back; a stroke with children is a ``?`` choosing by the current cell.
     A zero cell takes ``zero``, per the wiki -- correct only because
-    :func:`lattice._classify` names arms relative to the *heading*; an
-    earlier version rotated off ``back`` (180 degrees out) and this function
-    swapped the children to compensate.  No termination guard: the wiki
-    documents none, and no other interpreter's plain ``run`` imposes one.
+    :func:`lattice._classify` names arms relative to the *heading* (right
+    in the cursor's frame).  No termination guard: the wiki documents
+    none, and no other interpreter's plain ``run`` imposes one.
     """
     return run_compiled(compile_program(stroke, unit), io)
 

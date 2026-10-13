@@ -157,7 +157,7 @@ def normal_gates(table: str) -> str | None:
             emit("+")
         printer()
 
-    def node(i: int, lo: int, hi: int) -> _Cost:
+    def node(i: int, lo: int, hi: int) -> _Cost[int]:
         start = count
         if constant(lo, hi):
             leaf(int(table[lo]))

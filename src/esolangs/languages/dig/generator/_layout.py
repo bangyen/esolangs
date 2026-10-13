@@ -182,6 +182,40 @@ def _compact_point(
     return _Point(point.row, coordinates[point.col] - root)
 
 
+def _merged_box(
+    left: tuple[int, int, int, int],
+    right: tuple[int, int, int, int],
+    end: int,
+) -> tuple[int, int, int, int]:
+    """Merge two child bounds into the parent's, anchored at the block end."""
+    return (
+        min(0, end + left[2], end - right[3]),
+        max(end, end + left[3], end - right[2]),
+        min(-1, -(2 - left[0] + left[1])),
+        max(1, 2 - right[0] + right[1]),
+    )
+
+
+def _expand_point(
+    point: _Point, lane_axis: int, coordinates: dict[int, int]
+) -> _Point:
+    """Stretch ``point`` along the lane axis through gutter coordinates."""
+    if lane_axis == 0:
+        return _Point(coordinates[point.row], point.col)
+    return _Point(point.row, coordinates[point.col])
+
+
+def _travel_heading(travel_axis: int, *, increasing: bool) -> int:
+    """Return the travel-axis heading toward (or away from) growth.
+
+    The travel axis runs east/west when the lane axis is vertical and
+    south/north when the lane axis is horizontal.
+    """
+    if travel_axis == 1:
+        return 1 if increasing else 3
+    return 2 if increasing else 0
+
+
 class _AlternatingTree:
     """One alternating Dig tree being painted onto a grid.
 
@@ -262,13 +296,7 @@ class _AlternatingTree:
                 half = (lo + hi) // 2
                 left = self.box(level + 1, lo, half)
                 right = self.box(level + 1, half, hi)
-                end = _DIG_END + self.skips[level]
-                self.boxes[key] = (
-                    min(0, end + left[2], end - right[3]),
-                    max(end, end + left[3], end - right[2]),
-                    min(-1, -(2 - left[0] + left[1])),
-                    max(1, 2 - right[0] + right[1]),
-                )
+                self.boxes[key] = _merged_box(left, right, _DIG_END + self.skips[level])
         return self.boxes[key]
 
     def place(self, point: _Point, char: str) -> None:
@@ -345,69 +373,117 @@ class _AlternatingTree:
         can assign lanes before anything is painted.
         """
         if self.constant(lo, hi):
-            if not paint:
-                return
-            code = self.short_leaf(level, lo)
-            if self.sharing:
-                self.tails[point] = len(code)
-            self.text(point, heading, code)
-            self.reads.extend(
-                (point.step(heading, i), point.step(heading, i + 1), frozenset())
-                for i, char in enumerate(code)
-                if char == "$"
-            )
+            self._constant_span(level, point, heading, lo, paint=paint)
+        elif level == self.depth:
+            self._leaf_slot(point, heading, lo, hi, paint=paint)
+        else:
+            self._branch_node(level, point, heading, lo, hi, paint=paint)
+
+    def _constant_span(
+        self, level: int, point: _Point, heading: int, lo: int, *, paint: bool
+    ) -> None:
+        """Paint one constant read row, or with ``paint=False`` skip it."""
+        if not paint:
             return
-        if level == self.depth:
-            key = (
-                self.truth_table[lo:hi],
-                heading,
-                0 if self.offset else point[self.lane_axis],
-            )
-            if not paint:
-                self.entries[point] = key
-                if (
-                    key not in self.owners
-                    or point[self.travel_axis] > self.owners[key][self.travel_axis]
-                ):
-                    self.owners[key] = point
-            elif (
-                not self.sharing or key not in self.owners or point == self.owners[key]
+        code = self.short_leaf(level, lo)
+        if self.sharing:
+            self.tails[point] = len(code)
+        self.text(point, heading, code)
+        self.reads.extend(
+            (point.step(heading, i), point.step(heading, i + 1), frozenset())
+            for i, char in enumerate(code)
+            if char == "$"
+        )
+
+    def _leaf_slot(
+        self, point: _Point, heading: int, lo: int, hi: int, *, paint: bool
+    ) -> None:
+        """Map one flat leaf's entry and key, or paint it when shared."""
+        key = (
+            self.truth_table[lo:hi],
+            heading,
+            0 if self.offset else point[self.lane_axis],
+        )
+        if not paint:
+            self.entries[point] = key
+            if (
+                key not in self.owners
+                or point[self.travel_axis] > self.owners[key][self.travel_axis]
             ):
-                self.leaf(point, heading, self.truth_table[lo:hi])
-            return
-        # The operand digit sits one cell off the block.  Which side is
-        # forced -- a reader takes the first digit of up, right, down, left,
-        # so the operand goes on the lower-numbered of the two sides and a
-        # stray digit opposite it can never be read first.
+                self.owners[key] = point
+        elif not self.sharing or key not in self.owners or point == self.owners[key]:
+            self.leaf(point, heading, self.truth_table[lo:hi])
+
+    def _branch_node(
+        self,
+        level: int,
+        point: _Point,
+        heading: int,
+        lo: int,
+        hi: int,
+        *,
+        paint: bool,
+    ) -> None:
+        """Paint one branch block and map or paint its two children."""
         skip = self.skips[level]
         end = point.step(heading, _DIG_END + skip)
         if paint:
-            if self.parallel:
-                self.branches.append((point, heading, skip, end))
-            side = min((heading + 1) % 4, (heading - 1) % 4)
-            count = point.step(side)
-            self.place(count, str(_DIG_COUNT + skip))
-            self.reads.append((point, count, frozenset()))
-            self.text(
-                point,
-                heading,
-                _DIG_ALT_BRANCH[0] + "~" * skip + _DIG_ALT_BRANCH[1:],
-                rigid=False,
-            )
-            self.reads.append((end, end.step(heading, -1), frozenset()))
+            self._paint_branch_block(point, heading, skip, end)
         half = (lo + hi) // 2
-        # Two cells off, not one: a leaf reaches far enough sideways that
-        # its box, turned a quarter, would otherwise land on this block's
-        # own operand.  The spare cell is corridor the mole falls through.
         for child_bit, child_bounds in ((0, (lo, half)), (1, (half, hi))):
-            child_heading = (heading + (1 if child_bit else -1)) % 4
-            distance = 2 - self.box(level + 1, *child_bounds)[0]
-            child = end.step(child_heading, distance)
-            if paint:
-                self.corridors.append((end, child_heading, distance))
-                if self.sharing:
-                    self.links.append((point, end, child))
-            self.node(level + 1, child, child_heading, *child_bounds, paint=paint)
+            self._place_child(
+                level, point, end, heading, child_bit, child_bounds, paint=paint
+            )
+
+    def _paint_branch_block(
+        self, point: _Point, heading: int, skip: int, end: _Point
+    ) -> None:
+        """Paint one ``$~;#`` block with its operand digit beside the ``$``.
+
+        The operand digit sits one cell off the block.  Which side is
+        forced -- a reader takes the first digit of up, right, down, left,
+        so the operand goes on the lower-numbered of the two sides and a
+        stray digit opposite it can never be read first.
+        """
+        if self.parallel:
+            self.branches.append((point, heading, skip, end))
+        side = min((heading + 1) % 4, (heading - 1) % 4)
+        count = point.step(side)
+        self.place(count, str(_DIG_COUNT + skip))
+        self.reads.append((point, count, frozenset()))
+        self.text(
+            point,
+            heading,
+            _DIG_ALT_BRANCH[0] + "~" * skip + _DIG_ALT_BRANCH[1:],
+            rigid=False,
+        )
+        self.reads.append((end, end.step(heading, -1), frozenset()))
+
+    def _place_child(
+        self,
+        level: int,
+        point: _Point,
+        end: _Point,
+        heading: int,
+        child_bit: int,
+        child_bounds: tuple[int, int],
+        *,
+        paint: bool,
+    ) -> None:
+        """Place one child past the parent's bounds and map or paint it.
+
+        Two cells off, not one: a leaf reaches far enough sideways that
+        its box, turned a quarter, would otherwise land on this block's
+        own operand.  The spare cell is corridor the mole falls through.
+        """
+        child_heading = (heading + (1 if child_bit else -1)) % 4
+        distance = 2 - self.box(level + 1, *child_bounds)[0]
+        child = end.step(child_heading, distance)
+        if paint:
+            self.corridors.append((end, child_heading, distance))
+            if self.sharing:
+                self.links.append((point, end, child))
+        self.node(level + 1, child, child_heading, *child_bounds, paint=paint)
 
     def paint(self) -> None:
         """Paint the whole tree with the root heading east."""
@@ -519,9 +595,7 @@ class _AlternatingTree:
             return False
 
         def expand(point: _Point) -> _Point:
-            if self.lane_axis == 0:
-                return _Point(coordinates[point.row], point.col)
-            return _Point(point.row, coordinates[point.col])
+            return _expand_point(point, self.lane_axis, coordinates)
 
         # Repaint a stretched branch with its reads first and its store
         # beside #. The counter includes the intervening blank cells.
@@ -599,16 +673,13 @@ class _AlternatingTree:
                 if self.lane_axis == 1
                 else _Point(lane.row, point.col)
             )
-            travel_heading = (
-                (1 if self.travel_axis == 1 else 2)
-                if point[self.travel_axis] <= owner[self.travel_axis]
-                else (3 if self.travel_axis == 1 else 0)
+            travel_heading = _travel_heading(
+                self.travel_axis,
+                increasing=point[self.travel_axis] <= owner[self.travel_axis],
             )
             if self.offset and point[self.lane_axis] != owner[self.lane_axis]:
-                bridge_heading = (
-                    (1 if self.travel_axis == 1 else 2)
-                    if heading in (1, 2)
-                    else (3 if self.travel_axis == 1 else 0)
+                bridge_heading = _travel_heading(
+                    self.travel_axis, increasing=heading in (1, 2)
                 )
                 corner = local.step(bridge_heading)
                 lane = (
@@ -635,10 +706,9 @@ class _AlternatingTree:
             if lane in self.cells:
                 return False
             if self.offset and point[self.lane_axis] != owner[self.lane_axis]:
-                travel_heading = (
-                    (1 if self.travel_axis == 1 else 2)
-                    if lane[self.travel_axis] <= owner[self.travel_axis]
-                    else (3 if self.travel_axis == 1 else 0)
+                travel_heading = _travel_heading(
+                    self.travel_axis,
+                    increasing=lane[self.travel_axis] <= owner[self.travel_axis],
                 )
             self.cells[lane] = (
                 "^>'<"[heading] if point == owner else "^>'<"[travel_heading]
@@ -663,7 +733,7 @@ class _AlternatingTree:
                     self.corridors.append(
                         (
                             start,
-                            1 if self.travel_axis == 1 else 2,
+                            _travel_heading(self.travel_axis, increasing=True),
                             lane[self.travel_axis] - start[self.travel_axis],
                         )
                     )

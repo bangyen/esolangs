@@ -9,6 +9,7 @@ commands over an O(2**n) literal, no branching.  That is why its
 no subtrees to fold or share.  The reads are unconditional and first.
 """
 
+from collections.abc import Callable
 from functools import cache
 from itertools import pairwise
 from math import isqrt, prod
@@ -290,6 +291,161 @@ def alight(
     )
 
 
+class _Layout(NamedTuple):
+    """The dimensions selecting an Alight layout strategy.
+
+    ``expression_syntax`` is ``"infix"`` or ``"postfix"``; ``unbounded``
+    is ``width is None``; ``dropped`` marks tables with ignored inputs,
+    which are read and dropped while the rest index the lookup.
+    """
+
+    expression_syntax: str
+    unbounded: bool
+    dropped: bool
+
+
+class _Build(NamedTuple):
+    """Resolved inputs for one layout decision."""
+
+    truth_table: str
+    n: int
+    width: int | None
+    projected: str
+    essential: list[bool]
+    dropped: bool
+
+
+def _layout_flat_infix(build: _Build) -> str:
+    """Return the unbounded infix layout: one straight lookup."""
+    if build.dropped:
+        return _alight_flat_compact(build.projected, build.n, build.essential)
+    return _alight_flat_compact(build.truth_table, build.n)
+
+
+def _layout_flat_postfix(build: _Build) -> str:
+    """Return the unbounded postfix layout: one straight lookup."""
+    if build.dropped:
+        return _flatten(
+            _postfix_units(
+                build.projected, build.n, len(build.projected), build.essential
+            )
+        )
+    return _flatten(_postfix_units(build.truth_table, build.n, len(build.truth_table)))
+
+
+def _layout_bounded_infix(build: _Build) -> str:
+    """Return the bounded infix layout without dropped inputs."""
+    width = build.width
+    assert width is not None
+    return select_alight(build.truth_table, build.n, width)
+
+
+def _layout_bounded_postfix(build: _Build) -> str:
+    """Return the bounded postfix layout, projected too when inputs drop."""
+    width = build.width
+    assert width is not None
+    units = _postfix_units(
+        build.truth_table,
+        build.n,
+        _alight_chunk(len(build.truth_table), width),
+    )
+    program = _postfix_width(units, width)
+    if not build.dropped:
+        return program
+    units = _postfix_units(
+        build.projected,
+        build.n,
+        _alight_chunk(len(build.projected), width),
+        build.essential,
+    )
+    return _smallest(program, _postfix_width(units, width), minimax=False)
+
+
+def _layout_bounded_dropped(build: _Build) -> str:
+    """Return the bounded infix layout with dropped inputs.
+
+    ``select_alight`` models ``n`` reads, so the dropped build is rendered
+    here: the model's plan for the projected table, and a fold at ``width``.
+    32.6% by chars at n=8, 1 ignored, width 80 (audit); area measured in the
+    commit.  A candidate wider than ``width`` is discarded.
+    """
+    width = build.width
+    assert width is not None
+    essential = build.essential
+    program = select_alight(build.truth_table, build.n, width)
+    plan = min(
+        (
+            p
+            for p in (
+                _plans(sum(essential))
+                if any(essential)
+                else _plans(build.n, tuple(essential))
+            )
+            if p.ready() <= width
+        ),
+        key=_Plan.score,
+    )
+    flat = _alight_flat_compact(build.projected, build.n, essential)
+    if plan.kind == _COLUMN:
+        planned = "\n".join(flat)
+    elif plan.kind == _ROW:
+        planned = flat
+    else:
+        planned = _alight_folded(
+            _alight_units(build.projected, build.n, plan.chunk, essential),
+            plan.columns,
+        )
+    units = _alight_units(
+        build.projected,
+        build.n,
+        _alight_chunk(len(build.projected), width),
+        essential,
+    )
+    candidates: list[str | None] = [
+        program,
+        _fit(planned, width),
+        _fit(_alight_folded(units, width), width),
+    ]
+    if not any(essential):
+        candidates = _constant_candidates(program, candidates, flat, width)
+    return _smallest(*candidates)
+
+
+def _constant_candidates(
+    program: str, candidates: list[str | None], flat: str, width: int
+) -> list[str | None]:
+    """Pin constant tables to the legacy layout's size.
+
+    With no essential inputs the fold planner can pick a squarer fold far
+    larger than the legacy pick -- at n=4, width 40 the area grew from 121
+    to 682 cells -- so the flat line and its column form are always
+    considered, and every candidate must be no longer and no larger in area
+    than the ``select_alight`` program.  Pinned by
+    ``test_constant_lookup_executes_every_layout`` (n=4, width 40).
+    """
+    candidates = [*candidates, _fit(flat, width), "\n".join(flat)]
+    area = prod(_dimensions(program))
+    return [
+        candidate
+        for candidate in candidates
+        if candidate is not None
+        and len(candidate) <= len(program)
+        and prod(_dimensions(candidate)) <= area
+    ]
+
+
+_STRATEGIES: dict[_Layout, Callable[[_Build], str]] = {
+    _Layout("infix", unbounded=True, dropped=False): _layout_flat_infix,
+    _Layout("infix", unbounded=True, dropped=True): _layout_flat_infix,
+    _Layout("postfix", unbounded=True, dropped=False): _layout_flat_postfix,
+    _Layout("postfix", unbounded=True, dropped=True): _layout_flat_postfix,
+    _Layout("infix", unbounded=False, dropped=False): _layout_bounded_infix,
+    _Layout("infix", unbounded=False, dropped=True): _layout_bounded_dropped,
+    _Layout("postfix", unbounded=False, dropped=False): _layout_bounded_postfix,
+    _Layout("postfix", unbounded=False, dropped=True): _layout_bounded_postfix,
+}
+
+
 def _program(
     truth_table: str,
     width: int | None = None,
@@ -306,80 +462,20 @@ def _program(
         raise ValueError("width must be at least 1")
     weights, projected = input_weights(truth_table, n)
     essential = [bool(weight) for weight in weights]
-    dropped = not all(weights) and (any(weights) or not keep_constant_input)
     # An ignored input is read and dropped, and the table is indexed by the
     # rest, including the one-entry table of a constant.
-    if width is None and dropped:
-        if expression_syntax == "postfix":
-            return _flatten(_postfix_units(projected, n, len(projected), essential))
-        return _alight_flat_compact(projected, n, essential)
-    if expression_syntax == "postfix":
-        units = _postfix_units(
-            truth_table,
-            n,
-            len(truth_table)
-            if width is None
-            else _alight_chunk(len(truth_table), width),
-        )
-        if width is None:
-            return _flatten(units)
-        program = _postfix_width(units, width)
-        if dropped:
-            units = _postfix_units(
-                projected, n, _alight_chunk(len(projected), width), essential
-            )
-            return _smallest(program, _postfix_width(units, width), minimax=False)
-        return program
-    flat = _alight_flat_compact(truth_table, n)
-    if width is None:
-        return flat
-
-    program = select_alight(truth_table, n, width)
-    if not dropped:
-        return program
-    # select_alight models n reads, so the dropped build is rendered here:
-    # the model's plan for the projected table, and a fold at ``width``.
-    # 32.6% by chars at n=8, 1 ignored, width 80 (audit); area measured in
-    # the commit.  A candidate wider than ``width`` is discarded.
-
-    plan = min(
-        (
-            p
-            for p in (
-                _plans(sum(essential))
-                if any(essential)
-                else _plans(n, tuple(essential))
-            )
-            if p.ready() <= width
-        ),
-        key=_Plan.score,
+    dropped = not all(weights) and (any(weights) or not keep_constant_input)
+    build = _Build(
+        truth_table=truth_table,
+        n=n,
+        width=width,
+        projected=projected,
+        essential=essential,
+        dropped=dropped,
     )
-    flat = _alight_flat_compact(projected, n, essential)
-    if plan.kind < 2:  # a column, or the one row (never the minimum here)
-        planned = ("\n".join(flat), flat)[plan.kind]
-    else:
-        planned = _alight_folded(
-            _alight_units(projected, n, plan.chunk, essential), plan.columns
-        )
-    units = _alight_units(projected, n, _alight_chunk(len(projected), width), essential)
-    candidates = [
-        program,
-        _fit(planned, width),
-        _fit(_alight_folded(units, width), width),
-    ]
-    if not any(essential):
-        # At n=4, width 40, a squarer fold grew 121 to 682 cells.
-        # Preserve the legacy area and length, including a direct column.
-        candidates.extend([_fit(flat, width), "\n".join(flat)])
-        area = prod(_dimensions(program))
-        candidates = [
-            candidate
-            for candidate in candidates
-            if candidate is not None
-            and len(candidate) <= len(program)
-            and prod(_dimensions(candidate)) <= area
-        ]
-    return _smallest(*candidates)
+    return _STRATEGIES[
+        _Layout(expression_syntax, unbounded=width is None, dropped=dropped)
+    ](build)
 
 
 def _postfix_units(

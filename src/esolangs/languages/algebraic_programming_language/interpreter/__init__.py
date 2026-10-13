@@ -99,7 +99,6 @@ from esolangs.languages.algebraic_programming_language.interpreter._parse import
     _blocks,
     _body,
     _Call,
-    _contains_return,
     _Definition,
     _free_variables,
     _is_lower,
@@ -464,11 +463,11 @@ def _start_line(
         globals_ = _bind_inputs(node, state.globals, inputs)
         definition = _Definition("", [], [node])
         frame = _Frame(
-            definition,
-            MappingProxyType({}),
-            0,
-            ((node, ()),),
-            0,
+            fn=definition,
+            locals=MappingProxyType({}),
+            stmt=0,
+            work=((node, ()),),
+            value=0,
             returned=False,
             printing=True,
             assign=None,
@@ -492,11 +491,11 @@ def _start_line(
         body = _body(rhs, state.defs)
         definition = _Definition("", [], body)
         frame = _Frame(
-            definition,
-            MappingProxyType({}),
-            0,
-            ((body[0], ()),),
-            0,
+            fn=definition,
+            locals=MappingProxyType({}),
+            stmt=0,
+            work=((body[0], ()),),
+            value=0,
             returned=False,
             printing=False,
             assign=name,
@@ -509,11 +508,13 @@ def _start_line(
     # definition can refer to itself: the wiki's truth machine is
     # ``x? = x & x?``, whose body names the very operator being
     # defined, and the parser can only match ``?`` against a pattern
-    # it already knows.
-    definition = _Definition(name, params, [("lit", 0)])
+    # it already knows.  The parser reads only registered names (see
+    # ``_Parser.operator_patterns``), never a registered body, so the
+    # pre-registration entry is a body-less stub; the definition is
+    # constructed once its body is known.
+    parse_defs = _frozen({**state.defs, name: _Definition(name, params, [])})
+    definition = _Definition(name, params, _body(rhs, parse_defs))
     defs = _frozen({**state.defs, name: definition})
-    definition.body = _body(rhs, defs)
-    definition.control = [_contains_return(node) for node in definition.body]
     return replace(state, defs=defs, line=line, steps=0), None
 
 
@@ -662,11 +663,11 @@ def _step_call(
         )
     frame = _pop_work(frame)
     pushed = _Frame(
-        definition,
-        _frozen(dict(zip(definition.params, done, strict=True))),
-        0,
-        ((definition.body[0], ()),),
-        0,
+        fn=definition,
+        locals=_frozen(dict(zip(definition.params, done, strict=True))),
+        stmt=0,
+        work=((definition.body[0], ()),),
+        value=0,
         returned=False,
         printing=False,
         assign=None,

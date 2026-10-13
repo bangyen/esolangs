@@ -7,7 +7,7 @@ The simulator laws are pinned differentially against the interpreter.
 
 import re
 from collections.abc import Callable
-from functools import cache
+from functools import cache, partial
 from itertools import pairwise
 from math import isqrt
 from typing import Any
@@ -82,7 +82,15 @@ def _degenerate(truth_table: str, n: int) -> str | None:
 #: An ignored input's run between two fixed halves: either fill walks the
 #: fresh tape back to fresh -- zero cells, pointer 0, no skip pending -- so a
 #: block in front of a program leaves it the start it was verified from.
-_INERT = "[[<<[" + _MINIFUCK_INPUT + "<"
+_INERT = "".join(
+    (
+        "[[",  # walk right twice, setting the two cells the guard clears
+        "<<",  # walk back to cell 0
+        "[",  # clear cell 1 (and cell 2 on the skip), skipping into the run
+        _MINIFUCK_INPUT,  # the ignored input's own two-character run
+        "<",  # step home to cell 0
+    )
+)
 
 
 def _reduce(
@@ -152,6 +160,17 @@ def _solve(truth_table: str) -> str:
     return _mux(truth_table, n)
 
 
+def _balance_score(program: str, width: int) -> tuple[int, int]:
+    """Rank width-budgeted candidates: line overflow first, length second.
+
+    The tuple orders by ``(overflow, length)``: a candidate whose longest
+    line fits ``width`` always beats one that overflows it, whatever the
+    lengths; among candidates on the same side of the budget, the shorter
+    program wins.
+    """
+    return max(0, max(map(len, program.splitlines())) - width), len(program)
+
+
 def minifuck(truth_table: str, width: int | None = None) -> str:
     """Build a Minifuck template for the given truth table.
 
@@ -181,13 +200,7 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
             for candidate in candidates[1:]
             if len(wrapped := _wrap_template(candidate, n, width)) <= len(legacy)
         ]
-        return min(
-            candidates,
-            key=lambda program: (
-                max(0, max(map(len, program.splitlines())) - width),
-                len(program),
-            ),
-        )
+        return min(candidates, key=partial(_balance_score, width=width))
     shared = _parity_columns(n, int(truth_table[0]), mask=mask, paired=True)
     if width is None or width <= 0:
         return min(natural, shared, key=len)
@@ -197,14 +210,7 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
         shared = _parity_columns(n, int(truth_table[0]), mask=mask)
     if len(shared) > len(legacy):
         return legacy
-    return min(
-        legacy,
-        shared,
-        key=lambda program: (
-            max(0, max(map(len, program.splitlines())) - width),
-            len(program),
-        ),
-    )
+    return min(legacy, shared, key=partial(_balance_score, width=width))
 
 
 @cache
@@ -265,24 +271,40 @@ def _narrow(truth_table: str, n: int) -> str:
     return _INERT * first + inner + _MINIFUCK_INPUT * after
 
 
+class _ParityEmitter:
+    """Emit parity-column commands while tracking the tape model.
+
+    ``[`` walks right and flips the landing cell (flipping the next cell
+    too, and skipping an instruction, when it lands on zero); ``<`` walks
+    left, staying at cell 0.  ``bits`` mirrors the cells and ``pointer``
+    the head, so the caller can read each cell's parity back after the
+    setters; ``parts`` collects the emitted program text.
+    """
+
+    def __init__(self, *, paired: bool) -> None:
+        self.bits = [0] * 10
+        self.pointer = 0
+        self.parts = [] if paired else ["q"]
+
+    def emit(self, command: str) -> None:
+        self.parts.append(command)
+        if command == "<":
+            self.pointer = max(0, self.pointer - 1)
+        else:
+            self.pointer += 1
+            self.bits[self.pointer] ^= 1
+            if not self.bits[self.pointer]:
+                self.bits[self.pointer + 1] ^= 1
+
+
 def _parity_columns(
     n: int, complement: int, *, mask: int | None = None, paired: bool = False
 ) -> str:
     """Accumulate XOR in bit 7; unselected setters write cell 9 instead."""
-    bits = [0] * 10
-    pointer = 0
-    parts = [] if paired else ["q"]
-
-    def emit(command: str) -> None:
-        nonlocal pointer
-        parts.append(command)
-        if command == "<":
-            pointer = max(0, pointer - 1)
-        else:
-            pointer += 1
-            bits[pointer] ^= 1
-            if not bits[pointer]:
-                bits[pointer + 1] ^= 1
+    emitter = _ParityEmitter(paired=paired)
+    emit = emitter.emit
+    bits = emitter.bits
+    parts = emitter.parts
 
     for i in range(n):
         stop = 6 if mask is None or mask & (1 << (n - 1 - i)) else 8

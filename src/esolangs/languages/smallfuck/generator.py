@@ -35,6 +35,17 @@ PAIR = ("x>>>", "*>>>")
 BAND = 3
 
 
+def _owns_band_cell(n: int, level: int) -> bool:
+    """Whether ``level`` opens a new band of result cells.
+
+    Bands of :data:`BAND` levels are counted up from the leaves, so the
+    band-owning levels are ``n - 1``, ``n - 1 - BAND``, and so on: exactly
+    those with ``(n - BAND - level - 1) % BAND == 0``.  The virtual root
+    (level -1) owns no cell.
+    """
+    return level >= 0 and (n - BAND - level - 1) % BAND == 0
+
+
 class _Builder:
     """Emit pointer-tracked macros over initially zero cells."""
 
@@ -191,8 +202,19 @@ def _smallfuck_tree(
         )
 
     def split(
-        bit: int, flag: int, one: Callable[[], _Cost], zero: Callable[[], _Cost]
-    ) -> _Cost:
+        bit: int,
+        flag: int,
+        one: Callable[[], _Cost[int]],
+        zero: Callable[[], _Cost[int]],
+    ) -> _Cost[int]:
+        """Emit a two-arm split on ``bit`` and bound its worst-case cost.
+
+        The one arm runs in ``[* ... ]`` on ``bit`` with ``flag`` flipped
+        around it; the zero arm runs in a second ``[* ... ]`` on ``flag``.
+        Each arm's bound separates the chars its body emitted itself from
+        the loop scaffolding around it, so the returned cost adds the
+        commands both arms execute once and takes the worse arm.
+        """
         start = builder.count
         builder.flip(flag)
         builder.loop(bit)
@@ -200,19 +222,29 @@ def _smallfuck_tree(
         builder.flip(flag)
         body_start = builder.count
         one_cost = one()
-        one_flat = builder.count - body_start
+        one_body = builder.count - body_start
         builder.end(bit)
-        one_cost = _Cost(builder.count - one_start - one_flat + 1, (one_cost,))
+        # Scaffolding around the one arm: the flag flip and the closing
+        # bracket around its body, plus the loop's opening bracket.  The
+        # loop's `*` clear runs only on entry, so it is the wrapper below.
+        one_scaffold = builder.count - one_start - one_body + 1
+        one_cost = _Cost(one_scaffold, (one_cost,))
+        one_entered = _Cost(1, (one_cost,))
         between = builder.count
         builder.loop(flag)
-        common = one_start - start - 1 + builder.count - between - 1
+        # Commands both arms execute: the flag flip and each loop's `[`
+        # test with its moves, minus each loop's `*` clear (per-arm).
+        common = (one_start - start - 1) + (builder.count - between - 1)
         zero_start = builder.count
         body_start = builder.count
         zero_cost = zero()
-        zero_flat = builder.count - body_start
+        zero_body = builder.count - body_start
         builder.end(flag)
-        zero_cost = _Cost(builder.count - zero_start - zero_flat + 2, (zero_cost,))
-        return _Cost(common, (_Cost(1, (one_cost,)), zero_cost))
+        # Scaffolding around the zero arm: its "[*" opener and the
+        # closing bracket around its body.
+        zero_scaffold = builder.count - zero_start - zero_body + 2
+        zero_cost = _Cost(zero_scaffold, (zero_cost,))
+        return _Cost(common, (one_entered, zero_cost))
 
     def clear_prefix(level: int) -> None:
         for unread in range(level, pair_depth):
@@ -227,7 +259,7 @@ def _smallfuck_tree(
 
     def arm(
         level: int, lo: int, hi: int, result: int, on: str, free: int = -1
-    ) -> _Cost:
+    ) -> _Cost[int]:
         """XOR into ``result`` whether the span's answer is ``on``."""
         start = builder.count
         if constant(lo, hi):
@@ -236,17 +268,20 @@ def _smallfuck_tree(
             if pair_phase:
                 clear_prefix(level + 1)
             return _Cost(builder.count - start)
-        if level < 0 or (n - BAND - level - 1) % BAND:
+        if not _owns_band_cell(n, level):
             return tree(level + 1, lo, hi, result, on, free)
         own = 3 * (level + 1) + 2
         cost = tree(level + 1, lo, hi, own, on, free)
         tail = builder.count
         transfer(own, result)
-        return _Cost(builder.count - tail + 1, (cost,))
+        # The band transfer's own chars, plus one for the band cell the
+        # subtree already priced.
+        transfer_chars = builder.count - tail + 1
+        return _Cost(transfer_chars, (cost,))
 
     def tree(
         level: int, lo: int, hi: int, result: int, on: str, free: int = -1
-    ) -> _Cost:
+    ) -> _Cost[int]:
         start = builder.count
         if pair_phase and level == pair_depth:
             # A zero arm has passed its input's only loop; an ignored input
@@ -289,13 +324,19 @@ def _smallfuck_tree(
             builder.loop(bit)
             body_start = builder.count
             cost = arm(level, mid, hi, result, on, free)
-            flat = builder.count - body_start
+            arm_body = builder.count - body_start
             builder.end(bit)
+            # Loop scaffolding around the arm: everything but its body,
+            # plus the loop's opening bracket emitted before `start`.
+            arm_scaffold = builder.count - start - arm_body + 1
+            # Skipped path: the setup before the arm body, minus the
+            # loop's `*` clear, which runs only on entry.
+            skipped_setup = body_start - start - 1
             return _Cost(
                 0,
                 (
-                    _Cost(builder.count - start - flat + 1, (cost,)),
-                    _Cost(body_start - start - 1),
+                    _Cost(arm_scaffold, (cost,)),
+                    _Cost(skipped_setup),
                 ),
             )
         zero_free = level if pair_phase and level < pair_depth else free
@@ -306,8 +347,21 @@ def _smallfuck_tree(
             lambda: arm(level, lo, mid, result, on, zero_free),
         )
 
-    prefix = arm(-1, 0, len(truth_table), 2, "1")
-    if pairs:
+    def emit_paired_roots(prefix: _Cost[int]) -> tuple[str, int]:
+        """Emit the paired-roots decoder and price every pair tail.
+
+        Paired roots share one emitted body per repeated two-input
+        function (complements share a three-bit code): the tree above
+        retires the last two levels and marks each used code's cells,
+        and this decoder replays the matching body into the answer cell.
+        ``decode`` builds a decision tree over the three code bits and
+        prices each leaf with its body; ``price`` then folds those leaf
+        costs into the per-code tail table the prefix cost evaluates
+        against.  Emission and pricing stay together here because the
+        decoder's leaf prices are this function's own second engine.
+        """
+        nonlocal pair_phase
+        # decode needs real subtrees here, not the pair shortcut.
         pair_phase = False
         collector = 3 * (pair_depth - 1) + 1
         # Used inputs are zero; constant leaves clear the unused prefix.
@@ -329,7 +383,7 @@ def _smallfuck_tree(
             3 * perm[pair_depth - 2],
         )
 
-        def decode(at: int, labels: tuple[int, ...]) -> _Cost:
+        def decode(at: int, labels: tuple[int, ...]) -> _Cost[int]:
             start = builder.count
             if at == 3:
                 code = labels[0]
@@ -363,7 +417,7 @@ def _smallfuck_tree(
         model = decode(0, (0, *pairs))
         pair_tails: dict[int | None, int] = {}
 
-        def price(cost: _Cost, extra: int = 0) -> None:
+        def price(cost: _Cost[int], extra: int = 0) -> None:
             extra += cost.value
             if cost.children:
                 for child in cost.children:
@@ -377,6 +431,10 @@ def _smallfuck_tree(
         price(model)
         program = _trim_tail("".join(builder.code)).ljust(3, ">")
         return program, len(PAIR[0]) * n + prefix.evaluate(pair_tails) + 1
+
+    prefix = arm(-1, 0, len(truth_table), 2, "1")
+    if pairs:
+        return emit_paired_roots(prefix)
     empty_tails: dict[int | None, int] = {
         None: 0,
         **dict.fromkeys(range(len(blocks)), 0),
@@ -393,9 +451,11 @@ def _smallfuck_tree(
         del selected[depth, ids[depth][row >> (n - depth)]]
         body_start = builder.count
         body_cost = tree(depth, row, row + (1 << (n - depth)), 2, "1")
-        flat = builder.count - body_start
+        deferred_body = builder.count - body_start
         builder.end(pending)
-        active = builder.count - start - flat + 1
+        # Loop scaffolding around the deferred body: everything but the
+        # body itself, plus the loop's opening bracket.
+        active = builder.count - start - deferred_body + 1
         cost += body_cost.evaluate(empty_tails) + active
         stages.append((i, body_cost, active, skipped))
     if shared_blocks:

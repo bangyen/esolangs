@@ -1,48 +1,21 @@
 """Boolean-function generator for SLOW ACV MAMMALIAN.
 
-The default modulo-256 construction chains ``n`` read nodes and dispatches
-into eight-token leaf slots: O(T) size and build. The tree it replaced was
-super-linear (``S(d) >= (2 + 1/255) S(d-1)``).  Three identities carry the
-control flow, machine-verified end to end over every table through
-``n == 3``:
+The default modulo-256 construction chains one read node per input and
+dispatches into a flat leaf table: O(T) size and build (the tree it
+replaced was super-linear, ``S(d) >= (2 + 1/255) S(d-1)``).  Each bit's
+whole effect is banked on array 16's non-head sum as a weight -- the
+four lightest are banked blind, without ever reading the sum -- and the
+dispatch jump lands on the non-head sum, so the banked total names the
+leaf slot directly.  A leaf clears the accumulator, SPRINTs to a print
+array, CONSUMEs its middle cell, and PRONOUNCEs it.  All inputs are read
+unconditionally; the merge equalities are asserted on every build, and
+the bounded fixed-point searches raise instead of hanging.
 
-``landing = start - 15``
-    A read node is ``SEED*wrap EXCRETE SEED*j1 DIGEST SEED*16 DIGEST
-    ACCEPT DIGEST LEAPFROG``; on :func:`_aim`'s class the 1-branch resumes
-    15 tokens short and ``j1`` cancels (see :func:`_node`).
-
-``target = nonhead + b``
-    ``LEAPFROG`` targets ``acc - head - 1`` and a fresh ``DIGEST`` folds
-    the head in, so an unconditional jump lands on the non-head sum plus
-    its own appended byte.
-
-``leaf = nonhead of array 16``
-    The same identity with nothing appended: the dispatch raises array
-    16's non-head sum to the leaf table's own address before a bit is
-    read, so ``DIGEST LEAPFROG`` alone lands run ``row`` on
-    ``base + sum of the weights its ones banked``.  Nothing after the
-    weights solves against that sum, which is what lets a weight be a
-    value other than a multiple of 256 (:func:`_weights`).
-
-A bit's whole effect is banked on array 16's non-head sum; both branches
-leave through trampolines aimed at one merge address (so array 0's sums
-agree exactly) and the 1-arm's tuning chunk (:func:`_arm`) zeroes the even
-head residue at slope -2.  The four lightest weights are banked without
-reading the sum at all -- :func:`_pool_bank` CONSUMEs a planted cell and
-rides it to array 16 -- so they may be any byte, and the leaf slot rather
-than 256 sets the table's stride.
-
-The leaf itself never reads the sum either: it clears the accumulator,
-SPRINTs to a print array whose middle cell holds ``'0'`` or ``'1'``, and
-CONSUMEs it.  Six or seven tokens, the same for every row.
-
-The leaf table is addressed by the summed weights, one slot per row, so a
-constant half or repeat has no subtree to fold or share.
-
-Everything is closed-form; the bounded fixed points raise if they do not
-settle, and the merge equalities are asserted on every build.  Executed
-evidence: every table through ``n == 3``, plus sampled rows of dense
-tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
+Three identities carry the control flow, each proved where it is used:
+``landing = start - 15`` (:func:`_node`), ``target = nonhead + b``
+(:func:`_trampoline`), ``leaf = nonhead of array 16`` (:func:`_weights`).
+Executed evidence: every table through ``n == 3``, plus sampled rows of
+dense tables through ``n == 12``.
 """
 
 from collections.abc import Sequence
@@ -52,6 +25,14 @@ from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
+)
+from esolangs.languages.slow_acv_mammalian._sums import (
+    _ARRAYS,
+    _IO_MODULUS,
+    _MODULUS,
+    _W,
+    _replay,
+    _Sums,
 )
 from esolangs.languages.slow_acv_mammalian.interpreter import (
     DEFAULT_MODULI,
@@ -68,14 +49,6 @@ from esolangs.registry._language import Language, Shape
 
 __all__ = ["slow_acv_mammalian"]
 
-#: How many arrays the machine has; ``SPRINT`` moves the pointer mod this.
-_ARRAYS = 23
-
-# The helpers' default domain, including the replay model: the modulo-256
-# I/O construction.  The entry point passes the caller's moduli through.
-_MODULUS = 256
-_IO_MODULUS = 256
-
 # The byte a stash chunk appends.  It is what raises the sum, and the sum is
 # what puts a distant token index within a jump's reach, so the chunk buys
 # the most reach per token by appending the largest byte there is.
@@ -86,13 +59,16 @@ _STASH_BYTE = _IO_MODULUS - 1
 # lands the accumulator on the clean digit 48 -- it is not a free knob.
 _J2 = 16
 
-# The weight array.  It is one of the construction's free arrays, and SEED
-# steps its head by 17 -- odd, so every residue is reachable.
-_W = 16
+#: Per-``SEED`` advance of array 16's head (array ``k``'s head steps by
+#: ``k + 1``); 17 is odd, so every residue is reachable.
 _W_STEP = _W + 1
+#: Low edge of the 17-wide high-residue window greedy chunks aim at.
 _GREEDY_MIN = _MODULUS - _W_STEP
+#: Seed counts a greedy chunk tries; 16 steps of 17 cover every residue.
 _GREEDY_COUNTS = _W_STEP - 1
+#: Bytes the greedy phase leaves to the exact chunks: the last two maxima.
 _EXACT_TAIL = 2 * _STASH_BYTE
+#: Inverse of the array-16 head step, for solving exact ``SEED`` counts.
 _W_INV = pow(_W_STEP, -1, _MODULUS)
 
 #: The print arrays, indexed by the digit their middle cell holds.  A leaf
@@ -302,113 +278,6 @@ def _trampoline_255_len(array: list[int], acc: int, target: int) -> int:
         rest += 254 * chunks
     hop = target - rest
     return tokens + (((hop - rest) % 255) - head) % _MODULUS + 4
-
-
-class _Sums:
-    """Build-time machine state: heads, the two big sums, the small cells.
-
-    Arrays 0 and 16 are only ever read through ``DIGEST`` and through
-    ``SPRINT``'s ``curr[0]``, so a head and a non-head sum say everything
-    about them.  The pool and print arrays *are* indexed, by ``CONSUME``
-    and by ``SPRINT``'s ``curr[acc]``, so those carry their cells.
-    """
-
-    __slots__ = ("acc", "cells", "heads", "io_modulus", "n0", "nw", "ptr")
-
-    def __init__(self, *, io_modulus: int = _IO_MODULUS) -> None:
-        self.io_modulus = MammalianModuli(io_modulus=io_modulus).io_modulus
-        self.heads = [0] * _ARRAYS
-        self.cells: dict[int, list[int]] = {}
-        self.n0 = self.nw = self.acc = self.ptr = 0
-
-    def clone(self) -> "_Sums":
-        out = _Sums.__new__(_Sums)
-        out.io_modulus = self.io_modulus
-        out.heads = list(self.heads)
-        out.cells = {key: list(val) for key, val in self.cells.items()}
-        out.n0, out.nw, out.acc, out.ptr = self.n0, self.nw, self.acc, self.ptr
-        return out
-
-    @property
-    def h0(self) -> int:
-        """Return array 0's head."""
-        return self.heads[0]
-
-    @property
-    def hw(self) -> int:
-        """Return array 16's head."""
-        return self.heads[_W]
-
-    @hw.setter
-    def hw(self, value: int) -> None:
-        self.heads[_W] = value
-
-    def arr0(self) -> list[int]:
-        """Array 0 as the two-cell stand-in the sum arithmetic works on."""
-        return [self.heads[0], self.n0]
-
-    def rest(self, arr: int) -> int:
-        """Return the non-head sum of array ``arr``."""
-        if arr == 0:
-            return self.n0
-        if arr == _W:
-            return self.nw
-        return sum(self.cells.get(arr, ()))
-
-    def append(self, arr: int, byte: int) -> None:
-        """Append ``byte`` to array ``arr``, as ``EXCRETE`` does."""
-        if arr == 0:
-            self.n0 += byte
-        elif arr == _W:
-            self.nw += byte
-        else:
-            self.cells.setdefault(arr, []).append(byte)
-
-    def full(self, arr: int) -> list[int]:
-        """Return array ``arr`` cell by cell; only small arrays have cells."""
-        return [self.heads[arr], *self.cells.get(arr, ())]
-
-
-def _replay(st: _Sums, tokens: Sequence[str], bit: int = 0) -> None:
-    """Apply a token run to ``st``.  ``LEAPFROG`` moves only the cursor."""
-    seeds = 0
-    for tok in tokens:
-        if tok == "SEED":
-            seeds += 1
-            continue
-        if seeds:
-            for arr in range(_ARRAYS):
-                st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % _MODULUS
-            seeds = 0
-        _apply(st, tok, bit)
-    for arr in range(_ARRAYS):
-        st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % _MODULUS
-
-
-def _apply(st: _Sums, tok: str, bit: int) -> None:
-    """Apply one non-``SEED`` token to ``st``."""
-    if tok == "DIGEST":
-        st.acc ^= st.heads[st.ptr] + st.rest(st.ptr)
-    elif tok == "EXCRETE":
-        st.append(st.ptr, st.acc % st.io_modulus)
-        st.acc = 0
-    elif tok == "ACCEPT":
-        if st.acc % _MODULUS != 48:
-            raise AssertionError(
-                f"ACCEPT entered with acc % {_MODULUS} == {st.acc % _MODULUS}"
-            )
-        st.n0 += bit
-    elif tok == "CONSUME":
-        cells = st.cells[st.ptr]
-        mid = len(cells) // 2
-        if mid < 1:  # pragma: no cover - the pools are built long enough
-            raise AssertionError("CONSUME would take the head")
-        st.acc = cells.pop(mid - 1)
-    elif tok == "SPRINT":
-        cells = st.full(st.ptr)
-        if not 0 <= st.acc < len(cells):
-            raise AssertionError(f"SPRINT index {st.acc} outside array {st.ptr}")
-        st.ptr = (st.ptr + cells[st.acc]) % _ARRAYS
 
 
 def _plant(st: _Sums) -> list[str]:

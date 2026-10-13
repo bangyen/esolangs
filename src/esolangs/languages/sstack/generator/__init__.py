@@ -108,7 +108,7 @@ def _sstack_shared(
     constant = constant_span_test(table)
     out = [_PROLOGUE]
 
-    def build(remaining: int, lo: int, hi: int) -> ContinuationCost:
+    def build(remaining: int, lo: int, hi: int) -> ContinuationCost[int]:
         depth = n - remaining
         key = (depth, ids[depth][lo >> remaining])
         if key in selected:

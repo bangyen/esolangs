@@ -1,6 +1,7 @@
 """Boolean-function generator for Back."""
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from itertools import pairwise
 from typing import Any
 
@@ -281,6 +282,236 @@ def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> st
     return program
 
 
+def _back_pointer_walk(frm: int, to: int) -> list[str]:
+    """Move the pointer from cell ``frm`` to cell ``to``, one move per row."""
+    return list(move_text(frm, to, ">", "<"))
+
+
+def _back_load(
+    order: list[int],
+    cells: list[int],
+    weights: list[int],
+    levels: int,
+    n: int,
+) -> list[str]:
+    """Load the inputs in ``order``, then open the answer cell and home.
+
+    ``cells[i]`` is the tape cell input ``i`` loads into and ``weights[i]``
+    is zero for an ignored input.
+    """
+    # An ignored input borrows the cell loaded after it, or a spare one.
+    borrowed = dict(enumerate(cells))
+    spare = levels
+    for i in reversed(order):
+        if weights[i]:
+            spare = cells[i]
+        borrowed[i] = spare
+    units: list[str] = []
+    at = 0
+    for i in order:
+        # Primer '-' then the run, one row each (the beam reads one cell
+        # per row).  Bit on the trailing row so every load row executes;
+        # the walk goes before the pair, never between, or the height
+        # leaks the bit.
+        units.extend(_back_pointer_walk(at, borrowed[i]))
+        units.extend(("-", _BACK_INPUT) if weights[i] else (_BACK_INPUT, "-"))
+        at = borrowed[i]
+    units.extend(_back_pointer_walk(at, n))
+    units.extend("<" * n)
+    return units
+
+
+@dataclass
+class _BackDrawState:
+    """Mutable state threaded through the tree emitter."""
+
+    grid: _Grid
+    where: dict[_Node, tuple[int, int]]
+    next_row: list[int]
+    vertical: bool
+    reserved: _Node | None
+    shared: set[_Node]
+    levels: int
+    n: int
+    truth_table: str
+    constant: Callable[[int, int], bool]
+
+
+def _back_leaf(
+    state: _BackDrawState, level: int, value: str, row: int, col: int
+) -> None:
+    """Emit a leaf finisher at ``(row, col)``."""
+    # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
+    code = ">" * (state.n - level) + ("-" if value == "1" else "") + "*"
+    if state.vertical:
+        # Reserved DFS rows turn leaf finishers down without widening the tree.
+        state.grid[(row, col)] = "\\"
+        for k, ch in enumerate(code, 1):
+            state.grid[(row + k, col)] = ch
+        state.next_row[0] = max(state.next_row[0], row + len(code) + 1)
+    else:
+        for k, ch in enumerate(code):
+            state.grid[(row, col + k)] = ch
+
+
+def _back_emit(
+    state: _BackDrawState, level: int, lo: int, hi: int, row: int, col: int
+) -> None:
+    """Emit the subtree over rows ``[lo, hi)``, node mirror at ``(row, col)``."""
+    if level == state.levels or state.constant(lo, hi):
+        _back_leaf(state, level, state.truth_table[lo], row, col)
+        return
+    mid = lo + (hi - lo) // 2
+    state.grid[(row, col)] = "+"
+    state.grid[(row, col + 1)] = "\\"
+    state.grid[(row, col + 2)] = ">"
+    block = lo >> (state.levels - level)
+    state.where[level, block] = (row, col + 1)
+    _back_emit(state, level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
+    if (level, block) in state.shared:
+        # Keep one empty row for the bend before compacting later nodes.
+        if (level, block) == state.reserved:
+            state.next_row[0] += 1
+        return
+    nrow = state.next_row[0]
+    state.next_row[0] += 1
+    state.grid[(nrow, col + 1)] = "\\"
+    state.grid[(nrow, col + 2)] = ">"
+    _back_emit(state, level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
+
+
+def _back_draw(
+    truth_table: str,
+    levels: int,
+    n: int,
+    shared: set[_Node],
+    constant: Callable[[int, int], bool],
+    *,
+    vertical: bool,
+    reserved: _Node | None = None,
+) -> tuple[_Grid, dict[_Node, tuple[int, int]]]:
+    """Draw the tree; return its cells and each node's cell by (level, block).
+
+    A node in ``shared`` draws no one-subtree: its mirror drops the beam down
+    the column to the next mirror below, the zero-side entry of the next
+    node on that level.
+    """
+    state = _BackDrawState(
+        grid={},
+        where={},
+        next_row=[1],
+        vertical=vertical,
+        reserved=reserved,
+        shared=shared,
+        levels=levels,
+        n=n,
+        truth_table=truth_table,
+        constant=constant,
+    )
+    # Tree root at column 1, the beam arriving rightward.
+    _back_emit(state, 0, 0, 2**levels, 0, 1)
+    return state.grid, state.where
+
+
+def _level_walk(
+    order: list[int],
+    level: int,
+    block: int,
+    levels: int,
+    constant: Callable[[int, int], bool],
+    k: int,
+    shared: set[_Node],
+) -> None:
+    """Walk the tree in text order, appending level ``k``'s blocks to ``order``.
+
+    One-subtrees of ``shared`` nodes are cut: their beam falls onto the next
+    node's mirror instead of drawing a child.
+    """
+    size = 2 ** (levels - level)
+    if level == levels or constant(block * size, (block + 1) * size):
+        return
+    if level == k:
+        order.append(block)
+    _level_walk(order, level + 1, 2 * block, levels, constant, k, shared)
+    if (level, block) not in shared:
+        _level_walk(order, level + 1, 2 * block + 1, levels, constant, k, shared)
+
+
+def _back_level_order(
+    k: int, shared: set[_Node], levels: int, constant: Callable[[int, int], bool]
+) -> list[int]:
+    """Return level ``k``'s nodes in text order, one-subtrees of ``shared`` cut."""
+    order: list[int] = []
+    _level_walk(order, 0, 0, levels, constant, k, shared)
+    return order
+
+
+def _back_plan(
+    *,
+    vertical: bool,
+    truth_table: str,
+    levels: int,
+    n: int,
+    wrap: bool,
+    ids: list[list[int]],
+    constant: Callable[[int, int], bool],
+) -> set[_Node]:
+    """Pick the nodes whose one-edge can fall onto an equal zero-side subtree.
+
+    Level by level: a node qualifies when the next node on its level (in
+    text order) has an equal zero subtree and that node's mirror is the
+    first cell below it in the column.
+    """
+    shared: set[_Node] = set()
+    for k in range(levels):
+        order = _back_level_order(k, shared, levels, constant)
+        # The last node's beam falls off the bottom and wraps to the top,
+        # where the level's first mirror is the first in the column.  Its
+        # walk is about the rows it saves, but only from eight rows up:
+        # below that it is a few cells saved for a whole column walked.
+        ring = wrap and 2 ** (levels - k - 1) >= _WRAP_ROWS
+        follower = dict(pairwise([*order, *order[:1]] if ring else order))
+        tried = {
+            (k, a)
+            for a, b in follower.items()
+            if ids[k + 1][2 * a + 1] == ids[k + 1][2 * b]
+        }
+        if not tried:
+            continue
+        grid, where = _back_draw(
+            truth_table, levels, n, shared | tried, constant, vertical=vertical
+        )
+        height = max(r for r, _ in grid) + 1
+        column = 3 * k + 2
+        owner = {cell: node for node, cell in where.items()}
+        for _, a in tried:
+            row = where[k, a][0] + 1
+            while row < height and (row, column) not in grid:
+                row += 1
+            if ring and row == height:
+                # Off the bottom the beam wraps to the top of the column.
+                row = 0
+                while (row, column) not in grid:
+                    row += 1
+            if owner.get((row, column)) == (k, follower[a]):
+                shared.add((k, a))
+    return shared
+
+
+def _bend_command_limit(n: int) -> int:
+    """Admission bound for a bent tree's worst-case command count.
+
+    ``tree_rows`` budgets the rows the beam may walk in the bent tree: three
+    quarters of the full ``2**n``-row tree plus the origin row.  The full
+    limit is the tree-height bound ``max(tree_rows, 6 * n - 1)`` (the load
+    column can set the height) plus the walk bound ``tree_rows`` again, plus
+    ``3 * n`` for the entry/load turns and a six-command margin.  A bend is
+    admitted only when ``bent_height + 5 + commands`` stays within it.
+    """
+    tree_rows: int = 3 * 2**n // 4 + 1
+    return max(tree_rows, 6 * n - 1) + tree_rows + 3 * n + 6
+
+
 def _back_ordered(
     truth_table: str,
     perm: tuple[int, ...],
@@ -326,154 +557,25 @@ def _back_ordered(
     for level, i in enumerate(perm):
         cells[essential[i]] = level
 
-    def walk(frm: int, to: int) -> list[str]:
-        """Move the pointer from cell ``frm`` to cell ``to``, one per row."""
-        return list(move_text(frm, to, ">", "<"))
-
-    def load(order: list[int]) -> list[str]:
-        """Load the inputs in ``order``, then open the answer cell and home."""
-        # An ignored input borrows the cell loaded after it, or a spare one.
-        borrowed = dict(enumerate(cells))
-        spare = levels
-        for i in reversed(order):
-            if weights[i]:
-                spare = cells[i]
-            borrowed[i] = spare
-        units: list[str] = []
-        at = 0
-        for i in order:
-            # Primer '-' then the run, one row each (the beam reads one cell
-            # per row).  Bit on the trailing row so every load row executes;
-            # the walk goes before the pair, never between, or the height
-            # leaks the bit.
-            units.extend(walk(at, borrowed[i]))
-            units.extend(("-", _BACK_INPUT) if weights[i] else (_BACK_INPUT, "-"))
-            at = borrowed[i]
-        units.extend(walk(at, n))
-        units.extend("<" * n)
-        return units
-
     # Reverse name order: the load is drawn bottom-up in column 0, so this
     # emits input 0 first.
-    units = load(list(range(n - 1, -1, -1)))
+    units = _back_load(list(range(n - 1, -1, -1)), cells, weights, levels, n)
 
     constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)
 
-    def draw(
-        shared: set[tuple[int, int]],
-        *,
-        vertical: bool,
-        reserved: tuple[int, int] | None = None,
-    ) -> tuple[dict[tuple[int, int], str], dict[tuple[int, int], tuple[int, int]]]:
-        """Draw the tree; return its cells and each node's cell by (level, block).
-
-        A node in ``shared`` draws no one-subtree: its mirror drops the beam down
-        the column to the next mirror below, the zero-side entry of the next
-        node on that level.
-        """
-        grid: dict[tuple[int, int], str] = {}
-        where: dict[tuple[int, int], tuple[int, int]] = {}
-        next_row = [1]
-
-        def leaf(level: int, value: str, row: int, col: int) -> None:
-            # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
-            code = ">" * (n - level) + ("-" if value == "1" else "") + "*"
-            if vertical:
-                # Reserved DFS rows turn leaf finishers down without widening the tree.
-                grid[(row, col)] = "\\"
-                for k, ch in enumerate(code, 1):
-                    grid[(row + k, col)] = ch
-                next_row[0] = max(next_row[0], row + len(code) + 1)
-            else:
-                for k, ch in enumerate(code):
-                    grid[(row, col + k)] = ch
-
-        def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
-            if level == levels or constant(lo, hi):
-                leaf(level, truth_table[lo], row, col)
-                return
-            mid = lo + (hi - lo) // 2
-            grid[(row, col)] = "+"
-            grid[(row, col + 1)] = "\\"
-            grid[(row, col + 2)] = ">"
-            block = lo >> (levels - level)
-            where[level, block] = (row, col + 1)
-            emit(level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
-            if (level, block) in shared:
-                # Keep one empty row for the bend before compacting later nodes.
-                if (level, block) == reserved:
-                    next_row[0] += 1
-                return
-            nrow = next_row[0]
-            next_row[0] += 1
-            grid[(nrow, col + 1)] = "\\"
-            grid[(nrow, col + 2)] = ">"
-            emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
-
-        # Tree root at column 1, the beam arriving rightward.
-        emit(0, 0, 2**levels, 0, 1)
-        return grid, where
-
-    def level_order(k: int, shared: set[tuple[int, int]]) -> list[int]:
-        """Return level ``k``'s nodes in text order, one-subtrees of ``shared`` cut."""
-        order: list[int] = []
-
-        def walk(level: int, block: int) -> None:
-            size = 2 ** (levels - level)
-            if level == levels or constant(block * size, (block + 1) * size):
-                return
-            if level == k:
-                order.append(block)
-            walk(level + 1, 2 * block)
-            if (level, block) not in shared:
-                walk(level + 1, 2 * block + 1)
-
-        walk(0, 0)
-        return order
-
-    def plan(*, vertical: bool) -> set[tuple[int, int]]:
-        """Pick the nodes whose one-edge can fall onto an equal zero-side subtree.
-
-        Level by level: a node qualifies when the next node on its level (in
-        text order) has an equal zero subtree and that node's mirror is the
-        first cell below it in the column.
-        """
-        shared: set[tuple[int, int]] = set()
-        for k in range(levels):
-            order = level_order(k, shared)
-            # The last node's beam falls off the bottom and wraps to the top,
-            # where the level's first mirror is the first in the column.  Its
-            # walk is about the rows it saves, but only from eight rows up:
-            # below that it is a few cells saved for a whole column walked.
-            ring = wrap and 2 ** (levels - k - 1) >= _WRAP_ROWS
-            follower = dict(pairwise([*order, *order[:1]] if ring else order))
-            tried = {
-                (k, a)
-                for a, b in follower.items()
-                if ids[k + 1][2 * a + 1] == ids[k + 1][2 * b]
-            }
-            if not tried:
-                continue
-            grid, where = draw(shared | tried, vertical=vertical)
-            height = max(r for r, _ in grid) + 1
-            column = 3 * k + 2
-            owner = {cell: node for node, cell in where.items()}
-            for _, a in tried:
-                row = where[k, a][0] + 1
-                while row < height and (row, column) not in grid:
-                    row += 1
-                if ring and row == height:
-                    # Off the bottom the beam wraps to the top of the column.
-                    row = 0
-                    while (row, column) not in grid:
-                        row += 1
-                if owner.get((row, column)) == (k, follower[a]):
-                    shared.add((k, a))
-        return shared
-
-    shared = plan(vertical=False)
-    grid, positions = draw(shared, vertical=False)
+    shared = _back_plan(
+        vertical=False,
+        truth_table=truth_table,
+        levels=levels,
+        n=n,
+        wrap=wrap,
+        ids=ids,
+        constant=constant,
+    )
+    grid, positions = _back_draw(
+        truth_table, levels, n, shared, constant, vertical=False
+    )
     bent = None
     if bend and width is None and 6 <= levels <= 12:
         bent = _back_bend(
@@ -481,17 +583,38 @@ def _back_ordered(
             positions,
             shared,
             ids,
-            lambda chosen: draw(
-                chosen, vertical=False, reserved=next(iter(chosen - shared))
+            lambda chosen: _back_draw(
+                truth_table,
+                levels,
+                n,
+                chosen,
+                constant,
+                vertical=False,
+                reserved=next(iter(chosen - shared)),
             ),
         )
 
     if width is not None and width > 0:
         span = max(c for _, c in grid) + 3
         if span > width:
-            down = load(list(range(n)))
+            down = _back_load(list(range(n)), cells, weights, levels, n)
             wide = _descending_back(grid, down)
-            grid, _ = draw(plan(vertical=True), vertical=True)
+            grid, _ = _back_draw(
+                truth_table,
+                levels,
+                n,
+                _back_plan(
+                    vertical=True,
+                    truth_table=truth_table,
+                    levels=levels,
+                    n=n,
+                    wrap=wrap,
+                    ids=ids,
+                    constant=constant,
+                ),
+                constant,
+                vertical=True,
+            )
             tall = _descending_back(grid, down)
             return min((wide, tall), key=lambda code: max(map(len, code.splitlines())))
 
@@ -512,8 +635,7 @@ def _back_ordered(
         bent_height = max(max(r for r, _ in bent) + 1, 1 + len(units))
         bent_width = max(c for _, c in bent) + 1
         commands = _back_walk(bent, bent_height, bent_width + 2)
-        limit_rows = 3 * 2**n // 4 + 1
-        limit = max(limit_rows, 6 * n - 1) + limit_rows + 3 * n + 6
+        limit = _bend_command_limit(n)
         # Five entry turns plus the full load column bound either bit value.
         if commands is not None and bent_height + 5 + commands <= limit:
             bent[(0, 0)] = "/"

@@ -175,7 +175,9 @@ def _aks(number: int) -> bool:
         power[0] = 1
         factor = [0] * modulus
         factor[0] = base % number
-        factor[1 % modulus] += 1
+        # The x term of (x + base): slot 1, wrapped for the cyclic array.
+        one = 1 % modulus
+        factor[one] += 1
         exponent = number
         while exponent:
             if exponent & 1:
@@ -992,11 +994,10 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
     """
     _require_sympy()
     if len(coefficients) - 1 > _NTT_MIN_DEGREE:
-        from esolangs.languages.polynomial.generator.resources import (
-            estimate_cold_parse,
-        )
-
-        estimate = estimate_cold_parse(list(coefficients))
+        # Only the real-lift bound is needed from the cold-parse resource
+        # estimate; computing it directly keeps the interpreter from
+        # importing the generator package.
+        real_lift_bound = _ntt_real_bound(max(0, len(coefficients) - 1))
         root_sets = tuple(_roots_mod(list(coefficients), f) for f in _NTT_FIELDS)
 
         def in_every_field(candidate: int) -> bool:
@@ -1014,7 +1015,7 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
             candidates = _quadratic_candidates_ntt(
                 prime_count,
                 (root_sets[0], root_sets[1]),
-                estimate.real_lift_bound,
+                real_lift_bound,
             )
             quadratics, remainder = _divide_out_quadratics(remainder, candidates)
         else:

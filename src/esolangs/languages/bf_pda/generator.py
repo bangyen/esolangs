@@ -75,77 +75,35 @@ def bfpda(truth_table: str) -> str:
     return min(candidates, key=len)
 
 
-def _bfpda_tree(
-    table: str,
-    shared: tuple[int, int] | None = None,
-    *,
-    classes: tuple[str, ...] | None = None,
-    class_depth: int = 2,
-    class_rows: tuple[int, ...] | None = None,
-    context: _TreeContext | None = None,
-) -> tuple[str, int]:
-    """Emit an inline tree or a sentinel-protected shared residual."""
-    n = _validate_truth_table(table)
-
+def _tree_head(n: int) -> str:
     # Marker then bit, per input in name order.
-    head = "<".join(["@<" + TEMPLATE_CHAR] * n)
+    return "<".join(["@<" + TEMPLATE_CHAR] * n)
 
-    def leaf(level: int, value: str) -> str:
-        # ``left`` cells still hold untested inputs; a one stops on the bottom
-        # marker and prints it (left == 0: only that marker remains).
-        left = 2 * (n - level)
-        if value == "0":
-            return ">" * left + "."
-        return ">" * (left - 1) + ".>" if left else "@.>"
 
-    # The stack hands back the *last* input first: level ``i`` tests input
-    # ``n - 1 - i``, row bit ``i``; bit-reversed, each subtree is a span.
-    if context is None:
-        context = _prepare(table)
-    reflected, constant, ids = context.reflected, context.constant, context.ids
-    rows: tuple[int, ...] = ()
-    class_ids: tuple[int, ...] = ()
-    labels_by_id: dict[int, int] = {}
-    width = 0
-    if classes is not None:
-        if len(classes) < 2 or len(set(classes)) != len(classes):
-            raise ValueError("a classifier needs at least two distinct residuals")
-        if not 2 <= class_depth < n:
-            raise ValueError(
-                "a protected classifier needs at least two consumed inputs"
-            )
-        span = 1 << (n - class_depth)
-        rows = class_rows or tuple(
-            next(i for i in range(0, 1 << n, span) if reflected[i : i + span] == block)
-            for block in classes
-        )
-        class_ids = tuple(ids[class_depth][row // span] for row in rows)
-        if len(class_ids) < 2 or len(set(class_ids)) != len(class_ids):
-            raise ValueError("a classifier needs at least two distinct residuals")
-        labels_by_id = {state: label for label, state in enumerate(class_ids)}
-        width = (len(class_ids) - 1).bit_length()
-        if class_depth < width + 1:
-            raise ValueError("a classifier word exceeds the retired stack space")
-    pieces = [head]
-    protected = shared is not None or classes is not None
+def _tree_leaf(n: int, level: int, value: str) -> str:
+    # ``left`` cells still hold untested inputs; a one stops on the bottom
+    # marker and prints it (left == 0: only that marker remains).
+    left = 2 * (n - level)
+    if value == "0":
+        return ">" * left + "."
+    return ">" * (left - 1) + ".>" if left else "@.>"
 
+
+def _plain_node(
+    n: int,
+    reflected: str,
+    constant: Callable[[int, int], bool],
+    ids: list[list[int]],
+    pieces: list[str],
+) -> Callable[[int, int, int], BranchCost]:
+    """Return the unprotected inline-tree walker.
+
+    The stack hands back the *last* input first: level ``i`` tests input
+    ``n - 1 - i``, row bit ``i``; bit-reversed, each subtree is a span.
+    """
     def node(i: int, lo: int, hi: int) -> BranchCost:
-        if classes is not None and i == class_depth:
-            label = labels_by_id[ids[i][lo >> (n - i)]]
-            code = "".join(
-                "<@<" + ("@" if label & (1 << bit) else "") for bit in range(width)
-            )
-            pieces.append(code)
-            return len(code), None
-        if (
-            shared is not None
-            and i == shared[0]
-            and ids[i][lo >> (n - i)] == ids[i][shared[1] >> (n - i)]
-        ):
-            pieces.append("<@")
-            return None, 2
-        if i == n or (classes is None and constant(lo, hi)):
-            code = leaf(i, reflected[lo]) + ("<" if shared is not None else "")
+        if i == n or constant(lo, hi):
+            code = _tree_leaf(n, i, reflected[lo])
             pieces.append(code)
             return len(code), None
         mid = (lo + hi) // 2
@@ -155,50 +113,174 @@ def _bfpda_tree(
             return add_cost(node(i + 1, lo, mid), 2)
         pieces.append("[>>")
         one = node(i + 1, mid, hi)
-        pieces.append("<<]>[>" if protected else "]>[>")
+        pieces.append("]>[>")
         zero = node(i + 1, lo, mid)
-        pieces.append("<]>" if protected else "]")
-        if not protected:
-            return add_cost(merge_cost(add_cost(one, 3), add_cost(zero, 2)), 3)
+        pieces.append("]")
+        one_arm = add_cost(one, 3)
+        zero_arm = add_cost(zero, 2)
+        return add_cost(merge_cost(one_arm, zero_arm), 3)
+
+    return node
+
+
+def _emit_plain_tree(table: str, context: _TreeContext) -> tuple[str, BranchCost]:
+    """Emit an inline tree."""
+    n = _validate_truth_table(table)
+    reflected, constant, ids = context.reflected, context.constant, context.ids
+    pieces = [_tree_head(n)]
+    cost = _plain_node(n, reflected, constant, ids, pieces)(0, 0, 1 << n)
+    return "".join(pieces), cost
+
+
+def _emit_shared_tree(
+    table: str, shared: tuple[int, int], context: _TreeContext
+) -> tuple[str, BranchCost]:
+    """Emit a tree whose repeated residual is deferred behind a dispatch."""
+    n = _validate_truth_table(table)
+    reflected, constant, ids = context.reflected, context.constant, context.ids
+    depth, row = shared
+    match = ids[depth][row >> (n - depth)]
+    pieces = [_tree_head(n)]
+
+    def prefix(i: int, lo: int, hi: int) -> BranchCost:
+        if i == depth and ids[i][lo >> (n - i)] == match:
+            pieces.append("<@")
+            return None, 2
+        if i == n or constant(lo, hi):
+            code = _tree_leaf(n, i, reflected[lo]) + "<"
+            pieces.append(code)
+            return len(code), None
+        mid = (lo + hi) // 2
+        below = ids[i + 1]
+        if below[lo >> (n - i - 1)] == below[mid >> (n - i - 1)]:
+            pieces.append(">>")
+            return add_cost(prefix(i + 1, lo, mid), 2)
+        pieces.append("[>>")
+        one = prefix(i + 1, mid, hi)
+        pieces.append("<<]>[>")
+        zero = prefix(i + 1, lo, mid)
+        pieces.append("<]>")
         # Each child returns a flag above its remaining input stack. Two
         # zero sentinels suppress the other arm after a one-side return;
         # one zero closes a zero-side return, then the common pop exposes
         # the flag again. At depth >= 2 this stays below the input peak.
-        return add_cost(merge_cost(add_cost(one, 5), add_cost(zero, 3)), 4)
+        one_arm = add_cost(one, 5)
+        zero_arm = add_cost(zero, 3)
+        return add_cost(merge_cost(one_arm, zero_arm), 4)
 
-    cost = node(0, 0, 1 << n)
-    if classes is not None:
-        span = 1 << (n - class_depth)
-        classes = None
-        protected = False
+    cost = prefix(0, 0, 1 << n)
+    pieces.append("[>")
+    body = _plain_node(n, reflected, constant, ids, pieces)(
+        depth, row, row + (1 << (n - depth))
+    )
+    pieces.append("]")
+    return "".join(pieces), dispatch_cost(cost, normal_cost(body) + 3, 1)
 
-        def decode(bit: int, labels: tuple[int, ...]) -> BranchCost:
-            if bit < 0:
-                row = rows[labels[0]]
-                return node(class_depth, row, row + span)
-            zero_labels = tuple(label for label in labels if not label & (1 << bit))
-            one_labels = tuple(label for label in labels if label & (1 << bit))
-            if not zero_labels or not one_labels:
-                pieces.append(">>")
-                return add_cost(decode(bit - 1, zero_labels or one_labels), 2)
-            pieces.append("[>>")
-            one = decode(bit - 1, one_labels)
-            pieces.append("]>[>")
-            zero = decode(bit - 1, zero_labels)
-            pieces.append("]")
-            return add_cost(merge_cost(add_cost(one, 3), add_cost(zero, 2)), 3)
 
-        body = decode(width - 1, tuple(range(len(rows))))
-        cost = normal_cost(cost) + normal_cost(body), None
-    elif shared is not None:
-        depth, row = shared
-        pieces.append("[>")
-        shared = None
-        protected = False
-        body = node(depth, row, row + (1 << (n - depth)))
+def _emit_classifier_tree(
+    table: str,
+    classes: tuple[str, ...],
+    class_depth: int,
+    class_rows: tuple[int, ...] | None,
+    context: _TreeContext,
+) -> tuple[str, BranchCost]:
+    """Emit a sentinel-protected classifier prefix plus its label decoder."""
+    n = _validate_truth_table(table)
+    reflected, constant, ids = context.reflected, context.constant, context.ids
+    if len(classes) < 2 or len(set(classes)) != len(classes):
+        raise ValueError("a classifier needs at least two distinct residuals")
+    if not 2 <= class_depth < n:
+        raise ValueError(
+            "a protected classifier needs at least two consumed inputs"
+        )
+    span = 1 << (n - class_depth)
+    rows = class_rows or tuple(
+        next(i for i in range(0, 1 << n, span) if reflected[i : i + span] == block)
+        for block in classes
+    )
+    class_ids = tuple(ids[class_depth][row // span] for row in rows)
+    if len(class_ids) < 2 or len(set(class_ids)) != len(class_ids):
+        raise ValueError("a classifier needs at least two distinct residuals")
+    labels_by_id = {state: label for label, state in enumerate(class_ids)}
+    width = (len(class_ids) - 1).bit_length()
+    if class_depth < width + 1:
+        raise ValueError("a classifier word exceeds the retired stack space")
+    pieces = [_tree_head(n)]
+
+    def prefix(i: int, lo: int, hi: int) -> BranchCost:
+        if i == class_depth:
+            label = labels_by_id[ids[i][lo >> (n - i)]]
+            code = "".join(
+                "<@<" + ("@" if label & (1 << bit) else "") for bit in range(width)
+            )
+            pieces.append(code)
+            return len(code), None
+        if i == n:
+            code = _tree_leaf(n, i, reflected[lo])
+            pieces.append(code)
+            return len(code), None
+        mid = (lo + hi) // 2
+        below = ids[i + 1]
+        if below[lo >> (n - i - 1)] == below[mid >> (n - i - 1)]:
+            pieces.append(">>")
+            return add_cost(prefix(i + 1, lo, mid), 2)
+        pieces.append("[>>")
+        one = prefix(i + 1, mid, hi)
+        pieces.append("<<]>[>")
+        zero = prefix(i + 1, lo, mid)
+        pieces.append("<]>")
+        one_arm = add_cost(one, 5)
+        zero_arm = add_cost(zero, 3)
+        return add_cost(merge_cost(one_arm, zero_arm), 4)
+
+    plain = _plain_node(n, reflected, constant, ids, pieces)
+
+    def decode(bit: int, labels: tuple[int, ...]) -> BranchCost:
+        if bit < 0:
+            row = rows[labels[0]]
+            return plain(class_depth, row, row + span)
+        zero_labels = tuple(label for label in labels if not label & (1 << bit))
+        one_labels = tuple(label for label in labels if label & (1 << bit))
+        if not zero_labels or not one_labels:
+            pieces.append(">>")
+            return add_cost(decode(bit - 1, zero_labels or one_labels), 2)
+        pieces.append("[>>")
+        one = decode(bit - 1, one_labels)
+        pieces.append("]>[>")
+        zero = decode(bit - 1, zero_labels)
         pieces.append("]")
-        cost = dispatch_cost(cost, normal_cost(body) + 3, 1)
-    return "".join(pieces), 4 * n - 1 + normal_cost(cost)
+        one_arm = add_cost(one, 3)
+        zero_arm = add_cost(zero, 2)
+        return add_cost(merge_cost(one_arm, zero_arm), 3)
+
+    cost = prefix(0, 0, 1 << n)
+    body = decode(width - 1, tuple(range(len(rows))))
+    combined: BranchCost = normal_cost(cost) + normal_cost(body), None
+    return "".join(pieces), combined
+
+
+def _bfpda_tree(
+    table: str,
+    shared: tuple[int, int] | None = None,
+    *,
+    classes: tuple[str, ...] | None = None,
+    class_depth: int = 2,
+    class_rows: tuple[int, ...] | None = None,
+    context: _TreeContext | None = None,
+) -> tuple[str, int]:
+    """Emit an inline tree, a shared residual, or a classifier bank."""
+    if context is None:
+        context = _prepare(table)
+    if classes is not None:
+        program, cost = _emit_classifier_tree(
+            table, classes, class_depth, class_rows, context
+        )
+    elif shared is not None:
+        program, cost = _emit_shared_tree(table, shared, context)
+    else:
+        program, cost = _emit_plain_tree(table, context)
+    n = _validate_truth_table(table)
+    return program, 4 * n - 1 + normal_cost(cost)
 
 
 LANGUAGE = Language(
@@ -254,7 +336,7 @@ def _price(
     # Larger banks correlate each decoder/body tail with its prefix: separate
     # maxima can belong to different residuals and reject a valid bank.
     width = (len(states) - 1).bit_length()
-    decoder_size, tails = _decoder(
+    decoder_size, tails = _price_decoder(
         width, tuple(bodies[depth][state] for state in states)
     )
     if len(states) == 2:
@@ -327,35 +409,47 @@ def best_bank(
 type _Emit = Callable[[str | int], None]
 
 
-def _decoder(
-    width: int, bodies: tuple[_Metric, ...], emit: _Emit | None = None
+def _price_decoder(
+    width: int, bodies: tuple[_Metric, ...]
 ) -> tuple[int, dict[int, int]]:
+    """Price a label-word decoder: its size and each body's tail cost."""
     tails: dict[int, int] = {}
 
     def visit(bit: int, labels: tuple[int, ...], cost: int) -> int:
         if bit < 0:
             target = labels[0]
             tails[target] = cost + bodies[target].commands
-            if emit is not None:
-                emit(target)
             return bodies[target].size
         zero = tuple(label for label in labels if not label & (1 << bit))
         one = tuple(label for label in labels if label & (1 << bit))
         if not zero or not one:
-            if emit is not None:
-                emit(">>")
             return 2 + visit(bit - 1, zero or one, cost + 2)
-        if emit is not None:
-            emit("[>>")
         one_size = visit(bit - 1, one, cost + 6)
-        if emit is not None:
-            emit("]>[>")
         zero_size = visit(bit - 1, zero, cost + 5)
-        if emit is not None:
-            emit("]")
         return 8 + one_size + zero_size
 
     return visit(width - 1, tuple(range(len(bodies))), 0), tails
+
+
+def _emit_decoder(width: int, bodies: tuple[_Metric, ...], emit: _Emit) -> None:
+    """Emit a label-word decoder; it consumes every bit/marker pair first."""
+    def visit(bit: int, labels: tuple[int, ...]) -> None:
+        if bit < 0:
+            emit(labels[0])
+            return
+        zero = tuple(label for label in labels if not label & (1 << bit))
+        one = tuple(label for label in labels if label & (1 << bit))
+        if not zero or not one:
+            emit(">>")
+            visit(bit - 1, zero or one)
+            return
+        emit("[>>")
+        visit(bit - 1, one)
+        emit("]>[>")
+        visit(bit - 1, zero)
+        emit("]")
+
+    visit(width - 1, tuple(range(len(bodies))))
 
 
 def best_mixed_bank(
@@ -391,7 +485,7 @@ def best_mixed_bank(
     selected = {(d, ids[d][row >> (n - d)]): i for i, (d, row) in enumerate(blocks)}
     metrics = _body_metrics(context)
     bodies = tuple(metrics[d][ids[d][row >> (n - d)]] for d, row in blocks)
-    decoder_size, tails = _decoder(width, bodies)
+    decoder_size, tails = _price_decoder(width, bodies)
 
     def leaf(depth: int, state: int) -> str:
         remaining = 2 * (n - depth)
@@ -466,7 +560,7 @@ def best_mixed_bank(
 
     prefix(0, 0, emit)
     pieces.append("[>")
-    _decoder(width, bodies, emit)
+    _emit_decoder(width, bodies, emit)
     pieces.append("]")
     program = "".join(pieces)
     if len(program) != size:

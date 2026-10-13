@@ -18,11 +18,6 @@ _JUMP_UNLESS = "jz"  # If/While guard: jump when the expression is false
 _JUMP = "jmp"  # While back-edge
 _VALUE = "val"  # a bare expression statement: the function's return value
 
-#: An expression node: a tag followed by names, literals, or sub-nodes.
-#: Heterogeneous by nature, so the slots are narrowed at use by
-#: :func:`_node` and :func:`_int` rather than modelled per tag.
-type _Expr = tuple[object, ...]
-
 
 class _Type:
     """A declared type's bounds and the values it wraps to.
@@ -318,8 +313,7 @@ class _Parser:
             # ``_primary`` always builds an "apply" with a tuple of nodes,
             # so this narrowing cannot fail; it is spelled for the checker
             # and would be a malformed tree rather than a bad program.
-            if not isinstance(args, tuple):
-                raise AssertionError("isinstance(args, tuple)")
+            assert isinstance(args, tuple)
             if expr[1] == "charPut":
                 if len(args) != 1:
                     raise syntax_error(
@@ -340,8 +334,9 @@ class _Parser:
             index = None
             if target[0] == "apply":
                 slots = target[2]
-                if not isinstance(slots, tuple):
-                    raise AssertionError("isinstance(slots, tuple)")
+                # ``_primary`` built this "apply" with a tuple of slots, so
+                # this narrowing cannot fail; it is spelled for the checker.
+                assert isinstance(slots, tuple)
                 if len(slots) != 1:
                     raise ValueError("charGet array target takes exactly one index")
                 index = slots[0]

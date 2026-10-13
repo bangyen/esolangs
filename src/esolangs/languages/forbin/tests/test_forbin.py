@@ -366,17 +366,17 @@ class TestSnapshotWithoutTheCycleDetector:
             "\x01",
         ),
         # a statement-position call inside a for-loop body is stepped
-        # through _step_for's own frame-push, not _exec_stmt's
+        # through the step core's own frame-push
         ("helper { out 0,1,0,0,1,0,0,0; } main { for _:0..0 { helper 0; } }", "", "H"),
         # a return statement run directly by step() (not through a pushed
-        # frame) still pops the current frame via its own got-is-not-None path
+        # frame) still pops the current frame via its own return-value path
         ("main { return 1; out 0,0,0,0,0,0,0,1; }", "", ""),
-        # a return statement inside a for-loop body, run through
-        # _step_for's own statement handling, also pops the frame
+        # a return statement inside a for-loop body, run through the core's
+        # own for-body statement handling, also pops the frame
         ("main { for _:0..0 { return 1; } out 0,0,0,0,0,0,0,1; }", "", ""),
-        # a return inside a for-loop body, reached through the recursive
-        # _run/_exec_stmt/_exec_block path (an expression-position call),
-        # propagates out through _exec_block's own got-is-not-None return
+        # a return inside a for-loop body, reached through _run driving the
+        # step core (an expression-position call), propagates out as the
+        # block's return value
         (
             "f { for i:(1, 0) { return i; } return 0; } main { r = (f 0); out "
             "0,0,0,0,0,0,0,r; }",
