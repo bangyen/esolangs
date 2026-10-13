@@ -89,6 +89,14 @@ def test_advance_is_pure_and_repeatable() -> None:
     assert dict(core[7]) == writes_before
 
 
+def test_white_exit_slides_with_the_rotated_dp() -> None:
+    """A white exit found after the dp turned slides in the new direction."""
+    white, red = (255, 255, 255), (255, 0, 0)
+    rows = ((red, BLACK), (white, (0, 255, 0)), ((0, 0, 255), BLACK))
+    core, _ = _advance(_Machine(Raster(rows), ScriptedIO("")).state)
+    assert core[:3] == ((0, 2), 1, 1)
+
+
 def test_advance_returns_output_instead_of_writing() -> None:
     """``out`` reports an effect; the transition owns no port."""
     program = strip(

@@ -389,8 +389,8 @@ def _advance_core(
         return (current, dp, cc, root, path, True, rows, writes), None
     target, dp, cc, seen = exit_
     if seen == WHITE:
-        # Slides with the entry dp and cc, not the rotated pair that found it.
-        return _slide(core, target), None
+        # Slides with the dp and cc the exit search settled on, as in Piet.
+        return _slide((current, dp, cc, root, path, halted, rows, writes), target), None
     (r, g, b), (r0, g0, b0) = seen, colour
     change = (
         (r // _STEP - r0 // _STEP) % 4,
