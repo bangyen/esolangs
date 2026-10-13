@@ -34,6 +34,7 @@ from __future__ import annotations
 
 from bisect import bisect_left, bisect_right
 from itertools import accumulate
+from typing import NamedTuple
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -145,9 +146,19 @@ def _advance(
 
 
 #: Characters a block of :class:`_Text` holds, give or take a factor of two.
+#: A step rescans about one block; a draw walks the block counts.
 _BLOCK = 256
-#: Blocks a draw's first walk sums together.
+#: Blocks a draw's first walk sums together, so it walks the groups and then
+#: one group, not every block.
 _GROUP = 64
+
+
+class _Slot(NamedTuple):
+    """An occurrence: its rule, its block, and its ``nth`` place in ``occ``."""
+
+    rule: int
+    block: int
+    nth: int
 
 
 class _Text:
@@ -177,30 +188,28 @@ class _Text:
     def __str__(self) -> str:
         return "".join(self.blocks)
 
-    def select(self, k: int) -> tuple[int, int, int]:
-        """Return the ``k``-th occurrence in rule then position order.
-
-        As ``(rule, block, index into occ[rule][block])``.
-        """
+    def select(self, k: int) -> _Slot:
+        """Return the ``k``-th occurrence in rule then position order."""
         rule = 0
         while k >= self.totals[rule]:
             k -= self.totals[rule]
             rule += 1
         group, k = _locate(self.groups[rule], k)
         block, k = _locate(self.counts[rule][group * _GROUP : (group + 1) * _GROUP], k)
-        return rule, group * _GROUP + block, k
+        return _Slot(rule, group * _GROUP + block, k)
 
     def first(self) -> _Match | None:
         """Return the first occurrence as ``(rule, offset)``, or ``None``."""
         if not any(self.totals):
             return None
-        rule, block, _index = self.select(0)
+        rule, block, _nth = self.select(0)
         before = sum(map(len, self.blocks[:block]))
         return rule, before + self.occ[rule][block][0]
 
-    def replace(self, rule: int, block: int, index: int, replacement: str) -> None:
-        """Rewrite that occurrence of ``rule`` to ``replacement``."""
-        at = self.occ[rule][block][index]
+    def replace(self, slot: _Slot, replacement: str) -> None:
+        """Rewrite the occurrence ``slot`` names to ``replacement``."""
+        rule, block, nth = slot
+        at = self.occ[rule][block][nth]
         end = at + len(self.lhss[rule])
         stop = block + 1
         text = self.blocks[block]
@@ -318,15 +327,6 @@ def _starts(text: str, lhs: str, low: int, high: int) -> list[int]:
     return out
 
 
-def _advance_indexed(
-    rules: tuple[_Rule, ...], match: tuple[int, int, int], line: str | None = None
-) -> tuple[tuple[int, int, int, str], str | None]:
-    """Return a block rewrite effect and any output, without editing the text."""
-    rule, block, at = match
-    replacement, output = _rewrite(rules[rule][1], line)
-    return (rule, block, at, replacement), output
-
-
 class _Machine:
     """The run state: the rewritten string, against fixed rules."""
 
@@ -395,11 +395,9 @@ class _Machine:
         if not count:
             return
         match = self._text.select(draw(self._rng, count))
-        rhs = self.rules[match[0]][1]
-        effect, out = _advance_indexed(
-            self.rules, match, self.io.input_str() if rhs == _INPUT else None
-        )
-        self._text.replace(*effect)
+        rhs = self.rules[match.rule][1]
+        replacement, out = _rewrite(rhs, self.io.input_str() if rhs == _INPUT else None)
+        self._text.replace(match, replacement)
         if out is not None:
             self.io.print_str(out)
 
