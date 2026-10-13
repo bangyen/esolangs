@@ -106,13 +106,10 @@ def effective_settings(
 
 
 class DialectOption(TypedDict):
-    """Supported resolutions of conflicting rules within one specification."""
+    """A dialect setting's default and its accepted choices."""
 
     default: int | str | None
-    choices: tuple[int | str, ...] | None
-    minimum: int | None
-    nullable: bool
-    requires: dict[str, tuple[str, ...]]
+    choices: tuple[int | str, ...]
 
 
 def dialect_choices(language: str) -> dict[str, DialectOption]:
@@ -130,9 +127,6 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
         key: {
             "default": cast("int | str | None", parameters[key].default),
             "choices": _CHOICES[key],
-            "minimum": None,
-            "nullable": False,
-            "requires": {},
         }
         for key in keys
     }

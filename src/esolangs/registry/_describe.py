@@ -80,7 +80,7 @@ def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
     ``spec`` contains the interpreter docstring; missing docstrings raise.
-    ``dialect_settings`` gives runtime defaults, choices, bounds and dependencies.
+    ``dialect_settings`` gives runtime defaults and choices.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the language's
     category, recorded by the registry), ``wiki_url``.
     Generation: ``generator_max_inputs`` is an explicit arity cap (None means

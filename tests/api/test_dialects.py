@@ -165,16 +165,6 @@ def test_every_reported_default_and_choice_is_accepted() -> None:
         defaults = {key: item["default"] for key, item in schema.items()}
         DialectSettings(**defaults).options(language)
         for key, item in schema.items():
-            values = item["choices"]
-            if values is None:
-                values = (item["minimum"], None)
-            for value in values:
+            for value in item["choices"]:
                 selected = defaults | {key: value}
-                for dependency in item["requires"].get(str(value), ()):
-                    selected[dependency] = 8
                 DialectSettings(**selected).options(language)
-            if item["minimum"] is not None:
-                with pytest.raises(esolangs.ArgumentError):
-                    DialectSettings(**(defaults | {key: item["minimum"] - 1})).options(
-                        language
-                    )
