@@ -36,8 +36,8 @@ class _PendingKey(NamedTuple):
     free: int | None
 
 
+#: A priced bank prefix whose deferred continuations are pending keys.
 _BankCost = ContinuationCost[_PendingKey]
-"""A priced bank prefix whose deferred continuations are pending keys."""
 
 
 @dataclass
