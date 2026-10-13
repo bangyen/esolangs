@@ -303,22 +303,26 @@ def _drop_matching_items(
         cuts += 1
 
 
+def _str_value(node: ast.AST) -> str | None:
+    """Return the node's value if it is a string constant."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
 def _inline_items(
     node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
 ) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
     """Extract string-constant items from a dict, list, set, or tuple."""
     if isinstance(node, ast.Dict) and None not in node.keys:
         items = [
-            (span(k)[0], span(v)[1], k.value if isinstance(k, ast.Constant) else None)
+            (span(k)[0], span(v)[1], _str_value(k))
             for k, v in zip(node.keys, node.values, strict=True)
             if k is not None
         ]
         return items, b"{}"
     if isinstance(node, ast.List | ast.Set | ast.Tuple):
-        items = [
-            (*span(e), e.value if isinstance(e, ast.Constant) else None)
-            for e in node.elts
-        ]
+        items = [(*span(e), _str_value(e)) for e in node.elts]
         empty = {ast.List: b"[]", ast.Set: b"set()", ast.Tuple: b"()"}[type(node)]
         return items, empty
     return None
