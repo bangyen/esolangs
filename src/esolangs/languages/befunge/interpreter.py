@@ -58,6 +58,25 @@ def _push(stack: _Stack, *values: int) -> _Stack:
     return stack
 
 
+def _divide(a: int, b: int, command: str, number_input: int | None) -> int:
+    """Return ``b / a`` or ``b % a``, with the quotient truncated toward zero.
+
+    On a zero divisor the result is read from the user instead; with no
+    input left that raises :class:`HaltError`.
+    """
+    if not a:
+        if number_input is None:
+            raise HaltError(
+                f"'{command}' divides by zero and needs a result",
+                hint="ensure the divisor is nonzero before dividing",
+            )
+        return number_input
+    quotient = abs(b) // abs(a)
+    if (a < 0) != (b < 0):
+        quotient = -quotient
+    return quotient if command == "/" else b - quotient * a
+
+
 def _values(stack: _Stack) -> tuple[int, ...]:
     """Return the stack in bottom-to-top order without recursive traversal."""
     values = []
@@ -103,30 +122,8 @@ def _advance(
             stack = _push(stack, b - a)
         elif command == "*":
             stack = _push(stack, b * a)
-        elif command == "/":
-            if not a:
-                if number_input is None:
-                    raise HaltError(
-                        "'/' divides by zero and needs a result",
-                        hint="ensure the divisor is nonzero before dividing",
-                    )
-                stack = _push(stack, number_input)
-            else:
-                quotient = abs(b) // abs(a)
-                stack = _push(stack, -quotient if (a < 0) != (b < 0) else quotient)
-        else:
-            if not a:
-                if number_input is None:
-                    raise HaltError(
-                        "'%' divides by zero and needs a result",
-                        hint="ensure the divisor is nonzero before dividing",
-                    )
-                stack = _push(stack, number_input)
-            else:
-                quotient = abs(b) // abs(a)
-                if (a < 0) != (b < 0):
-                    quotient = -quotient
-                stack = _push(stack, b - quotient * a)
+        elif command in "/%":
+            stack = _push(stack, _divide(a, b, command, number_input))
     elif command == "!":
         a, stack = _pop(stack)
         stack = _push(stack, 0 if a else 1)

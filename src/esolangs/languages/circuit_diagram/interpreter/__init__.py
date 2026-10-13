@@ -241,6 +241,29 @@ def _generation(
     return _run_generation(state, gates, index, consumers, _BufferedClock(clock))
 
 
+def _latch_arrivals(
+    values: _Values,
+    latches: _Latches,
+    consumers: tuple[tuple[tuple[int, int], ...], ...],
+) -> tuple[dict[int, list[tuple[int, ...] | None]], _Latches]:
+    """Record this generation's arrivals in each downstream gate's latch slots.
+
+    Returns the per-gate slot lists (only for gates with arrivals) and the
+    full updated latch tuples.
+    """
+    arrivals: dict[int, list[tuple[int, ...] | None]] = {}
+    for wire, value in enumerate(values):
+        if value is not None:
+            for position, slot in consumers[wire]:
+                slots = arrivals.setdefault(position, list(latches[position]))
+                slots[slot] = value
+    grown = tuple(
+        tuple(arrivals[position]) if position in arrivals else latches[position]
+        for position in range(len(latches))
+    )
+    return arrivals, grown
+
+
 def _run_generation(
     state: _State,
     gates: list["_Gate"],
@@ -255,19 +278,12 @@ def _run_generation(
     shell provided.
     """
     values, latches = state
-    arrivals: dict[int, list[tuple[int, ...] | None]] = {}
-    for wire, value in enumerate(values):
-        if value is not None:
-            for position, slot in consumers[wire]:
-                slots = arrivals.setdefault(position, list(latches[position]))
-                slots[slot] = value
+    arrivals, grown = _latch_arrivals(values, latches, consumers)
     pending: dict[int, list[tuple[int, ...]]] = {}
     fired = False
-    grown = list(latches)
     # Gate order, as before: clock reads and merges depend on it.
     for position in sorted(arrivals):
         slots = arrivals[position]
-        grown[position] = tuple(slots)
         if any(slot is None for slot in slots):
             continue
         fired = True
@@ -279,7 +295,7 @@ def _run_generation(
     driven: list[tuple[int, ...] | None] = [None] * len(values)
     for i, arrived in pending.items():
         driven[i] = _merge(arrived)
-    return (tuple(driven), tuple(grown)), quiet
+    return (tuple(driven), grown), quiet
 
 
 class _Machine:
@@ -370,17 +386,25 @@ class _Machine:
                 continue
             position = self.index[id(wiring)]
             value = tuple(self._read_bit() for _ in range(wiring.width))
-            old = self.values[position]
-            driven = [value] if old is None else [old, value]
-            self.values = (
-                *self.values[:position],
-                _merge(driven),
-                *self.values[position + 1 :],
-            )
+            self._drive_wiring(position, value)
 
     def _wiring_at(self, cell: tuple[int, int]) -> _Wiring | None:
         """Return the wiring covering ``cell``, if any."""
         return self._by_cell.get(cell)
+
+    def _drive_wiring(self, position: int, value: tuple[int, ...]) -> None:
+        """XOR ``value`` into the wiring at ``position``.
+
+        Several drivers may reach one wiring in generation zero (connected
+        input rows, a source sharing a driven wire); their bundles merge.
+        """
+        old = self.values[position]
+        driven = [value] if old is None else [old, value]
+        self.values = (
+            *self.values[:position],
+            _merge(driven),
+            *self.values[position + 1 :],
+        )
 
     def _read_bit(self) -> int:
         """Read one bit of input, taking exhausted input as a zero bit."""
@@ -405,13 +429,7 @@ class _Machine:
                 bit = int(gate.kind == _ONE)
                 value = (bit,) * wiring.width
             position = self.index[id(wiring)]
-            old = self.values[position]
-            driven = [value] if old is None else [old, value]
-            self.values = (
-                *self.values[:position],
-                _merge(driven),
-                *self.values[position + 1 :],
-            )
+            self._drive_wiring(position, value)
 
     # The VM's language-shaped view.
 

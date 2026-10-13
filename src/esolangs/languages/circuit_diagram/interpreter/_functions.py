@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections import OrderedDict
 from contextvars import ContextVar
 from threading import Lock
@@ -96,22 +97,24 @@ class _ReplayClock(_ClockStream):
         self.position = parent.position
 
     def read(self) -> int:
-        pending: list[_ReplayClock] = []
-        current: _ClockStream = self
-        while isinstance(current, _ReplayClock):
-            if current.cursor < len(current.values):
-                value = current.values[current.cursor]
-                current.cursor += 1
-                current.position = current.parent.position
-                break
-            pending.append(current)
-            current = current.parent
+        # Walk up past the clocks that have nothing recorded; every one we
+        # pass must record the value we eventually serve, so a later replay
+        # of an inner call sees the same prefix.
+        chain: list[_ReplayClock] = []
+        node: _ClockStream = self
+        while isinstance(node, _ReplayClock) and node.cursor >= len(node.values):
+            chain.append(node)
+            node = node.parent
+        if isinstance(node, _ReplayClock):
+            value = node.values[node.cursor]
+            node.cursor += 1
+            node.position = node.parent.position
         else:
-            value = current.read()
-        for recorder in reversed(pending):
+            value = node.read()
+        for recorder in reversed(chain):
             recorder.values.append(value)
             recorder.cursor += 1
-            recorder.position = current.position
+            recorder.position = node.position
         return value
 
     def skip(self, count: int) -> None:
@@ -144,6 +147,11 @@ class _NeedFunctionError(Exception):
         self.key = _width_key(gate, inputs)
 
 
+#: One recorded nested call: its width key, the inputs it saw, the output
+#: it produced, and how many clock reads the parent had served when it ran.
+type _FrameResult = tuple[_WidthKey, tuple[tuple[int, ...], ...], tuple[int, ...], int]
+
+
 class _FunctionFrame:
     """One suspended body and the results of its ordered nested calls."""
 
@@ -151,9 +159,7 @@ class _FunctionFrame:
         self.request = request
         parent = _TypeClock() if request.type_only else request.clock
         self.clock = _ReplayClock(parent if parent is not None else _ClockStream())
-        self.results: dict[
-            int, tuple[_WidthKey, tuple[tuple[int, ...], ...], tuple[int, ...], int]
-        ] = {}
+        self.results: dict[int, _FrameResult] = {}
         self.next_call = 0
 
 
@@ -264,6 +270,16 @@ def _evaluate_function(
         _FUNCTION_WORK.reset(token)
 
 
+def _is_wired_label(line: str, match: re.Match[str], wires: frozenset[str]) -> bool:
+    """Whether ``match`` names a label flanked by wires on both sides."""
+    return (
+        match.start() > 0
+        and line[match.start() - 1] in wires
+        and match.end() < len(line)
+        and line[match.end()] in wires
+    )
+
+
 def _evaluate_function_body(
     gate: _Gate, inputs: tuple[tuple[int, ...], ...], clock: _ClockStream | None
 ) -> tuple[int, ...]:
@@ -288,10 +304,7 @@ def _evaluate_function_body(
             match
             for match in _LABEL_RUN.finditer(line)
             if match.group() not in gate.definitions
-            if match.start() > 0
-            and line[match.start() - 1] in _WIRES
-            and match.end() < len(line)
-            and line[match.end()] in _WIRES
+            if _is_wired_label(line, match, _WIRES)
         ]
         if not labels:
             if len(value) != 1:
@@ -327,12 +340,7 @@ def _evaluate_function_body(
         for match in _LABEL_RUN.finditer(line):
             if match.group() in gate.definitions:
                 continue
-            if not (
-                match.start() > 0
-                and line[match.start() - 1] in _WIRES
-                and match.end() < len(line)
-                and line[match.end()] in _WIRES
-            ):
+            if not _is_wired_label(line, match, _WIRES):
                 continue
             pieces.append(line[end : match.start()])
             terms = match.group().split("+")
