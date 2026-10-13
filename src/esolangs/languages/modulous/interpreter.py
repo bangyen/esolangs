@@ -232,7 +232,7 @@ class _Machine:
             return (_freeze(_advance(((stk, var, ind), halted), mod)),)
 
         if arg[0] == "PRT":
-            n = _print_value(stk, var, mod, arg)
+            n = _print_value(stk, var, arg)
             if "INT" not in mod:
                 chr(n)  # Validate the same character range as the I/O shell.
 
@@ -308,7 +308,7 @@ class _Machine:
 
     def _print(self, mod: str, arg: list[str]) -> None:
         """Write what ``PRT`` names: a variable, or the top of the stack."""
-        n = _print_value(self.stk, self.var, mod, arg)
+        n = _print_value(self.stk, self.var, arg)
         if "INT" in mod:
             self.io.print_num(n)
         else:
@@ -360,11 +360,11 @@ def _advance(state: _State, mod: str, value: str | int | None = None) -> _State:
     return (core, halted or arg[0] == "END")
 
 
-def _print_value(
-    stk: tuple[int, ...], var: Mapping[str, int], mod: str, arg: list[str]
-) -> int:
+def _print_value(stk: tuple[int, ...], var: Mapping[str, int], arg: list[str]) -> int:
     """Return the value a PRT command prints."""
-    return _named(var, _operand(arg, 1)) if "VAR" in mod else _top(stk)
+    if len(arg) > 1 and arg[1].startswith("VAR"):
+        return _named(var, _operand(arg, 1))
+    return _top(stk)
 
 
 def _top(stk: tuple[int, ...]) -> int:

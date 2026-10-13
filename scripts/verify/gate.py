@@ -480,7 +480,7 @@ def _run_steps(
 
 
 def main() -> int:
-    """Compile and run every example, reporting failures."""
+    """Run the verification stack: lint, types, tests, and scoping."""
     only, skip, full, quiet, verbose, allow_incomplete = _parse_only_skip()
 
     # `--list` exits inside the parse, so this never slows it down.

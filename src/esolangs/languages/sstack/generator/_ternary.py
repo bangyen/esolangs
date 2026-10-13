@@ -11,7 +11,6 @@ from esolangs.languages.sstack.generator._binary import (
 )
 from esolangs.languages.sstack.generator._binary import (
     _inline_metrics,
-    _Metric,
     _prefix,
 )
 
@@ -24,12 +23,6 @@ def _width(classes: int) -> int:
     while capacity < classes:
         width, capacity = width + 1, capacity * 3
     return width
-
-
-def _decoder(
-    width: int, bodies: tuple[_Metric, ...], emit: _Emit | None = None
-) -> tuple[int, dict[int, int]]:
-    return _radix_decoder(width, bodies, emit, radix=3)
 
 
 def best_ternary_bank(
@@ -70,7 +63,7 @@ def best_ternary_bank(
     selected = {(d, ids[d][row >> (n - d)]): i for i, (d, row) in enumerate(blocks)}
     metrics = _inline_metrics(ids)
     bodies = tuple(metrics[d][ids[d][row >> (n - d)]] for d, row in blocks)
-    decoder_chars, tails = _decoder(width, bodies)
+    decoder_chars, tails = _radix_decoder(width, bodies, radix=3)
 
     inactive = (len(blocks) - 1) // 3 ** (width - 1) + 1
 
@@ -93,7 +86,7 @@ def best_ternary_bank(
             out.append(piece)
 
     _prefix(ids, metrics, selected, width, tails, radix=3, inactive=inactive, emit=emit)
-    _decoder(width, bodies, emit)
+    _radix_decoder(width, bodies, emit, radix=3)
     program = "".join(out)
     if len(program) != chars:
         raise ValueError("emitted SStack ternary bank disagrees with its price")

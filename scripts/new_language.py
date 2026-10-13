@@ -548,6 +548,7 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
         size = max(len(str(esolangs.generate(name, t))) for t in tables(name, n))
         steps = max(worst, key=lambda t: worst[t][0])
         bits = max(worst, key=lambda t: worst[t][1])
+        # Mean program size per row: ``size`` covers 2**n rows.
         rows.append((n, worst[steps][0], worst[bits][1], size >> n, steps, bits))
     return rows
 

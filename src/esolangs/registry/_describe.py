@@ -20,7 +20,7 @@ from esolangs.settings import DialectOption, dialect_choices
 from esolangs.vm import machine_traits
 
 #: The committed examples, inside the package so the wheel ships them.
-_LANGUAGES = pathlib.Path(__file__).resolve().parents[1] / "languages"
+_LANGUAGES_DIR = pathlib.Path(__file__).resolve().parents[1] / "languages"
 
 # Registry category -> state model name.
 _STATE_MODELS = {
@@ -126,7 +126,7 @@ def describe(language: str) -> LanguageInfo:
     )
     examples = sorted(
         f"languages/{lang.id}/{p.name}"
-        for p in (_LANGUAGES / lang.id).glob(f"{stem}{suffix}")
+        for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{suffix}")
     )
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
@@ -144,11 +144,9 @@ def describe(language: str) -> LanguageInfo:
         "generator_restrictions": lang.generator_restrictions or None,
         "parameterized": parameterized,
         "reads_input": (lang.boolean is not None) and not parameterized,
-        # Derived, not recomputed: this was a second copy of the very
-        # expression _width_effect() evaluates, so the two could drift into
-        # disagreeing about the same language.
-        "width_aware": _width_effect(lang) == "layout",
-        "width_effect": _width_effect(lang),
+        # Computed once so the two cannot drift into disagreeing.
+        "width_aware": (width_effect := _width_effect(lang)) == "layout",
+        "width_effect": width_effect,
         "input_encoding": contract.alphabet,
         "input_shape": contract.input_shape,
         "answer_mode": contract.answer_mode,

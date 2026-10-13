@@ -6,10 +6,10 @@ import pytest
 
 from esolangs.debugger import make_vm
 from esolangs.languages.sstack.generator import _sstack_tree, sstack
+from esolangs.languages.sstack.generator._binary import _decoder as _radix_decoder
 from esolangs.languages.sstack.generator._binary import _Metric
 from esolangs.languages.sstack.generator._ternary import (
     _PROLOGUE,
-    _decoder,
     _width,
     best_ternary_bank,
 )
@@ -20,8 +20,8 @@ from scripts.benchmark import WrittenState
 def test_decoder_consumes_every_word_before_its_body(classes) -> None:
     width = _width(classes)
     pieces = []
-    chars, tails = _decoder(
-        width, tuple(_Metric(3, 1) for _ in range(classes)), pieces.append
+    chars, tails = _radix_decoder(
+        width, tuple(_Metric(3, 1) for _ in range(classes)), pieces.append, radix=3
     )
     decoder = "".join(":b:" if isinstance(piece, int) else piece for piece in pieces)
     assert len(decoder) == chars

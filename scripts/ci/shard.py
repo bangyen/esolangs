@@ -281,7 +281,7 @@ def main(argv: list[str] | None = None) -> int:
     """Dispatch one CI subcommand."""
     argv = sys.argv[1:] if argv is None else argv
     if not argv:
-        raise SystemExit("usage: ci.py {shard|refresh} ...")
+        raise SystemExit("usage: scripts/ci/shard.py {shard|refresh} ...")
     command, rest = argv[0], argv[1:]
     if command == "shard":
         return shard_main(rest)

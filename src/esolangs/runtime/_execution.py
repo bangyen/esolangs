@@ -47,7 +47,7 @@ def interpreter_module(name: str) -> ModuleType:
 _VALUE_ERROR_HINTS = (
     (
         "invalid literal for int()",
-        "use an integer for the numeric operand or input",
+        "use a decimal integer for the numeric operand or input",
     ),
     (
         "could not convert string to float",
