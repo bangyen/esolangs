@@ -35,6 +35,7 @@ from esolangs.cli.io import (
     _read_program,
     _read_stdin,
     _resolve_target,
+    _termination_notice,
     _unbounded_notice,
     _write_output,
 )
@@ -118,11 +119,7 @@ def _run(rest: list[str]) -> None:
         # written to loop forever, which is a hang with no output and no
         # explanation.  Not refused -- a program whose answer is 0 halts,
         # and running one unbounded is perfectly sensible -- but said aloud.
-        sys.stderr.write(
-            f"{name}: this language answers 1 by not terminating, so a "
-            f"program with that answer will run until you stop it; pass "
-            f"--timeout SECONDS to bound it\n"
-        )
+        _termination_notice(name, "--timeout SECONDS")
     program = _read_program(
         path,
         timeout,

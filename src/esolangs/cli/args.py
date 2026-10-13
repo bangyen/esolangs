@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from contextlib import contextmanager
 from typing import NoReturn
 
@@ -134,7 +134,7 @@ def _is_int(value: str) -> bool:
 def _split_positional(
     rest: list[str],
     known: set[str],
-    vocabulary: set[str] = frozenset(),  # type: ignore[assignment]
+    vocabulary: Collection[str] = frozenset(),
 ) -> list[str]:
     """Return ``rest``'s positionals, refusing any unrecognized option.
 

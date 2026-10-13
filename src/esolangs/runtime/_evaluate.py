@@ -176,8 +176,6 @@ def _iter_evaluate(
     check_scale_for(name, scale)
     rows = _evaluation_rows(inputs, max_rows)
     terminating = contract.answer_mode == "termination"
-    if terminating and scale is not None:
-        raise ArgumentError("scale has no meaning for termination-mode evaluation")
     bound: float | None
     if isinstance(timeout, _Default):
         bound = _TERMINATION_TIMEOUT if terminating else _ROW_TIMEOUT
