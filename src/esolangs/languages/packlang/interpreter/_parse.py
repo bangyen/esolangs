@@ -91,6 +91,11 @@ class _Function:
         self.uses = uses
 
 
+def _starts_name(word: str | None) -> bool:
+    """Whether ``word`` begins as an identifier: a letter or underscore."""
+    return word is not None and (word[:1].isalpha() or word[:1] == "_")
+
+
 class _Parser:
     """Recursive-descent parser producing flat statement lists.
 
@@ -221,7 +226,7 @@ class _Parser:
             return node
         if word.isdigit():
             return ("lit", self.literals.parse(word))
-        if not word[:1].isalpha() and word[:1] != "_":
+        if not _starts_name(word):
             raise syntax_error(
                 f"unexpected token {word!r} in an expression",
                 "use a decimal number, variable, call or ! expression",
@@ -249,7 +254,7 @@ class _Parser:
     def lvalue(self) -> tuple[str, tuple[object, ...] | None]:
         """Parse a target: a name, optionally with an index."""
         name = self.next_token()
-        if not (name[:1].isalpha() or name[:1] == "_"):
+        if not _starts_name(name):
             raise syntax_error(
                 f"expected a variable name, got {name!r}",
                 "use an identifier starting with a letter or underscore",
@@ -359,7 +364,7 @@ class _Parser:
         try:
             self.parse_type()
             name = self.peek()
-            ok = bool(name and (name[:1].isalpha() or name[:1] == "_"))
+            ok = _starts_name(name)
             if ok:
                 self.pos += 1
                 ok = self.peek() == ";"

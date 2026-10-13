@@ -7,6 +7,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
+    grid_width,
     in_input_order,
     read_at,
     short_name,
@@ -31,10 +32,6 @@ _NOT_TIGHT = _NOT.replace(" ", "")
 def _reads(n: int, sep: str) -> str:
     """Join the input names ``a``.. in order, then ``0``."""
     return sep.join([*_NAMES[:n], "0"])
-
-
-def _span(program: str) -> int:
-    return max(map(len, program.splitlines()))
 
 
 def algebraic_programming_language(truth_table: str, width: int | None = None) -> str:
@@ -298,11 +295,12 @@ def _apl_tree_layout(
         for build in (_apl_reduced_ordered, _apl_tree_ordered)
     ]
     shared = _apl_repeated_expressions(_apl_reduced_ordered(table, perm))
-    span = _span(shared)
+    span = grid_width(shared)
     laid.append((shared, span if span > width else None))
     events = [point for _, point in laid if point is not None]
     best = min(
-        (program for program, _ in laid), key=lambda x: (max(_span(x), width), len(x))
+        (program for program, _ in laid),
+        key=lambda x: (max(grid_width(x), width), len(x)),
     )
     return best, min(events, default=None)
 
@@ -438,9 +436,9 @@ def _apl_narrow_layout(
     """Return the chosen spelling and its next frame or format fit."""
     previous, next_width = _apl_tree_layout(table, perm, width)
     n = _validate_truth_table(table)
-    if n > 3 or _span(previous) <= width:
+    if n > 3 or grid_width(previous) <= width:
         return previous, next_width
-    events = [_span(previous)]
+    events = [grid_width(previous)]
     if next_width is not None:
         events.append(next_width)
     # At most nine primitive definitions use one-character names below n=4.
@@ -485,8 +483,8 @@ def _apl_narrow_layout(
     # parentheses, preserving input order even when a Boolean arm folds.
     reads = _reads(n, "&")
     candidate = "\n".join([_NOT_TIGHT, *definitions, f"{reads}|{result}"])
-    chosen = min((previous, candidate), key=_span)
-    span = _span(chosen)
+    chosen = min((previous, candidate), key=grid_width)
+    span = grid_width(chosen)
     if span <= width:
         return chosen, min(events)
     events.append(span)
@@ -496,7 +494,7 @@ def _apl_narrow_layout(
         # XOR's generic operator spelling cannot fit in five columns; the
         # hand-rolled a+b-2ab spelling can (see _xor_operator_spelling).
         operators = _xor_operator_spelling()
-    program = min((chosen, operators), key=_span)
+    program = min((chosen, operators), key=grid_width)
     return program, min(events)
 
 

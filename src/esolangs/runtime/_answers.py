@@ -10,12 +10,10 @@ import re
 from esolangs.exceptions import (
     ArgumentError,
     ProgramError,
-    TruthTableError,
 )
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._contracts import CHAR_STREAMS
 from esolangs.runtime._validate import check_bits
-from esolangs.runtime.source_hints import with_hint
 
 
 def encode_inputs(
@@ -47,16 +45,9 @@ def encode_inputs(
     # no sign that anything went astray.
     bits = check_bits(bits, "bits")
     if truth_table is not None and LANGUAGES[name].boolean is not None:
-        from esolangs.generation.helpers import _validate_truth_table
+        from esolangs.generation.helpers import _validate_truth_table, check_table_text
 
-        if not isinstance(truth_table, str):
-            raise with_hint(
-                TruthTableError(
-                    f"truth table must be a string of '0' and '1', got "
-                    f"{type(truth_table).__name__}"
-                ),
-                ("pass truth-table text, for example '0110' for two-input XOR"),
-            )
+        check_table_text(truth_table)
         arity = _validate_truth_table(truth_table)
         if len(bits) != arity:
             raise ArgumentError(

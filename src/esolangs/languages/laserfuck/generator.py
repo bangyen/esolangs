@@ -112,13 +112,11 @@ def _laserfuck_reads(perm: tuple[int, ...]) -> str:
     return out + move_text(at, 0, ">", "<")
 
 
-def _laserfuck_ring_reader(
-    n: int, perm: tuple[int, ...] | None = None
-) -> tuple[list[str], int]:
-    r"""Build the looping input reader, and say how wide it is.
+def _laserfuck_ring_reader(n: int, perm: tuple[int, ...] | None = None) -> list[str]:
+    r"""Build the looping input reader.
 
-    Returns the reader's rows and the column the beam leaves them on, moving
-    right, with the pointer on cell 0.
+    Returns the reader's rows; the beam leaves them moving right, with the
+    pointer on cell 0.
 
     The tape is laid out as *cell 0 = counter and answer*, cells 1..n =
     inputs.  Cell 0 earns that double duty: the counter ends the reader at
@@ -164,7 +162,7 @@ def _laserfuck_ring_reader(
     second = len(body) - len(retire) - 1
     ret[second] = "^"
     ret[second + 1 + retire.index("/")] = "{"
-    return ["".join(top).rstrip(), "".join(ret).rstrip()], len(body)
+    return ["".join(top).rstrip(), "".join(ret).rstrip()]
 
 
 # Rotating or mirroring a LaserFuck block is a character substitution: the
@@ -233,7 +231,7 @@ def _laserfuck_reader_blocks(
     perm: tuple[int, ...] | None = None,
 ) -> list[list[str]]:
     """Cut the flat reader into rectangles, padded so a rotation is exact."""
-    rows, _ = _laserfuck_ring_reader(n, perm)
+    rows = _laserfuck_ring_reader(n, perm)
     width = max(len(line) for line in rows)
     padded = [line.ljust(width) for line in rows]
     starts = [col for col, char in enumerate(padded[0]) if char == "}"]

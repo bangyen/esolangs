@@ -77,14 +77,7 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
     levels, children, _ = _residual_ids(truth_table, n)
 
     # Read n inputs into cells 0..n-1, one `i` per cell, `>` between them.
-    head = Node("i")
-    tail = head
-    for _ in range(n - 1):
-        move = Node(">")
-        tail.next = move
-        read = Node("i")
-        move.next = read
-        tail = read
+    head = chain(*("i" + ">i" * (n - 1)))
 
     def fork(state: int, depth: int, pointer: int, known: int | None) -> Node:
         while depth < n and children[state][0] == children[state][1]:
@@ -102,7 +95,7 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
         node.nonzero = fork(one, depth + 1, cell, 1)
         return _moved(pointer, cell, node)
 
-    tail.next = fork(levels[0][0], 0, n - 1, None)
+    chain_onto(head, fork(levels[0][0], 0, n - 1, None))
     return head
 
 

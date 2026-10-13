@@ -231,7 +231,7 @@ def _b_tapemark_program(
     builder.row(-depth - 1, tail, "+" + "|" * (depth - 1))
     builder.put(-depth - 2, tail, "!")
     program = builder.render(reflect=width is not None)
-    if width is None or max(map(len, program.splitlines())) <= width:
+    if width is None or grid_width(program) <= width:
         return program
     # Narrow width is max(9, T/2+7) columns, under the wide 3T+depth+4.
     # The climb of 2*depth rows must end below the connector at row -1, which

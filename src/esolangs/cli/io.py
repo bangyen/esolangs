@@ -109,11 +109,7 @@ def _read_program(
         content = _bounded_read(path, timeout)
     try:
         if portable:
-            try:
-                document = content.decode("utf-8")
-            except UnicodeDecodeError as exc:
-                raise ProgramError("portable program must be UTF-8 JSON") from exc
-            program = load_program(language, document)
+            program = load_program(language, _portable_text(content))
             dialect_options(language, effective_settings(language, program, settings))
             return program
         return _read_source(language, _FileSource(path, content))
@@ -122,15 +118,19 @@ def _read_program(
         raise  # pragma: no cover - _fail exits
 
 
+def _portable_text(content: bytes) -> str:
+    """Decode a portable document, which must be UTF-8."""
+    try:
+        return content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ProgramError("portable program must be UTF-8 JSON") from exc
+
+
 def _portable_language(path: str, timeout: float | None = None) -> tuple[str, bytes]:
     """Return the language and acquired bytes of a portable document."""
     content = _bounded_read(path, timeout)
     try:
-        document = content.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise ProgramError("portable program must be UTF-8 JSON") from exc
-    try:
-        value = json.loads(document)
+        value = json.loads(_portable_text(content))
     except ValueError as exc:
         raise ProgramError(f"invalid portable program: {exc}") from exc
     if not isinstance(value, dict) or not isinstance(value.get("language"), str):

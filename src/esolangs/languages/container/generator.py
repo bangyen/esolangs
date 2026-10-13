@@ -48,7 +48,6 @@ class _Node(NamedTuple):
 class _TreePlan:
     root_tests: int
     nodes: list[_Node]
-    order: list[int]
     parents: dict[int, list[int]]
     relays: dict[int, int]
 
@@ -109,7 +108,7 @@ def _container_plan(truth_table: str, n: int, *, prune: bool, share: bool) -> _T
                     continue
                 either.setdefault(identity, i)
             children(tests, lo, i)
-    return _TreePlan(root_tests, nodes, list(range(len(nodes))), parents, relays)
+    return _TreePlan(root_tests, nodes, parents, relays)
 
 
 def _container_tree(
@@ -165,7 +164,7 @@ def _container_tree(
     n = _validate_truth_table(truth_table)
     plan = _container_plan(truth_table, n, prune=prune, share=share)
     nodes, root_tests = plan.nodes, plan.root_tests
-    order, parents, relays = plan.order, plan.parents, plan.relays
+    parents, relays = plan.parents, plan.relays
     fed: dict[int, list[int]] = {}
     for relay, target in relays.items():
         fed.setdefault(target, []).append(relay)
@@ -173,12 +172,12 @@ def _container_tree(
     def row_of(i: int) -> int:  # the root (-1) is a constant table's only leaf
         return nodes[i].lo if i >= 0 else 0
 
-    leaves = [i for i in order if nodes[i].tests == n] or [-1]
+    leaves = [i for i, node in enumerate(nodes) if node.tests == n] or [-1]
     ones = sum(truth_table[row_of(i)] == "1" for i in leaves)
     invert = ones > len(leaves) - ones
     wanted = "0" if invert else "1"
     answers = {i for i in leaves if truth_table[row_of(i)] == wanted}
-    order = [i for i in order if nodes[i].tests < n or i in answers]
+    order = [i for i, node in enumerate(nodes) if node.tests < n or i in answers]
 
     identifiers = _free_names(_RESERVED)
     names = {i: next(identifiers) for i in [-1, *order]}

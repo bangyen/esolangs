@@ -340,15 +340,16 @@ def _wrap_template(template: str, n: int, width: int) -> str:
     return unmark(wrap_program(marked, "minifuck", width), TEMPLATE_CHAR, n)
 
 
+def _tokens(program: str, n: int) -> list[str]:
+    """Split a program into commands, each two-character input run one token."""
+    marked = mark_runs(program.replace("\n", ""), TEMPLATE_CHAR, (PAIR,) * n)
+    return re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
+
+
 def _lookup_balance(table: str, default: str) -> str:
     """Balance ordinary and paired skip tokens, including the parity column."""
     n = _validate_truth_table(table)
-
-    def tokens(program: str) -> list[str]:
-        marked = mark_runs(program.replace("\n", ""), TEMPLATE_CHAR, (PAIR,) * n)
-        return re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
-
-    normal = tokens(default)
+    normal = _tokens(default, n)
     floor = max(map(len, normal))
     width = balanced_token_width(normal, minimum=floor)
     candidates = [
@@ -362,7 +363,7 @@ def _lookup_balance(table: str, default: str) -> str:
         # Below the ordinary token floor, paired tokens win throughout the
         # regime exactly when their own floor is smaller; otherwise the
         # generator retains the ordinary tokens throughout it.
-        narrow = tokens(_lookup_layout(table, n, default, lower))
+        narrow = _tokens(_lookup_layout(table, n, default, lower), n)
         width = balanced_token_width(narrow, minimum=lower, maximum=floor - 1)
         candidates.append(_lookup_layout(table, n, default, width))
     best = min(candidates, key=balance_score)
@@ -402,8 +403,7 @@ def _balance(table: str, default: str) -> str:
     for shared, tape in forms:
         if shared is None:
             continue
-        marked = mark_runs(shared, TEMPLATE_CHAR, (PAIR,) * n)
-        tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
+        tokens = _tokens(shared, n)
         # A unary tape walk can contain O(T) tokens. A square-root wrap and
         # inert tail give a square without enumerating token-fit widths.
         width = (

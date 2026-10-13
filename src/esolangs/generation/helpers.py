@@ -157,6 +157,18 @@ class SubtreeDiagram:
         return [name for name, count in self._count(key, depth).items() if count > 1]
 
 
+def check_table_text(truth_table: object) -> None:
+    """Refuse a truth table that is not text."""
+    if not isinstance(truth_table, str):
+        raise with_hint(
+            TruthTableError(
+                f"truth table must be a string of '0' and '1', got "
+                f"{type(truth_table).__name__}"
+            ),
+            ("pass truth-table text, for example '0110' for two-input XOR"),
+        )
+
+
 def _validate_truth_table(truth_table: str) -> int:
     """Validate a truth table and return its input count ``n``.
 

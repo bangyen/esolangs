@@ -46,6 +46,9 @@ _CHUNK_PUSH_OVERHEAD = 14
 # layout the row estimate assumes.
 _MIN_CHUNK_WIDTH = 6
 
+# A bracketed string literal with its closer, a mnemonic, a number or a glyph.
+_TOKEN = re.compile(r'"[^"]*"\]|[A-Z]+|\d+|\S')
+
 
 def modulous(truth_table: str, width: int | None = None) -> str:
     """Return a Modulous table lookup; ``width`` folds command whitespace.
@@ -87,7 +90,7 @@ def modulous(truth_table: str, width: int | None = None) -> str:
             for start in reversed(starts)
         )
     )
-    tokens = re.findall(r'"[^"]*"\]|[A-Z]+|\d+|\S', prologue + "".join(reads) + walk)
+    tokens = _TOKEN.findall(prologue + "".join(reads) + walk)
     return wrap_space_delimited(" ".join(tokens), width)
 
 
@@ -201,9 +204,7 @@ def _balance(table: str, default: str) -> str:
     candidates.append(modulous(table, width))
     # Skip the ``[PSH STR "`` prologue, the table, and the ``"]`` closer: the
     # rest is the instruction suffix whose rows the chunked search packs.
-    suffix = re.findall(
-        r'"[^"]*"\]|[A-Z]+|\d+|[^\s]', default[size + _TABLE_PUSH_OVERHEAD :]
-    )
+    suffix = _TOKEN.findall(default[size + _TABLE_PUSH_OVERHEAD :])
     lengths = list(map(len, suffix))
     # A suffix token run exactly fills a column budget of ``span``;
     # subtract the chunk-to-column offset to get the chunk width.

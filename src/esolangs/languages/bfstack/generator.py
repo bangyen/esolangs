@@ -84,10 +84,7 @@ def _bfstack_small(truth_table: str, n: int) -> str:
 
     At most ``_BLOCK_INPUTS`` essential inputs; an ignored input weighs nothing.
     """
-    weights, projected = input_weights(truth_table, n)
-    decoder, preset = _bfstack_decoder(projected)
-    encoder = _bfstack_encoder(weights, preset=preset)
-    return encoder + decoder + "<" + "+" * _ASCII_ZERO + "."
+    return _bfstack_class(truth_table, n) + "+" * _ASCII_ZERO + "."
 
 
 def _bfstack_class(prefix: str, bits: int) -> str:

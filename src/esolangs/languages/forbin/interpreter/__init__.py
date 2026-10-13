@@ -181,21 +181,6 @@ class _State:
     reads: int
 
 
-class _BitReader:
-    """A read-only view of the input bit buffer for the VM's ``views``.
-
-    The old stateful reader is gone: reads are part of the pure transition
-    and the buffer lives in :class:`_State`.  This view keeps the ``reader``
-    property (and so the VM's named views) intact.
-    """
-
-    __slots__ = ("bits", "reads")
-
-    def __init__(self, bits: tuple[int, ...], reads: int) -> None:
-        self.bits = bits
-        self.reads = reads
-
-
 def _new_scope(
     scopes: Mapping[int, _Scope],
     fn: _Function,
@@ -761,11 +746,6 @@ class _Machine:
     @property
     def frames(self) -> list[_Frame]:
         return list(self.state.frames)
-
-    @property
-    def reader(self) -> _BitReader:
-        """A read-only view of the input bit buffer, for the VM's views."""
-        return _BitReader(self.state.bits, self.state.reads)
 
     @property
     def halted(self) -> bool:

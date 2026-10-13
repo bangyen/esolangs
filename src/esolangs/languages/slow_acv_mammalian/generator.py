@@ -316,11 +316,17 @@ def _exact_append(st: _Sums, value: int) -> list[str]:
         raise AssertionError(f"array {arr} has an even seed step")
     head = (value - st.rest(arr)) % st.io_modulus
     count = ((head - st.heads[arr]) * pow(arr + 1, -1, _MODULUS)) % _MODULUS
-    tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
     before = st.rest(arr)
-    _replay(st, tokens)
+    tokens = _digest_excrete(st, count)
     if st.rest(arr) - before != value:  # pragma: no cover - the inverse is exact
         raise AssertionError(f"planted {st.rest(arr) - before}, wanted {value}")
+    return tokens
+
+
+def _digest_excrete(st: _Sums, count: int) -> list[str]:
+    """Append ``count`` ``SEED``s, ``DIGEST`` and ``EXCRETE``, replayed onto ``st``."""
+    tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
+    _replay(st, tokens)
     return tokens
 
 
@@ -329,9 +335,8 @@ def _w_exact_chunk(st: _Sums, value: int) -> list[str]:
     if st.io_modulus == 255:
         return _exact_append(st, value)
     count = ((value - st.hw - st.nw) * _W_INV) % _MODULUS
-    tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
     before = st.nw
-    _replay(st, tokens)
+    tokens = _digest_excrete(st, count)
     if st.nw - before != value:  # pragma: no cover - the inverse is exact
         raise AssertionError(f"chunk appended {st.nw - before}, wanted {value}")
     return tokens
@@ -347,14 +352,9 @@ def _w_greedy_chunk(st: _Sums) -> list[str]:
         for count in range(_GREEDY_COUNTS):
             head = (st.hw + _W_STEP * count) % _MODULUS
             if (head + st.nw) % 255 >= 255 - _W_STEP:
-                tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
-                _replay(st, tokens)
-                return tokens
+                return _digest_excrete(st, count)
         raise AssertionError("no 17-step residue in [238, 254]")  # pragma: no cover
-    count, _ = _greedy_step((st.hw + st.nw) % _MODULUS)
-    tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
-    _replay(st, tokens)
-    return tokens
+    return _digest_excrete(st, _greedy_step((st.hw + st.nw) % _MODULUS)[0])
 
 
 def _w_raise(st: _Sums, amount: int) -> list[str]:
@@ -542,8 +542,7 @@ def _close_arm(st: _Sums, beta: int, cont: int) -> list[str]:
     if st.io_modulus == 255:
         run = _exact_append(st, beta)
     else:
-        run = [*["SEED"] * ((beta - st.h0 - st.n0) % _MODULUS), "DIGEST", "EXCRETE"]
-        _replay(st, run)
+        run = _digest_excrete(st, (beta - st.h0 - st.n0) % _MODULUS)
     return run + _jump(st, cont)
 
 

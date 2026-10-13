@@ -235,7 +235,6 @@ class _Node:
         "cv",
         "dim",
         "hi",
-        "parent",
         "pivots",
         "removed",
         "reps",
@@ -248,7 +247,6 @@ class _Node:
         cv: int,
         reps: set[int],
         pivots: dict[int, int],
-        parent: _Node | None,
     ) -> None:
         self.v = v
         self.cv = cv
@@ -259,13 +257,12 @@ class _Node:
         self.cands: dict[int, int] = {}
         self.canon: dict[int, int] = {}
         self.child: _Node | None = None
-        self.parent = parent
         self.removed = 0
 
     @classmethod
     def root(cls, points: set[int]) -> _Node:
         """Return a chain's top, where every point is its own coset."""
-        return cls(0, 0, points, {}, None)
+        return cls(0, 0, points, {})
 
     @property
     def size(self) -> int:
@@ -294,7 +291,7 @@ class _Node:
         pivots[hi] = cv
         reps = self.reps
         pairs = {r ^ cv if r >> hi & 1 else r for r in reps if r ^ cv in reps}
-        return _Node(v, cv, pairs, pivots, self)
+        return _Node(v, cv, pairs, pivots)
 
 
 def _score(node: _Node, dirs: list[int]) -> None:

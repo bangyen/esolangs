@@ -787,7 +787,7 @@ def _advance(
     """
     printed: list[int] = []
     try:
-        return _execute_tick(run, grid, nodes, width, bits, printed)
+        return _Tick(run, grid, nodes, width, bits, printed).advance()
     except _NeedBitError:
         raise
     except BaseException as fault:
@@ -1001,18 +1001,6 @@ class _Tick:
             self.used,
         )
         return run, tuple(self.printed)
-
-
-def _execute_tick(
-    run: _Run,
-    grid: tuple[str, ...],
-    nodes: Mapping[tuple[int, int], tuple[_Spelling, int]],
-    width: int,
-    bits: Sequence[int | None],
-    printed: list[int],
-) -> tuple[_Run, tuple[int, ...]]:
-    """Run the tick behind :func:`_advance`, appending bytes to ``printed``."""
-    return _Tick(run, grid, nodes, width, bits, printed).advance()
 
 
 def run(code: list[str], io: IO) -> None:

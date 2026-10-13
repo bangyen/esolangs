@@ -259,8 +259,9 @@ class _Machine:
         same token forever.
 
         ``RND n`` takes its range from the program text rather than from a
-        fixed coin, so one token can ask for arbitrarily many outcomes;
-        that is charged against ``limit`` instead of being materialized.
+        fixed coin, so one token can ask for arbitrarily many outcomes; a
+        bound above ``_RND_FANOUT`` raises ``TimeoutError`` rather than being
+        materialized, and the caller's ``limit`` is not consulted.
         ``n < 1`` draws nothing and is left to the single deterministic
         call, exactly as the step leaves it.
         """

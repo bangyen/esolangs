@@ -199,10 +199,14 @@ def _raster_score(image: Raster) -> tuple[int, int, int]:
 def pack(operations: list[_Operation], default: Raster) -> Raster:
     """Reduce padding with fixed lane widths and area and black ceilings."""
     root = isqrt(sum(operation.size for operation in operations))
-    candidates = [
-        _layout(operations, max(_MIN_COLUMNS, root + offset)) for offset in (5, 9, 13)
-    ]
-    candidate = min(candidates, key=_raster_score)
+
+    def layouts(minimum: int, **options: bool) -> list[Raster]:
+        return [
+            _layout(operations, max(minimum, root + offset), **options)
+            for offset in (5, 9, 13)
+        ]
+
+    candidate = min(layouts(_MIN_COLUMNS), key=_raster_score)
 
     def area(image: Raster) -> int:
         return len(image.rows) * len(image.rows[0])
@@ -217,33 +221,14 @@ def pack(operations: list[_Operation], default: Raster) -> Raster:
     # Shared operands and mixed-lane coloring, same 200-table corpus: n=8
     # area 214739 -> 181350 (-15.55%); black 64988 -> 36033 (-44.55%);
     # white 21852 -> 19936. Exhaustive n=3 area 55270 -> 50130.
-    duplicated = min(
-        (
-            _layout(operations, max(_MIN_SHARED_COLUMNS, root + offset), duplicate=True)
-            for offset in (5, 9, 13)
-        ),
-        key=lambda image: (
-            abs(len(image.rows) - len(image.rows[0])),
-            area(image),
-            len(image.rows[0]),
-        ),
-    )
+    duplicated = min(layouts(_MIN_SHARED_COLUMNS, duplicate=True), key=_raster_score)
     if area(duplicated) < area(default) and black(duplicated) <= black(default):
         default = duplicated
     # Short bridges, same corpus: n=8 area 181350 -> 161247 (-11.09%);
     # black 36033 -> 34748, white 19936 -> 6362. n=3 area 50130 -> 40868.
-    shortened = [
-        _layout(
-            operations,
-            max(_MIN_SHARED_COLUMNS, root + offset),
-            duplicate=True,
-            short=True,
-        )
-        for offset in (5, 9, 13)
-    ]
     eligible = [
         image
-        for image in shortened
+        for image in layouts(_MIN_SHARED_COLUMNS, duplicate=True, short=True)
         if area(image) <= area(default) and black(image) <= black(default)
     ]
     return min(

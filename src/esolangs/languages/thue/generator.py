@@ -368,7 +368,7 @@ def balance_thue(truth_table: str, default: str) -> str:
         size = len(table)
         digits = _marker_digits(size, len(_alphabet(rounds, extra)))
         base = _RULES if rounds is None else _QUEUED_RULES
-        offset = len(base.splitlines()) + len(extra) + 3 - 2 * digits - 3
+        offset = len(base.splitlines()) + len(extra) - 2 * digits
         root = (offset + isqrt(offset * offset + 4 * size)) // 2
         overhead = digits + max(digits, 2) + 3
         maximum = max(digits, cap - 1 - overhead)

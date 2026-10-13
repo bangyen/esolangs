@@ -51,7 +51,6 @@ from .core import (
     _ANSWER,
     _C_INITS,
     _C_POST,
-    _C_SCHEDULE,
     _CASCADE_N,
     _CONSTS,
     _ENTRY,
@@ -77,6 +76,7 @@ from .core import (
     _char_for,
     _decoder_entry,
     _emit_chain,
+    _emit_fold,
     _fold,
     _g,
     _main_planner,
@@ -224,10 +224,7 @@ def _thirteen() -> _Layout:
         for _ in range(turns):
             main.hub(pointer[v], v)
             main.raw("*")
-    for _ in range(_CASCADE_N):
-        main.raw("/")
-        _ops(main, cell, _C_SCHEDULE)
-    _ops(main, cell, _C_POST[0])
+    _emit_fold(main, cell)
     main.raw("/")
     _ops(main, select, _W_SELECT_OPS)
     main.goto(select[0])
@@ -920,10 +917,7 @@ def _f_emit_readouts(
 ) -> None:
     """Emit the eleven-bit fold, the readout segments and the selector jump."""
     helper = alloc.helper
-    for _ in range(_CASCADE_N):
-        main.raw("/")
-        _ops(main, alloc.mix, _C_SCHEDULE)
-    _ops(main, alloc.mix, _C_POST[0])
+    _emit_fold(main, alloc.mix)
     for lvl, segment in enumerate(_F_SEGMENTS):
         _f_emit_segment(main, lvl, segment, cell, konst, alloc.readout, alloc.triples)
     for rotations in _F_SELECT[1:]:

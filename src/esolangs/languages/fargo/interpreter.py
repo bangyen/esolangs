@@ -261,17 +261,9 @@ class _Machine:
     def output(self) -> int:
         return self.state.output
 
-    @output.setter
-    def output(self, value: int) -> None:
-        self.state = replace(self.state, output=value)
-
     @property
     def ind(self) -> int:
         return self.state.ind
-
-    @ind.setter
-    def ind(self, value: int) -> None:
-        self.state = replace(self.state, ind=value)
 
     @property
     def frames(self) -> list[_Frame]:

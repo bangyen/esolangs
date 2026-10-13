@@ -207,7 +207,7 @@ def _parse_expr(p: _Parser) -> _Expr:
     node = _parse_operand(p)
     while True:
         c = p.peek()
-        if c not in _BINARY or c == "":
+        if c not in _BINARY:
             return node
         # A '-' directly before a digit is still an operator here, never a
         # sign: ``len{l}-0.5`` is a subtraction, and an operand position is

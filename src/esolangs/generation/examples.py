@@ -19,7 +19,7 @@ spelling that drifted made an instantiated program loop and the suite hang.
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import cast
+from typing import Any, cast
 
 from esolangs.compressed import CompressedText
 from esolangs.generation.helpers import (
@@ -181,6 +181,19 @@ class BooleanExample:
         return "".join(f"{line}\n" for line in self.inputs)
 
 
+def _contract_fields(contract: BooleanContract) -> dict[str, Any]:
+    """Return the example fields an interpreter's I/O contract fixes."""
+    return {
+        "answer_mode": contract.answer_mode,
+        "answer_pattern": contract.answer_pattern,
+        "answer_values": contract.answer_values,
+        "alphabet": contract.alphabet,
+        "input_shape": contract.input_shape,
+        "ghost_digit": contract.ghost_digit,
+        "note": contract.note,
+    }
+
+
 def _contract_for(interpreter: str) -> BooleanContract:
     """Return the registered Boolean I/O contract for an interpreter."""
     for lang in LANGUAGES.values():
@@ -208,20 +221,14 @@ def _reader(
     if contract.input_shape in {"char_stream", "char_stream_padded"}:
         inputs = ("".join(inputs),)
     return BooleanExample(
-        answer_mode=contract.answer_mode,
-        answer_pattern=contract.answer_pattern,
-        answer_values=contract.answer_values,
+        **_contract_fields(contract),
         generator=generator,
         table=table,
         interpreter=interpreter,
         expected=expected,
         inputs=inputs,
-        alphabet=contract.alphabet,
-        input_shape=contract.input_shape,
-        ghost_digit=contract.ghost_digit,
         split=split,
         kwargs=kwargs,
-        note=contract.note,
     )
 
 
@@ -248,14 +255,8 @@ def _embedded(
         raise TypeError("exactly one of pair and setters")
     if setters is None:
         setters = uniform(pair)
-    contract = _contract_for(interpreter)
     return BooleanExample(
-        answer_mode=contract.answer_mode,
-        answer_pattern=contract.answer_pattern,
-        answer_values=contract.answer_values,
-        alphabet=contract.alphabet,
-        input_shape=contract.input_shape,
-        ghost_digit=contract.ghost_digit,
+        **_contract_fields(_contract_for(interpreter)),
         generator=generator,
         table=table,
         interpreter=interpreter,
@@ -268,7 +269,6 @@ def _embedded(
         body=body,
         split=split,
         kwargs=kwargs,
-        note=contract.note,
     )
 
 

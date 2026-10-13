@@ -450,10 +450,6 @@ class _Step:
         ]
         self._emit(pointer, exits, pointer.channel, pointer.value)
 
-    def _cell_cross(self, pointer: _Pointer) -> None:
-        """Pass a pointer through a crossing unchanged."""
-        self._pass(pointer)
-
     def _cell_pause(self, pointer: _Pointer) -> None:
         """Hold a pointer for one cycle, then let it through."""
         if pointer.paused:
@@ -528,7 +524,7 @@ class _Step:
         "▣": _cell_start,
         "◉": _cell_halt,
         **dict.fromkeys(_ARROWS, _cell_arrow),
-        "◯": _cell_cross,
+        "◯": _pass,
         "◔": _cell_pause,
         "◇": _cell_input,
         **dict.fromkeys("◧⬓◨⬒", _cell_stack),
@@ -579,17 +575,13 @@ def _advance(
         raise
     except Exception as error:
         raise _FaultError(error, tuple(step.effects)) from error
-    if step.halting:
-        return (
-            ((), MappingProxyType(step.cells), step.cursor, True, step.set_ended),
-            tuple(step.effects),
-        )
+    following = () if step.halting else tuple(step.following)
     return (
         (
-            tuple(step.following),
+            following,
             MappingProxyType(step.cells),
             step.cursor,
-            halted,
+            step.halting,
             step.set_ended,
         ),
         tuple(step.effects),

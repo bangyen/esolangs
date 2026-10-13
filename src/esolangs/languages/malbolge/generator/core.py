@@ -424,10 +424,7 @@ def _head(
         main.op("p", a)
         main.op("p", a + 1)
 
-    for _ in range(_CASCADE_N):
-        main.raw("/")
-        _ops(main, cell, _C_SCHEDULE)
-    _ops(main, cell, _C_POST[0])
+    _emit_fold(main, cell)
     return main, cell, helper, frozen
 
 
@@ -435,6 +432,14 @@ def _ops(target: _OpTarget, cell: list[int], ops: tuple[tuple[int, int], ...]) -
     """Emit ``ops`` (``(kind, index)`` pairs) over ``cell``."""
     for kind, index in ops:
         target.op(_OPS[kind], cell[index])
+
+
+def _emit_fold(target: _OpTarget, cell: list[int]) -> None:
+    """Emit the eleven-bit fold over ``cell``: the cascade, then its post-step."""
+    for _ in range(_CASCADE_N):
+        target.raw("/")
+        _ops(target, cell, _C_SCHEDULE)
+    _ops(target, cell, _C_POST[0])
 
 
 def _decoder_entry(dec: _OpTarget, start: int) -> None:

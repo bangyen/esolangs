@@ -284,7 +284,7 @@ def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> st
             candidate
         ) < len(program.splitlines()) * grid_width(program):
             program = candidate
-    if width is not None and width > 0 and max(map(len, program.splitlines())) > width:
+    if width is not None and width > 0 and grid_width(program) > width:
         parity = _back_parity(truth_table, n)
         if parity is not None:
             return parity
@@ -625,7 +625,7 @@ def _back_ordered(
                 vertical=True,
             )
             tall = _descending_back(grid, down)
-            return min((wide, tall), key=lambda code: max(map(len, code.splitlines())))
+            return min((wide, tall), key=grid_width)
 
     # Height is max(tree 2**n, load units + 1).  Past n=3 load rows share with
     # tree rows; safe only because a run is one character for either bit.

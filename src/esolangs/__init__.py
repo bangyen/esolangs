@@ -44,7 +44,12 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
-from esolangs.generation.helpers import mark_runs, same_up_to_wrapping, unmark
+from esolangs.generation.helpers import (
+    check_table_text,
+    mark_runs,
+    same_up_to_wrapping,
+    unmark,
+)
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width(language)`` got False for
@@ -224,14 +229,7 @@ def generate(
             f"{resolved} has no boolean generator under this repository's "
             f"generator contracts. `esolangs list --details` marks it 'int'"
         )
-    if not isinstance(truth_table, str):
-        raise with_hint(
-            TruthTableError(
-                f"truth table must be a string of '0' and '1', got "
-                f"{type(truth_table).__name__}"
-            ),
-            ("pass truth-table text, for example '0110' for two-input XOR"),
-        )
+    check_table_text(truth_table)
     check_width(width)
     laid_out = width is not None and _takes_width(fn)
     try:

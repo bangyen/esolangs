@@ -862,12 +862,6 @@ class _Core:
         """The innermost walk's namespace, which a call does not share."""
         return self.walker.vars
 
-    #: ``ip`` is a cell of the program's own rectangle: the first two
-    #: parts are a row and a column, and the rest is a heading.  Without
-    #: this a caller cannot tell the pair from a call depth or a frame
-    #: stack, which look identical and mean somewhere else entirely.
-    ip_shape = "grid"
-
     def command(self, value: _Value | object = _MISSING) -> int | None:
         """Execute one command, leaving the pointer at the next one's start.
 
