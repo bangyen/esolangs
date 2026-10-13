@@ -389,10 +389,14 @@ class _Expressions:
     def evaluate(self, expr: _Expr) -> _Value:
         """Evaluate a parsed expression in this frame's namespace.
 
-        The nodes are typed, so each tag dispatches to typed fields; only
-        the parser ever builds one.  A node is still a tuple underneath --
-        immutable, so a snapshot can carry one -- with the tag first, which
-        is what keeps the legacy ``("tag", ...)`` spelling working.
+        The nodes are typed, so each tag dispatches to typed fields.
+        Nodes are built by the parser, by ``_Expressions.reduce``
+        (which folds resolved calls into values and rebuilds nodes
+        with reduced children), and by ``_parse._replace_first``
+        (which rebuilds the path to a replaced call).  A node is
+        still a tuple underneath -- immutable, so a snapshot can
+        carry one -- with the tag first, which is what keeps the
+        legacy ``("tag", ...)`` spelling working.
         """
         if isinstance(expr, _Num):
             return expr.value

@@ -43,7 +43,7 @@ _SIX_FIVE_NORMALIZE = "99999" + "22"
 #: A tree read's 0 bit (1 is one more): under ``7n``'s cap of 35 by -17,
 #: three tokens as is each leaf's +16..+18, where 8/9 took seven.
 _SIX_FIVE_HELD = 31
-_SIX_FIVE_TREE_NORMALIZE = "99" + "2"
+_SIX_FIVE_TREE_NORMALIZE = "992"
 
 #: The node test: skip the left arm's jump when the bit is 0.
 _SIX_FIVE_TEST = "7V"

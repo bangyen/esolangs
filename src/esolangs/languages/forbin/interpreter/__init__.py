@@ -416,7 +416,12 @@ def _run(
                 "statement-position calls nested past the host's depth limit"
             )
         frames, ctx, returned = _step_frames(frames, globals_, ctx)
-        if returned is not _NO_RETURN:
+        if returned is not _NO_RETURN and not frames:
+            # Only the outermost frame's own return value is this run's
+            # result.  A return from an inner frame (e.g. a nested
+            # statement-position call evaluated through the step core)
+            # just pops that frame; recording it would leak the inner
+            # value to the enclosing expression-position call.
             result = returned
     return result, ctx
 
@@ -706,8 +711,11 @@ class _Machine:
         # First-sight identity numbering: the counter hands out each
         # serial, and the dict remembers which objects were already
         # numbered, so a serial names one object for the whole run.
-        # Everything ever numbered stays reachable from the machine's
-        # state, so an id cannot be recycled while it is a key.
+        # The dict stores only ids, not the objects, so this is a
+        # convention, not a structural guarantee: callers must number
+        # only objects that stay reachable from the machine's state for
+        # the rest of the run, since a freed object's id could be
+        # recycled for a different object.
         self._serials: dict[int, int] = {}
         self._next_serial = 0
         parser = _Parser(code)

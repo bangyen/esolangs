@@ -287,6 +287,7 @@ def test_public_high_arity_routes_execute_boundary_rows(n: int) -> None:
 def test_fourteen_rejects_colliding_final_level(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(_module, "_F_LEVEL3", (0, 0))
+    monkeypatch.setattr(_module, "_L3_CELL_A", 0)
+    monkeypatch.setattr(_module, "_L3_CELL_B", 0)
     with pytest.raises(AssertionError, match="a row never resolves"):
         _module._f_tables.__wrapped__()  # noqa: SLF001

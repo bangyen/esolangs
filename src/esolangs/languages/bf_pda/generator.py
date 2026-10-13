@@ -132,24 +132,25 @@ def _emit_plain_tree(table: str, context: _TreeContext) -> tuple[str, BranchCost
     return "".join(pieces), cost
 
 
-def _emit_shared_tree(
-    table: str, shared: tuple[int, int], context: _TreeContext
-) -> tuple[str, BranchCost]:
-    """Emit a tree whose repeated residual is deferred behind a dispatch."""
-    n = _validate_truth_table(table)
-    reflected, constant, ids = context.reflected, context.constant, context.ids
-    depth, row = shared
-    match = ids[depth][row >> (n - depth)]
-    pieces = [_tree_head(n)]
+def _guarded_prefix(
+    n: int,
+    ids: list[list[int]],
+    pieces: list[str],
+    leaf: Callable[[int, int, int], BranchCost | None],
+) -> Callable[[int, int, int], BranchCost]:
+    """Return a sentinel-protected tree walker with the shared guarded-arm shape.
+
+    The mid/below equal-ids check emits ``">>"`` and descends with cost 2;
+    otherwise a ``"[>>"`` guard splits into a one arm (closed with
+    ``"<<]>[>"``, cost arm 5) and a zero arm (closed with ``"<]>"``, cost
+    arm 3), merged with cost 4. ``leaf`` emits the level-specific leaf code
+    and returns ``None`` to keep descending instead.
+    """
 
     def prefix(i: int, lo: int, hi: int) -> BranchCost:
-        if i == depth and ids[i][lo >> (n - i)] == match:
-            pieces.append("<@")
-            return None, 2
-        if i == n or constant(lo, hi):
-            code = _tree_leaf(n, i, reflected[lo]) + "<"
-            pieces.append(code)
-            return len(code), None
+        done = leaf(i, lo, hi)
+        if done is not None:
+            return done
         mid = (lo + hi) // 2
         below = ids[i + 1]
         if below[lo >> (n - i - 1)] == below[mid >> (n - i - 1)]:
@@ -168,7 +169,30 @@ def _emit_shared_tree(
         zero_arm = add_cost(zero, 3)
         return add_cost(merge_cost(one_arm, zero_arm), 4)
 
-    cost = prefix(0, 0, 1 << n)
+    return prefix
+
+
+def _emit_shared_tree(
+    table: str, shared: tuple[int, int], context: _TreeContext
+) -> tuple[str, BranchCost]:
+    """Emit a tree whose repeated residual is deferred behind a dispatch."""
+    n = _validate_truth_table(table)
+    reflected, constant, ids = context.reflected, context.constant, context.ids
+    depth, row = shared
+    match = ids[depth][row >> (n - depth)]
+    pieces = [_tree_head(n)]
+
+    def leaf(i: int, lo: int, hi: int) -> BranchCost | None:
+        if i == depth and ids[i][lo >> (n - i)] == match:
+            pieces.append("<@")
+            return None, 2
+        if i == n or constant(lo, hi):
+            code = _tree_leaf(n, i, reflected[lo]) + "<"
+            pieces.append(code)
+            return len(code), None
+        return None
+
+    cost = _guarded_prefix(n, ids, pieces, leaf)(0, 0, 1 << n)
     pieces.append("[>")
     body = _plain_node(n, reflected, constant, ids, pieces)(
         depth, row, row + (1 << (n - depth))
@@ -207,7 +231,7 @@ def _emit_classifier_tree(
         raise ValueError("a classifier word exceeds the retired stack space")
     pieces = [_tree_head(n)]
 
-    def prefix(i: int, lo: int, hi: int) -> BranchCost:
+    def leaf(i: int, lo: int, _hi: int) -> BranchCost | None:
         if i == class_depth:
             label = labels_by_id[ids[i][lo >> (n - i)]]
             code = "".join(
@@ -219,19 +243,9 @@ def _emit_classifier_tree(
             code = _tree_leaf(n, i, reflected[lo])
             pieces.append(code)
             return len(code), None
-        mid = (lo + hi) // 2
-        below = ids[i + 1]
-        if below[lo >> (n - i - 1)] == below[mid >> (n - i - 1)]:
-            pieces.append(">>")
-            return add_cost(prefix(i + 1, lo, mid), 2)
-        pieces.append("[>>")
-        one = prefix(i + 1, mid, hi)
-        pieces.append("<<]>[>")
-        zero = prefix(i + 1, lo, mid)
-        pieces.append("<]>")
-        one_arm = add_cost(one, 5)
-        zero_arm = add_cost(zero, 3)
-        return add_cost(merge_cost(one_arm, zero_arm), 4)
+        return None
+
+    prefix = _guarded_prefix(n, ids, pieces, leaf)
 
     plain = _plain_node(n, reflected, constant, ids, pieces)
 

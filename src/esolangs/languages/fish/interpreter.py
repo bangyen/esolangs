@@ -79,18 +79,21 @@ def _character(value: Number) -> str:
     return chr(value)
 
 
+def _nonzero(value: Number) -> Number:
+    """Return a nonzero operand or fail as Fish does on a zero divisor."""
+    if value == 0:
+        raise HaltError("something smells fishy...", hint="use a nonzero divisor")
+    return value
+
+
 def _divide(left: Number, right: Number) -> Number:
     """Divide, rejecting a zero divisor as Fish does."""
-    if right == 0:
-        raise HaltError("something smells fishy...", hint="use a nonzero divisor")
-    return left / right
+    return left / _nonzero(right)
 
 
 def _modulo(left: Number, right: Number) -> Number:
     """Take the remainder, rejecting a zero divisor as Fish does."""
-    if right == 0:
-        raise HaltError("something smells fishy...", hint="use a nonzero divisor")
-    return left % right
+    return left % _nonzero(right)
 
 
 #: Dyadic operators by command character; the nested table replaces the

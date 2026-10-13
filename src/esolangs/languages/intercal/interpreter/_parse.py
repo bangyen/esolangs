@@ -23,7 +23,10 @@ class _Node(NamedTuple):
     - ``("$", left, right)`` / ``("~", left, right)``: mingle / select.
     - ``("sub", sigil, number, subscripts)``: an array element.
     - ``("array", sigil, number)``: a whole array (an I/O item).
-    - ``("calculate", target, expression)``; ``("dimension", key, sizes)``.
+    - ``("calculate", target, expression)``;
+      ``("dimension", key, sizes)``: a DIMENSION command, where ``key`` is
+      a ``_DimensionKey`` (``sigil`` and ``number`` fields naming the array)
+      and ``sizes`` is a tuple of dimension expressions.
     - ``("next", label)``; ``("forget" | "resume", expression)``;
       ``("stash" | "retrieve" | "ignore" | "remember", keys)``;
       ``("abstain", target, count)``; ``("reinstate", target)``;
@@ -38,6 +41,17 @@ class _Node(NamedTuple):
 
 
 type _Key = tuple[str, int]
+
+
+class _DimensionKey(NamedTuple):
+    """A ``("dimension", key, sizes)`` node's key: the array's sigil and number.
+
+    Hashable, so it serves as a dict key in ``_handle_dimension``; it
+    compares equal to the plain ``(sigil, number)`` tuple other nodes use.
+    """
+
+    sigil: str
+    number: int
 
 _MINGLES = "$¢£¤€"
 _UNARIES = "&V?"
@@ -307,7 +321,7 @@ class _Parser:
             dimensions = [self.expression()]
             while self.keyword("BY"):
                 dimensions.append(self.expression())
-            return _Node("dimension", (sigil, number), tuple(dimensions))
+            return _Node("dimension", _DimensionKey(sigil, number), tuple(dimensions))
         return _Node("calculate", target, self.expression())
 
     def command(self) -> _Node:

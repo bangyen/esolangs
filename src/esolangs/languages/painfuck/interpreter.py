@@ -268,7 +268,8 @@ def _scan_c_run(prog: str, ind: int, n: int) -> tuple[str, int, int]:
     ``7**3``.  A ``t`` run after the ``c`` run repeats the ``c`` itself:
     ``ct`` is four ``c``s, ``7 ** 4``; ``ctt`` thirteen, ``7 ** 13``.  Read
     here, not by the ``t`` executing (that made ``pt`` and ``ct`` unable to
-    both be right).  The run loop already pulled the next char into ``c``.
+    both be right).  The scan loop above already pulled the next char into
+    ``c``.
     """
     rep = 1
     while True:

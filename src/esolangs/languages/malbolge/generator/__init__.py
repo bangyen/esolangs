@@ -412,13 +412,12 @@ _F_PREP = (
     ((95, "rot K0"), (56, "rot rot rot rot K0")),
     ((59, "rot rot rot rot K0"), (110, "rot K0")),
 )
-#: The level-3 readout pair: ``crazy(crazy(A, 42646), 16402)`` has top trits
-#: 0 and 2.  Each pair of cells is prepared by one chained ``p`` over all-1
-#: cells, from ``A = 45927`` (``g`` 63 rotated four times) and ``A = 32805``
-#: (45, four); spare all-1 cells between them swap ``A`` back.
+#: The level-3 readout pair: ``crazy(crazy(A, _L3_CELL_A), _L3_CELL_B)`` has top
+#: trits 0 and 2.  Each pair of cells is prepared by one chained ``p`` over
+#: all-1 cells, from ``A = 45927`` (``g`` 63 rotated four times) and
+#: ``A = 32805`` (45, four); spare all-1 cells between them swap ``A`` back.
 _L3_CELL_A = 42646
 _L3_CELL_B = 16402
-_F_LEVEL3 = (_L3_CELL_A, _L3_CELL_B)
 _F_LEVEL3_SEEDS = ((63, 4), (45, 4))
 #: The selector: a cell (``g`` 33) takes ``p`` with each input, rotated
 #: eight and then six times, and ``p`` over the prepared cells then gives
@@ -512,7 +511,7 @@ def _f_tables() -> tuple[
                     if lvl < 2:
                         a = _crazy(a, prep[op.index][lvl])
                     else:
-                        a = _crazy(_crazy(a, _F_LEVEL3[0]), _F_LEVEL3[1])
+                        a = _crazy(_crazy(a, _L3_CELL_A), _L3_CELL_B)
                     tables[lvl][op.index][row] = a + 1 + _F_OFFSETS[op.index][lvl]
     reach = [[1] * rows for _ in range(4)]
     count = Counter(tables[0][c][row] for c in range(4) for row in range(rows))

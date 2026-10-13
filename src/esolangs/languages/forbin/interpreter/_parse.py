@@ -53,24 +53,28 @@ class _Parser:
     def __init__(self, text: str) -> None:
         self.text = text
         self.pos = 0
-        self.n = len(text)
+        self.length = len(text)
         self.initializers: list[_Statement] = []
         self._definition_scopes: list[dict[str, _Function]] = []
 
     def _skip_ws(self) -> None:
-        while self.pos < self.n:
+        while self.pos < self.length:
             c = self.text[self.pos]
             if c in " \t\r\n":
                 self.pos += 1
-            elif c == "/" and self.pos + 1 < self.n and self.text[self.pos + 1] == "/":
-                while self.pos < self.n and self.text[self.pos] not in "\r\n":
+            elif (
+                c == "/"
+                and self.pos + 1 < self.length
+                and self.text[self.pos + 1] == "/"
+            ):
+                while self.pos < self.length and self.text[self.pos] not in "\r\n":
                     self.pos += 1
             else:
                 return
 
     def _peek(self) -> str:
         self._skip_ws()
-        return self.text[self.pos] if self.pos < self.n else ""
+        return self.text[self.pos] if self.pos < self.length else ""
 
     def _fail(self, msg: str) -> NoReturn:
         raise syntax_error(
@@ -83,19 +87,19 @@ class _Parser:
 
     def _expect(self, ch: str) -> None:
         self._skip_ws()
-        if self.pos >= self.n or self.text[self.pos] != ch:
+        if self.pos >= self.length or self.text[self.pos] != ch:
             self._fail(f"expected {ch!r}")
         self.pos += 1
 
     def _ident(self) -> str:
         self._skip_ws()
-        if self.pos >= self.n or not (
+        if self.pos >= self.length or not (
             self.text[self.pos].isalpha() or self.text[self.pos] == "_"
         ):
             self._fail("expected an identifier")
         start = self.pos
         self.pos += 1
-        while self.pos < self.n and (
+        while self.pos < self.length and (
             self.text[self.pos].isalnum() or self.text[self.pos] == "_"
         ):
             self.pos += 1
@@ -103,7 +107,7 @@ class _Parser:
 
     def _value(self) -> _ValueNode:
         self._skip_ws()
-        if self.pos >= self.n:
+        if self.pos >= self.length:
             self._fail("expected a value")
         c = self.text[self.pos]
         if c == "!":
@@ -228,13 +232,13 @@ class _Parser:
             if self._peek() == ",":
                 self.pos += 1
                 self._skip_ws()
-                if self.pos < self.n and (
+                if self.pos < self.length and (
                     self.text[self.pos].isalpha() or self.text[self.pos] == "_"
                 ):
                     params.append(self._ident())
                     continue
                 break
-            if self.pos < self.n and (
+            if self.pos < self.length and (
                 self.text[self.pos].isalpha() or self.text[self.pos] == "_"
             ):
                 params.append(self._ident())
@@ -249,7 +253,7 @@ class _Parser:
         self._definition_scopes.append(nested)
         while True:
             self._skip_ws()
-            if self.pos >= self.n:
+            if self.pos >= self.length:
                 self._fail("unterminated block, expected '}'")
             if self.text[self.pos] == "}":
                 self.pos += 1
@@ -272,14 +276,14 @@ class _Parser:
         self._skip_ws()
         if self.text.startswith("return", self.pos):
             j = self.pos + 6
-            if j >= self.n or not (self.text[j].isalnum() or self.text[j] == "_"):
+            if j >= self.length or not (self.text[j].isalnum() or self.text[j] == "_"):
                 self.pos = j
                 value = self._value()
                 self._semi()
                 return ("return", value)
         if self.text.startswith("for", self.pos):
             j = self.pos + 3
-            if j >= self.n or not (self.text[j].isalnum() or self.text[j] == "_"):
+            if j >= self.length or not (self.text[j].isalnum() or self.text[j] == "_"):
                 self.pos = j
                 spec = self._for_spec()
                 body, nested = self._block()
@@ -326,7 +330,7 @@ class _Parser:
         funcs: dict[str, _Function] = {}
         while True:
             self._skip_ws()
-            if self.pos >= self.n:
+            if self.pos >= self.length:
                 return funcs
             start = self.pos
             name, params = self._header()

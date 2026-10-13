@@ -27,7 +27,7 @@ _ADD = 7
 #: first cell of instruction ``i``.
 _WORD = 4
 #: Operand offsets within one instruction word.
-_A_OPERAND, _B_OPERAND, _C_OPERAND, _D_OPERAND = 0, 1, 2, 3
+_A_OPERAND, _B_OPERAND, _C_OPERAND = 0, 1, 2
 
 
 def _cell(instruction: int, operand: int = _A_OPERAND) -> int:

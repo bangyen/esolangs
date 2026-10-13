@@ -56,6 +56,7 @@ class _Grain[T]:
         is_zero: Callable[[T], bool],
         weight: Callable[[T], int],
         is_one: Callable[[T, int], bool],
+        needs_weight: bool,
         xor: Callable[[T, T], T],
         child: Callable[[T, T, int], None],
         downgrade: Callable[[T, T, int], bool],
@@ -65,6 +66,7 @@ class _Grain[T]:
         self.is_zero = is_zero
         self.weight = weight
         self.is_one = is_one
+        self.needs_weight = needs_weight
         self.xor = xor
         self.child = child
         self.downgrade = downgrade
@@ -142,7 +144,9 @@ def _arm_expression(
             pieces.append(f"{op} ")
             grain.child(kept, kept_anf, bit - 1)
             pieces.append(" ")
-        if grain.is_one(operand_anf, grain.weight(operand_anf)):
+        # The scalar grain's is_one ignores the weight, so skip computing it.
+        operand_weight = grain.weight(operand_anf) if grain.needs_weight else 0
+        if grain.is_one(operand_anf, operand_weight):
             pieces.append(literal)
         else:
             pieces.append(f"& {literal} ")
@@ -178,6 +182,7 @@ def _arm_expression(
         is_zero=lambda value: not value,
         weight=count,
         is_one=lambda value, _w: value == 1,
+        needs_weight=False,
         xor=lambda a, b: a ^ b,
         child=scalar_leaf,
         downgrade=lambda _table, _anf, _bit: False,
@@ -188,6 +193,7 @@ def _arm_expression(
         is_zero=lambda value: not any(value),
         weight=weight,
         is_one=lambda value, w: w == 1 and (value[0] & 1) == 1,
+        needs_weight=True,
         xor=lambda a, b: [x ^ y for x, y in zip(a, b, strict=True)],
         child=leaf,
         downgrade=word_downgrade,

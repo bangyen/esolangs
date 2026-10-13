@@ -24,9 +24,9 @@ from esolangs.languages.polynomial.interpreter.roots import (
     _divide_out_quadratics,
     _divide_quadratic,
     _factor_roots,
+    _is_proven_prime,
     _remainder_roots,
     _Root,
-    _is_proven_prime,
     _squarefree_mod,
 )
 from esolangs.runtime.io import IO
