@@ -164,6 +164,8 @@ _PARITY_TWO = "21 $/3 $/7 1/25 2/5"
 _PARITY_PAIR = ("1", "5")
 #: Width < 4 cannot hold "1/25", so it takes the binary form.
 _PARITY_BINARY = "21 $/3 $/7 1/4"
+#: The table both parity programs compute.
+_PARITY_TABLE = "0110"
 
 
 def fractran(truth_table: str, width: int | None = None) -> str:
@@ -180,11 +182,7 @@ def fractran(truth_table: str, width: int | None = None) -> str:
         narrow = _plain(truth_table, n, small_root=True)
         if _widest(narrow) < floor:
             program = narrow
-    if (
-        n == 2
-        and _widest(program) > width
-        and all(int(bit) == row.bit_count() % 2 for row, bit in enumerate(truth_table))
-    ):
+    if truth_table == _PARITY_TABLE and _widest(program) > width:
         program = _PARITY_BINARY if width < 4 else _PARITY_TWO
     return wrap_program(program, "fractran", width)
 
@@ -203,15 +201,15 @@ def fractran_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 def _balance(table: str, default: str) -> str:
     """Balance ordinary fractions, small-root fractions and parity phases."""
     n = _validate_truth_table(table)
-    floor = max(map(len, default.split()))
+    floor = _widest(default)
     narrow = _plain(table, n, small_root=True)
-    if max(map(len, narrow.split())) >= floor:
+    if _widest(narrow) >= floor:
         narrow = default
     regimes: list[tuple[str, int, int | None]] = [(default, floor, None)]
     upper = floor - 1
     lower = 1
-    if n == 2 and all(int(bit) == row.bit_count() % 2 for row, bit in enumerate(table)):
-        lower = max(map(len, narrow.split()))
+    if table == _PARITY_TABLE:
+        lower = _widest(narrow)
         regimes.extend(
             [
                 (_PARITY_BINARY, 1, min(3, lower - 1, upper)),

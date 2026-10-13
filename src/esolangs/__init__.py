@@ -29,6 +29,7 @@ from typing import Any, TypedDict, cast
 
 from esolangs._language import Language
 from esolangs.compressed import CompressedText
+from esolangs.debugger import make_debugger
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -96,6 +97,7 @@ from esolangs.runtime._validate import (
     check_scale,
     check_seed,
     check_timeout,
+    check_whole,
     check_width,
 )
 from esolangs.runtime.io import ScriptedIO
@@ -609,12 +611,8 @@ def _run_bounded(
     with ``partial_output``. Works on Windows and worker threads; loading
     and individual steps cannot be interrupted.
     """
-    from esolangs.runtime._validate import check_whole
-
     check_whole(max_steps, "max_steps")
     check_timeout(timeout)
-    from esolangs.debugger import make_debugger
-
     debugger = make_debugger(
         language, program, stdin=stdin, scale=scale, settings=settings
     )

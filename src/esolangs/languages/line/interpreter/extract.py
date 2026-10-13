@@ -12,8 +12,10 @@ star-probe: a 4-way crossing is not a local per-pixel question.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import gcd
 
 from esolangs.raster import png
+from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error
 
 from . import lattice
@@ -77,8 +79,6 @@ def crop_to_content(mask: Mask, margin: int = 2) -> Mask:
 
 def detect_scale(mask: Mask) -> int:
     """Return the largest uniform grid anchored to the ink's top-left."""
-    from math import gcd
-
     bounds = mask.bounds()
     if bounds is None:
         return 1
@@ -143,8 +143,6 @@ def normalize_scale(mask: Mask, scale: int | None = None) -> Mask:
     if scale is None:
         scale = detect_scale(mask)
     else:
-        from esolangs.runtime._validate import check_scale
-
         check_scale(scale)
         bounds = mask.bounds()
         if bounds is not None:

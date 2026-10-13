@@ -9,10 +9,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import argparse
 import ast
 import builtins
+import inspect
 import pathlib
 import re
 import shlex
-import sys
 import tomllib
 
 import esolangs
@@ -293,9 +293,6 @@ def render_api_section() -> str:
     single README sentence is what produced a thirteen-name run-on; this
     list carries the same guarantee and no sentence.
     """
-    import inspect
-    import re
-
     lines = []
     for name in esolangs.__all__:
         member = getattr(esolangs, name)

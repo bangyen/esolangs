@@ -267,24 +267,28 @@ class _Parser:
                 self.pos = save
             stmts.append(self._statement())
 
+    def _keyword(self, word: str) -> bool:
+        """Consume ``word`` if it stands whole here; ``format`` is not ``for``."""
+        if not self.text.startswith(word, self.pos):
+            return False
+        j = self.pos + len(word)
+        if j < self.length and (self.text[j].isalnum() or self.text[j] == "_"):
+            return False
+        self.pos = j
+        return True
+
     def _statement(self) -> _Statement:
         self._skip_ws()
-        if self.text.startswith("return", self.pos):
-            j = self.pos + 6
-            if j >= self.length or not (self.text[j].isalnum() or self.text[j] == "_"):
-                self.pos = j
-                value = self._value()
-                self._semi()
-                return ("return", value)
-        if self.text.startswith("for", self.pos):
-            j = self.pos + 3
-            if j >= self.length or not (self.text[j].isalnum() or self.text[j] == "_"):
-                self.pos = j
-                spec = self._for_spec()
-                body, nested = self._block()
-                # Top-level parsing only admits definitions and assignments.
-                self._definition_scopes[-1].update(nested)
-                return ("for", spec, body)
+        if self._keyword("return"):
+            value = self._value()
+            self._semi()
+            return ("return", value)
+        if self._keyword("for"):
+            spec = self._for_spec()
+            body, nested = self._block()
+            # Top-level parsing only admits definitions and assignments.
+            self._definition_scopes[-1].update(nested)
+            return ("for", spec, body)
         first = self._value()
         self._skip_ws()
         if self._peek() == "=":

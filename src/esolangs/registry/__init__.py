@@ -84,8 +84,7 @@ def example_stems() -> dict[str, str]:
     from esolangs.generation import examples as _examples
 
     return {
-        canonical_id(stem.replace("-", " ")): stem
-        for stem in _examples.BOOLEAN_EXAMPLES
+        example.language: stem for stem, example in _examples.BOOLEAN_EXAMPLES.items()
     }
 
 
@@ -94,8 +93,8 @@ def _examples_by_id() -> dict[str, BooleanExample]:
     from esolangs.generation import examples as _examples
 
     return {
-        canonical_id(stem.replace("-", " ")): example
-        for stem, example in _examples.BOOLEAN_EXAMPLES.items()
+        example.language: example
+        for example in _examples.BOOLEAN_EXAMPLES.values()
         if example.setters is not None
     }
 

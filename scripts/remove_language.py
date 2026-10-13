@@ -316,22 +316,39 @@ def _str_value(node: ast.AST) -> str | None:
     return None
 
 
-def _inline_items(
-    node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
+#: How each container spells itself once every item is cut.
+_EMPTY = {ast.List: b"[]", ast.Set: b"set()", ast.Tuple: b"()"}
+
+
+def _container_items(
+    node: ast.AST,
+    span: Callable[[ast.AST], tuple[int, int]],
+    value_of: Callable[[ast.AST], str | None],
+    sequences: tuple[type[ast.AST], ...],
 ) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
-    """Extract string-constant items from a dict, list, set, or tuple."""
+    """Extract ``(start, end, value)`` items from a dict or one of ``sequences``.
+
+    Returns the items and the container's empty spelling, or None for any
+    other node or a dict with a ``**`` entry.
+    """
     if isinstance(node, ast.Dict) and None not in node.keys:
         items = [
-            (span(k)[0], span(v)[1], _str_value(k))
+            (span(k)[0], span(v)[1], value_of(k))
             for k, v in zip(node.keys, node.values, strict=True)
             if k is not None
         ]
         return items, b"{}"
-    if isinstance(node, ast.List | ast.Set | ast.Tuple):
-        items = [(*span(e), _str_value(e)) for e in node.elts]
-        empty = {ast.List: b"[]", ast.Set: b"set()", ast.Tuple: b"()"}[type(node)]
-        return items, empty
+    if isinstance(node, ast.List | ast.Set | ast.Tuple) and isinstance(node, sequences):
+        items = [(*span(e), value_of(e)) for e in node.elts]
+        return items, _EMPTY[type(node)]
     return None
+
+
+def _inline_items(
+    node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
+) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
+    """Extract string-constant items from a dict, list, set, or tuple."""
+    return _container_items(node, span, _str_value, (ast.List, ast.Set, ast.Tuple))
 
 
 def _drop_inline_items(path: Path, keys: set[str]) -> int:
@@ -523,17 +540,22 @@ def _imported(files: list[str]) -> dict[str, set[str]]:
             tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
         except (OSError, SyntaxError):
             continue
-        for node in ast.walk(tree):
-            names: list[str] = []
-            if isinstance(node, ast.ImportFrom) and node.module and not node.level:
-                names = [node.module]
-                names += [f"{node.module}.{alias.name}" for alias in node.names]
-            elif isinstance(node, ast.Import):
-                names = [alias.name for alias in node.names]
-            for module in names:
-                if module.startswith(("esolangs.", "tests.")):
-                    users.setdefault(module, set()).add(path)
+        for module in _import_names(tree):
+            if module.startswith(("esolangs.", "tests.")):
+                users.setdefault(module, set()).add(path)
     return users
+
+
+def _import_names(tree: ast.AST) -> set[str]:
+    """Return every absolute module, and module.name, the tree imports."""
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            names.add(node.module)
+            names.update(f"{node.module}.{alias.name}" for alias in node.names)
+        elif isinstance(node, ast.Import):
+            names.update(alias.name for alias in node.names)
+    return names
 
 
 def _within(path: str, doomed: set[Path]) -> bool:
@@ -647,16 +669,9 @@ def _dead_test_files(
             tree = ast.parse(full.read_text(encoding="utf-8"))
         except (OSError, SyntaxError):
             continue
-        imports: set[str] = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module and not node.level:
-                imports.add(node.module)
-                imports.update(f"{node.module}.{alias.name}" for alias in node.names)
-            elif isinstance(node, ast.Import):
-                imports.update(alias.name for alias in node.names)
         found = {
             m
-            for m in imports
+            for m in _import_names(tree)
             if m in {"esolangs", "tests"} or m.startswith(("esolangs.", "tests."))
         }
         if found and all(_gone(m, gone_modules) for m in found):
@@ -721,29 +736,12 @@ def _name_items(
     node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
 ) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
     """Extract ``ast.Name`` items from a dict, list, or set."""
-    if isinstance(node, ast.Dict):
-        if None in node.keys:
-            return None
-        items = [
-            (
-                span(key)[0],
-                span(value)[1],
-                key.id if isinstance(key, ast.Name) else None,
-            )
-            for key, value in zip(node.keys, node.values, strict=True)
-            if key is not None
-        ]
-        return items, b"{}"
-    if isinstance(node, ast.List | ast.Set):
-        items = [
-            (
-                *span(element),
-                element.id if isinstance(element, ast.Name) else None,
-            )
-            for element in node.elts
-        ]
-        return items, {ast.List: b"[]", ast.Set: b"set()"}[type(node)]
-    return None
+    return _container_items(
+        node,
+        span,
+        lambda item: item.id if isinstance(item, ast.Name) else None,
+        (ast.List, ast.Set),
+    )
 
 
 def _drop_name_items(path: Path, names: set[str]) -> int:

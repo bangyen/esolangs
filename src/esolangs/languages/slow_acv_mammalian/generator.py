@@ -37,6 +37,7 @@ from esolangs.languages.slow_acv_mammalian._sums import (
     _MODULUS,
     _W,
     _aim,
+    _leaf,
     _replay,
     _Sums,
 )
@@ -557,31 +558,6 @@ def _arm_core_len(st: _Sums, weight: int, pool: int | None) -> int:
     hw = (st.hw + _W_STEP * (out - 1)) % _MODULUS
     raise_len, final_hw = _w_raise_len(hw, st.nw, weight)
     return launder + out + raise_len + _route_len(final_hw, _W, 0)
-
-
-def _leaf(digit: int, *, unit: int = _LEAF_UNIT) -> list[str]:
-    """Return the tokens run ``digit`` executes, padded to one slot.
-
-    ``EXCRETE`` clears the accumulator the dispatch left, the ``SPRINT``
-    rides array 16's head to a print array, ``CONSUME`` lifts its middle
-    cell -- ``'0'`` or ``'1'`` -- and ``PRONOUNCE`` writes it.  The
-    closing ``EXCRETE`` leaves a nonzero cell so the ``LEAPFROG`` fires,
-    and with a zero accumulator it can only aim before the program, which
-    halts the run.  One SEED separates the two print arrays
-    (:func:`_dispatch_head`), so the digit *is* the step count, and
-    nothing here reads array 16's sum: every leaf is the same length
-    whatever row reached it.
-    """
-    body = [
-        "EXCRETE",
-        *["SEED"] * digit,
-        "SPRINT",
-        "CONSUME",
-        "PRONOUNCE",
-        "EXCRETE",
-        "LEAPFROG",
-    ]
-    return [*body, *["SEED"] * (unit - len(body))]
 
 
 def _dispatch_head(hw: int) -> int:

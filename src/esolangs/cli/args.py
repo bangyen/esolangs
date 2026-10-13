@@ -22,7 +22,8 @@ from esolangs.cli.hints import (
 )
 from esolangs.exceptions import EsolangError
 from esolangs.generation.wrap import DEFAULT_WIDTH
-from esolangs.runtime._validate import check_timeout
+from esolangs.registry import resolve
+from esolangs.runtime._validate import check_scale, check_timeout
 from esolangs.settings import DialectSettings, dialect_choices
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -216,8 +217,6 @@ def _check_count(
         # resolver can match the joined words; it was never asked.
         joined = " ".join(args)
         try:
-            from esolangs.registry import resolve
-
             resolved = resolve(joined)
         except EsolangError:
             resolved = None
@@ -284,7 +283,7 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
             i += 1
             continue
         width = _integer(value, "--width")
-        if width is not None and width <= 0:
+        if width <= 0:
             _fail(f"--width must be positive, got {width}")
     return args, width, bare
 
@@ -424,14 +423,11 @@ def _scale_of(options: dict[str, str]) -> int | None:
     """Read a positive integer pixel scale."""
     if "--scale" not in options:
         return None
-    from esolangs.exceptions import ArgumentError
-    from esolangs.runtime._validate import check_scale
-
     try:
         return check_scale(
             _integer(options["--scale"], "--scale", kind="a positive integer")
         )
-    except (ValueError, ArgumentError):
+    except ValueError:
         _fail(f"--scale must be a positive integer, got {options['--scale']!r}")
         raise  # pragma: no cover - _fail exits
 

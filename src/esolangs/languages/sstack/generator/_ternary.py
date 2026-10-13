@@ -16,7 +16,6 @@ from esolangs.languages.sstack.generator._binary import (
 )
 
 _PROLOGUE = '"49/b""48/c""1/f""2/g""3/a"'
-type _Emit = Callable[[str | int], None]
 
 
 def _width(classes: int) -> int:

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, replace
 
-from esolangs.languages.slow_acv_mammalian._sums import _aim
+from esolangs.languages.slow_acv_mammalian._sums import _aim, _crossing_head
 
 
 @dataclass
@@ -25,12 +25,9 @@ class _State:
         head = (value - self.rest) % self.io_modulus
         tokens = []
         if head == 255:
-            # Adjacent sums crossing 127/128 (or 255/256) XOR to 255
-            # in the low byte.  The final head is 254-2*value mod 256,
-            # hence even and reachable despite the missing head 255.
-            first = (127 - self.rest) % 256
-            if first >= 254:
-                first = (255 - self.rest) % 256
+            # The final head is 254-2*value mod 256, hence even and
+            # reachable despite the missing head 255.
+            first = _crossing_head(self.rest)
             tokens += self.seed((first - self.head) % 255)
             self.acc = self.head + self.rest
             tokens += ["DIGEST"]

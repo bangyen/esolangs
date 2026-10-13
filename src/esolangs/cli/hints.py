@@ -150,11 +150,6 @@ def _stdin_hint(facts: LanguageInfo) -> str:
         )
     return "; try: esolangs encode <language> <bits> | ..."
 
-    # No note about ``--table`` here.  The first draft printed one whenever
-    # it was absent, which is every call that is simply checking a shape --
-    # advice on correct input, which is the thing this CLI has spent several
-    # rounds removing.  The private stdin check says what the flag adds.
-
 
 def _input_sentence(facts: LanguageInfo) -> str:
     """Describe this language's stdin in one line, with an example."""

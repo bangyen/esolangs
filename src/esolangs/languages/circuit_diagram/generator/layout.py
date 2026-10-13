@@ -446,3 +446,13 @@ def _layout_area(layout: _Layout) -> int:
     """Return the bounding-box area, the model-selection metric."""
     height, width = layout.bounds()
     return height * width
+
+
+def _check_order(order: list[int], n: int, ports: int, what: str) -> None:
+    """Refuse an input order that is not ``n`` distinct ports below ``ports``."""
+    if (
+        len(order) != n
+        or len(set(order)) != n
+        or any(index < 0 or index >= ports for index in order)
+    ):
+        raise ValueError(f"{what} input order must name distinct original ports")

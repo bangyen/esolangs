@@ -13,8 +13,9 @@ from .hlayout import (
     _h_route_literals,
     _h_route_results,
     _HTermPlan,
+    _merge_results,
 )
-from .layout import _Layout, _Shape
+from .layout import _check_order, _Layout, _Shape
 
 
 @dataclass(frozen=True)
@@ -137,12 +138,7 @@ def _pool_inputs(
     n = len(table).bit_length() - 1
     order = list(range(n)) if order is None else order
     ports = n if ports is None else ports
-    if (
-        len(order) != n
-        or len(set(order)) != n
-        or any(index < 0 or index >= ports for index in order)
-    ):
-        raise ValueError("cofactor pool input order must name distinct original ports")
+    _check_order(order, n, ports, "cofactor pool")
     return n, order, ports
 
 
@@ -386,17 +382,7 @@ class _PoolBuild:
 
     def merge_results(self) -> set[int]:
         """OR sibling values up the tree; return the prefixes that get a gate."""
-        result_gates = set()
-        for depth in range(self.p - 1, -1, -1):
-            for prefix in self.levels[depth]:
-                lo = self.values.get(2 * prefix)
-                hi = self.values.get(2 * prefix + 1)
-                if lo is not None and hi is not None:
-                    self.values[prefix] = self.serial.fresh()
-                    result_gates.add(prefix)
-                else:
-                    self.values[prefix] = lo if lo is not None else hi
-        return result_gates
+        return _merge_results(self.values, self.levels, self.serial.fresh)
 
     def route_suffix_inputs(self) -> None:
         """Reserve and feed the suffix literal lanes, then park unused ports."""

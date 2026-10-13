@@ -11,7 +11,10 @@ Larger folds compare fixed-size cofactor pools against this lattice over
 essential inputs; ignored inputs keep their original ports and drive no gates.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
+from itertools import count
 from typing import cast
 
 from esolangs.languages.circuit_diagram.generator.hcells import _HCellLayout
@@ -184,23 +187,13 @@ def _h_term_plan(table: str, *, port_inputs: int | None = None) -> _HTermPlan:
     }
     literal_start = len(signals)
 
-    next_signal = literal_start + 2 * inputs
     results: dict[int, int | None] = {
         prefix: signals[prefix] if table[prefix - (1 << inputs)] == "1" else None
         for prefix in sites
         if _depth(prefix) == inputs
     }
-    result_gates: set[int] = set()
-    for depth in range(inputs - 1, -1, -1):
-        for prefix in levels[depth]:
-            zero = results.get(2 * prefix)
-            one = results.get(2 * prefix + 1)
-            if zero is not None and one is not None:
-                results[prefix] = next_signal
-                next_signal += 1
-                result_gates.add(prefix)
-            else:
-                results[prefix] = zero if zero is not None else one
+    serial = count(literal_start + 2 * inputs)
+    result_gates = _merge_results(results, levels, partial(next, serial))
     result_signal = results[1]
     if result_signal is None:  # handled by the scalar constant construction
         raise AssertionError("the H layout needs at least one selected minterm")
@@ -413,6 +406,26 @@ def _h_route_results(
                 if child_result is None:  # pragma: no cover - filtered above
                     raise AssertionError("missing result signal")
                 layout.route(result_points[child], target, child_result)
+
+
+def _merge_results(
+    results: dict[int, int | None], levels: list[list[int]], fresh: Callable[[], int]
+) -> set[int]:
+    """OR sibling results up the tree; return the prefixes that get a gate.
+
+    Two live children take a ``fresh()`` signal; one passes its own up.
+    """
+    gates = set()
+    for level in reversed(levels[:-1]):
+        for prefix in level:
+            zero = results.get(2 * prefix)
+            one = results.get(2 * prefix + 1)
+            if zero is not None and one is not None:
+                results[prefix] = fresh()
+                gates.add(prefix)
+            else:
+                results[prefix] = zero if zero is not None else one
+    return gates
 
 
 def _result_children(results: dict[int, int | None], prefix: int) -> list[int]:

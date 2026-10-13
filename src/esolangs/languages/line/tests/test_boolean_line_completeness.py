@@ -198,7 +198,6 @@ def test_complete_fold_wins_fallback_tie_and_keeps_first_fold(monkeypatch) -> No
     from esolangs.languages.line.tests.test_boolean_line_projection import _execute
 
     generator = import_module("esolangs.languages.line.generator")
-    forward = import_module("esolangs.languages.line.generator.forward")
     table = "0110"
     built = streaming_canvas(table, 10**9)
     assert built is not None
@@ -216,10 +215,10 @@ def test_complete_fold_wins_fallback_tie_and_keeps_first_fold(monkeypatch) -> No
 
     # Supply an equally sized, executable fallback to exercise the tie policy.
     monkeypatch.setattr(generator, "small_tree_canvas", lambda *_args, **_kw: plan())
-    monkeypatch.setattr(forward, "forward_canvas", first)
-    monkeypatch.setattr(forward, "destination_canvas", second)
+    monkeypatch.setattr(generator, "forward_canvas", first)
+    monkeypatch.setattr(generator, "destination_canvas", second)
     for builder in _STREAMING:
-        monkeypatch.setattr(forward, builder.__name__, lambda *_args, **_kw: None)
+        monkeypatch.setattr(generator, builder.__name__, lambda *_args, **_kw: None)
     _generate.cache_clear()
     try:
         image = generator.line(table)

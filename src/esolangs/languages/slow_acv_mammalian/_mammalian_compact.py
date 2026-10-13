@@ -4,7 +4,7 @@ from dataclasses import dataclass, field, replace
 from math import gcd, lcm
 
 from esolangs.generation.helpers import essential_inputs, read_at
-from esolangs.languages.slow_acv_mammalian._sums import _aim
+from esolangs.languages.slow_acv_mammalian._sums import _aim, _crossing_head, _leaf
 from esolangs.languages.slow_acv_mammalian.interpreter import MammalianModuli
 
 
@@ -91,11 +91,7 @@ class _Chain:
         head = (value - rest) % self.io_modulus
         tokens = []
         if head >= self.modulus:
-            # For 255-cell/256-I/O arithmetic, synthesize low byte 255
-            # before the final DIGEST; no SEED can make head 255.
-            first = (127 - rest) % 256
-            if first >= 254:
-                first = (255 - rest) % 256
+            first = _crossing_head(rest)
             tokens += self.set_head(state, first)
             state.acc = self.head(state) + rest
             tokens += ["DIGEST"]
@@ -373,16 +369,7 @@ class _Chain:
             for offset in range(1 << free):
                 suffix = int(f"{offset:0{free}b}"[::-1], 2)
                 digit = table[(group << free) | suffix]
-                leaf = [
-                    "EXCRETE",
-                    *["SEED"] * (int(digit) * self.digit_seeds),
-                    "SPRINT",
-                    "CONSUME",
-                    "PRONOUNCE",
-                    "EXCRETE",
-                    "LEAPFROG",
-                ]
-                tokens += leaf + ["SEED"] * (unit - len(leaf))
+                tokens += _leaf(int(digit) * self.digit_seeds, unit=unit)
         return " ".join(tokens)
 
 

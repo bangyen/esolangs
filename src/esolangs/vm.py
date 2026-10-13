@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
+from esolangs.exceptions import ArgumentError, InterpreterLimitError
 from esolangs.registry import resolve
 from esolangs.runtime._execution import (
     interpreter_errors,
@@ -668,8 +669,6 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     Raises on exhausted steps or an active machine that never self-halts. Repeated
     completion is safe: the post-halt step is idempotent by the VM contract.
     """
-    from esolangs.exceptions import ArgumentError, InterpreterLimitError
-
     if max_steps is not None:
         check_whole(max_steps, "max_steps")
     if not vm.self_halts and not vm.halted:

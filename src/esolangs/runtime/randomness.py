@@ -30,6 +30,15 @@ def draw(source: Randomness | None, upper: int) -> int:
     return source.randbelow(upper)
 
 
+def _check_upper(upper: int) -> None:
+    """Refuse an empty range, which has nothing to draw."""
+    if upper <= 0:
+        raise syntax_error(
+            f"upper bound must be positive, got {upper}",
+            "use an upper bound of at least 1",
+        )
+
+
 class Seeded:
     """A :class:`Randomness` backed by a seeded :class:`random.Random`.
 
@@ -47,11 +56,7 @@ class Seeded:
 
     def randbelow(self, upper: int) -> int:
         """Return a value in ``range(upper)``; an empty range raises."""
-        if upper <= 0:
-            raise syntax_error(
-                f"upper bound must be positive, got {upper}",
-                "use an upper bound of at least 1",
-            )
+        _check_upper(upper)
         return self._random.randrange(upper)
 
 
@@ -71,11 +76,7 @@ class FirstDraw:
 
     def randbelow(self, upper: int) -> int:
         """Return the chosen value once, then the seeded or pinned draws."""
-        if upper <= 0:
-            raise syntax_error(
-                f"upper bound must be positive, got {upper}",
-                "use an upper bound of at least 1",
-            )
+        _check_upper(upper)
         if self._first is not None:
             first, self._first = self._first, None
             return first % upper

@@ -1,7 +1,6 @@
 """Boolean-function generator for Algebraic Programming Language."""
 
 from collections.abc import Callable
-from itertools import pairwise
 from string import ascii_uppercase
 
 from esolangs.generation.helpers import (
@@ -151,14 +150,12 @@ def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     rather than a copy of every subtree per level.
     """
     n = _validate_truth_table(truth_table)
-    changes = [0]
-    for previous, current in pairwise(truth_table):
-        changes.append(changes[-1] + (previous != current))
+    is_constant = constant_span_test(truth_table)
     reads = _reads(n, " & ")
     pieces = [f"{_NOT}\n({reads}) | "]
 
     def constant(start: int, end: int) -> str | None:
-        return truth_table[start] if changes[start] == changes[end - 1] else None
+        return truth_table[start] if is_constant(start, end) else None
 
     def tree(start: int, end: int, depth: int) -> None:
         if (value := constant(start, end)) is not None:

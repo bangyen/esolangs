@@ -14,7 +14,7 @@ from esolangs.languages.circuit_diagram.generator import (
     _Dag,
     _finish_fold,
 )
-from esolangs.languages.circuit_diagram.generator.layout import _Layout
+from esolangs.languages.circuit_diagram.generator.layout import _check_order, _Layout
 
 
 class _SparseWork:
@@ -162,12 +162,7 @@ def sparse_mask_model(
     order = list(range(prefix)) if input_order is None else list(input_order)
     if port_inputs is None:
         port_inputs = prefix
-    if (
-        len(order) != prefix
-        or len(set(order)) != prefix
-        or any(index < 0 or index >= port_inputs for index in order)
-    ):
-        raise ValueError("fold input order must name distinct original ports")
+    _check_order(order, prefix, port_inputs, "fold")
     if not work.spend((len(dag[0]) + port_inputs) ** 2):
         return None
     # Unbanded folds make O(nodes+ports) taps; each interval guard scans at
@@ -175,10 +170,6 @@ def sparse_mask_model(
     builder = _Builder()
     ports = [builder.input_bus() for _ in range(port_inputs)]
     rails = [ports[order[level]] for level in range(prefix)]
-    complemented = dag[2]
-    selectors: list[list[int | None]] = [
-        [rail, builder.invert(rail) if level in complemented else None]
-        for level, rail in enumerate(rails)
-    ]
+    selectors = builder.selectors(rails, dag[2])
     builder.band_start = builder.next_column
     return _finish_fold(builder, selectors, dag)

@@ -280,16 +280,15 @@ class _Machine:
     def step(self) -> None:
         if self.halted:
             return
-        (col, row, _dx, _dy), grid, _stack, _string, _done = self.state
+        (col, row, _, _), grid, stack, string, _ = self.state
         command = grid[row][col]
-        interpreting = not _string
+        interpreting = not string
         char_input = self.io.input_char() if interpreting and command == "~" else None
         # An empty stack pops as 0, so it is a zero divisor like any other and
         # must read a result too.  Guarding on a non-empty stack instead made
         # `0/` read while `/` halted, on the same divisor.
         needs_number = interpreting and (
-            command == "&"
-            or (command in "/%" and (not self.state[2] or self.state[2][0] == 0))
+            command == "&" or (command in "/%" and (not stack or stack[0] == 0))
         )
         number_input = None
         if needs_number:

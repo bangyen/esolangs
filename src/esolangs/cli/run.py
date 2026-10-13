@@ -40,6 +40,7 @@ from esolangs.cli.io import (
     _write_output,
 )
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
+from esolangs.runtime._isolated import check_memory
 from esolangs.settings import dialect_options
 
 
@@ -80,8 +81,6 @@ def _run(rest: list[str]) -> None:
     if "--max-memory" in options:
         max_memory = _integer(options["--max-memory"], "--max-memory")
         with _errors():
-            from esolangs.runtime._isolated import check_memory
-
             check_memory(max_memory, isolated=isolated)
     rest = _split_positional(
         rest,
@@ -181,16 +180,16 @@ def _run(rest: list[str]) -> None:
     # result with no trailing newline runs into the next shell prompt.
     if output and not output.endswith("\n") and sys.stdout.isatty():
         sys.stdout.write("\n")
-    # A program that printed nothing is a legal program, and also what you
-    # get from an empty file or the wrong path.  Say so on a terminal, where
-    # the alternative is a blank line and no way to tell the two apart; a
-    # pipe still receives exactly the empty output.
     empty = isinstance(program, str) and not program.strip()
     if empty:
         # Legal, and almost never what was meant: an empty file is what you
         # get from a redirect that failed or a generate that was never run.
         # Said on stderr, so a pipeline still receives the empty output.
         _note(f"note: {path} is empty, so there was no program to run")
+    # A program that printed nothing is a legal program, and also what you
+    # get from an empty file or the wrong path.  Say so on a terminal, where
+    # the alternative is a blank line and no way to tell the two apart; a
+    # pipe still receives exactly the empty output.
     if not output and sys.stdout.isatty():
         sys.stderr.write(
             f"{language}: the program ran and printed nothing"

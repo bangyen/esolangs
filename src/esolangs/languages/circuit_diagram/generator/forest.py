@@ -78,10 +78,7 @@ def _suffix_forest(words: list[str], inputs: int) -> _Forest:
         live.add(node)
     builder = _ForestBuilder(narrow=True)
     rails = [builder.input_bus() for _ in range(inputs)]
-    selectors: list[list[int | None]] = [
-        [rail, builder.invert(rail) if index in needed else None]
-        for index, rail in enumerate(rails)
-    ]
+    selectors = builder.selectors(rails, needed)
     builder.band_start = builder.next_column
     # Reserve one four-column gate group per live result. A fixed 128-column
     # cap forced repeated carries: the eight-root n=14 probe timed out at 30s.

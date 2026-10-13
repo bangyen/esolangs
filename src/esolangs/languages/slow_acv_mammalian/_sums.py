@@ -152,3 +152,38 @@ def _apply(st: _Sums, tok: str, bit: int) -> None:
         if not 0 <= st.acc < len(cells):
             raise AssertionError(f"SPRINT index {st.acc} outside array {st.ptr}")
         st.ptr = (st.ptr + cells[st.acc]) % _ARRAYS
+
+
+def _leaf(digit: int, *, unit: int) -> list[str]:
+    """Return the tokens run ``digit`` executes, padded to one slot.
+
+    ``EXCRETE`` clears the accumulator the dispatch left, the ``SPRINT``
+    rides array 16's head to a print array, ``CONSUME`` lifts its middle
+    cell -- ``'0'`` or ``'1'`` -- and ``PRONOUNCE`` writes it.  The
+    closing ``EXCRETE`` leaves a nonzero cell so the ``LEAPFROG`` fires,
+    and with a zero accumulator it can only aim before the program, which
+    halts the run.  One SEED separates the two print arrays
+    (``generator._dispatch_head``), so the digit *is* the step count, and
+    nothing here reads array 16's sum: every leaf is the same length
+    whatever row reached it.
+    """
+    body = [
+        "EXCRETE",
+        *["SEED"] * digit,
+        "SPRINT",
+        "CONSUME",
+        "PRONOUNCE",
+        "EXCRETE",
+        "LEAPFROG",
+    ]
+    return [*body, *["SEED"] * (unit - len(body))]
+
+
+def _crossing_head(rest: int) -> int:
+    """Return a head whose sum and successor's sum XOR to 255 in the low byte.
+
+    No SEED makes head 255 in 255-cell arithmetic, so the I/O byte 255 is
+    synthesized from adjacent sums crossing 127/128 (or 255/256).
+    """
+    first = (127 - rest) % 256
+    return (255 - rest) % 256 if first >= 254 else first

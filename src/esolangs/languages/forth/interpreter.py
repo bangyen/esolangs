@@ -312,11 +312,8 @@ class _Machine:
         if self.halted:
             return
         state = _finalize(self._state)
-        stack, _table, frames, _error = state
+        stack, table, frames, error = state
         char = ""
-        if frames and frames[-1].pc < len(frames[-1].code):
-            char = frames[-1].code[frames[-1].pc]
-
         # The cursor moves past the command before the command runs, and
         # the original had already written that when anything it did
         # raised -- an empty stack, or the input port at EOF.  Committing
@@ -325,8 +322,8 @@ class _Machine:
         # A bracket walks further than one place: its scan runs before the
         # condition is tested, so a raise afterwards leaves the cursor past
         # the whole body.
-        stack, table, frames, error = state
         if frames and frames[-1].pc < len(frames[-1].code):
+            char = frames[-1].code[frames[-1].pc]
             frame = _at(frames[-1], frames[-1].pc + 1)
             if char in "([{":
                 found = _scan(frame, char, _CLOSER[char])

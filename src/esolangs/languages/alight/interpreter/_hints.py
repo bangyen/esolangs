@@ -28,10 +28,8 @@ class Hint(StrEnum):
     ENTRY = "put a begin command at the entry point"
     EXPRESSION = "keep one complete expression after the command"
     COMMAND = "start the command with a keyword or a function name"
-    ASSIGNMENT = "write set <variable> <expression> with no trailing operands"
     VARIABLE_OPERANDS = "give var, inp or out exactly one variable name"
     VARIABLE_NAME = "use an alphanumeric name that is not a reserved keyword"
-    RETURN_VALUE = "give end at most one complete return expression"
 
     BOOLEAN_GUARD = "make the guard evaluate to true or false"
     OPERAND_TYPES = "use operand types supported by this operator"

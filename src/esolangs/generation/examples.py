@@ -133,7 +133,12 @@ class BooleanExample:
     @property
     def filename(self) -> str:
         """Return the example filename in the language's source format."""
-        return self.stem + LANGUAGES[resolve(self.stem.replace("-", " "))].source_suffix
+        return self.stem + LANGUAGES[resolve(self.language)].source_suffix
+
+    @property
+    def language(self) -> str:
+        """Return the canonical id of the language ``stem`` names."""
+        return canonical_id(self.stem.replace("-", " "))
 
     def build(
         self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False
@@ -148,12 +153,13 @@ class BooleanExample:
         if balance:
             import esolangs
 
-            language = canonical_id(self.stem.replace("-", " "))
             program = esolangs.generate(
-                language, self.table, balance=True, scale=self.scale
+                self.language, self.table, balance=True, scale=self.scale
             )
             if self.fill is not None:
-                program = esolangs.instantiate(language, cast(str, program), self.bits)
+                program = esolangs.instantiate(
+                    self.language, cast(str, program), self.bits
+                )
             return program
         if width is not None and takes_width(self.generator):
             program = self.generator(self.table, width)
@@ -165,7 +171,7 @@ class BooleanExample:
             return program.upscaled(self.scale)
         if self.fill is not None:
             program = self.fill(program, list(self.bits))
-        return wrap_program(program, canonical_id(self.stem.replace("-", " ")), width)
+        return wrap_program(program, self.language, width)
 
     @property
     def stdin(self) -> str:

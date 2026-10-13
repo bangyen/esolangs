@@ -933,7 +933,7 @@ def _own(walker: _Walker) -> _Walker:
     writes -- while the call frame's scalars and the pending expression are
     copied by value.  It is deliberately shallow: shared list values stay
     shared, because the one operation that changes a list replaces it
-    everywhere (see :meth:`_Core._rebind`) rather than editing it.
+    everywhere (see :meth:`_Expressions.rebind`) rather than editing it.
     """
     copy = _Walker(walker.row, walker.col, walker.heading, dict(walker.vars))
     copy.pending = walker.pending

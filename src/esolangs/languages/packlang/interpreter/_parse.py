@@ -376,7 +376,7 @@ _DATATYPES = frozenset({"Integer", "Char", "String", "Array", "Pointer"})
 class _Program:
     """A parsed program: its functions, globals, and dependency graph."""
 
-    __slots__ = ("dependencies", "entry", "functions", "globals", "types")
+    __slots__ = ("dependencies", "entry", "functions", "globals")
 
     def __init__(self) -> None:
         self.functions: dict[tuple[str, str], _Function] = {}

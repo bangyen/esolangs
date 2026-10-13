@@ -88,7 +88,11 @@ from esolangs.languages.circuit_diagram.generator.hlayout import (
     _h_term_area_floor,
     _h_term_layout,
 )
-from esolangs.languages.circuit_diagram.generator.layout import _Layout, _layout_area
+from esolangs.languages.circuit_diagram.generator.layout import (
+    _check_order,
+    _Layout,
+    _layout_area,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -285,6 +289,15 @@ class _Builder:
         self.layout.junction(column, row, signal)
         self.buses[signal] = (column, row)
         return signal
+
+    def selectors(
+        self, rails: list[int], complemented: set[int]
+    ) -> list[list[int | None]]:
+        """Return ``[rail, ~rail]`` per level, the complement only where read."""
+        return [
+            [rail, self.invert(rail) if level in complemented else None]
+            for level, rail in enumerate(rails)
+        ]
 
     def invert(self, source: int) -> int:
         """Return a signal carrying ``~source``, computed once.
@@ -562,12 +575,7 @@ def _circuit_diagram_model(
     n = len(truth_table).bit_length() - 1
     order = list(range(n)) if input_order is None else input_order
     port_inputs = n if port_inputs is None else port_inputs
-    if (
-        len(order) != n
-        or len(set(order)) != n
-        or any(index < 0 or index >= port_inputs for index in order)
-    ):
-        raise ValueError("fold input order must name distinct original ports")
+    _check_order(order, n, port_inputs, "fold")
     # Every input keeps its ``-`` row (the read order), but the fold uses
     # only the essential inputs' rails; an ignored rail drives nothing, as
     # every rail but the first does for a constant table.
@@ -576,11 +584,7 @@ def _circuit_diagram_model(
     rails = [ports[order[i]] for i in used]
 
     dag = _dag(table, len(used))
-    complemented = dag[2]
-    selectors: list[list[int | None]] = [
-        [rail, builder.invert(rail) if level in complemented else None]
-        for level, rail in enumerate(rails)
-    ]
+    selectors = builder.selectors(rails, dag[2])
     builder.band_start = builder.next_column
     builder.limit = limit
 

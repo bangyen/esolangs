@@ -38,16 +38,27 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     read_at,
 )
+from esolangs.languages.line.generator.forward import (
+    centered_streaming_canvas,
+    destination_canvas,
+    forward_canvas,
+    median_streaming_canvas,
+    packed_streaming_canvas,
+    projected_streaming_canvas,
+    streaming_canvas,
+)
 from esolangs.languages.line.generator.render import (
     Canvas,
     Node,
     _check_unit,
+    _has_goto,
     _moved,
     chain,
     chain_onto,
     correction,
     loader_reads,
 )
+from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
@@ -169,17 +180,6 @@ def _grey_rows(canvas: Canvas) -> Rows:
 @lru_cache(maxsize=8)
 def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Return a Line raster computing ``truth_table``."""
-    from .forward import (
-        centered_streaming_canvas,
-        destination_canvas,
-        forward_canvas,
-        median_streaming_canvas,
-        packed_streaming_canvas,
-        projected_streaming_canvas,
-        streaming_canvas,
-    )
-    from .shared import shared_canvas, shared_tree
-
     _check_unit(unit)
     node = line_boolean(truth_table)
     n = _validate_truth_table(truth_table)
@@ -253,9 +253,6 @@ def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Rast
 def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Choose the most balanced compact or previous forward/reverse tree."""
     _check_unit(unit)
-
-    from .render import _has_goto
-
     small = _validate_truth_table(truth_table) <= _SMALL_MAX
     previous = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
     nodes = previous + [
