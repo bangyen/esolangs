@@ -11,10 +11,10 @@ With G gates, n+G wire bits, at most 2G+1 latch bits and halt give
 from __future__ import annotations
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.circuit_diagram.generator import hpool
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
     _online_bank_area_floor,
+    _pool_budget,
 )
 from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
@@ -47,10 +47,8 @@ def sparse_class_bank_candidate(
     depth = (q - 1).bit_length()
     if 2 * max(prefix, tail) + depth + 5 > 2 * n + 2:
         return None
-    budget = hpool._h_pool_area_floor(n, n)  # noqa: SLF001
-    if ceiling is not None:
-        budget = min(budget, ceiling)
-    if budget <= 0:
+    budget = _pool_budget(n, ceiling)
+    if budget is None:
         return None
     work = _SparseWork(4 * len(table))
     parts: list[list[tuple[_Layout, list[int]]]] = []

@@ -9,9 +9,11 @@ from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
     _essential_table,
-    hpool,
 )
-from esolangs.languages.circuit_diagram.generator.banks import _assemble_banks
+from esolangs.languages.circuit_diagram.generator.banks import (
+    _assemble_banks,
+    _pool_budget,
+)
 from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
 
@@ -55,10 +57,8 @@ def folded_class_bank_candidate(
         return None
     # q <= 2**(tail+2) and prefix >= tail+1 give clock <= 2n+2:
     # parallel folds, one AND, ceil(log2 q) ORs and three I/O ticks.
-    budget = hpool._h_pool_area_floor(n, n)  # noqa: SLF001
-    if ceiling is not None:
-        budget = min(budget, ceiling)
-    if budget <= 0:
+    budget = _pool_budget(n, ceiling)
+    if budget is None:
         return None
     masks = _folded_class_masks(chunks, classes, prefix, len(table))
     if masks is None:

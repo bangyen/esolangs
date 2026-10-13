@@ -12,6 +12,7 @@ from collections.abc import Callable
 
 from esolangs.generation.helpers import _validate_truth_table
 
+from . import hpool
 from .forest import _Forest, _suffix_forest
 from .hpool import _h_pool_layout, _h_pool_size, _large_pool_layout
 from .layout import _Layout, _RoutingLayout
@@ -370,6 +371,18 @@ def _residual_class_bank_candidate(
     height, width = forest.bounds()
     old_height, old_width = separate.bounds()
     return forest if height * width < old_height * old_width else separate
+
+
+def _pool_budget(n: int, ceiling: int | None) -> int | None:
+    """Cap the H-pool area by ``ceiling``; ``None`` when nothing fits.
+
+    Reads the floor through the ``hpool`` module (not a snapshot import)
+    so a patched floor reaches every candidate at call time.
+    """
+    budget = hpool._h_pool_area_floor(n, n)  # noqa: SLF001
+    if ceiling is not None:
+        budget = min(budget, ceiling)
+    return budget if budget > 0 else None
 
 
 def _online_bank_area_floor(

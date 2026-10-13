@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.circuit_diagram.generator import _circuit_diagram_model, hpool
+from esolangs.languages.circuit_diagram.generator import _circuit_diagram_model
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
     _online_bank_area_floor,
+    _pool_budget,
 )
 from esolangs.languages.circuit_diagram.generator.folded_banks import (
     _folded_class_masks,
@@ -30,10 +31,8 @@ def bundled_class_bank_candidate(
     q = len(classes)
     if q * len(chunks) > 4 * len(table):
         return None
-    budget = hpool._h_pool_area_floor(n, n)  # noqa: SLF001
-    if ceiling is not None:
-        budget = min(budget, ceiling)
-    if budget <= 0:
+    budget = _pool_budget(n, ceiling)
+    if budget is None:
         return None
     masks = _folded_class_masks(chunks, classes, prefix, len(table))
     if masks is None:
