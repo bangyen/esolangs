@@ -110,8 +110,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.mccabe]
-# Ratchet: the 13 functions above it carry `noqa: C901`, mostly opcode
-# dispatch.  Measured 2026-10-13: 224 over 10, 35 over 20, 13 over 25.
+# Ratchet: the functions above it carry `noqa: C901`, mostly opcode
+# dispatch; a refactor removes its noqa.  Measured 2026-10-13: 224 over 10, 35 over 20, 13 over 25.
 max-complexity = 25
 
 [tool.ruff.lint.per-file-ignores]
