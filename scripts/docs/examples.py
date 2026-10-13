@@ -107,7 +107,7 @@ def boolean_manifest_text() -> str:
         else:
             expected = repr(example.expected) if example.expected else "(nothing)"
         rows.append(
-            f"| `{canonical_id(stem.replace('-', ' '))}/{example.filename}` | "
+            f"| `{example.language}/{example.filename}` | "
             f"{_display_name(stem)} | `{example.table}` | "
             f"`{row}` | {given} | {expected} |"
         )

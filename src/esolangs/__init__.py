@@ -509,8 +509,8 @@ def _check_runnable(language: str, program: Program) -> None:
     """Reject a program that is a path or an unfilled template.
 
     Both are valid input to an interpreter and each produced a confident
-    wrong answer (an unfilled template can run as nothing).  Public because the
-    debugger stepped a template to ``output: '0'``; the CLI's ``debug`` calls it.
+    wrong answer (an unfilled template can run as nothing).  Shared by
+    ``_check_program`` and the CLI's ``debug``.
     """
     name = resolve(language)
     if isinstance(program, (Raster, CompressedText)):

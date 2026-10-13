@@ -600,16 +600,15 @@ class _Machine:
         heading to exclude, so every attached path gets a pointer, the
         pointer's own first.
         """
-        here = (start[0], start[1])
         exits = _forward_first(
-            _exits_from_node(self.grid, self.nodes, self.width, here[0], here[1], None),
+            _exits_from_node(self.grid, self.nodes, self.width, *start, None),
             _RIGHT,
         )
         if not exits:
             raise syntax_error(
                 "start node has no exit path", "connect a path leaving the start node"
             )
-        return tuple(_Pointer(row, col, d, prev=here) for row, col, d in exits)
+        return tuple(_Pointer(row, col, d, prev=start) for row, col, d in exits)
 
     def _read_bit(self) -> int | None:
         """Read the next input bit, low bit first, or ``None`` at EOF."""
@@ -730,7 +729,7 @@ def _exits_from_node(
     """
     cells = set(_cells_of(nodes, row, col))
     out: list[tuple[int, int, tuple[int, int]]] = []
-    for c_row, c_col in sorted(cells, key=lambda c: (c[0], c[1])):
+    for c_row, c_col in sorted(cells):
         for d in _HEADINGS:
             n_row, n_col = c_row + d[0], c_col + d[1]
             # A neighbouring node is never an exit: the only nodes that may

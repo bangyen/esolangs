@@ -39,6 +39,7 @@ from esolangs.runtime.source_hints import keyword_hint, syntax_error
 type _State = tuple[int, int, tuple[int, ...], bool]
 
 _COMMANDS = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", "GOTO")
+_TOKEN = re.compile(r"(?<!\S)(INJECT|PUSH|EJECT|POP|INVERT|GOTO\s+\d+)(?!\S)")
 
 
 def _advance(state: _State, sym: str) -> _State:
@@ -69,29 +70,22 @@ def _advance(state: _State, sym: str) -> _State:
     return (ind + 1, reg, deq, rendered)
 
 
-def _reject_stray_text(code: str, pattern: re.Pattern[str]) -> None:
+def _reject_stray_text(code: str) -> None:
     """Refuse a word that is not one of the six commands.
 
     ``findall`` kept what matched: ``push invert push`` ran as nothing and
     exited 0, and a seventh word is never deliberate.
     """
-    end = 0
-    gaps = []
-    for match in pattern.finditer(code):
-        gaps.append(code[end : match.start()])
-        end = match.end()
-    gaps.append(code[end:])
-    for gap in gaps:
-        if stray := gap.split():
-            raise syntax_error(
-                f"{stray[0]!r} is not a Bitdeque command; the commands are "
-                f"INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case",
-                keyword_hint(
-                    stray[0],
-                    _COMMANDS,
-                    "write uppercase commands; GOTO takes a nonnegative target",
-                ),
-            )
+    if stray := _TOKEN.sub(" ", code).split():
+        raise syntax_error(
+            f"{stray[0]!r} is not a Bitdeque command; the commands are "
+            f"INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case",
+            keyword_hint(
+                stray[0],
+                _COMMANDS,
+                "write uppercase commands; GOTO takes a nonnegative target",
+            ),
+        )
 
 
 class _Machine:
@@ -107,10 +101,8 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
         self.io = io
-        lst = tuple(r"GOTO\s+\d+" if name == "GOTO" else name for name in _COMMANDS)
-        join = rf"(?<!\S)({'|'.join(lst)})(?!\S)"
-        _reject_stray_text(code, re.compile(join))
-        self.tokens = re.findall(join, code)
+        _reject_stray_text(code)
+        self.tokens = _TOKEN.findall(code)
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)

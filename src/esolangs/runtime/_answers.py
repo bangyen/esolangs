@@ -45,7 +45,7 @@ def encode_inputs(
     # a different row of the table, which is the wrong answer arriving with
     # no sign that anything went astray.
     bits = check_bits(bits, "bits")
-    if truth_table is not None and LANGUAGES[name].boolean is not None:
+    if truth_table is not None and lang.boolean is not None:
         check_table_text(truth_table)
         arity = _validate_truth_table(truth_table)
         if len(bits) != arity:

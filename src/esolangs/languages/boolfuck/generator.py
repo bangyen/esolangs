@@ -260,6 +260,14 @@ def _gate_tail(tree: _GateTree, kind: _Kind) -> tuple[int, int]:
     return distance, active
 
 
+_SCRATCH = -1
+
+
+def _command_bound(n: int) -> int:
+    """Return the most commands a Boolfuck candidate over ``n`` inputs may take."""
+    return 2 * n * n + 27 * n + 8
+
+
 def normal_gates(table: str) -> str | None:
     """Return shared normalized gates where both existing ledgers admit them."""
     n = _validate_truth_table(table)
@@ -278,7 +286,7 @@ def normal_gates(table: str) -> str | None:
     for i in range(n):
         e.move(2 * i)
         e.emit(",")
-        e.move(-1)
+        e.move(_SCRATCH)
         e.emit("," * 7)
     header_cost = e.count
     tree = _GateTree(table, flags, e)
@@ -289,12 +297,9 @@ def normal_gates(table: str) -> str | None:
         for target in tails:
             tails[target] += distance + (active if target == flags[kind] else 1)
     commands = header_cost + prefix.evaluate(tails)
-    if commands > 2 * n * n + 27 * n + 8:
+    if commands > _command_bound(n):
         return None
     return "".join(e.out)
-
-
-_SCRATCH = -1
 
 
 def boolfuck(truth_table: str) -> str:
@@ -330,7 +335,7 @@ def boolfuck(truth_table: str) -> str:
             _boolfuck_tree(truth_table, shared_blocks=mixed, flag_levels=mixed_levels)
         )
     return min(
-        (program for program, cost in forms if cost <= 2 * n * n + 27 * n + 8),
+        (program for program, cost in forms if cost <= _command_bound(n)),
         key=len,
     )
 

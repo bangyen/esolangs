@@ -426,8 +426,9 @@ class _Machine:
         if op == ",":
             byte = self.io.input_char()
             self._input_reads += 1
-        split = draw(self._rng, 2) if op == "*" else 0
+        split = 0
         if op == "*":
+            split = draw(self._rng, 2)
             self._draws += 1
 
         self._restore(_advance(self._state, op, row, col, d, byte, split))

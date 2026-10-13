@@ -5,6 +5,7 @@ from typing import NamedTuple
 
 from esolangs.generation.raster_lookup import (
     _INITIAL,
+    _POINTER,
     _POP,
     Pixel,
     _next_colour,
@@ -14,7 +15,6 @@ from esolangs.generation.raster_lookup import (
 from esolangs.raster import Raster
 from esolangs.runtime.codels import BLACK, WHITE
 
-_POINTER = (3, 1)
 _DUPLICATE = (4, 0)
 _MIN_COLUMNS = 22
 _MIN_SHARED_COLUMNS = 18

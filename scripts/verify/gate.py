@@ -44,6 +44,7 @@ from verify.scope import (  # noqa: E402
     _scope_plan,
     _scoped_cmd,
     local_tooling_deselections,
+    verify_full,
 )
 
 # language-owners: ["Line"]
@@ -367,9 +368,6 @@ def _run_steps(  # noqa: C901
 
     def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
         start = time.monotonic()
-        # Only the captured branch has output to replay; the streaming one
-        # already wrote it straight to the terminal.
-        captured: str | None = None
         key = None
         if clean_cache is not None and name in CACHED_STEPS:
             key = cache_keys.get(name)
@@ -521,17 +519,12 @@ def _pytest_cmd(cmd: list[str], *, full: bool, changed: list[str]) -> list[str]:
                 str(ROOT / "tests/support/fixtures/slow_durations.json"),
             ]
         )
-    if not full and not _verify_full():
+    if not full and not verify_full():
         deferred = local_tooling_deselections(changed)
         cmd.extend(deferred)
         if deferred:
             print("[defer] unrelated tooling integrations: covered by CI")
     return cmd
-
-
-def _verify_full() -> bool:
-    """Whether ``VERIFY_FULL`` asks for the whole tree."""
-    return os.environ.get("VERIFY_FULL", "0") not in ("", "0")
 
 
 def main() -> int:
@@ -544,14 +537,14 @@ def main() -> int:
     # An explicit --only is already a hand-picked subset; scoping it further
     # would silently drop steps the caller asked for by name.
     unaffected, why = (None, "--only given") if only else _scope_plan(full=full)
-    changed = [] if only or full or _verify_full() else list(_scope_changed_files())
+    changed = [] if only or full or verify_full() else list(_scope_changed_files())
     if unaffected is None:
         print(f"scope: full run ({why})")
     else:
         print(f"scope: {len(STEPS) - len(unaffected)}/{len(STEPS)} steps ({why})")
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
-    if only is not None or full or _verify_full():
+    if only is not None or full or verify_full():
         env["VERIFY_CLEAN_CACHE"] = "0"
     # Probe PY rather than the running interpreter: verify/gate.py may be launched
     # by a different python than the one it runs the steps with (e.g.

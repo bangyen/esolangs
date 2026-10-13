@@ -151,7 +151,7 @@ class _Parser:
                 args.append(self._value())
             self._expect(")")
             return ("call", callee, args)
-        if not (c.isalpha() or c == "_"):
+        if not self._at_ident():
             self._fail(f"unexpected character {c!r}")
         return ("var", self._ident())
 
@@ -254,8 +254,7 @@ class _Parser:
                 self.pos += 1
                 self._definition_scopes.pop()
                 return stmts, nested
-            c = self.text[self.pos]
-            if c.isalpha() or c == "_":
+            if self._at_ident():
                 save = self.pos
                 name, params = self._header()
                 self._skip_ws()

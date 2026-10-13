@@ -493,9 +493,9 @@ def _bf_ordered(
         else:
             reads.append("")
             pending += ","
-    cells = [(_RIGHT * 2).join(reads)]
+    header = (_RIGHT * 2).join(reads)
+    cells = [header]
     pos = 2 * max(n - 1, 0)
-    header = cells[0]
     tree_start = pos
 
     # The tree itself.

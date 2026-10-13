@@ -91,6 +91,9 @@ class _Function:
         self.uses = uses
 
 
+_DATATYPES = frozenset({"Integer", "Char", "String", "Array", "Pointer"})
+
+
 def _starts_name(word: str | None) -> bool:
     """Whether ``word`` begins as an identifier: a letter or underscore."""
     return word is not None and (word[:1].isalpha() or word[:1] == "_")
@@ -167,11 +170,6 @@ class _Parser:
             self.expect(",")
             length = self.number()
             self.expect(")")
-            if length < 0:  # pragma: no cover - `number` requires isdigit
-                raise syntax_error(
-                    "array length must not be negative",
-                    "use an array length of zero or greater",
-                )
             return _Type(inner.low, inner.high, inner.under, inner.over, length)
         if name == "Pointer":
             self.expect("(")
@@ -373,9 +371,6 @@ class _Parser:
             return False
         finally:
             self.pos = save
-
-
-_DATATYPES = frozenset({"Integer", "Char", "String", "Array", "Pointer"})
 
 
 class _Program:

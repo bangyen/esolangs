@@ -118,13 +118,13 @@ def _prefix(
 
     def visit(level: int, block: int) -> _Metric:
         key = ids[level][block]
-        if (level, key) in selected or level == stop_depth or key < 2:
-            if (level, key) in selected:
-                target = selected[level, key]
-                if emit is not None:
-                    for bit in range(width):
-                        emit(f'"{1 + (target // radix**bit % radix)}/e"')
-                return _Metric(5 * width, width + tails[target])
+        if (level, key) in selected:
+            target = selected[level, key]
+            if emit is not None:
+                for bit in range(width):
+                    emit(f'"{1 + (target // radix**bit % radix)}/e"')
+            return _Metric(5 * width, width + tails[target])
+        if level == stop_depth or key < 2:
             if emit is not None:
                 if level == stop_depth:
                     emit(block << (n - level))

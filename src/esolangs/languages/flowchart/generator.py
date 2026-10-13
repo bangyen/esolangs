@@ -658,10 +658,6 @@ LANGUAGE = Language(
     "Flowchart",
     "flowchart",
     category="grid_based",
-    # The README frame: a grid language, so the screenshot shows the 2D
-    # program pane and a tuple ``ip``, neither of which a tape language
-    # exercises.  ``replay`` derives the frame from nothing, so this is a
-    # coordinate, not a recording.
     boolean=flowchart,
     # Not a tree: one deque push per entry.
     shape=Shape.LOOKUP,

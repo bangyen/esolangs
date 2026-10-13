@@ -12,10 +12,7 @@ construction.
 
 from collections.abc import Sequence
 
-from esolangs.languages.slow_acv_mammalian.interpreter import MammalianModuli
-
-#: How many arrays the machine has; ``SPRINT`` moves the pointer mod this.
-_ARRAYS = 23
+from esolangs.languages.slow_acv_mammalian.interpreter import _ARRAYS, MammalianModuli
 
 #: The weight array, tracked as head plus non-head sum (like array 0)
 #: because the construction only ever reads it through ``DIGEST``.
@@ -112,6 +109,12 @@ class _Sums:
         return [self.heads[arr], *self.cells.get(arr, ())]
 
 
+def _advance_heads(st: _Sums, seeds: int) -> None:
+    """Step every head by ``seeds`` ``SEED`` runs: array ``k`` gains ``k + 1`` each."""
+    for arr in range(_ARRAYS):
+        st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % _MODULUS
+
+
 def _replay(st: _Sums, tokens: Sequence[str], bit: int = 0) -> None:
     """Apply a token run to ``st``.  ``LEAPFROG`` moves only the cursor."""
     seeds = 0
@@ -120,12 +123,10 @@ def _replay(st: _Sums, tokens: Sequence[str], bit: int = 0) -> None:
             seeds += 1
             continue
         if seeds:
-            for arr in range(_ARRAYS):
-                st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % _MODULUS
+            _advance_heads(st, seeds)
             seeds = 0
         _apply(st, tok, bit)
-    for arr in range(_ARRAYS):
-        st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % _MODULUS
+    _advance_heads(st, seeds)
 
 
 def _apply(st: _Sums, tok: str, bit: int) -> None:

@@ -1108,7 +1108,7 @@ def _builtin(name: str, args: list[_Value], list_update: str) -> _Value | _InPla
         if len(args) == 1:
             return Fraction(len(seq))
         if len(args) != 2 or not _is_num(args[1]):
-            raise Hint.LEN_ARGUMENTS.halt("len takes a list and optionally a count")
+            raise Hint.BUILTIN_LIST.halt("len takes a list and optionally a count")
         count = args[1]
         if count != int(count) or count < 0:
             raise Hint.PADDING_COUNT.halt("len pad count is not a whole number")
@@ -1120,7 +1120,7 @@ def _builtin(name: str, args: list[_Value], list_update: str) -> _Value | _InPla
         slot = _index(args[1])
         return seq[slot] if slot < len(seq) else "nil"
     if len(args) != 3:
-        raise Hint.AT_ARGUMENTS.halt(
+        raise Hint.BUILTIN_LIST.halt(
             "at takes a list, an index, and optionally a value"
         )
     slot = _index(args[1])

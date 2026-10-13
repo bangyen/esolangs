@@ -34,6 +34,19 @@ else:
 ROOT = Path(__file__).parents[1]
 #: Where a language's own test and script files live.
 _TREES = ("tests", "scripts")
+#: The files ``remove`` cuts the language's entries out of by itself; the
+#: coupling guard does not count them for the same reason.
+_EDITED = (
+    "src/esolangs/registry/_table.py",
+    "src/esolangs/languages/generators.py",
+    "tests/support/samples.py",
+    "tests/generators/test_wrap.py",
+    "tests/proofs/test_execution_formulas.py",
+    "tests/proofs/test_workspace_formulas.py",
+    "tests/proofs/test_schemes.py",
+    "tests/api/test_interpreter_only_admissions.py",
+    "tests/proofs/test_bands.py",
+)
 
 
 def tests_attr(module: str, attr: str) -> Any:
@@ -839,21 +852,6 @@ def _drop_from_series(path: Path, name: str, tail: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-#: The files ``remove`` cuts the language's entries out of by itself; the
-#: coupling guard does not count them for the same reason.
-_EDITED = (
-    "src/esolangs/registry/_table.py",
-    "src/esolangs/languages/generators.py",
-    "tests/support/samples.py",
-    "tests/generators/test_wrap.py",
-    "tests/proofs/test_execution_formulas.py",
-    "tests/proofs/test_workspace_formulas.py",
-    "tests/proofs/test_schemes.py",
-    "tests/api/test_interpreter_only_admissions.py",
-    "tests/proofs/test_bands.py",
-)
-
-
 def _mention_edit(mention: str, name: str | None = None) -> str:
     """Classify a raw hit from this checkout."""
     return mention_edit(ROOT, mention, name)
@@ -902,7 +900,6 @@ def remove(name: str) -> list[str]:
     # A deleted test module too: ``tests/support/samples.py`` borrows Inject's program.
     gone_modules = _gone_modules(doomed)
     modules = {m for m in own_modules if _module_path(m) is None} | gone_modules
-    edited = [*_EDITED]
     # Names each surviving file reads.  A helper another file still names is
     # kept even when it reads a name this removal deletes: ``sbleq_variant``
     # serves every S*bleq variant, not just the one going.
@@ -919,7 +916,7 @@ def remove(name: str) -> list[str]:
                 names |= used
         return names
 
-    for relative in edited:
+    for relative in _EDITED:
         _drop_entries(ROOT / relative, keys | paths, modules, external_for(relative))
         _drop_inline_items(ROOT / relative, keys)
 
@@ -952,7 +949,7 @@ def remove(name: str) -> list[str]:
     shared = ["src/esolangs/generation/wrap.py"]
     touched = [
         *[str(p.relative_to(ROOT)) for p in module_paths - doomed],
-        *edited,
+        *_EDITED,
         *shared,
     ]
     ruff = Path(sys.executable).parent / "ruff"

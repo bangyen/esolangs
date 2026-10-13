@@ -27,6 +27,11 @@ type _Stamp = tuple[
 ]
 
 
+def _hold_column(chars: dict[tuple[int, int], str]) -> int:
+    """Return the right-most ``$`` on row 1, where the hold count is stored."""
+    return max(c for (r, c), char in chars.items() if r == 1 and char == "$")
+
+
 def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
     """Read one input per weight and leave their weighted sum plus ``bonus``.
 
@@ -175,7 +180,7 @@ def _dig_flat_leaf(
         # Capture eight rows per class before reading the final six inputs.
         # The extra return command adds that stored offset to the row count.
         first = painter[3][1]
-        hold = max(c for (r, c), char in painter[0].items() if r == 1 and char == "$")
+        hold = _hold_column(painter[0])
         chars[top, 3 + hold] = str(hold - first)
         chars[top + 1, 3 + first] = "+"
         reads.append(((top + 1, 3 + first), (top + 2, 3 + first), frozenset()))

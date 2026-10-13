@@ -102,6 +102,11 @@ def _chunk_marker(index: int, digits: int, alphabet: str) -> str:
     return "".join(reversed(name))
 
 
+def _width_limit(width: int | None) -> int | None:
+    """Return ``width`` when it constrains the layout, else ``None``."""
+    return width if width and width > 0 else None
+
+
 def thue(truth_table: str, width: int | None = None) -> str:
     """Return a Thue program computing ``truth_table``.
 
@@ -119,7 +124,7 @@ def thue(truth_table: str, width: int | None = None) -> str:
         for layout in tables
         if (shared := _shared_layout(*layout, n)) is not None
     )
-    limit = width if width and width > 0 else None
+    limit = _width_limit(width)
 
     def overshoot(layout: str) -> int:
         return 0 if limit is None else max(0, grid_width(layout) - limit)
@@ -205,7 +210,8 @@ def _thue_layout(
         base = "\n".join([base.removesuffix("\n::="), *extra, "::="])
     start = f"L{rounds}R" if queued else "LM"
     program = f"{base}\n{start}{entries}E"
-    if width is None or width <= 0 or grid_width(program) <= width:
+    limit = _width_limit(width)
+    if limit is None or grid_width(program) <= limit:
         return program
     if extra:
         # Contracting would merge the fold's ``KRaE`` with the final ``LRaE``.
@@ -220,16 +226,16 @@ def _thue_layout(
         rules_text = _RULES.replace("LR", "C").replace("::=LM", "::=D")
         rules_text = rules_text.removesuffix("::=") + "LR::=C\nD::=LM\n::="
     narrow = f"{rules_text}\n{start}{entries}E"
-    if grid_width(narrow) <= width:
+    if grid_width(narrow) <= limit:
         return narrow
     length = len(entries)
     # One-symbol nodes fit only bounded arities; larger trees retain chunks.
-    if not queued and length <= 8 and width < 9:
+    if not queued and length <= 8 and limit < 9:
         return _thue_short_tree(table)
     alphabet = _alphabet(rounds, extra)
     digits = _marker_digits(length, len(alphabet))
     # Payload covers its names' overhead, keeping even the narrowest source O(T).
-    payload = max(digits, width - digits - max(digits, 2) - 3)
+    payload = max(digits, limit - digits - max(digits, 2) - 3)
     rules = rules_text.splitlines()[:-1]
     for index, offset in enumerate(range(0, length, payload)):
         marker = _chunk_marker(index, digits, alphabet)

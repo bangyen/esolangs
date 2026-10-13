@@ -265,7 +265,7 @@ def _cursor_candidate(mask: Mask, core: Mask) -> Cursor:
 def find_cursor(mask: Mask) -> Cursor:
     """Isolate the whole arrowhead shape via erosion + growth.
 
-    The arrowhead is the only multi-pixel-thick region, so :func:`_erode`
+    The arrowhead is the only multi-pixel-thick region, so :meth:`Mask.erode`
     finds its interior (the largest one, so a stray artifact is not
     mistaken for the cursor).  ``blob`` then grows outward from that
     interior, admitting a pixel only while it is itself blob-like
@@ -308,13 +308,12 @@ Vertex = lattice.Vertex
 def extract_tree(
     mask: Mask,
     cursor: Cursor,
-    start_heading: int | None = None,
     *,
     unit: int = lattice.UNIT,
 ) -> Stroke:
     """Walk a Line image's full path tree from the cursor.
 
-    ``start_heading`` overrides the direction inferred from the arrowhead.
+    The start heading is the one pointing from the cursor toward the path.
     Delegates to :func:`lattice.walk_tree`.
     """
     stripped = mask & ~cursor.blob
@@ -346,15 +345,14 @@ def extract_tree(
             "no path pixels found outside the cursor blob",
             "connect a path extending beyond the cursor",
         )
-    if start_heading is None:
-        offset_y, offset_x = nearest[0] - cursor.y, nearest[1] - cursor.x
-        start_heading = max(
-            range(8),
-            key=lambda index: (
-                (offset_y * _DIRS[index][0] + offset_x * _DIRS[index][1])
-                / (_DIRS[index][0] ** 2 + _DIRS[index][1] ** 2) ** 0.5
-            ),
-        )
+    offset_y, offset_x = nearest[0] - cursor.y, nearest[1] - cursor.x
+    start_heading = max(
+        range(8),
+        key=lambda index: (
+            (offset_y * _DIRS[index][0] + offset_x * _DIRS[index][1])
+            / (_DIRS[index][0] ** 2 + _DIRS[index][1] ** 2) ** 0.5
+        ),
+    )
     return lattice.walk_tree(stripped, nearest, start_heading, unit=unit)
 
 
@@ -397,7 +395,7 @@ _FIXED_BY_LENGTH: list[tuple[tuple[tuple[int, int], ...], str]] = sorted(
 # Diagonal-run unit length in the renderer's `_UNIT` grid, doubling as
 # `+`/`-`'s repeat count.  `normalize_scale` recovers stroke width, not
 # grid unit, so `classify_ops` takes it as a parameter.
-DEFAULT_UNIT = 20
+DEFAULT_UNIT = lattice.UNIT
 
 # Rounding slack for a run's unit count: wide enough for the +-1px error
 # scanned drawings show against the nominal unit, narrow enough that an

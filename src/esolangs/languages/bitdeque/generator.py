@@ -62,6 +62,8 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
 
 _BITDEQUE_SHORT_PAIR = ("POP  ", "EJECT")
 _PRELUDE_LEN = 5
+#: One setter run: a token of template text, two commands once filled.
+_SETTER = TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])
 _SHORT_BLOCK = 15
 
 
@@ -137,14 +139,13 @@ def _bitdeque_linear(truth_table: str) -> str:
         tokens.append("INVERT")
     # Command numbers count from 1, as ``GOTO`` does.
     at = len(tokens) + 1
-    run = TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])
     for i, k in enumerate(weights):
         if not k:
             # Pop the bit back; a one skips the first INVERT, zeroing it.
-            tokens += [run, "POP", f"GOTO {at + 5}", "INVERT", "INVERT"]
+            tokens += [_SETTER, "POP", f"GOTO {at + 5}", "INVERT", "INVERT"]
             at += 6
             continue
-        # ``run`` is one token of text but two commands once filled.
+        # ``_SETTER`` is one token of text but two commands once filled.
         at += 2
         # Command numbers, with ``at`` the ``POP`` that reads the bit back:
         # the zero block spans ``at + 2 .. at + k + 1``, its exit ``at + k +
@@ -152,7 +153,7 @@ def _bitdeque_linear(truth_table: str) -> str:
         # the shared reset begins at ``at + 2k + 5``.
         one_block = at + k + 5
         meet = at + 2 * k + 5
-        tokens += [run, "POP", f"GOTO {one_block}"]
+        tokens += [_SETTER, "POP", f"GOTO {one_block}"]
         tokens += ["POP"] * k
         # Force the register to one, then jump: a one skips the INVERT.
         tokens += [f"GOTO {at + k + 4}", "INVERT", f"GOTO {meet}"]
@@ -228,11 +229,7 @@ def _bitdeque_ordered(
     # address.
     prelude = ["GOTO 4", "INVERT", "GOTO 5", "GOTO@END", "INVERT"]
     # The setters read the route off the prelude's opening ``GOTO 4``.
-    load = (
-        _bitdeque_short_load(n)
-        if short
-        else [TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])] * n
-    )
+    load = _bitdeque_short_load(n) if short else [_SETTER] * n
     # Each linear run fills to two commands.
     load_len = _SHORT_BLOCK * n if short else 2 * n
 

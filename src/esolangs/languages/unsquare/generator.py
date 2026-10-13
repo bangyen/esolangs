@@ -47,19 +47,18 @@ def _runs(bits: str) -> tuple[str, int]:
 def _shared_pushes(bits: str, n: int, kept: int) -> str | None:
     """Count two identical aligned halves before lookup overwrites the counter."""
     ids = subtree_ids(bits)
-    chosen: tuple[int, int] | None = None
-    for depth, layer in enumerate(ids[:-1]):
-        span = 1 << (len(ids) - 1 - depth)
-        for index, state in enumerate(layer):
-            if (
-                state >= 2
-                and span // 2 > 7
-                and ids[depth + 1][2 * index] == ids[depth + 1][2 * index + 1]
-            ):
-                chosen = index * span, span
-                break
-        if chosen is not None:
-            break
+    chosen = next(
+        (
+            (index * span, span)
+            for depth, layer in enumerate(ids[:-1])
+            for span in [1 << (len(ids) - 1 - depth)]
+            for index, state in enumerate(layer)
+            if state >= 2
+            and span // 2 > 7
+            and ids[depth + 1][2 * index] == ids[depth + 1][2 * index + 1]
+        ),
+        None,
+    )
     if chosen is None:
         return None
     start, span = chosen

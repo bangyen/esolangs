@@ -281,8 +281,8 @@ def uniform(pair: tuple[str, str] | None) -> Callable[[str, int], Setters]:
 
 def _fill_from(
     setters: Callable[[str, int], Setters],
-    body: Callable[[str], str] | None = None,
-    char: str = TEMPLATE_CHAR,
+    body: Callable[[str], str] | None,
+    char: str,
 ) -> Callable[[str, list[int]], str]:
     """Return the substitution a ``setters`` function defines."""
 

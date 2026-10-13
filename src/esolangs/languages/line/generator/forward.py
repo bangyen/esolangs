@@ -334,7 +334,6 @@ def _place_level(
     join_spans = [
         (edge, _rail(layout, edge), columns[dest[1]]) for edge, dest in extras
     ]
-    lanes, lane_count = _join_lanes(join_spans)
     arrivals = (
         [
             (
@@ -361,6 +360,8 @@ def _place_level(
             {edge: arrival_lanes[first[dest]] + 2 for edge, dest in extras},
         )
         lane_count = total - arrival_count
+    else:
+        lanes, lane_count = _join_lanes(join_spans)
     # Disjoint arrival/join spans reuse rows. At n=22 majority, scale 1,
     # this emits 87,270,400 pixels versus 123,110,400 (29.1%); both native
     # programs pass 37 rows with the same 98-command maximum.

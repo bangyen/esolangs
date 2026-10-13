@@ -492,7 +492,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The 256 variables, unset ones reading as zero."""
-        return [self.var.get(k, 0) for k in range(256)]
+        return [self.var.get(k, 0) for k in range(_VARIABLES)]
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

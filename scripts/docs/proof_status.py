@@ -155,6 +155,13 @@ def render_totals(proofs: tuple[ProofRow, ...]) -> str:
     )
 
 
+def splice(text: str, name: str, body: str) -> str:
+    """Replace the block ``name`` marks in ``text``, keeping the markers."""
+    start, end = f"<!-- {name}:START -->", f"<!-- {name}:END -->"
+    block = start + "\n\n" + body + "\n\n" + end
+    return text[: text.index(start)] + block + text[text.index(end) + len(end) :]
+
+
 def update_docs(root: Path = ROOT) -> None:
     """Render the status tables and totals without changing surrounding prose."""
     proofs, audits = load()
@@ -199,11 +206,4 @@ def update_docs(root: Path = ROOT) -> None:
     )
     for path, marker, lines in tables:
         text = path.read_text(encoding="utf-8")
-        start, end = f"<!-- {marker}:START -->", f"<!-- {marker}:END -->"
-        before, rest = text.split(start, 1)
-        _, after = rest.split(end, 1)
-        body = "\n".join(lines)
-        path.write_text(
-            before + start + "\n\n" + body + "\n\n" + end + after,
-            encoding="utf-8",
-        )
+        path.write_text(splice(text, marker, "\n".join(lines)), encoding="utf-8")

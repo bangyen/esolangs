@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from contextlib import nullcontext
 
 from esolangs import _check_runnable, describe
 from esolangs.cli.args import (
@@ -25,7 +26,6 @@ from esolangs.cli.hints import (
     _template_hint,
 )
 from esolangs.cli.io import (
-    _null_context,
     _read_program,
     _read_stdin,
     _resolve_target,
@@ -65,16 +65,15 @@ def _debug(rest: list[str]) -> None:
     language, path, content = _resolve_target("debug", rest, limit, portable=portable)
     numbers = {
         name: _integer(options[name], name)
-        for name in ("--steps", "--watch-cell", "--break-at")
+        for name in ("--watch-cell", "--steps", "--break-at")
         if name in options
     }
     cell = _pop_cell(options)
     # The breakpoint value may be negative; its cell index may not.
     if cell is not None:
         _nonnegative(cell[0], "--break-on-cell index", cell[0])
-    for name in ("--watch-cell", "--steps", "--break-at"):
-        if name in numbers:
-            _nonnegative(numbers[name], name, options[name])
+    for name, number in numbers.items():
+        _nonnegative(number, name, options[name])
     settings = _settings_of(options, set_pairs, language=language)
     with _errors():
         if not portable:
@@ -136,7 +135,7 @@ def _debug(rest: list[str]) -> None:
     if facts["answer_mode"] == "termination" and not bounded:
         _termination_notice(facts["name"], "--timeout SECONDS or --steps N")
     try:
-        with _unbounded_notice("debug") if not bounded else _null_context():
+        with _unbounded_notice("debug") if not bounded else nullcontext():
             reason = dbg.run(max_steps=steps, timeout=limit)
     except Exception as exc:
         fault = f"{type(exc).__name__}: {error_text(exc)}"

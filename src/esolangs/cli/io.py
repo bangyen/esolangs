@@ -10,7 +10,7 @@ import json
 import sys
 import threading
 from collections.abc import Callable
-from contextlib import AbstractContextManager, nullcontext
+from contextlib import AbstractContextManager
 
 from esolangs import _read_source, load_program
 from esolangs.cli.args import (
@@ -27,12 +27,6 @@ from esolangs.registry import resolve
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-
-
-def _null_context() -> AbstractContextManager[None]:
-    """Return a do-nothing ``with`` target, for an already-bounded run."""
-    return nullcontext()
-
 
 #: How long a blocking stdin read waits before it says that it is waiting.
 #: Shorter than the run notice: a read that has not finished is far more

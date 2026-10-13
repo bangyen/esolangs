@@ -16,7 +16,7 @@ from esolangs.generation.helpers import (
     layout_width,
     same_up_to_wrapping,
 )
-from esolangs.generation.wrap import _join_tokens
+from esolangs.generation.wrap import _join_tokens, balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -80,8 +80,6 @@ def _intercal_tokens(program: str) -> list[str]:
 
 def balance_intercal(_table: str, default: str) -> str:
     """Return the lowest-``balance_score`` wrap of ``default`` over fit widths."""
-    from esolangs.generation.wrap import balance_score
-
     maximum = grid_width(default) - 1
     widths = {1}
     for line in default.splitlines():

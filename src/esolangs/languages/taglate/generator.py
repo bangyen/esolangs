@@ -294,14 +294,19 @@ def _seed_commands(seed: str) -> str:
     return "".join(parts)
 
 
+def _bootstrapped(program: str) -> str:
+    """Return ``program`` with its literal seed rebuilt from the empty queue."""
+    seed, _, commands = program.partition("\n")
+    return "\n" + _seed_commands(seed) + commands
+
+
 def taglate(truth_table: str, width: int | None = None) -> str:
     """Return Taglate code; narrow seeds bootstrap an empty queue."""
     program = _taglate_raw(truth_table)
     if width is None:
         return program
-    seed, _, commands = program.partition("\n")
-    if len(seed) > width:
-        program = "\n" + _seed_commands(seed) + commands
+    if len(program.partition("\n")[0]) > width:
+        program = _bootstrapped(program)
     return wrap_program(program, "taglate", width)
 
 
@@ -320,7 +325,7 @@ def _balanced(default: str) -> str:
     """Compare literal and bootstrapped folds of one queue construction."""
     seed, _, commands = default.partition("\n")
     candidates = [default]
-    bootstrapped = "\n" + _seed_commands(seed) + commands
+    bootstrapped = _bootstrapped(default)
     regimes = [
         (default, len(seed), max(len(seed), len(commands))),
         (bootstrapped, 1, len(seed) - 1),

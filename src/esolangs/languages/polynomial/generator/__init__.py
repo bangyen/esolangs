@@ -75,7 +75,8 @@ def polynomial(truth_table: str) -> str:
             cost = len(instructions) + before + after
             costs.append(cost)
             # Rejected plans are discarded; each retained list has at most
-            # 1934 instructions, including the ignored-input reads.
+            # ``_POLYNOMIAL_MAX_INSTRS`` instructions, including the
+            # ignored-input reads.
             if cost <= _POLYNOMIAL_MAX_INSTRS:
                 fits.append([[0, 2]] * before + instructions + [[0, 2]] * after)
 
@@ -115,21 +116,17 @@ def polynomial(truth_table: str) -> str:
     # Select on rendered characters; the instruction count only screens
     # (a candidate past ``_POLYNOMIAL_SCREEN_SLACK`` is not expanded -- a
     # measured bound, not a proof).  ``k`` descends and the comparison is
-    # strict, so a table nothing shortens emits what it always did.
+    # strict, so a table nothing shortens emits what it always did.  The
+    # cheapest member always passes the screen, so the pool is never empty.
     cheapest = min(costs)
-    program: str | None = None
-    for instructions in fits:
-        if len(instructions) > cheapest + _POLYNOMIAL_SCREEN_SLACK:
-            continue
-        candidate = _polynomial_assemble(instructions)
-        if program is None or len(candidate) < len(program):
-            program = candidate
-    if program is None:  # pragma: no cover - the cheapest member always fits
-        raise AssertionError(
-            "the Polynomial screen dropped every candidate, which the "
-            "cheapest member cannot do",
-        )
-    return program
+    return min(
+        (
+            _polynomial_assemble(instructions)
+            for instructions in fits
+            if len(instructions) <= cheapest + _POLYNOMIAL_SCREEN_SLACK
+        ),
+        key=len,
+    )
 
 
 def _polynomial_assemble(instrs: list[list[int]]) -> str:

@@ -5,13 +5,13 @@ from math import gcd, lcm
 
 from esolangs.generation.helpers import essential_inputs, read_at
 from esolangs.languages.slow_acv_mammalian._sums import _aim, _crossing_head, _leaf
-from esolangs.languages.slow_acv_mammalian.interpreter import MammalianModuli
+from esolangs.languages.slow_acv_mammalian.interpreter import _ARRAYS, MammalianModuli
 
 
 @dataclass
 class _State:
     head: int = 0
-    rest: list[int] = field(default_factory=lambda: [0] * 23)
+    rest: list[int] = field(default_factory=lambda: [0] * _ARRAYS)
     acc: int = 0
     ptr: int = 0
 
@@ -21,15 +21,15 @@ class _State:
 
 def _routing_seeds(head: int, step: int, want: int, modulus: int) -> int:
     """Return the earliest SEED count reaching a head congruent to want modulo 23."""
-    if step == 23:
-        wraps = (head - want) * pow(modulus, -1, 23) % 23
+    if step == _ARRAYS:
+        wraps = (head - want) * pow(modulus, -1, _ARRAYS) % _ARRAYS
         return max(0, -(-(wraps * modulus - head) // step))
-    inverse = pow(step, -1, 23)
+    inverse = pow(step, -1, _ARRAYS)
     for wraps in range(step + 1):
         first = max(0, -(-(wraps * modulus - head) // step))
         last = min(modulus - 1, ((wraps + 1) * modulus - 1 - head) // step)
-        residue = (want - head + wraps * modulus) * inverse % 23
-        count = first + (residue - first) % 23
+        residue = (want - head + wraps * modulus) * inverse % _ARRAYS
+        count = first + (residue - first) % _ARRAYS
         if count <= last:
             return count
     raise AssertionError("no routing head")  # pragma: no cover - coprime steps
@@ -47,15 +47,15 @@ class _Chain:
     def __init__(self, modulus: int, *, io_modulus: int | None = None) -> None:
         moduli = MammalianModuli(modulus, modulus if io_modulus is None else io_modulus)
         self.modulus, self.io_modulus = moduli.cell_modulus, moduli.io_modulus
-        units = [array for array in range(23) if gcd(array + 1, modulus) == 1]
+        units = [array for array in range(_ARRAYS) if gcd(array + 1, modulus) == 1]
         self.weight = units[1]
         self.step = self.weight + 1
         for seeds in range(1, 23):
             for first in units:
                 if first in (0, self.weight):
                     continue
-                head = (first - self.weight) % 23
-                second = (first + seeds * self.step) % 23
+                head = (first - self.weight) % _ARRAYS
+                second = (first + seeds * self.step) % _ARRAYS
                 if second in units and second not in (
                     0,
                     self.weight,
@@ -109,7 +109,7 @@ class _Chain:
 
     def route(self, state: _State, dest: int, *, short: bool = False) -> list[str]:
         tokens = self.clear(state) if state.acc else []
-        want = (dest - state.ptr) % 23
+        want = (dest - state.ptr) % _ARRAYS
         count = (want - self.head(state)) * pow(state.ptr + 1, -1, self.modulus)
         if short:
             count = _routing_seeds(self.head(state), state.ptr + 1, want, self.modulus)
@@ -280,7 +280,7 @@ class _Chain:
         self, state: _State, weight: int, pool: int, *, compact: bool = True
     ) -> list[str]:
         tokens = self.route(state, pool, short=True)
-        hop = (self.weight - pool) % 23
+        hop = (self.weight - pool) % _ARRAYS
         if compact and self.modulus == self.io_modulus:
             inverse = pow(pool + 1, -1, self.modulus)
             head, rest = self.head(state), state.rest[pool]
@@ -288,7 +288,7 @@ class _Chain:
             def seeds(first: int, second: int) -> int:
                 a = (first - rest) % self.modulus
                 b = (second - rest - first) % self.modulus
-                end = (-pool) % 23
+                end = (-pool) % _ARRAYS
                 return (
                     ((a - head) * inverse) % self.modulus
                     + ((b - a) * inverse) % self.modulus

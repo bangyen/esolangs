@@ -31,7 +31,6 @@ from esolangs.generation.wrap import balance_program
 from esolangs.languages.slow_acv_mammalian._mammalian255 import decision_tree
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 from esolangs.languages.slow_acv_mammalian._sums import (
-    _ARRAYS,
     _IO_MODULUS,
     _J2,
     _MODULUS,
@@ -42,6 +41,7 @@ from esolangs.languages.slow_acv_mammalian._sums import (
     _Sums,
 )
 from esolangs.languages.slow_acv_mammalian.interpreter import (
+    _ARRAYS,
     DEFAULT_MODULI,
     MODULI,
     MammalianModuli,

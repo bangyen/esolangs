@@ -419,15 +419,12 @@ def _apl_split(
     return program, min(events, default=None)
 
 
-def _xor_operator_spelling() -> str:
-    """Return operator definitions computing XOR in five columns.
-
-    The generic :func:`_apl_short_operators` spelling needs six columns for
-    the XOR table ``0110``.  This hand-rolled alternative spells XOR as
-    ``a+b-2ab``: the executed sum binds both globals before the unary
-    calls, so every line fits in five columns.
-    """
-    return "!x={\nx*b\n}\n?x={\nx*2\n}\n~x={\na-x\n}\n^x={\n~?!x\n}\n^a+b"
+#: Operator definitions computing XOR in five columns.  The generic
+#: :func:`_apl_short_operators` spelling needs six columns for the XOR table
+#: ``0110``.  This hand-rolled alternative spells XOR as ``a+b-2ab``: the
+#: executed sum binds both globals before the unary calls, so every line
+#: fits in five columns.
+_XOR_OPERATORS = "!x={\nx*b\n}\n?x={\nx*2\n}\n~x={\na-x\n}\n^x={\n~?!x\n}\n^a+b"
 
 
 def _apl_narrow_layout(
@@ -492,8 +489,8 @@ def _apl_narrow_layout(
     if width < 5 and table == "0110":
         events.append(5)
         # XOR's generic operator spelling cannot fit in five columns; the
-        # hand-rolled a+b-2ab spelling can (see _xor_operator_spelling).
-        operators = _xor_operator_spelling()
+        # hand-rolled a+b-2ab spelling can (see _XOR_OPERATORS).
+        operators = _XOR_OPERATORS
     program = min((chosen, operators), key=grid_width)
     return program, min(events)
 

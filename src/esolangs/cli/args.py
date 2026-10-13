@@ -389,15 +389,12 @@ def _errors(code: int = 2) -> Iterator[None]:
         _fail(exc, code)
 
 
-def _integer(
-    value: str, name: str, *, kind: str = "an integer", show_value: bool = True
-) -> int:
+def _integer(value: str, name: str, *, kind: str = "an integer") -> int:
     """Parse an integer with a flag-specific usage error."""
     try:
         return int(value)
     except ValueError:
-        suffix = f", got {value!r}" if show_value else ""
-        _fail(f"{name} must be {kind}{suffix}")
+        _fail(f"{name} must be {kind}, got {value!r}")
         raise  # pragma: no cover - _fail exits
 
 

@@ -476,7 +476,6 @@ class _Machine:
             return
         value: str | int | None = None
         ready = False
-        number = False
         while True:
             try:
                 core, effect = _advance(self.state, value, ready=ready)

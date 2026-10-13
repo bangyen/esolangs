@@ -273,7 +273,7 @@ def _finished(
 
     code, _, _, _, _, repeat = frame
     if repeat and len(view) - pops + len(pushes) > 0:
-        rewound = (code, 0, "", (), -1, repeat)
+        rewound = _frame(code, repeat=repeat)
         return (variables, (*frames[:-1], rewound)), fx
     return (variables, frames[:-1]), fx
 
@@ -559,7 +559,7 @@ def _advance(
 
 
 class _Machine:
-    """Shared stack, variables, step counter, and call stack for a run."""
+    """Shared stack, variables, and call stack for a run."""
 
     def __init__(
         self,

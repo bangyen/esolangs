@@ -140,7 +140,7 @@ class _Frame:
 type _State = tuple[_Frame, ...]
 
 
-def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
+def _evaluate(node: _Expr, store: _Store) -> int:
     """Return the value of an expression, which contains no unresolved call.
 
     Pure with respect to the store, and no longer recursive through a
@@ -168,18 +168,18 @@ def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int
             )
         return len(value)
     if kind == "xor":
-        left = _evaluate(_node(node[1]), store, program, caller)
-        right = _evaluate(_node(node[2]), store, program, caller)
+        left = _evaluate(_node(node[1]), store)
+        right = _evaluate(_node(node[2]), store)
         return left ^ right
     if kind == "not":
-        value = _evaluate(_node(node[1]), store, program, caller)
+        value = _evaluate(_node(node[1]), store)
         return 0 if _truth(value) else 1
     if kind == "apply":
-        return _apply(node, store, program, caller)
+        return _apply(node, store)
     raise HaltError(f"cannot evaluate {kind!r}")
 
 
-def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
+def _apply(node: _Expr, store: _Store) -> int:
     """Evaluate an array index.  A function call never reaches here.
 
     Indexing and calling look alike in the grammar, and the store decides
@@ -200,7 +200,7 @@ def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
             f"indexing {name!r} takes exactly one index",
             hint="supply exactly one index when accessing an array",
         )
-    index = _evaluate(args[0], store, program, caller)
+    index = _evaluate(args[0], store)
     if not 0 <= index < len(value):
         raise HaltError(
             f"index {index} is outside {name!r}",
@@ -209,9 +209,7 @@ def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
     return _int(value[index])
 
 
-def _pending_call(
-    node: _Expr, store: _Store, program: _Program, caller: str
-) -> _Expr | None:
+def _pending_call(node: _Expr, store: _Store) -> _Expr | None:
     """Return the call :func:`_evaluate` would reach first, or None.
 
     Leftmost-innermost, which is ``_evaluate``'s own order: a call's own
@@ -226,15 +224,15 @@ def _pending_call(
     if kind in ("lit", "done", "var", "length"):
         return None
     if kind == "not":
-        return _pending_call(_node(node[1]), store, program, caller)
+        return _pending_call(_node(node[1]), store)
     if kind == "xor":
-        return _pending_call(_node(node[1]), store, program, caller) or _pending_call(
-            _node(node[2]), store, program, caller
+        return _pending_call(_node(node[1]), store) or _pending_call(
+            _node(node[2]), store
         )
     if kind != "apply":
         return None
     for arg in _node(node[2]):
-        found = _pending_call(_node(arg), store, program, caller)
+        found = _pending_call(_node(arg), store)
         if found is not None:
             return found
     name = str(node[1])
@@ -338,50 +336,26 @@ def _statement(
     """
     op = stmt[0]
     store = frame.store
-    # Name resolution is done from the running function's own package.
-    package = frame.func.package
     pc = frame.pc + 1
     out: str | None = None
     result = frame.result
 
     if op == _PRINT:
-        value = _evaluate(_node(stmt[1]), store, program, package)
+        value = _evaluate(_node(stmt[1]), store)
         out = chr(value % 256)
     elif op == _READ:
         if byte is None:
             return frame, None, True
-        store = _write(
-            store,
-            program,
-            str(stmt[1]),
-            stmt[2],
-            lambda _old: byte,
-            package,
-        )
+        store = _write(store, str(stmt[1]), stmt[2], lambda _old: byte)
     elif op == _INIT:
         kind = _type_of(str(stmt[1]), frame.func, program)
-        store = _write(
-            store,
-            program,
-            str(stmt[1]),
-            stmt[2],
-            lambda _o: kind.low,
-            package,
-            whole=kind,
-        )
+        store = _write(store, str(stmt[1]), stmt[2], lambda _o: kind.low, whole=kind)
     elif op in (_INCR, _DECR):
         step = 1 if op == _INCR else -1
         kind = _type_of(str(stmt[1]), frame.func, program)
-        store = _write(
-            store,
-            program,
-            str(stmt[1]),
-            stmt[2],
-            lambda old: kind.clamp(old + step),
-            package,
-        )
+        store = _write(store, str(stmt[1]), stmt[2], lambda old: kind.clamp(old + step))
     elif op == _JUMP_UNLESS:
-        guard = _evaluate(_node(stmt[1]), store, program, package)
+        guard = _evaluate(_node(stmt[1]), store)
         if not _truth(guard):
             pc = _int(stmt[2])
     elif op == _JUMP:
@@ -389,7 +363,7 @@ def _statement(
     # Every opcode the parser emits has an arm above, so the chain is
     # exhaustive and this last test never falls through.
     elif op == _VALUE:  # pragma: no branch
-        result = _evaluate(_node(stmt[1]), store, program, package)
+        result = _evaluate(_node(stmt[1]), store)
 
     return (
         replace(frame, store=store, pc=pc, result=result, pending=None, returned=None),
@@ -400,11 +374,9 @@ def _statement(
 
 def _write(
     store: _Store,
-    program: _Program,
     name: str,
     index: object,
     update: Callable[[int], int],
-    caller: str,
     whole: _Type | None = None,
 ) -> _Store:
     """Apply ``update`` to a variable or one array element.
@@ -421,7 +393,7 @@ def _write(
                 f"{name!r} is an array and needs an index",
                 hint="supply an index when assigning an array element",
             )
-        at = _evaluate(_node(index), store, program, caller)
+        at = _evaluate(_node(index), store)
         if not 0 <= at < len(value):
             raise HaltError(
                 f"index {at} is outside {name!r}",
@@ -484,20 +456,18 @@ def _resolve(frame: _Frame, program: _Program) -> tuple[_Frame, _Frame | None]:
     working = frame.pending if frame.pending is not None else expr
     package = frame.func.package
     if frame.returned is not None:
-        call = _pending_call(working, frame.store, program, package)
+        call = _pending_call(working, frame.store)
         # A value is waiting only because a call was found and stepped,
         # so the same search finds it again here.
         if call is not None:  # pragma: no branch
             working = _substitute(working, call, frame.returned)
         frame = replace(frame, returned=None)
-    call = _pending_call(working, frame.store, program, package)
+    call = _pending_call(working, frame.store)
     frame = replace(frame, pending=working)
     if call is None:
         return frame, None
     func = _callee(call, program, package)
-    values = [
-        _evaluate(_node(arg), frame.store, program, package) for arg in _node(call[2])
-    ]
+    values = [_evaluate(_node(arg), frame.store) for arg in _node(call[2])]
     return frame, _entered(func, values, program)
 
 

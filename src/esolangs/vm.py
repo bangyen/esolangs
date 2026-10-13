@@ -483,8 +483,8 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
 
 
 def _grows_forever(
-    before: tuple[int, tuple[int, ...], int],
-    after: tuple[int, tuple[int, ...], int],
+    before: _Snapshot,
+    after: _Snapshot,
     lowest: int,
 ) -> bool:
     """Whether ``after`` is ``before`` translated right by the growth."""
@@ -954,7 +954,7 @@ def make_vm(
     check_scale_for(name, scale)
     with interpreter_errors(
         f"the {name} interpreter recursed deeper than CPython's stack "
-        "limit allows while loading this program while parsing its source",
+        "limit allows while loading this program",
         language=name,
     ):
         return _DelegatingVM(name, source, stdin, scale=scale, settings=settings)

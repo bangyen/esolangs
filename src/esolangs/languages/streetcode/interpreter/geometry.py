@@ -110,8 +110,8 @@ _WALLS = frozenset("+-|")
 # ``_Grid.open_at`` checks bounds separately because it is not drivable.
 _VOID = "?"
 
-# Closed set: every glyph maps here or to ``NOP``, so :meth:`_Machine.step`
-# is exhaustive.  Cells keep the glyph as drawn (``_validate_connected``
+# Closed set: every glyph maps here or to ``NOP``, so :func:`_advance`
+# is exhaustive.  Cells keep the glyph as drawn (``_connection_violation``
 # names stray ink): ``#`` on the street is a no-op, beside it malformed.
 _Op = Literal["NOP", "INC", "DEC", "RIGHT", "LEFT", "IN", "OUT", "TURN", "HALT"]
 
@@ -290,7 +290,7 @@ def _drives_on_the_right(grid: _Grid, state: _State) -> bool:
     rejects, refusing correct programs with tightly drawn lanes.  Walls on
     both sides or neither is not a violation.
     """
-    car = _Car(state.row, state.col, state.heading)
+    car = state.car
     open_right = _open_toward(grid, car, _right(state.heading))
     open_left = _open_toward(grid, car, _left(state.heading))
     return not (open_right and not open_left)

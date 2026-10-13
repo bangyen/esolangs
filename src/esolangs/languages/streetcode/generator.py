@@ -621,6 +621,29 @@ def _streetcode_narrow(flat: str, width: int) -> str:
     )
 
 
+def _tree_shapes(
+    truth_table: str, n: int, tree: list[str], *, hallway: bool
+) -> list[str]:
+    """Return the decision-tree shapes below six inputs, hallway first if asked."""
+    # The per-input loops trade rows for columns, so only width selection
+    # needs them.  The shared lap is strictly shorter through every table at
+    # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
+    # decisively as the input count grows.
+    programs = [_streetcode_hallway_program(n, tree)] if hallway else []
+    # The shared shape is not lifted: its prefix is as long as the street it
+    # heads, so a westbound run of it crosses the loops' own mouths, and at
+    # each one CP names a cell nothing has seeded yet.  No ordering of the
+    # seeds avoids that.  It is built once per input order, identity first,
+    # so a table no reorder improves keeps the program it already emitted.
+    programs.extend(_streetcode_shared_programs(truth_table, n, tree))
+    # At five the flat lookup wins on dense and parity tables and loses on
+    # one that folds, so it is compared; without it parity at five costs
+    # 3251 against 2534 and the odd rungs stop growing linearly.
+    if n == 5:
+        programs.append(_streetcode_flat(truth_table, n))
+    return programs
+
+
 def streetcode(truth_table: str, width: int | None = None) -> str:
     """Build a Streetcode program computing the given truth table.
 
@@ -644,22 +667,7 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
             return flat
         return _streetcode_narrow(flat, width)
     tree = _streetcode_tree(truth_table)
-    # The per-input loops trade rows for columns, so only width selection
-    # needs them.  The shared lap is strictly shorter through every table at
-    # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
-    # decisively as the input count grows.
-    programs = [_streetcode_hallway_program(n, tree)] if width is not None else []
-    # The shared shape is not lifted: its prefix is as long as the street it
-    # heads, so a westbound run of it crosses the loops' own mouths, and at
-    # each one CP names a cell nothing has seeded yet.  No ordering of the
-    # seeds avoids that.  It is built once per input order, identity first,
-    # so a table no reorder improves keeps the program it already emitted.
-    programs.extend(_streetcode_shared_programs(truth_table, n, tree))
-    # At five the flat lookup wins on dense and parity tables and loses on
-    # one that folds, so it is compared; without it parity at five costs
-    # 3251 against 2534 and the odd rungs stop growing linearly.
-    if n == 5:
-        programs.append(_streetcode_flat(truth_table, n))
+    programs = _tree_shapes(truth_table, n, tree, hallway=width is not None)
     if width is not None:
         fitting = [p for p in programs if grid_width(p) <= width]
         if fitting:
@@ -677,13 +685,7 @@ def _balance(table: str, default: str) -> str:
         flat = _streetcode_flat(table, n)
         shapes = [flat, _streetcode_rotate(flat)]
     else:
-        tree = _streetcode_tree(table)
-        shapes = [
-            _streetcode_hallway_program(n, tree),
-            *_streetcode_shared_programs(table, n, tree),
-        ]
-        if n == 5:
-            shapes.append(_streetcode_flat(table, n))
+        shapes = _tree_shapes(table, n, _streetcode_tree(table), hallway=True)
     # A requested width changes the shortest fitting shape only when another
     # shape starts fitting; asking at that shape's span also excludes losers.
     candidates = [default, streetcode(table, 1), streetcode(table, 9)]

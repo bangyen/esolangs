@@ -8,6 +8,7 @@ from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.raster_lookup import (
     _INITIAL,
     _MULTIPLY,
+    _POINTER,
     _POP,
     Change,
     Pixel,
@@ -21,8 +22,6 @@ from esolangs.generation.raster_lookup.packing import _raster_score, _shape_scor
 from esolangs.raster import Raster
 from esolangs.runtime._validate import check_width
 from esolangs.runtime.codels import BLACK
-
-_POINTER = (3, 1)
 
 _MIN_COLUMNS = 13  # narrowest width that routes a turn
 _MIN_DENSE_COLUMNS = 14  # the left lane must fit the three-codel halt charge

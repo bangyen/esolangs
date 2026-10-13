@@ -1,10 +1,11 @@
 """Exact root recovery for the Polynomial interpreter.
 
-:mod:`.polynomial` reads instructions off the roots of a program; this finds
-them.  Primality is proven in every range (:func:`_is_proven_prime`), the
-two peels divide out what an instruction can encode, and the rest goes to
-``p``-adic lifting and a 2-D lattice (:func:`_dense_gaussian_roots`), so a
-cold parse is polynomial in the source length for every source.
+:mod:`esolangs.languages.polynomial.interpreter` reads instructions off the
+roots of a program; this finds them.  Primality is proven in every range
+(:func:`_is_proven_prime`), the two peels divide out what an instruction can
+encode, and the rest goes to ``p``-adic lifting and a 2-D lattice
+(:func:`_dense_gaussian_roots`), so a cold parse is polynomial in the source
+length for every source.
 """
 
 import functools
@@ -969,6 +970,7 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
     exponential in the worst case.
     """
     _require_sympy()
+    quadratics: list[tuple[int, int]] = []
     if len(coefficients) - 1 > _NTT_MIN_DEGREE:
         # Only the real-lift bound is needed from the cold-parse resource
         # estimate; computing it directly keeps the interpreter from
@@ -994,22 +996,15 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
                 real_lift_bound,
             )
             quadratics, remainder = _divide_out_quadratics(remainder, candidates)
-        else:
-            quadratics = []
     else:
         peeled, remainder = _peel_prime_power_roots(list(coefficients))
         roots = [_Root(root, 0) for root in peeled]
         if len(remainder) > 1:
             quadratics, remainder = _peel_instruction_quadratics(remainder)
-        else:
-            quadratics = []
 
     for real, square in quadratics:
         imaginary = math.isqrt(square)
         roots.extend([_Root(real, imaginary), _Root(real, -imaginary)])
-    if len(remainder) <= 1:
-        return tuple(roots)
-
     roots.extend(_remainder_roots(remainder))
     return tuple(roots)
 

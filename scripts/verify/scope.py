@@ -301,27 +301,25 @@ class VerifiedCache:
             return None
         query = [cmd[0], str(Path(__file__).resolve()), "python checks"]
         query_key = json.dumps([query, sorted(env.items())])
-        if query_key in self.runtimes:
-            runtime = self.runtimes[query_key][2]
-            return self._key(step, cmd, env, runtime)
-        try:
-            result = run_bounded(
-                query,
-                env=env,
-                cwd=self.root,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except (OSError, subprocess.SubprocessError):
-            return None
-        runtime = result.stdout.strip()
-        if len(runtime) != 64 or any(
-            char not in "0123456789abcdef" for char in runtime
-        ):
-            return None
-        self.runtimes[query_key] = (query, env, runtime)
-        return self._key(step, cmd, env, runtime)
+        if query_key not in self.runtimes:
+            try:
+                result = run_bounded(
+                    query,
+                    env=env,
+                    cwd=self.root,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+            except (OSError, subprocess.SubprocessError):
+                return None
+            runtime = result.stdout.strip()
+            if len(runtime) != 64 or any(
+                char not in "0123456789abcdef" for char in runtime
+            ):
+                return None
+            self.runtimes[query_key] = (query, env, runtime)
+        return self._key(step, cmd, env, self.runtimes[query_key][2])
 
     def _key(self, step: str, cmd: list[str], env: dict[str, str], runtime: str) -> str:
         inputs = self.initial[0]
@@ -441,6 +439,11 @@ def _scope_changed_files() -> tuple[str, ...]:
     return tuple(changed_files())
 
 
+def verify_full() -> bool:
+    """Whether ``VERIFY_FULL`` asks for the whole tree."""
+    return os.environ.get("VERIFY_FULL", "0") not in ("", "0")
+
+
 def _scope_plan(*, full: bool) -> tuple[set[str] | None, str]:
     """Return the step names to skip as unaffected, and why.
 
@@ -451,7 +454,7 @@ def _scope_plan(*, full: bool) -> tuple[set[str] | None, str]:
     """
     if full:
         return None, "--full requested"
-    if os.environ.get("VERIFY_FULL", "0") not in ("", "0"):
+    if verify_full():
         return None, "VERIFY_FULL set"
     changed = list(_scope_changed_files())
     reason = widens_to_everything(changed)

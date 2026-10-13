@@ -274,7 +274,7 @@ def _six_five_hoisted(
     # measurement was taken against, and sharing only pays once there are
     # duplicates worth merging.  Past the budget the DAG is tried before
     # the order is given up on.
-    shared = _six_five_markers(truth_table) > 35
+    shared = _six_five_markers(truth_table) > _SIX_FIVE_MAX_LABEL
     if perm == tuple(range(n)) and not shared:
         return _six_five_stream_ordered(truth_table, share=share)
     stored = stored_inputs(truth_table, perm)
@@ -591,8 +591,9 @@ def _six_five_stream_ordered(truth_table: str, *, share: bool = False) -> str:
     if labels > _SIX_FIVE_MAX_LABEL:
         raise with_hint(
             GeneratorCapError(
-                "the 6-5 decision tree has 35 branch labels, but this table needs "
-                f"{labels} after folding its constant subtrees (n == {n})"
+                f"the 6-5 decision tree has {_SIX_FIVE_MAX_LABEL} branch labels, "
+                f"but this table needs {labels} after folding its constant "
+                f"subtrees (n == {n})"
             ),
             (
                 "check another generator's limits for this "

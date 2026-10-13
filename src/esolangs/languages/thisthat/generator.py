@@ -304,26 +304,26 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
     essential = _essential(subtree_ids(truth_table), n) if prune else list(range(n))
     if len(essential) < n:
         truth_table = read_at(truth_table, essential, n)
-    order = tuple(range(len(essential)))
-    return _layout(truth_table, n, essential, order, prune=prune)
+    return _layout(truth_table, n, essential, prune=prune)
+
+
+def _identity_plan(m: int) -> tuple[list[bool], list[bool]]:
+    """Return the deque plan that pops inputs ``0..m-1`` in order.
+
+    Every input goes to the tail and every level pops the head.
+    """
+    return [False] * m, [True] * m
 
 
 def _layout(
     truth_table: str,
     n: int,
     essential: list[int],
-    order: tuple[int, ...],
     *,
     prune: bool = True,
 ) -> str:
-    """Lay out the tree over ``truth_table``, whose level ``k`` pops ``order[k]``.
-
-    ``""`` when the row cannot pop them in that order.
-    """
-    plan = _deque_plan(order) if order else ([], [])
-    if plan is None:
-        return ""
-    head_push, head_pop = plan
+    """Lay out the tree over ``truth_table``, whose level ``k`` pops input ``k``."""
+    head_push, head_pop = _identity_plan(len(essential))
     # No essential input: the table is one constant char, which subtree_ids
     # (table length 2**n) is not asked about.
     ids = subtree_ids(truth_table) if essential else [[int(truth_table[0])]]
@@ -641,10 +641,7 @@ def shared_tree(table: str) -> tuple[str, int] | None:
         for key in nodes
     }
     ys = {key: 8 * i for i, key in enumerate(nodes)}
-    plan = _deque_plan(tuple(range(m)))
-    if plan is None:
-        raise ValueError("input order has no deque plan")
-    push, pop = plan
+    push, pop = _identity_plan(m)
     builder = _Builder()
     costs, buses = _draw_nodes(builder, nodes, ys, columns, children, pop)
     _draw_buses(builder, buses)

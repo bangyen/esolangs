@@ -452,8 +452,7 @@ def _program(
 ) -> str:
     """Lay out the lookup, optionally retaining constant-input indexing."""
     n = _validate_truth_table(truth_table)
-    validate_expression_syntax(expression_syntax)
-    validate_list_update(list_update)
+    _dialect(expression_syntax, list_update)
     if width is not None and width < 1:
         raise ValueError("width must be at least 1")
     weights, projected = input_weights(truth_table, n)

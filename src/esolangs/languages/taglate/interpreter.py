@@ -19,6 +19,7 @@ narrower than the real page's ``!$'()*,/:;?@`` and ``+`` but within the
 spec.  Exhausted input raises :class:`EOFError`.
 """
 
+from collections.abc import Iterable
 from functools import lru_cache
 
 from esolangs.exceptions import HaltError
@@ -79,7 +80,7 @@ def percent_encode(text: str) -> str:
     return "".join(c if c in _URL_SAFE else f"%{ord(c):02X}" for c in text)
 
 
-def _google_url(queue: list[int]) -> str:
+def _google_url(queue: Iterable[int]) -> str:
     return _PREFIX + percent_encode("".join(map(chr, queue))) + _SUFFIX
 
 
@@ -165,7 +166,7 @@ def _advance(
         value, state = _pop(state)
         state = _push(state, (value - 1) % 65536 if value else 1)
     else:  # "t"
-        state = (tuple(ord(c) for c in _google_url(list(queue))), ind)
+        state = (tuple(ord(c) for c in _google_url(queue)), ind)
 
     return (state[0], state[1] + 1)
 

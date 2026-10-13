@@ -12,9 +12,10 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+from itertools import islice
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -71,13 +72,12 @@ def _cli(args: list[str], stdin: str = "") -> str:
 def _refuses_timeout() -> None:
     import esolangs
 
-    try:
-        esolangs.run("brainfuck", "+.", timeout=0.1)
-    except esolangs.ArgumentError as exc:
-        message = str(exc)
-    else:
-        raise AssertionError("unsupported signal timeout was accepted")
-    assert "Unix main thread" in message
+    refusal = _refused(
+        esolangs.ArgumentError,
+        lambda: esolangs.run("brainfuck", "+.", timeout=0.1),
+        "unsupported signal timeout was accepted",
+    )
+    assert "Unix main thread" in str(refusal)
 
 
 def _generator(name: str, *, math_extra: bool, image_extra: bool) -> None:
@@ -126,6 +126,25 @@ def _refused(
     except error as exc:
         return exc
     raise AssertionError(failure)
+
+
+def _first_languages(
+    wanted: Callable[[Mapping[str, object]], object], count: int
+) -> list[str]:
+    """Return the first ``count`` boolean-generator languages ``wanted`` accepts."""
+    import esolangs
+
+    return list(
+        islice(
+            (
+                name
+                for name in esolangs.list_languages()
+                if (facts := esolangs.describe(name))["boolean_generator"]
+                and wanted(facts)
+            ),
+            count,
+        )
+    )
 
 
 def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
@@ -251,14 +270,11 @@ def _smoke_rasters(*, image_extra: bool) -> None:
     """Run two raster generators, through PNG only when the image extra is in."""
     import esolangs
 
-    rasters = [
-        name
-        for name in esolangs.list_languages()
-        if esolangs.describe(name)["source_kind"] == "raster"
-        and esolangs.describe(name)["boolean_generator"]
-        and not esolangs.describe(name)["parameterized"]
-    ]
-    for language in rasters[:2]:
+    rasters = _first_languages(
+        lambda facts: facts["source_kind"] == "raster" and not facts["parameterized"],
+        2,
+    )
+    for language in rasters:
         raster = esolangs.generate(language, "0110")
         assert isinstance(raster, esolangs.Raster)
         if image_extra:
@@ -303,13 +319,9 @@ def _smoke_deadlines() -> None:
         pool.submit(_refuses_timeout).result(timeout=5)
     # A language never halting by itself, and one answering by termination;
     # each check drops out with the last language of its kind.
-    for language in [
-        name
-        for name in esolangs.list_languages()
-        if not esolangs.describe(name)["self_halts"]
-        and esolangs.describe(name)["boolean_generator"]
-        and esolangs.describe(name)["reads_input"]
-    ][:1]:
+    for language in _first_languages(
+        lambda facts: not facts["self_halts"] and facts["reads_input"], 1
+    ):
         with ThreadPoolExecutor(max_workers=1) as pool:
             assert (
                 pool.submit(
@@ -321,12 +333,9 @@ def _smoke_deadlines() -> None:
                 ).result(timeout=30)
                 == "0110"
             )
-    terminating = [
-        name
-        for name in esolangs.list_languages()
-        if esolangs.describe(name)["answer_mode"] == "termination"
-        and esolangs.describe(name)["boolean_generator"]
-    ][:1]
+    terminating = _first_languages(
+        lambda facts: facts["answer_mode"] == "termination", 1
+    )
     for language in terminating:
         assert (
             _evaluate(

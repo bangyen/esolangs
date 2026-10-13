@@ -332,7 +332,7 @@ def _clockwise_lean_rotate(
     n: int,
     digit: int,
     span: int,
-    return_gap: int = 0,
+    return_gap: int,
 ) -> str:
     """Share entry and return rails using zero/nonzero gates around the lookup."""
     tail = digit - 1 if n > 1 else digit

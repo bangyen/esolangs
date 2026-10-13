@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import warnings
+from contextlib import nullcontext
 from functools import partial
 
 from esolangs import describe, run
@@ -31,7 +32,6 @@ from esolangs.cli.hints import (
 from esolangs.cli.io import (
     _emit_partial,
     _note,
-    _null_context,
     _read_program,
     _read_stdin,
     _resolve_target,
@@ -130,7 +130,7 @@ def _run(rest: list[str]) -> None:
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     try:
         with (
-            _unbounded_notice("run") if timeout is None else _null_context(),
+            _unbounded_notice("run") if timeout is None else nullcontext(),
             warnings.catch_warnings(record=True) as caught,
         ):
             warnings.simplefilter("always")

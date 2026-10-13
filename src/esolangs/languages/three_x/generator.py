@@ -231,6 +231,7 @@ class _Emitter:
         self.essential = essential
         self.width = len(essential)
         self.constant = constant_span_test(table)
+        self.shares = shares
         self.flag_of = {block: i for i, block in enumerate(shares)}
         self.pieces: list[_Piece] = []
         self.patterns: dict[tuple[int, int], str] = {}
@@ -317,9 +318,9 @@ class _Emitter:
         self.close()
         return tuple(x if x == y else "" for x, y in zip(first, second, strict=True))
 
-    def emit_all(self, shares: tuple[str, ...]) -> list[_Piece]:
+    def emit_all(self) -> list[_Piece]:
         """Return the tree, each shared block under its flag, then the output."""
-        table = self.table
+        table, shares = self.table, self.shares
         # Every flag starts set, as an unset variable reads 3.
         self.build(0, 2**self.width, 0, ("1",) * (1 + len(shares)))
         self.flag_of.clear()
@@ -352,13 +353,11 @@ def _read_head(pieces: list[_Piece], perm: tuple[int, ...], n: int) -> list[_Pie
     for i in range(n):
         head.append(_Piece(_Kind.TEXT, "?"))
         depth = depth_of[i]
-        if (
-            _Piece(_Kind.BIT, depth=depth) in named
-            or _Piece(_Kind.NOT, depth=depth) in named
-        ):
+        bit = _Piece(_Kind.BIT, depth=depth)
+        mark = _Piece(_Kind.NOT, depth=depth)
+        if bit in named or mark in named:
             head.append(_Piece(_Kind.TEXT, _SCALE))
-            if _Piece(_Kind.NOT, depth=depth) in named:
-                mark = _Piece(_Kind.NOT, depth=depth)
+            if mark in named:
                 head.extend(
                     [
                         _Piece(_Kind.TEXT, _COMPLEMENT),
@@ -368,7 +367,7 @@ def _read_head(pieces: list[_Piece], perm: tuple[int, ...], n: int) -> list[_Pie
                         _Piece(_Kind.TEXT, "^" + _COMPLEMENT),
                     ]
                 )
-            head.extend([_Piece(_Kind.BIT, depth=depth), _Piece(_Kind.TEXT, "#v")])
+            head.extend([bit, _Piece(_Kind.TEXT, "#v")])
     return head
 
 
@@ -401,7 +400,7 @@ def _three_x_emit(
     unset (3) at the start and any other leaf clears it, so the last write
     wins as it does for the result.
     """
-    body = _Emitter(table, essential, shares).emit_all(shares)
+    body = _Emitter(table, essential, shares).emit_all()
     return _key_pieces(_read_head(body, perm, n) + body)
 
 

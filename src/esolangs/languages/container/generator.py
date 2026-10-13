@@ -182,10 +182,10 @@ def _container_tree(
 
     identifiers = _free_names(_RESERVED)
     names = {i: next(identifiers) for i in [-1, *order]}
-    gates = {
-        (nodes[i].born - 1, (nodes[i].lo >> (n - nodes[i].born)) & 1): "" for i in order
+    keys = {
+        (nodes[i].born - 1, (nodes[i].lo >> (n - nodes[i].born)) & 1) for i in order
     }
-    gates = {key: next(identifiers) for key in sorted(gates)}
+    gates = {key: next(identifiers) for key in sorted(keys)}
     root, output_gate = names[-1], next(identifiers)
 
     # A positive delta is spelt unsigned, as ``int`` reads it.

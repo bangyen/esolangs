@@ -26,6 +26,14 @@ _Node = tuple[int, int]
 _Grid = dict[tuple[int, int], str]
 
 
+def _extent(grid: _Grid) -> tuple[int, int]:
+    """Return the rows and columns ``grid`` spans, counted from zero."""
+    return (
+        max(r for r, _ in grid) + 1,
+        max(c for _, c in grid) + 1,
+    )
+
+
 def _back_walk(grid: _Grid, height: int, width: int) -> int | None:
     """Bound both outcomes of every skip; reject a reachable beam cycle."""
     start = (0, 1, 0, 1)
@@ -108,7 +116,7 @@ def _back_bend(
     def falls(
         cells: _Grid, nodes: dict[_Node, tuple[int, int]]
     ) -> dict[_Node, _Node | None]:
-        height = max(r for r, _ in cells) + 1
+        height = _extent(cells)[0]
         by_cell = {cell: key for key, cell in nodes.items()}
         targets = {}
         for key in shared:
@@ -490,7 +498,7 @@ def _back_plan(
         grid, where = _back_draw(
             truth_table, levels, n, shared | tried, constant, vertical=vertical
         )
-        height = max(r for r, _ in grid) + 1
+        height = _extent(grid)[0]
         column = 3 * k + 2
         owner = {cell: node for node, cell in where.items()}
         for _, a in tried:
@@ -622,8 +630,8 @@ def _back_ordered(
 
     # Height is max(tree 2**n, load units + 1).  Past n=3 load rows share with
     # tree rows; safe only because a run is one character for either bit.
-    height = max(max(r for r, _ in grid) + 1, 1 + len(units))
-    tree_width = max(c for _, c in grid) + 1
+    rows, tree_width = _extent(grid)
+    height = max(rows, 1 + len(units))
     # One '/' at the origin does both turns: right -> up off the top edge onto
     # the bottom row (toroidal wrap), up the load, then up -> right into the
     # tree at column 1.
@@ -632,8 +640,8 @@ def _back_ordered(
     # blank, and the height revealed it).
     program = _reflect_back(grid, height, tree_width)
     if bent is not None:
-        bent_height = max(max(r for r, _ in bent) + 1, 1 + len(units))
-        bent_width = max(c for _, c in bent) + 1
+        bent_rows, bent_width = _extent(bent)
+        bent_height = max(bent_rows, 1 + len(units))
         commands = _back_walk(bent, bent_height, bent_width + 2)
         limit = _bend_command_limit(n)
         # Five entry turns plus the full load column bound either bit value.

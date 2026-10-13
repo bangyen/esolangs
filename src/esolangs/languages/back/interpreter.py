@@ -218,10 +218,10 @@ class _Machine:
         grid.
 
         It fires on the step *after* the halt, as several other languages do:
-        a caller who drives the
-        machine itself then sees the same output from all six, rather than
-        holding Back's tape and none of the others'.  ``dumped`` keeps it
-        to one dump however many times a halted machine is stepped.
+        a caller who drives the machine itself then sees the same output as
+        from ``run``, rather than holding Back's tape and none of the
+        others'.  ``dumped`` keeps it to one dump however many times a halted
+        machine is stepped.
         """
         if self.halted:
             if not self.dumped:

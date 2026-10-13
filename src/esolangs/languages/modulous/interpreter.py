@@ -536,7 +536,7 @@ def _inp(core: _Core, mod: str, _arg: list[str], value: str | int | None) -> _Co
 
 
 def _end(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
-    """Halt: the shell reads the sentinel cursor and stops."""
+    """Halt: ``_advance`` raises the halt flag; the core is unchanged."""
     return core
 
 

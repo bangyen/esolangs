@@ -200,8 +200,9 @@ def _b_tapemark_program(
     # stage crosses no ``|``: it still reads and still steps the pointer once,
     # so the climb and tail stay a stage per input.  A constant keeps all.
     weights, painted = input_weights(truth_table, depth)
+    full = [1 << (depth - 1 - i) for i in range(depth)]
     if not any(weights):
-        painted, weights = truth_table, [1 << (depth - 1 - i) for i in range(depth)]
+        painted, weights = truth_table, full
     size = len(painted)
     builder = _Builder()
 
@@ -238,7 +239,7 @@ def _b_tapemark_program(
     # a painted table of depth entries or fewer cannot house.
     if len(painted) <= depth:
         if keep_full_narrow:
-            painted, weights = truth_table, [1 << (depth - 1 - i) for i in range(depth)]
+            painted, weights = truth_table, full
         else:
             # The zero-side weights count back from the final copied cell.
             # Unaddressed cells before the projected table house the climb

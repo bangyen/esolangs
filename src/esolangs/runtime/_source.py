@@ -14,6 +14,7 @@ from esolangs.runtime._input import InputSource as InputSource
 from esolangs.runtime._input import check_input as check_input
 from esolangs.runtime._input import read_input as read_input
 from esolangs.runtime._program import Program
+from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error, with_hint
 
 type ProgramSource = Program | bytes | os.PathLike[str] | IO[str] | IO[bytes]
@@ -122,7 +123,6 @@ def check_scale_for(language: str, scale: int | None) -> None:
         return
     from esolangs.registry import resolve
     from esolangs.runtime._execution import interpreter_module
-    from esolangs.runtime._validate import check_scale
 
     check_scale(scale)
     module = interpreter_module(resolve(language))

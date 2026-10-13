@@ -37,6 +37,7 @@ a traceback should mean.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from itertools import pairwise
 from typing import cast
@@ -489,8 +490,6 @@ def main() -> None:
         # Python flushes stdout at exit and would report the same error
         # again from the interpreter's own teardown; pointing it at
         # ``devnull`` is the documented way to stop that.
-        import os
-
         os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         sys.exit(120)
     except Exception as exc:

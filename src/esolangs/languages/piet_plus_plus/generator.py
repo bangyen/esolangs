@@ -19,6 +19,7 @@ from esolangs.generation.raster_lookup import (
     _MULTIPLY,
     _NOT,
     _OUT_NUMBER,
+    _POINTER,
     _POP,
     _PUSH,
     _ROLL,
@@ -30,7 +31,6 @@ from esolangs.generation.raster_lookup import (
 )
 from esolangs.generation.raster_lookup.balance import (
     _MIN_COLUMNS,
-    _POINTER,
     _bounded_operations,
     _emit,
     _plan,

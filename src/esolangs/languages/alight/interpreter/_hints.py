@@ -38,7 +38,6 @@ class Hint(StrEnum):
     NUMERIC_INDEX = "use a numeric list index of the form 0.5 + k"
     INDEX_FORM = "use list indices 0.5, 1.5, 2.5 and so on"
     BUILTIN_LIST = "pass a list as the first argument"
-    AT_ARGUMENTS = "pass a list as the first argument"
     INDEXED_WRITE = "use an index inside the list before replacing an element"
     GRID_PATH = "keep the execution path on the grid or terminate it with end"
     VARIABLE_REFERENCE = (
@@ -48,7 +47,6 @@ class Hint(StrEnum):
     FUNCTION_REFERENCE = "define the function before calling it; check its spelling"
     CALL_ARITY = "pass the number of arguments declared by the function"
     BUILTIN_NUMBER = "pass exactly one numeric argument"
-    LEN_ARGUMENTS = "pass a list as the first argument"
     PADDING_COUNT = "use a nonnegative whole-number padding count"
     VARIABLE_DECLARATION = (
         "choose a fresh variable name or assign to the existing variable"

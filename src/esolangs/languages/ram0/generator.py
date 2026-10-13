@@ -55,6 +55,11 @@ def ram0(truth_table: str, width: int | None = None) -> str:
     return wrap_space_delimited(program, width)
 
 
+def _address(k: int, op: str) -> list[str]:
+    """Return the unary address ``k`` (reset, ``k`` increments) then ``op``."""
+    return ["Z", *["A"] * k, op]
+
+
 def _ram0_nand(truth_table: str) -> str:
     """Build small Shannon circuits using unary addresses and NAND stores."""
     n = _validate_truth_table(truth_table)
@@ -63,7 +68,7 @@ def _ram0_nand(truth_table: str) -> str:
     tokens = ["Z", "N", "A", "S"]
 
     def address_op(address: int, op: str) -> None:
-        tokens.extend(["Z", *("A" for _ in range(address)), op])
+        tokens.extend(_address(address, op))
 
     def target(address: int) -> None:
         address_op(address, "N")
@@ -150,9 +155,7 @@ def _ram0_ordered(
     address_of = {input_index: n - 1 - level for level, input_index in enumerate(perm)}
     for i in range(n):
         address = address_of[i]
-        tokens.append("Z")
-        tokens.extend("A" for _ in range(address))
-        tokens.append("N")
+        tokens.extend(_address(address, "N"))
         tokens.extend(("Z", _RAM0_INPUT))  # reset, then set the bit
         tokens.append("S")
 
@@ -197,7 +200,7 @@ def _ram0_ordered(
             tree.extend(["Z", "A" if slot[1] else "Z", "2"])
             return
         at = len(tree)
-        head = ["Z", *("A" for _ in range(n - 1 - level)), "L", "C"]
+        head = [*_address(n - 1 - level, "L"), "C"]
         # Reserve the head plus its goto operand; the one-subtree address is
         # backpatched once the fall-through zero subtree is laid out.
         tree.extend([""] * (len(head) + 1))

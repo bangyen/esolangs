@@ -12,6 +12,7 @@ from esolangs.languages.dig.generator._leaf import (
     _dig_adder,
     _dig_flat_leaf,
     _dig_flat_walk,
+    _hold_column,
     _Reads,
     _render,
 )
@@ -86,7 +87,7 @@ def _adder_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
             for at, want, pending in reads
         ]
         chars[-1, 0], chars[0, cut], chars[-1, cut] = "7", "$", "4"
-        hold = max(c for (r, c), char in chars.items() if r == 1 and char == "$")
+        hold = _hold_column(chars)
         chars[0, hold] = str(hold - exit_at[1] - 1)
         reads.append(((0, cut), (-1, cut), frozenset()))
     end = exit_at[1]
@@ -100,7 +101,7 @@ def _adder_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
         )
     )
     chars.update({(row, end): char for row, char in enumerate(prefix, 5)})
-    hold = max(c for (r, c), char in chars.items() if r == 1 and char == "$")
+    hold = _hold_column(chars)
     return _PrefixDecoder(
         chars,
         turns,

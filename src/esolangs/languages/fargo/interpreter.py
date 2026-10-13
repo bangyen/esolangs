@@ -505,7 +505,7 @@ def _consume(
         return _supply(frames, bound, number, output, defs)
     fn = _lookup(token, frame, defs)
     if fn.arity == 0:
-        return _invoke(frames, frame, fn, (), number, output, defs)
+        return _invoke(frames, fn, (), number, output, defs)
     return (
         _retop(frames, replace(frame, pending=(*frame.pending, (fn, ())))),
         output,
@@ -538,7 +538,7 @@ def _supply(
     # deliveries and no overshoot.
     if len(args) == fn.arity:
         frames = _retop(frames, replace(frame, pending=frame.pending[:-1]))
-        return _invoke(frames, frames[-1], fn, args, number, output, defs)
+        return _invoke(frames, fn, args, number, output, defs)
     return (
         _retop(frames, replace(frame, pending=(*frame.pending[:-1], (fn, args)))),
         output,
@@ -548,7 +548,6 @@ def _supply(
 
 def _invoke(
     frames: tuple[_Frame, ...],
-    frame: _Frame,
     fn: _Func,
     args: list[_Value] | tuple[_Value, ...],
     number: int,
@@ -558,7 +557,7 @@ def _invoke(
     """Apply ``fn`` to ``args``, pushing a frame for a user function."""
     if fn.name in _BUILTINS and fn.name not in defs:
         result, frames, output, effect = _builtin(
-            frames, frame, fn, args, number, output, defs
+            frames, fn, args, number, output, defs
         )
         if isinstance(result, _Pending):
             return frames, output, effect
@@ -611,7 +610,6 @@ def _number(value: _Value) -> int:
 
 def _builtin(
     frames: tuple[_Frame, ...],
-    frame: _Frame,
     fn: _Func,
     args: list[_Value] | tuple[_Value, ...],
     number: int,
@@ -642,7 +640,7 @@ def _builtin(
         return 0, frames, _set_bit(output, args[0], args[1]), None
     if name == "$":
         return 0, frames, output, output
-    return _conditional(frames, frame, args, number, output, defs)
+    return _conditional(frames, args, number, output, defs)
 
 
 def _array(value: _Value) -> tuple[_Value, ...]:
@@ -683,7 +681,6 @@ def _set_bit(output: int, which: _Value, value: _Value) -> int:
 
 def _conditional(
     frames: tuple[_Frame, ...],
-    frame: _Frame,
     args: list[_Value] | tuple[_Value, ...],
     number: int,
     output: int,
@@ -705,7 +702,7 @@ def _conditional(
             f"conditional body {body.name!r} takes {body.arity} argument(s)",
             hint="pass the conditional body its declared number of arguments",
         )
-    frames, output, effect = _invoke(frames, frame, body, (), number, output, defs)
+    frames, output, effect = _invoke(frames, body, (), number, output, defs)
     # Either way the value is already accounted for: a user function's
     # arrives when its pushed frame finishes, and a zero-arity builtin
     # body (``: 1 $``) was supplied by ``_invoke`` itself.
