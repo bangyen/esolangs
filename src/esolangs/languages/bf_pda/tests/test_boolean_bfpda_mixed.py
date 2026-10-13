@@ -4,11 +4,11 @@ import random
 
 import pytest
 
+from esolangs.generation.helpers import reflected_table
 from esolangs.languages.bf_pda.generator import (
     _decoder,
     _Metric,
     _prepare,
-    _reflected,
     best_mixed_bank,
     bfpda,
 )
@@ -48,7 +48,7 @@ def _fixture(seed=15, n=16):
     rng = random.Random(seed)
     a, b, c = ("".join(rng.choice("01") for _ in range(k)) for k in (32, 16, 16))
     core = a + b + c + a + c + b
-    return _reflected(core * (1 << (n - 7)), n)
+    return reflected_table(core * (1 << (n - 7)), n)
 
 
 def test_public_mixed_bank_shares_two_levels_within_bounds() -> None:
@@ -86,7 +86,7 @@ def test_completed_constant_prefix_paths_do_not_enter_decoder() -> None:
     rng = random.Random(15)
     a, b = ("".join(rng.choice("01") for _ in range(16)) for _ in range(2))
     core = "0" * 16 + a + b + a + "1" * 16 + b + "0" * 32
-    table = _reflected(core * 512, 16)
+    table = reflected_table(core * 512, 16)
     program = best_mixed_bank(_prepare(table), 162, 100000)
     assert program is not None
     rows = [

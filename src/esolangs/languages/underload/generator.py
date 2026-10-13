@@ -18,6 +18,7 @@ from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     SubtreeDiagram,
     _validate_truth_table,
+    reflected_table,
     same_up_to_wrapping,
 )
 from esolangs.generation.token_balance import balanced_token_width
@@ -39,11 +40,6 @@ _NODE = 7
 _PREFIX = "()!"
 
 
-def _reflected(truth_table: str, n: int) -> str:
-    """Reorder rows so the tree's first test is the last-pushed input."""
-    return "".join(truth_table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(1 << n))
-
-
 def _shared(truth_table: str, *, short: bool = False) -> str:
     """Return the tree over the reduced diagram, carrying repeated subtrees.
 
@@ -53,7 +49,7 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
     subtree within :data:`_REACH` levels that shortens it most, if any does.
     """
     n = _validate_truth_table(truth_table)
-    diagram = SubtreeDiagram(_reflected(truth_table, n))
+    diagram = SubtreeDiagram(reflected_table(truth_table, n))
     halves, level_of, reaches = diagram.halves, diagram.level, diagram.reaches
 
     @cache

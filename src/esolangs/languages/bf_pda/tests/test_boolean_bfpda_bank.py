@@ -4,12 +4,12 @@ import random
 
 import pytest
 
+from esolangs.generation.helpers import reflected_table
 from esolangs.languages.bf_pda.generator import (
     _bfpda_tree,
     _body_metrics,
     _prepare,
     _price,
-    _reflected,
     best_bank,
     bfpda,
 )
@@ -20,7 +20,7 @@ def _fixture(words, pattern, core_bits):
     depth = (len(pattern)).bit_length() - 1
     ignored = 16 - depth - core_bits
     blocks = tuple(word * (1 << ignored) for word in words)
-    table = _reflected("".join(blocks[int(label)] for label in pattern), 16)
+    table = reflected_table("".join(blocks[int(label)] for label in pattern), 16)
     context = _prepare(table)
     states = tuple(dict.fromkeys(context.ids[depth]))
     metric = _price(context, depth, states, _body_metrics(context))
@@ -88,11 +88,11 @@ def test_invalid_labels_abort(classes) -> None:
 def test_word_must_fit_the_retired_stack() -> None:
     classes = ("0001", "0110", "0011", "0101")
     with pytest.raises(ValueError, match="retired stack"):
-        _bfpda_tree(_reflected("".join(classes), 4), classes=classes)
+        _bfpda_tree(reflected_table("".join(classes), 4), classes=classes)
 
 
 def test_bank_keeps_existing_paths_when_no_candidate_is_admissible() -> None:
-    table = _reflected("0001011000110101", 4)
+    table = reflected_table("0001011000110101", 4)
     context = _prepare(table)
     assert best_bank(table, context, 42, 10000) is None
     assert best_bank(table, context, 10000, 0) is None

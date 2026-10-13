@@ -9,6 +9,7 @@ from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
+    reflected_table,
     subtree_ids,
 )
 from esolangs.generation.shared_block import (
@@ -38,7 +39,7 @@ class _TreeContext:
 
 
 def _prepare(table: str) -> _TreeContext:
-    reflected = _reflected(table, _validate_truth_table(table))
+    reflected = reflected_table(table, _validate_truth_table(table))
     return _TreeContext(
         reflected, constant_span_test(reflected), subtree_ids(reflected)
     )
@@ -72,11 +73,6 @@ def bfpda(truth_table: str) -> str:
     if mixed is not None:
         candidates.append(mixed)
     return min(candidates, key=len)
-
-
-def _reflected(table: str, n: int) -> str:
-    """Put the last input first, as the stack tests it."""
-    return "".join(table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(1 << n))
 
 
 def _bfpda_tree(

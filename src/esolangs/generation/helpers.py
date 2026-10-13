@@ -733,3 +733,8 @@ def same_tokens(template: str, program: object) -> bool:
 def layout_width(template: str) -> int:
     """Return the widest line of ``template``: the width it was laid out to."""
     return max(1, max(map(len, template.splitlines()), default=0))
+
+
+def reflected_table(table: str, n: int) -> str:
+    """Reorder rows by bit-reversed index, so the last input is tested first."""
+    return "".join(table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(1 << n))

@@ -104,11 +104,7 @@ def _swapped_hint(language: str, table: str) -> str:
 
     A power-of-two run of 0s and 1s in the language slot is a swap.
     """
-    looks_like_table = bool(language) and not set(language) - {"0", "1"}
-    if not looks_like_table:
-        return ""
-    n = len(language).bit_length() - 1
-    if len(language) != 2**n or n < 1:
+    if not _looks_like_a_table(language):
         return ""
     return (
         f"; {language!r} looks like a truth table -- the language comes "

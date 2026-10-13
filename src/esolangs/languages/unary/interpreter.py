@@ -35,9 +35,6 @@ class _UnaryBFMachine(_BFMachine):
             self.state = _at_eof(self.state)
 
 
-type _State = _BFState
-
-
 def load_source(source: ProgramSource) -> str | CompressedText:
     """Keep gzip source compressed; accept the ordinary text containers too."""
     value, _path = _read_container(source)
@@ -75,46 +72,11 @@ def decode(code: str | CompressedText) -> str:
     )
 
 
-class _Machine:
-    """The decoded Brainfuck machine."""
+class _Machine(_UnaryBFMachine):
+    """Decode Unary, then run it as Brainfuck with zero-valued EOF."""
 
     def __init__(self, code: str | CompressedText, io: IO) -> None:
-        self.io = io
-        self.bf = _UnaryBFMachine(decode(code), io)
-
-    @property
-    def state(self) -> _State:
-        """The immutable state of the delegated Brainfuck transition."""
-        return self.bf.state
-
-    @property
-    def halted(self) -> bool:
-        return self.bf.halted
-
-    @property
-    def ip(self) -> int:
-        return self.bf.ip
-
-    @property
-    def memory(self) -> list[int]:
-        return self.bf.memory
-
-    @property
-    def ptr(self) -> int:
-        return self.bf.ptr
-
-    @property
-    def tape(self) -> tuple[int, ...]:
-        return self.bf.tape
-
-    def input_position(self) -> int:
-        return self.bf.input_position()
-
-    def snapshot(self) -> tuple[object, ...]:
-        return self.bf.snapshot()
-
-    def step(self) -> None:
-        self.bf.step()
+        super().__init__(decode(code), io)
 
 
 def run(code: str | CompressedText | ProgramSource, io: IO) -> None:

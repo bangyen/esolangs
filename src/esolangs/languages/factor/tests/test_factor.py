@@ -107,17 +107,17 @@ class TestStepMachine:
         from esolangs.languages.factor.interpreter import _Machine
         from esolangs.runtime.io import ScriptedIO
 
-        assert _Machine("", ScriptedIO()).bf.code == ""
-        assert _Machine("no digits here", ScriptedIO()).bf.code == ""
+        assert _Machine("", ScriptedIO()).code == ""
+        assert _Machine("no digits here", ScriptedIO()).code == ""
 
     def test_step_tracks_the_decoded_tape(self) -> None:
         from esolangs.languages.factor.interpreter import _Machine
         from esolangs.runtime.io import ScriptedIO
 
         machine = _Machine("15", ScriptedIO())
-        assert (machine.bf.ind, list(machine.bf.tape)) == (0, [0])
+        assert (machine.ind, list(machine.tape)) == (0, [0])
         machine.step()  # + increments the cell
-        assert list(machine.bf.tape) == [1]
+        assert list(machine.tape) == [1]
         machine.step()  # . prints it
         assert machine.io.getvalue() == "\x01"
         assert machine.halted

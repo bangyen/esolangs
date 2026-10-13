@@ -49,19 +49,24 @@ class DialectSettings:
         name = resolve(language)
         values: dict[str, Any] = dict(self._items)
         dialect = LANGUAGES[name].dialect
-        try:
-            if dialect is None:
-                if values:
-                    raise ArgumentError(f"{name} supports no dialect settings")
-            else:
-                keys = list(inspect.signature(dialect).parameters)
-                if values.keys() - set(keys):
-                    raise TypeError(f"supported dialect settings: {', '.join(keys)}")
+        if dialect is None:
+            if values:
+                raise ArgumentError(f"{name} supports no dialect settings")
+        else:
+            keys = list(inspect.signature(dialect).parameters)
+            unknown = values.keys() - set(keys)
+            if unknown:
+                raise ArgumentError(
+                    f"invalid dialect settings for {name}: "
+                    f"unknown setting(s): {', '.join(sorted(unknown))}; "
+                    f"supported dialect settings: {', '.join(keys)}"
+                )
+            try:
                 dialect(**values)
-        except (TypeError, ValueError) as error:
-            raise ArgumentError(
-                f"invalid dialect settings for {name}: {error}"
-            ) from error
+            except (TypeError, ValueError) as error:
+                raise ArgumentError(
+                    f"invalid dialect settings for {name}: {error}"
+                ) from error
         return values
 
 

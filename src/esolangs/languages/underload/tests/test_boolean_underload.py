@@ -133,15 +133,15 @@ def test_short_selectors_execute_larger_carried_trees(n: int) -> None:
 
 def underload_plain(truth_table: str, *, short: bool = False) -> str:
     """Return the unshared promise tree, each leaf printing its own bit."""
+    from esolangs.generation.helpers import reflected_table
     from esolangs.languages.underload.generator import (
         _SHORT_PAIR,
         PAIR,
         TEMPLATE_CHAR,
-        _reflected,
     )
 
     n = _validate_truth_table(truth_table)
-    reflected = _reflected(truth_table, n)
+    reflected = reflected_table(truth_table, n)
     constant = constant_span_test(reflected)
 
     def tree(level: int, lo: int, hi: int) -> str:

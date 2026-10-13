@@ -64,7 +64,7 @@ from esolangs.raster import Raster
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._source import raster_source as load_source
-from esolangs.runtime.codels import DIRECTIONS, find_block, leave, slide
+from esolangs.runtime.codels import BLACK, DIRECTIONS, WHITE, find_block, leave, slide
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 
@@ -87,8 +87,6 @@ type _Core = tuple[
 #: ``("out", values, number)``: print each value as a number or a character.
 type _Effect = tuple[str, tuple[int, ...], bool] | None
 
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
 _LEVELS = {0: 0, 85: 1, 170: 2, 255: 3}
 _INTEGER = re.compile(r"[+-]?[0-9]+")
 

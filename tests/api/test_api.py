@@ -226,13 +226,15 @@ def test_unsupported_execution_options_are_refused(options) -> None:
 def test_isolated_seed_is_forwarded(monkeypatch) -> None:
     seen = []
 
-    def execute(language, program, stdin, timeout, *, seed):
-        seen.append((language, program, stdin, timeout, seed))
+    def execute(language, program, stdin, timeout, **kwargs):
+        seen.append((language, program, stdin, timeout, kwargs))
         return "result"
 
     monkeypatch.setattr(esolangs, "_run_isolated", execute)
     assert esolangs.run(REFERENCE, "+.", isolated=True, seed=7) == "result"
-    assert seen == [(REFERENCE, "+.", "", 30.0, 7)]
+    ((language, program, stdin, timeout, kwargs),) = seen
+    assert (language, program, stdin, timeout) == (REFERENCE, "+.", "", 30.0)
+    assert kwargs["seed"] == 7
 
 
 def test_runnable_guard_refuses_non_source_values() -> None:

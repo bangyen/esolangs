@@ -692,31 +692,19 @@ def run(
                 ("use isolation with timeout, or use max_steps without isolation"),
             )
         deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
-        if max_output is not None or max_memory is not None:
-            return _run_isolated(
-                language,
-                program,
-                stdin,
-                deadline,
-                seed=seed,
-                scale=scale,
-                max_output=max_output,
-                max_memory=max_memory,
-                settings=settings,
-            )
-        if settings is not None:
-            return _run_isolated(
-                language,
-                program,
-                stdin,
-                deadline,
-                seed=seed,
-                scale=scale,
-                settings=settings,
-            )
-        if scale is None:
-            return _run_isolated(language, program, stdin, deadline, seed=seed)
-        return _run_isolated(language, program, stdin, deadline, seed=seed, scale=scale)
+        # Every option defaults to None, so passing them unconditionally
+        # matches the old per-combination cascade exactly.
+        return _run_isolated(
+            language,
+            program,
+            stdin,
+            deadline,
+            seed=seed,
+            scale=scale,
+            max_output=max_output,
+            max_memory=max_memory,
+            settings=settings,
+        )
     if max_steps is not None:
         if seed is not None:
             raise with_hint(

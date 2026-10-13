@@ -27,12 +27,19 @@ import re
 from collections.abc import Callable
 from contextlib import suppress
 
-from esolangs.generation.raster_lookup import _COLOURS, BLACK, WHITE
 from esolangs.raster import Raster
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._source import raster_source as load_source
-from esolangs.runtime.codels import DIRECTIONS, find_block, leave, slide
+from esolangs.runtime.codels import (
+    BLACK,
+    COLOURS,
+    DIRECTIONS,
+    WHITE,
+    find_block,
+    leave,
+    slide,
+)
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 
@@ -49,7 +56,7 @@ _INTEGER = re.compile(r"[+-]?[0-9]+")
 
 def _colour(pixel: Pixel) -> Pixel:
     """Return a standard colour, treating non-standard colours as white."""
-    return pixel if pixel in _COLOURS or pixel in {WHITE, BLACK} else WHITE
+    return pixel if pixel in COLOURS or pixel in {WHITE, BLACK} else WHITE
 
 
 type _State = tuple[Point, int, int, tuple[int, ...], bool]
@@ -145,8 +152,8 @@ def _advance(
                     else (*slid, stack, False)
                 ), None
             if target_colour != BLACK:
-                old_hue, old_lightness = _COLOURS[colour]
-                new_hue, new_lightness = _COLOURS[target_colour]
+                old_hue, old_lightness = COLOURS[colour]
+                new_hue, new_lightness = COLOURS[target_colour]
                 stack, dp_change, cc_change, effect = _command(
                     ((new_hue - old_hue) % 6, (new_lightness - old_lightness) % 3),
                     len(block),

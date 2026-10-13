@@ -11,6 +11,7 @@ import json
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import NoReturn
 
 from esolangs.cli.help import (
     HELP,
@@ -41,7 +42,7 @@ _ARGUMENTS = {
 }
 
 
-def _fail(message: str | BaseException, code: int = 2) -> None:
+def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
     if isinstance(message, BaseException):
         message = _cli_error_text(message)
     sys.stderr.write(message + "\n")

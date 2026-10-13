@@ -8,7 +8,6 @@ from functools import partial
 
 from esolangs import describe, run
 from esolangs.cli.args import (
-    _check_count,
     _errors,
     _fail,
     _integer,
@@ -33,10 +32,10 @@ from esolangs.cli.io import (
     _emit_partial,
     _note,
     _null_context,
-    _portable_language,
     _read_program,
     _read_stdin,
-    _UnboundedNotice,
+    _resolve_target,
+    _unbounded_notice,
     _write_output,
 )
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
@@ -102,15 +101,7 @@ def _run(rest: list[str]) -> None:
     scale = _scale_of(options)
     if flags.count("--isolated") > 1:
         _fail("--isolated given more than once")
-    if not (portable and len(rest) == 1):
-        _check_count("run", rest, 2)
-    content = None
-    if portable and len(rest) == 1:
-        path = rest[0]
-        with _errors():
-            language, content = _portable_language(path, timeout)
-    else:
-        language, path = rest[0], rest[1]
+    language, path, content = _resolve_target("run", rest, timeout, portable=portable)
     settings = _settings_of(options, set_pairs, language=language)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
@@ -143,7 +134,7 @@ def _run(rest: list[str]) -> None:
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     try:
         with (
-            _UnboundedNotice("run") if timeout is None else _null_context(),
+            _unbounded_notice("run") if timeout is None else _null_context(),
             warnings.catch_warnings(record=True) as caught,
         ):
             warnings.simplefilter("always")

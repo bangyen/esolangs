@@ -13,34 +13,11 @@ from dataclasses import dataclass
 
 from esolangs.generation.helpers import essential_inputs, read_at
 from esolangs.raster import Raster
+from esolangs.runtime.codels import BLACK, COLOURS, WHITE
 
 Change = tuple[int, int]
 Pixel = tuple[int, int, int]
 
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-
-# (hue, lightness), in hue and lightness cycles.
-_COLOURS: dict[Pixel, tuple[int, int]] = {
-    (255, 192, 192): (0, 0),
-    (255, 255, 192): (1, 0),
-    (192, 255, 192): (2, 0),
-    (192, 255, 255): (3, 0),
-    (192, 192, 255): (4, 0),
-    (255, 192, 255): (5, 0),
-    (255, 0, 0): (0, 1),
-    (255, 255, 0): (1, 1),
-    (0, 255, 0): (2, 1),
-    (0, 255, 255): (3, 1),
-    (0, 0, 255): (4, 1),
-    (255, 0, 255): (5, 1),
-    (192, 0, 0): (0, 2),
-    (192, 192, 0): (1, 2),
-    (0, 192, 0): (2, 2),
-    (0, 192, 192): (3, 2),
-    (0, 0, 192): (4, 2),
-    (192, 0, 192): (5, 2),
-}
 
 
 _INITIAL: Pixel = (255, 192, 192)
@@ -237,10 +214,10 @@ def _half_lookup(
 
 
 def _next_colour(colour: Pixel, change: Change) -> Pixel:
-    hue, lightness = _COLOURS[colour]
+    hue, lightness = COLOURS[colour]
     wanted = (hue + change[0]) % 6, (lightness + change[1]) % 3
     return next(
-        pixel for pixel, coordinates in _COLOURS.items() if coordinates == wanted
+        pixel for pixel, coordinates in COLOURS.items() if coordinates == wanted
     )
 
 
