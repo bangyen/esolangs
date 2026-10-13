@@ -416,14 +416,17 @@ def _check_outer_call(
             f"function {definition.name!r} has no outer call",
             "start the code with a function call",
         )
-    pending = [False]
+    # Whether each still-expected argument is passed raw (unevaluated);
+    # the body must fill every slot with exactly one outer prefix call.
+    expected_raw = [False]
+    finished = True
     for index, token in enumerate(definition.code):
-        if not pending:
+        if not expected_raw:
             raise syntax_error(
                 f"function {definition.name!r} has more than one outer call",
                 "nest calls as arguments of one outer prefix call",
             )
-        raw = pending.pop()
+        raw = expected_raw.pop()
         bare = _bare_name(token)
         if bare != token or _is_literal(bare) or raw:
             continue
@@ -435,7 +438,8 @@ def _check_outer_call(
             if binds is None:
                 # Each remaining token supplies at most one owed argument.
                 # Extra tokens may belong to this parameter's unknown arity.
-                if len(definition.code) - index < len(pending) + 1:
+                if len(definition.code) - index < len(expected_raw) + 1:
+                    finished = False
                     break
                 return
             value = binds[bare]
@@ -448,10 +452,9 @@ def _check_outer_call(
             fn = _defined(bare, defs)
         else:
             continue
-        pending.extend(i in fn.raw for i in reversed(range(fn.arity)))
-    else:
-        if not pending:
-            return
+        expected_raw.extend(i in fn.raw for i in reversed(range(fn.arity)))
+    if finished and not expected_raw:
+        return
     raise syntax_error(
         f"function {definition.name!r} has no outer call",
         "supply every argument required by the outer prefix call",

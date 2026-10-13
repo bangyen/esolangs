@@ -20,6 +20,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import Protocol
 
+# scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from verify.process import run_bounded
 

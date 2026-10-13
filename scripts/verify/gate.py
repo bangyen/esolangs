@@ -29,6 +29,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+# scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from verify.process import (  # noqa: E402

@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+# scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import argparse
@@ -15,9 +16,7 @@ import os
 import platform
 import statistics
 import subprocess
-import sys
 from collections import defaultdict
-from pathlib import Path
 from typing import Protocol
 
 import pytest

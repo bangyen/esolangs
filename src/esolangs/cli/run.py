@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import warnings
+from functools import partial
 
 from esolangs import describe, run
 from esolangs.cli.args import (
@@ -146,29 +147,24 @@ def _run(rest: list[str]) -> None:
             warnings.catch_warnings(record=True) as caught,
         ):
             warnings.simplefilter("always")
+            invoke = partial(
+                run,
+                language,
+                program,
+                stdin=stdin,
+                timeout=timeout,
+                seed=seed,
+                scale=scale,
+                settings=settings,
+            )
             if isolated:
-                output = run(
-                    language,
-                    program,
-                    stdin=stdin,
-                    timeout=timeout,
-                    seed=seed,
-                    scale=scale,
+                output = invoke(
                     isolated=True,
                     max_output=max_output,
                     max_memory=max_memory,
-                    settings=settings,
                 )
             else:
-                output = run(
-                    language,
-                    program,
-                    stdin=stdin,
-                    timeout=timeout,
-                    seed=seed,
-                    scale=scale,
-                    settings=settings,
-                )
+                output = invoke()
         for entry in caught:
             _note(str(entry.message))
     except TemplateError as exc:

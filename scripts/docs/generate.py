@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 
+# scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import argparse

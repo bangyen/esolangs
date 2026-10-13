@@ -380,7 +380,9 @@ def _worker() -> None:
         print(json.dumps(message), flush=True)
 
     class StreamingIO(ScriptedIO):
-        written = 0
+        def __init__(self, stdin: InputSource = "") -> None:
+            super().__init__(stdin)
+            self.written = 0
 
         def _write(self, value: object) -> None:
             text = str(value)
@@ -397,7 +399,10 @@ def _worker() -> None:
                     hint="reduce output or raise max_output if the output is needed",
                 )
 
-    vars(esolangs)["ScriptedIO"] = StreamingIO
+    # The worker swaps the IO class process-wide so program output streams
+    # to the parent. ScriptedIO is deliberately absent from __all__; the
+    # ignore marks this patch as intentional, not a typo.
+    esolangs.ScriptedIO = StreamingIO  # type: ignore[attr-defined]
     request = json.load(sys.stdin)
     if request.get("integer_max_output", False):
         request["max_output"] = int(request["max_output"], 16)
@@ -429,7 +434,8 @@ def _worker() -> None:
             from esolangs.runtime._evaluate import _terminates
 
             if request.get("max_output") is not None:
-                vars(vm)["ScriptedIO"] = StreamingIO
+                # Same process-wide swap for the termination checker's vm import.
+                vm.ScriptedIO = StreamingIO  # type: ignore[attr-defined]
 
             halts, diverges = request["termination"]
             output = _terminates(

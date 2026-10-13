@@ -27,15 +27,11 @@ from operator import is_not
 from pathlib import Path
 from typing import Any, BinaryIO, cast
 
-import esolangs
-import esolangs.debugger as debugger_api
-from esolangs.registry import LANGUAGES
-from esolangs.registry._describe import LanguageInfo
-from esolangs.runtime._validate import check_timeout
-from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
-
+# scripts/ holds the sibling `verify` package. Redundant when run as
+# `python scripts/benchmark.py` (the script's directory is already first),
+# but required when imported as `scripts.benchmark`, e.g. by tests.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from verify.process import (
     EXCERPT_BYTES,
     MAX_LOG_BYTES,
@@ -43,6 +39,14 @@ from verify.process import (
     spool,
     stop_process_tree,
 )
+
+import esolangs
+import esolangs.debugger as debugger_api
+from esolangs.registry import LANGUAGES
+from esolangs.registry._describe import LanguageInfo
+from esolangs.runtime._validate import check_timeout
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
@@ -182,8 +186,8 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
             # rebuilds its 23 arrays every step, so identity memo cannot help.
             total = (
                 sum(map(int.bit_length, items))
-                + sum(map((0).__eq__, items))
-                + sum(map((0).__gt__, items))
+                + sum(x == 0 for x in items)
+                + sum(x < 0 for x in items)
             )
         except TypeError:
             # The n=8 mixed-frame profile made 15.5M calls to state_bits.

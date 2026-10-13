@@ -312,10 +312,13 @@ def _drop_inline_items(path: Path, keys: set[str]) -> int:
 def _drop_json(path: Path, prune: Callable[[object], object]) -> None:
     """Rewrite ``path`` through ``prune``, keeping its indent and escaping."""
     text = path.read_text(encoding="utf-8")
-    indent = len(text.split("\n", 2)[1]) - len(text.split("\n", 2)[1].lstrip())
+    second = text.split("\n", 2)[1] if "\n" in text else ""
+    indent = len(second) - len(second.lstrip())
     pruned = prune(json.loads(text))
     out = json.dumps(pruned, indent=indent, ensure_ascii=text.isascii())
-    path.write_text(out + "\n" * text.endswith("\n"), encoding="utf-8")
+    if text.endswith("\n"):
+        out += "\n"
+    path.write_text(out, encoding="utf-8")
 
 
 def _drop_toml(path: Path, name: str) -> None:

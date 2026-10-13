@@ -871,14 +871,18 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
         dims = [len(dirs) for _, dirs in cubes]
     flips = _flips(cover, dims, n)
     lines = []
+    joiner = "" if compact else " "
+
+    def spaced(*tokens: str) -> str:
+        """Join tokens with no separator (compact) or spaces (readable)."""
+        return joiner.join(tokens)
+
     for index in range(n):
         # A flipped input is read negated, so its ``== Nil`` tests go.
-        arrow = "~!>" if flips >> (n - 1 - index) & 1 else "~>"
-        lines.append(
-            f"{names[index]}{arrow}Inp?" if compact else f"{names[index]} {arrow} Inp?"
-        )
-    lines.append("l->l?" if compact else "loop -> loop?")
+        arrow = "~!>" if (flips >> (n - 1 - index)) & 1 else "~>"
+        lines.append(spaced(names[index], arrow, "Inp?"))
     loop = "l?" if compact else "loop?"
+    lines.append(spaced("l" if compact else "loop", "->", loop))
 
     def ref(bit: int) -> str:
         # Index bit ``bit`` is the (n-1-bit)th input read: rows are spelled
@@ -933,11 +937,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                         toggles, polarity = _points(w), 0
                     if nearest is None:
                         first, toggles = ref(toggles[0]), toggles[1:]
-                        lines.append(
-                            f"{register}~>{first}?"
-                            if compact
-                            else f"{register} ~> {first}?"
-                        )
+                        lines.append(spaced(register, "~>", f"{first}?"))
                     # Every rebinding toggles at least once; the last toggle
                     # sets the polarity that makes this test pass on a 1.
                     for i, b in enumerate(toggles):
@@ -945,9 +945,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                         if i == len(toggles) - 1 and polarity == value:
                             op, polarity = "==", polarity ^ 1
                         lines.append(
-                            f"{register}~>{register}?{op}{ref(b)}?"
-                            if compact
-                            else f"{register} ~> {register}? {op} {ref(b)}?"
+                            spaced(register, "~>", f"{register}?", op, f"{ref(b)}?")
                         )
                     bank[register] = (w, polarity)
                 used.add(register)
@@ -956,10 +954,9 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
             if value ^ polarity:
                 parts.append(f"{part}?")
             else:
-                parts.append(f"{part}?==Nil?" if compact else f"{part}? == Nil?")
-        lines.append(
-            "::".join([*parts, loop]) if compact else " :: ".join([*parts, loop])
-        )
+                parts.append(spaced(f"{part}?", "==", "Nil?"))
+        glue = "::" if compact else " :: "
+        lines.append(glue.join([*parts, loop]))
     return "\n".join(lines)
 
 
