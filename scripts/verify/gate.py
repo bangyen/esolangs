@@ -60,7 +60,7 @@ if hasattr(sys.stdout, "reconfigure"):
 def python_cmd() -> list[str]:
     """Return the project's Python command.
 
-    ``verify.py`` may be run with the system interpreter (e.g. plain
+    ``verify/gate.py`` may be run with the system interpreter (e.g. plain
     ``python scripts/verify/gate.py``), which does not have the project's dev
     dependencies.  Prefer the local venv, then ``uv run python`` (the uv
     workflow the justfile uses), and only fall back to the running
@@ -502,7 +502,7 @@ def main() -> int:
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
     if only is not None or full or os.environ.get("VERIFY_FULL", "0") not in ("", "0"):
         env["VERIFY_CLEAN_CACHE"] = "0"
-    # Probe PY rather than the running interpreter: verify.py may be launched
+    # Probe PY rather than the running interpreter: verify/gate.py may be launched
     # by a different python than the one it runs the steps with (e.g.
     # `uv run --with pylint python scripts/verify/gate.py`, which leaves PY pointing
     # at .venv), and it is PY that has to import pylint.

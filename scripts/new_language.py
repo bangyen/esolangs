@@ -12,7 +12,7 @@ to add; ``tests/tooling/test_new_language.py`` runs it over the registry,
 so the list cannot drift from what the suite enforces.  Once the list is
 empty it runs the seconds-long tests ``finish`` would otherwise fail late.
 ``bounds`` measures what the proof ledger's cells state.  ``finish``
-regenerates every committed artifact and runs the full ``verify.py`` gate.
+regenerates every committed artifact and runs the full ``verify/gate.py`` gate.
 ``remove`` deletes what ``check`` asks for, regenerates, and lists the
 mentions left in prose for a hand edit.
 """

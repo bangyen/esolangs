@@ -215,7 +215,7 @@ by size, breaking ties by steps. Bound the per-piece upside before choosing.
    written bits per arity, with the table reaching each: a cell's "worst"
    must equal them exactly, else it says "at most".
 4. `just finish-language "Name"` regenerates examples, docs and the size
-   baseline, then runs the full `verify.py`. That is the gate: `just
+   baseline, then runs the full `verify/gate.py`. That is the gate: `just
    test-quick` skips the slower contract sweeps every generator must pass.
    Added lines need 90% statement and branch coverage per file; the
    report separates them from older gaps. It takes minutes, so run it in
