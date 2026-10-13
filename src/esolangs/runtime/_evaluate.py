@@ -176,6 +176,14 @@ def _iter_evaluate(
     check_scale_for(name, scale)
     rows = _evaluation_rows(inputs, max_rows)
     terminating = contract.answer_mode == "termination"
+    if terminating and scale is not None:
+        # Scale upscales raster output; a termination answer (halts vs
+        # diverges) has no raster to upscale.  No current termination
+        # language declares supports_scale, so check_scale_for already
+        # rejects this -- this guards a future raster language that
+        # answers by termination, where scale would otherwise be
+        # silently dropped on the termination path below.
+        raise ArgumentError("scale has no meaning for termination-mode evaluation")
     bound: float | None
     if isinstance(timeout, _Default):
         bound = _TERMINATION_TIMEOUT if terminating else _ROW_TIMEOUT
