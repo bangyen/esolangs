@@ -147,6 +147,321 @@ def _paired_roots(table: str) -> tuple[tuple[int, int], ...]:
     return tuple((code, row) for code, (copies, row) in pairs.items() if copies > 1)
 
 
+class _Tree:
+    """Emitter state and engines for one Smallfuck decision tree.
+
+    Holds everything the tree's mutually recursive engines share: the
+    table and split order, the constant-span test and subtree ids, the
+    output builder, the deferred-block definitions, and the paired-roots
+    decoder state.  The former closures ``split``, ``clear_prefix``,
+    ``transfer``, ``arm``, ``tree``, and ``emit_paired_roots`` are methods
+    here, so the recursion no longer threads through closure scope and the
+    decoder phase needs no ``nonlocal`` mutation.
+    """
+
+    def __init__(
+        self,
+        n: int,
+        truth_table: str,
+        perm: tuple[int, ...],
+        constant: Callable[[int, int], bool],
+        ids: list[list[int]],
+        builder: _Builder,
+        blocks: tuple[tuple[int, int], ...],
+        depths: tuple[int, ...],
+        pending_levels: tuple[int, ...],
+        selected: dict[tuple[int, int], int],
+        pairs: dict[int, int],
+    ) -> None:
+        self.n = n
+        self.truth_table = truth_table
+        self.perm = perm
+        self.constant = constant
+        self.ids = ids
+        self.builder = builder
+        self.blocks = blocks
+        self.depths = depths
+        self.pending_levels = pending_levels
+        self.selected = selected
+        self.pairs = pairs
+        self.pair_depth = n - 2
+        # The tree retires the last two levels while paired roots decode;
+        # the decoder switches the shortcut off before pricing its bodies.
+        self.pair_phase = bool(pairs)
+
+    def split(
+        self,
+        bit: int,
+        flag: int,
+        one: Callable[[], _Cost[int]],
+        zero: Callable[[], _Cost[int]],
+    ) -> _Cost[int]:
+        """Emit a two-arm split on ``bit`` and bound its worst-case cost.
+
+        The one arm runs in ``[* ... ]`` on ``bit`` with ``flag`` flipped
+        around it; the zero arm runs in a second ``[* ... ]`` on ``flag``.
+        Each arm's bound separates the chars its body emitted itself from
+        the loop scaffolding around it, so the returned cost adds the
+        commands both arms execute once and takes the worse arm.
+        """
+        start = self.builder.count
+        self.builder.flip(flag)
+        self.builder.loop(bit)
+        one_start = self.builder.count
+        self.builder.flip(flag)
+        body_start = self.builder.count
+        one_cost = one()
+        one_body = self.builder.count - body_start
+        self.builder.end(bit)
+        # Scaffolding around the one arm: the flag flip and the closing
+        # bracket around its body, plus the loop's opening bracket.  The
+        # loop's `*` clear runs only on entry, so it is the wrapper below.
+        one_scaffold = self.builder.count - one_start - one_body + 1
+        one_cost = _Cost(one_scaffold, (one_cost,))
+        one_entered = _Cost(1, (one_cost,))
+        between = self.builder.count
+        self.builder.loop(flag)
+        # Commands both arms execute: the flag flip and each loop's `[`
+        # test with its moves, minus each loop's `*` clear (per-arm).
+        common = (one_start - start - 1) + (self.builder.count - between - 1)
+        zero_start = self.builder.count
+        body_start = self.builder.count
+        zero_cost = zero()
+        zero_body = self.builder.count - body_start
+        self.builder.end(flag)
+        # Scaffolding around the zero arm: its "[*" opener and the
+        # closing bracket around its body.
+        zero_scaffold = self.builder.count - zero_start - zero_body + 2
+        zero_cost = _Cost(zero_scaffold, (zero_cost,))
+        return _Cost(common, (one_entered, zero_cost))
+
+    def clear_prefix(self, level: int) -> None:
+        """Clear the unread paired-roots inputs at or above ``level``."""
+        for unread in range(level, self.pair_depth):
+            bit = 3 * self.perm[unread]
+            self.builder.loop(bit)
+            self.builder.end(bit)
+
+    def transfer(self, source: int, target: int) -> None:
+        """XOR cell ``source`` into ``target`` and clear ``source``."""
+        self.builder.loop(source)
+        self.builder.flip(target)
+        self.builder.end(source)
+
+    def arm(
+        self, level: int, lo: int, hi: int, result: int, on: str, free: int = -1
+    ) -> _Cost[int]:
+        """XOR into ``result`` whether the span's answer is ``on``."""
+        start = self.builder.count
+        if self.constant(lo, hi):
+            if self.truth_table[lo] == on:
+                self.builder.flip(result)
+            if self.pair_phase:
+                self.clear_prefix(level + 1)
+            return _Cost(self.builder.count - start)
+        if not _owns_band_cell(self.n, level):
+            return self.tree(level + 1, lo, hi, result, on, free)
+        own = 3 * (level + 1) + 2
+        cost = self.tree(level + 1, lo, hi, own, on, free)
+        tail = self.builder.count
+        self.transfer(own, result)
+        # The band transfer's own chars, plus one for the band cell the
+        # subtree already priced.
+        transfer_chars = self.builder.count - tail + 1
+        return _Cost(transfer_chars, (cost,))
+
+    def tree(
+        self, level: int, lo: int, hi: int, result: int, on: str, free: int = -1
+    ) -> _Cost[int]:
+        """Emit level ``level`` of the tree over rows ``[lo, hi)``.
+
+        Retired paired-roots levels emit their three-bit code, deferred
+        definitions emit their flag flips, and everything else splits or
+        arms recursively into ``result``.
+        """
+        start = self.builder.count
+        if self.pair_phase and level == self.pair_depth:
+            # A zero arm has passed its input's only loop; an ignored input
+            # is freed by clearing it. The nearest such cell holds bit 2.
+            # Its weighted distances sum s*2**(d-s) = O(2**d), so marks stay O(T).
+            word = int(self.truth_table[lo : lo + 4], 2)
+            canonical = min(word, word ^ 15)
+            if canonical in self.pairs and (not canonical & 4 or free >= 0):
+                if (self.truth_table[lo] == "1") != (on == "0"):
+                    self.builder.flip(result)
+                for mask, cell in (
+                    (1, 3 * self.pair_depth + 1),
+                    (2, 3 * (self.pair_depth + 1) + 1),
+                    (4, 3 * self.perm[free]),
+                ):
+                    if canonical & mask:
+                        self.builder.flip(cell)
+                return _Cost(self.builder.count - start, target=canonical)
+        key = (level, self.ids[level][lo >> (self.n - level)])
+        if key in self.selected:
+            # A complemented arm contributes its constant now; the common
+            # suffix contributes the function itself after band transfers.
+            if on == "0":
+                self.builder.flip(result)
+            self.builder.flip(3 * self.pending_levels[self.selected[key]] + 1)
+            return _Cost(self.builder.count - start, target=self.selected[key])
+        bit, flag, mid = 3 * self.perm[level], 3 * level + 1, (lo + hi) // 2
+        below = self.ids[level + 1]
+        if below[lo >> (self.n - level - 1)] == below[mid >> (self.n - level - 1)]:
+            if self.pair_phase and level < self.pair_depth:
+                self.builder.loop(bit)
+                self.builder.end(bit)
+                free = level
+            extra = self.builder.count - start
+            return _Cost(extra, (self.arm(level, lo, mid, result, on, free),))
+        if self.constant(lo, mid) and not (self.pair_phase and level < self.pair_depth):
+            if self.truth_table[lo] == on:
+                self.builder.flip(result)
+                on = "1" if on == "0" else "0"
+            self.builder.loop(bit)
+            body_start = self.builder.count
+            cost = self.arm(level, mid, hi, result, on, free)
+            arm_body = self.builder.count - body_start
+            self.builder.end(bit)
+            # Loop scaffolding around the arm: everything but its body,
+            # plus the loop's opening bracket emitted before `start`.
+            arm_scaffold = self.builder.count - start - arm_body + 1
+            # Skipped path: the setup before the arm body, minus the
+            # loop's `*` clear, which runs only on entry.
+            skipped_setup = body_start - start - 1
+            return _Cost(
+                0,
+                (
+                    _Cost(arm_scaffold, (cost,)),
+                    _Cost(skipped_setup),
+                ),
+            )
+        zero_free = level if self.pair_phase and level < self.pair_depth else free
+        return self.split(
+            bit,
+            flag,
+            lambda: self.arm(level, mid, hi, result, on, free),
+            lambda: self.arm(level, lo, mid, result, on, zero_free),
+        )
+
+    def emit_paired_roots(self, prefix: _Cost[int]) -> tuple[str, int]:
+        """Emit the paired-roots decoder and price every pair tail.
+
+        Paired roots share one emitted body per repeated two-input
+        function (complements share a three-bit code): the tree above
+        retires the last two levels and marks each used code's cells,
+        and this decoder replays the matching body into the answer cell.
+        ``decode`` builds a decision tree over the three code bits and
+        prices each leaf with its body; ``price`` then folds those leaf
+        costs into the per-code tail table the prefix cost evaluates
+        against.  Emission and pricing stay together here because the
+        decoder's leaf prices are this function's own second engine.
+        """
+        # decode needs real subtrees here, not the pair shortcut.
+        self.pair_phase = False
+        collector = 3 * (self.pair_depth - 1) + 1
+        # Used inputs are zero; constant leaves clear the unused prefix.
+        # Only the high code bit can survive, in at most one input cell.
+        skipped = delta = 0
+        for level in range(self.pair_depth):
+            start = self.builder.count
+            bit = 3 * self.perm[level]
+            self.builder.loop(bit)
+            empty = self.builder.count - start - 1
+            self.builder.flip(collector)
+            self.builder.end(bit)
+            skipped += empty
+            delta = max(delta, self.builder.count - start - empty)
+        bits = (collector, 3 * (self.pair_depth + 1) + 1, 3 * self.pair_depth + 1)
+        guards = (
+            3 * (self.pair_depth - 2) + 1,
+            3 * self.perm[self.pair_depth - 1],
+            3 * self.perm[self.pair_depth - 2],
+        )
+        decoder = _PairDecoder(self, skipped, delta, bits, guards)
+        model = decoder.decode(0, (0, *self.pairs))
+        decoder.price(model)
+        program = _trim_tail("".join(self.builder.code)).ljust(3, ">")
+        return program, len(PAIR[0]) * self.n + prefix.evaluate(decoder.pair_tails) + 1
+
+
+class _PairDecoder:
+    """Price the paired-roots decoder's code-bit decision tree.
+
+    Holds the decoder's shared state (the cleared-prefix ``skipped`` and
+    worst-case ``delta`` costs, the code-bit and guard cells) so ``decode``
+    and ``price`` can recurse as methods instead of nested closures.  Each
+    leaf names a pair code; ``price`` folds the leaf costs into
+    ``pair_tails``, the per-code tail table the tree prefix evaluates
+    against.
+    """
+
+    def __init__(
+        self,
+        tree: _Tree,
+        skipped: int,
+        delta: int,
+        bits: tuple[int, int, int],
+        guards: tuple[int, int, int],
+    ) -> None:
+        self.tree = tree
+        self.skipped = skipped
+        self.delta = delta
+        self.bits = bits
+        self.guards = guards
+        self.pair_tails: dict[int | None, int] = {}
+
+    def decode(self, at: int, labels: tuple[int, ...]) -> _Cost[int]:
+        """Build the decision tree over the three code bits.
+
+        At ``at == 3`` the surviving label is the pair code; its body is
+        priced with real subtrees (the pair shortcut is off by then) and
+        the leaf is named by its code for ``price`` to tabulate.
+        """
+        tree = self.tree
+        start = tree.builder.count
+        if at == 3:
+            code = labels[0]
+            cost = 0
+            if code in tree.pairs:
+                row = tree.pairs[code]
+                body = tree.tree(
+                    tree.pair_depth,
+                    row,
+                    row + 4,
+                    2,
+                    "0" if tree.truth_table[row] == "1" else "1",
+                )
+                cost = body.evaluate({None: 0})
+            return _Cost(cost, target=code or None)
+        mask = 4 >> at
+        zero = tuple(code for code in labels if not code & mask)
+        one = tuple(code for code in labels if code & mask)
+        if not zero or not one:
+            if one:
+                tree.builder.flip(self.bits[at])
+            extra = tree.builder.count - start
+            return _Cost(extra, (self.decode(at + 1, one or zero),))
+        return tree.split(
+            self.bits[at],
+            self.guards[at],
+            lambda: self.decode(at + 1, one),
+            lambda: self.decode(at + 1, zero),
+        )
+
+    def price(self, cost: _Cost[int], extra: int = 0) -> None:
+        """Fold the decoded leaf costs into the per-code tail table."""
+        extra += cost.value
+        if cost.children:
+            for child in cost.children:
+                self.price(child, extra)
+        else:
+            target = cost.target
+            self.pair_tails[target] = (
+                self.skipped + extra + (self.delta if target and target & 4 else 0)
+            )
+
+
 def _smallfuck_tree(
     truth_table: str,
     perm: tuple[int, ...],
@@ -194,247 +509,26 @@ def _smallfuck_tree(
     if len(selected) != len(blocks):
         raise ValueError("deferred definitions must name distinct residuals")
     pairs = dict(paired_roots)
-    pair_depth = n - 2
-    pair_phase = bool(pairs)
     if pairs and (n < 4 or blocks):
         raise ValueError(
             "paired roots need two retired levels and no other definitions"
         )
-
-    def split(
-        bit: int,
-        flag: int,
-        one: Callable[[], _Cost[int]],
-        zero: Callable[[], _Cost[int]],
-    ) -> _Cost[int]:
-        """Emit a two-arm split on ``bit`` and bound its worst-case cost.
-
-        The one arm runs in ``[* ... ]`` on ``bit`` with ``flag`` flipped
-        around it; the zero arm runs in a second ``[* ... ]`` on ``flag``.
-        Each arm's bound separates the chars its body emitted itself from
-        the loop scaffolding around it, so the returned cost adds the
-        commands both arms execute once and takes the worse arm.
-        """
-        start = builder.count
-        builder.flip(flag)
-        builder.loop(bit)
-        one_start = builder.count
-        builder.flip(flag)
-        body_start = builder.count
-        one_cost = one()
-        one_body = builder.count - body_start
-        builder.end(bit)
-        # Scaffolding around the one arm: the flag flip and the closing
-        # bracket around its body, plus the loop's opening bracket.  The
-        # loop's `*` clear runs only on entry, so it is the wrapper below.
-        one_scaffold = builder.count - one_start - one_body + 1
-        one_cost = _Cost(one_scaffold, (one_cost,))
-        one_entered = _Cost(1, (one_cost,))
-        between = builder.count
-        builder.loop(flag)
-        # Commands both arms execute: the flag flip and each loop's `[`
-        # test with its moves, minus each loop's `*` clear (per-arm).
-        common = (one_start - start - 1) + (builder.count - between - 1)
-        zero_start = builder.count
-        body_start = builder.count
-        zero_cost = zero()
-        zero_body = builder.count - body_start
-        builder.end(flag)
-        # Scaffolding around the zero arm: its "[*" opener and the
-        # closing bracket around its body.
-        zero_scaffold = builder.count - zero_start - zero_body + 2
-        zero_cost = _Cost(zero_scaffold, (zero_cost,))
-        return _Cost(common, (one_entered, zero_cost))
-
-    def clear_prefix(level: int) -> None:
-        for unread in range(level, pair_depth):
-            bit = 3 * perm[unread]
-            builder.loop(bit)
-            builder.end(bit)
-
-    def transfer(source: int, target: int) -> None:
-        builder.loop(source)
-        builder.flip(target)
-        builder.end(source)
-
-    def arm(
-        level: int, lo: int, hi: int, result: int, on: str, free: int = -1
-    ) -> _Cost[int]:
-        """XOR into ``result`` whether the span's answer is ``on``."""
-        start = builder.count
-        if constant(lo, hi):
-            if truth_table[lo] == on:
-                builder.flip(result)
-            if pair_phase:
-                clear_prefix(level + 1)
-            return _Cost(builder.count - start)
-        if not _owns_band_cell(n, level):
-            return tree(level + 1, lo, hi, result, on, free)
-        own = 3 * (level + 1) + 2
-        cost = tree(level + 1, lo, hi, own, on, free)
-        tail = builder.count
-        transfer(own, result)
-        # The band transfer's own chars, plus one for the band cell the
-        # subtree already priced.
-        transfer_chars = builder.count - tail + 1
-        return _Cost(transfer_chars, (cost,))
-
-    def tree(
-        level: int, lo: int, hi: int, result: int, on: str, free: int = -1
-    ) -> _Cost[int]:
-        start = builder.count
-        if pair_phase and level == pair_depth:
-            # A zero arm has passed its input's only loop; an ignored input
-            # is freed by clearing it. The nearest such cell holds bit 2.
-            # Its weighted distances sum s*2**(d-s) = O(2**d), so marks stay O(T).
-            word = int(truth_table[lo : lo + 4], 2)
-            canonical = min(word, word ^ 15)
-            if canonical in pairs and (not canonical & 4 or free >= 0):
-                if (truth_table[lo] == "1") != (on == "0"):
-                    builder.flip(result)
-                for mask, cell in (
-                    (1, 3 * pair_depth + 1),
-                    (2, 3 * (pair_depth + 1) + 1),
-                    (4, 3 * perm[free]),
-                ):
-                    if canonical & mask:
-                        builder.flip(cell)
-                return _Cost(builder.count - start, target=canonical)
-        key = (level, ids[level][lo >> (n - level)])
-        if key in selected:
-            # A complemented arm contributes its constant now; the common
-            # suffix contributes the function itself after band transfers.
-            if on == "0":
-                builder.flip(result)
-            builder.flip(3 * pending_levels[selected[key]] + 1)
-            return _Cost(builder.count - start, target=selected[key])
-        bit, flag, mid = 3 * perm[level], 3 * level + 1, (lo + hi) // 2
-        below = ids[level + 1]
-        if below[lo >> (n - level - 1)] == below[mid >> (n - level - 1)]:
-            if pair_phase and level < pair_depth:
-                builder.loop(bit)
-                builder.end(bit)
-                free = level
-            extra = builder.count - start
-            return _Cost(extra, (arm(level, lo, mid, result, on, free),))
-        if constant(lo, mid) and not (pair_phase and level < pair_depth):
-            if truth_table[lo] == on:
-                builder.flip(result)
-                on = "1" if on == "0" else "0"
-            builder.loop(bit)
-            body_start = builder.count
-            cost = arm(level, mid, hi, result, on, free)
-            arm_body = builder.count - body_start
-            builder.end(bit)
-            # Loop scaffolding around the arm: everything but its body,
-            # plus the loop's opening bracket emitted before `start`.
-            arm_scaffold = builder.count - start - arm_body + 1
-            # Skipped path: the setup before the arm body, minus the
-            # loop's `*` clear, which runs only on entry.
-            skipped_setup = body_start - start - 1
-            return _Cost(
-                0,
-                (
-                    _Cost(arm_scaffold, (cost,)),
-                    _Cost(skipped_setup),
-                ),
-            )
-        zero_free = level if pair_phase and level < pair_depth else free
-        return split(
-            bit,
-            flag,
-            lambda: arm(level, mid, hi, result, on, free),
-            lambda: arm(level, lo, mid, result, on, zero_free),
-        )
-
-    def emit_paired_roots(prefix: _Cost[int]) -> tuple[str, int]:
-        """Emit the paired-roots decoder and price every pair tail.
-
-        Paired roots share one emitted body per repeated two-input
-        function (complements share a three-bit code): the tree above
-        retires the last two levels and marks each used code's cells,
-        and this decoder replays the matching body into the answer cell.
-        ``decode`` builds a decision tree over the three code bits and
-        prices each leaf with its body; ``price`` then folds those leaf
-        costs into the per-code tail table the prefix cost evaluates
-        against.  Emission and pricing stay together here because the
-        decoder's leaf prices are this function's own second engine.
-        """
-        nonlocal pair_phase
-        # decode needs real subtrees here, not the pair shortcut.
-        pair_phase = False
-        collector = 3 * (pair_depth - 1) + 1
-        # Used inputs are zero; constant leaves clear the unused prefix.
-        # Only the high code bit can survive, in at most one input cell.
-        skipped = delta = 0
-        for level in range(pair_depth):
-            start = builder.count
-            bit = 3 * perm[level]
-            builder.loop(bit)
-            empty = builder.count - start - 1
-            builder.flip(collector)
-            builder.end(bit)
-            skipped += empty
-            delta = max(delta, builder.count - start - empty)
-        bits = (collector, 3 * (pair_depth + 1) + 1, 3 * pair_depth + 1)
-        guards = (
-            3 * (pair_depth - 2) + 1,
-            3 * perm[pair_depth - 1],
-            3 * perm[pair_depth - 2],
-        )
-
-        def decode(at: int, labels: tuple[int, ...]) -> _Cost[int]:
-            start = builder.count
-            if at == 3:
-                code = labels[0]
-                cost = 0
-                if code in pairs:
-                    row = pairs[code]
-                    body = tree(
-                        pair_depth,
-                        row,
-                        row + 4,
-                        2,
-                        "0" if truth_table[row] == "1" else "1",
-                    )
-                    cost = body.evaluate({None: 0})
-                return _Cost(cost, target=code or None)
-            mask = 4 >> at
-            zero = tuple(code for code in labels if not code & mask)
-            one = tuple(code for code in labels if code & mask)
-            if not zero or not one:
-                if one:
-                    builder.flip(bits[at])
-                extra = builder.count - start
-                return _Cost(extra, (decode(at + 1, one or zero),))
-            return split(
-                bits[at],
-                guards[at],
-                lambda: decode(at + 1, one),
-                lambda: decode(at + 1, zero),
-            )
-
-        model = decode(0, (0, *pairs))
-        pair_tails: dict[int | None, int] = {}
-
-        def price(cost: _Cost[int], extra: int = 0) -> None:
-            extra += cost.value
-            if cost.children:
-                for child in cost.children:
-                    price(child, extra)
-            else:
-                target = cost.target
-                pair_tails[target] = (
-                    skipped + extra + (delta if target and target & 4 else 0)
-                )
-
-        price(model)
-        program = _trim_tail("".join(builder.code)).ljust(3, ">")
-        return program, len(PAIR[0]) * n + prefix.evaluate(pair_tails) + 1
-
-    prefix = arm(-1, 0, len(truth_table), 2, "1")
+    tree = _Tree(
+        n,
+        truth_table,
+        perm,
+        constant,
+        ids,
+        builder,
+        blocks,
+        depths,
+        pending_levels,
+        selected,
+        pairs,
+    )
+    prefix = tree.arm(-1, 0, len(truth_table), 2, "1")
     if pairs:
-        return emit_paired_roots(prefix)
+        return tree.emit_paired_roots(prefix)
     empty_tails: dict[int | None, int] = {
         None: 0,
         **dict.fromkeys(range(len(blocks)), 0),
@@ -450,7 +544,7 @@ def _smallfuck_tree(
         skipped = builder.count - start - 1
         del selected[depth, ids[depth][row >> (n - depth)]]
         body_start = builder.count
-        body_cost = tree(depth, row, row + (1 << (n - depth)), 2, "1")
+        body_cost = tree.tree(depth, row, row + (1 << (n - depth)), 2, "1")
         deferred_body = builder.count - body_start
         builder.end(pending)
         # Loop scaffolding around the deferred body: everything but the

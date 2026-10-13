@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
@@ -29,6 +30,17 @@ __all__ = ["BFPDA_PAIR", "bfpda"]
 
 
 BFPDA_PAIR = ("x", "@")
+
+# Per-input command allowance and fixed overhead for decoder candidates. The
+# residual dispatch guard, the flag return, and one command per input pair
+# bound every decoder variant below this limit for a table of width ``n``.
+_DECODER_BUDGET_PER_INPUT = 10
+_DECODER_BUDGET_OVERHEAD = 2
+
+
+def _decoder_budget(n: int) -> int:
+    """Return the command budget bounding decoder candidates for width ``n``."""
+    return _DECODER_BUDGET_PER_INPUT * n + _DECODER_BUDGET_OVERHEAD
 
 
 @dataclass(frozen=True)
@@ -61,15 +73,16 @@ def bfpda(truth_table: str) -> str:
     reflected = context.reflected
     shared = repeated_block(reflected)
     candidates = [plain]
+    budget = _decoder_budget(n)
     if shared is not None:
         candidate, commands = _bfpda_tree(truth_table, shared, context=context)
-        if commands <= 10 * n + 2:
+        if commands <= budget:
             candidates.append(candidate)
-    bank = best_bank(truth_table, context, 10 * n + 2, min(map(len, candidates)))
+    bank = best_bank(truth_table, context, budget, min(map(len, candidates)))
     if bank is not None:
         candidates.append(bank)
 
-    mixed = best_mixed_bank(context, 10 * n + 2, min(map(len, candidates)))
+    mixed = best_mixed_bank(context, budget, min(map(len, candidates)))
     if mixed is not None:
         candidates.append(mixed)
     return min(candidates, key=len)
@@ -101,6 +114,7 @@ def _plain_node(
     The stack hands back the *last* input first: level ``i`` tests input
     ``n - 1 - i``, row bit ``i``; bit-reversed, each subtree is a span.
     """
+
     def node(i: int, lo: int, hi: int) -> BranchCost:
         if i == n or constant(lo, hi):
             code = _tree_leaf(n, i, reflected[lo])
@@ -201,6 +215,39 @@ def _emit_shared_tree(
     return "".join(pieces), dispatch_cost(cost, normal_cost(body) + 3, 1)
 
 
+def _walk_decoder[T](
+    width: int,
+    count: int,
+    leaf: Callable[[int, int], T],
+    skip: Callable[[Callable[[], T]], T],
+    split: Callable[[Callable[[], T], Callable[[], T]], T],
+) -> T:
+    """Walk a ``width``-bit label-word decoder, dispatching node shapes to callbacks.
+
+    Bit ``width - 1`` is tested first. ``leaf`` receives the label and the
+    accumulated path cost (2 per uniform bit, 6/5 per one/zero arm), which
+    pricing callbacks add to each body's tail cost. ``skip`` handles a bit
+    position where every label agrees; ``split`` handles a genuine split and
+    receives thunks for the one and zero children, so each callback controls
+    the exact visit order of its arms.
+    """
+
+    def visit(bit: int, labels: tuple[int, ...], cost: int) -> T:
+        if bit < 0:
+            return leaf(labels[0], cost)
+        zero = tuple(label for label in labels if not label & (1 << bit))
+        one = tuple(label for label in labels if label & (1 << bit))
+        if not zero or not one:
+            both = zero or one
+            return skip(lambda: visit(bit - 1, both, cost + 2))
+        return split(
+            lambda: visit(bit - 1, one, cost + 6),
+            lambda: visit(bit - 1, zero, cost + 5),
+        )
+
+    return visit(width - 1, tuple(range(count)), 0)
+
+
 def _emit_classifier_tree(
     table: str,
     classes: tuple[str, ...],
@@ -249,26 +296,26 @@ def _emit_classifier_tree(
 
     plain = _plain_node(n, reflected, constant, ids, pieces)
 
-    def decode(bit: int, labels: tuple[int, ...]) -> BranchCost:
-        if bit < 0:
-            row = rows[labels[0]]
-            return plain(class_depth, row, row + span)
-        zero_labels = tuple(label for label in labels if not label & (1 << bit))
-        one_labels = tuple(label for label in labels if label & (1 << bit))
-        if not zero_labels or not one_labels:
-            pieces.append(">>")
-            return add_cost(decode(bit - 1, zero_labels or one_labels), 2)
+    def decode_leaf(label: int, _cost: int) -> BranchCost:
+        row = rows[label]
+        return plain(class_depth, row, row + span)
+
+    def decode_skip(child: Callable[[], BranchCost]) -> BranchCost:
+        pieces.append(">>")
+        return add_cost(child(), 2)
+
+    def decode_split(
+        one: Callable[[], BranchCost], zero: Callable[[], BranchCost]
+    ) -> BranchCost:
         pieces.append("[>>")
-        one = decode(bit - 1, one_labels)
+        one_arm = add_cost(one(), 3)
         pieces.append("]>[>")
-        zero = decode(bit - 1, zero_labels)
+        zero_arm = add_cost(zero(), 2)
         pieces.append("]")
-        one_arm = add_cost(one, 3)
-        zero_arm = add_cost(zero, 2)
         return add_cost(merge_cost(one_arm, zero_arm), 3)
 
     cost = prefix(0, 0, 1 << n)
-    body = decode(width - 1, tuple(range(len(rows))))
+    body = _walk_decoder(width, len(rows), decode_leaf, decode_skip, decode_split)
     combined: BranchCost = normal_cost(cost) + normal_cost(body), None
     return "".join(pieces), combined
 
@@ -427,43 +474,146 @@ def _price_decoder(
     width: int, bodies: tuple[_Metric, ...]
 ) -> tuple[int, dict[int, int]]:
     """Price a label-word decoder: its size and each body's tail cost."""
+
+    def price_leaf(label: int, cost: int) -> int:
+        tails[label] = cost + bodies[label].commands
+        return bodies[label].size
+
+    def price_skip(child: Callable[[], int]) -> int:
+        return 2 + child()
+
+    def price_split(one: Callable[[], int], zero: Callable[[], int]) -> int:
+        return 8 + one() + zero()
+
     tails: dict[int, int] = {}
-
-    def visit(bit: int, labels: tuple[int, ...], cost: int) -> int:
-        if bit < 0:
-            target = labels[0]
-            tails[target] = cost + bodies[target].commands
-            return bodies[target].size
-        zero = tuple(label for label in labels if not label & (1 << bit))
-        one = tuple(label for label in labels if label & (1 << bit))
-        if not zero or not one:
-            return 2 + visit(bit - 1, zero or one, cost + 2)
-        one_size = visit(bit - 1, one, cost + 6)
-        zero_size = visit(bit - 1, zero, cost + 5)
-        return 8 + one_size + zero_size
-
-    return visit(width - 1, tuple(range(len(bodies))), 0), tails
+    return _walk_decoder(width, len(bodies), price_leaf, price_skip, price_split), tails
 
 
 def _emit_decoder(width: int, bodies: tuple[_Metric, ...], emit: _Emit) -> None:
     """Emit a label-word decoder; it consumes every bit/marker pair first."""
-    def visit(bit: int, labels: tuple[int, ...]) -> None:
-        if bit < 0:
-            emit(labels[0])
-            return
-        zero = tuple(label for label in labels if not label & (1 << bit))
-        one = tuple(label for label in labels if label & (1 << bit))
-        if not zero or not one:
-            emit(">>")
-            visit(bit - 1, zero or one)
-            return
+
+    def emit_leaf(label: int, _cost: int) -> None:
+        emit(label)
+
+    def emit_skip(child: Callable[[], None]) -> None:
+        emit(">>")
+        child()
+
+    def emit_split(one: Callable[[], None], zero: Callable[[], None]) -> None:
         emit("[>>")
-        visit(bit - 1, one)
+        one()
         emit("]>[>")
-        visit(bit - 1, zero)
+        zero()
         emit("]")
 
-    visit(width - 1, tuple(range(len(bodies))))
+    _walk_decoder(width, len(bodies), emit_leaf, emit_skip, emit_split)
+
+
+@dataclass(frozen=True, slots=True)
+class _MixedBankContext:
+    """Explicit state for the mixed-bank walks, replacing closure capture."""
+
+    ids: list[list[int]]
+    n: int
+    blocks: tuple[tuple[int, int], ...]
+    selected: dict[tuple[int, int], int]
+    width: int
+    metrics: list[dict[int, _Metric]]
+    tails: dict[int, int]
+
+
+def _collect_mixed_used(
+    ids: list[list[int]],
+    selected: dict[tuple[int, int], int],
+    depth: int,
+    index: int,
+    used: set[int],
+) -> None:
+    """Mark repeated blocks reachable from a mixed-bank prefix walk."""
+    state = ids[depth][index]
+    target = selected.get((depth, state))
+    if target is not None:
+        used.add(target)
+    elif state >= 2:
+        _collect_mixed_used(ids, selected, depth + 1, 2 * index, used)
+        if ids[depth + 1][2 * index] != ids[depth + 1][2 * index + 1]:
+            _collect_mixed_used(ids, selected, depth + 1, 2 * index + 1, used)
+
+
+def _mixed_leaf(n: int, depth: int, state: int) -> str:
+    """Return the leaf text for a completed unshared mixed-bank state."""
+    remaining = 2 * (n - depth)
+    if state == 0:
+        return ">" * remaining + "."
+    return ">" * (remaining - 1) + ".>" if remaining else "@.>"
+
+
+def _mixed_prefix(
+    context: _MixedBankContext, depth: int, index: int, emit: _Emit | None = None
+) -> _Metric:
+    """Price, or emit when ``emit`` is given, a mixed-bank prefix walk."""
+    state = context.ids[depth][index]
+    target = context.selected.get((depth, state))
+    if target is not None:
+        size = 3 * context.width + target.bit_count() + 2
+        if emit is not None:
+            for bit in range(context.width):
+                emit("<@<" + ("@" if target & (1 << bit) else ""))
+            emit("<@")
+        return _Metric(size, size + context.tails[target] + 3)
+    if state < 2:
+        size = context.metrics[depth][state].size + 1
+        if emit is not None:
+            emit(_mixed_leaf(context.n, depth, state) + "<")
+        return _Metric(size, size + 1)
+    zero, one = context.ids[depth + 1][2 * index : 2 * index + 2]
+    if zero == one:
+        if emit is not None:
+            emit(">>")
+        value = _mixed_prefix(context, depth + 1, 2 * index, emit)
+        return _Metric(2 + value.size, 2 + value.commands)
+    if emit is not None:
+        emit("[>>")
+    right = _mixed_prefix(context, depth + 1, 2 * index + 1, emit)
+    if emit is not None:
+        emit("<<]>[>")
+    left = _mixed_prefix(context, depth + 1, 2 * index, emit)
+    if emit is not None:
+        emit("<]>")
+    return _Metric(
+        12 + left.size + right.size, max(7 + left.commands, 9 + right.commands)
+    )
+
+
+def _mixed_inline(
+    context: _MixedBankContext, depth: int, index: int, pieces: list[str]
+) -> None:
+    """Render a complete mixed-bank body inline onto ``pieces``."""
+    state = context.ids[depth][index]
+    if state < 2:
+        pieces.append(_mixed_leaf(context.n, depth, state))
+        return
+    zero, one = context.ids[depth + 1][2 * index : 2 * index + 2]
+    if zero == one:
+        pieces.append(">>")
+        _mixed_inline(context, depth + 1, 2 * index, pieces)
+    else:
+        pieces.append("[>>")
+        _mixed_inline(context, depth + 1, 2 * index + 1, pieces)
+        pieces.append("]>[>")
+        _mixed_inline(context, depth + 1, 2 * index, pieces)
+        pieces.append("]")
+
+
+def _mixed_emit(
+    context: _MixedBankContext, pieces: list[str], piece: str | int
+) -> None:
+    """Route a decoder emission to a body render or a literal piece of text."""
+    if isinstance(piece, int):
+        depth, row = context.blocks[piece]
+        _mixed_inline(context, depth, row >> (context.n - depth), pieces)
+    else:
+        pieces.append(piece)
 
 
 def best_mixed_bank(
@@ -480,18 +630,7 @@ def best_mixed_bank(
     blocks = tuple((d, row) for d, row in blocks if d >= width + 2)
     selected = {(d, ids[d][row >> (n - d)]): i for i, (d, row) in enumerate(blocks)}
     used: set[int] = set()
-
-    def collect(depth: int, index: int) -> None:
-        state = ids[depth][index]
-        target = selected.get((depth, state))
-        if target is not None:
-            used.add(target)
-        elif state >= 2:
-            collect(depth + 1, 2 * index)
-            if ids[depth + 1][2 * index] != ids[depth + 1][2 * index + 1]:
-                collect(depth + 1, 2 * index + 1)
-
-    collect(0, 0)
+    _collect_mixed_used(ids, selected, 0, 0, used)
     blocks = tuple(item for i, item in enumerate(blocks) if i in used)
     if len(blocks) < 2:
         return None
@@ -500,47 +639,16 @@ def best_mixed_bank(
     metrics = _body_metrics(context)
     bodies = tuple(metrics[d][ids[d][row >> (n - d)]] for d, row in blocks)
     decoder_size, tails = _price_decoder(width, bodies)
-
-    def leaf(depth: int, state: int) -> str:
-        remaining = 2 * (n - depth)
-        if state == 0:
-            return ">" * remaining + "."
-        return ">" * (remaining - 1) + ".>" if remaining else "@.>"
-
-    def prefix(depth: int, index: int, emit: _Emit | None = None) -> _Metric:
-        state = ids[depth][index]
-        target = selected.get((depth, state))
-        if target is not None:
-            size = 3 * width + target.bit_count() + 2
-            if emit is not None:
-                for bit in range(width):
-                    emit("<@<" + ("@" if target & (1 << bit) else ""))
-                emit("<@")
-            return _Metric(size, size + tails[target] + 3)
-        if state < 2:
-            size = metrics[depth][state].size + 1
-            if emit is not None:
-                emit(leaf(depth, state) + "<")
-            return _Metric(size, size + 1)
-        zero, one = ids[depth + 1][2 * index : 2 * index + 2]
-        if zero == one:
-            if emit is not None:
-                emit(">>")
-            value = prefix(depth + 1, 2 * index, emit)
-            return _Metric(2 + value.size, 2 + value.commands)
-        if emit is not None:
-            emit("[>>")
-        right = prefix(depth + 1, 2 * index + 1, emit)
-        if emit is not None:
-            emit("<<]>[>")
-        left = prefix(depth + 1, 2 * index, emit)
-        if emit is not None:
-            emit("<]>")
-        return _Metric(
-            12 + left.size + right.size, max(7 + left.commands, 9 + right.commands)
-        )
-
-    tree = prefix(0, 0)
+    bank_context = _MixedBankContext(
+        ids=ids,
+        n=n,
+        blocks=blocks,
+        selected=selected,
+        width=width,
+        metrics=metrics,
+        tails=tails,
+    )
+    tree = _mixed_prefix(bank_context, 0, 0)
     header = "<".join(["@<" + TEMPLATE_CHAR] * n)
     size = len(header) + tree.size + decoder_size + 3
     if size >= size_limit or len(header) + tree.commands > command_budget:
@@ -548,33 +656,9 @@ def best_mixed_bank(
     # O(T/log T) residuals give O(T) decoder digits. Price the prefix once;
     # render complete bodies only after their combined text fits inline O(T).
     pieces = [header]
-
-    def inline(depth: int, index: int) -> None:
-        state = ids[depth][index]
-        if state < 2:
-            pieces.append(leaf(depth, state))
-            return
-        zero, one = ids[depth + 1][2 * index : 2 * index + 2]
-        if zero == one:
-            pieces.append(">>")
-            inline(depth + 1, 2 * index)
-        else:
-            pieces.append("[>>")
-            inline(depth + 1, 2 * index + 1)
-            pieces.append("]>[>")
-            inline(depth + 1, 2 * index)
-            pieces.append("]")
-
-    def emit(piece: str | int) -> None:
-        if isinstance(piece, int):
-            depth, row = blocks[piece]
-            inline(depth, row >> (n - depth))
-        else:
-            pieces.append(piece)
-
-    prefix(0, 0, emit)
+    _mixed_prefix(bank_context, 0, 0, partial(_mixed_emit, bank_context, pieces))
     pieces.append("[>")
-    _emit_decoder(width, bodies, emit)
+    _emit_decoder(width, bodies, partial(_mixed_emit, bank_context, pieces))
     pieces.append("]")
     program = "".join(pieces)
     if len(program) != size:

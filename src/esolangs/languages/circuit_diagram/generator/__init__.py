@@ -104,6 +104,17 @@ __all__ = ["circuit_diagram"]
 _COL_STEP = 2
 _ROW_STEP = 2
 
+# Layout competition only starts at eight inputs: below that, the
+# fixed-order folds and shared banks cannot beat the direct mux build
+# (see the ``circuit_diagram`` docstring).
+_COMPETING_MODEL_MIN_INPUTS = 8
+# The shared H-pool layout only pays off with six or more essential
+# inputs; with fewer, the H-term layout is already minimal.
+_H_POOL_MIN_INPUTS = 6
+# Columns the output dash and colon add past the final gate group, so
+# banding rebuilds this much narrower when the first attempt is too wide.
+_OUTPUT_GLYPH_COLUMNS = 2
+
 
 class _Builder:
     """Allocates buses and gate bands, and records their wiring.
@@ -643,6 +654,113 @@ def _narrowest_present(*forms: str | None) -> str:
     return narrowest_grid(*(form for form in forms if form is not None))
 
 
+def _layout_area(layout: _Layout) -> int:
+    """Return the bounding-box area, the model-selection metric."""
+    height, columns = layout.bounds()
+    return height * columns
+
+
+def _select_h_fallback(
+    projected: str, used: list[int], inputs: int, large_area: int | None
+) -> _Layout | None:
+    """Fall back to an H-layout when no fold or sparse model fit the ceiling.
+
+    Only skips an older layout when it is strictly larger, preserving its
+    area ties: the mandatory term glyphs prove these floors.
+    """
+    from .hpool import _h_pool_area_floor, _h_pool_layout
+
+    selected: _Layout | None = None
+    if large_area is None or large_area >= _h_term_area_floor(len(used), inputs):
+        selected = _h_term_layout(projected, input_order=used, port_inputs=inputs)
+    if len(used) >= _H_POOL_MIN_INPUTS and (
+        large_area is None or large_area >= _h_pool_area_floor(len(used), inputs)
+    ):
+        pooled = _h_pool_layout(projected, input_order=used, port_inputs=inputs)
+        if selected is None or _layout_area(pooled) < _layout_area(selected):
+            selected = pooled
+    return selected
+
+
+def _select_competing_model(truth_table: str, inputs: int) -> _Layout:
+    """Compete the fold, sparse, H, bundled, class, and cofactor layouts.
+
+    Returns the smallest-area model, keeping the older layout on ties
+    unless a strictly smaller model supersedes it. Raises AssertionError
+    when no candidate builds, which the constructions rule out.
+    """
+    from .banks import _cofactor_bank_candidate, _residual_class_bank_candidate
+    from .bundled_banks import bundled_class_bank_candidate
+    from .folded_banks import folded_class_bank_candidate
+    from .hpool import _large_pool_layout
+    from .sparse_banks import sparse_class_bank_candidate
+
+    used, projected = _essential_table(truth_table, inputs)
+    ceiling: int | None = None
+    selected: _Layout | None = None
+    # Interval models count characters before rendering, so a node cap
+    # cannot hide a smaller complete fold.
+    for candidate in (folded_class_bank_candidate, sparse_class_bank_candidate):
+        model = candidate(truth_table, ceiling)
+        if model is None:
+            continue
+        model_area = _layout_area(model)
+        if ceiling is None or model_area < ceiling:
+            selected = model
+            ceiling = model_area
+    large = _large_pool_layout(
+        projected, input_order=used, port_inputs=inputs, ceiling=ceiling
+    )
+    large_area = _layout_area(large) if large is not None else None
+    if selected is None:
+        selected = _select_h_fallback(projected, used, inputs, large_area)
+    prefer_old_bank = selected is None
+    if large is not None:
+        if selected is None:
+            selected = large
+        elif large_area is not None and large_area < _layout_area(selected):
+            selected, prefer_old_bank = large, True
+    if selected is None:  # both fallbacks above are construction invariants
+        raise AssertionError("missing Circuit Diagram layout")
+    area = _layout_area(selected)
+    bundled = bundled_class_bank_candidate(truth_table, area)
+    if bundled is not None and _layout_area(bundled) < area:
+        selected = bundled
+        area = _layout_area(selected)
+    classes = _residual_class_bank_candidate(truth_table, area)
+    if classes is not None and _layout_area(classes) < area:
+        selected, prefer_old_bank = classes, True
+        area = _layout_area(selected)
+    bank = _cofactor_bank_candidate(truth_table, area)
+    if bank is not None:
+        bank_area = _layout_area(bank)
+        if bank_area < area or (prefer_old_bank and bank_area == area):
+            selected = bank
+    return selected
+
+
+def _competing_model_circuit(truth_table: str, inputs: int) -> str:
+    """Return the smallest emitted-character circuit among the n>=8 layouts.
+
+    Fixed-order folds compete by area against prefix H-layouts and shared
+    cofactor banks; sharing wins character ties.
+    """
+    from .source_size import layout_source_size
+
+    retained: list[_Layout] = []
+    _linear_shared_layout(truth_table, inputs, retained)
+    selected = _select_competing_model(truth_table, inputs)
+    # Text contracts count characters; a taller area winner can lose.
+    fallback = selected
+    code = fallback.render()
+    size = len(code)
+    for model in retained:
+        model_size = layout_source_size(model)
+        if model_size < size or (model_size == size and selected not in retained):
+            selected, size = model, model_size
+    return code if selected is fallback else selected.render()
+
+
 def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
@@ -664,98 +782,13 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     _validate_truth_table(truth_table)
     inputs = len(truth_table).bit_length() - 1
     # Constants need only the scalar clock gate, not a minterm lattice.
-    if width is None and inputs >= 8 and "1" in truth_table and "0" in truth_table:
-        from .banks import _cofactor_bank_candidate, _residual_class_bank_candidate
-        from .bundled_banks import bundled_class_bank_candidate
-        from .folded_banks import folded_class_bank_candidate
-        from .hpool import _h_pool_area_floor, _h_pool_layout, _large_pool_layout
-        from .source_size import layout_source_size
-        from .sparse_banks import sparse_class_bank_candidate
-
-        retained: list[_Layout] = []
-        _linear_shared_layout(truth_table, inputs, retained)
-        selected: _Layout | None = None
-        used, projected = _essential_table(truth_table, inputs)
-        ceiling = None
-        folded = folded_class_bank_candidate(truth_table, ceiling)
-        if folded is not None:
-            selected = folded
-            height, columns = selected.bounds()
-            ceiling = height * columns
-        sparse = sparse_class_bank_candidate(truth_table, ceiling)
-        if sparse is not None:
-            height, columns = sparse.bounds()
-            if ceiling is None or height * columns < ceiling:
-                selected = sparse
-                ceiling = height * columns
-        large = _large_pool_layout(
-            projected, input_order=used, port_inputs=inputs, ceiling=ceiling
-        )
-        large_area = None
-        if large is not None:
-            height, columns = large.bounds()
-            large_area = height * columns
-        if selected is None:
-            # Mandatory term glyphs prove these floors. Only skip an older
-            # layout when it is strictly larger, preserving its area ties.
-            if large_area is None or large_area >= _h_term_area_floor(
-                len(used), inputs
-            ):
-                selected = _h_term_layout(
-                    projected, input_order=used, port_inputs=inputs
-                )
-            if len(used) >= 6 and (
-                large_area is None
-                or large_area >= _h_pool_area_floor(len(used), inputs)
-            ):
-                pooled = _h_pool_layout(projected, input_order=used, port_inputs=inputs)
-                pool_height, pool_columns = pooled.bounds()
-                if selected is None:
-                    selected = pooled
-                else:
-                    height, columns = selected.bounds()
-                    if pool_height * pool_columns < height * columns:
-                        selected = pooled
-        prefer_old_bank = selected is None
-        if large is not None:
-            if selected is None:
-                selected = large
-            else:
-                height, columns = selected.bounds()
-                if large_area is not None and large_area < height * columns:
-                    selected, prefer_old_bank = large, True
-        if selected is None:  # both fallbacks above are construction invariants
-            raise AssertionError("missing Circuit Diagram layout")
-        height, columns = selected.bounds()
-        bundled = bundled_class_bank_candidate(truth_table, height * columns)
-        if bundled is not None:
-            bank_height, bank_columns = bundled.bounds()
-            if bank_height * bank_columns < height * columns:
-                selected = bundled
-                height, columns = bank_height, bank_columns
-        classes = _residual_class_bank_candidate(truth_table, height * columns)
-        if classes is not None:
-            class_height, class_columns = classes.bounds()
-            if class_height * class_columns < height * columns:
-                selected, prefer_old_bank = classes, True
-        height, columns = selected.bounds()
-        bank = _cofactor_bank_candidate(truth_table, height * columns)
-        if bank is not None:
-            bank_height, bank_columns = bank.bounds()
-            area = bank_height * bank_columns
-            if area < height * columns or (
-                prefer_old_bank and area == height * columns
-            ):
-                selected = bank
-        # Text contracts count characters; a taller area winner can lose.
-        fallback = selected
-        code = fallback.render()
-        size = len(code)
-        for model in retained:
-            model_size = layout_source_size(model)
-            if model_size < size or (model_size == size and selected not in retained):
-                selected, size = model, model_size
-        return code if selected is fallback else selected.render()
+    if (
+        width is None
+        and inputs >= _COMPETING_MODEL_MIN_INPUTS
+        and "1" in truth_table
+        and "0" in truth_table
+    ):
+        return _competing_model_circuit(truth_table, inputs)
     flat = _circuit_diagram_at(truth_table, None)
     if width is None or grid_width(flat) <= width:
         return flat
@@ -763,7 +796,7 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     if grid_width(banded) <= width:
         return banded
     # The output dash and colon extend beyond the final gate group.
-    banded = _circuit_diagram_at(truth_table, max(1, width - 2))
+    banded = _circuit_diagram_at(truth_table, max(1, width - _OUTPUT_GLYPH_COLUMNS))
     affine = _affine_circuit(truth_table, width)
     return _narrowest_present(flat, banded, affine)
 

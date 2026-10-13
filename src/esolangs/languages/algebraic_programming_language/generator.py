@@ -63,6 +63,28 @@ def _apl_shared_ordered(table: str, perm: tuple[int, ...]) -> str:
     return min(plain, shared, _apl_repeated_expressions(plain), key=len)
 
 
+def _render_dag(
+    nodes: list[tuple[str | int, ...]], names: dict[int, str], index: int
+) -> str:
+    """Render one expression-DAG node, emitting calls for named shared nodes.
+
+    ``nodes`` is the deduplicated DAG built by
+    :func:`_apl_repeated_expressions`; ``names`` maps node indexes to their
+    definition names.
+    """
+    out: list[str] = []
+    pending = list(reversed(nodes[index]))
+    while pending:
+        part = pending.pop()
+        if isinstance(part, str):
+            out.append(part)
+        elif part in names:
+            out.append(f"{names[part]}()")
+        else:
+            pending.extend(reversed(nodes[part]))
+    return "".join(out)
+
+
 def _apl_repeated_expressions(program: str) -> str:
     """Name profitable repeated groups, with one linear scan of the expression DAG."""
     source = program.removeprefix(_NOT + "\n").replace(" ", "")
@@ -111,25 +133,14 @@ def _apl_repeated_expressions(program: str) -> str:
     if not names:
         return program
 
-    def render(index: int) -> str:
-        out: list[str] = []
-        pending = list(reversed(nodes[index]))
-        while pending:
-            part = pending.pop()
-            if isinstance(part, str):
-                out.append(part)
-            elif part in names:
-                out.append(f"{names[part]}()")
-            else:
-                pending.extend(reversed(nodes[part]))
-        return "".join(out)
-
     definitions = [
-        f"{names[index]}={render(index)}"
+        f"{names[index]}={_render_dag(nodes, names, index)}"
         for index in range(len(nodes))
         if index in names
     ]
-    return "\n".join([_NOT_TIGHT, *definitions, prefix + render(len(nodes) - 1)])
+    return "\n".join(
+        [_NOT_TIGHT, *definitions, prefix + _render_dag(nodes, names, len(nodes) - 1)]
+    )
 
 
 def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -293,33 +304,48 @@ def _apl_tree_layout(
     return best, min(events, default=None)
 
 
-def _apl_split(
-    table: str,
-    perm: tuple[int, ...],
-    width: int,
-    build: Callable[[str, tuple[int, ...]], str],
-    *,
-    require_share: bool = False,
-) -> tuple[str, int | None]:
-    """Split ``build``'s tree into definitions under the frame budget."""
-    n = _validate_truth_table(table)
-    source = build(table, perm).removeprefix(_NOT + "\n").replace(" ", "")
-    prefix, source = source.split(")|", 1)
-    prefix += ")|"
-    # There are fewer definitions than source characters, bounding name width.
-    name_width = len(short_name(len(source), ascii_uppercase))
-    call_width = name_width + 2
-    limit = max(width, 4 * call_width + 6, 2 * n + call_width + 4)
-    definitions: list[str] = []
-    made: dict[str, str] = {}
-    reused = False
-    events: set[int] = set()
-    # A frame's pieces carry their fresh source-character count; references
-    # carry zero. Every definition consumes at least one call-width of fresh
-    # text, so O(T / n) names of O(n) characters keep total source O(T).
-    frames: list[list[tuple[_Rope, int, int]]] = [[]]
+class _Splitter:
+    """Split one Boolean tree's source into definitions under a width limit.
 
-    def render(node: _Rope) -> str:
+    Holds the layout state that used to live in closures: the frame stack,
+    the emitted definitions, the interned bodies, whether any body was
+    shared, and the width-transition events.
+    """
+
+    def __init__(
+        self,
+        table: str,
+        perm: tuple[int, ...],
+        width: int,
+        build: Callable[[str, tuple[int, ...]], str],
+    ) -> None:
+        self._n = _validate_truth_table(table)
+        source = build(table, perm).removeprefix(_NOT + "\n").replace(" ", "")
+        self._prefix, self._source = source.split(")|", 1)
+        self._prefix += ")|"
+        # There are fewer definitions than source characters, bounding name width.
+        self._name_width = len(short_name(len(self._source), ascii_uppercase))
+        self._call_width = self._name_width + 2
+        self._limit = max(
+            width, 4 * self._call_width + 6, 2 * self._n + self._call_width + 4
+        )
+        self._definitions: list[str] = []
+        self._made: dict[str, str] = {}
+        self._reused = False
+        self._events: set[int] = set()
+        # A frame's pieces carry their fresh source-character count;
+        # references carry zero. Every definition consumes at least one
+        # call-width of fresh text, so O(T / n) names of O(n) characters
+        # keep total source O(T).
+        self._frames: list[list[tuple[_Rope, int, int]]] = [[]]
+
+    @property
+    def reused(self) -> bool:
+        """Whether any emitted body was shared by more than one caller."""
+        return self._reused
+
+    def render(self, node: _Rope) -> str:
+        """Flatten a rope of nested tuples into its source text."""
         pieces: list[str] = []
         pending = [node]
         while pending:
@@ -330,52 +356,81 @@ def _apl_split(
                 pending.extend(reversed(current))
         return "".join(pieces)
 
-    def define(part: tuple[_Rope, int, int]) -> tuple[_Rope, int, int]:
-        nonlocal reused
-        body = render(part[0])
-        if body in made:
-            reused = True
-            call = made[body]
+    def define(self, part: tuple[_Rope, int, int]) -> tuple[_Rope, int, int]:
+        """Name a frame piece, returning its call site: zero fresh text."""
+        body = self.render(part[0])
+        if body in self._made:
+            self._reused = True
+            call = self._made[body]
         else:
-            name = short_name(len(definitions), ascii_uppercase)
-            definitions.append(f"{name}={body}")
-            call = made[body] = f"{name}()"
+            name = short_name(len(self._definitions), ascii_uppercase)
+            self._definitions.append(f"{name}={body}")
+            call = self._made[body] = f"{name}()"
         return call, len(call), 0
 
-    def trim(parts: list[tuple[_Rope, int, int]], budget: int) -> None:
+    def trim(self, parts: list[tuple[_Rope, int, int]], budget: int) -> None:
+        """Define the largest fresh pieces until the frame fits the budget."""
         while (span := sum(length for _, length, _ in parts)) > budget:
-            events.add(span + name_width + 1)
+            self._events.add(span + self._name_width + 1)
             eligible = [
                 (length, index)
                 for index, (_, length, fresh) in enumerate(parts)
-                if fresh >= call_width
+                if fresh >= self._call_width
             ]
             if not eligible:
                 raise AssertionError("tree frame cannot be split")
             _, index = max(eligible)
-            parts[index] = define(parts[index])
+            parts[index] = self.define(parts[index])
 
-    for char in source:
-        if char == "(":
-            frames.append([("(", 1, 1)])
-        elif char == ")":
-            parts = frames.pop()
-            parts.append((")", 1, 1))
-            trim(parts, limit - name_width - 1)
-            frames[-1].append(_join(parts))
-        else:
-            frames[-1].append((char, 1, 1))
-    parts = frames[0]
-    span = sum(length for _, length, _ in parts) + len(prefix)
-    if span > limit:
-        events.add(span)
-        parts = [define(_join(parts))]
-    program = "\n".join(
-        [_NOT_TIGHT, *definitions, prefix + render(tuple(node for node, _, _ in parts))]
-    )
-    if require_share and not reused:
+    def split(self) -> tuple[str, set[int]]:
+        """Run the layout, returning the program and width-transition events."""
+        for char in self._source:
+            if char == "(":
+                self._frames.append([("(", 1, 1)])
+            elif char == ")":
+                parts = self._frames.pop()
+                parts.append((")", 1, 1))
+                self.trim(parts, self._limit - self._name_width - 1)
+                self._frames[-1].append(_join(parts))
+            else:
+                self._frames[-1].append((char, 1, 1))
+        parts = self._frames[0]
+        span = sum(length for _, length, _ in parts) + len(self._prefix)
+        if span > self._limit:
+            self._events.add(span)
+            parts = [self.define(_join(parts))]
+        tail = self._prefix + self.render(
+            tuple(node for node, _, _ in parts)
+        )
+        program = "\n".join([_NOT_TIGHT, *self._definitions, tail])
+        return program, self._events
+
+
+def _apl_split(
+    table: str,
+    perm: tuple[int, ...],
+    width: int,
+    build: Callable[[str, tuple[int, ...]], str],
+    *,
+    require_share: bool = False,
+) -> tuple[str, int | None]:
+    """Split ``build``'s tree into definitions under the frame budget."""
+    splitter = _Splitter(table, perm, width, build)
+    program, events = splitter.split()
+    if require_share and not splitter.reused:
         return build(table, perm), None
     return program, min(events, default=None)
+
+
+def _xor_operator_spelling() -> str:
+    """Return operator definitions computing XOR in five columns.
+
+    The generic :func:`_apl_short_operators` spelling needs six columns for
+    the XOR table ``0110``.  This hand-rolled alternative spells XOR as
+    ``a+b-2ab``: the executed sum binds both globals before the unary
+    calls, so every line fits in five columns.
+    """
+    return "!x={\nx*b\n}\n?x={\nx*2\n}\n~x={\na-x\n}\n^x={\n~?!x\n}\n^a+b"
 
 
 def _apl_narrow_layout(
@@ -439,8 +494,9 @@ def _apl_narrow_layout(
     operators = _apl_short_operators(table, perm)
     if width < 5 and table == "0110":
         events.append(5)
-        # a+b-2ab: the executed sum binds both globals before the unary calls.
-        operators = "!x={\nx*b\n}\n?x={\nx*2\n}\n~x={\na-x\n}\n^x={\n~?!x\n}\n^a+b"
+        # XOR's generic operator spelling cannot fit in five columns; the
+        # hand-rolled a+b-2ab spelling can (see _xor_operator_spelling).
+        operators = _xor_operator_spelling()
     program = min((chosen, operators), key=_span)
     return program, min(events)
 

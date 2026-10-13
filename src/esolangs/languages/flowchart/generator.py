@@ -13,6 +13,7 @@ sets the register once), so it has no subtrees to share.
 """
 
 from collections import Counter
+from collections.abc import Callable
 from itertools import pairwise
 
 from esolangs.generation.helpers import (
@@ -91,6 +92,32 @@ def _answer_column(cells: dict[tuple[int, int], str], middle: int, y: int) -> No
     del cells[(middle, y - 1)]
 
 
+def _folded_walk[C, R](
+    rows: int,
+    constant: Callable[[int, int], bool],
+    leaf: Callable[[int, int, int, C], R],
+    branch: Callable[[int, int, int, C, Callable[[int, int, int, C], R]], R],
+    cursor: C,
+) -> R:
+    """Walk the folded decision tree, painting it through callbacks.
+
+    ``leaf(lo, hi, depth, cursor)`` paints a constant span; ``branch(lo, hi,
+    depth, cursor, descend)`` paints a switch and calls ``descend(lo, hi,
+    depth, cursor)`` for each half it draws, in whichever order its layout
+    needs.  The traversal -- constant test, halving, recursion -- is shared;
+    the painters differ only in cell placement.  The cursor is opaque to the
+    walk: the stacked painter threads its row and lock flag through it, the
+    others pass ``None``.  Returns whatever the root call returns.
+    """
+
+    def descend(lo: int, hi: int, depth: int, cursor: C) -> R:
+        if constant(lo, hi):
+            return leaf(lo, hi, depth, cursor)
+        return branch(lo, hi, depth, cursor, descend)
+
+    return descend(0, rows, 0, cursor)
+
+
 def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     """Paint the decision tree onto a sparse ``(x, y) -> character`` grid.
 
@@ -114,13 +141,39 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
         return range(top[level], top[level] + 2 * costs[level], 2)
 
     middles: list[int] = []
+    # Slots are handed out left to right as the walk reaches each leaf, so a
+    # folded subtree takes one column band instead of the ``2**k`` its rows
+    # would have filled -- the drawing narrows rather than leaving a gap.
+    slots = [0]
 
-    def leaf(slot: int, bit: str) -> int:
-        """Draw the leaf for ``bit`` in column slot ``slot``; return its middle."""
-        middle = _FLOWCHART_PITCH * slot + 2
-        _paint(cells, middle - 1, leaf_top, _set(bit))
+    def paint_leaf(lo: int, _hi: int, depth: int, _cursor: None) -> int:
+        """Draw the leaf for ``truth_table[lo]``; return its middle column.
+
+        Constant: no branch below here can change the answer, so this is a
+        leaf.  Leaves all sit on the bottom row whatever their depth, so the
+        rail from the switch above covers the levels this fold skipped: the
+        rows are a fixed grid and only the branching goes away.
+
+        The *reads* those levels would have done do not go away.  A program
+        must consume its ``n`` inputs whatever the table says -- the reads
+        are the interface, and a folded run that skipped them left the
+        caller's remaining bits on the stream -- so each skipped level puts
+        its ``/ /`` nodes on the rail, where the pointer runs straight
+        through them into the leaf below.  The flat layout puts leaves on a
+        fixed row, so the walk cursor is unused here.
+        """
+        middle = _FLOWCHART_PITCH * slots[0] + 2
+        _paint(cells, middle - 1, leaf_top, _set(truth_table[lo]))
         cells[(middle, leaf_top + 1)] = "│"
         middles.append(middle)
+        slots[0] += 1
+        for y in range(top[depth], leaf_top):
+            cells.setdefault((middle, y), "│")
+        for skipped in range(depth, n):
+            for y in read_rows(skipped):
+                _paint(cells, middle - 1, y, "/ /")
+        for y in range(top[n], leaf_top, 2):
+            _paint(cells, middle - 1, y, "/ /")
         return middle
 
     def switch(depth: int, west: int, east: int) -> int:
@@ -141,42 +194,20 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
         cells[(east, switch_row + 1)] = "│"
         return middle
 
-    # Slots are handed out left to right as the walk reaches each leaf, so a
-    # folded subtree takes one column band instead of the ``2**k`` its rows
-    # would have filled -- the drawing narrows rather than leaving a gap.
-    slots = [0]
-
-    def walk(lo: int, hi: int, depth: int) -> int:
-        """Draw the subtree for ``truth_table[lo:hi]``; return its column."""
-        if constant(lo, hi):
-            # Constant: no branch below here can change the answer, so this
-            # is a leaf.  Leaves all sit on the bottom row whatever their
-            # depth, so the rail from the switch above covers the levels this
-            # fold skipped: the rows are a fixed grid and only the branching
-            # goes away.
-            #
-            # The *reads* those levels would have done do not go away.  A
-            # program must consume its ``n`` inputs whatever the table says
-            # -- the reads are the interface, and a folded run that skipped
-            # them left the caller's remaining bits on the stream -- so each
-            # skipped level puts its ``/ /`` nodes on the rail, where the
-            # pointer runs straight through them into the leaf below.
-            middle = leaf(slots[0], truth_table[lo])
-            slots[0] += 1
-            for y in range(top[depth], leaf_top):
-                cells.setdefault((middle, y), "│")
-            for skipped in range(depth, n):
-                for y in read_rows(skipped):
-                    _paint(cells, middle - 1, y, "/ /")
-            for y in range(top[n], leaf_top, 2):
-                _paint(cells, middle - 1, y, "/ /")
-            return middle
+    def paint_branch(
+        lo: int,
+        hi: int,
+        depth: int,
+        _cursor: None,
+        descend: Callable[[int, int, int, None], int],
+    ) -> int:
+        """Draw the subtrees for ``truth_table[lo:hi]``; return the switch."""
         half = (hi - lo) // 2
-        west = walk(lo, lo + half, depth + 1)
-        east = walk(lo + half, hi, depth + 1)
+        west = descend(lo, lo + half, depth + 1, None)
+        east = descend(lo + half, hi, depth + 1, None)
         return switch(depth, west, east)
 
-    root = walk(0, len(truth_table), 0)
+    root = _folded_walk(len(truth_table), constant, paint_leaf, paint_branch, None)
     _paint(cells, root - 1, 0, "( )")
     cells[(root, 1)] = "│"
 
@@ -206,7 +237,24 @@ def _flowchart_render(cells: dict[tuple[int, int], str]) -> str:
     return "\n".join("".join(row).rstrip() for row in grid)
 
 
-def _occurrences(ids: list[list[int]]) -> Counter[int]:
+def _shareable(
+    ids: list[list[int]], counts: list[Counter[int]], depth: int, lo: int, hi: int
+) -> int | None:
+    """Return the subtree id if the span is drawn once and shared, else None.
+
+    A span is shared when it covers at least ``_SHARE_ROWS`` rows and its
+    subtree id repeats at this depth.  Constant spans have ids 0/1 and are
+    never shared.
+    """
+    if hi - lo < _SHARE_ROWS:
+        return None
+    sid = ids[depth][lo // (hi - lo)]
+    return sid if sid >= 2 and counts[depth][sid] > 1 else None
+
+
+def _occurrences(
+    ids: list[list[int]], constant: Callable[[int, int], bool]
+) -> Counter[int]:
     """Count, per id, the subtrees of ``_SHARE_ROWS`` rows or more that repeat.
 
     Scans in drawing order, one-branch first, and stops at such a subtree
@@ -215,18 +263,25 @@ def _occurrences(ids: list[list[int]]) -> Counter[int]:
     counts = [Counter(level) for level in ids]
     found: Counter[int] = Counter()
 
-    def scan(lo: int, hi: int, depth: int) -> None:
-        sid = ids[depth][lo // (hi - lo)]
-        if sid < 2:
-            return
-        if hi - lo >= _SHARE_ROWS and counts[depth][sid] > 1:
-            found[sid] += 1
-            return
-        half = (hi - lo) // 2
-        scan(lo + half, hi, depth + 1)
-        scan(lo, lo + half, depth + 1)
+    def on_leaf(_lo: int, _hi: int, _depth: int, _cursor: None) -> None:
+        """Constant spans are never shared, so there is nothing to count."""
 
-    scan(0, len(ids[-1]), 0)
+    def on_branch(
+        lo: int,
+        hi: int,
+        depth: int,
+        _cursor: None,
+        descend: Callable[[int, int, int, None], None],
+    ) -> None:
+        sid = _shareable(ids, counts, depth, lo, hi)
+        if sid is None:
+            half = (hi - lo) // 2
+            descend(lo + half, hi, depth + 1, None)
+            descend(lo, lo + half, depth + 1, None)
+        else:
+            found[sid] += 1
+
+    _folded_walk(len(ids[-1]), constant, on_leaf, on_branch, None)
     return found
 
 
@@ -264,7 +319,7 @@ def _flowchart_stacked(
     taps: list[int] = []
     ids = subtree_ids(truth_table)
     counts = [Counter(level) for level in ids] if share else []
-    copies = _occurrences(ids) if share else Counter()
+    copies = _occurrences(ids, constant) if share else Counter()
     seen: Counter[int] = Counter()
     entries: dict[int, int] = {}
     # (row, first column east, id) of each copy drawn as a jump.
@@ -278,24 +333,27 @@ def _flowchart_stacked(
             y += 2
         return y
 
-    def leaf(y: int, depth: int, bit: str) -> int:
-        """Draw the leaf for ``bit``, entered at ``(spine, y)``.
+    def paint_leaf(
+        lo: int, _hi: int, depth: int, cursor: tuple[int, bool]
+    ) -> tuple[int, bool]:
+        """Draw the leaf for ``truth_table[lo]``, entered at ``(spine, y)``.
 
-        A folded leaf's owed reads stack above it.
+        A folded leaf's owed reads stack above it.  Returns the row below
+        the leaf and the unchanged lock flag.
         """
+        y, locked = cursor
         y = reads(y, sum(costs[depth:]) + tail)
-        _paint(cells, spine - 1, y, _set(bit))
+        _paint(cells, spine - 1, y, _set(truth_table[lo]))
         cells[(spine, y + 1)] = "│"
         _paint(cells, spine, y + 2, "└──")
         taps.append(y + 2)
-        return y + 3
+        return y + 3, locked
 
     def repeat(lo: int, hi: int, depth: int, *, locked: bool) -> int | None:
         """Return the id of a subtree that may repeat, or ``None``."""
-        if not share or locked or hi - lo < _SHARE_ROWS:
+        if not share or locked:
             return None
-        sid = ids[depth][lo // (hi - lo)]
-        return sid if sid >= 2 and counts[depth][sid] > 1 else None
+        return _shareable(ids, counts, depth, lo, hi)
 
     def role(sid: int | None) -> str:
         """Return ``"jump"`` for an earlier copy, ``"body"`` for the last."""
@@ -304,10 +362,15 @@ def _flowchart_stacked(
         seen[sid] += 1
         return "body" if seen[sid] == copies[sid] else "jump"
 
-    def walk(lo: int, hi: int, depth: int, y: int, *, locked: bool = False) -> int:
+    def paint_branch(
+        lo: int,
+        hi: int,
+        depth: int,
+        cursor: tuple[int, bool],
+        descend: Callable[[int, int, int, tuple[int, bool]], tuple[int, bool]],
+    ) -> tuple[int, bool]:
         """Draw the subtree for ``truth_table[lo:hi]``; return the row after."""
-        if constant(lo, hi):
-            return leaf(y, depth, truth_table[lo])
+        y, locked = cursor
         y = reads(y, costs[depth])
         _paint(cells, spine - 1, y, "< >")
         half = (hi - lo) // 2
@@ -325,8 +388,8 @@ def _flowchart_stacked(
                 entries[one] = y + 1
             cells[(spine + 1, y + 1)] = "─"
             cells[(spine, y + 1)] = "┌"
-            below = walk(
-                lo + half, hi, depth + 1, y + 2, locked=locked or one is not None
+            below, _ = descend(
+                lo + half, hi, depth + 1, (y + 2, locked or one is not None)
             )
         # b=0: west to this depth's own column, down past everything the
         # one-branch drew, then east again onto the spine
@@ -342,13 +405,13 @@ def _flowchart_stacked(
             for x in range(depth + 1, spine + 2):
                 cells[(x, below)] = "─"
             jumps.append((below, spine + 2, zero))
-            return below + 1
+            return below + 1, locked
         for x in range(depth + 1, spine + 2 if how == "body" else spine):
             cells[(x, below)] = "─"
         if zero is None or how == "plain":
             cells[(spine, below)] = "┐"
-            return walk(
-                lo, lo + half, depth + 1, below + 1, locked=locked or zero is not None
+            return descend(
+                lo, lo + half, depth + 1, (below + 1, locked or zero is not None)
             )
         # A repeated zero-branch is entered from the east like a one-branch.
         cells[(spine + 2, below)] = "┐"
@@ -356,9 +419,9 @@ def _flowchart_stacked(
         cells[(spine + 1, below + 1)] = "─"
         cells[(spine, below + 1)] = "┌"
         entries[zero] = below + 1
-        return walk(lo, lo + half, depth + 1, below + 2, locked=True)
+        return descend(lo, lo + half, depth + 1, (below + 2, True))
 
-    walk(0, len(truth_table), 0, 2)
+    _folded_walk(len(truth_table), constant, paint_leaf, paint_branch, (2, False))
     _paint(cells, spine - 1, 0, "( )")
     cells[(spine, 1)] = "│"
     # Heading east onto ``┤`` turns clockwise, down, so every tap joins.

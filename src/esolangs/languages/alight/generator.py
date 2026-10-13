@@ -373,16 +373,11 @@ def _layout_bounded_dropped(build: _Build) -> str:
     assert width is not None
     essential = build.essential
     program = select_alight(build.truth_table, build.n, width)
+    available = (
+        _plans(sum(essential)) if any(essential) else _plans(build.n, tuple(essential))
+    )
     plan = min(
-        (
-            p
-            for p in (
-                _plans(sum(essential))
-                if any(essential)
-                else _plans(build.n, tuple(essential))
-            )
-            if p.ready() <= width
-        ),
+        (p for p in available if p.ready() <= width),
         key=_Plan.score,
     )
     flat = _alight_flat_compact(build.projected, build.n, essential)
@@ -553,10 +548,19 @@ class _Plan(NamedTuple):
 def _fold_shape(
     pieces: list[_Affine], span: _Affine, value: int, stop: int
 ) -> tuple[int, int, int, int]:
-    """Return width, height, length and the next greedy row-fit transition."""
+    """Return width, height, length and the next greedy row-fit transition.
+
+    ``pieces`` are ``(slope, intercept)`` affine lengths of each row-unit as
+    a function of the fold width ``value``; ``span`` is the same pair for
+    the widest row.  Units are placed greedily left to right, each row
+    reserving its turn's cells; a row fails when its affine width plus the
+    turn reserve exceeds the widest row.  That boundary,
+    ``rate * value + offset``, is linear in ``value``, so ``stop`` narrows
+    to the nearest width that could change the fit, letting the caller step
+    straight there instead of re-testing every width.
+    """
     at = 0
     rows = 0
-    used = (0, 0)
     while at < len(pieces):
         reserve = _EAST if rows == 0 else (_WEST + 1 if rows % 2 else _EAST + 1)
         used = (0, 0)
@@ -611,18 +615,16 @@ def _plans(n: int, kept: tuple[bool, ...] | None = None) -> tuple[_Plan, ...]:
     overhead = _ALIGHT_OVERHEAD + 2 * index
     shift = overhead + _EAST
     whole = 1 if _alight_chunk(size, 1) == size else shift + size + base[-3] - overhead
-    whole_pieces = [(0, length) for length in [*prefix, size + base[-3], *tail]]
-    lower = max(whole, max(length for _, length in whole_pieces) + _EAST + 1)
+    whole_lengths = [*prefix, size + base[-3], *tail]
+    whole_pieces = [(0, length) for length in whole_lengths]
+    widest = max(whole_lengths)
+    lower = max(whole, widest + _EAST + 1)
     upper = max(lower, flat)
     while lower <= upper:
         width, height, length, stop = _fold_shape(
             whole_pieces, (1, 0), lower, upper + 1
         )
-        columns = (
-            whole
-            if lower == max(length for _, length in whole_pieces) + _EAST + 1
-            else lower
-        )
+        columns = whole if lower == widest + _EAST + 1 else lower
         plans.append(_Plan(_FOLD, columns, size, width, height, length))
         lower = stop
     cutoff = size + base[-3] - overhead
@@ -648,24 +650,24 @@ def _plans(n: int, kept: tuple[bool, ...] | None = None) -> tuple[_Plan, ...]:
                     for power in powers
                     if low < (point := (power + number - 1) // number) <= high
                 )
-            for lower, upper in pairwise(sorted(events)):
-                first = (1, 30 + len(_half_before(lower)))
+            for lo, hi in pairwise(sorted(events)):
+                first = (1, 30 + len(_half_before(lo)))
                 pieces = [(0, length) for length in prefix] + [first]
                 for number in range(1, count):
-                    digits = len(_half_before(number * lower))
+                    digits = len(_half_before(number * lo))
                     pieces.append(
                         (1 - count, size + 27 + 2 * digits)
                         if number == count - 1
                         else (1, 27 + 2 * digits)
                     )
                 pieces.extend((0, length) for length in tail)
-                while lower < upper:
+                while lo < hi:
                     width, height, length, stop = _fold_shape(
-                        pieces, (1, shift), lower, upper
+                        pieces, (1, shift), lo, hi
                     )
-                    columns = 1 if lower == 1 else lower + shift
-                    plans.append(_Plan(_FOLD, columns, lower, width, height, length))
-                    lower = stop
+                    columns = 1 if lo == 1 else lo + shift
+                    plans.append(_Plan(_FOLD, columns, lo, width, height, length))
+                    lo = stop
     return tuple(plans)
 
 
@@ -764,6 +766,8 @@ def _balance_projected(
     plans = _plans(n, tuple(essential))
     records = [next(plan for plan in plans if plan.kind == _ROW)]
     best: _Plan | None = None
+    # Keep only the plans whose score improves as their ready width grows;
+    # the balance winner is the squarest of those plus the row candidate.
     for plan in sorted(plans, key=lambda plan: (plan.ready(), plan.score())):
         if best is None or plan.score() < best.score():
             best = plan
