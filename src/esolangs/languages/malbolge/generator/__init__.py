@@ -62,9 +62,7 @@ from .core import (
     _T_LABELS,
     _T_LOW,
     _T_SEEDS,
-    _W_OFFSETS,
-    _W_OPS,
-    _W_READOUT,
+    _W_PATHS,
     _W_SELECT,
     _W_SELECT_OPS,
     _WIDE_N,
@@ -280,11 +278,12 @@ def _thirteen_path(
     Level 1 left ``a1`` at 48: two rounds give 69 and then 48 again.
     """
     path = _Planner(targets[x][lvl] + 1, select[lvl] + 1, mem, data)
-    _ops(path, cell, _W_OPS[lvl][x])
+    spec = _W_PATHS[lvl][x]
+    _ops(path, cell, spec.ops)
     for _ in range(1 if lvl == 0 else 2):
         path.op("*", helper["all2"])
         path.op("p", helper["a1"])
-    _t_jump(path, cell[_W_READOUT[lvl][x]], _W_OFFSETS[lvl][x])
+    _t_jump(path, cell[spec.readout], spec.offset)
     return path.code
 
 
