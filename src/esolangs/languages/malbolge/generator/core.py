@@ -885,6 +885,26 @@ def _emit_chain(path: _Planner, target: int, ops: str, helper: dict[str, int]) -
             path.op("p", target)
 
 
+def _seed_label_chains(
+    main: _Planner,
+    helper: dict[str, int],
+    chains: dict[str, str],
+    seeds: dict[str, int],
+    label: dict[int, str],
+) -> None:
+    """Run each label's seed chain, then ``p`` every pointer cell of that label.
+
+    ``chains[lab]`` is the op string :func:`_emit_chain` runs on
+    ``seeds[lab]``; a class's pointer cells then alternate that value and
+    its 0/1 swap.
+    """
+    for lab, chain in chains.items():
+        _emit_chain(main, seeds[lab], chain, helper)
+        for p in sorted(label):
+            if label[p] == lab:
+                main.op("p", p)
+
+
 def _t_jump(path: _Planner, readout: int, offset: int) -> None:
     """``j`` to the table cell, ``j`` to its pointer, ``j`` to the hub, ``i``."""
     path.op("j", readout)

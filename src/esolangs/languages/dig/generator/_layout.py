@@ -57,7 +57,6 @@ def _dig_alt_clear(
     reads: list[tuple[_Point, _Point, frozenset[_Point]]],
     corridors: list[tuple[_Point, int, int]],
 ) -> None:
-    """Refuse an alternating grid whose operands or corridors are crossed."""
     """Refuse an alternating grid whose operands or corridors are crossed.
 
     Operands sit beside their operator rather than in the block, so which
@@ -71,7 +70,7 @@ def _dig_alt_clear(
     """
     for point, wanted, pending in reads:
         for offset in _DIG_DIRECTIONS:
-            beside = _Point(point[0] + offset[0], point[1] + offset[1])
+            beside = _Point(point.row + offset[0], point.col + offset[1])
             char = cells.get(beside)
             if beside not in pending and char is not None and char in _DIG_DIGITS:
                 if beside != wanted:
@@ -83,12 +82,7 @@ def _dig_alt_clear(
             raise AssertionError(f"{cells[point]!r} at {point} has no operand")
     for start, heading, distance in corridors:
         for count in range(1, distance):
-            char = cells.get(
-                _Point(
-                    start[0] + _DIG_DIRECTIONS[heading][0] * count,
-                    start[1] + _DIG_DIRECTIONS[heading][1] * count,
-                )
-            )
+            char = cells.get(start.step(heading, count))
             if char is not None and char in _DIG_OPAQUE:
                 raise AssertionError(f"a mole from {start} meets {char!r} on its way")
 
@@ -487,25 +481,57 @@ class _AlternatingTree:
         """Dry-run the tree and assign shared leaf lanes; False aborts."""
         self.node(0, _Point(0, 0), 1, 0, len(self.truth_table), paint=False)
         if self.offset:
-            # Pick the existing entry nearest the callers' bounding-box
-            # center, with coordinate ties fixed. This is one geometric
-            # rule, not a route search; crossed rays still fail clearance.
-            grouped: dict[tuple[str, int, int], list[_Point]] = {}
-            for point, key in self.entries.items():
-                grouped.setdefault(key, []).append(point)
-            for key, points in grouped.items():
-                middle = tuple(
-                    min(p[i] for p in points) + max(p[i] for p in points)
-                    for i in range(2)
-                )
-                self.owners[key] = min(
-                    points,
-                    key=lambda p: (
-                        sum(abs(2 * p[i] - middle[i]) for i in range(2)),
-                        p[self.travel_axis],
-                        p[self.lane_axis],
-                    ),
-                )
+            self._recenter_offset_owners()
+        by_end, starts = self._sharing_lane_groups()
+        shared, rails = self._assign_shared_lanes(by_end, starts)
+        if not shared:
+            return False
+        if self.offset and not any(
+            point[self.lane_axis] != self.owners[key][self.lane_axis]
+            for point, key in self.entries.items()
+            if key in shared
+        ):
+            return False
+        # Leave unmatched copies painted, even if their contents coincide.
+        self.owners = {
+            key: owner for key, owner in self.owners.items() if key in shared
+        }
+        self.rails = rails
+        if self.parallel:
+            self.cuts = self._parallel_lane_cuts(rails)
+            if not self.cuts:
+                return False
+        return True
+
+    def _recenter_offset_owners(self) -> None:
+        """Point each offset leaf class at the entry nearest its callers' center.
+
+        This is one geometric rule, not a route search; crossed rays still
+        fail clearance.
+        """
+        grouped: dict[tuple[str, int, int], list[_Point]] = {}
+        for point, key in self.entries.items():
+            grouped.setdefault(key, []).append(point)
+        for key, points in grouped.items():
+            middle = tuple(
+                min(p[i] for p in points) + max(p[i] for p in points) for i in range(2)
+            )
+            self.owners[key] = min(
+                points,
+                key=lambda p: (
+                    sum(abs(2 * p[i] - middle[i]) for i in range(2)),
+                    p[self.travel_axis],
+                    p[self.lane_axis],
+                ),
+            )
+
+    def _sharing_lane_groups(
+        self,
+    ) -> tuple[dict[int, list[tuple[str, int, int]]], dict[tuple[str, int, int], int]]:
+        """Group repeated leaf classes by travel-axis span end; return each start.
+
+        A class is repeated when more than one entry maps to its key.
+        """
         counts: dict[tuple[str, int, int], int] = {}
         starts: dict[tuple[str, int, int], int] = {}
         ends: dict[tuple[str, int, int], int] = {}
@@ -524,11 +550,21 @@ class _AlternatingTree:
                     ends[key] if self.offset else self.owners[key][self.travel_axis],
                     [],
                 ).append(key)
-        shared = set()
+        return by_end, starts
+
+    def _assign_shared_lanes(
+        self,
+        by_end: dict[int, list[tuple[str, int, int]]],
+        starts: dict[tuple[str, int, int], int],
+    ) -> tuple[set[tuple[str, int, int]], dict[tuple[str, int, int], int]]:
+        """Share lanes among earliest-ending classes, reusing a free rail.
+
+        Two lanes need one gutter cell; further overlapping classes stay
+        unshared.
+        """
+        shared: set[tuple[str, int, int]] = set()
         rails: dict[tuple[str, int, int], int] = {}
         occupied: dict[int, list[int | None]] = {}
-        # Earliest-ending classes reuse either free lane. Two lanes need
-        # one gutter cell; further overlapping classes stay unshared.
         for lane_end in sorted(by_end):
             for key in by_end[lane_end]:
                 lane_coordinate = (
@@ -543,42 +579,21 @@ class _AlternatingTree:
                         rails[key] = rail
                         busy[rail] = lane_end
                         break
-        if not shared:
-            return False
-        if self.offset and not any(
-            point[self.lane_axis] != self.owners[key][self.lane_axis]
-            for point, key in self.entries.items()
-            if key in shared
-        ):
-            return False
-        # Leave unmatched copies painted, even if their contents coincide.
-        self.owners = {
-            key: owner for key, owner in self.owners.items() if key in shared
-        }
-        self.rails = rails
-        if self.parallel:
-            self.cuts = sorted(
-                {
-                    key[2] + int(_DIG_DIRECTIONS[key[1]][self.lane_axis] < 0)
-                    for key, rail in rails.items()
-                    if rail
-                }
-            )
-            if not self.cuts:
-                return False
-        return True
+        return shared, rails
+
+    def _parallel_lane_cuts(self, rails: dict[tuple[str, int, int], int]) -> list[int]:
+        """Return the gutter cuts separating the second rail's lanes."""
+        return sorted(
+            {
+                key[2] + int(_DIG_DIRECTIONS[key[1]][self.lane_axis] < 0)
+                for key, rail in rails.items()
+                if rail
+            }
+        )
 
     def expand_parallel(self) -> bool:
         """Stretch the grid with gutters for parallel lanes; False aborts."""
-        low_axis = min(point[self.lane_axis] for point in self.cells)
-        high_axis = max(point[self.lane_axis] for point in self.cells)
-        root_offset = sum(cut <= 0 for cut in self.cuts)
-        coordinates = {}
-        shift = 0
-        for position in range(low_axis, high_axis + 1):
-            while shift < len(self.cuts) and self.cuts[shift] <= position:
-                shift += 1
-            coordinates[position] = position + shift - root_offset
+        coordinates = self._gutter_coordinates()
 
         # A blank inside an armed leaf or constant read run would spend
         # its counter. Gutters may cross only the resizable branch blocks.
@@ -591,15 +606,9 @@ class _AlternatingTree:
         def expand(point: _Point) -> _Point:
             return _expand_point(point, self.lane_axis, coordinates)
 
-        # Repaint a stretched branch with its reads first and its store
-        # beside #. The counter includes the intervening blank cells.
         branch_readers: set[_Point] = set()
         for point, heading, skip, end in self.branches:
-            side = min((heading + 1) % 4, (heading - 1) % 4)
-            del self.cells[point.step(side)]
-            for i in range(_DIG_END + skip + 1):
-                del self.cells[point.step(heading, i)]
-            branch_readers.update((point, end))
+            branch_readers |= self._clear_branch(point, heading, skip, end)
         self.cells = {expand(point): char for point, char in self.cells.items()}
         self.reads = [
             (
@@ -611,23 +620,8 @@ class _AlternatingTree:
             if at not in branch_readers
         ]
         for point, heading, skip, end in self.branches:
-            first, stop = expand(point), expand(end)
-            distance = abs(first.row - stop.row) + abs(first.col - stop.col)
-            if not _DIG_COUNT + skip <= distance - 1 <= _DIG_SPAN:
+            if not self._repaint_branch(point, heading, skip, end, expand):
                 return False
-            side = min((heading + 1) % 4, (heading - 1) % 4)
-            count_point = first.step(side)
-            if count_point in self.cells:
-                return False
-            self.cells[count_point] = str(distance - 1)
-            code = "$" + "~" * (skip + 1) + " " * (distance - skip - 3) + ";#"
-            for i, char in enumerate(code):
-                target = first.step(heading, i)
-                if target in self.cells:
-                    return False
-                self.cells[target] = char
-            self.reads.append((first, count_point, frozenset()))
-            self.reads.append((stop, stop.step(heading, -1), frozenset()))
         expanded_corridors = []
         for start, heading, distance in self.corridors:
             begin, finish = expand(start), expand(start.step(heading, distance))
@@ -648,6 +642,60 @@ class _AlternatingTree:
         self.tails = {expand(point): cost for point, cost in self.tails.items()}
         return True
 
+    def _gutter_coordinates(self) -> dict[int, int]:
+        """Map lane-axis positions to coordinates with a gutter at each cut."""
+        low_axis = min(point[self.lane_axis] for point in self.cells)
+        high_axis = max(point[self.lane_axis] for point in self.cells)
+        root_offset = sum(cut <= 0 for cut in self.cuts)
+        coordinates = {}
+        shift = 0
+        for position in range(low_axis, high_axis + 1):
+            while shift < len(self.cuts) and self.cuts[shift] <= position:
+                shift += 1
+            coordinates[position] = position + shift - root_offset
+        return coordinates
+
+    def _clear_branch(
+        self, point: _Point, heading: int, skip: int, end: _Point
+    ) -> set[_Point]:
+        """Erase a branch block and its operand; return the readers to drop."""
+        side = min((heading + 1) % 4, (heading - 1) % 4)
+        del self.cells[point.step(side)]
+        for i in range(_DIG_END + skip + 1):
+            del self.cells[point.step(heading, i)]
+        return {point, end}
+
+    def _repaint_branch(
+        self,
+        point: _Point,
+        heading: int,
+        skip: int,
+        end: _Point,
+        expand: Callable[[_Point], _Point],
+    ) -> bool:
+        """Repaint a stretched branch with its reads first and its store beside #.
+
+        The counter includes the intervening blank cells.
+        """
+        first, stop = expand(point), expand(end)
+        distance = abs(first.row - stop.row) + abs(first.col - stop.col)
+        if not _DIG_COUNT + skip <= distance - 1 <= _DIG_SPAN:
+            return False
+        side = min((heading + 1) % 4, (heading - 1) % 4)
+        count_point = first.step(side)
+        if count_point in self.cells:
+            return False
+        self.cells[count_point] = str(distance - 1)
+        code = "$" + "~" * (skip + 1) + " " * (distance - skip - 3) + ";#"
+        for i, char in enumerate(code):
+            target = first.step(heading, i)
+            if target in self.cells:
+                return False
+            self.cells[target] = char
+        self.reads.append((first, count_point, frozenset()))
+        self.reads.append((stop, stop.step(heading, -1), frozenset()))
+        return True
+
     def bridge_entries(self) -> bool:
         """Route shared leaf entries to their owners' lanes; False aborts."""
         lanes: dict[_Point, _Point] = {}
@@ -656,65 +704,99 @@ class _AlternatingTree:
         # heading follows the displacement rather than the leaf heading.
         bridges: list[tuple[_Point, int, int]] = []
         for point, key in self.entries.items():
-            if key not in self.owners:
-                continue
-            heading = key[1]
-            owner = self.owners[key]
-            local = point.step(heading, -1)
-            lane = owner.step(heading, -1 - (0 if self.offset else self.rails[key]))
-            lane = (
-                _Point(point.row, lane.col)
-                if self.lane_axis == 1
-                else _Point(lane.row, point.col)
-            )
+            if key in self.owners and not self._route_entry(point, key, lanes, bridges):
+                return False
+        self.corridors = self._shorten_corridors(lanes) + bridges
+        self._chain_lanes(lanes)
+        return True
+
+    def _route_entry(
+        self,
+        point: _Point,
+        key: tuple[str, int, int],
+        lanes: dict[_Point, _Point],
+        bridges: list[tuple[_Point, int, int]],
+    ) -> bool:
+        """Route one shared entry onto its owner's lane; False on collision."""
+        heading = key[1]
+        owner = self.owners[key]
+        local = point.step(heading, -1)
+        lane = owner.step(heading, -1 - (0 if self.offset else self.rails[key]))
+        lane = (
+            _Point(point.row, lane.col)
+            if self.lane_axis == 1
+            else _Point(lane.row, point.col)
+        )
+        travel_heading = _travel_heading(
+            self.travel_axis,
+            increasing=point[self.travel_axis] <= owner[self.travel_axis],
+        )
+        if self.offset and point[self.lane_axis] != owner[self.lane_axis]:
+            crossed = self._dogleg_across_bank(heading, local, lane, bridges)
+            if crossed is None:
+                return False
+            lane = crossed
             travel_heading = _travel_heading(
                 self.travel_axis,
-                increasing=point[self.travel_axis] <= owner[self.travel_axis],
+                increasing=lane[self.travel_axis] <= owner[self.travel_axis],
             )
-            if self.offset and point[self.lane_axis] != owner[self.lane_axis]:
-                bridge_heading = _travel_heading(
-                    self.travel_axis, increasing=heading in (1, 2)
-                )
-                corner = local.step(bridge_heading)
-                lane = (
-                    _Point(corner.row, lane.col)
-                    if self.lane_axis == 1
-                    else _Point(lane.row, corner.col)
-                )
-                cross_heading = (
-                    heading
-                    if (lane[self.lane_axis] - corner[self.lane_axis])
-                    * _DIG_DIRECTIONS[heading][self.lane_axis]
-                    > 0
-                    else (heading + 2) % 4
-                )
-                for spot, char in (
-                    (local, "^>'<"[bridge_heading]),
-                    (corner, "^>'<"[cross_heading]),
-                ):
-                    if spot in self.cells:
-                        return False
-                    self.cells[spot] = char
-                distance = abs(corner[self.lane_axis] - lane[self.lane_axis])
-                bridges.append((corner, cross_heading, distance))
-            if lane in self.cells:
-                return False
-            if self.offset and point[self.lane_axis] != owner[self.lane_axis]:
-                travel_heading = _travel_heading(
-                    self.travel_axis,
-                    increasing=lane[self.travel_axis] <= owner[self.travel_axis],
-                )
-            self.cells[lane] = (
-                "^>'<"[heading] if point == owner else "^>'<"[travel_heading]
-            )
-            lanes[point] = lane
+        if lane in self.cells:
+            return False
+        self.cells[lane] = "^>'<"[heading] if point == owner else "^>'<"[travel_heading]
+        lanes[point] = lane
+        return True
+
+    def _dogleg_across_bank(
+        self,
+        heading: int,
+        local: _Point,
+        lane: _Point,
+        bridges: list[tuple[_Point, int, int]],
+    ) -> _Point | None:
+        """Paint a dogleg from beside the entry across to the owner's bank.
+
+        Returns the lane cell the entry travels from, or None on collision.
+        """
+        bridge_heading = _travel_heading(self.travel_axis, increasing=heading in (1, 2))
+        corner = local.step(bridge_heading)
+        lane = (
+            _Point(corner.row, lane.col)
+            if self.lane_axis == 1
+            else _Point(lane.row, corner.col)
+        )
+        cross_heading = (
+            heading
+            if (lane[self.lane_axis] - corner[self.lane_axis])
+            * _DIG_DIRECTIONS[heading][self.lane_axis]
+            > 0
+            else (heading + 2) % 4
+        )
+        for spot, char in (
+            (local, "^>'<"[bridge_heading]),
+            (corner, "^>'<"[cross_heading]),
+        ):
+            if spot in self.cells:
+                return None
+            self.cells[spot] = char
+        bridges.append(
+            (corner, cross_heading, abs(corner[self.lane_axis] - lane[self.lane_axis]))
+        )
+        return lane
+
+    def _shorten_corridors(
+        self, lanes: dict[_Point, _Point]
+    ) -> list[tuple[_Point, int, int]]:
+        """Shorten each corridor to stop where its child's lane cell now sits."""
         shortened = []
         for start, heading, distance in self.corridors:
             child = start.step(heading, distance)
             if child in lanes:
                 distance -= 1 if self.offset else 1 + self.rails[self.entries[child]]
             shortened.append((start, heading, distance))
-        self.corridors = shortened + bridges
+        return shortened
+
+    def _chain_lanes(self, lanes: dict[_Point, _Point]) -> None:
+        """Link same-class lanes along the travel axis in position order."""
         by_position: dict[int, list[_Point]] = {}
         for point in lanes:
             by_position.setdefault(lanes[point][self.travel_axis], []).append(point)
@@ -732,7 +814,6 @@ class _AlternatingTree:
                         )
                     )
                 previous[key] = lane
-        return True
 
     def compact_sharing(self) -> bool:
         """Compact unused travel-axis rows/columns; False aborts.
@@ -769,6 +850,15 @@ class _AlternatingTree:
             _dig_alt_clear(self.cells, compact_reads, compact_corridors)
         except AssertionError:
             return False
+        bound: int = 128 + (
+            46 * 2 ** ((self.n - 6) // 2)
+            if self.n % 2 == 0
+            else 64 * 2 ** ((self.n - 7) // 2)
+        )
+        return self._sharing_walk_cost(compact) <= bound
+
+    def _sharing_walk_cost(self, compact: Callable[[_Point], _Point]) -> int:
+        """Return the entry ray plus the worst walk of any shared entry."""
         costs = {_Point(0, 0): 0}
         for parent, end, child in self.links:
             p, e, c = compact(parent), compact(end), compact(child)
@@ -800,12 +890,7 @@ class _AlternatingTree:
         entry_cost = (
             4 - min(row for row, _ in self.cells) - min(col for _, col in self.cells)
         )
-        bound: int = 128 + (
-            46 * 2 ** ((self.n - 6) // 2)
-            if self.n % 2 == 0
-            else 64 * 2 ** ((self.n - 7) // 2)
-        )
-        return entry_cost + worst <= bound
+        return entry_cost + worst
 
     def render(self) -> str:
         """Shift the grid to a blank entry ray and render it."""

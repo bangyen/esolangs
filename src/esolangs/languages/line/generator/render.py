@@ -199,6 +199,97 @@ def chain(*ops: str) -> Node:
     return node
 
 
+def _moved(pointer: int, cell: int, rest: Node) -> Node:
+    """Prefix ``rest`` with the moves from ``pointer`` to ``cell``."""
+    step = ">" if cell > pointer else "<"
+    for _ in range(abs(cell - pointer)):
+        rest = Node(step, next=rest)
+    return rest
+
+
+def _draw_loop_back(
+    cursor: _Cursor,
+    target: Node,
+    entries: dict[int, tuple[tuple[int, int], tuple[int, int]]],
+    plan: _Plan,
+    *,
+    measuring: bool,
+) -> None:
+    """Draw the ``goto`` loop-back to ``target`` from the cursor's current point.
+
+    Raises :exc:`ValueError` when no loop-back can be constructed: the
+    target must be an ancestor ``?`` fork whose body chain the ``goto``
+    ends (the shape a compiled loop produces).  Never draws a reconnection
+    through ink.
+    """
+    # Flush this stroke into `occupied` so the loop-back sees it.
+    cursor.finish()
+    # Return path (:func:`_loop_return_legs`), drawn in measuring
+    # mode too so extents contain it and ancestors reserve room --
+    # this is what makes nesting unbounded.  The target is in
+    # `entries` for any compiled graph; a subtree measured alone
+    # lacks its outermost fork, which the caller's frame draws.
+    legs = None
+    if id(target) in entries:
+        legs = _loop_return_legs(
+            (cursor.y, cursor.x),
+            target,
+            entries,
+            plan,
+            cursor.heading if plan.ancestor_returns else None,
+        )
+    if legs is not None and cursor.occupied is not None:
+        # Drift guard, real mode only: the construction never reads
+        # ink, so anything it did not reserve must be caught, not
+        # drawn through.  This is what fired on the ring wrapping
+        # into a long run drawn before the fork, now reserved by
+        # `_stem_len`.  Endpoints (body tip, stem merge) are
+        # legitimate ink.
+        stop_at = cursor.occupied if plan.ancestor_returns else None
+        cells = _leg_cells((cursor.y, cursor.x), legs, stop_at)
+        end = (
+            cursor.y + sum(direction[0] * length for direction, length in legs),
+            cursor.x + sum(direction[1] * length for direction, length in legs),
+        )
+        blocked = cells[-1] != end or any(c in cursor.occupied for c in cells[1:-1])
+        if blocked:
+            trunk = plan.returns.get(id(target))
+            legs = (
+                None
+                if trunk is None
+                else _merge_return_legs(cells, trunk, plan.return_indices[id(target)])
+            )
+            if legs is not None:
+                cells = _leg_cells((cursor.y, cursor.x), legs)
+                if any(c in cursor.occupied for c in cells[1:-1]):
+                    legs = None
+        if (
+            legs is not None
+            and plan.ancestor_returns
+            and id(target) not in plan.returns
+        ):
+            plan.returns[id(target)] = cells
+            plan.return_indices[id(target)] = {cell: i for i, cell in enumerate(cells)}
+    if legs is not None:
+        for direction, length in legs:
+            cursor.advance(direction, length)
+        cursor.finish()
+        return
+    if measuring:
+        # Target outside this measured subtree: the owner draws it.
+        return
+    # Target not an ancestor fork, or the body's end off its own
+    # box -- a hand-built graph, or a compiled body whose tail sits
+    # inside the box (see `_loop_return_legs`).  Never draw a
+    # reconnection through ink.
+    raise ValueError(
+        "loop-back could not be constructed for this goto -- its "
+        "target must be an ancestor '?' fork whose body chain the "
+        "goto ends (the shape a compiled loop produces); see "
+        "_loop_return_legs for the geometric premises"
+    )
+
+
 # Grid cells (`_UNIT` pixels each) a loop-back keeps from unrelated ink.
 # Abutting strokes rasterize into one ribbon and `lattice._band_lit`'s
 # off-centre rays read the neighbour as a spurious 3-lit `"fork"`.  At 0,
@@ -605,78 +696,8 @@ def _layout(
                 count += 1
         cursor.emit_op(op, count)
         if node.goto is not None:
-            # Flush this stroke into `occupied` so the loop-back sees it.
-            cursor.finish()
-            # Return path (:func:`_loop_return_legs`), drawn in measuring
-            # mode too so extents contain it and ancestors reserve room --
-            # this is what makes nesting unbounded.  The target is in
-            # `entries` for any compiled graph; a subtree measured alone
-            # lacks its outermost fork, which the caller's frame draws.
-            legs = None
-            if id(node.goto) in entries:
-                legs = _loop_return_legs(
-                    (cursor.y, cursor.x),
-                    node.goto,
-                    entries,
-                    plan,
-                    cursor.heading if plan.ancestor_returns else None,
-                )
-            if legs is not None and cursor.occupied is not None:
-                # Drift guard, real mode only: the construction never reads
-                # ink, so anything it did not reserve must be caught, not
-                # drawn through.  This is what fired on the ring wrapping
-                # into a long run drawn before the fork, now reserved by
-                # `_stem_len`.  Endpoints (body tip, stem merge) are
-                # legitimate ink.
-                stop_at = cursor.occupied if plan.ancestor_returns else None
-                cells = _leg_cells((cursor.y, cursor.x), legs, stop_at)
-                end = (
-                    cursor.y + sum(direction[0] * length for direction, length in legs),
-                    cursor.x + sum(direction[1] * length for direction, length in legs),
-                )
-                blocked = cells[-1] != end or any(
-                    c in cursor.occupied for c in cells[1:-1]
-                )
-                if blocked:
-                    trunk = plan.returns.get(id(node.goto))
-                    legs = (
-                        None
-                        if trunk is None
-                        else _merge_return_legs(
-                            cells, trunk, plan.return_indices[id(node.goto)]
-                        )
-                    )
-                    if legs is not None:
-                        cells = _leg_cells((cursor.y, cursor.x), legs)
-                        if any(c in cursor.occupied for c in cells[1:-1]):
-                            legs = None
-                if (
-                    legs is not None
-                    and plan.ancestor_returns
-                    and id(node.goto) not in plan.returns
-                ):
-                    plan.returns[id(node.goto)] = cells
-                    plan.return_indices[id(node.goto)] = {
-                        cell: i for i, cell in enumerate(cells)
-                    }
-            if legs is not None:
-                for direction, length in legs:
-                    cursor.advance(direction, length)
-                cursor.finish()
-                return
-            if measuring:
-                # Target outside this measured subtree: the owner draws it.
-                return
-            # Target not an ancestor fork, or the body's end off its own
-            # box -- a hand-built graph, or a compiled body whose tail sits
-            # inside the box (see `_loop_return_legs`).  Never draw a
-            # reconnection through ink.
-            raise ValueError(
-                "loop-back could not be constructed for this goto -- its "
-                "target must be an ancestor '?' fork whose body chain the "
-                "goto ends (the shape a compiled loop produces); see "
-                "_loop_return_legs for the geometric premises"
-            )
+            _draw_loop_back(cursor, node.goto, entries, plan, measuring=measuring)
+            return
         node = node.next
     cursor.finish()
 

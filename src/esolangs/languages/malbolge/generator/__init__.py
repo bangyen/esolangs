@@ -93,6 +93,7 @@ from .core import (
     _program,
     _render,
     _rot,
+    _seed_label_chains,
     _skeleton,
     _t_hubs,
     _t_jump,
@@ -211,12 +212,13 @@ def _thirteen() -> _Layout:
     # all-2 is one more ``p`` with ``A = all-2`` (``crazy(all-2, all-1)``).
     _build_constants(main, helper)
     _prime(main, helper, (helper["all1"], helper["all2"], *sorted(label)))
-    for lab, (_, turns) in _T_SEEDS.items():
-        for _ in range(turns):
-            main.op("*", seeds[lab])
-        for p in sorted(label):
-            if label[p] == lab:
-                main.op("p", p)
+    _seed_label_chains(
+        main,
+        helper,
+        {lab: " ".join(["rot"] * turns) for lab, (_, turns) in _T_SEEDS.items()},
+        seeds,
+        label,
+    )
     main.op("*", helper["z1"])
     for v in sorted(pointer):
         if label[pointer[v]] == "N":
@@ -242,26 +244,14 @@ def _thirteen() -> _Layout:
         targets.append(state[:2])
     parts = [main.code]
     for x in (0, 1):
-        path = _Planner(targets[x][0] + 1, select[0] + 1, mem, data)
-        _ops(path, cell, _W_OPS[0][x])
-        path.op("*", helper["all2"])
-        path.op("p", helper["a1"])
-        _t_jump(path, cell[_W_READOUT[0][x]], _W_OFFSETS[0][x])
-        parts.append(path.code)
+        parts.append(_thirteen_path(0, x, targets, select, cell, helper, mem, data))
     dec = _Planner(_NEXT + 1, 0, mem, data)
     _decoder_entry(dec, _NEXT + 1)
     dec.goto(select[1])
     dec.raw("i")
     parts.append(dec.code)
     for x in (0, 1):
-        path = _Planner(targets[x][1] + 1, select[1] + 1, mem, data)
-        _ops(path, cell, _W_OPS[1][x])
-        # Level 1 left ``a1`` at 48: two rounds give 69 and then 48 again.
-        for _ in range(2):
-            path.op("*", helper["all2"])
-            path.op("p", helper["a1"])
-        _t_jump(path, cell[_W_READOUT[1][x]], _W_OFFSETS[1][x])
-        parts.append(path.code)
+        parts.append(_thirteen_path(1, x, targets, select, cell, helper, mem, data))
 
     code = _merge_code(
         (*parts, stubs), data, cells_of_tables, code_end, ceiling=_T_FLOOR
@@ -281,6 +271,29 @@ def _seed_values(
             a = _rot(a)
         out.append((lab, a))
     return out
+
+
+def _thirteen_path(
+    lvl: int,
+    x: int,
+    targets: list[list[int]],
+    select: list[int],
+    cell: list[int],
+    helper: dict[str, int],
+    mem: dict[int, int | None],
+    data: dict[int, int],
+) -> dict[int, str]:
+    """Emit one twelve/thirteen-input level path, never walked, only jumped to.
+
+    Level 1 left ``a1`` at 48: two rounds give 69 and then 48 again.
+    """
+    path = _Planner(targets[x][lvl] + 1, select[lvl] + 1, mem, data)
+    _ops(path, cell, _W_OPS[lvl][x])
+    for _ in range(1 if lvl == 0 else 2):
+        path.op("*", helper["all2"])
+        path.op("p", helper["a1"])
+    _t_jump(path, cell[_W_READOUT[lvl][x]], _W_OFFSETS[lvl][x])
+    return path.code
 
 
 def _thirteen_program(truth_table: str) -> str:
@@ -809,12 +822,13 @@ def _f_emit_constants(
         main.op("*", helper["all2"])
         main.op("p", a)
         mem[a] = _crazy(_ALL2, _g(a))
-    for lab, (_, turns) in _F_SEEDS.items():
-        for _ in range(turns):
-            main.op("*", alloc.seeds[lab])
-        for p in sorted(alloc.label):
-            if alloc.label[p] == lab:
-                main.op("p", p)
+    _seed_label_chains(
+        main,
+        helper,
+        {lab: " ".join(["rot"] * turns) for lab, (_, turns) in _F_SEEDS.items()},
+        alloc.seeds,
+        alloc.label,
+    )
     for pair, seed, (_, turns) in zip(
         (0, 4), alloc.level3_seeds, _F_LEVEL3_SEEDS, strict=True
     ):

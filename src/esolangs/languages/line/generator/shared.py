@@ -19,6 +19,7 @@ from .render import (
     _check_unit,
     _Cursor,
     _layout,
+    _moved,
     _Plan,
     chain,
 )
@@ -59,11 +60,6 @@ def shared_tree(
         rows = {min(rows)}
     root = Node("?")
 
-    def moved(pointer: int, cell: int, rest: Node) -> Node:
-        for _ in range(abs(cell - pointer)):
-            rest = Node(">" if cell > pointer else "<", next=rest)
-        return rest
-
     shared_cost = 0
     returns = 0
 
@@ -77,7 +73,7 @@ def shared_tree(
                 # The nonzero root arm still holds 1 in its consumed input.
                 # Clear it, return, and take the already-drawn zero arm once.
                 return (
-                    moved(pointer, order[0], Node("-", goto=root)),
+                    _moved(pointer, order[0], Node("-", goto=root)),
                     abs(pointer - order[0]) + 3 + shared_cost,
                 )
             if level == n or children[residual][0] != children[residual][1]:
@@ -93,7 +89,7 @@ def shared_tree(
         node = Node("?")
         node.zero, zero_cost = build(lo, level + 1, cell, 0, 2 * start)
         node.nonzero, one_cost = build(hi, level + 1, cell, 1, 2 * start + 1)
-        return moved(pointer, cell, node), abs(pointer - cell) + 1 + max(
+        return _moved(pointer, cell, node), abs(pointer - cell) + 1 + max(
             zero_cost, one_cost
         )
 
@@ -112,7 +108,7 @@ def shared_tree(
     tail = head
     while tail.next is not None:
         tail = tail.next
-    tail.next = moved(n - 1, order[0], root)
+    tail.next = _moved(n - 1, order[0], root)
     return head, commands
 
 

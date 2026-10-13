@@ -38,7 +38,13 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     read_at,
 )
-from esolangs.languages.line.generator.render import Canvas, Node, _check_unit, chain
+from esolangs.languages.line.generator.render import (
+    Canvas,
+    Node,
+    _check_unit,
+    _moved,
+    chain,
+)
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
@@ -66,13 +72,6 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
         move.next = read
         tail = read
 
-    def moved(pointer: int, cell: int, rest: Node) -> Node:
-        """Prefix ``rest`` with the moves from ``pointer`` to ``cell``."""
-        step = ">" if cell > pointer else "<"
-        for _ in range(abs(cell - pointer)):
-            rest = Node(step, next=rest)
-        return rest
-
     def fork(state: int, depth: int, pointer: int, known: int | None) -> Node:
         while depth < n and children[state][0] == children[state][1]:
             state = children[state][0]
@@ -80,7 +79,7 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
         if depth == n:
             value = state
             if known is None:
-                return moved(pointer, n, chain(*(["+"] * value), "o"))
+                return _moved(pointer, n, chain(*(["+"] * value), "o"))
             step = {1: ["+"], 0: [], -1: ["-"]}[value - known]
             return chain(*step, "o")
         node = Node("?")
@@ -88,7 +87,7 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
         zero, one = children[state]
         node.zero = fork(zero, depth + 1, cell, 0)
         node.nonzero = fork(one, depth + 1, cell, 1)
-        return moved(pointer, cell, node)
+        return _moved(pointer, cell, node)
 
     tail.next = fork(levels[0][0], 0, n - 1, None)
     return head
