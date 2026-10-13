@@ -336,7 +336,7 @@ def _report(name: str, elapsed: float, returncode: int, output: str | None) -> b
     return ok
 
 
-def _run_steps(
+def _run_steps(  # noqa: C901
     runnable: list[tuple[str, list[str], dict[str, str]]],
     *,
     stream: bool,

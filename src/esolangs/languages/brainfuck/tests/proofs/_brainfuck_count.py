@@ -141,7 +141,7 @@ def regular_patterns() -> list[str]:
     return patterns
 
 
-def automaton(patterns: Iterable[str], regexes: Iterable[str]) -> list[list[int]]:
+def automaton(patterns: Iterable[str], regexes: Iterable[str]) -> list[list[int]]:  # noqa: C901
     # Trie shares the finite prefixes; Thompson states handle regular tails.
     edges: list[dict[str, list[int]]] = [{}]
     eps: list[list[int]] = [[]]

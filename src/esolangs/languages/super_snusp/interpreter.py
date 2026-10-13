@@ -90,7 +90,7 @@ def _top(values: tuple[int, ...]) -> int:
     return values[-1]
 
 
-def _advance(
+def _advance(  # noqa: C901
     state: _State,
     code: Sequence[str],
     char_input: int | None = None,

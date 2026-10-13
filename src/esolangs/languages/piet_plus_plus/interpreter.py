@@ -220,7 +220,7 @@ def _written_rows(rows: _Rows, x: int, y: int, pixel: Pixel) -> _Rows:
     return (*rows[:y], row, *rows[y + 1 :])
 
 
-def _command(
+def _command(  # noqa: C901
     core: _Core,
     name: str,
     size: int,

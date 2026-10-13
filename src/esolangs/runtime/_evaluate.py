@@ -124,7 +124,7 @@ def _evaluation_rows(inputs: int, max_rows: int | None) -> int:
     return rows
 
 
-def _iter_evaluate(
+def _iter_evaluate(  # noqa: C901
     language: str,
     program: ProgramSource,
     timeout: float | _Default | None = _DEFAULT,

@@ -31,7 +31,7 @@ def packed_decoder(
     return min(literal, banked, key=len)
 
 
-def _packed_build(
+def _packed_build(  # noqa: C901
     truth_table: str,
     *,
     direct: bool = False,

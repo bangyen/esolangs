@@ -498,7 +498,7 @@ INTERPRETER_CONTRACT_TESTS = (
 )
 
 
-def _generator_test_scope(module: str) -> list[str] | None:
+def _generator_test_scope(module: str) -> list[str] | None:  # noqa: C901
     """Keep shared tests and dependent language suites for a leaf generator."""
     from esolangs.registry import LANGUAGES
 

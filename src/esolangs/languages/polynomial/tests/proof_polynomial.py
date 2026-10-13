@@ -384,7 +384,7 @@ def _check_routing(failures: list[str]) -> int:
     return count
 
 
-def _check_routing_bound(failures: list[str]) -> int:
+def _check_routing_bound(failures: list[str]) -> int:  # noqa: C901
     """Pin the facts around the sharpened routing bound."""
     from esolangs.languages.polynomial.interpreter import (
         _COND,

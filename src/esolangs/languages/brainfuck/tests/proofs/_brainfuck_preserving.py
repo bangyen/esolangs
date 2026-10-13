@@ -137,7 +137,7 @@ def typed_counts(limit: int) -> list[dict[State, int]]:
     return sequences
 
 
-def matrix_image(
+def matrix_image(  # noqa: C901
     rows: list[list[int]],
     classes: list[State],
     matrices: list[Matrix],

@@ -86,7 +86,7 @@ def _values(stack: _Stack) -> tuple[int, ...]:
     return tuple(reversed(values))
 
 
-def _advance(
+def _advance(  # noqa: C901
     state: _State,
     char_input: int | None = None,
     number_input: int | None = None,

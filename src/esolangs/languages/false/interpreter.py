@@ -263,7 +263,7 @@ def _finalize(state: _State) -> _State:
     return (stack, variables, frames)
 
 
-def _advance(
+def _advance(  # noqa: C901
     state: _State, code: str, closers: dict[int, int], line: str | None = None
 ) -> tuple[_State, _Effect]:
     """Return the state after one command, and what to write.

@@ -115,7 +115,7 @@ def _generator_process(name: str, *, math_extra: bool, image_extra: bool) -> Non
     subprocess.run(args, timeout=30, check=True)
 
 
-def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
+def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
     """Check installed resources and behaviour outside the source checkout."""
     import esolangs
     from esolangs.registry import LANGUAGES

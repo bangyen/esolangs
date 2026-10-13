@@ -861,7 +861,7 @@ def _mention_edit(mention: str, name: str | None = None) -> str:
     return mention_edit(ROOT, mention, name)
 
 
-def remove(name: str) -> list[str]:
+def remove(name: str) -> list[str]:  # noqa: C901
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
 
