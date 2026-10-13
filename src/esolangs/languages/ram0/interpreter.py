@@ -68,13 +68,10 @@ def _loaded(ram: _Ram, addr: int, index: _Index) -> int:
     return get(ram, position)[1] if position is not None else 0
 
 
-def change(
-    z: int, n: int, ram: _Ram, op: str, index: _Index
-) -> tuple[int, int, _Ram, bool]:
+def change(z: int, n: int, ram: _Ram, op: str, index: _Index) -> tuple[int, int, _Ram]:
     """Execute a single RAM0 command and return the updated registers.
 
-    Returns the RAM too rather than writing the caller's dict; the trailing
-    flag is ``C``'s skip condition.
+    Returns the RAM too rather than writing the caller's dict.
     """
     if op == "Z":
         z = 0
@@ -86,7 +83,7 @@ def change(
         z = _loaded(ram, z, index)
     elif op == "S":
         ram = _stored(ram, n, z, index)
-    return z, n, ram, not z
+    return z, n, ram
 
 
 def _advance(state: _State, op: str, index: _Index) -> _State:
@@ -101,8 +98,8 @@ def _advance(state: _State, op: str, index: _Index) -> _State:
             f"goto {op} at command {ind + 1}: commands count from 1",
             hint="jump to a command number of 1 or more",
         )
-    z, n, ram, skip = change(z, n, ram, op, index)
-    if op == "C" and skip:
+    z, n, ram = change(z, n, ram, op, index)
+    if op == "C" and not z:
         ind += 1
     elif op.isdigit():
         ind = int(op) - 2

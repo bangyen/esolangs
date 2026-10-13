@@ -9,7 +9,6 @@ from esolangs.registry import (
     LANGUAGES,
     Language,
     example_stems,
-    parameterized_ids,
     resolve,
     wiki_url,
 )
@@ -117,19 +116,12 @@ def describe(language: str) -> LanguageInfo:
     # Package-relative: repository-relative paths broke a ``chdir`` away and
     # under any install, and absolute ones froze the install location into
     # the public output.  ``importlib.resources.files("esolangs")`` resolves.
-    suffix = (
-        ".png"
-        if lang.source_kind.value == "raster"
-        else ".txt.gz"
-        if lang.compressed_source
-        else ".txt"
-    )
     examples = sorted(
         f"languages/{lang.id}/{p.name}"
-        for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{suffix}")
+        for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
     )
     traits = machine_traits(name)
-    parameterized = lang.id in parameterized_ids()
+    parameterized = lang.parameterized
     contract = lang.contract
     return {
         "name": name,

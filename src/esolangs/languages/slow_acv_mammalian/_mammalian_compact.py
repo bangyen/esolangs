@@ -4,6 +4,7 @@ from dataclasses import dataclass, field, replace
 from math import gcd, lcm
 
 from esolangs.generation.helpers import essential_inputs, read_at
+from esolangs.languages.slow_acv_mammalian._sums import _aim
 from esolangs.languages.slow_acv_mammalian.interpreter import MammalianModuli
 
 
@@ -36,12 +37,9 @@ def _routing_seeds(head: int, step: int, want: int, modulus: int) -> int:
 
 def _read_seeds(head: int, total: int, modulus: int) -> int:
     """Reach the earliest nonwrapping head whose two DIGEST sums XOR to 48."""
-    offset = (total + head - 16) % 64
-    count = offset % 2 if offset <= 14 else 64 - offset
+    count = _aim(total + head)
     if head + count > modulus - 17:
-        offset = (total - 16) % 64
-        first = offset % 2 if offset <= 14 else 64 - offset
-        count = modulus - head + first
+        count = modulus - head + _aim(total)
     return count
 
 
@@ -224,8 +222,7 @@ class _Chain:
             seeds = _read_seeds(state.head, start, self.modulus)
         else:
             tokens += self.seed(state, (-state.head) % self.modulus)
-            offset = (start - 16) % 64
-            seeds = start % 2 if offset <= 14 else 64 - offset
+            seeds = _aim(start)
         tokens += self.seed(state, seeds)
         first = start + state.head
         tokens += ["DIGEST"]

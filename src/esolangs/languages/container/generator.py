@@ -13,6 +13,7 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -430,8 +431,6 @@ def container(truth_table: str, width: int | None = None) -> str:
 
 def balance_container(table: str, default: str) -> str:
     """Compare rule-fit and decimal-delta budget transitions."""
-    from esolangs.generation.wrap import balance_score
-
     n = _validate_truth_table(table)
     span = max(map(len, default.splitlines()))
     programs = [default]

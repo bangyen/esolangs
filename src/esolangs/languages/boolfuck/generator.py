@@ -344,52 +344,36 @@ def _boolfuck_tree(
 ) -> tuple[str, int]:
     """Emit a tree, optionally deferring a block into its first unused flag."""
     n = _validate_truth_table(truth_table)
-    result = 2 * n
-    parts: list[str] = []
-    count = 0
-
-    def emit(code: str) -> None:
-        nonlocal count
-        parts.append(code)
-        count += len(code)
-
-    pos = 0  # cell the head is known to rest on
-
-    def move(target: int) -> None:
-        nonlocal pos
-        emit(move_text(pos, target, ">", "<"))
-        pos = target
+    # Cell 1 carries the answer's constant bits: every flag is 0 again there.
+    out = _Emitter(result=2 * n, carrier=1)
 
     # Read phase: value bit of byte i to cell 2i, other 7 bits to scratch.
     for i in range(n):
-        move(2 * i)
-        emit(",")
-        move(_SCRATCH)
-        emit("," * 7)
+        out.move(2 * i)
+        out.emit(",")
+        out.move(_SCRATCH)
+        out.emit("," * 7)
 
     # Decision tree over the stored bits.
-    read_cost = count
+    read_cost = out.count
     body, tree_cost = flag_tree_body(
         truth_table,
         tuple(range(n)),
-        pos,
-        result,
+        out.pos,
+        out.result,
         shared=shared,
         shared_blocks=shared_blocks,
         flag_levels=flag_levels,
         flip=True,
     )
-    emit(body)
-    pos = result
-    tail_start = count
+    out.emit(body)
+    out.pos = out.result
+    tail_start = out.count
 
     # Print the ASCII answer byte: R, 0,0,0, 1,1, 0,0 (little-endian).
-    move(result)
-    emit(";")
-    move(1)  # every flag is 0 again here
-    emit(";;;+;;+;;")
+    out.printer()
 
-    return "".join(parts), read_cost + tree_cost + count - tail_start
+    return "".join(out.out), read_cost + tree_cost + out.count - tail_start
 
 
 LANGUAGE = Language(

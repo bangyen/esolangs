@@ -360,19 +360,30 @@ def _token_fit(program: str, tokens: list[str], separator: str = "") -> str:
 
 def balance_program(program: str, language_id: str) -> str:
     """Balance whole-token fits and term folds; otherwise estimate source area."""
+    if "\n" not in program:
+        balanced = _balance_line(program, language_id)
+        if balanced is not None:
+            return balanced
+    candidate = wrap_program(program, language_id, balance_width(program))
+    return min((program, candidate), key=balance_score)
+
+
+def _balance_line(program: str, language_id: str) -> str | None:
+    """Balance a one-line program by its wrapper's tokens, or None to estimate."""
     lang = _language(language_id)
-    source_balance = None if lang is None else lang.wrap_balance
-    if "\n" not in program and source_balance is not None:
-        return source_balance(program)
-    wrapper = None if lang is None else lang.wrap
-    if "\n" not in program and wrapper is wrap_space_delimited:
+    if lang is None:
+        return None
+    if lang.wrap_balance is not None:
+        return lang.wrap_balance(program)
+    wrapper = lang.wrap
+    if wrapper is wrap_space_delimited:
         return _token_fit(program, program.split(), " ")
     pattern = _TOKEN_PATTERNS.get(wrapper) if wrapper is not None else None
-    if "\n" not in program and pattern is not None:
+    if pattern is not None:
         return _token_fit(program, re.findall(f"{_RUN}|{pattern}", program))
-    if wrapper is wrap_chars and _MARK_PATTERN.search(program) and "\n" not in program:
+    if wrapper is wrap_chars and _MARK_PATTERN.search(program):
         return _token_fit(program, re.findall(f"{_RUN}|[\\s\\S]", program))
-    if "\n" not in program and wrapper is wrap_grid:
+    if wrapper is wrap_grid:
         tokens = program.split()
         if not tokens:
             return program
@@ -384,8 +395,7 @@ def balance_program(program: str, language_id: str) -> str:
         return min(
             program, wrap_program(program, language_id, width), key=balance_score
         )
-    candidate = wrap_program(program, language_id, balance_width(program))
-    return min((program, candidate), key=balance_score)
+    return None
 
 
 def balance_score(program: str) -> tuple[int, int, int]:

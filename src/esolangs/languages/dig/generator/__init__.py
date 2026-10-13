@@ -53,9 +53,9 @@ def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
     makes windows exactly ``_DIG_BAND`` long and pads the value to an odd
     offset from the ``$``, where the other band's ``$`` and ``#`` never look.
     """
-    out = ""
     if not aligned:
         return _dig_constant_leaf(reads, value)
+    out = ""
     while reads > _DIG_BAND - 1:
         take = _DIG_BAND - 2
         out += f"${take + 1}" + "~" * take
@@ -147,10 +147,6 @@ def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> st
         """Whether this level's block is entered facing west."""
         return split is not None and level >= split
 
-    def dollar(level: int) -> int:
-        """Return the column of this level's ``$``, the cell the mole meets first."""
-        return columns[level]
-
     def place(row: int, col: int, text: str) -> None:
         """Write ``text`` along ``row`` from ``col``, refusing an occupied cell.
 
@@ -166,7 +162,7 @@ def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> st
 
     def block(row: int, level: int, text: str) -> None:
         """Write a block so the mole meets its first cell first."""
-        col = dollar(level)
+        col = columns[level]
         if leftward(level):
             place(row, col - len(text) + 1, text[::-1])
         else:
@@ -189,7 +185,7 @@ def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> st
             return
         skip = skips[level]
         block(row, level, f"${3 + skip}{'~' * skip}~;#")
-        col = dollar(level)
+        col = columns[level]
         last = _DIG_LAST + skip
         hop = col - last if leftward(level) else col + last
         step = 2 ** (m - level - 1)

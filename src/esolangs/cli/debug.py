@@ -113,15 +113,15 @@ def _debug(rest: list[str]) -> None:
             _fail("--break-on-output needs some text; every output contains ''")
         dbg.break_on_output(options["--break-on-output"])
         breakpoints_set = True
-    if "--break-at" in options:
-        dbg.break_at(int(options["--break-at"]))
+    if "--break-at" in numbers:
+        dbg.break_at(numbers["--break-at"])
         breakpoints_set = True
     if cell is not None:
         dbg.break_on_cell(*cell)
         breakpoints_set = True
-    watched = int(options["--watch-cell"]) if "--watch-cell" in options else None
+    watched = numbers.get("--watch-cell")
     history = dbg.watch_cell(watched) if watched is not None else None
-    steps = int(options["--steps"]) if "--steps" in options else None
+    steps = numbers.get("--steps")
     # A debugged program is one the caller is already unsure of, so a raise
     # here is a result to report rather than a crash to propagate: the
     # state up to the fault is the thing they asked to see.

@@ -416,16 +416,12 @@ class _PoolBuild:
                 layout.reserve(point, plan.literal(depth, "1"))
             row = 8 * self.order[depth]
             signal = plan.literal(depth, "1")
-            layout.glyph(0, row, "-")
-            layout.junction(2, row, signal)
-            layout.run_horizontal(0, 2, row, signal)
+            layout.input_port(row, 2, signal)
             layout.route((2, row), anchors[depth, "1", 1], signal, "across")
         for index in range(self.ports):
             if index not in self.order:
                 signal = self.serial.fresh()
-                layout.glyph(0, 8 * index, "-")
-                layout.junction(2, 8 * index, signal)
-                layout.run_horizontal(0, 2, 8 * index, signal)
+                layout.input_port(8 * index, 2, signal)
 
     def route_wires(self) -> None:
         """Route prefix literals, suffix fan-out, atom feeds and footer inputs."""

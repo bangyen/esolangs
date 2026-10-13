@@ -280,17 +280,13 @@ def _h_route_literals(
             if index not in kept:
                 row = _LATTICE * index
                 signal = first_unused + index
-                layout.glyph(0, row, "-")
-                layout.junction(2, row, signal)
-                layout.run_horizontal(0, 2, row, signal)
+                layout.input_port(row, 2, signal)
     input_starts: dict[tuple[int, str], tuple[int, int]] = {}
     for depth in range(inputs):
         row = _LATTICE * order[depth]
         plain = literal(depth, "1")
         negated = literal(depth, "0")
-        layout.glyph(0, row, "-")
-        layout.junction(2, row, plain)
-        layout.run_horizontal(0, 2, row, plain)
+        layout.input_port(row, 2, plain)
         layout.junction(2, row + 2, plain)
         layout.junction(3, row + 2, plain)
         layout.run_vertical(2, row, row + 2, plain)

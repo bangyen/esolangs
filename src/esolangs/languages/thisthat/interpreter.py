@@ -60,6 +60,9 @@ from esolangs.runtime.source_hints import with_hint
 type _Point = tuple[int, int]
 type _Channel = Literal["execution", "data"]
 
+#: Each constant gate's value; ``▦`` sends nothing.
+_GATE_VALUE: dict[str, int | None] = {"□": 0, "■": 1, "▦": None}
+
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
 _OPPOSITE = {"E": "W", "W": "E", "N": "S", "S": "N"}
 _DIRECTION = {step: name for name, step in _STEP.items()}
@@ -380,8 +383,8 @@ class _Step:
         for pointers in groups:
             if not pointers:
                 continue
-            if cell in "□■▦" and pointers[0].channel == "execution":
-                value = {"□": 0, "■": 1, "▦": None}[cell]
+            if cell in _GATE_VALUE and pointers[0].channel == "execution":
+                value = _GATE_VALUE[cell]
                 for pointer in pointers:
                     self._send(pointer, value)
                 continue
@@ -518,7 +521,7 @@ class _Step:
     def _cell_constant(self, pointer: _Pointer) -> None:
         """Send the gate's constant down the data wires."""
         cell = _char(self.grid, pointer.position)
-        self._send(pointer, {"□": 0, "■": 1, "▦": None}[cell])
+        self._send(pointer, _GATE_VALUE[cell])
 
     _CELL_HANDLERS: ClassVar[dict[str, Callable[[_Step, _Pointer], None]]] = {
         **dict.fromkeys(_SINGLE | _DOUBLE, _cell_wire),
@@ -531,7 +534,7 @@ class _Step:
         **dict.fromkeys("◧⬓◨⬒", _cell_stack),
         **dict.fromkeys("◹◺", _cell_cursor),
         **dict.fromkeys(_BLACK_SIDE, _cell_router),
-        **dict.fromkeys("□■▦", _cell_constant),
+        **dict.fromkeys(_GATE_VALUE, _cell_constant),
     }
 
 
@@ -563,7 +566,9 @@ def _advance(
     try:
         for position, arrived in _ordered_groups(grid, pointers):
             cell = _char(grid, position)
-            is_data_gate = cell in "□■▦" and any(p.channel == "data" for p in arrived)
+            is_data_gate = cell in _GATE_VALUE and any(
+                p.channel == "data" for p in arrived
+            )
             if cell in "◘◈" or is_data_gate:
                 step.merge(cell, arrived)
             else:

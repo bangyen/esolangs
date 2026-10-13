@@ -199,6 +199,21 @@ def chain(*ops: str) -> Node:
     return node
 
 
+def correction(value: int, known: int) -> str:
+    """Return the ``+``/``-`` op turning a cell holding ``known`` into ``value``."""
+    return {1: "+", 0: "", -1: "-"}[value - known]
+
+
+def loader_reads(n: int, kept: list[int]) -> str:
+    """Return the read phase: every input read, the kept ones one cell apart.
+
+    Trailing ignored inputs use a spare cell, so the head steps back to the
+    final kept cell.
+    """
+    reads = "".join("i" + (">" if i in kept and i < n - 1 else "") for i in range(n))
+    return reads + "<" if kept[-1] < n - 1 else reads
+
+
 def chain_onto(head: Node, tail: Node) -> None:
     """Append ``tail`` after the last node of ``head``'s chain."""
     end = head

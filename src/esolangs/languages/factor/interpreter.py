@@ -18,9 +18,9 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 
+#: A prime's residue mod ``_MODULUS`` selects the instruction it stands for.
+_MODULUS = 11
 _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
-
-#: Factor has no execution state beyond the Brainfuck machine it decodes to.
 
 
 #: Sieve batch size for :func:`_factorint`; not a ceiling.
@@ -120,7 +120,9 @@ def _factorint(number: int) -> dict[int, int]:
 def decode(number: int) -> str:
     """Decode a Factor integer into its brainfuck instruction string."""
     factors = sorted(_factorint(number).items())
-    return "".join(_RESIDUE[p % 11] * exp for p, exp in factors if p % 11 in _RESIDUE)
+    return "".join(
+        _RESIDUE[p % _MODULUS] * exp for p, exp in factors if p % _MODULUS in _RESIDUE
+    )
 
 
 class _Machine(_BFMachine):

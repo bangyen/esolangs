@@ -88,7 +88,7 @@ from esolangs.languages.circuit_diagram.generator.hlayout import (
     _h_term_area_floor,
     _h_term_layout,
 )
-from esolangs.languages.circuit_diagram.generator.layout import _Layout
+from esolangs.languages.circuit_diagram.generator.layout import _Layout, _layout_area
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -638,12 +638,6 @@ def _linear_shared_layout(
 def _narrowest_present(*forms: str | None) -> str:
     """Return the narrowest grid among the forms that exist."""
     return narrowest_grid(*(form for form in forms if form is not None))
-
-
-def _layout_area(layout: _Layout) -> int:
-    """Return the bounding-box area, the model-selection metric."""
-    height, columns = layout.bounds()
-    return height * columns
 
 
 def _box_area(points: list[tuple[int, int]]) -> int:

@@ -320,7 +320,7 @@ def _initial_store(func: _Function, program: _Program) -> _Store:
 
 
 def _type_of(name: str, func: _Function, program: _Program) -> _Type:
-    return func.locals.get(name) or program.types.get((func.package, name)) or _Type()
+    return func.locals.get(name) or program.globals.get((func.package, name)) or _Type()
 
 
 def _statement(
@@ -493,10 +493,9 @@ def _resolve(frame: _Frame, program: _Program) -> tuple[_Frame, _Frame | None]:
             working = _substitute(working, call, frame.returned)
         frame = replace(frame, returned=None)
     call = _pending_call(working, frame.store, program, package)
-    if call is None:
-        frame = replace(frame, pending=working)
-        return frame, None
     frame = replace(frame, pending=working)
+    if call is None:
+        return frame, None
     func = _callee(call, program, package)
     values = [
         _evaluate(_node(arg), frame.store, program, package) for arg in _node(call[2])

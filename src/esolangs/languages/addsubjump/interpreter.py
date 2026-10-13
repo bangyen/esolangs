@@ -553,8 +553,8 @@ class _Machine:
     def step(self) -> None:
         """Execute one instruction, advancing the pointer.
 
-        Up to three operands may name the input port, so the shell reads them
-        in the transition's order (``d``, ``b``, then ``a`` unless written).
+        ``d`` and ``b`` may name the input port, so the shell reads them in
+        the transition's order; an ``a`` naming it is written, not read.
         """
         if self.halted:
             return
@@ -565,11 +565,7 @@ class _Machine:
                 f"memory address {format_integer(a)} is too large",
                 hint="keep memory addresses within the interpreter allocation limit",
             )
-        reads = tuple(
-            self.io.input_char()
-            for addr in ((d, b) if a == _IO else (d, b, a))
-            if addr == _IO
-        )
+        reads = tuple(self.io.input_char() for addr in (d, b) if addr == _IO)
         value, self.state = _advance(self.state, reads, operands)
         if a == _IO:
             self.io.print_char(chr(value & 0xFF))

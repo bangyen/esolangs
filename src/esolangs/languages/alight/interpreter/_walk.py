@@ -127,7 +127,7 @@ def _find_func(
                 if _read_word(grid, row, col, heading)[:4] != "func":
                     continue
                 drow, dcol = heading
-                text = _scan(grid, row, col, heading)[0]
+                text, srow, scol = _scan(grid, row, col, heading)
                 p = _Parser(text)
                 if p.word() != "func" or p.word() != name or p.peek() != "{":
                     continue
@@ -137,7 +137,6 @@ def _find_func(
                     continue
                 # The body begins one cell past the ``func`` command's
                 # semicolon, exactly as a ``turn``'s next command does.
-                _, srow, scol = _scan(grid, row, col, heading)
                 return srow + drow, scol + dcol, heading, params
     return None
 

@@ -14,6 +14,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score, wrap_program
+from esolangs.languages.taglate.interpreter import _PREFIX, _SUFFIX, percent_encode
 from esolangs.languages.taglate.proof_formulas import execution, workspace
 from esolangs.languages.taglate.wrapping import _taglate, same_layout
 from esolangs.registry._contracts import BooleanContract
@@ -255,8 +256,6 @@ def _taglate_raw(truth_table: str, *, keep_constant_layout: bool = False) -> str
 
 def _seed_commands(seed: str) -> str:
     """Build a generator seed from the empty queue with bounded ASCII passes."""
-    from esolangs.languages.taglate.interpreter import _PREFIX, _SUFFIX, _URL_SAFE
-
     targets = list(map(ord, seed))
     subtract = len(targets) == 3 and targets[1] == 65535
     if subtract:
@@ -265,16 +264,13 @@ def _seed_commands(seed: str) -> str:
     prefixes: list[str] = []
     suffixes: list[str] = []
 
-    def encode(text: str) -> str:
-        return "".join(c if c in _URL_SAFE else f"%{ord(c):02X}" for c in text)
-
     prefix, suffix = _PREFIX, _SUFFIX
     enough = 0
     while enough < count:
         prefixes.append(prefix)
         suffixes.append(suffix)
         enough += sum(ord(c) >= 49 for c in prefix + suffix)
-        prefix, suffix = encode(prefix), encode(suffix)
+        prefix, suffix = percent_encode(prefix), percent_encode(suffix)
     # Encoding distributes over concatenation; nested URLs are these layers.
     values = list(map(ord, "".join(prefixes + suffixes[::-1])))
     parts: list[str] = ["t" * len(prefixes)]

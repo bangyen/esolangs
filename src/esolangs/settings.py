@@ -25,10 +25,9 @@ class DialectSettings:
     def __init__(self, **choices: int | str | None) -> None:
         """Copy typed overrides; language-specific validation precedes use."""
         integer = {key for key, values in _CHOICES.items() if type(values[0]) is int}
-        text = set(_CHOICES) - integer
         for key, value in choices.items():
-            if key not in integer | text:
-                known = sorted(integer | text)
+            if key not in _CHOICES:
+                known = sorted(_CHOICES)
                 close = get_close_matches(key, known, n=1, cutoff=0.6)
                 suggestion = f" (did you mean {close[0]}?)" if close else ""
                 raise ArgumentError(

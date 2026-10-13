@@ -292,9 +292,10 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
         for path in tests
         if "def test_placeholder_" in path.read_text(encoding="utf-8")
     )
-    if _registered_generator(name):
-        pass  # tests/support/samples.py derives its sample from the generator
-    elif name not in _tests_module("support.samples", "SAMPLES"):
+    # tests/support/samples.py derives a generator language's sample itself.
+    if not _registered_generator(name) and name not in _tests_module(
+        "support.samples", "SAMPLES"
+    ):
         gaps.append(
             Gap(
                 "tests/support/samples.py",
@@ -681,8 +682,9 @@ def main(argv: list[str] | None = None) -> int:
         for changed in sorted(_dirty() - before):
             print(f"regenerated {changed}")
         quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
-        print("+ pytest", " ".join(quick_tests(args.name)), flush=True)
-        failed = subprocess.run([*quick, *quick_tests(args.name)], cwd=ROOT)
+        tests = quick_tests(args.name)
+        print("+ pytest", " ".join(tests), flush=True)
+        failed = subprocess.run([*quick, *tests], cwd=ROOT)
         if failed.returncode:
             print(f"{args.name}: integrated, but fix the failures above first")
             return 1

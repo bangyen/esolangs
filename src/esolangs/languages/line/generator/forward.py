@@ -14,7 +14,17 @@ from esolangs.generation.helpers import (
     read_at,
 )
 
-from .render import _UNIT, Canvas, Node, _arrowhead, _Cursor, chain, chain_onto
+from .render import (
+    _UNIT,
+    Canvas,
+    Node,
+    _arrowhead,
+    _Cursor,
+    chain,
+    chain_onto,
+    correction,
+    loader_reads,
+)
 from .shared import CanvasPlan
 
 type State = tuple[int, int]
@@ -412,13 +422,7 @@ def _layout_dag(
 
 
 def _loader_reads(dag: _Dag) -> str:
-    reads = "".join(
-        "i" + (">" if index in dag.kept and index < dag.original_n - 1 else "")
-        for index in range(dag.original_n)
-    )
-    if dag.kept[-1] < dag.original_n - 1:
-        reads += "<"
-    return reads
+    return loader_reads(dag.original_n, dag.kept)
 
 
 def _loader_strokes(
@@ -511,9 +515,9 @@ class _Router:
         cursor.advance((1, 0), 4)
         value = dag.constants[dag.children[residual][bit]]
         if value is not None and not options.streaming:
-            correction = "" if value == bit else "+" if value else "-"
-            arm = chain(*correction, "o")
-            for op in correction + "o":
+            fix = correction(value, bit)
+            arm = chain(*fix, "o")
+            for op in fix + "o":
                 cursor.emit_op(op)
         else:
             arm = self._route_to_child(state, bit, cursor)

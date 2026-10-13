@@ -170,16 +170,9 @@ def _ink_neighbor_count(mask: Mask, y: int, x: int) -> int:
 
     A stroke interior has exactly 2, a fork a third.
     """
-    h, w = mask.shape
-    count = 0
-    for dy in (-1, 0, 1):
-        for dx in (-1, 0, 1):
-            if dy == 0 and dx == 0:
-                continue
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < h and 0 <= nx < w and mask[ny, nx]:
-                count += 1
-    return count
+    return sum(
+        _ink(mask, y + dy, x + dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx
+    )
 
 
 def _thick_regions(thick: Mask) -> list[Mask]:
@@ -199,12 +192,7 @@ def _thick_regions(thick: Mask) -> list[Mask]:
             for dy in (-1, 0, 1):
                 for dx in (-1, 0, 1):
                     ny, nx = y + dy, x + dx
-                    if (
-                        0 <= ny < h
-                        and 0 <= nx < w
-                        and thick[ny, nx]
-                        and not seen[ny, nx]
-                    ):
+                    if _ink(thick, ny, nx) and not seen[ny, nx]:
                         seen[ny, nx] = True
                         frontier.append((ny, nx))
         components.append(component)
@@ -264,9 +252,7 @@ def _cursor_candidate(mask: Mask, core: Mask) -> Cursor:
                 if (ny, nx) in visited:
                     continue
                 if (
-                    0 <= ny < h
-                    and 0 <= nx < w
-                    and mask[ny, nx]
+                    _ink(mask, ny, nx)
                     and _ink_neighbor_count(mask, ny, nx) >= _BLOB_NEIGHBOR_MIN
                 ):
                     visited.add((ny, nx))

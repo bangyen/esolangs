@@ -13,6 +13,7 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -548,17 +549,12 @@ def balance_apl(table: str, default: str) -> str:
     Input order stays the identity (a greedy order saves 4.8% at n=8, under
     the 10% bar).
     """
-    regimes = [(table, tuple(range(len(table).bit_length() - 1)))]
+    perm = tuple(range(len(table).bit_length() - 1))
     candidates = [default]
     width: int | None = 1
     while width is not None:
-        layouts = [
-            _apl_narrow_layout(ordered, perm, width) for ordered, perm in regimes
-        ]
-        candidates.append(min((program for program, _ in layouts), key=len))
-        width = min((point for _, point in layouts if point is not None), default=None)
-    from esolangs.generation.wrap import balance_score
-
+        program, width = _apl_narrow_layout(table, perm, width)
+        candidates.append(program)
     return min(candidates, key=balance_score)
 
 

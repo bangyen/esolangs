@@ -658,9 +658,7 @@ class _Parser:
 
     def _implied_widths(self, gate: _Gate) -> list[tuple[_Wiring, int]]:
         """Return the widths ``gate`` forces on its output wirings."""
-        if gate.kind == _OUTPUT:
-            return []
-        if gate.kind in (_ZERO, _ONE):
+        if gate.kind in (_OUTPUT, _ZERO, _ONE):
             return []
         if gate.kind == _CLOCK:
             return [(gate.outputs[0], 32)]

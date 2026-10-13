@@ -17,16 +17,19 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
 
-def _run(entry: str, count: int) -> str:
+def _run(entry: str, count: int) -> tuple[str, int]:
     """Push ``count`` copies of ``entry`` (``O``/``I``), by a loop when shorter.
 
-    The accumulator is set to ``2 * (count // 2)`` by Horner's rule (``x``
-    doubles, ``+`` adds two); each trip pushes two and subtracts two.
+    Returns the code and its executed command count.  The accumulator is set
+    to ``2 * (count // 2)`` by Horner's rule (``x`` doubles, ``+`` adds two);
+    each trip runs ``>``, pushes two, subtracts two and runs ``<``.
     """
     bits = bin(count // 2)[2:]
     setup = "OA+" + "".join("x" + "+" * (bit == "1") for bit in bits[1:])
     loop = setup + ">" + entry * 2 + "-<" + entry * (count % 2)
-    return min(entry * count, loop, key=len)
+    if count <= len(loop):
+        return entry * count, count
+    return loop, len(setup) + 5 * (count // 2) + count % 2
 
 
 def _runs(bits: str) -> tuple[str, int]:
@@ -35,14 +38,9 @@ def _runs(bits: str) -> tuple[str, int]:
     commands = 0
     for entry, run in groupby(bits):
         count = len(list(run))
-        char = "I" if entry == "1" else "O"
-        code = _run(char, count)
+        code, executed = _run("I" if entry == "1" else "O", count)
         parts.append(code)
-        commands += (
-            count
-            if code == char * count
-            else code.index(">") + 5 * (count // 2) + count % 2
-        )
+        commands += executed
     return "".join(parts), commands
 
 

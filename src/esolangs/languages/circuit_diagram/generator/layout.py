@@ -38,6 +38,12 @@ class _Layout:
         self._glyph_rows: dict[int, list[int]] = {}
         self._glyph_cols: dict[int, list[int]] = {}
 
+    def input_port(self, row: int, column: int, signal: int) -> None:
+        """Draw an input's ``-`` port at the left edge, wired to ``column``."""
+        self.glyph(0, row, "-")
+        self.junction(column, row, signal)
+        self.run_horizontal(0, column, row, signal)
+
     def glyph(self, x: int, y: int, char: str) -> None:
         """Place a literal character (a gate, an input dash, an output)."""
         self._check_free(x, y)
@@ -434,3 +440,9 @@ class _RoutingLayout(_Layout):
             ):
                 return False
         return True
+
+
+def _layout_area(layout: _Layout) -> int:
+    """Return the bounding-box area, the model-selection metric."""
+    height, width = layout.bounds()
+    return height * width

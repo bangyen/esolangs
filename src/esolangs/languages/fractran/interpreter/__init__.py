@@ -33,6 +33,8 @@ from collections.abc import Mapping
 from typing import cast
 
 from esolangs.languages.fractran.interpreter.index import (
+    _POWER,
+    TOKEN,
     Cursor,
     Factors,
     FactorWrites,
@@ -53,8 +55,6 @@ type _Fraction = tuple[int, int]
 #: they are not part of the state.
 type _State = tuple[int, bool]
 
-_POWER = re.compile(r"^(\d+)(?:\^(\d+))?$")
-
 
 def _product(text: str) -> int:
     """Return the value of a product of powers such as ``2^3*5``."""
@@ -73,7 +73,7 @@ def _product(text: str) -> int:
 
 def _parse(code: str) -> tuple[int, tuple[_Fraction, ...], tuple[int, ...]]:
     """Return the starting value, the fractions, and each token's offset."""
-    tokens = [(found.start(), found.group()) for found in re.finditer(r"[^\s,]+", code)]
+    tokens = [(found.start(), found.group()) for found in TOKEN.finditer(code)]
     if not tokens:
         raise syntax_error(
             "a FRACTRAN program needs a starting value",

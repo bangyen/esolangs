@@ -15,7 +15,7 @@ from esolangs.generation.helpers import _validate_truth_table
 from . import hpool
 from .forest import _Forest, _suffix_forest
 from .hpool import _h_pool_layout, _h_pool_size, _large_pool_layout
-from .layout import _Layout, _RoutingLayout
+from .layout import _Layout, _layout_area, _RoutingLayout
 
 type _Output = tuple[tuple[int, int], int]
 
@@ -232,9 +232,7 @@ class _BankAssembler:
         """Run the n input ports down the left edge and record their points."""
         for i in range(self.n):
             column = 2 * i + 2
-            self.layout.glyph(0, 2 * i, "-")
-            self.layout.junction(column, 2 * i, i)
-            self.layout.run_horizontal(0, column, 2 * i, i)
+            self.layout.input_port(2 * i, column, i)
             self.reached[i] = (column, 2 * i)
 
     def _emit_complement_rails(self) -> None:
@@ -509,18 +507,14 @@ def _residual_class_bank_candidate(
     separate = _class_bank_layout(table, ceiling, shared=False)
     shared_ceiling = ceiling
     if separate is not None:
-        height, width = separate.bounds()
-        shared_ceiling = (
-            height * width if ceiling is None else min(ceiling, height * width)
-        )
+        area = _layout_area(separate)
+        shared_ceiling = area if ceiling is None else min(ceiling, area)
     forest = _class_bank_layout(table, shared_ceiling, shared=True)
     if forest is None:
         return separate
     if separate is None:
         return forest
-    height, width = forest.bounds()
-    old_height, old_width = separate.bounds()
-    return forest if height * width < old_height * old_width else separate
+    return forest if _layout_area(forest) < _layout_area(separate) else separate
 
 
 def _pool_budget(n: int, ceiling: int | None) -> int | None:
@@ -632,8 +626,7 @@ def _class_bank_layout(
         shared_suffix=forest,
         online_returns=True,
     )
-    height, width = model.bounds()
-    return model if ceiling is None or height * width <= ceiling else None
+    return model if ceiling is None or _layout_area(model) <= ceiling else None
 
 
 def _repeated_cofactor_bank(table: str) -> _Layout | None:
@@ -686,6 +679,4 @@ def _cofactor_bank_candidate(table: str, ceiling: int | None = None) -> _Layout 
         return four
     if four is None:
         return eight
-    four_height, four_width = four.bounds()
-    eight_height, eight_width = eight.bounds()
-    return eight if eight_height * eight_width < four_height * four_width else four
+    return eight if _layout_area(eight) < _layout_area(four) else four

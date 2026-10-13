@@ -149,6 +149,13 @@ class Language:
             raise ValueError(f"{self.name}: wrap and no_wrap exclude each other")
 
     @property
+    def source_suffix(self) -> str:
+        """Return the file suffix this language's source is saved under."""
+        if self.source_kind is SourceKind.RASTER:
+            return ".png"
+        return ".txt.gz" if self.compressed_source else ".txt"
+
+    @property
     def parameterized(self) -> bool:
         """Whether the example embeds its inputs (a template to fill).
 

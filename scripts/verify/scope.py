@@ -360,13 +360,16 @@ class VerifiedCache:
                 (self.path(key), {"key": key, "output": output, "returncode": 0})
             )
 
-    def finish(self) -> bool:
-        """Publish clean results only if repository and runtime inputs stayed fixed."""
+    def _stable(self) -> bool:
+        """Whether the repository inputs still match the initial snapshot."""
         try:
-            stable = _tree(self.root) == self.initial
+            return _tree(self.root) == self.initial
         except (OSError, subprocess.SubprocessError):
             return False
-        if not stable:
+
+    def finish(self) -> bool:
+        """Publish clean results only if repository and runtime inputs stayed fixed."""
+        if not self._stable():
             return False
 
         def matches(runtime: tuple[list[str], dict[str, str], str]) -> bool:
@@ -387,11 +390,7 @@ class VerifiedCache:
         with ThreadPoolExecutor(max_workers=2) as pool:
             if not all(pool.map(matches, self.runtimes.values())):
                 return False
-        try:
-            stable = _tree(self.root) == self.initial
-        except (OSError, subprocess.SubprocessError):
-            return False
-        if not stable:
+        if not self._stable():
             return False
         for path, entry in self.pending:
             write_text(path, json.dumps(entry))
@@ -548,7 +547,6 @@ def _generator_test_scope(module: str) -> list[str] | None:
                 language.name,
                 *language.aliases,
                 language.boolean.__name__,
-                owner,
             ):
                 owners[name] = owner
 

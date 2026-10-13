@@ -336,7 +336,7 @@ class _BackDrawState:
 
     grid: _Grid
     where: dict[_Node, tuple[int, int]]
-    next_row: list[int]
+    next_row: int
     vertical: bool
     reserved: _Node | None
     shared: set[_Node]
@@ -357,7 +357,7 @@ def _back_leaf(
         state.grid[(row, col)] = "\\"
         for k, ch in enumerate(code, 1):
             state.grid[(row + k, col)] = ch
-        state.next_row[0] = max(state.next_row[0], row + len(code) + 1)
+        state.next_row = max(state.next_row, row + len(code) + 1)
     else:
         for k, ch in enumerate(code):
             state.grid[(row, col + k)] = ch
@@ -380,10 +380,10 @@ def _back_emit(
     if (level, block) in state.shared:
         # Keep one empty row for the bend before compacting later nodes.
         if (level, block) == state.reserved:
-            state.next_row[0] += 1
+            state.next_row += 1
         return
-    nrow = state.next_row[0]
-    state.next_row[0] += 1
+    nrow = state.next_row
+    state.next_row += 1
     state.grid[(nrow, col + 1)] = "\\"
     state.grid[(nrow, col + 2)] = ">"
     _back_emit(state, level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
@@ -408,7 +408,7 @@ def _back_draw(
     state = _BackDrawState(
         grid={},
         where={},
-        next_row=[1],
+        next_row=1,
         vertical=vertical,
         reserved=reserved,
         shared=shared,

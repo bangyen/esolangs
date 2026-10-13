@@ -887,12 +887,10 @@ class _Core:
             return None
         text, row, col = _scan(self.grid, self.row, self.col, self.heading)
         word = _Parser(text, self.expression_syntax).word()
-        if word == "end":
-            if self.calls.resolve(text, word):
-                return self.handlers.output
-            self.calls.finish()
-            return self.handlers.output
         if self.calls.resolve(text, word):
+            return self.handlers.output
+        if word == "end":
+            self.calls.finish()
             return self.handlers.output
         heading = self.heading
         if word == "turn":

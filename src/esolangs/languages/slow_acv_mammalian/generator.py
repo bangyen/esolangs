@@ -28,11 +28,15 @@ from esolangs.generation.helpers import (
     same_token_layout,
 )
 from esolangs.generation.wrap import balance_program
+from esolangs.languages.slow_acv_mammalian._mammalian255 import decision_tree
+from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 from esolangs.languages.slow_acv_mammalian._sums import (
     _ARRAYS,
     _IO_MODULUS,
+    _J2,
     _MODULUS,
     _W,
+    _aim,
     _replay,
     _Sums,
 )
@@ -54,11 +58,6 @@ __all__ = ["slow_acv_mammalian"]
 # what puts a distant token index within a jump's reach, so the chunk buys
 # the most reach per token by appending the largest byte there is.
 _STASH_BYTE = _IO_MODULUS - 1
-
-# The read node's second seed run.  The aim class fixes ``first & 48 == 16``,
-# and XORing bits 4-5 from ``01`` to ``10`` is ``+16``, so this run is what
-# lands the accumulator on the clean digit 48 -- it is not a free knob.
-_J2 = 16
 
 #: Per-``SEED`` advance of array 16's head (array ``k``'s head steps by
 #: ``k + 1``); 17 is odd, so every residue is reachable.
@@ -128,19 +127,6 @@ def _stash_chunk(
         [*["SEED"] * count, "DIGEST", "EXCRETE"],
         [*_seeded(array, count), _STASH_BYTE],
     )
-
-
-def _aim(start: int) -> int:
-    """Return the seed count putting ``start + j1`` on the aim class.
-
-    Even values whose bits 4-5 are ``01``: 16 residues per 256, at most 49
-    apart, so the head stays far under the 255 a mid-run wrap needs.
-    """
-    offset = (start - _J2) % 64
-    if offset <= 14:
-        # Inside a class block; an odd ``start`` steps to the next even.
-        return start % 2
-    return 64 - offset
 
 
 def _node(
@@ -812,10 +798,6 @@ def _program(
     if not keep_constant_input and len(set(truth_table)) == 1:
         return _constant_read(truth_table[0], n, moduli.cell_modulus)
     if moduli.cell_modulus == 255:
-        from esolangs.languages.slow_acv_mammalian._mammalian_compact import (
-            compact_chain,
-        )
-
         # Chain/tree characters: 64835/95678 at n=3 with I/O 255;
         # 83404/83749 at n=2 with I/O 256. Smaller trees win below these.
         if n >= (3 if moduli.io_modulus == 255 else 2):
@@ -826,10 +808,6 @@ def _program(
                 io_modulus=moduli.io_modulus,
             )
         else:
-            from esolangs.languages.slow_acv_mammalian._mammalian255 import (
-                decision_tree,
-            )
-
             legacy = decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
         used = essential_inputs(truth_table, n)
         if keep_ignored_inputs or not used or len(used) == n:

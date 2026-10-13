@@ -28,6 +28,25 @@ _MODULUS = 256
 _IO_MODULUS = 256
 
 
+# The read node's second seed run.  The aim class fixes ``first & 48 == 16``,
+# and XORing bits 4-5 from ``01`` to ``10`` is ``+16``, so this run is what
+# lands the accumulator on the clean digit 48 -- it is not a free knob.
+_J2 = 16
+
+
+def _aim(start: int) -> int:
+    """Return the seed count putting ``start + j1`` on the aim class.
+
+    Even values whose bits 4-5 are ``01``: 16 residues per 256, at most 49
+    apart, so the head stays far under the 255 a mid-run wrap needs.
+    """
+    offset = (start - _J2) % 64
+    if offset <= 14:
+        # Inside a class block; an odd ``start`` steps to the next even.
+        return start % 2
+    return 64 - offset
+
+
 class _Sums:
     """Build-time machine state: heads, the two big sums, the small cells.
 

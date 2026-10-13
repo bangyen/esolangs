@@ -45,6 +45,8 @@ from esolangs.languages.line.generator.render import (
     _moved,
     chain,
     chain_onto,
+    correction,
+    loader_reads,
 )
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
@@ -81,8 +83,7 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
             value = state
             if known is None:
                 return _moved(pointer, n, chain(*(["+"] * value), "o"))
-            step = {1: ["+"], 0: [], -1: ["-"]}[value - known]
-            return chain(*step, "o")
+            return chain(*correction(value, known), "o")
         node = Node("?")
         cell = order[depth]
         zero, one = children[state]
@@ -111,12 +112,8 @@ def _project_loader(n: int, kept: list[int], node: Node) -> Node:
         if node.next is None:
             raise ValueError("projected Line tree has no decision body")
         node = node.next
-    # Trailing ignored inputs use a spare cell; return to the compact loader's
-    # final kept cell before entering the unchanged reduced decision body.
-    reads = "".join("i" + (">" if i in kept and i < n - 1 else "") for i in range(n))
-    if kept[-1] < n - 1:
-        reads += "<"
-    head = chain(*reads)
+    # Enter the unchanged reduced decision body from the final kept cell.
+    head = chain(*loader_reads(n, kept))
     chain_onto(head, node)
     return head
 
@@ -245,8 +242,6 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
         return lazy_raster(lambda: _grey_rows(selected_draw()), node)
     if canvas is not None:
         return lazy_raster(lambda: _grey_rows(canvas), node)
-    if n <= _SMALL_MAX:
-        return lazy_raster(lambda: _grey_rows(small_tree_canvas(node, unit=unit)), node)
     return lazy_raster(lambda: _render_node(node, unit=unit), node)
 
 

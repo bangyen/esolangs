@@ -184,15 +184,25 @@ class _Frame:
     goto: int | None
 
 
-def _freeze_program(root: _Compiled) -> tuple[_Frame, ...]:
-    """Return immutable instructions and indexed control links."""
+def _index_graph[T](
+    root: T, children: Callable[[T], tuple[T | None, ...]]
+) -> tuple[list[T], dict[int, int]]:
+    """Return the nodes reachable from ``root``, breadth first, and index by id."""
     nodes = [root]
     indices = {id(root): 0}
     for node in nodes:
-        for child in (node.zero, node.nonzero, node.goto):
+        for child in children(node):
             if child is not None and id(child) not in indices:
                 indices[id(child)] = len(nodes)
                 nodes.append(child)
+    return nodes, indices
+
+
+def _freeze_program(root: _Compiled) -> tuple[_Frame, ...]:
+    """Return immutable instructions and indexed control links."""
+    nodes, indices = _index_graph(
+        root, lambda node: (node.zero, node.nonzero, node.goto)
+    )
     return tuple(
         _Frame(
             tuple((call.op, call.count) for call in node.ops),
@@ -294,13 +304,9 @@ def run_compiled(program: _Compiled, io: IO | None = None) -> dict[int, int]:
 
 def run_node(root: Node, io: IO) -> None:
     """Execute generated graph code through the same pure transition core."""
-    nodes = [root]
-    indices = {id(root): 0}
-    for node in nodes:
-        for child in (node.zero, node.nonzero, node.next, node.goto):
-            if child is not None and id(child) not in indices:
-                indices[id(child)] = len(nodes)
-                nodes.append(child)
+    nodes, indices = _index_graph(
+        root, lambda node: (node.zero, node.nonzero, node.next, node.goto)
+    )
     frames = tuple(
         _Frame(
             ((node.op, 1),) if node.op in {"+", "-", ">", "<", "i", "o"} else (),

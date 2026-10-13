@@ -14,6 +14,8 @@ type Factors = tuple[tuple[int, int], ...]
 type Rule = tuple[Factors, Factors]
 
 _POWER = re.compile(r"^(\d+)(?:\^(\d+))?$")
+#: A fraction or term: a run between whitespace and commas.
+TOKEN = re.compile(r"[^\s,]+")
 
 #: Every source may name bases up to this, however short it is.
 SMALL_BASE = 256
@@ -98,7 +100,7 @@ def _least_primes(limit: int) -> list[int]:
 
 def compile_index(code: str) -> Index | None:
     """Compile small bases exactly; leave expensive factorization to the literal VM."""
-    tokens = [(m.start(), m.group()) for m in re.finditer(r"[^\s,]+", code)]
+    tokens = [(m.start(), m.group()) for m in TOKEN.finditer(code)]
     if not tokens:
         return None
     # Shipped generators use small bases; dense initial products admit more.

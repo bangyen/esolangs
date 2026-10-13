@@ -461,24 +461,6 @@ def _deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
     return head_push, head_pop
 
 
-LANGUAGE = Language(
-    "thisthat",
-    "thisthat",
-    category="grid_based",
-    random=True,
-    boolean=thisthat,
-    split=True,
-    contract=BooleanContract(
-        input_shape="char_stream",
-        ignores_whitespace=True,
-        input_sets=True,
-    ),
-    balance=_balance,
-    no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
-    eof="an exhausted '◇' sends the spec's empty transfer",
-    empty_program="thisthat needs at least one start node",
-)
-
 _MIN_NODE_BUDGET = 8
 
 
@@ -664,3 +646,22 @@ def shared_tree(table: str) -> tuple[str, int] | None:
     _hollow_crossings(builder)
     _draw_input_chain(builder, n, m, ess, push)
     return builder.render(), 2 * n + 2 * m + 4 + costs[nodes[0]]
+
+
+LANGUAGE = Language(
+    "thisthat",
+    "thisthat",
+    category="grid_based",
+    random=True,
+    boolean=thisthat,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+        ignores_whitespace=True,
+        input_sets=True,
+    ),
+    balance=_balance,
+    no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
+    eof="an exhausted '◇' sends the spec's empty transfer",
+    empty_program="thisthat needs at least one start node",
+)

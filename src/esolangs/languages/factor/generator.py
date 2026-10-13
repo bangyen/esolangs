@@ -29,15 +29,14 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.shared_flag import shared_flag_tree
 from esolangs.generation.wrap import balance_program, wrap_chars
+from esolangs.languages.factor.interpreter import _MODULUS, _RESIDUE
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._digits import digit_limit_for
 
 __all__ = ["factor"]
 
-#: A prime's residue mod ``_MODULUS`` selects the instruction it stands for.
-_MODULUS = 11
-_BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
+_BF_RESIDUE = {char: residue for residue, char in _RESIDUE.items()}
 
 # Exact prime enumeration, in bounded segments. ``isprime`` becomes a BPSW
 # probable-prime test above 2**64; Factor is uncapped, so it cannot certify the

@@ -15,7 +15,7 @@ from esolangs.languages.circuit_diagram.generator.folded_banks import (
     _folded_class_masks,
 )
 from esolangs.languages.circuit_diagram.generator.forest import _suffix_forest
-from esolangs.languages.circuit_diagram.generator.layout import _Layout
+from esolangs.languages.circuit_diagram.generator.layout import _Layout, _layout_area
 
 
 def bundled_class_bank_candidate(
@@ -99,5 +99,4 @@ def bundled_class_bank_candidate(
         online_returns=True,
         left_returns=True,
     )
-    h, w = model.bounds()
-    return model if h * w <= budget else None
+    return model if _layout_area(model) <= budget else None

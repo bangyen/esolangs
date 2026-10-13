@@ -314,7 +314,7 @@ class _Parser:
         self.expect(";")
         if expr[0] == "apply" and expr[1] in ("charPut", "charGet"):
             args = expr[2]
-            # ``_primary`` always builds an "apply" with a tuple of nodes,
+            # ``primary`` always builds an "apply" with a tuple of nodes,
             # so this narrowing cannot fail; it is spelled for the checker
             # and would be a malformed tree rather than a bad program.
             assert isinstance(args, tuple)
@@ -338,7 +338,7 @@ class _Parser:
             index = None
             if target[0] == "apply":
                 slots = target[2]
-                # ``_primary`` built this "apply" with a tuple of slots, so
+                # ``primary`` built this "apply" with a tuple of slots, so
                 # this narrowing cannot fail; it is spelled for the checker.
                 assert isinstance(slots, tuple)
                 if len(slots) != 1:
@@ -382,7 +382,6 @@ class _Program:
         self.functions: dict[tuple[str, str], _Function] = {}
         self.globals: dict[tuple[str, str], _Type] = {}
         self.dependencies: dict[str, frozenset[str]] = {}
-        self.types: dict[tuple[str, str], _Type] = {}
         self.entry: _Function | None = None
 
 
@@ -425,9 +424,6 @@ def _parse_packages(parser: _Parser) -> _Program:
         parser.expect(";")
         program.dependencies[package] = frozenset(deps)
         program.globals.update(
-            ((package, name), kind) for name, kind in globals_here.items()
-        )
-        program.types.update(
             ((package, name), kind) for name, kind in globals_here.items()
         )
         for name, func in members:
@@ -514,8 +510,8 @@ def _entry(program: _Program, order: list[str]) -> _Function:
         ]
         if len(candidates) == 1:
             return candidates[0]
-    # A parameterless function anywhere, as the last resort: PlusOrMinus's
-    # own function takes a parameter, so such a program has no entry.
+    # No candidate: PlusOrMinus's own function takes a parameter, so such a
+    # program has no entry.
     raise syntax_error(
         "program has no parameterless entry function",
         (

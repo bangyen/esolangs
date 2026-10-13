@@ -10,6 +10,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.wrap import balance_score
 from esolangs.registry._language import Language
 
 __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
@@ -312,8 +313,6 @@ def _cm_layout_versions(program: str) -> tuple[str, ...]:
 
 def balance_collatz_multiverse(truth_table: str, default: str) -> str:
     """Balance the finite statement-spelling regimes at their fit thresholds."""
-    from esolangs.generation.wrap import balance_score
-
     n = _validate_truth_table(truth_table)
     wide = collatz_multiverse(truth_table, len(default))
     narrow = _cm_candidates(truth_table, n, narrow=True, expanded=True)

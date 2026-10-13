@@ -118,9 +118,9 @@ def _advance(
     arrival_cell = _cell(cells, cp)
 
     if op == "INC":
-        cells = {**cells, cp: _cell(cells, cp) + 1}
+        cells[cp] = _cell(cells, cp) + 1
     elif op == "DEC":
-        cells = {**cells, cp: _cell(cells, cp) - 1}
+        cells[cp] = _cell(cells, cp) - 1
     elif op == "RIGHT":
         cp += 1
     elif op == "LEFT":
@@ -136,7 +136,7 @@ def _advance(
                 "input transition requires a value",
                 hint="read the character before applying the input transition",
             )
-        cells = {**cells, cp: value}
+        cells[cp] = value
     elif op == "OUT":
         character = _cell(cells, cp)
         try:
@@ -173,7 +173,7 @@ def _advance(
         else edges[int(arrival_cell != 0), int(current_cell != 0)]
     )
 
-    output = _cell(cells, cp) if op == "OUT" else None
+    output = current_cell if op == "OUT" else None
 
     if successor == "halt":
         return _frozen(state, cp, cells, halted=True), output

@@ -60,6 +60,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from functools import partial
 from types import MappingProxyType
 from typing import Any, NamedTuple
 
@@ -671,26 +672,6 @@ def _handle_variable_item(step: _Step, action: str) -> bool:
     return False
 
 
-def _handle_stash(step: _Step) -> bool:
-    """``STASH`` one variable list."""
-    return _handle_variable_item(step, "stash")
-
-
-def _handle_retrieve(step: _Step) -> bool:
-    """``RETRIEVE`` one variable list."""
-    return _handle_variable_item(step, "retrieve")
-
-
-def _handle_ignore(step: _Step) -> bool:
-    """``IGNORE`` one variable list."""
-    return _handle_variable_item(step, "ignore")
-
-
-def _handle_remember(step: _Step) -> bool:
-    """``REMEMBER`` one variable list."""
-    return _handle_variable_item(step, "remember")
-
-
 def _handle_abstain(step: _Step) -> bool:
     """``ABSTAIN``: raise the targets' abstain counters."""
     command = step.statement.command
@@ -757,10 +738,10 @@ _EXECUTE_HANDLERS: dict[str, Callable[[_Step], bool]] = {
     "next": _handle_next,
     "forget": _handle_forget,
     "resume": _handle_resume,
-    "stash": _handle_stash,
-    "retrieve": _handle_retrieve,
-    "ignore": _handle_ignore,
-    "remember": _handle_remember,
+    **{
+        action: partial(_handle_variable_item, action=action)
+        for action in ("stash", "retrieve", "ignore", "remember")
+    },
     "abstain": _handle_abstain,
     "reinstate": _handle_reinstate,
     "read": _handle_read,

@@ -153,12 +153,15 @@ def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str
     ids = subtree_ids(table)
     out = [_PROLOGUE]
 
-    def build(remaining: int, lo: int, hi: int) -> BranchCost:
+    def build(
+        remaining: int, lo: int, hi: int, defer: tuple[int, int] | None
+    ) -> BranchCost:
+        """Emit ``table[lo:hi]``, jumping to ``defer``'s shared body where it recurs."""
         depth = n - remaining
         if (
-            shared is not None
-            and depth == shared[0]
-            and ids[depth][lo >> remaining] == ids[depth][shared[1] >> remaining]
+            defer is not None
+            and depth == defer[0]
+            and ids[depth][lo >> remaining] == ids[depth][defer[1] >> remaining]
         ):
             out.append('"49/e"')
             return None, 1
@@ -169,20 +172,20 @@ def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str
         below = ids[depth + 1]
         if below[lo >> (remaining - 1)] == below[mid >> (remaining - 1)]:
             out.append(";d;")
-            return add_cost(build(remaining - 1, lo, mid), 1)
+            return add_cost(build(remaining - 1, lo, mid, defer), 1)
         out.append(";a;[a\\b/~a~")
-        one = build(remaining - 1, mid, hi)
+        one = build(remaining - 1, mid, hi, defer)
         out.append("][a\\c/~a~")
-        zero = build(remaining - 1, lo, mid)
+        zero = build(remaining - 1, lo, mid, defer)
         out.append("]")
         return add_cost(merge_cost(one, zero), 6)
 
-    cost = build(n, 0, len(table))
+    cost = build(n, 0, len(table), shared)
     if shared is not None:
         depth, row = shared
         out.append("[e\\b/~e~")
-        shared = None
-        body = build(n - depth, row, row + (1 << (n - depth)))
+        # The shared body itself is emitted inline: nothing defers inside it.
+        body = build(n - depth, row, row + (1 << (n - depth)), None)
         out.append("]")
         cost = dispatch_cost(cost, normal_cost(body) + 4, 1)
     return "".join(out), normal_cost(cost) + 2

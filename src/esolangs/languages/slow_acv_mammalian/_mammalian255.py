@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass, replace
 
+from esolangs.languages.slow_acv_mammalian._sums import _aim
+
 
 @dataclass
 class _State:
@@ -96,8 +98,7 @@ def decision_tree(table: str, inputs: int, *, io_modulus: int = 255) -> str:
         tokens += state.raise_to(one_pos + 15)
         tokens += state.seed((-state.head) % 255)
         start = state.rest
-        offset = (start - 16) % 64
-        first_seeds = start % 2 if offset <= 14 else 64 - offset
+        first_seeds = _aim(start)
         first = start + first_seeds
         tokens += state.seed(first_seeds)
         tokens += ["DIGEST"]

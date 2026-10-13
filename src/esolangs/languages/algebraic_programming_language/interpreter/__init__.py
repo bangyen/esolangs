@@ -140,10 +140,10 @@ class _Frame:
     locals: Mapping[str, object]
     stmt: int
     work: tuple[tuple[_Node, tuple[object, ...]], ...]
-    value: object
-    returned: bool
-    printing: bool
-    assign: str | None
+    value: object = 0
+    returned: bool = False
+    printing: bool = False
+    assign: str | None = None
 
     def __repr__(self) -> str:
         """Identify the frame by its function and cursor."""
@@ -431,10 +431,7 @@ def _start_line(
             locals=MappingProxyType({}),
             stmt=0,
             work=((node, ()),),
-            value=0,
-            returned=False,
             printing=True,
-            assign=None,
         )
         return (
             replace(
@@ -459,9 +456,6 @@ def _start_line(
             locals=MappingProxyType({}),
             stmt=0,
             work=((body[0], ()),),
-            value=0,
-            returned=False,
-            printing=False,
             assign=name,
         )
         return (
@@ -631,10 +625,6 @@ def _step_call(
         locals=_frozen(dict(zip(definition.params, done, strict=True))),
         stmt=0,
         work=((definition.body[0], ()),),
-        value=0,
-        returned=False,
-        printing=False,
-        assign=None,
     )
     return replace(state, frames=(*state.frames[:-1], frame, pushed)), None
 

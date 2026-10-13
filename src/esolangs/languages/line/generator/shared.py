@@ -23,6 +23,7 @@ from .render import (
     _Plan,
     chain,
     chain_onto,
+    correction,
 )
 from .tree_layout import tree_extents
 
@@ -83,8 +84,8 @@ def shared_tree(
             level += 1
             start *= 2
         if level == n:
-            correction = {1: ["+"], 0: [], -1: ["-"]}[residual - known]
-            return chain(*correction, "o"), len(correction) + 2
+            fix = correction(residual, known)
+            return chain(*fix, "o"), len(fix) + 2
         cell = order[level]
         lo, hi = children[residual]
         node = Node("?")

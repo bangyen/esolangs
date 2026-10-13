@@ -346,7 +346,7 @@ def anf_coefficients(truth_table: str) -> list[int]:
     n = _validate_shape(truth_table)
     if n == 0:
         return [int(truth_table)]
-    width = max(2, 1 << (n.bit_length() - 1))
+    width = _word_width(n)
     words = [
         int(truth_table[start : start + width][::-1], 2)
         for start in range(0, len(truth_table), width)

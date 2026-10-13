@@ -91,11 +91,15 @@ class _Parser:
             self._fail(f"expected {ch!r}")
         self.pos += 1
 
+    def _at_ident(self) -> bool:
+        """Whether an identifier starts at the cursor."""
+        return self.pos < self.length and (
+            self.text[self.pos].isalpha() or self.text[self.pos] == "_"
+        )
+
     def _ident(self) -> str:
         self._skip_ws()
-        if self.pos >= self.length or not (
-            self.text[self.pos].isalpha() or self.text[self.pos] == "_"
-        ):
+        if not self._at_ident():
             self._fail("expected an identifier")
         start = self.pos
         self.pos += 1
@@ -232,18 +236,9 @@ class _Parser:
             if self._peek() == ",":
                 self.pos += 1
                 self._skip_ws()
-                if self.pos < self.length and (
-                    self.text[self.pos].isalpha() or self.text[self.pos] == "_"
-                ):
-                    params.append(self._ident())
-                    continue
+            if not self._at_ident():
                 break
-            if self.pos < self.length and (
-                self.text[self.pos].isalpha() or self.text[self.pos] == "_"
-            ):
-                params.append(self._ident())
-                continue
-            break
+            params.append(self._ident())
         return name, params
 
     def _block(self) -> tuple[list[_Statement], dict[str, _Function]]:

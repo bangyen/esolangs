@@ -34,7 +34,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import balance_score
+from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -89,8 +89,6 @@ def _narrow(template: str, width: int) -> str:
             TEMPLATE_CHAR * len(PAIR[0]), f"+J 0 {TEMPLATE_CHAR}"
         )
     if max(map(len, narrowed.splitlines())) > width:
-        from esolangs.generation.wrap import wrap_space_delimited
-
         return wrap_space_delimited(narrowed, width)
     return narrowed
 
