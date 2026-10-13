@@ -4,6 +4,8 @@ The language spec is the wiki page, https://esolangs.org/wiki/Alight; where
 its prose and its examples disagree this interpreter follows the examples
 (infix operators evaluated left to right, in-place three-argument ``at``),
 as recorded in ``docs/limitations.md`` under "Interpreter conventions".
+``inp`` at EOF reads ``eof``; invalid runtime operations raise
+:class:`~esolangs.exceptions.HaltError`.
 
 :func:`_advance` is the pure transition: it takes the whole state and the
 one input character a step needs -- raising :class:`_NeedInputError` when

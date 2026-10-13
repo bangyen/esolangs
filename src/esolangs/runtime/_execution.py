@@ -46,10 +46,6 @@ def interpreter_module(name: str) -> ModuleType:
 # language-syntax fallback below instead of shipping a wrong hint.
 _VALUE_ERROR_HINTS = (
     (
-        "invalid literal for int()",
-        "use a decimal integer for the numeric operand or input",
-    ),
-    (
         "could not convert string to float",
         "use a decimal number for the numeric operand or input",
     ),
@@ -70,6 +66,11 @@ _VALUE_ERROR_HINTS = (
 
 def _value_error_hint(message: str, language: str | None) -> str:
     """Pick a hint for a ValueError that escaped a language implementation."""
+    if "invalid literal for int()" in message:
+        # Dimensional's ``x`` reads base 16; a decimal hint there is wrong.
+        base = message.partition("with base ")[2].partition(":")[0]
+        radix = {"10": "a decimal"}.get(base, f"a base-{base}" if base else "an")
+        return f"use {radix} integer for the numeric operand or input"
     for fragment, hint in _VALUE_ERROR_HINTS:
         if fragment in message:
             return hint

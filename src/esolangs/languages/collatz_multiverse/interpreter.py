@@ -191,9 +191,26 @@ class _Machine:
         if self.halted:
             return
         line = self.parsed[self.state[0] - 1]
-        value, self.state = _advance(self.state, line, _collect_reads(line, self.io))
+        value, self.state = _advance(self.state, line, self._collect_reads(line))
         if line[-1] == "DO":
             self.io.print_char(chr(value & 0xFF))
+
+    def _collect_reads(self, line: _Line) -> tuple[int, ...]:
+        """Pre-read every ``input`` the line names, in operand consumption order.
+
+        ``_advance`` is pure, so the shell reads here instead.  The slots map
+        to operands left to right, and within one operand the index's
+        ``input`` (if any) comes before the operand's own -- the order
+        ``_operand`` pops them.
+        """
+        var1, idx1, var2, idx2, var3, idx3, _do_print = line
+        reads = []
+        for name, index in ((var1, idx1), (var2, idx2), (var3, idx3)):
+            if index == "input":
+                reads.append(self.io.input_num())
+            if name == "input":
+                reads.append(self.io.input_num())
+        return tuple(reads)
 
 
 #: One operand as parsed: a name, and the index name when it is an array
@@ -207,24 +224,6 @@ type _Line = tuple[str, str | None, str, str | None, str, str | None, str]
 
 #: An operand's value and its resolved array index, as read by ``_operand``.
 type _Resolved = tuple[int, int]
-
-
-def _collect_reads(line: _Line, io: IO) -> tuple[int, ...]:
-    """Pre-read every ``input`` the line names, in operand consumption order.
-
-    ``_advance`` is pure, so the shell reads here instead.  The slots map to
-    operands left to right, and within one operand the index's ``input``
-    (if any) comes before the operand's own -- the order ``_operand``
-    pops them.
-    """
-    var1, idx1, var2, idx2, var3, idx3, _do_print = line
-    reads = []
-    for name, index in ((var1, idx1), (var2, idx2), (var3, idx3)):
-        if index == "input":
-            reads.append(io.input_num())
-        if name == "input":
-            reads.append(io.input_num())
-    return tuple(reads)
 
 
 def _plain(state: _State, name: str) -> int:
