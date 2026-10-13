@@ -10,7 +10,7 @@ import esolangs
 from tests.cli.test_cli import _program, call_main
 from tests.support.cli_support import call_both
 from tests.support.generator_support import evaluate_generated
-from tests.support.pick import languages
+from tests.support.pick import first, languages, one_where
 from tests.support.reference import REFERENCE
 
 
@@ -130,6 +130,38 @@ class TestPrivateEvaluationNeedsNoSeed:
         """Every language that draws, four runs each."""
         answers = {evaluate_generated(language, "0110", timeout=30) for _ in range(4)}
         assert answers == {"0110"}
+
+
+class TestDescribeReadingLayout:
+    """The reading layout's sentences branch on capability; drive each kind."""
+
+    @pytest.mark.parametrize(
+        "facts",
+        [
+            {"answer_mode": "termination"},
+            {"answer_mode": "dump"},
+            {"boolean_generator": False},
+        ],
+    )
+    def test_the_answer_and_generator_sentences(
+        self, facts: dict[str, object], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        name = first(**facts)
+        out = call_main(["describe", name], capsys)
+        assert esolangs.describe(name)["name"] in out
+
+    def test_the_cap_restriction_and_settings_sentences(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        names = [
+            *one_where(lambda f: f["generator_max_inputs"] is not None),
+            *one_where(lambda f: f["generator_restrictions"]),
+            *one_where(lambda f: f["dialect_settings"]),
+        ]
+        assert names, "no language exercises a capability sentence"
+        for name in names:
+            out = call_main(["describe", name], capsys)
+            assert esolangs.describe(name)["name"] in out
 
 
 class TestTheWidthFlagDoesNotEatTheTable:

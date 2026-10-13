@@ -991,3 +991,7 @@ def test_equal_cells_reach_the_global_minimum() -> None:
             key=balance_score,
         )
         assert balance_score(balanced) == balance_score(optimum)
+
+
+def test_balancing_an_empty_program_returns_it() -> None:
+    assert _balance_mammalian("") == ""

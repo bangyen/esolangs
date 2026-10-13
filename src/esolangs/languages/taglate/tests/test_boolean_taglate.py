@@ -14,6 +14,14 @@ def run_taglate(program: str, inputs: list[str]) -> str:
     return esolangs.run("Taglate", program, stdin="".join(inputs))
 
 
+def test_execution_bound_splits_on_input_parity() -> None:
+    from esolangs.languages.taglate.proof_formulas import execution
+
+    # Even n takes the closed form directly; odd n routes through m = n + 1.
+    assert execution(4, "") == 353
+    assert execution(5, "") == 1070
+
+
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_the_ghost_and_real_inputs_before_printing(

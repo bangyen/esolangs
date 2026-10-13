@@ -10,7 +10,7 @@ from esolangs.generation.wrap import (
     balance_program,
     balance_score,
 )
-from esolangs.languages.bio.wrapping import _bio
+from esolangs.languages.bio.wrapping import _balance_bio, _bio
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._evaluate import _evaluate
 
@@ -134,6 +134,17 @@ def test_bio_indent_stops_growing_before_it_crowds_the_line() -> None:
     lines = _bio(program, 20).split("\n")
     assert max(len(line) for line in lines) <= 20
     assert _bio_tokens("\n".join(lines)) == _bio_tokens(program)
+
+
+def test_balance_covers_both_span_regimes() -> None:
+    """Sibling loops pick the cap regime; a wide mixed-length ramp the other."""
+    for program in (
+        "0ix{" + "0ix{0oy; 1oy;};" * 6 + "};",
+        "0ix{" * 2 + "0ox; 1ox;0oy; " * 6 + "};" * 2,
+    ):
+        balanced = _balance_bio(program)
+        assert _bio_tokens(balanced) == _bio_tokens(program)
+        assert balance_score(balanced) <= balance_score(_bio(program, DEFAULT_WIDTH))
 
 
 def test_bio_indent_leaves_no_trailing_whitespace() -> None:

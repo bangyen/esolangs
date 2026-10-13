@@ -44,6 +44,21 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     assert shlex.split(dialect.splitlines()[1])[3] == "mode=with spaces"
     del languages["Template Choice"]
     assert help_module._capability_examples()[0] == ""  # noqa: SLF001
+    # A cap below two inputs is not a runnable example, and a dialect with no
+    # values has nothing to name: both are skipped rather than quoted.
+    languages.clear()
+    languages["Capped"] = Language(
+        "Capped", "capped", boolean=build, generator_max_inputs=1
+    )
+    assert help_module._capability_examples() == ("", "")  # noqa: SLF001
+    languages.clear()
+    languages["Empty Dialect"] = Language(
+        "Empty Dialect",
+        "empty_dialect",
+        boolean=build,
+        dialect_values={"mode": ()},
+    )
+    assert help_module._capability_examples() == ("", "")  # noqa: SLF001
     languages.clear()
     assert help_module._capability_examples() == ("", "")  # noqa: SLF001
 
