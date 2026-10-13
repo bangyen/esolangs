@@ -24,7 +24,7 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
     name = resolve(language)
     lang = LANGUAGES[name]
     contract = lang.contract
-    if lang.boolean is None or contract.parameterized:
+    if lang.boolean is None or lang.parameterized:
         raise ArgumentError(
             f"{name} embeds its inputs in the program and reads no stdin; "
             f"there is nothing to check"

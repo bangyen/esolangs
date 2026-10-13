@@ -39,6 +39,48 @@ def interpreter_module(name: str) -> ModuleType:
     return importlib.import_module(INTERPRETERS[name])
 
 
+# Substrings of CPython's ValueError wording, mapped to the hint each
+# failure deserves.  The wording is CPython's, not ours, so these match
+# loosely on fragments rather than parsing structured data out of the
+# message: if CPython rewords one, its hint falls through to the generic
+# language-syntax fallback below instead of shipping a wrong hint.
+_VALUE_ERROR_HINTS = (
+    (
+        "invalid literal for int()",
+        "use an integer for the numeric operand or input",
+    ),
+    (
+        "could not convert string to float",
+        "use a decimal number for the numeric operand or input",
+    ),
+    (
+        "chr() arg not in range",
+        "keep character output values between 0 and 1114111",
+    ),
+    (
+        "bytes must be in range",
+        "keep byte values between 0 and 255",
+    ),
+    (
+        "Exceeds the limit (",
+        "shorten the decimal literal or set PYTHONINTMAXSTRDIGITS to a larger limit",
+    ),
+)
+
+
+def _value_error_hint(message: str, language: str | None) -> str:
+    """Pick a hint for a ValueError that escaped a language implementation."""
+    for fragment, hint in _VALUE_ERROR_HINTS:
+        if fragment in message:
+            return hint
+    if language is not None:
+        return (
+            "check the language syntax with esolangs describe --spec "
+            f"{shlex.quote(language)}"
+        )
+    return "check the operands and input against the language's syntax"
+
+
 def prepare_call(
     name: str,
     program: Program,
@@ -118,32 +160,7 @@ def interpreter_errors(
         if isinstance(original, ValueError) and not any(
             note.startswith("hint:") for note in getattr(error, "__notes__", ())
         ):
-            message = str(original)
-            if message.startswith("invalid literal for int()"):
-                base = message.partition("with base ")[2].partition(":")[0]
-                hint = (
-                    "use a decimal integer for the numeric operand or input"
-                    if base == "10"
-                    else f"use a base-{base} integer for the numeric operand or input"
-                )
-            elif message.startswith("could not convert string to float"):
-                hint = "use a decimal number for the numeric operand or input"
-            elif message.startswith("chr() arg not in range"):
-                hint = "keep character output values between 0 and 1114111"
-            elif message.startswith("bytes must be in range"):
-                hint = "keep byte values between 0 and 255"
-            elif message.startswith("Exceeds the limit ("):
-                hint = (
-                    "shorten the decimal literal or set PYTHONINTMAXSTRDIGITS "
-                    "to a larger limit"
-                )
-            elif language is not None:
-                hint = (
-                    "check the language syntax with esolangs describe --spec "
-                    f"{shlex.quote(language)}"
-                )
-            else:
-                hint = "check the operands and input against the language's syntax"
+            hint = _value_error_hint(str(original), language)
             error.add_note(f"hint: {hint}")
         if io_obj is not None and (written := io_obj.getvalue()):
             error.partial_output = written

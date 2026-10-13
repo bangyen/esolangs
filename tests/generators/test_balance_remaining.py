@@ -126,7 +126,7 @@ def _balanced_languages() -> list[str]:
         and (
             lang.balance is not None
             or _balances_whole_tokens(lang.wrap)
-            or (lang.wrap is wrap_chars and lang.contract.parameterized)
+            or (lang.wrap is wrap_chars and lang.parameterized)
         )
         and not lang.slow_width_sweep
     )
@@ -144,7 +144,7 @@ def test_balance_reaches_the_supported_minimum(language, table) -> None:
     # five-second medium band; their source only needs reflowing.
     reflow = (
         lang.wrap is wrap_chars
-        and not lang.contract.parameterized
+        and not lang.parameterized
         and "width" not in signature(lang.boolean).parameters
     )
     layouts = [default] + [

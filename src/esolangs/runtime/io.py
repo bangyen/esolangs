@@ -217,24 +217,43 @@ class ScriptedIO(IO):
 
     @property
     def supplied(self) -> int:
-        """How many lines were handed to it.
+        r"""How many ``\n``-delimited lines were handed to it.
 
-        Public so a caller can notice the program read fewer than it was
-        given.  Only the opposite direction was ever reported, by the
-        exception a read past the end raises -- which already carried both
-        numbers.
+        Only ``\n`` delimits a line: a bare ``\r`` (or ``\v``, ``\f``,
+        ...) is line content, not a terminator.  Public so a caller can
+        notice the program read fewer than it was given.  Only the
+        opposite direction was ever reported, by the exception a read
+        past the end raises -- which already carried both numbers.
         """
         return self._supplied
 
     def _exhausted(self, unit: str) -> None:
+        """Raise for a read past the end, in the unit the reads have used.
+
+        Pure line reads report lines: ``_line_reads`` against ``supplied``.
+        Once any character read has happened, the cursor is a character
+        offset that no longer aligns to line boundaries, so the error
+        reports characters instead: ``_offset`` against the raw source
+        length.  The flip is one-way; mixed reads never realign to lines.
+        """
         self._past_end += 1
         if unit == "line" and self._character_reads:
             unit = "character"
-        supplied = self.supplied if unit == "line" else len(self._source)
-        reads = self._line_reads if unit == "line" else self._offset
+        if unit == "line":
+            reads, supplied = self._line_reads, self.supplied
+        else:
+            reads, supplied = self._offset, len(self._source)
         raise InputExhaustedError(reads, supplied, unit)
 
     def _read(self, _prompt: str) -> str:
+        r"""Read one ``\n``-terminated line.
+
+        A trailing ``\r`` is stripped, so ``\r\n`` reads as one line
+        terminator.  Character reads (``_read_char``) deliberately do not
+        do this: they return the raw text, ``\\r`` included.  Line reads
+        see lines; character reads see characters -- the two views share
+        one offset cursor but normalize differently, by design.
+        """
         if self._offset == len(self._source):
             self._exhausted("line")
         end = self._source.find("\n", self._offset)

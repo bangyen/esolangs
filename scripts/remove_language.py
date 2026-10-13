@@ -248,12 +248,19 @@ def _drop_entries(
     return len(spans)
 
 
-def _drop_inline_items(path: Path, keys: set[str]) -> int:
-    """Cut each item keyed by ``keys`` that shares its line with others.
+def _drop_matching_items(
+    path: Path,
+    extract: Callable[
+        [ast.AST, Callable[[ast.AST], tuple[int, int]]],
+        tuple[list[tuple[int, int, str | None]], bytes] | None,
+    ],
+    wanted: set[str],
+) -> int:
+    """Cut each container item whose value is in ``wanted``, one per pass.
 
-    ``frozenset({"A Painter Ant", "Suffolk"})`` holds two languages on one
-    line, which :func:`_drop_entries` leaves.  Cut by column instead, with
-    the separating comma; a container left empty is spelled empty.
+    ``extract(node, span)`` returns the ``(lo, hi, value)`` items and the
+    empty-container spelling for a node it recognizes, else None.  One cut
+    per pass because the byte offsets shift after each write.
     """
     cuts = 0
     while True:
@@ -273,25 +280,12 @@ def _drop_inline_items(path: Path, keys: set[str]) -> int:
 
         cut: tuple[int, int, bytes] | None = None
         for node in ast.walk(ast.parse(source)):
-            if isinstance(node, ast.Dict) and None not in node.keys:
-                items = [
-                    (span(k)[0], span(v)[1], isinstance(k, ast.Constant) and k.value)
-                    for k, v in zip(node.keys, node.values, strict=True)
-                    if k is not None
-                ]
-                empty = b"{}"
-            elif isinstance(node, ast.List | ast.Set | ast.Tuple):
-                items = [
-                    (*span(e), isinstance(e, ast.Constant) and e.value)
-                    for e in node.elts
-                ]
-                empty = {ast.List: b"[]", ast.Set: b"set()", ast.Tuple: b"()"}[
-                    type(node)
-                ]
-            else:
+            extracted = extract(node, span)
+            if extracted is None:
                 continue
+            items, empty = extracted
             for i, (lo, hi, value) in enumerate(items):
-                if not isinstance(value, str) or value not in keys:
+                if value not in wanted:
                     continue
                 if len(items) == 1:
                     cut = (*span(node), empty)
@@ -307,6 +301,37 @@ def _drop_inline_items(path: Path, keys: set[str]) -> int:
         lo, hi, text = cut
         path.write_bytes(source[:lo] + text + source[hi:])
         cuts += 1
+
+
+def _inline_items(
+    node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
+) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
+    """Extract string-constant items from a dict, list, set, or tuple."""
+    if isinstance(node, ast.Dict) and None not in node.keys:
+        items = [
+            (span(k)[0], span(v)[1], k.value if isinstance(k, ast.Constant) else None)
+            for k, v in zip(node.keys, node.values, strict=True)
+            if k is not None
+        ]
+        return items, b"{}"
+    if isinstance(node, ast.List | ast.Set | ast.Tuple):
+        items = [
+            (*span(e), e.value if isinstance(e, ast.Constant) else None)
+            for e in node.elts
+        ]
+        empty = {ast.List: b"[]", ast.Set: b"set()", ast.Tuple: b"()"}[type(node)]
+        return items, empty
+    return None
+
+
+def _drop_inline_items(path: Path, keys: set[str]) -> int:
+    """Cut each item keyed by ``keys`` that shares its line with others.
+
+    ``frozenset({"A Painter Ant", "Suffolk"})`` holds two languages on one
+    line, which :func:`_drop_entries` leaves.  Cut by column instead, with
+    the separating comma; a container left empty is spelled empty.
+    """
+    return _drop_matching_items(path, _inline_items, keys)
 
 
 def _drop_json(path: Path, prune: Callable[[object], object]) -> None:
@@ -683,6 +708,35 @@ def _names_used(tree: ast.AST) -> set[str]:
     return used
 
 
+def _name_items(
+    node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
+) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
+    """Extract ``ast.Name`` items from a dict, list, or set."""
+    if isinstance(node, ast.Dict):
+        if None in node.keys:
+            return None
+        items = [
+            (
+                span(key)[0],
+                span(value)[1],
+                key.id if isinstance(key, ast.Name) else None,
+            )
+            for key, value in zip(node.keys, node.values, strict=True)
+            if key is not None
+        ]
+        return items, b"{}"
+    if isinstance(node, ast.List | ast.Set):
+        items = [
+            (
+                *span(element),
+                element.id if isinstance(element, ast.Name) else None,
+            )
+            for element in node.elts
+        ]
+        return items, {ast.List: b"[]", ast.Set: b"set()"}[type(node)]
+    return None
+
+
 def _drop_name_items(path: Path, names: set[str]) -> int:
     """Cut each ``ast.Name`` element named in ``names`` from a container.
 
@@ -690,65 +744,7 @@ def _drop_name_items(path: Path, names: set[str]) -> int:
     ``_token_patterns`` dict name wrappers directly, so the membership must go
     before the definition reads as dead.
     """
-    cuts = 0
-    while True:
-        source = path.read_bytes()
-        starts = [0]
-        for line in source.splitlines(keepends=True):
-            starts.append(starts[-1] + len(line))
-
-        def at(line: int, col: int, starts: list[int] = starts) -> int:
-            return starts[line - 1] + col
-
-        def span(node: ast.AST) -> tuple[int, int]:
-            return (
-                at(node.lineno, node.col_offset),  # type: ignore[attr-defined]
-                at(node.end_lineno, node.end_col_offset),  # type: ignore[attr-defined]
-            )
-
-        cut: tuple[int, int, bytes] | None = None
-        for node in ast.walk(ast.parse(source)):
-            if isinstance(node, ast.Dict):
-                if None in node.keys:
-                    continue
-                items = [
-                    (
-                        span(key)[0],
-                        span(value)[1],
-                        key.id if isinstance(key, ast.Name) else None,
-                    )
-                    for key, value in zip(node.keys, node.values, strict=True)
-                    if key is not None
-                ]
-                empty = b"{}"
-            elif isinstance(node, ast.List | ast.Set):
-                items = [
-                    (
-                        *span(element),
-                        element.id if isinstance(element, ast.Name) else None,
-                    )
-                    for element in node.elts
-                ]
-                empty = {ast.List: b"[]", ast.Set: b"set()"}[type(node)]
-            else:
-                continue
-            for index, (lo, hi, value) in enumerate(items):
-                if value not in names:
-                    continue
-                if len(items) == 1:
-                    cut = (*span(node), empty)
-                elif index + 1 < len(items):
-                    cut = (lo, items[index + 1][0], b"")
-                else:
-                    cut = (items[index - 1][1], hi, b"")
-                break
-            if cut:
-                break
-        if cut is None:
-            return cuts
-        lo, hi, text = cut
-        path.write_bytes(source[:lo] + text + source[hi:])
-        cuts += 1
+    return _drop_matching_items(path, _name_items, names)
 
 
 def _drop_dead_code(path: Path, external: set[str]) -> int:

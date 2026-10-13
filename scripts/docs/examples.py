@@ -191,7 +191,7 @@ def write_set(name: str) -> None:
         write_boolean_manifest()
 
 
-def examples_main() -> int:
+def examples_main(argv: list[str] | None = None) -> int:
     """Write every requested example set from its generators."""
     parser = argparse.ArgumentParser(description="Write the committed examples")
     parser.add_argument(
@@ -202,15 +202,10 @@ def examples_main() -> int:
         # as if it were a single value, so an empty ``sets`` means "all".
         help="example sets to write (default: all)",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     for name in args.sets or SETS:
         write_set(name)
     return 0
-
-
-INIT = "src/esolangs/languages/generators.py"
-START = "# BEGIN GENERATED EXPORTS: python scripts/docs/generate.py docs"
-END = "# END GENERATED EXPORTS"
 
 
 if __name__ == "__main__":

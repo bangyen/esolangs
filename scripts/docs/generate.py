@@ -31,10 +31,9 @@ def main() -> int:
             parser.error("docs takes no arguments")
         return docs_main()
     if args.target == "examples":
-        sys.argv = [sys.argv[0], *args.args]
         from docs.examples import examples_main
 
-        return examples_main()
+        return examples_main(args.args)
     raise AssertionError(args.target)
 
 

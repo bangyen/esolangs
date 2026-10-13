@@ -24,7 +24,7 @@ def _capability_examples() -> tuple[str, str]:
         if lang.generator_max_inputs is not None and lang.generator_max_inputs < 2:
             continue
         quoted = shlex.quote(name)
-        if not templates and lang.contract.parameterized:
+        if not templates and lang.parameterized:
             templates = f"  esolangs generate --bits 10 {quoted} 0110"
         if not dialects and lang.dialect_values:
             for key, values in sorted(lang.dialect_values.items()):

@@ -110,7 +110,10 @@ def template_body(language_id: str, text: str) -> str:
 
     A template is all program; no remaining language carries a header.
     """
-    body = _examples_by_id()[language_id].body
+    example = _examples_by_id().get(language_id)
+    if example is None:
+        raise TemplateError(f"unknown language: {language_id}")
+    body = example.body
     return text if body is None else body(text)
 
 
@@ -121,8 +124,11 @@ def template_setters(language_id: str, template: str, n: int) -> Setters:
     or the rendered run form -- the setters read what they need from it,
     which for the two-route generators is the route's prefix.
     """
-    setters = _examples_by_id()[language_id].setters
-    if setters is None:  # pragma: no cover -- _examples_by_id keeps only setters
+    example = _examples_by_id().get(language_id)
+    if example is None:
+        raise TemplateError(f"unknown language: {language_id}")
+    setters = example.setters
+    if setters is None:
         raise TemplateError(
             f"{language_id} reads its inputs rather than embedding them"
         )
@@ -194,9 +200,7 @@ def recover_setters(language_id: str, template: str) -> Setters:
 
 def parameterized_ids() -> frozenset[str]:
     """Return the canonical ids whose boolean generator emits a template."""
-    return frozenset(
-        lang.id for lang in LANGUAGES.values() if lang.contract.parameterized
-    )
+    return frozenset(lang.id for lang in LANGUAGES.values() if lang.parameterized)
 
 
 # Canonical id -> display name, the index :func:`resolve` matches against.

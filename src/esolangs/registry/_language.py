@@ -8,7 +8,7 @@ module imports nothing from the package, so any generator can import it.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
@@ -145,12 +145,14 @@ class Language:
         """Fill the id from the name when none is given."""
         if not self.id:
             object.__setattr__(self, "id", canonical_id(self.name))
-        # Embedded inputs are what a template example says: one fact, once.
-        template = self.example.pair is not None or self.example.setters is not None
-        if self.contract.parameterized and not template:
-            raise ValueError(f"{self.name}: parameterized follows example=")
-        object.__setattr__(
-            self, "contract", replace(self.contract, parameterized=template)
-        )
         if self.wrap is not None and self.no_wrap:
             raise ValueError(f"{self.name}: wrap and no_wrap exclude each other")
+
+    @property
+    def parameterized(self) -> bool:
+        """Whether the example embeds its inputs (a template to fill).
+
+        Derived from ``example=``: a ``pair`` or ``setters`` means the
+        program is a template whose bits are embedded, not read.
+        """
+        return self.example.pair is not None or self.example.setters is not None

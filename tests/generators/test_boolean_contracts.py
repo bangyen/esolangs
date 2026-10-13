@@ -15,7 +15,7 @@ def test_examples_derive_the_registered_io_contract() -> None:
     for stem, example in BOOLEAN_EXAMPLES.items():
         lang = LANGUAGES[resolve(stem.replace("-", " "))]
         contract = lang.contract
-        assert contract.parameterized == (example.fill is not None), stem
+        assert lang.parameterized == (example.fill is not None), stem
         for field in (
             "alphabet",
             "input_shape",

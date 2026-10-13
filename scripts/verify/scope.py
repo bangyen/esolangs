@@ -460,9 +460,6 @@ def _scope_plan(*, full: bool) -> tuple[set[str] | None, str]:
         return None, "--full requested"
     if os.environ.get("VERIFY_FULL", "0") not in ("", "0"):
         return None, "VERIFY_FULL set"
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from verify.scope import widens_to_everything
-
     changed = list(_scope_changed_files())
     reason = widens_to_everything(changed)
     if reason is not None:

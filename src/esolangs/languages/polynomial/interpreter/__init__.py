@@ -41,9 +41,6 @@ from esolangs.languages.polynomial.interpreter.roots import (
     _Root,
     _sparse_roots,
 )
-from esolangs.languages.polynomial.interpreter.roots import (
-    prime as prime,
-)
 from esolangs.runtime._digits import digit_limit_for
 from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO

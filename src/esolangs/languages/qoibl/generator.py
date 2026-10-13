@@ -5,7 +5,6 @@ A packed literal has no subtrees to fold or share.
 
 from itertools import combinations
 from math import isqrt
-from typing import Any
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -108,11 +107,6 @@ def _qoibl(program: str, width: int) -> str:
     line folds on its own; joining first would fold across statements.
     """
     return "\n".join(wrap_space_delimited(line, width) for line in program.split("\n"))
-
-
-def _balance(table: str, default: Any, **options: Any) -> Any:
-    """Compare exact statement fits and binary-literal chunk regimes."""
-    return balance_qoibl(table, default, **options)
 
 
 _Affine = tuple[int, int]
@@ -243,5 +237,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    balance=_balance,
+    balance=balance_qoibl,
 )

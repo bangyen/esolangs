@@ -32,8 +32,9 @@ def encode_inputs(
     language that embeds its inputs is refused; use :func:`instantiate`.
     """
     name = resolve(language)
-    contract = LANGUAGES[name].contract
-    if contract.parameterized:
+    lang = LANGUAGES[name]
+    contract = lang.contract
+    if lang.parameterized:
         raise ArgumentError(
             f"{name} embeds its inputs in the program and reads no stdin, so "
             f"there is nothing to encode; pass the bits to instantiate() "

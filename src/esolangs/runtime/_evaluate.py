@@ -172,6 +172,7 @@ def _iter_evaluate(
         check_timeout(timeout)
     name = resolve(language)
     contract = LANGUAGES[name].contract
+    parameterized = LANGUAGES[name].parameterized
     check_scale_for(name, scale)
     rows = _evaluation_rows(inputs, max_rows)
     terminating = contract.answer_mode == "termination"
@@ -219,7 +220,7 @@ def _iter_evaluate(
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
 
         def prepare_row(bits: list[int] = bits) -> tuple[Program, str]:
-            if contract.parameterized:
+            if parameterized:
                 return instantiator(name, cast("str", program), bits), ""
             return program, encode_inputs(name, bits)
 

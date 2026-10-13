@@ -319,13 +319,13 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
                 raise AssertionError(f"{language} ran without its math extra")
 
 
-def smoke_main() -> None:
+def smoke_main(argv: list[str] | None = None) -> None:
     """Run the artifact smoke check with or without its optional extra."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--math", action="store_true")
     parser.add_argument("--image", action="store_true")
     parser.add_argument("--language", help=argparse.SUPPRESS)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.language is not None:
         _generator(args.language, math_extra=args.math, image_extra=args.image)
         return
@@ -342,8 +342,7 @@ def main(argv: list[str] | None = None) -> int:
     if command == "normalize":
         return normalize_main(rest)
     if command == "smoke":
-        sys.argv = [sys.argv[0], *rest]
-        smoke_main()
+        smoke_main(rest)
         return 0
     raise SystemExit(f"unknown subcommand {command!r}")
 

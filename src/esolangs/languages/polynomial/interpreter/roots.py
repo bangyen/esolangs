@@ -42,13 +42,6 @@ class _Root(NamedTuple):
     imag: int
 
 
-def prime(number: int) -> bool:
-    """Check if a number is prime."""
-    if number < 2:
-        return False
-    return all(number % val for val in range(2, math.isqrt(number) + 1))
-
-
 def _integer_root(number: int, degree: int) -> int:
     """Return ``floor(number ** (1 / degree))`` for ``number >= 0``, exactly.
 
@@ -851,7 +844,9 @@ def _root_prime(coefficients: list[int]) -> int:
     ``1 (mod 4)`` gives ``sqrt(-1)`` in the ``p``-adic integers.
     """
     candidate = 5
-    while not (prime(candidate) and _squarefree_mod(coefficients, candidate)):
+    while not (
+        _is_proven_prime(candidate) and _squarefree_mod(coefficients, candidate)
+    ):
         candidate += 4
     return candidate
 

@@ -1,6 +1,6 @@
 """Shared Dig lookup bodies selected by an arithmetic prefix index."""
 
-from esolangs.languages.dig.generator._layout import _dig_alt_clear
+from esolangs.languages.dig.generator._layout import _dig_alt_clear, _Point
 from esolangs.languages.dig.generator._leaf import (
     _dig_adder,
     _dig_flat_leaf,
@@ -140,5 +140,12 @@ def _dig_indexed_shared(table: str, n: int) -> str | None:
         ((top - 2, merge), 2, 4),
         ((top + 2, merge), 3, merge - 8),
     ]
-    _dig_alt_clear(cells, checks, corridors)
+    _dig_alt_clear(
+    {_Point(*p): c for p, c in cells.items()},
+    [
+        (_Point(*at), _Point(*want), frozenset(_Point(*p) for p in pending))
+        for at, want, pending in checks
+    ],
+    [(_Point(*p), h, d) for p, h, d in corridors],
+    )
     return _render(cells, dense=True)
