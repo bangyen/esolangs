@@ -93,31 +93,76 @@ def _word_width(n: int) -> int:
     return max(2, 1 << (n.bit_length() - 1))
 
 
-def _arm_expression(
-    table: str,
-    coeffs: list[int],
-    n: int,
-    at: tuple[int, ...],
-) -> str:
-    """Return the same local arm rule using packed coefficients and scalar leaves.
-
-    Above word width, each level touches O(T/n) words. Below it, a node
-    uses constant-size word arithmetic and a derived population-count table.
-    """
-    w = _word_width(n)
-    halfword = w // 2
-    countmask = (1 << halfword) - 1
+def _popcount_table(w: int) -> list[int]:
+    """Return popcounts of all ``w // 2``-bit values."""
     counts = [0]
-    for _ in range(halfword):
+    for _ in range(w // 2):
         counts += [count + 1 for count in counts]
+    return counts
 
-    def count(value: int) -> int:
-        return counts[value & countmask] + counts[value >> halfword]
 
-    pieces: list[str] = []
+class _ArmBuilder:
+    """Emit the arm expression into ``pieces`` via the shared Davio recursion."""
 
-    def davio[T](table: T, anf: T, bit: int, grain: _Grain[T]) -> None:
+    def __init__(self, w: int, at: tuple[int, ...]) -> None:
+        self.halfword = w // 2
+        self.countmask = (1 << self.halfword) - 1
+        self.counts = _popcount_table(w)
+        self.at = at
+        self.pieces: list[str] = []
+        self.scalar_grain = _Grain[int](
+            initial_half=lambda _table, bit: 1 << bit,
+            split=lambda value, half: (value & ((1 << half) - 1), value >> half),
+            is_zero=lambda value: not value,
+            weight=self.count,
+            is_one=lambda value, _w: value == 1,
+            needs_weight=False,
+            xor=lambda a, b: a ^ b,
+            child=self.scalar_leaf,
+            downgrade=lambda _table, _anf, _bit: False,
+        )
+        self.word_grain = _Grain[list[int]](
+            initial_half=lambda table, _bit: len(table) // 2,
+            split=lambda value, half: (value[:half], value[half:]),
+            is_zero=lambda value: not any(value),
+            weight=self.weight,
+            is_one=lambda value, w: w == 1 and (value[0] & 1) == 1,
+            needs_weight=True,
+            xor=lambda a, b: [x ^ y for x, y in zip(a, b, strict=True)],
+            child=self.leaf,
+            downgrade=self.word_downgrade,
+        )
+
+    def count(self, value: int) -> int:
+        return self.counts[value & self.countmask] + self.counts[value >> self.halfword]
+
+    def weight(self, words: list[int]) -> int:
+        return sum(self.count(value) for value in words)
+
+    def scalar_leaf(self, table: int, anf: int, bit: int) -> None:
+        if anf == 1:
+            self.pieces.append("1")
+        else:
+            self.davio(table, anf, bit, self.scalar_grain)
+
+    def leaf(self, table: list[int], anf: list[int], bit: int) -> None:
+        if len(anf) == 1:
+            self.scalar_leaf(table[0], anf[0], bit)
+        elif anf[0] == 1 and self.weight(anf) == 1:
+            self.pieces.append("1")
+        else:
+            self.davio(table, anf, bit, self.word_grain)
+
+    def word_downgrade(self, table: list[int], anf: list[int], bit: int) -> bool:
+        # A single remaining word drops to the scalar recursion.
+        if len(anf) == 1:
+            self.scalar_leaf(table[0], anf[0], bit)
+            return True
+        return False
+
+    def davio[T](self, table: T, anf: T, bit: int, grain: _Grain[T]) -> None:
         """Shared Davio-choice recursion; ``grain`` fixes int vs word granularity."""
+        pieces = self.pieces
         half = grain.initial_half(table, bit)
         low, high = grain.split(anf, half)
         while grain.is_zero(high):
@@ -139,7 +184,7 @@ def _arm_expression(
         kept, kept_anf, op, operand, operand_anf = _arm(
             choice, f0, f1, low, one, high, d
         )
-        literal = f"^ 1 @ {at[bit]:b}" if choice % 2 else f"@ {at[bit]:b}"
+        literal = f"^ 1 @ {self.at[bit]:b}" if choice % 2 else f"@ {self.at[bit]:b}"
         if not grain.is_zero(kept_anf):
             pieces.append(f"{op} ")
             grain.child(kept, kept_anf, bit - 1)
@@ -152,53 +197,19 @@ def _arm_expression(
             pieces.append(f"& {literal} ")
             grain.child(operand, operand_anf, bit - 1)
 
-    def scalar_leaf(table: int, anf: int, bit: int) -> None:
-        if anf == 1:
-            pieces.append("1")
-        else:
-            davio(table, anf, bit, scalar_grain)
 
-    def weight(words: list[int]) -> int:
-        return sum(count(value) for value in words)
+def _arm_expression(
+    table: str,
+    coeffs: list[int],
+    n: int,
+    at: tuple[int, ...],
+) -> str:
+    """Return the same local arm rule using packed coefficients and scalar leaves.
 
-    def leaf(table: list[int], anf: list[int], bit: int) -> None:
-        if len(anf) == 1:
-            scalar_leaf(table[0], anf[0], bit)
-        elif anf[0] == 1 and weight(anf) == 1:
-            pieces.append("1")
-        else:
-            davio(table, anf, bit, word_grain)
-
-    def word_downgrade(table: list[int], anf: list[int], bit: int) -> bool:
-        # A single remaining word drops to the scalar recursion.
-        if len(anf) == 1:
-            scalar_leaf(table[0], anf[0], bit)
-            return True
-        return False
-
-    scalar_grain = _Grain[int](
-        initial_half=lambda _table, bit: 1 << bit,
-        split=lambda value, half: (value & ((1 << half) - 1), value >> half),
-        is_zero=lambda value: not value,
-        weight=count,
-        is_one=lambda value, _w: value == 1,
-        needs_weight=False,
-        xor=lambda a, b: a ^ b,
-        child=scalar_leaf,
-        downgrade=lambda _table, _anf, _bit: False,
-    )
-    word_grain = _Grain[list[int]](
-        initial_half=lambda table, _bit: len(table) // 2,
-        split=lambda value, half: (value[:half], value[half:]),
-        is_zero=lambda value: not any(value),
-        weight=weight,
-        is_one=lambda value, w: w == 1 and (value[0] & 1) == 1,
-        needs_weight=True,
-        xor=lambda a, b: [x ^ y for x, y in zip(a, b, strict=True)],
-        child=leaf,
-        downgrade=word_downgrade,
-    )
-
+    Above word width, each level touches O(T/n) words. Below it, a node
+    uses constant-size word arithmetic and a derived population-count table.
+    """
+    w = _word_width(n)
     anf = [
         sum(value << bit for bit, value in enumerate(coeffs[start : start + w]))
         for start in range(0, len(table), w)
@@ -208,8 +219,9 @@ def _arm_expression(
     ]
     if not any(anf):
         return "0"
-    leaf(values, anf, n - 1)
-    return "".join(pieces)
+    builder = _ArmBuilder(w, at)
+    builder.leaf(values, anf, n - 1)
+    return "".join(builder.pieces)
 
 
 def _expression(truth_table: str, n: int) -> str:
