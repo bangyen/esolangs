@@ -795,77 +795,92 @@ def _advance(
         raise
 
 
-def _execute_tick(
-    run: _Run,
-    grid: tuple[str, ...],
-    nodes: Mapping[tuple[int, int], tuple[_Spelling, int]],
-    width: int,
-    bits: Sequence[int | None],
-    printed: list[int],
-) -> tuple[_Run, tuple[int, ...]]:
-    """Run the tick behind :func:`_advance`, appending bytes to ``printed``."""
-    pointers = list(run.pointers)
-    deques = dict(run.deques)
-    outgoing = run.outgoing
-    used = run.used
-    pos = 0
+class _Tick:
+    """Scratch for one tick: copies of the run's state, edited in place."""
 
-    def read_bit() -> int | None:
+    def __init__(
+        self,
+        run: _Run,
+        grid: tuple[str, ...],
+        nodes: Mapping[tuple[int, int], tuple[_Spelling, int]],
+        width: int,
+        bits: Sequence[int | None],
+        printed: list[int],
+    ) -> None:
+        self.run = run
+        self.grid = grid
+        self.nodes = nodes
+        self.width = width
+        self.bits = bits
+        self.printed = printed
+        self.pointers = list(run.pointers)
+        self.deques = dict(run.deques)
+        self.outgoing = run.outgoing
+        self.used = run.used
+        self.pos = 0
+
+    def read_bit(self) -> int | None:
         """Return the next supplied bit, or ask the shell for one."""
-        nonlocal pos
-        if pos >= len(bits):
-            raise _NeedBitError(tuple(printed))
-        bit = bits[pos]
-        pos += 1
+        if self.pos >= len(self.bits):
+            raise _NeedBitError(tuple(self.printed))
+        bit = self.bits[self.pos]
+        self.pos += 1
         return bit
 
-    def put(i: int, p: _Pointer) -> None:
-        pointers[i] = p
+    def write_bit(self, bit: int) -> None:
+        self.outgoing |= bit << self.used
+        self.used += 1
+        if self.used == 8:
+            self.printed.append(self.outgoing)
+            self.outgoing = self.used = 0
 
-    def move(i: int, d: tuple[int, int]) -> None:
-        p = pointers[i]
+    def move(self, i: int, d: tuple[int, int]) -> None:
+        p = self.pointers[i]
         n_row, n_col = p.row + d[0], p.col + d[1]
-        if not _accepts(grid, nodes, width, n_row, n_col, d):
-            put(i, replace(p, done=True))
+        if not _accepts(self.grid, self.nodes, self.width, n_row, n_col, d):
+            self.pointers[i] = replace(p, done=True)
             return
-        put(i, replace(p, prev=(p.row, p.col), row=n_row, col=n_col, d=d))
+        self.pointers[i] = replace(p, prev=(p.row, p.col), row=n_row, col=n_col, d=d)
 
-    def follow_path(i: int) -> None:
-        p = pointers[i]
-        c = grid[p.row][p.col]
+    def follow_path(self, i: int) -> None:
+        p = self.pointers[i]
+        c = self.grid[p.row][p.col]
         back = (-p.d[0], -p.d[1])
         allowed = [d for d in _EXITS.get(c, ()) if d != back]
         if not allowed:  # pragma: no cover - no line character has a single arm
-            put(i, replace(p, done=True))
+            self.pointers[i] = replace(p, done=True)
             return
         if len(allowed) > 1:
-            remembered = _remembered(p, nodes, p.row, p.col, allowed)
+            remembered = _remembered(p, self.nodes, p.row, p.col, allowed)
             if remembered is not None:
                 allowed = [remembered]
             elif p.d in allowed:
                 allowed = [p.d]
         d = next(d for d in (p.d, _turn_right(p.d), _turn_left(p.d)) if d in allowed)
-        put(i, p.remembering(_anchor(nodes, p.row, p.col), d))
-        move(i, d)
+        self.pointers[i] = p.remembering(_anchor(self.nodes, p.row, p.col), d)
+        self.move(i, d)
 
-    def ride(i: int) -> None:
+    def ride(self, i: int) -> None:
         seen: set[tuple[int, int, tuple[int, int]]] = set()
-        p = pointers[i]
-        while not p.done and (p.row, p.col) not in nodes:
+        p = self.pointers[i]
+        while not p.done and (p.row, p.col) not in self.nodes:
             if (p.row, p.col, p.d) in seen:
                 return
             seen.add((p.row, p.col, p.d))
-            follow_path(i)
-            p = pointers[i]
+            self.follow_path(i)
+            p = self.pointers[i]
 
-    def step_to(i: int, row: int, col: int, d: tuple[int, int]) -> None:
-        p = pointers[i]
-        p = p.remembering(_anchor(nodes, p.row, p.col), d)
-        put(i, replace(p, prev=(p.row, p.col), row=row, col=col, d=d))
+    def step_to(self, i: int, row: int, col: int, d: tuple[int, int]) -> None:
+        p = self.pointers[i]
+        p = p.remembering(_anchor(self.nodes, p.row, p.col), d)
+        self.pointers[i] = replace(p, prev=(p.row, p.col), row=row, col=col, d=d)
 
-    def leave(i: int, prefer: tuple[int, int] | None = None) -> None:
-        p = pointers[i]
-        exits = _exits_from_node(grid, nodes, width, p.row, p.col, p.prev)
+    def exits(self, p: _Pointer) -> list[tuple[int, int, tuple[int, int]]]:
+        return _exits_from_node(self.grid, self.nodes, self.width, p.row, p.col, p.prev)
+
+    def leave(self, i: int, prefer: tuple[int, int] | None = None) -> None:
+        p = self.pointers[i]
+        exits = self.exits(p)
         if not exits:
             raise syntax_error(
                 "non-end node has no exit path",
@@ -874,15 +889,13 @@ def _execute_tick(
         order = (p.d, _turn_right(p.d), _turn_left(p.d))
         exits.sort(key=lambda step: order.index(step[2]))
         if prefer is None and len(exits) > 1:
-            prefer = _remembered(p, nodes, p.row, p.col, [d for _, _, d in exits])
+            prefer = _remembered(p, self.nodes, p.row, p.col, [d for _, _, d in exits])
         selected = next((exit_ for exit_ in exits if exit_[2] == prefer), exits[0])
-        step_to(i, *selected)
+        self.step_to(i, *selected)
 
-    def fork(i: int) -> None:
-        p = pointers[i]
-        exits = _forward_first(
-            _exits_from_node(grid, nodes, width, p.row, p.col, p.prev), p.d
-        )
+    def fork(self, i: int) -> None:
+        p = self.pointers[i]
+        exits = _forward_first(self.exits(p), p.d)
         if not exits:
             raise syntax_error(
                 "non-end node has no exit path",
@@ -890,45 +903,26 @@ def _execute_tick(
             )
         here = (p.row, p.col)
         for n_row, n_col, d in exits[1:]:
-            pointers.append(
+            self.pointers.append(
                 _Pointer(n_row, n_col, d, p.reg, p.deque, prev=here, memory=p.memory)
             )
         n_row, n_col, d = exits[0]
-        step_to(i, n_row, n_col, d)
+        self.step_to(i, n_row, n_col, d)
 
-    def write_bit(bit: int) -> None:
-        nonlocal outgoing, used
-        outgoing |= bit << used
-        used += 1
-        if used == 8:
-            printed.append(outgoing)
-            outgoing = used = 0
-
-    def switch(i: int) -> None:
-        p = pointers[i]
+    def switch(self, i: int) -> None:
+        p = self.pointers[i]
         if p.reg is None:
-            leave(i, p.d)
+            self.leave(i, p.d)
             return
         prefer = _turn_left(p.d) if p.reg == 1 else _turn_right(p.d)
-        exits = _exits_from_node(grid, nodes, width, p.row, p.col, p.prev)
-        if not any(d == prefer for _, _, d in exits):
+        if not any(d == prefer for _, _, d in self.exits(p)):
             prefer = p.d
-        leave(i, prefer)
+        self.leave(i, prefer)
 
-    def execute(i: int) -> None:
-        p = pointers[i]
-        spelling = nodes[(p.row, p.col)][0]
-        if spelling == "(( ))":
-            put(i, replace(p, done=True))
-            return
-        if spelling == "( )":
-            fork(i)
-            return
-        if spelling == "< >":
-            switch(i)
-            return
-
+    def operate(self, spelling: _Spelling, p: _Pointer) -> _Pointer:
+        """Apply a register, deque or IO node to ``p``; return the updated pointer."""
         reg, deque = p.reg, p.deque
+        deques = self.deques
         if spelling == "[ ]":
             reg = 1 if reg is None else reg ^ 1
         elif spelling == "{ ]":
@@ -938,9 +932,9 @@ def _execute_tick(
         elif spelling == "{ }":
             reg = None
         elif spelling == "/ /":
-            reg = read_bit()
+            reg = self.read_bit()
         elif spelling == "\\ \\":
-            write_bit(reg or 0)
+            self.write_bit(reg or 0)
         elif spelling == "\\[ ]/":
             deques[p.deque] = (*deques.get(p.deque, ()), reg)
         elif spelling == "/[ ]\\":
@@ -957,39 +951,69 @@ def _execute_tick(
             deque -= 1
         elif spelling == "[ >":
             deque += 1
+        elif (
+            spelling == "(( ))" or spelling == "( )" or spelling == "< >"
+        ):  # pragma: no cover
+            raise AssertionError("control nodes are dispatched by execute")
         else:
             # Unreachable, and checked to be: ``_Spelling`` is exhausted by
             # the arms above, so mypy narrows this to ``Never``.
             assert_never(spelling)
+        return replace(p, reg=reg, deque=deque)
 
-        put(i, replace(p, reg=reg, deque=deque))
-        leave(i)
+    def execute(self, i: int) -> None:
+        p = self.pointers[i]
+        spelling = self.nodes[(p.row, p.col)][0]
+        if spelling == "(( ))":
+            self.pointers[i] = replace(p, done=True)
+        elif spelling == "( )":
+            self.fork(i)
+        elif spelling == "< >":
+            self.switch(i)
+        else:
+            self.pointers[i] = self.operate(spelling, p)
+            self.leave(i)
 
-    if all(p.done for p in pointers):
-        return run, ()
-    live = [i for i, p in enumerate(pointers) if not p.done]
-    for i in live:
-        ride(i)
-    ready = [
-        i
-        for i in live
-        if not pointers[i].done and (pointers[i].row, pointers[i].col) in nodes
-    ]
-    ready.sort(
-        key=lambda i: (
-            pointers[i].row,
-            nodes[(pointers[i].row, pointers[i].col)][1],
-            i,
+    def ready(self, live: list[int]) -> list[int]:
+        """Return the ``live`` pointers resting on a node, in execution order."""
+        at = self.pointers
+        ready = [
+            i for i in live if not at[i].done and (at[i].row, at[i].col) in self.nodes
+        ]
+        ready.sort(key=lambda i: (at[i].row, self.nodes[(at[i].row, at[i].col)][1], i))
+        return ready
+
+    def advance(self) -> tuple[_Run, tuple[int, ...]]:
+        """Run every live pointer to its node and execute them; return the new run."""
+        if all(p.done for p in self.pointers):
+            return self.run, ()
+        live = [i for i, p in enumerate(self.pointers) if not p.done]
+        for i in live:
+            self.ride(i)
+        for i in self.ready(live):
+            self.execute(i)
+        if self.used and all(p.done for p in self.pointers):
+            self.printed.append(self.outgoing)
+            self.outgoing = self.used = 0
+        run = _Run(
+            tuple(self.pointers),
+            MappingProxyType(self.deques),
+            self.outgoing,
+            self.used,
         )
-    )
-    for i in ready:
-        execute(i)
-    if used and all(p.done for p in pointers):
-        printed.append(outgoing)
-        outgoing = used = 0
-    return _Run(tuple(pointers), MappingProxyType(deques), outgoing, used), tuple(
-        printed
-    )
+        return run, tuple(self.printed)
+
+
+def _execute_tick(
+    run: _Run,
+    grid: tuple[str, ...],
+    nodes: Mapping[tuple[int, int], tuple[_Spelling, int]],
+    width: int,
+    bits: Sequence[int | None],
+    printed: list[int],
+) -> tuple[_Run, tuple[int, ...]]:
+    """Run the tick behind :func:`_advance`, appending bytes to ``printed``."""
+    return _Tick(run, grid, nodes, width, bits, printed).advance()
 
 
 def run(code: list[str], io: IO) -> None:
