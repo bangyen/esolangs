@@ -535,6 +535,93 @@ def _stem_len(node: Node, plan: _Plan) -> int:
     return max(_STEM_LEN, x1 + _RING_OFFSET + _CLEARANCE)
 
 
+_Point = tuple[int, int]
+_Box = tuple[int, int, int, int]  # (y0, y1, x0, x1)
+
+
+def _perimeter_entry(
+    ey: int, ex: int, box: _Box, direction: _Point | None
+) -> tuple[_Point, tuple[_Point, int] | None] | None:
+    """Canonical-frame ``(point, extension)`` on ``box``'s perimeter, or None.
+
+    An interior tip first runs straight along ``direction`` to the perimeter
+    (``extension`` is that leg); without a direction it is rejected.
+    """
+    y0, y1, x0, x1 = box
+
+    def on_perimeter(y: int, x: int) -> bool:
+        return (y in (y0, y1) and x0 <= x <= x1) or (x in (x0, x1) and y0 <= y <= y1)
+
+    if on_perimeter(ey, ex):
+        return (ey, ex), None
+    if direction is None:
+        return None
+    dy, dx = direction
+    distance = (
+        (y1 - ey if dy > 0 else ey - y0) if dy else (x1 - ex if dx > 0 else ex - x0)
+    )
+    ey += dy * distance
+    ex += dx * distance
+    if not on_perimeter(ey, ex):
+        return None
+    return (ey, ex), (direction, distance)
+
+
+def _ring_points(
+    tip: _Point, box: _Box, bay_y: int, arrival_x: int
+) -> list[_Point] | None:
+    """Corner points from ``tip`` on ``box``'s perimeter around the ring to the bay.
+
+    Enters the bay via the rear corner ``(bay_y, hi_x)`` so no bay segment
+    crosses the arm stroke at ``x = 0``; ends at ``(bay_y, arrival_x)``.
+    """
+    ey, ex = tip
+    y0, y1, x0, x1 = box
+    far_y = y1 + _RING_OFFSET
+    lo_x = x0 - _RING_OFFSET
+    hi_x = x1 + _RING_OFFSET
+    on_y = ey in (y0, y1) and x0 <= ex <= x1
+    on_x = ex in (x0, x1) and y0 <= ey <= y1
+    pts: list[_Point] = [tip]
+    if on_x and ex == x1:  # rear side: out, then down to the bay corner
+        pts += [(ey, hi_x), (bay_y, hi_x)]
+    elif on_y and ey == y1:  # far side: out, over the far-rear corner, down
+        pts += [(far_y, ex), (far_y, hi_x), (bay_y, hi_x)]
+    elif on_x and ex == x0:  # vertex-ward side: the long way around
+        pts += [(ey, lo_x), (far_y, lo_x), (far_y, hi_x), (bay_y, hi_x)]
+    else:  # bay side
+        if ex == 0:
+            # Would land on the arm stroke's own line.
+            return None
+        if ex >= 1:
+            pts += [(bay_y, ex)]
+        else:
+            # Left of the arm stroke: go around the ring.
+            pts += [
+                (bay_y, ex),
+                (bay_y, lo_x),
+                (far_y, lo_x),
+                (far_y, hi_x),
+                (bay_y, hi_x),
+            ]
+    pts.append((bay_y, arrival_x))
+    return pts
+
+
+def _axis_aligned_legs(pts: list[_Point]) -> list[tuple[_Point, int]] | None:
+    """Unit-direction legs through ``pts``; None on a diagonal step."""
+    legs: list[tuple[_Point, int]] = []
+    for a, b in itertools.pairwise(pts):
+        dy, dx = b[0] - a[0], b[1] - a[1]
+        if dy and dx:  # pragma: no cover - geometry guard
+            return None
+        if not dy and not dx:
+            continue
+        direction = ((dy > 0) - (dy < 0), (dx > 0) - (dx < 0))
+        legs.append((direction, abs(dy) + abs(dx)))
+    return legs
+
+
 def _loop_return_legs(
     start: tuple[int, int],
     target: Node,
@@ -562,88 +649,36 @@ def _loop_return_legs(
     a_h = _turn_left(h)
     arm_run = _arm_spacing(target.nonzero, plan)
     entry_pt = (vertex[0] + a_h[0] * arm_run, vertex[1] + a_h[1] * arm_run)
-    y0, y1, x0, x1 = _subtree_extent(target.nonzero, plan)
+    box = _subtree_extent(target.nonzero, plan)
 
-    # `start` in the canonical frame (+y = a_h, +x = turn_left(a_h));
-    # projection inverts `_rotate` exactly.
+    # `start` and `heading` in the canonical frame (+y = a_h, +x =
+    # turn_left(a_h)); projection inverts `_rotate` exactly.
     ly, lx = _turn_left(a_h)
-    off = (start[0] - entry_pt[0], start[1] - entry_pt[1])
-    ey = off[0] * a_h[0] + off[1] * a_h[1]
-    ex = off[0] * ly + off[1] * lx
-    on_y = ey in (y0, y1) and x0 <= ex <= x1
-    on_x = ex in (x0, x1) and y0 <= ey <= y1
-    extension = None
-    if not (on_y or on_x):
-        if heading is None:
-            return None
-        direction = (
-            heading[0] * a_h[0] + heading[1] * a_h[1],
-            heading[0] * ly + heading[1] * lx,
-        )
-        dy, dx = direction
-        distance = (
-            (y1 - ey if dy > 0 else ey - y0) if dy else (x1 - ex if dx > 0 else ex - x0)
-        )
-        extension = (direction, distance)
-        ey += dy * distance
-        ex += dx * distance
-        on_y = ey in (y0, y1) and x0 <= ex <= x1
-        on_x = ex in (x0, x1) and y0 <= ey <= y1
-        if not (on_y or on_x):
-            return None
 
-    axis_y = -arm_run
-    bay_y = y0 - _RING_OFFSET
-    far_y = y1 + _RING_OFFSET
-    lo_x = x0 - _RING_OFFSET
-    hi_x = x1 + _RING_OFFSET
+    def project(v: _Point) -> _Point:
+        return v[0] * a_h[0] + v[1] * a_h[1], v[0] * ly + v[1] * lx
+
+    ey, ex = project((start[0] - entry_pt[0], start[1] - entry_pt[1]))
+    entry = _perimeter_entry(ey, ex, box, None if heading is None else project(heading))
+    if entry is None:
+        return None
+    tip, extension = entry
+
+    bay_y = box[0] - _RING_OFFSET
     # Guaranteed by `_arm_spacing`'s floor + corridor; a failure here is a
     # hand-built graph.
-    if bay_y < axis_y + _DIAGONAL_APPROACH:
+    if bay_y < -arm_run + _DIAGONAL_APPROACH:
         return None
 
-    tgt_x = _RETURN_STEM_T
-    approach = (axis_y + _DIAGONAL_APPROACH, tgt_x + _DIAGONAL_APPROACH)
-
-    # Enter the bay via the rear corner `(bay_y, hi_x)` so no bay segment
-    # crosses the arm stroke at x = 0.
-    pts: list[tuple[int, int]] = [(ey, ex)]
-    if on_x and ex == x1:  # rear side: out, then down to the bay corner
-        pts += [(ey, hi_x), (bay_y, hi_x)]
-    elif on_y and ey == y1:  # far side: out, over the far-rear corner, down
-        pts += [(far_y, ex), (far_y, hi_x), (bay_y, hi_x)]
-    elif on_x and ex == x0:  # vertex-ward side: the long way around
-        pts += [(ey, lo_x), (far_y, lo_x), (far_y, hi_x), (bay_y, hi_x)]
-    else:  # bay side
-        if ex == 0:
-            # Would land on the arm stroke's own line.
-            return None
-        if ex >= 1:
-            pts += [(bay_y, ex)]
-        else:
-            # Left of the arm stroke: go around the ring.
-            pts += [
-                (bay_y, ex),
-                (bay_y, lo_x),
-                (far_y, lo_x),
-                (far_y, hi_x),
-                (bay_y, hi_x),
-            ]
-    pts += [(bay_y, approach[1]), approach]
-
-    legs: list[tuple[tuple[int, int], int]] = []
-    if extension is not None:
-        legs.append(extension)
-    for a, b in itertools.pairwise(pts):
-        dy, dx = b[0] - a[0], b[1] - a[1]
-        if dy and dx:  # pragma: no cover - geometry guard
-            return None
-        if not dy and not dx:
-            continue
-        direction = ((dy > 0) - (dy < 0), (dx > 0) - (dx < 0))
-        legs.append((direction, abs(dy) + abs(dx)))
+    pts = _ring_points(tip, box, bay_y, _RETURN_STEM_T + _DIAGONAL_APPROACH)
+    if pts is None:
+        return None
+    pts.append((-arm_run + _DIAGONAL_APPROACH, _RETURN_STEM_T + _DIAGONAL_APPROACH))
+    body = _axis_aligned_legs(pts)
+    if body is None:
+        return None
+    legs = ([extension] if extension is not None else []) + body
     legs.append(((-1, -1), _DIAGONAL_APPROACH))
-
     return [(_rotate(d, a_h), n) for d, n in legs]
 
 
