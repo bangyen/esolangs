@@ -322,9 +322,8 @@ def _best(node: _Node) -> tuple[int | None, int]:
     """Return the candidate with the largest pair set, if any has a pair."""
     best_v, best_c = None, 1
     for v, c in node.cands.items():
-        m = c
-        if m > best_c or (m == best_c and best_v is not None and v < best_v):
-            best_v, best_c = v, m
+        if c > best_c or (c == best_c and best_v is not None and v < best_v):
+            best_v, best_c = v, c
     return best_v, best_c
 
 
@@ -848,27 +847,34 @@ def _affine_coset(table: str, ones: set[int]) -> tuple[int, list[int]] | None:
     return base, dirs
 
 
+def _cover(truth_table: str, n: int) -> tuple[list[list[tuple[int, int]]], list[int]]:
+    """Return the clauses whose union is the ones, and each clause's dimension.
+
+    An affine table is one coset; an affine complement is its failed equations;
+    anything else is peeled into cubes.
+    """
+    ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
+    coset = _affine_coset(truth_table, ones)
+    if coset is None:
+        zeros = set(range(1 << n)) - ones
+        excluded = _affine_coset(truth_table.translate(_COMPLEMENT), zeros)
+        if excluded is not None:
+            equations = _constraints(*excluded, n)
+            # The first failed equation partitions the complement, even
+            # though earlier failures let its redundant prefix tests go.
+            dims = [n - index - 1 for index in range(len(equations))]
+            return [[(mask, value ^ 1)] for mask, value in equations], dims
+    cubes = [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
+    cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
+    return cover, [len(dirs) for _, dirs in cubes]
+
+
 def vandevelo(truth_table: str, width: int | None = None) -> str:
     """Build a Vandevelo program computing ``truth_table`` by termination."""
     n = _validate_truth_table(truth_table)
     compact = width is not None
     names = [short_name(index, _ALPHABET) for index in range(n)]
-    ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
-    coset = _affine_coset(truth_table, ones)
-    excluded = None
-    if coset is None:
-        zeros = set(range(1 << n)) - ones
-        excluded = _affine_coset(truth_table.translate(_COMPLEMENT), zeros)
-    if excluded is not None:
-        equations = _constraints(*excluded, n)
-        cover = [[(mask, value ^ 1)] for mask, value in equations]
-        # The first failed equation partitions the complement, even
-        # though earlier failures let its redundant prefix tests go.
-        dims = [n - index - 1 for index in range(len(equations))]
-    else:
-        cubes = [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
-        cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
-        dims = [len(dirs) for _, dirs in cubes]
+    cover, dims = _cover(truth_table, n)
     flips = _flips(cover, dims, n)
     lines = []
     joiner = "" if compact else " "
@@ -925,19 +931,18 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                         register = nearest
                         held, polarity = bank.pop(register)
                         toggles = _points(held ^ w)
-                    elif len(bank) < _bank_cap(n):
-                        register = short_name(next_register, _ALPHABET)
-                        next_register += 1
-                        toggles, polarity = _points(w), 0
                     else:
-                        # Bank full: respell the least recently used free
-                        # register, which costs what a fresh one would.
-                        register = next(r for r in bank if r not in used)
-                        del bank[register]
-                        toggles, polarity = _points(w), 0
-                    if nearest is None:
-                        first, toggles = ref(toggles[0]), toggles[1:]
-                        lines.append(spaced(register, "~>", f"{first}?"))
+                        if len(bank) < _bank_cap(n):
+                            register = short_name(next_register, _ALPHABET)
+                            next_register += 1
+                        else:
+                            # Bank full: respell the least recently used free
+                            # register, which costs what a fresh one would.
+                            register = next(r for r in bank if r not in used)
+                            del bank[register]
+                        first, *toggles = _points(w)
+                        polarity = 0
+                        lines.append(spaced(register, "~>", f"{ref(first)}?"))
                     # Every rebinding toggles at least once; the last toggle
                     # sets the polarity that makes this test pass on a 1.
                     for i, b in enumerate(toggles):

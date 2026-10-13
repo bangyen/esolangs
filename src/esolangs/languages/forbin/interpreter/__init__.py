@@ -69,6 +69,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from itertools import product
 from types import MappingProxyType
 from typing import Literal, NamedTuple
 
@@ -132,12 +133,12 @@ class _Frame:
 
     fn: _Function
     scope: int
-    pos: int
-    for_rows: tuple[tuple[object, ...], ...] | None
-    for_names: tuple[str, ...]
-    for_ind: int
-    for_started: bool
-    for_body_pos: int
+    pos: int = 0
+    for_rows: tuple[tuple[object, ...], ...] | None = None
+    for_names: tuple[str, ...] = ()
+    for_ind: int = 0
+    for_started: bool = False
+    for_body_pos: int = 0
 
 
 @dataclass(frozen=True)
@@ -330,7 +331,7 @@ def _enter(
         scopes, callee.fn, callee.scope, locals_, next_scope
     )
     return (
-        _Frame(callee.fn, scope, 0, None, (), 0, for_started=False, for_body_pos=0),
+        _Frame(callee.fn, scope),
         next_scope,
         scopes,
     )
@@ -432,9 +433,7 @@ def _run_block(
     """
     block_fn = _Function("$block", [])
     block_fn.body = stmts
-    block_frame = _Frame(
-        block_fn, frame.scope, 0, None, (), 0, for_started=False, for_body_pos=0
-    )
+    block_frame = _Frame(block_fn, frame.scope)
     return _run(block_frame, globals_, ctx)
 
 
@@ -528,30 +527,19 @@ def _for_rows(
     rows: list[list[object]] = []
     for pat in patterns:
         items = pat[1] if pat[0] == "group" else [pat]
-        wilds = [j for j, p in enumerate(items) if p[0] == "*"]
-        if not wilds:
+        wilds = sum(p[0] == "*" for p in items)
+        # No wildcard is one empty combination: one row of values.
+        for combo in product((0, 1), repeat=wilds):
             row: list[object] = []
+            w = 0
             for p in items:
-                if p[0] == "value":
+                if p[0] == "*":
+                    row.append(combo[w])
+                    w += 1
+                else:
                     value, ctx = _eval(p[1], frame, globals_, ctx)
                     row.append(value)
-                else:
-                    row.append(0)
             rows.append(row)
-        else:
-            import itertools
-
-            for combo in itertools.product((0, 1), repeat=len(wilds)):
-                row = []
-                w = 0
-                for p in items:
-                    if p[0] == "*":
-                        row.append(combo[w])
-                        w += 1
-                    else:
-                        value, ctx = _eval(p[1], frame, globals_, ctx)
-                        row.append(value)
-                rows.append(row)
     return rows, names, ctx
 
 
@@ -722,9 +710,7 @@ class _Machine:
             MappingProxyType({}), global_fn, None, MappingProxyType({}), 0
         )
         self._global_scope = global_scope
-        global_frame = _Frame(
-            global_fn, global_scope, 0, None, (), 0, for_started=False, for_body_pos=0
-        )
+        global_frame = _Frame(global_fn, global_scope)
         self.state = _State((), scopes, next_scope, (), 0)
         for initializer in parser.initializers:
             self._run_initializer(initializer, global_frame)
@@ -733,9 +719,7 @@ class _Machine:
         main_scope, next_scope, scopes = _new_scope(
             self.state.scopes, main_fn, global_scope, main_locals, self.state.next_scope
         )
-        main_frame = _Frame(
-            main_fn, main_scope, 0, None, (), 0, for_started=False, for_body_pos=0
-        )
+        main_frame = _Frame(main_fn, main_scope)
         self.state = _State(
             (main_frame,), scopes, next_scope, self.state.bits, self.state.reads
         )

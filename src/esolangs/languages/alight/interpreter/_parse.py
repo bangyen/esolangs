@@ -161,6 +161,11 @@ _RESERVED = frozenset(
 )
 
 
+def _valid_name(name: str) -> bool:
+    """Whether ``name`` may name a variable: alphanumeric and not reserved."""
+    return bool(name) and name.isalnum() and name not in _RESERVED
+
+
 class _Parser:
     """Read infix (examples' ``len{l}-0.5``) or postfix (the prose's rule)."""
 
@@ -335,7 +340,7 @@ def _command_expr(
     p.word()
     if word == "set":
         name = p.word()
-        if not name or not name.isalnum() or name in _RESERVED:
+        if not _valid_name(name):
             raise ValueError(f"bad variable name {name!r}")
     elif word not in ("turn", "skip", "wait", "end"):
         p = _Parser(text, expression_syntax)  # a bare call: parse the whole command

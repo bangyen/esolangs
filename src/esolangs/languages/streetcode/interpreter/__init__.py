@@ -34,6 +34,7 @@ the command table's ``=``/``_`` move CP, and ``<``/``>`` are nops.
 """
 
 import functools
+from collections import deque
 from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Literal, Self, assert_never
@@ -65,6 +66,8 @@ class _State(_GeometryState):
     """The geometry state under the interpreter module's VM convention."""
 
 
+# A state's successors, keyed by the two branch bits movement can read in
+# one step: the arrival cell and the post-instruction cell, in that order.
 type _Edges = dict[tuple[int, int], _State | Literal["halt"] | None]
 
 #: The whole of a run the pure transition owns: the car, the cell pointer,
@@ -516,8 +519,6 @@ class _Machine:
         if not any(ch in _WALLS for row in self.grid for ch in row):
             return None
         # BFS reachable open cells from C (open = not a wall)
-        from collections import deque
-
         sr, sc = start
         visited: set[_ReachableCell] = set()
         q: deque[_ReachableCell] = deque([_ReachableCell((sr, sc))])

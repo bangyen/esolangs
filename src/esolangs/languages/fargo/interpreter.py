@@ -367,9 +367,8 @@ def _retop(frames: tuple[_Frame, ...], frame: _Frame) -> tuple[_Frame, ...]:
 def _lookup(name: str, frame: _Frame | None, defs: dict[str, _Def]) -> _Func:
     """Resolve ``name`` to a callable in ``frame``'s scope."""
     if frame is not None and (bound := frame.bound(name)) is not None:
-        value = bound
-        if isinstance(value, _Func):
-            return value
+        if isinstance(bound, _Func):
+            return bound
         raise HaltError(
             f"calling non-function argument {name!r}",
             hint="pass a callable function argument before invoking it",
@@ -509,10 +508,9 @@ def _consume(
         # The waiting call takes this parameter unevaluated, so the
         # name is passed along as a function instead of being run.
         return _supply(frames, _lookup(token, frame, defs), number, output, defs)
-    if frame.binds and (bound := frame.bound(token)) is not None:
-        value = bound
-        if not isinstance(value, _Func):
-            return _supply(frames, value, number, output, defs)
+    bound = frame.bound(token) if frame.binds else None
+    if bound is not None and not isinstance(bound, _Func):
+        return _supply(frames, bound, number, output, defs)
     fn = _lookup(token, frame, defs)
     if fn.arity == 0:
         return _invoke(frames, frame, fn, (), number, output, defs)

@@ -162,7 +162,6 @@ def update_docs(root: Path = ROOT) -> None:
         (
             root / "docs/proofs/index.md",
             "PROOF-STATUS",
-            "",
             [
                 "| Generator | Proof | Qualification | Scaling | Execution | "
                 "Workspace |",
@@ -183,11 +182,10 @@ def update_docs(root: Path = ROOT) -> None:
                 ],
             ],
         ),
-        (root / "docs/proofs/index.md", "PROOF-TOTALS", "", [render_totals(proofs)]),
+        (root / "docs/proofs/index.md", "PROOF-TOTALS", [render_totals(proofs)]),
         (
             root / "docs/proofs/index.md",
             "SCALING-STATUS",
-            "",
             [
                 "| Language | Totality | Generation time | Output size |",
                 "| --- | --- | --- | --- |",
@@ -199,13 +197,13 @@ def update_docs(root: Path = ROOT) -> None:
             ],
         ),
     )
-    for path, marker, indent, lines in tables:
+    for path, marker, lines in tables:
         text = path.read_text(encoding="utf-8")
         start, end = f"<!-- {marker}:START -->", f"<!-- {marker}:END -->"
         before, rest = text.split(start, 1)
         _, after = rest.split(end, 1)
-        body = "\n".join(indent + line for line in lines)
+        body = "\n".join(lines)
         path.write_text(
-            before + start + "\n\n" + body + "\n\n" + indent + end + after,
+            before + start + "\n\n" + body + "\n\n" + end + after,
             encoding="utf-8",
         )

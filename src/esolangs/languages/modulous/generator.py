@@ -13,7 +13,12 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _BRACKET_LITERAL, balance_score
+from esolangs.generation.wrap import (
+    _BRACKET_LITERAL,
+    _bracket_literal,
+    balance_score,
+    wrap_space_delimited,
+)
 from esolangs.registry._language import Language, Shape
 
 # Characters around the table in its literal push: ``[PSH STR "`` opens it
@@ -64,8 +69,6 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     program = f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
     if width is None or width <= 0:
         return program
-    from esolangs.generation.wrap import _bracket_literal, wrap_space_delimited
-
     wrapped = _bracket_literal(program, width)
     if max(map(len, wrapped.splitlines())) <= width:
         return wrapped

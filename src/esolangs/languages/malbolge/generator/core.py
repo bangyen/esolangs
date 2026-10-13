@@ -298,32 +298,7 @@ _START_D = 34 + (7 - _ENTRY) % 94
 #: the residue cover: every ``h mod 94`` must admit a ``T`` of each label
 #: among the eight characters the loader accepts at ``h``.
 _PAIRS = (34, 36, 39, 41, 51, 53, 55, 59, 61, 63, 65, 67, 72, 105, 107, 109, 115)
-_NEXTS = (
-    76,
-    77,
-    78,
-    80,
-    81,
-    82,
-    83,
-    84,
-    85,
-    86,
-    87,
-    88,
-    89,
-    90,
-    91,
-    92,
-    93,
-    94,
-    95,
-    96,
-    97,
-    98,
-    101,
-    102,
-)
+_NEXTS = (*range(76, 79), *range(80, 99), 101, 102)
 #: Helper inits: ``{0,1}``-trit cells become all-1 / 0 under ``A = 0`` and
 #: ``A = all-1``; 80 and 78 build all-2; 113 seeds the pair chain; 69 and 48
 #: give ``A = tau(69) = 48`` before each level's jump (48 -> 69 -> 48 on the

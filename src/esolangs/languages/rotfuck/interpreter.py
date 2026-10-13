@@ -35,18 +35,14 @@ ROTFUCK_CYCLES = {"backward": "+][.,<>-", "forward": "+-><,.[]"}
 ROTATIONS = tuple(ROTFUCK_CYCLES)
 
 
-def rotation(value: str) -> str:
+def validate_rotation(value: str) -> str:
     """Validate which way the command cycle turns."""
     if value not in ROTATIONS:
         raise ValueError("rotation must be backward or forward")
     return value
 
 
-CYCLES = ROTFUCK_CYCLES
-validate_rotation = rotation
-
-
-_COMMANDS = frozenset(CYCLES["forward"])
+_COMMANDS = frozenset(ROTFUCK_CYCLES["forward"])
 
 
 #: One instant of a run: ``(tape, ptr, ind, rot)`` -- the cells, the cell
@@ -64,7 +60,9 @@ type _State = tuple[tuple[int, ...], int, int, int]
 #: Each command's index in each cycle, so the rotation is an addition rather
 #: than a ``str.index`` scan.  The dict doubles as the membership test,
 #: since a comment is exactly a character it does not hold.
-_OPCODES = {cycle: {ch: i for i, ch in enumerate(cycle)} for cycle in CYCLES.values()}
+_OPCODES = {
+    cycle: {ch: i for i, ch in enumerate(cycle)} for cycle in ROTFUCK_CYCLES.values()
+}
 
 
 def _at(chars: tuple[str, ...], rot: int, i: int, cycle: str) -> str:
@@ -156,7 +154,7 @@ def _advance(
     state: _State,
     chars: tuple[str, ...],
     byte: int | None = None,
-    cycle: str = CYCLES["backward"],
+    cycle: str = ROTFUCK_CYCLES["backward"],
 ) -> _State:
     """Return the state after executing the command under the cursor.
 
@@ -210,7 +208,7 @@ class _Machine:
     def __init__(self, code: str, io: IO, *, rotation: str = "backward") -> None:
         """Start with an empty tape at the origin and a fresh program."""
         self.io = io
-        self.prog = _Program(code, CYCLES[validate_rotation(rotation)])
+        self.prog = _Program(code, ROTFUCK_CYCLES[validate_rotation(rotation)])
         self.tape: tuple[int, ...] = (0,)
         self.ptr = 0
         self.ind = 0

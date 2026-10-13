@@ -97,28 +97,39 @@ def _expand_short_options(rest: list[str]) -> list[str]:
     return expanded
 
 
-def _pop_set_pairs(rest: list[str]) -> tuple[list[str], list[str]]:
-    """Remove repeatable ``--set KEY=VALUE`` options before ``--``."""
-    args: list[str] = []
-    pairs: list[str] = []
+def _scan_values(
+    rest: list[str], names: Collection[str]
+) -> Iterator[tuple[str | None, str]]:
+    """Yield ``(name, value)`` per ``--name V`` or ``--name=V``, else ``(None, arg)``.
+
+    Only ``names`` before ``--`` are options; everything else is yielded as is.
+    """
     i = 0
     while i < len(rest):
         arg = rest[i]
         if arg == "--":
-            args.extend(rest[i:])
-            break
+            yield from ((None, tail) for tail in rest[i:])
+            return
         name, sep, inline = arg.partition("=")
-        if name != "--set":
-            args.append(arg)
+        if name not in names:
+            yield None, arg
             i += 1
         elif sep:
-            pairs.append(inline)
+            yield name, inline
             i += 1
         elif i + 1 < len(rest):
-            pairs.append(rest[i + 1])
+            yield name, rest[i + 1]
             i += 2
         else:
-            _fail("--set needs a value")
+            _fail(f"{name} needs a value")
+
+
+def _pop_set_pairs(rest: list[str]) -> tuple[list[str], list[str]]:
+    """Remove repeatable ``--set KEY=VALUE`` options before ``--``."""
+    args: list[str] = []
+    pairs: list[str] = []
+    for name, value in _scan_values(rest, {"--set"}):
+        (args if name is None else pairs).append(value)
     return args, pairs
 
 
@@ -316,26 +327,12 @@ def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str,
     """
     args: list[str] = []
     found: dict[str, str] = {}
-    i = 0
-    while i < len(rest):
-        arg = rest[i]
-        if arg == "--":
-            args.extend(rest[i:])
-            break
-        name, sep, inline = arg.partition("=")
-        if name not in names:
-            args.append(arg)
-            i += 1
-        elif sep:
-            _refuse_repeat(found, name)
-            found[name] = inline
-            i += 1
-        elif i + 1 < len(rest):
-            _refuse_repeat(found, name)
-            found[name] = rest[i + 1]
-            i += 2
+    for name, value in _scan_values(rest, names):
+        if name is None:
+            args.append(value)
         else:
-            _fail(f"{name} needs a value")
+            _refuse_repeat(found, name)
+            found[name] = value
     return args, found
 
 

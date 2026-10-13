@@ -198,7 +198,7 @@ def test_deadline_clamps_each_row_and_expires_after_work(monkeypatch) -> None:
     bounds = []
     monkeypatch.setattr(evaluator, "monotonic", lambda: clock[0])
 
-    def run(_name, _source, stdin, timeout):
+    def run(_name, _source, stdin, timeout, **_options):
         bounds.append(timeout)
         clock[0] += 3
         return stdin

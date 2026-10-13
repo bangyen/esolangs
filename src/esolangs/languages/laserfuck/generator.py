@@ -335,17 +335,17 @@ def _laserfuck_assemble_reader(
     rows: list[list[tuple[int, str]]] = [[] for _ in range(height)]
     for (r, c), char in cells.items():
         rows[r].append((c, char))
-    return [_laserfuck_join(sorted(marks))[0] for marks in rows], row, col
+    return [_laserfuck_join(sorted(marks)) for marks in rows], row, col
 
 
-def _laserfuck_join(marks: list[tuple[int, str]]) -> tuple[str]:
+def _laserfuck_join(marks: list[tuple[int, str]]) -> str:
     """Join ``(column, text)`` runs left to right, padding gaps with blanks."""
     parts: list[str] = []
     cursor = 0
     for col, text in marks:
         parts.append(" " * (col - cursor) + text)
         cursor = col + len(text)
-    return ("".join(parts),)
+    return "".join(parts)
 
 
 _ReaderCandidate = tuple[int, int, tuple[str, ...], int, int]
@@ -512,7 +512,7 @@ def _laserfuck_tree(truth_table: str, n: int, *, fold: bool = True) -> _LaserTre
 
     emit(0, 0, 0, 0)
     span = max(col + len(text) for marks in rows for col, text in marks)
-    upright = [_laserfuck_join(marks)[0].ljust(span) for marks in rows]
+    upright = [_laserfuck_join(marks).ljust(span) for marks in rows]
 
     return _LaserTree(rows, upright)
 

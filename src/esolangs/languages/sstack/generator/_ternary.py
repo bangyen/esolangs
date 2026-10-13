@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 from esolangs.generation.helpers import subtree_ids
 from esolangs.generation.shared_block import repeated_definitions
+from esolangs.languages.sstack.generator._binary import _PROLOGUE as _BUILT_PROLOGUE
 from esolangs.languages.sstack.generator._binary import (
     _decoder as _radix_decoder,
 )
@@ -81,7 +82,7 @@ def best_ternary_bank(
         if isinstance(piece, int):
             depth, row = blocks[piece]
             program, _ = build(table[row : row + (1 << (n - depth))])
-            out.append(program[12:])
+            out.append(program[len(_BUILT_PROLOGUE) :])
         else:
             out.append(piece)
 

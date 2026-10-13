@@ -25,6 +25,7 @@ from esolangs.runtime._answers import (
     read_answer,
 )
 from esolangs.runtime._execution import check_signal_timeout
+from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, check_scale_for
 from esolangs.runtime._validate import _TIMEOUT_FLOOR, check_timeout, check_whole
@@ -149,18 +150,9 @@ def _iter_evaluate(
     Retained dialect choices apply to filling and execution; explicit ``settings``
     overrides individual choices.
     """
-    from esolangs.runtime._isolated import check_memory
-
-    check_memory(max_memory, isolated=isolated)
+    check_limits(max_output, max_memory, isolated=isolated)
     settings = effective_settings(language, program, settings)
     dialect_options(language, settings)
-    if max_output is not None:
-        check_whole(max_output, "max_output")
-        if not isolated:
-            raise with_hint(
-                ArgumentError("max_output requires isolated=True"),
-                "set isolated=True to bound each row's output, or omit max_output",
-            )
     started = monotonic()
     check_timeout(total_timeout)
     # Checked here, not only inside ``run``: the termination path drives the
@@ -276,28 +268,20 @@ def _row_answerer(
 ) -> Callable[[Program, str, float | None], str]:
     """Return the call that turns one row's source, stdin and bound into its bit."""
     if not terminating:
-        runner = esolangs.run
-        if settings is not None:
-            runner = partial(runner, settings=settings)
-        if scale is not None:
-            runner = partial(runner, scale=scale)
-        if max_output is not None:
-            runner = partial(runner, max_output=max_output)
-        if max_memory is not None:
-            runner = partial(runner, max_memory=max_memory)
-        if isolated:
-            return lambda source, stdin, bound: read_answer(
-                name,
-                runner(
-                    name,
-                    source,
-                    stdin=stdin,
-                    timeout=cast("float", bound),
-                    isolated=True,
-                ),
-            )
+        run = esolangs.run
         return lambda source, stdin, bound: read_answer(
-            name, runner(name, source, stdin=stdin, timeout=bound)
+            name,
+            run(
+                name,
+                source,
+                stdin=stdin,
+                timeout=bound,
+                isolated=isolated,
+                scale=scale,
+                max_output=max_output,
+                max_memory=max_memory,
+                settings=settings,
+            ),
         )
     # Which of halting and diverging means 1, as data.  It is
     # ``("halts", "diverges")`` for all four, but reading the order
@@ -308,26 +292,25 @@ def _row_answerer(
     if isolated:
         from esolangs.runtime._isolated import termination_isolated
 
-        termination_runner = termination_isolated
-        if settings is not None:
-            termination_runner = partial(termination_runner, settings=settings)
-        if max_output is not None:
-            termination_runner = partial(termination_runner, max_output=max_output)
-        if max_memory is not None:
-            termination_runner = partial(termination_runner, max_memory=max_memory)
-        return lambda source, stdin, bound: termination_runner(
+        return lambda source, stdin, bound: termination_isolated(
             name,
             cast("str", source),
             stdin,
             cast("float", bound),
             halts_is,
             diverges_is,
+            settings=settings,
+            max_output=max_output,
+            max_memory=max_memory,
         )
-    terminator = _terminates
-    if settings is not None:
-        terminator = partial(terminator, settings=settings)
-    return lambda source, stdin, bound: terminator(
-        name, cast("str", source), stdin, bound, halts_is, diverges_is
+    return lambda source, stdin, bound: _terminates(
+        name,
+        cast("str", source),
+        stdin,
+        bound,
+        halts_is,
+        diverges_is,
+        settings=settings,
     )
 
 

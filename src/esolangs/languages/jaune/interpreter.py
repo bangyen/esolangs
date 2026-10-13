@@ -58,7 +58,7 @@ _NumberedOp = Literal[":", "?", "!", "$", "@"]
 # Spelling the alphabets as typed containers rather than plain strings is
 # what lets ``in`` narrow a parsed character to its operator type, so the
 # constructors below take it directly instead of casting.
-_BARE: frozenset[_CountedOp] = frozenset(("^", ">", "<", "#", "&", "%", "."))
+_BARE: frozenset[_CountedOp] = frozenset(("^", ">", "<", "#", "&", "%", ".", ";"))
 _NUMBERED: frozenset[_NumberedOp] = frozenset((":", "?", "!", "$", "@"))
 
 # The grammar makes ``v`` a ``number``, so every operator taking one admits
@@ -161,9 +161,6 @@ def _parse(code: str) -> list[_Command]:
         elif c in _BARE:
             out.append(_Counted(c))
             i += 1
-        elif c == ";":
-            out.append(_Counted(";"))
-            i += 1
         elif c == "v":
             # 'v' reads a digit; as an operand ('v+') the read value is the
             # count, and for 'v?'/'v!'/'v@' the label or subroutine named.
@@ -175,7 +172,7 @@ def _parse(code: str) -> list[_Command]:
             else:
                 out.append(_Counted("v"))
                 i += 1
-        elif c in ":-?!$@":
+        elif c in ":?!$@":
             # a bare operator with no number: malformed
             raise syntax_error(
                 f"command {c!r} requires a number",
@@ -194,11 +191,6 @@ def _parse(code: str) -> list[_Command]:
 #: its program once and never rewrites it, so a step is handed them rather
 #: than carrying them.
 type _State = tuple[Chunked[int], int, int, int, tuple[int, ...]]
-
-
-def _set(cells: Chunked[int], ptr: int, value: int) -> Chunked[int]:
-    """Return ``cells`` with the cell at ``ptr`` set to ``value``."""
-    return put(cells, ptr, value)
 
 
 def _markers(commands: Sequence[_Command]) -> dict[tuple[str, int | None], int]:
@@ -260,7 +252,7 @@ def _h_read(step: _Step) -> _State:
     """``v``: store the read value in the cell."""
     cells, ptr, hold, pos, calls = step.state
     value = step.value if step.value is not None else 0
-    return (_set(cells, ptr, value), ptr, hold, pos + 1, calls)
+    return (put(cells, ptr, value), ptr, hold, pos + 1, calls)
 
 
 def _h_read_adjust(step: _Step) -> _State:
@@ -268,7 +260,7 @@ def _h_read_adjust(step: _Step) -> _State:
     cells, ptr, hold, pos, calls = step.state
     val = step.value if step.value is not None else 0
     delta = val if step.cmd.op == "v+" else -val
-    return (_set(cells, ptr, get(cells, ptr) + delta), ptr, hold, pos + 1, calls)
+    return (put(cells, ptr, get(cells, ptr) + delta), ptr, hold, pos + 1, calls)
 
 
 def _h_right(step: _Step) -> _State:
@@ -299,27 +291,27 @@ def _h_hold(step: _Step) -> _State:
 def _h_add_hold(step: _Step) -> _State:
     """``&``: add the hold register back into the cell."""
     cells, ptr, hold, pos, calls = step.state
-    return (_set(cells, ptr, get(cells, ptr) + hold), ptr, hold, pos + 1, calls)
+    return (put(cells, ptr, get(cells, ptr) + hold), ptr, hold, pos + 1, calls)
 
 
 def _h_zero(step: _Step) -> _State:
     """``%``: zero the cell."""
     cells, ptr, hold, pos, calls = step.state
-    return (_set(cells, ptr, 0), ptr, hold, pos + 1, calls)
+    return (put(cells, ptr, 0), ptr, hold, pos + 1, calls)
 
 
 def _h_inc(step: _Step) -> _State:
     """``+``: add the repeat count; a bare ``+`` adds one."""
     cells, ptr, hold, pos, calls = step.state
     delta = step.cmd.arg if step.cmd.arg is not None else 1
-    return (_set(cells, ptr, get(cells, ptr) + delta), ptr, hold, pos + 1, calls)
+    return (put(cells, ptr, get(cells, ptr) + delta), ptr, hold, pos + 1, calls)
 
 
 def _h_dec(step: _Step) -> _State:
     """``-``: subtract the repeat count; a bare ``-`` subtracts one."""
     cells, ptr, hold, pos, calls = step.state
     delta = step.cmd.arg if step.cmd.arg is not None else 1
-    return (_set(cells, ptr, get(cells, ptr) - delta), ptr, hold, pos + 1, calls)
+    return (put(cells, ptr, get(cells, ptr) - delta), ptr, hold, pos + 1, calls)
 
 
 def _h_jump_nz(step: _Step) -> _State:

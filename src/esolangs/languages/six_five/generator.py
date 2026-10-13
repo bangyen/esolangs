@@ -120,12 +120,12 @@ def six_five(truth_table: str) -> str:
     conditional strides past 35 inputs.
     """
     orders = _six_five_orders(truth_table, compact=True)
-    best = _six_five_chosen(truth_table, orders, share=True)
+    best = _six_five_chosen(truth_table, orders)
     if not best:
         remaining = dict.fromkeys(
             order for order in _six_five_orders(truth_table) if order not in orders
         )
-        best = _six_five_chosen(truth_table, remaining, share=True)
+        best = _six_five_chosen(truth_table, remaining)
     if not best:
         # Every order overflowed the budget even shared, so the table has
         # too many distinct subtrees for any tree-shaped emission.  The walk
@@ -156,12 +156,10 @@ def _six_five_orders(
     )
 
 
-def _six_five_chosen(
-    truth_table: str, orders: dict[tuple[int, ...], None], *, share: bool
-) -> str:
-    """Return the shortest tree over ``orders``, or ``""`` if none fits.
+def _six_five_chosen(truth_table: str, orders: dict[tuple[int, ...], None]) -> str:
+    """Return the shortest shared tree over ``orders``, or ``""`` if none fits.
 
-    With ``share`` each order's tree may jump to its repeated subtrees.
+    Each order's tree may jump to its repeated subtrees.
     """
     best = ""
     best_order: tuple[str, tuple[int, ...]] = (truth_table, ())
@@ -171,7 +169,7 @@ def _six_five_chosen(
             if perm == tuple(range(len(perm)))
             else permute_truth_table(truth_table, perm)
         )
-        candidate = _six_five_hoisted(table, perm, share=share)
+        candidate = _six_five_hoisted(table, perm, share=True)
         # An empty candidate means this order overflowed the label budget,
         # so it is skipped rather than winning on length 0.
         if candidate and (not best or len(candidate) < len(best)):
@@ -180,7 +178,7 @@ def _six_five_chosen(
         # Only the winner prints a lone copied read raw: that shrinks it and
         # its steps, and choosing with it could hand a shorter, slower order
         # the win.
-        best = _six_five_hoisted(*best_order, raw_copies=True, share=share)
+        best = _six_five_hoisted(*best_order, raw_copies=True, share=True)
     return best
 
 
@@ -562,22 +560,11 @@ def _six_five_node(
     # which keeps the row span halving in step with the level.  Shared,
     # any test whose halves agree is passed over the same way.
     mid = (lo + hi) // 2
+    child = functools.partial(
+        _six_five_node, layout, truth_table, perm, constant, cell_of, ids, lazy, scratch
+    )
     if perm[level] not in cell_of or layout.agrees(ids, level, lo):
-        return _six_five_node(
-            layout,
-            truth_table,
-            perm,
-            constant,
-            cell_of,
-            ids,
-            lazy,
-            scratch,
-            level + 1,
-            lo,
-            mid,
-            entry,
-            held,
-        )
+        return child(level + 1, lo, mid, entry, held)
     cell = cell_of[perm[level]]
     nav = _six_five_move(entry, cell)
     if _six_five_halves(truth_table, constant, lo, hi, "01"):
@@ -591,37 +578,9 @@ def _six_five_node(
     # the parent's, so that pair names it for sharing.
     return nav + layout.branch(
         layout.name(ids, level + 1, lo, cell, skip=True, leaf=(0,)),
-        lambda: _six_five_node(
-            layout,
-            truth_table,
-            perm,
-            constant,
-            cell_of,
-            ids,
-            lazy,
-            scratch,
-            level + 1,
-            lo,
-            mid,
-            cell,
-            _SIX_FIVE_HELD,
-        ),
+        lambda: child(level + 1, lo, mid, cell, _SIX_FIVE_HELD),
         layout.name(ids, level + 1, mid, cell, skip=True, leaf=(1,)),
-        lambda: _six_five_node(
-            layout,
-            truth_table,
-            perm,
-            constant,
-            cell_of,
-            ids,
-            lazy,
-            scratch,
-            level + 1,
-            mid,
-            hi,
-            cell,
-            _SIX_FIVE_HELD + 1,
-        ),
+        lambda: child(level + 1, mid, hi, cell, _SIX_FIVE_HELD + 1),
     )
 
 

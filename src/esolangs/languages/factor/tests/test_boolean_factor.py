@@ -122,8 +122,8 @@ def test_multiple_residuals_reduce_encoded_size_within_ledger() -> None:
     residual = "".join(str(row.bit_count() & 1) for row in range(1 << (n - 4)))
     table = "0" * (15 * len(residual)) + residual
     previous = []
-    for shared in (False, True):
-        number = _encode(_program(table, shared=shared, multiple=False))
+    for forms in (frozenset(), frozenset({"single"})):
+        number = _encode(_program(table, forms=forms))
         with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
             previous.append(str(number))
     assert_shared_program(
@@ -192,8 +192,8 @@ def test_factor_bank_compares_decimal_encodings_and_executes_within_ledger() -> 
             str(_encode(code))
             for code in (
                 _program(table),
-                _program(table, shared=True, multiple=False),
-                _program(table, shared=True, bank=False),
+                _program(table, forms=frozenset({"single"})),
+                _program(table, forms=frozenset({"single", "multiple"})),
             )
         ),
         key=len,

@@ -621,6 +621,22 @@ def main(argv: list[str] | None = None) -> int:
 MAX_RECORD_CHARS = 1024 * 1024
 
 
+def _post(
+    messages: queue.Queue[str | None], stopped: threading.Event, record: str | None
+) -> None:
+    """Queue ``record`` for the waiting caller, giving up once ``stopped``.
+
+    Takes the queue and event, not the worker: a restart rebinds both, and a
+    thread from the old process must not post into the new one's queue.
+    """
+    while not stopped.is_set():
+        try:
+            messages.put(record, timeout=0.05)
+            return
+        except queue.Full:
+            pass
+
+
 class Worker:
     """Reuse one interpreter across a sweep; kill the tree on any deadline."""
 
@@ -701,12 +717,7 @@ class Worker:
                                 }
                             }
                         )
-                    while not stopped.is_set():
-                        try:
-                            messages.put(line, timeout=0.05)
-                            break
-                        except queue.Full:
-                            pass
+                    _post(messages, stopped, line)
                     if line is None or oversized:
                         break
 
@@ -777,12 +788,7 @@ class Worker:
                     failure = json.dumps(
                         {"error": {"type": type(error).__name__, "message": str(error)}}
                     )
-                    while not stopped.is_set():
-                        try:
-                            messages.put(failure, timeout=0.05)
-                            break
-                        except queue.Full:
-                            pass
+                    _post(messages, stopped, failure)
 
             self.writer = threading.Thread(target=send, daemon=True)
             self.writer.start()

@@ -6,6 +6,8 @@ from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.circuit_diagram.generator import _circuit_diagram_model
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
+    _class_tail,
+    _gate_count,
     _online_bank_area_floor,
     _pool_budget,
 )
@@ -21,7 +23,7 @@ def bundled_class_bank_candidate(
 ) -> _Layout | None:
     """Return bounded four-root banks, retaining one outer transport stage."""
     n = _validate_truth_table(table)
-    tail = 7 if n % 2 else 8
+    tail = _class_tail(n)
     prefix = n - tail
     if prefix < 2 or len(set(table)) == 1:
         return None
@@ -60,12 +62,7 @@ def bundled_class_bank_candidate(
         if forest is not None:
             bands.append(forest[0])
         ands = sum("0" in word for word in words) if forest is not None else 0
-        gates += (
-            sum(sum(char in "ao~xX" for char in m.glyphs.values()) for m in bands)
-            + ands
-            + len(words)
-            - 1
-        )
+        gates += sum(_gate_count(m) for m in bands) + ands + len(words) - 1
         if gates > len(table) + n:
             return None
         inner_dimensions = [m.bounds() for m in bands]

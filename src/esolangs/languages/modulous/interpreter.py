@@ -485,9 +485,8 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
         # through created the variable instead.  That made ``[PSH VAR VAR1]``
         # -- the keyword spelling, which the syntax is ``[PSH VAR1]`` -- store
         # into a phantom ``VAR`` and silently do nothing to ``VAR1``.
-        name = _operand(arg, 1)
-        _named(var, name)
-        return (stk, MappingProxyType({**var, name: _top(stk)}), ind)
+        _named(var, kind)
+        return (stk, MappingProxyType({**var, kind: _top(stk)}), ind)
     raise ValueError(f"invalid PSH operand {kind!r}")
 
 
@@ -559,20 +558,16 @@ def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Co
 
 
 def _var_arith(
-    core: _Core,
-    mod: str,
-    _arg: list[str] | None = None,
-    _value: str | int | None = None,
+    core: _Core, mod: str, _arg: list[str], _value: str | int | None
 ) -> _Core:
     """Add to or subtract from a named variable, in place in the token."""
     stk, var, ind = core
-    if "+" in mod and ("-" not in mod or mod.index("+") < mod.index("-")):
-        lhs, rhs = mod.split("+", 1)
-        return (stk, MappingProxyType({**var, lhs: _named(var, lhs) + int(rhs)}), ind)
     # The caller only routes a token here when it holds a ``+`` or a ``-``,
     # so the one that is not a ``+`` is a ``-``.
-    lhs, rhs = mod.split("-", 1)
-    return (stk, MappingProxyType({**var, lhs: _named(var, lhs) - int(rhs)}), ind)
+    plus = "+" in mod and ("-" not in mod or mod.index("+") < mod.index("-"))
+    lhs, rhs = mod.split("+" if plus else "-", 1)
+    delta = int(rhs) if plus else -int(rhs)
+    return (stk, MappingProxyType({**var, lhs: _named(var, lhs) + delta}), ind)
 
 
 _DISPATCH: dict[str, _Handler] = {

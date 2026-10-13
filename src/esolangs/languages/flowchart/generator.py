@@ -140,11 +140,10 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     def read_rows(level: int) -> range:
         return range(top[level], top[level] + 2 * costs[level], 2)
 
+    # Leaf slots are handed out left to right as the walk reaches each leaf,
+    # so a folded subtree takes one column band instead of the ``2**k`` its
+    # rows would have filled -- the drawing narrows rather than leaving a gap.
     middles: list[int] = []
-    # Slots are handed out left to right as the walk reaches each leaf, so a
-    # folded subtree takes one column band instead of the ``2**k`` its rows
-    # would have filled -- the drawing narrows rather than leaving a gap.
-    slots = [0]
 
     def paint_leaf(lo: int, _hi: int, depth: int, _cursor: None) -> int:
         """Draw the leaf for ``truth_table[lo]``; return its middle column.
@@ -162,11 +161,10 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
         through them into the leaf below.  The flat layout puts leaves on a
         fixed row, so the walk cursor is unused here.
         """
-        middle = _FLOWCHART_PITCH * slots[0] + 2
+        middle = _FLOWCHART_PITCH * len(middles) + 2
         _paint(cells, middle - 1, leaf_top, _set(truth_table[lo]))
         cells[(middle, leaf_top + 1)] = "│"
         middles.append(middle)
-        slots[0] += 1
         for y in range(top[depth], leaf_top):
             cells.setdefault((middle, y), "│")
         for skipped in range(depth, n):
@@ -584,14 +582,11 @@ def _flowchart_deque(truth_table: str, *, keep_constant_input: bool = False) -> 
     answer arm, ahead of its pop.
     """
     n = len(truth_table).bit_length() - 1
-    used = essential_inputs(truth_table, n)
-    if not used and not keep_constant_input:
+    if not essential_inputs(truth_table, n) and not keep_constant_input:
         # Read only the value bit of the final byte; earlier bytes are skipped.
         nodes = ["( )", *["/ /"] * (8 * (n - 1) + 1), _set(truth_table[0]), *_ANSWER]
         return "─".join(reversed(nodes))
-    used = used or list(range(n))
-    truth_table = read_at(truth_table, used, n)
-    skips = [8 * used[0] + 1] + [8 * (b - a) for a, b in pairwise(used)]
+    truth_table, skips, tail = _plan(truth_table)
     cells: dict[tuple[int, int], str] = {}
     spine = 1
     col = 0
@@ -617,7 +612,7 @@ def _flowchart_deque(truth_table: str, *, keep_constant_input: bool = False) -> 
         if index % 2 and index + 1 < len(truth_table):
             west("[ >")
 
-    m = len(used)
+    m = len(skips)
     for level in range(m - 1):
         for _ in range(skips[level]):
             west("/ /")
@@ -643,7 +638,7 @@ def _flowchart_deque(truth_table: str, *, keep_constant_input: bool = False) -> 
     cells[(switch + 1, spine - 1)] = "┐"
     # A trailing ignored input is read before the pop, which overwrites the
     # register they leave behind; the arms split here so each repeats them.
-    owed = ("/ /",) * (8 * (n - 1 - used[-1]))
+    owed = ("/ /",) * tail
     upper = "─".join(reversed((*owed, "/{ }\\", *_ANSWER)))
     _paint(cells, switch - len(upper), spine - 1, upper + "─")
     for text in (*owed, "\\{ }/", *_ANSWER):

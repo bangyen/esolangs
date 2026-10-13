@@ -145,6 +145,15 @@ def _render(rows: list[dict[int, str]]) -> str:
     )
 
 
+def _place_load(
+    grid: dict[tuple[int, int], str], units: list[str], height: int
+) -> None:
+    """Put the origin ``/`` and the load column, bottom up, into ``grid``."""
+    grid[(0, 0)] = "/"
+    for k, unit in enumerate(units):
+        grid[(height - 1 - k, 0)] = unit
+
+
 def _reflect_back(grid: dict[tuple[int, int], str], height: int, width: int) -> str:
     r"""Reflect a Back template and route the fixed eastward start into it.
 
@@ -625,9 +634,7 @@ def _back_ordered(
     # One '/' at the origin does both turns: right -> up off the top edge onto
     # the bottom row (toroidal wrap), up the load, then up -> right into the
     # tree at column 1.
-    grid[(0, 0)] = "/"
-    for k, unit in enumerate(units):
-        grid[(height - 1 - k, 0)] = unit
+    _place_load(grid, units, height)
     # No input row can instantiate to whitespace (a zero used to embed as a
     # blank, and the height revealed it).
     program = _reflect_back(grid, height, tree_width)
@@ -638,9 +645,7 @@ def _back_ordered(
         limit = _bend_command_limit(n)
         # Five entry turns plus the full load column bound either bit value.
         if commands is not None and bent_height + 5 + commands <= limit:
-            bent[(0, 0)] = "/"
-            for k, unit in enumerate(units):
-                bent[(bent_height - 1 - k, 0)] = unit
+            _place_load(bent, units, bent_height)
             candidate = _reflect_back(bent, bent_height, bent_width)
             if len(candidate) < len(program) and bent_height * (
                 bent_width + 2

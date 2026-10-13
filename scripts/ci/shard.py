@@ -72,6 +72,12 @@ def load_durations(path: Path) -> dict[str, float]:
     return {key: float(value) for key, value in raw.items()}
 
 
+def _fallback(durations: dict[str, float], nodes: list[str]) -> float:
+    """Return the median known duration among ``nodes``, else one second."""
+    known = [durations[node] for node in nodes if node in durations]
+    return statistics.median(known) if known else 1.0
+
+
 def shard_ids(
     ids: list[str],
     index: int,
@@ -84,8 +90,7 @@ def shard_ids(
     ids = sorted(set(ids))
     if not durations:
         return ids[index::total]
-    known = [durations[node] for node in ids if node in durations]
-    fallback = statistics.median(known) if known else 1.0
+    fallback = _fallback(durations, ids)
     weights = {node: durations.get(node, fallback) for node in ids}
     parts: list[list[str]] = [[] for _ in range(total)]
     loads = [0.0] * total
@@ -154,8 +159,7 @@ def shard_main(argv: list[str] | None = None) -> int:
             + "\n",
         )
     if durations:
-        known = [durations[node] for node in collected if node in durations]
-        fallback = statistics.median(known) if known else 1.0
+        fallback = _fallback(durations, collected)
         estimate = sum(durations.get(node, fallback) for node in ids)
         missing = sum(node not in durations for node in ids)
         print(

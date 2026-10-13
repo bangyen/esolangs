@@ -597,6 +597,21 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     return tuple(order)
 
 
+def affine_form(table: str, n: int) -> tuple[int, list[int]] | None:
+    """Return ``(bias, coefficients)`` when ``table`` is an XOR of inputs, else None.
+
+    Coefficients are per input, first input first; checked against every row.
+    """
+    bias = int(table[0])
+    coefficients = [int(table[1 << (n - i - 1)]) ^ bias for i in range(n)]
+    expected = [bias]
+    for coefficient in reversed(coefficients):
+        expected += [value ^ coefficient for value in expected]
+    if any(str(value) != bit for value, bit in zip(expected, table, strict=True)):
+        return None
+    return bias, coefficients
+
+
 def move_text(start: int, target: int, right: str, left: str) -> str:
     """Return the moves taking a one-dimensional pointer to ``target``.
 
@@ -728,6 +743,16 @@ def same_up_to_wrapping(template: str, plain: str) -> bool:
 def same_tokens(template: str, program: object) -> bool:
     """Whether the two hold the same whitespace-separated tokens."""
     return isinstance(program, str) and template.split() == program.split()
+
+
+def same_token_layout(template: str, plain: str, _layout: object) -> bool:
+    """Compare whitespace-separated tokens: ``same_layout`` for token languages."""
+    return same_tokens(template, plain)
+
+
+def same_ignoring_whitespace(template: str, plain: str, _layout: object) -> bool:
+    """Compare with whitespace removed: ``same_layout`` for languages ignoring it."""
+    return "".join(template.split()) == "".join(plain.split())
 
 
 def layout_width(template: str) -> int:

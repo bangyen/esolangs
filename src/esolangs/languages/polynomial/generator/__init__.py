@@ -17,6 +17,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
+    same_ignoring_whitespace,
 )
 from esolangs.generation.wrap import balance_program
 from esolangs.languages.polynomial.generator.algebra import primes, render_product
@@ -24,7 +25,6 @@ from esolangs.languages.polynomial.generator.resources import estimate_generatio
 from esolangs.languages.polynomial.wrapping import (
     _balance_polynomial,
     _polynomial,
-    same_layout,
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -393,7 +393,7 @@ LANGUAGE = Language(
     # Space wrap stranded every sign alone; keep sign with term, one per line.
     wrap=_polynomial,
     wrap_balance=_balance_polynomial,
-    same_layout=same_layout,
+    same_layout=same_ignoring_whitespace,
     slow_width_sweep=True,
     eof="an exhausted input instruction stores -1",
     empty_program="Polynomial program must start with 'f(x) = '",

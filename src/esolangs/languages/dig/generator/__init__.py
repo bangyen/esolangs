@@ -10,11 +10,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.dig.generator._layout import _dig_alt_clear as _dig_alt_clear
-from esolangs.languages.dig.generator._layout import _dig_layout as _dig_layout
-from esolangs.languages.dig.generator._layout import (
-    _dig_leaf_inputs as _dig_leaf_inputs,
-)
+from esolangs.languages.dig.generator._layout import _dig_layout
 from esolangs.languages.dig.generator._leaf import (
     _DIG_DIGITS,
     _DIG_OPAQUE,
@@ -22,12 +18,6 @@ from esolangs.languages.dig.generator._leaf import (
     _DIG_SPAN,
     _dig_constant_leaf,
     _render,
-)
-from esolangs.languages.dig.generator._leaf import (
-    _dig_adder as _dig_adder,
-)
-from esolangs.languages.dig.generator._leaf import (
-    _dig_flat_leaf as _dig_flat_leaf,
 )
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
 from esolangs.registry._language import Language

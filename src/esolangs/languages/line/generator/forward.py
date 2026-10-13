@@ -14,7 +14,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 
-from .render import _UNIT, Canvas, Node, _arrowhead, _Cursor, chain
+from .render import _UNIT, Canvas, Node, _arrowhead, _Cursor, chain, chain_onto
 from .shared import CanvasPlan
 
 type State = tuple[int, int]
@@ -437,14 +437,6 @@ def _loader_strokes(
     return start, loader.strokes[:]
 
 
-def _chain_onto(head: Node, tail: Node) -> None:
-    """Append ``tail`` after the last node of ``head``'s chain."""
-    end = head
-    while end.next is not None:
-        end = end.next
-    end.next = tail
-
-
 @dataclass(slots=True)
 class _Router:
     """Builds the node graph while recording the stroke for every stem."""
@@ -467,7 +459,7 @@ class _Router:
         node = Node("?" if is_fork else "<")
         if options.streaming:
             reader = chain(*dag.reads_at(depth))
-            _chain_onto(reader, node)
+            chain_onto(reader, node)
             self.graph[state] = reader
         else:
             self.graph[state] = (
@@ -631,7 +623,7 @@ def _forward_canvas(
         head = decision
     else:
         head = chain(*_loader_reads(dag))
-        _chain_onto(head, decision)
+        chain_onto(head, decision)
     points = [point for stroke in strokes for point in stroke]
     top, bottom = min(y for y, _ in points), max(y for y, _ in points)
     left, right = min(x for _, x in points), max(x for _, x in points)

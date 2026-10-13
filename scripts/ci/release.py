@@ -12,7 +12,9 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -115,13 +117,35 @@ def _generator_process(name: str, *, math_extra: bool, image_extra: bool) -> Non
     subprocess.run(args, timeout=30, check=True)
 
 
-def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
+def _refused(
+    error: type[BaseException], action: Callable[[], object], failure: str
+) -> BaseException:
+    """Run ``action``, which must raise ``error``; return what it raised."""
+    try:
+        action()
+    except error as exc:
+        return exc
+    raise AssertionError(failure)
+
+
+def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     """Check installed resources and behaviour outside the source checkout."""
     import esolangs
-    from esolangs.registry import LANGUAGES
-    from esolangs.runtime._evaluate import _evaluate
 
     package = Path(esolangs.__file__).resolve().parent
+    _smoke_install(package)
+    _smoke_generators(package, math_extra=math_extra, image_extra=image_extra)
+    _smoke_files()
+    _smoke_rasters(image_extra=image_extra)
+    _smoke_deadlines()
+    _smoke_extras(math_extra=math_extra, image_extra=image_extra)
+
+
+def _smoke_install(package: Path) -> None:
+    """Check the installed package, its entry point and the bounded runners."""
+    import esolangs
+    from esolangs.runtime._evaluate import _evaluate
+
     assert package.parent.name in {"site-packages", "dist-packages"}, package
     assert (package / "py.typed").is_file()
     assert "brainfuck" in _cli(["list"])
@@ -135,13 +159,11 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
     )
     assert esolangs.run("brainfuck", "+.", max_steps=2) == "\x01"
     assert esolangs.run("brainfuck", "+.", timeout=1, isolated=True) == "\x01"
-    try:
-        esolangs.run("brainfuck", "+[]", max_steps=10)
-    except esolangs.ExecutionTimeoutError:
-        pass
-    else:
-        raise AssertionError("the bounded runner accepted a diverging program")
-
+    _refused(
+        esolangs.ExecutionTimeoutError,
+        lambda: esolangs.run("brainfuck", "+[]", max_steps=10),
+        "the bounded runner accepted a diverging program",
+    )
     executable = Path(sys.executable).with_name(
         "esolangs.exe" if sys.platform == "win32" else "esolangs"
     )
@@ -153,6 +175,12 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
         check=True,
     )
     assert "brainfuck" in entrypoint.stdout
+
+
+def _smoke_generators(package: Path, *, math_extra: bool, image_extra: bool) -> None:
+    """Run every generator in its own process and check its shipped examples."""
+    import esolangs
+
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
         if facts["boolean_generator"]:
@@ -170,6 +198,13 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
         )
         == "0"
     )
+
+
+def _smoke_files() -> None:
+    """Run generated source from a file through the API and the CLI's limits."""
+    import esolangs
+    from esolangs.runtime._evaluate import _evaluate
+
     with tempfile.TemporaryDirectory() as temporary:
         source = Path(temporary) / "xor.txt"
         source.write_text(_cli(["generate", "brainfuck", "0110"]), encoding="utf-8")
@@ -210,6 +245,12 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
             assert diagnostic in result.stderr, result
         source.write_text(",>,<.", encoding="utf-8")
         assert _evaluate("brainfuck", source, timeout=None, inputs=2) == "0011"
+
+
+def _smoke_rasters(*, image_extra: bool) -> None:
+    """Run two raster generators, through PNG only when the image extra is in."""
+    import esolangs
+
     rasters = [
         name
         for name in esolangs.list_languages()
@@ -225,19 +266,25 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
         else:
             decoded = raster
             for operation in (raster.to_png, lambda: esolangs.Raster.from_png(b"")):
-                try:
-                    operation()
-                except esolangs.MissingDependencyError as exc:
-                    message = str(exc)
-                else:
-                    raise AssertionError("PNG I/O ran without its image extra")
-                assert "esolangs[image]" in message
+                refusal = _refused(
+                    esolangs.MissingDependencyError,
+                    operation,
+                    "PNG I/O ran without its image extra",
+                )
+                assert "esolangs[image]" in str(refusal)
         for row in range(4):
             bits = [row >> 1, row & 1]
             output = esolangs.run(
                 language, decoded, stdin=esolangs.encode_inputs(language, bits)
             )
             assert esolangs.read_answer(language, output) == "0110"[row]
+
+
+def _smoke_deadlines() -> None:
+    """Check signal, thread and isolated deadlines, and termination answers."""
+    import esolangs
+    from esolangs.runtime._evaluate import _evaluate
+
     if hasattr(signal, "SIGALRM"):
         assert (
             _evaluate(
@@ -245,12 +292,11 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
             )
             == "0110"
         )
-        try:
-            esolangs.run("brainfuck", "+[]", timeout=0.02)
-        except esolangs.ExecutionTimeoutError:
-            pass
-        else:
-            raise AssertionError("signal timeout did not stop a loop")
+        _refused(
+            esolangs.ExecutionTimeoutError,
+            lambda: esolangs.run("brainfuck", "+[]", timeout=0.02),
+            "signal timeout did not stop a loop",
+        )
     else:
         _refuses_timeout()
     with ThreadPoolExecutor(max_workers=1) as pool:
@@ -288,12 +334,11 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
             )
             == "01"
         )
-    try:
-        esolangs.run("brainfuck", "+[]", timeout=0.5, isolated=True)
-    except esolangs.ExecutionTimeoutError:
-        pass
-    else:
-        raise AssertionError("isolated timeout did not stop a loop")
+    _refused(
+        esolangs.ExecutionTimeoutError,
+        lambda: esolangs.run("brainfuck", "+[]", timeout=0.5, isolated=True),
+        "isolated timeout did not stop a loop",
+    )
     for language in terminating:
         assert (
             _evaluate(
@@ -301,6 +346,14 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
             )
             == "01"
         )
+
+
+def _smoke_extras(*, math_extra: bool, image_extra: bool) -> None:
+    """Check each optional dependency is present exactly when its extra is."""
+    import esolangs
+    from esolangs.registry import LANGUAGES
+    from esolangs.runtime._evaluate import _evaluate
+
     assert (importlib.util.find_spec("PIL") is not None) == image_extra
     # Each language whose interpreter needs the math extra runs with it and
     # refuses without it; none left means nothing to check.
@@ -311,12 +364,11 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:  # noqa: C901
             assert _evaluate(language, program, timeout=None, inputs=1) == "01"
         else:
             assert importlib.util.find_spec("sympy") is None
-            try:
-                esolangs.run(language, program, stdin="")
-            except esolangs.MissingDependencyError:
-                pass
-            else:
-                raise AssertionError(f"{language} ran without its math extra")
+            _refused(
+                esolangs.MissingDependencyError,
+                partial(esolangs.run, language, program, stdin=""),
+                f"{language} ran without its math extra",
+            )
 
 
 def smoke_main(argv: list[str] | None = None) -> None:

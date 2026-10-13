@@ -14,7 +14,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens, balance_score
+from esolangs.generation.wrap import _join_tokens, balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -129,8 +129,6 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     if width is None:
         return program
     # Whitespace separates every grammar token; identifiers and '..' stay whole.
-    from esolangs.generation.wrap import wrap_space_delimited
-
     tokens = re.findall(r"[A-Za-z_][A-Za-z_0-9]*|\.\.|[^\s]", program)
     return wrap_space_delimited(" ".join(tokens), width)
 

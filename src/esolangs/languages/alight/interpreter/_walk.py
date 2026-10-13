@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from esolangs.languages.alight.interpreter._hints import Hint
-from esolangs.languages.alight.interpreter._parse import _RESERVED, _Parser
+from esolangs.languages.alight.interpreter._parse import _Parser, _valid_name
 
 
 def _grid(code: list[str]) -> list[str]:
@@ -150,7 +150,7 @@ def _func_params(p: _Parser) -> list[str] | None:
         return params if p.at_end() else None
     while True:
         name = p.word()
-        if not name or not name.isalnum() or name in _RESERVED:
+        if not _valid_name(name):
             return None
         params.append(name)
         c = p.peek()

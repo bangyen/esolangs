@@ -148,10 +148,26 @@ def _aks(number: int) -> bool:
     if number < 2:
         return False
     bits = number.bit_length()
-    for exponent in range(2, bits + 1):
-        if _integer_root(number, exponent) ** exponent == number:
-            return False
+    if any(
+        _integer_root(number, exponent) ** exponent == number
+        for exponent in range(2, bits + 1)
+    ):
+        return False
     square = bits * bits
+    modulus = _aks_modulus(number, square)
+    if any(
+        1 < math.gcd(base, number) < number
+        for base in range(2, min(modulus, number - 1) + 1)
+    ):
+        return False
+    if number <= modulus:
+        return True
+    limit = math.isqrt(_totient(modulus) * square)
+    return all(_aks_congruence(number, modulus, base) for base in range(1, limit + 1))
+
+
+def _aks_modulus(number: int, square: int) -> int:
+    """Return the least ``r`` coprime to ``number`` with ``ord_r(number) > square``."""
     modulus = 2
     while True:
         if math.gcd(modulus, number) == 1:
@@ -160,37 +176,30 @@ def _aks(number: int) -> bool:
                 value = value * number % modulus
                 order += 1
             if order > square:
-                break
+                return modulus
         modulus += 1
-    for base in range(2, min(modulus, number - 1) + 1):
-        if 1 < math.gcd(base, number) < number:
-            return False
-    if number <= modulus:
-        return True
-    limit = math.isqrt(_totient(modulus) * square)
-    shift = number % modulus
-    for base in range(1, limit + 1):
-        # (x + base)**number modulo (x**modulus - 1, number), square-and-multiply.
-        power = [0] * modulus
-        power[0] = 1
-        factor = [0] * modulus
-        factor[0] = base % number
-        # The x term of (x + base): slot 1, wrapped for the cyclic array.
-        one = 1 % modulus
-        factor[one] += 1
-        exponent = number
-        while exponent:
-            if exponent & 1:
-                power = _cyclic_mul(power, factor, number)
-            exponent >>= 1
-            if exponent:
-                factor = _cyclic_mul(factor, factor, number)
-        expected = [0] * modulus
-        expected[shift] = 1
-        expected[0] = (expected[0] + base) % number
-        if power != expected:
-            return False
-    return True
+
+
+def _aks_congruence(number: int, modulus: int, base: int) -> bool:
+    """Whether ``(x + a)**n == x**n + a`` mod ``(x**r - 1, n)``, for ``a = base``."""
+    # Square-and-multiply over the cyclic coefficient array.
+    power = [0] * modulus
+    power[0] = 1
+    factor = [0] * modulus
+    factor[0] = base % number
+    # The x term of (x + base): slot 1, wrapped for the cyclic array.
+    factor[1 % modulus] += 1
+    exponent = number
+    while exponent:
+        if exponent & 1:
+            power = _cyclic_mul(power, factor, number)
+        exponent >>= 1
+        if exponent:
+            factor = _cyclic_mul(factor, factor, number)
+    expected = [0] * modulus
+    expected[number % modulus] = 1
+    expected[0] = (expected[0] + base) % number
+    return power == expected
 
 
 #: Largest exponent a real instruction's root can carry, from the

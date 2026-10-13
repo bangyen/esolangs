@@ -12,6 +12,7 @@ import ast
 import importlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -42,6 +43,15 @@ def tests_attr(module: str, attr: str) -> Any:
         return getattr(importlib.import_module(f"tests.{module}"), attr)
     finally:
         sys.path.remove(str(ROOT))
+
+
+def _outermost(spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Return the distinct spans no other span contains."""
+    return [
+        span
+        for span in set(spans)
+        if not any(o != span and o[0] <= span[0] and span[1] <= o[1] for o in spans)
+    ]
 
 
 def _gone(module: str | None, modules: set[str]) -> bool:
@@ -215,11 +225,7 @@ def _drop_entries(
                 spans.append((top, node.end_lineno or node.lineno))
     # A span inside another (a nested helper, an entry of a dropped table)
     # goes with the outer one; cutting both would cut the outer twice.
-    spans = [
-        span
-        for span in set(spans)
-        if not any(o != span and o[0] <= span[0] and span[1] <= o[1] for o in spans)
-    ]
+    spans = _outermost(spans)
     # An import another language still uses stays (Cyclic tag reuses BCT's
     # PAIR); judged on the source with every other cut already made.
     imports = {
@@ -628,8 +634,7 @@ def _dead_test_files(
     candidates = {
         user
         for imported, importers in users.items()
-        for gone in gone_modules
-        if imported == gone or imported.startswith(gone + ".")
+        if _gone(imported, gone_modules)
         for user in importers
         if _is_test(user) and not _within(user, doomed)
     }
@@ -791,11 +796,7 @@ def _drop_dead_code(path: Path, external: set[str]) -> int:
         while lo > 1 and lines[lo - 2].strip().startswith("#"):
             lo -= 1
         spans.append((lo, hi))
-    spans = [
-        span
-        for span in set(spans)
-        if not any(o != span and o[0] <= span[0] and span[1] <= o[1] for o in spans)
-    ]
+    spans = _outermost(spans)
     for lo, hi in sorted(spans, reverse=True):
         del lines[lo - 1 : hi]
     path.write_text("".join(lines), encoding="utf-8")
@@ -861,7 +862,7 @@ def _mention_edit(mention: str, name: str | None = None) -> str:
     return mention_edit(ROOT, mention, name)
 
 
-def remove(name: str) -> list[str]:  # noqa: C901
+def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
 
@@ -893,62 +894,8 @@ def remove(name: str) -> list[str]:  # noqa: C901
     doomed |= _owned_evidence(name)
     doomed |= _dead_test_files(doomed, _gone_modules(doomed), users)
     doomed |= _orphans(doomed, users)
-    # A ``src`` module the remaining code imports stays, minus its
-    # ``LANGUAGE``: the shared helper outlives the language that defined it.
-    kept: list[str] = []
-    while True:
-        needed = {
-            path
-            for path in doomed
-            if path.is_relative_to(ROOT / "src")
-            and path.suffix != ".txt"
-            and any(
-                user.startswith("src/")
-                and not _is_test(user)
-                and not _within(user, doomed)
-                for imported, importers in users.items()
-                if imported == _module_of(path)
-                or imported.startswith(_module_of(path) + ".")
-                for user in importers
-            )
-        }
-        if not needed:
-            break
-        doomed -= needed
-        for path in sorted(needed):
-            importers = sorted(
-                {
-                    user
-                    for imported, found in users.items()
-                    if imported == _module_of(path)
-                    or imported.startswith(_module_of(path) + ".")
-                    for user in found
-                    if user.startswith("src/")
-                    and not _is_test(user)
-                    and not _within(user, doomed | {path})
-                }
-            )
-            shown = path.relative_to(ROOT)
-            kept.append(f"{shown}: kept, still imported by {', '.join(importers)}")
-    # ``git rm``, not unlink: tests read ``git ls-files``, which would still
-    # list a file deleted only from disk.
-    subprocess.run(
-        ["git", "rm", "-q", "-r", "--ignore-unmatch", *map(str, sorted(doomed))],
-        cwd=ROOT,
-        check=True,
-    )
-    # ``git rm`` skips a file never committed: a language removed before its
-    # first commit would otherwise stay registered.
-    for doomed_path in doomed:
-        if doomed_path.is_file():
-            doomed_path.unlink()
-        elif doomed_path.is_dir():
-            for leftover in sorted(doomed_path.rglob("*"), reverse=True):
-                if leftover.is_file() or leftover.is_symlink():
-                    leftover.unlink()
-                else:
-                    leftover.rmdir()
-            doomed_path.rmdir()
+    doomed, kept = _settle_kept(doomed, users)
+    _delete(doomed)
     for path in module_paths - doomed:
         if declaring and path == _module_path(declaring):
             _drop_language_statement(path / "__init__.py" if path.is_dir() else path)
@@ -979,41 +926,7 @@ def remove(name: str) -> list[str]:  # noqa: C901
         _drop_entries(ROOT / relative, keys | paths, modules, external_for(relative))
         _drop_inline_items(ROOT / relative, keys)
 
-    def prune(node: object) -> object:
-        if isinstance(node, dict):
-            return {k: prune(v) for k, v in node.items() if k != name}
-        if isinstance(node, list):
-            return [
-                prune(item)
-                for item in node
-                if not (isinstance(item, dict) and item.get("generator") == name)
-            ]
-        return node
-
-    _drop_json(ROOT / "tests/support/fixtures/generator_sizes.json", prune)
-    # Timing snapshots keep one entry per pytest node ID; drop the removed
-    # language's parametrized rows and its own deleted test files.
-    timings = ROOT / "tests/support/fixtures/slow_durations.json"
-
-    def drop_timings(node: object) -> object:
-        if not isinstance(node, dict):
-            return node
-        names = {name, lang.id, *lang.aliases}
-        return {
-            key: value
-            for key, value in node.items()
-            if not _stale_timing(str(key), names, paths)
-        }
-
-    if timings.is_file():
-        _drop_json(timings, drop_timings)
-    for relative in (
-        "tests/support/fixtures/curation.toml",
-        "src/esolangs/proof_status.toml",
-        "tests/support/fixtures/sharing_catalogue.toml",
-        "tests/support/fixtures/canonical_folding_catalogue.toml",
-    ):
-        _drop_toml(ROOT / relative, name)
+    _prune_fixtures(name, {name, lang.id, *lang.aliases}, paths)
     tracked = subprocess.run(
         ["git", "ls-files"], cwd=ROOT, check=True, capture_output=True, text=True
     ).stdout.splitlines()
@@ -1098,8 +1011,7 @@ def remove(name: str) -> list[str]:  # noqa: C901
     broken = sorted(
         f"{user}: imports {imported}, which is gone"
         for imported, importers in users.items()
-        for gone in gone_modules
-        if imported == gone or imported.startswith(gone + ".")
+        if _gone(imported, gone_modules)
         for user in importers
         if not _within(user, doomed)
     )
@@ -1129,9 +1041,118 @@ def remove(name: str) -> list[str]:  # noqa: C901
         patterns.append(f"esolangs.languages.{module}.interpreter")
     if declaring:
         patterns.append(declaring)
-    patterns = list(dict.fromkeys(patterns))
+    return kept + survived + broken + _leftover_mentions(name, patterns)
+
+
+def _import_users(path: Path, users: dict[str, set[str]]) -> set[str]:
+    """Return the files importing ``path``'s module or one of its submodules."""
+    module = _module_of(path)
+    return {
+        user
+        for imported, importers in users.items()
+        if _gone(imported, {module})
+        for user in importers
+    }
+
+
+def _settle_kept(
+    doomed: set[Path], users: dict[str, set[str]]
+) -> tuple[set[Path], list[str]]:
+    """Spare each ``src`` module surviving source imports; return why each stays.
+
+    The module stays, minus its ``LANGUAGE``: the shared helper outlives the
+    language that defined it.  Sparing one can spare what it imports, so this
+    repeats until nothing changes.
+    """
+
+    def live(user: str, gone: set[Path]) -> bool:
+        return (
+            user.startswith("src/") and not _is_test(user) and not _within(user, gone)
+        )
+
+    kept: list[str] = []
+    while True:
+        needed = {
+            path
+            for path in doomed
+            if path.is_relative_to(ROOT / "src")
+            and path.suffix != ".txt"
+            and any(live(user, doomed) for user in _import_users(path, users))
+        }
+        if not needed:
+            return doomed, kept
+        doomed = doomed - needed
+        for path in sorted(needed):
+            importers = sorted(
+                user
+                for user in _import_users(path, users)
+                if live(user, doomed | {path})
+            )
+            shown = path.relative_to(ROOT)
+            kept.append(f"{shown}: kept, still imported by {', '.join(importers)}")
+
+
+def _delete(doomed: set[Path]) -> None:
+    """Remove ``doomed`` from the index and the disk."""
+    # ``git rm``, not unlink: tests read ``git ls-files``, which would still
+    # list a file deleted only from disk.
+    subprocess.run(
+        ["git", "rm", "-q", "-r", "--ignore-unmatch", *map(str, sorted(doomed))],
+        cwd=ROOT,
+        check=True,
+    )
+    # ``git rm`` skips a file never committed: a language removed before its
+    # first commit would otherwise stay registered.
+    for path in doomed:
+        if path.is_file():
+            path.unlink()
+        elif path.is_dir():
+            shutil.rmtree(path)
+
+
+def _prune_fixtures(name: str, names: set[str], paths: set[str]) -> None:
+    """Drop ``name``'s rows from the JSON and TOML fixtures keyed by language."""
+
+    def prune(node: object) -> object:
+        if isinstance(node, dict):
+            return {k: prune(v) for k, v in node.items() if k != name}
+        if isinstance(node, list):
+            return [
+                prune(item)
+                for item in node
+                if not (isinstance(item, dict) and item.get("generator") == name)
+            ]
+        return node
+
+    _drop_json(ROOT / "tests/support/fixtures/generator_sizes.json", prune)
+    # Timing snapshots keep one entry per pytest node ID; drop the removed
+    # language's parametrized rows and its own deleted test files.
+    timings = ROOT / "tests/support/fixtures/slow_durations.json"
+
+    def drop_timings(node: object) -> object:
+        if not isinstance(node, dict):
+            return node
+        return {
+            key: value
+            for key, value in node.items()
+            if not _stale_timing(str(key), names, paths)
+        }
+
+    if timings.is_file():
+        _drop_json(timings, drop_timings)
+    for relative in (
+        "tests/support/fixtures/curation.toml",
+        "src/esolangs/proof_status.toml",
+        "tests/support/fixtures/sharing_catalogue.toml",
+        "tests/support/fixtures/canonical_folding_catalogue.toml",
+    ):
+        _drop_toml(ROOT / relative, name)
+
+
+def _leftover_mentions(name: str, patterns: list[str]) -> list[str]:
+    """Return each tracked line still naming a pattern, labelled with its edit."""
     args: list[str] = []
-    for pattern in patterns:
+    for pattern in dict.fromkeys(patterns):
         args += ["-e", pattern]
     grep = subprocess.run(
         ["git", "grep", "-n", "-I", "-F", "-w", *args],
@@ -1145,9 +1166,8 @@ def remove(name: str) -> list[str]:  # noqa: C901
     # so leave both out of the report.  Label what each remaining mention
     # needs: the tool cannot rewrite prose or a runnable example without
     # inventing a claim, so the edit stays with the caller.
-    mentions = [
+    return [
         f"[{_mention_edit(line, name)}] {line}"
         for line in grep.stdout.splitlines()
         if not line.startswith(("scripts/remove_language.py:", "docs/CHANGELOG.md:"))
     ]
-    return kept + survived + broken + mentions

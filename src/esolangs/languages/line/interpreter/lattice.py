@@ -39,10 +39,16 @@ def _ink(mask: Mask, y: int, x: int) -> bool:
 # which run a pixel or two off it, and no run is capped at a multiple of it.
 UNIT = 20
 
+
 # Stay one quarter-unit inside the nominal corner spacing.  At UNIT=20 this
 # preserves the measured 15px probe; deriving it keeps the same clearance when
 # a smaller lattice unit is introduced.
-_PROBE_LENGTH = max(1, UNIT * 3 // 4)
+def _probe_length(unit: int) -> int:
+    """Return how far a probe reaches: three quarters of a lattice unit."""
+    return max(1, (3 * unit) // 4)
+
+
+_PROBE_LENGTH = _probe_length(UNIT)
 
 
 def _band_lit(mask: Mask, y: int, x: int, direction: int) -> bool:
@@ -112,18 +118,6 @@ def _walk_segment(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]
         if not _ink(mask, ny, nx):
             return py, px
         py, px = ny, nx
-
-
-def find_start(
-    mask: Mask, approx_y: int, approx_x: int, heading: int
-) -> tuple[int, int]:
-    """Return the path-start vertex for a caller already holding one.
-
-    A named passthrough kept for interface symmetry: returns the given
-    point, ignoring ``mask``/``heading``.
-    """
-    del mask, heading
-    return approx_y, approx_x
 
 
 @dataclass
@@ -204,7 +198,7 @@ def _resnap_dead_end(
     pdy, pdx = _DIRS[(heading + 2) % 8]
     for k in (-1, 1):
         cy, cx = y + pdy * k, x + pdx * k
-        if star(mask, cy, cx, max(1, unit * 3 // 4)) - {back}:
+        if star(mask, cy, cx, _probe_length(unit)) - {back}:
             return cy, cx
     return y, x
 
@@ -239,10 +233,10 @@ def walk_tree(
             return Stroke(vertices, unit=unit)
 
         back = _opposite(heading)
-        lit = star(mask, y, x, max(1, unit * 3 // 4))
+        lit = star(mask, y, x, _probe_length(unit))
         if not lit - {back}:
             y, x = _resnap_dead_end(mask, y, x, heading, unit)
-            lit = star(mask, y, x, max(1, unit * 3 // 4))
+            lit = star(mask, y, x, _probe_length(unit))
         visited.add((y, x))
         kind, options = _classify(lit, back)
 

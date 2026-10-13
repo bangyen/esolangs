@@ -117,15 +117,14 @@ def test_advance_requests_input_rather_than_reading() -> None:
             core, _effect = _advance(machine.state)
             machine.state = core
 
-    with pytest.raises(_NeedInputError) as caught:
+    with pytest.raises(_NeedInputError):
         step_to_input()
-    assert caught.value.effects is None  # one command per step: no prefix
     assert io.getvalue() == ""
     assert io.position() == 0
 
 
-def test_a_fault_is_rethrown_after_flushing_its_prefix() -> None:
-    """The shell writes the carried prefix, then re-raises the cause."""
+def test_a_fault_is_rethrown_as_its_cause() -> None:
+    """The shell re-raises the cause the transition wrapped."""
     from types import MappingProxyType
 
     from esolangs.languages.piet_plus_plus.interpreter import _FaultError
@@ -133,14 +132,13 @@ def test_a_fault_is_rethrown_after_flushing_its_prefix() -> None:
     program = strip(("push_int", 1), ("out_integer", 1))
     machine = _Machine(program, ScriptedIO(""))
     # An empty image is malformed; the traversal raises, and the shell must
-    # surface that cause after writing the (empty) prefix exactly once.
+    # surface that cause.
     machine.state = ((0, 0), 0, -1, (), (), False, (), MappingProxyType({}))
     with pytest.raises(IndexError):
         machine.step()
     with pytest.raises(_FaultError) as caught:
         _advance(machine.state)
     assert isinstance(caught.value.cause, IndexError)
-    assert caught.value.effects is None
 
 
 def test_an_input_step_reads_before_the_write_it_feeds() -> None:

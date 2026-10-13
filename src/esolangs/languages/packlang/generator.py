@@ -29,6 +29,7 @@ from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     input_weights,
+    same_ignoring_whitespace,
     subtree_ids,
 )
 from esolangs.generation.wrap import (
@@ -43,7 +44,6 @@ from esolangs.languages.packlang.interpreter._literals import (
 from esolangs.languages.packlang.wrapping import (
     _PACKLANG_LEXEME,
     _packlang,
-    same_layout,
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -340,7 +340,7 @@ LANGUAGE = Language(
     # Packlang punctuation separates tokens even without a space.
     wrap=_packlang,
     wrap_multiline=True,
-    same_layout=same_layout,
+    same_layout=same_ignoring_whitespace,
     balance=balance_packlang,
     eof="an exhausted charGet is newline byte 10",
     empty_program="empty program",

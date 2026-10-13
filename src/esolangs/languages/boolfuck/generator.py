@@ -39,6 +39,7 @@ from typing import Literal
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
+    affine_form,
     constant_span_test,
     move_text,
     subtree_ids,
@@ -64,13 +65,10 @@ def affine_stream(table: str) -> str | None:
     n = _validate_truth_table(table)
     if n < 2:
         return None
-    bias = int(table[0])
-    coefficients = [int(table[1 << (n - i - 1)]) ^ bias for i in range(n)]
-    expected = [bias]
-    for coefficient in reversed(coefficients):
-        expected += [value ^ coefficient for value in expected]
-    if any(str(value) != bit for value, bit in zip(expected, table, strict=True)):
+    form = affine_form(table, n)
+    if form is None:
         return None
+    bias, coefficients = form
     # Selected bytes cost at most 17 commands, ignored ones 10, plus at
     # most 19 for bias/printing: 17*n+19 fits the existing bound for n>=2.
     # Cells -1/0/1 use at most four address bits; machine/cursor state
@@ -110,8 +108,7 @@ class _Emitter:
         self.count += len(code)
 
     def move(self, target: int) -> None:
-        pos = self.pos
-        self.emit(">" * (target - pos) if target >= pos else "<" * (pos - target))
+        self.emit(move_text(self.pos, target, ">", "<"))
         self.pos = target
 
     def clear(self, cell: int) -> None:

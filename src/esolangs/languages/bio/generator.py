@@ -1,8 +1,5 @@
 """Boolean template generator for bio."""
 
-from collections.abc import Callable
-from typing import Any
-
 from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -10,6 +7,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
     mark_runs,
+    same_ignoring_whitespace,
     unmark,
 )
 from esolangs.generation.wrap import balance_program
@@ -104,18 +102,13 @@ def balance_bio(table: str, default: str) -> str:
     return unmark(balanced_projection(marked, legacy, "bio"), TEMPLATE_CHAR, n)
 
 
-def _same_layout(template: str, plain: str, _layout: Callable[[int], Any]) -> bool:
-    """BIO discards whitespace."""
-    return "".join(template.split()) == "".join(plain.split())
-
-
 LANGUAGE = Language(
     "BIO",
     "bio",
     category="register_based",
     boolean=bio,
     balance=balance_bio,
-    same_layout=_same_layout,
+    same_layout=same_ignoring_whitespace,
     # Not a tree: one nested level per row whatever the table says.
     shape=Shape.LOOKUP,
     contract=BooleanContract(),

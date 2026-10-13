@@ -13,6 +13,7 @@ from esolangs.exceptions import (
     TruthTableError,
 )
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.registry._contracts import CHAR_STREAMS
 from esolangs.runtime._validate import check_bits
 from esolangs.runtime.source_hints import with_hint
 
@@ -80,11 +81,7 @@ def encode_inputs(
     ghost = contract.ghost_digit and len(bits) % 2 and len(bits) > 1
     padded = [0, *bits] if ghost else bits
     digits = [one if bit else zero for bit in padded]
-    if contract.input_shape in {
-        "char_stream",
-        "char_stream_padded",
-        "char_stream_cyclic",
-    }:
+    if contract.input_shape in CHAR_STREAMS:
         return "".join(digits)
     return "".join(f"{digit}\n" for digit in digits)
 

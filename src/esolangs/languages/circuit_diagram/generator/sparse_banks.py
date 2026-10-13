@@ -13,6 +13,8 @@ from __future__ import annotations
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
+    _class_tail,
+    _gate_count,
     _online_bank_area_floor,
     _pool_budget,
 )
@@ -29,7 +31,7 @@ def sparse_class_bank_candidate(
 ) -> _Layout | None:
     """Admit repeated classes by mask work, ticks, gates and retained area."""
     n = _validate_truth_table(table)
-    tail = 7 if n % 2 else 8
+    tail = _class_tail(n)
     prefix = n - tail
     if prefix <= 8 or len(set(table)) == 1:
         return None
@@ -67,7 +69,7 @@ def sparse_class_bank_candidate(
             models.append((body, list(range(prefix, n))))
         for model, _order in models:
             dimensions.append(model.bounds())
-            gates += sum(char in "ao~xX" for char in model.glyphs.values())
+            gates += _gate_count(model)
         if gates > 2 * len(table) + 8 * n + 111:
             return None
         if _online_bank_area_floor(dimensions, n, prefix, q, ands) > budget:

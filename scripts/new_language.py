@@ -217,20 +217,22 @@ def _tests_module(module: str, attr: str) -> Container[str]:
     return value
 
 
-def _unregistered(name: str, slug: str) -> list[Gap]:
-    module = slug
-    package = ROOT / "src/esolangs/languages" / slug / "generator"
-    generator = next(
+def _source_file(base: Path) -> Path | None:
+    """Return ``base.py``, else ``base/__init__.py``, whichever exists."""
+    return next(
         (
             path
-            for path in (
-                package.with_suffix(".py"),
-                package / "__init__.py",
-            )
+            for path in (base.with_suffix(".py"), base / "__init__.py")
             if path.exists()
         ),
         None,
     )
+
+
+def _unregistered(name: str, slug: str) -> list[Gap]:
+    module = slug
+    package = ROOT / "src/esolangs/languages" / slug / "generator"
+    generator = _source_file(package)
     if generator is None:
         return [
             Gap(
@@ -264,17 +266,7 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
     """List the steps every language needs, generator or not."""
     gaps = []
     base = ROOT / "src/esolangs/languages" / module / "interpreter"
-    source = next(
-        (
-            p
-            for p in (
-                base.with_suffix(".py"),
-                base / "__init__.py",
-            )
-            if p.exists()
-        ),
-        None,
-    )
+    source = _source_file(base)
     if source is None:
         gaps.append(Gap(f"{base.relative_to(ROOT)}.py", "write the interpreter"))
     elif PLACEHOLDER in source.read_text(encoding="utf-8"):
@@ -334,9 +326,8 @@ def _generator_gaps(lang: Language) -> list[Gap]:
     assert lang.boolean is not None
     gen = lang.boolean.__name__
     module_rel = lang.boolean.__module__.replace(".", "/")
-    source = ROOT / f"src/{module_rel}.py"
-    if not source.exists():
-        source = ROOT / f"src/{module_rel}/__init__.py"
+    base = ROOT / f"src/{module_rel}"
+    source = _source_file(base) or base / "__init__.py"
     source_rel = str(source.relative_to(ROOT))
     gaps = []
     if source.exists() and PLACEHOLDER in source.read_text(encoding="utf-8"):

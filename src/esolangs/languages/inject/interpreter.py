@@ -154,13 +154,17 @@ def _begins_block(state: _State, index: int) -> str | None:
     return name if span is not None and span[0] == index else None
 
 
+def _enclosing(spans: Mapping[str, tuple[int, int]], ind: int) -> list[str]:
+    """Return the labels strictly containing ``ind``, innermost first."""
+    inside = [n for n, (b, e) in spans.items() if b < ind < e]
+    return sorted(inside, key=lambda n: spans[n][1] - spans[n][0])
+
+
 def _innermost(state: _State) -> str | None:
     """Return the shortest block strictly containing the pointer."""
     _, spans, ind, _ = state
-    inside = [n for n, (b, e) in spans.items() if b < ind < e]
-    if not inside:
-        return None
-    return min(inside, key=lambda n: spans[n][1] - spans[n][0])
+    inside = _enclosing(spans, ind)
+    return inside[0] if inside else None
 
 
 def _skipped(state: _State) -> _State:
@@ -297,11 +301,7 @@ class _Machine:
     @property
     def stack(self) -> list[object]:
         """The labels enclosing the cursor, innermost last."""
-        inside = [
-            name for name, (begin, end) in self.spans.items() if begin < self.ind < end
-        ]
-        ordered = sorted(inside, key=lambda n: self.spans[n][1] - self.spans[n][0])
-        return list(reversed(ordered))
+        return list(reversed(_enclosing(self.spans, self.ind)))
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import json
 import sys
+from itertools import pairwise
 from typing import cast
 
 from esolangs import (
@@ -225,10 +226,12 @@ def _list(rest: list[str]) -> None:
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
+    value_options = {"--bits", "--scale", "--settings"}
+    flag_options = {"--balance", "--plain"}
     rest, set_pairs = _pop_set_pairs(rest)
-    rest, options = _pop_options(rest, {"--bits", "--scale", "--settings"})
+    rest, options = _pop_options(rest, value_options)
     rest, portable = _pop_portable(rest)
-    rest, flags = _pop_flags(rest, {"--balance", "--plain"})
+    rest, flags = _pop_flags(rest, flag_options)
     balance = "--balance" in flags
     scale = _scale_of(options)
     before = list(rest)
@@ -238,24 +241,14 @@ def _generate(rest: list[str]) -> None:
     rest = _split_positional(
         rest,
         set(),
-        {
-            "--bits",
-            "--width",
-            "--balance",
-            "--scale",
-            "--settings",
-            "--set",
-            "--portable",
-            "--plain",
-        },
+        value_options | flag_options | {"--width", "--set", "--portable"},
     )
     # `--width` takes an *optional* N, so a truth table typed straight after
     # it is consumed as the width and the report lands on the table being
     # missing -- which is baffling when you did type one.
     eaten = ""
     if width is not None and not bare:
-        for i, arg in enumerate(before[:-1]):
-            value = before[i + 1]
+        for arg, value in pairwise(before):
             if arg == "--width" and _looks_like_a_table(value):
                 eaten = (
                     f"\n\nnote: --width consumed {value!r}, which looks like a "
@@ -359,6 +352,32 @@ def _settings_sentence(facts: LanguageInfo) -> str:
     return "; ".join(rendered)
 
 
+#: The facts ``describe`` lists under "details:", in order.
+_DETAIL_KEYS = (
+    "source_kind",
+    "state_model",
+    "boolean_generator",
+    "parameterized",
+    "reads_input",
+    "width_effect",
+    "generator_max_inputs",
+    "generator_restrictions",
+    "input_shape",
+    "input_encoding",
+    "answer_mode",
+    "answer_encoding",
+    "answer_pattern",
+    "answer_convention",
+    "self_halts",
+    "dumps_on_the_post_halt_step",
+    "steppable_to_answer",
+    "eof_is_a_value",
+    "random",
+    "examples",
+    "wiki_url",
+)
+
+
 def _describe(rest: list[str]) -> None:
     """Print a language's input shape, answer location and capabilities."""
     rest, flags = _pop_flags(rest, {"--json", "--spec"})
@@ -383,12 +402,11 @@ def _describe(rest: list[str]) -> None:
     # The contract first: how bits go in, where the answer comes out, and
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
-    hidden = set()
-    if not facts["reads_input"] and facts["parameterized"]:
-        hidden = {"input_shape", "input_encoding"}
+    embeds_bits = not facts["reads_input"] and facts["parameterized"]
+    hidden = {"input_shape", "input_encoding"} if embeds_bits else set()
     name = str(facts["name"])
     print(name)
-    if hidden:
+    if embeds_bits:
         print(
             "input: none -- this generator embeds the bits in the program: "
             f"esolangs generate --bits <bits> {_as_argument(name)} <table>"
@@ -401,29 +419,11 @@ def _describe(rest: list[str]) -> None:
     print(f"spec: esolangs describe --spec {_as_argument(name)}")
     print()
     print("details:")
-    details = [
-        ("source_kind", facts["source_kind"]),
-        ("state_model", facts["state_model"]),
-        ("boolean_generator", facts["boolean_generator"]),
-        ("parameterized", facts["parameterized"]),
-        ("reads_input", facts["reads_input"]),
-        ("width_effect", facts["width_effect"]),
-        ("generator_max_inputs", facts["generator_max_inputs"]),
-        ("generator_restrictions", facts["generator_restrictions"]),
-        ("input_shape", facts["input_shape"]),
-        ("input_encoding", facts["input_encoding"]),
-        ("answer_mode", facts["answer_mode"]),
-        ("answer_encoding", facts["answer_encoding"]),
-        ("answer_pattern", facts["answer_pattern"]),
-        ("answer_convention", facts["answer_convention"]),
-        ("self_halts", facts["self_halts"]),
-        ("dumps_on_the_post_halt_step", facts["dumps_on_the_post_halt_step"]),
-        ("steppable_to_answer", facts["steppable_to_answer"]),
-        ("eof_is_a_value", facts["eof_is_a_value"]),
-        ("random", facts["random"]),
-        ("examples", f"{len(facts['examples'])} committed (paths in --json)"),
-        ("wiki_url", facts["wiki_url"]),
-    ]
+    shown_facts: dict[str, object] = {
+        **facts,
+        "examples": f"{len(facts['examples'])} committed (paths in --json)",
+    }
+    details = [(key, shown_facts[key]) for key in _DETAIL_KEYS]
     width = max(len(key) for key, _value in details)
     for key, value in details:
         if value is None or value == "" or key in hidden:

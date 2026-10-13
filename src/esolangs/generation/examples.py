@@ -30,7 +30,12 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, Language, SourceKind, canonical_id, resolve
-from esolangs.registry._contracts import AnswerMode, BooleanContract, InputShape
+from esolangs.registry._contracts import (
+    CHAR_STREAMS,
+    AnswerMode,
+    BooleanContract,
+    InputShape,
+)
 from esolangs.runtime._program import Program
 
 # Examples use AND2 on 0,1 unless the source budget requires a smaller
@@ -173,11 +178,7 @@ class BooleanExample:
     @property
     def stdin(self) -> str:
         """Return the example input with its language-specific separators."""
-        if self.input_shape in {
-            "char_stream",
-            "char_stream_padded",
-            "char_stream_cyclic",
-        }:
+        if self.input_shape in CHAR_STREAMS:
             return "".join(self.inputs)
         return "".join(f"{line}\n" for line in self.inputs)
 

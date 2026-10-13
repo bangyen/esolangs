@@ -466,6 +466,16 @@ class _BankAssembler:
         return self.layout
 
 
+def _gate_count(model: _Layout) -> int:
+    """Return how many gate glyphs (``a o ~ x X``) ``model`` draws."""
+    return sum(char in "ao~xX" for char in model.glyphs.values())
+
+
+def _class_tail(n: int) -> int:
+    """Return a class's input width: seven when ``n`` is odd, else eight."""
+    return 7 if n % 2 else 8
+
+
 def _assemble_banks(
     parts: list[list[tuple[_Layout, list[int]]]],
     n: int,
@@ -556,7 +566,7 @@ def _class_bank_layout(
     from . import _essential_table
 
     n = _validate_truth_table(table)
-    tail = 7 if n % 2 else 8
+    tail = _class_tail(n)
     prefix = n - tail
     if prefix < 2 or len(set(table)) == 1:
         return None
@@ -608,13 +618,9 @@ def _class_bank_layout(
         parts.append(models)
     # Keep H-mask complements inside their copied blocks so each local wire
     # retains its original driver and coordinate-bucket copying stays linear.
-    gates = sum(
-        sum(char in "ao~xX" for char in model.glyphs.values())
-        for models in parts
-        for model, _ in models
-    )
+    gates = sum(_gate_count(model) for models in parts for model, _ in models)
     if forest is not None:
-        gates += sum(char in "ao~xX" for char in forest[0].glyphs.values())
+        gates += _gate_count(forest[0])
     # At most one AND per class and q-1 ORs; constants only reduce this count.
     if gates + 2 * len(classes) - 1 > 2 * len(table) + 8 * n + 111:
         return None

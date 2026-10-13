@@ -304,9 +304,7 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
     if len(essential) < n:
         truth_table = read_at(truth_table, essential, n)
     order = tuple(range(len(essential)))
-    if not (prune and essential):
-        return _layout(truth_table, n, essential, order, prune=prune)
-    return _layout(truth_table, n, essential, order)
+    return _layout(truth_table, n, essential, order, prune=prune)
 
 
 def _layout(

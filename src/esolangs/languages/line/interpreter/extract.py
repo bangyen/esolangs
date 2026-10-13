@@ -377,8 +377,7 @@ def extract_tree(
                 / (_DIRS[index][0] ** 2 + _DIRS[index][1] ** 2) ** 0.5
             ),
         )
-    start = lattice.find_start(stripped, *nearest, start_heading)
-    return lattice.walk_tree(stripped, start, start_heading, unit=unit)
+    return lattice.walk_tree(stripped, nearest, start_heading, unit=unit)
 
 
 def _direction_runs(vertices: list[Vertex]) -> list[tuple[int, int]]:

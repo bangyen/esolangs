@@ -42,19 +42,27 @@ from esolangs.settings import DialectSettings, dialect_options, effective_settin
 
 
 @runtime_checkable
-class _StepMachine(Protocol):
+class _SteppableMachine(Protocol):
+    """The bare step-and-ask-if-halted surface a bounded drive needs.
+
+    No ``snapshot()``, so :class:`~esolangs.debugger.Debugger` qualifies.
+    """
+
+    def step(self) -> None:
+        """Execute one command, advancing the machine."""
+
+    @property
+    def halted(self) -> bool:
+        """Whether the machine has finished executing."""
+
+
+@runtime_checkable
+class _StepMachine(_SteppableMachine, Protocol):
     """The minimal step-capable surface the hang detector steps on.
 
     ``snapshot()`` must be the *complete* state, input cursor included, or a
     "repeat" is not a real cycle.
     """
-
-    def step(self) -> None:
-        """Execute one instruction, advancing the machine."""
-
-    @property
-    def halted(self) -> bool:
-        """Whether the machine has finished executing."""
 
     def snapshot(self) -> Hashable:
         """Return the complete internal state, hashable for cycle detection.
@@ -246,19 +254,12 @@ def run_until_halt_or_all_branches_cycle(
 
 
 @runtime_checkable
-class _FramedMachine(Protocol):
+class _FramedMachine(_SteppableMachine, Protocol):
     """A :class:`_StepMachine` that also exposes its call stack.
 
     ``frames`` is outermost first; ``frame_entry_key`` is what a frame is
     about to run (function, bindings, input cursor).
     """
-
-    def step(self) -> None:
-        """Execute one instruction, advancing the machine."""
-
-    @property
-    def halted(self) -> bool:
-        """Whether the machine has finished executing."""
 
     @property
     def frames(self) -> Sequence[object]:
@@ -293,7 +294,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
             limit,
         ),
     )
-    keys: dict[int, Hashable] = {}
+    ancestors: list[tuple[int, Hashable]] = []
     pushes = 0
     while pushes < limit:
         if machine.halted:
@@ -304,12 +305,14 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
             continue
         pushes += 1
         depth = len(machine.frames) - 1
-        # A shallower frame at this index belongs to a call that has since
+        # A frame at or above this depth belongs to a call that has since
         # returned, so drop it rather than compare against a dead ancestor.
-        keys = {d: k for d, k in keys.items() if d < depth}
-        keys[depth] = machine.frame_entry_key(machine.frames[-1])
-        if keys[depth] in [k for d, k in keys.items() if d < depth]:
+        while ancestors and ancestors[-1][0] >= depth:
+            ancestors.pop()
+        key = machine.frame_entry_key(machine.frames[-1])
+        if any(key == ancestor for _, ancestor in ancestors):
             return False
+        ancestors.append((depth, key))
     raise with_hint(
         TimeoutError(
             f"undecided after {limit} pushed frames: neither halted nor repeated "
@@ -323,7 +326,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
 
 
 @runtime_checkable
-class _TapeMachine(Protocol):
+class _TapeMachine(_SteppableMachine, Protocol):
     """A :class:`_StepMachine` on a rightward-growing tape of cells.
 
     The four members are what the growth certificate compares across two
@@ -338,13 +341,6 @@ class _TapeMachine(Protocol):
     wrapping or fixed tapes, and leftward growth away from ``ptr == 0``
     must not declare it.
     """
-
-    def step(self) -> None:
-        """Execute one instruction, advancing the machine."""
-
-    @property
-    def halted(self) -> bool:
-        """Whether the machine has finished executing."""
 
     @property
     def ip(self) -> Hashable:
@@ -507,7 +503,7 @@ def _grows_forever(
 
 
 @runtime_checkable
-class _AffineMachine(Protocol):
+class _AffineMachine(_SteppableMachine, Protocol):
     """A machine whose cells grow in *value* on a tape that does not grow.
 
     A loop may stay one to five cells wide while a cell climbs by a
@@ -521,13 +517,6 @@ class _AffineMachine(Protocol):
     *before* the clamping step.  The clamp claim is load-bearing: a slack
     shrinking a little each lap flips after a hundred laps.
     """
-
-    def step(self) -> None:
-        """Execute one instruction, advancing the machine."""
-
-    @property
-    def halted(self) -> bool:
-        """Whether the machine has finished executing."""
 
     @property
     def key(self) -> Hashable:
@@ -648,21 +637,6 @@ def _clamps_hold(before: list[int | None], after: list[int | None]) -> bool:
     return True
 
 
-@runtime_checkable
-class _SteppableMachine(Protocol):
-    """The bare step-and-ask-if-halted surface a bounded drive needs.
-
-    No ``snapshot()``, so :class:`~esolangs.debugger.Debugger` qualifies.
-    """
-
-    def step(self) -> None:
-        """Execute one command, advancing the machine."""
-
-    @property
-    def halted(self) -> bool:
-        """Whether the machine has finished executing."""
-
-
 def run_until_halt(
     machine: _SteppableMachine | VM,
     limit: int | None = None,
@@ -695,7 +669,6 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     completion is safe: the post-halt step is idempotent by the VM contract.
     """
     from esolangs.exceptions import ArgumentError, InterpreterLimitError
-    from esolangs.runtime._validate import check_whole
 
     if max_steps is not None:
         check_whole(max_steps, "max_steps")

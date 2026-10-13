@@ -91,9 +91,6 @@ _ReachableCell = NewType("_ReachableCell", tuple[int, int])
 # Intentional ``;`` stop, distinct from a probe's ``None``.  Construction
 # rejects the latter, so a survivor is a validator bug rather than a halt.
 _Halt = Literal["halt"]
-# A state's successors, keyed by the two branch bits movement can read in
-# one step: the arrival cell and the post-instruction cell, in that order.
-_Edges = dict[tuple[int, int], "_State | _Halt | None"]
 
 # No merge in progress and nothing to suppress: the latches a car starts
 # with and is reset to when a ``U`` clears them, named so the reset is one

@@ -76,29 +76,22 @@ def _reject_stray_text(code: str, pattern: re.Pattern[str]) -> None:
     exited 0, and a seventh word is never deliberate.
     """
     end = 0
+    gaps = []
     for match in pattern.finditer(code):
-        if stray := code[end : match.start()].strip():
+        gaps.append(code[end : match.start()])
+        end = match.end()
+    gaps.append(code[end:])
+    for gap in gaps:
+        if stray := gap.split():
             raise syntax_error(
-                f"{stray.split()[0]!r} is not a Bitdeque command; the "
-                f"commands are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, "
-                f"in upper case",
+                f"{stray[0]!r} is not a Bitdeque command; the commands are "
+                f"INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case",
                 keyword_hint(
-                    stray.split()[0],
+                    stray[0],
                     _COMMANDS,
                     "write uppercase commands; GOTO takes a nonnegative target",
                 ),
             )
-        end = match.end()
-    if tail := code[end:].strip():
-        raise syntax_error(
-            f"{tail.split()[0]!r} is not a Bitdeque command; the commands "
-            f"are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case",
-            keyword_hint(
-                tail.split()[0],
-                _COMMANDS,
-                "write uppercase commands; GOTO takes a nonnegative target",
-            ),
-        )
 
 
 class _Machine:
@@ -114,7 +107,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
         self.io = io
-        lst = tuple(r"GOTO\s+(\d+)" if name == "GOTO" else name for name in _COMMANDS)
+        lst = tuple(r"GOTO\s+\d+" if name == "GOTO" else name for name in _COMMANDS)
         join = rf"(?<!\S)({'|'.join(lst)})(?!\S)"
         _reject_stray_text(code, re.compile(join))
         self.tokens = re.findall(join, code)
@@ -180,7 +173,7 @@ class _Machine:
                 self.render()
                 self.state = (ind, reg, deq, True)
             return
-        self.state = _advance(self.state, self.tokens[ind][0])
+        self.state = _advance(self.state, self.tokens[ind])
 
     def render(self) -> None:
         """Print the deque contents, one value per space, no trailing newline."""

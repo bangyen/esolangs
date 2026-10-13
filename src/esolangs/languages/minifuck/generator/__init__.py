@@ -14,16 +14,24 @@ from typing import Any
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
+    _parity_bias,
     _validate_shape,
     _validate_truth_table,
     essential_inputs,
+    grid_width,
     mark_runs,
     read_at,
     same_up_to_wrapping,
     unmark,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _MINIFUCK_COMMAND, _RUN, _minifuck, balance_score
+from esolangs.generation.wrap import (
+    _MINIFUCK_COMMAND,
+    _RUN,
+    _minifuck,
+    balance_score,
+    wrap_program,
+)
 from esolangs.languages.minifuck.generator.mux import (
     _MUX_MIN_ARITY,
     _canonical_endgame,
@@ -168,7 +176,7 @@ def _balance_score(program: str, width: int) -> tuple[int, int]:
     lengths; among candidates on the same side of the budget, the shorter
     program wins.
     """
-    return max(0, max(map(len, program.splitlines())) - width), len(program)
+    return max(0, grid_width(program) - width), len(program)
 
 
 def minifuck(truth_table: str, width: int | None = None) -> str:
@@ -206,7 +214,7 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
         return min(natural, shared, key=len)
     legacy = _lookup_layout(truth_table, n, natural, width)
     shared = _wrap_template(shared, n, width)
-    if max(map(len, shared.splitlines())) > width:
+    if grid_width(shared) > width:
         shared = _parity_columns(n, int(truth_table[0]), mask=mask)
     if len(shared) > len(legacy):
         return legacy
@@ -234,20 +242,13 @@ def _lookup_layout(table: str, n: int, natural: str, width: int | None) -> str:
     if width is None or width <= 0:
         return natural
     wrapped = _wrap_template(natural, n, width)
-    if max(map(len, wrapped.splitlines())) <= width:
+    if grid_width(wrapped) <= width:
         return wrapped
-    if width < 4 and all(
-        int(bit) == ((row.bit_count() ^ int(table[0])) & 1)
-        for row, bit in enumerate(table)
-    ):
+    if width < 4 and _parity_bias(table) is not None:
         return _parity_columns(n, int(table[0]))
     narrow = _narrow(table, n)
     narrow = _wrap_template(narrow, n, width)
-    return (
-        narrow
-        if max(map(len, narrow.splitlines())) < max(map(len, wrapped.splitlines()))
-        else wrapped
-    )
+    return narrow if grid_width(narrow) < grid_width(wrapped) else wrapped
 
 
 def _paired(truth_table: str, n: int, gaps: tuple[int, ...] = ()) -> str:
@@ -335,8 +336,6 @@ def minifuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 
 def _wrap_template(template: str, n: int, width: int) -> str:
     """Wrap a template with each two-character input run kept atomic."""
-    from esolangs.generation.wrap import wrap_program
-
     marked = mark_runs(template, TEMPLATE_CHAR, (PAIR,) * n)
     return unmark(wrap_program(marked, "minifuck", width), TEMPLATE_CHAR, n)
 
@@ -357,10 +356,7 @@ def _lookup_balance(table: str, default: str) -> str:
         _lookup_layout(table, n, default, width),
         _lookup_layout(table, n, default, 1),
     ]
-    parity = all(
-        int(bit) == ((row.bit_count() ^ int(table[0])) & 1)
-        for row, bit in enumerate(table)
-    )
+    parity = _parity_bias(table) is not None
     lower = 4 if parity else 1
     if lower < floor:
         # Below the ordinary token floor, paired tokens win throughout the
@@ -392,20 +388,14 @@ def _square_tail(program: str) -> str:
 
 def _balance(table: str, default: str) -> str:
     """Compare byte accumulators with the positional balance floor."""
+    n = len(table).bit_length() - 1
     legacy = _lookup_balance(table, _solve(table))
     mask = _affine_mask(table)
     if mask is None:
         forms = [(two_state(table), False), (stored(table, len(legacy)), True)]
     else:
-        forms = [
-            (
-                _parity_columns(
-                    len(table).bit_length() - 1, int(table[0]), mask=mask, paired=True
-                ),
-                False,
-            )
-        ]
-    n = len(table).bit_length() - 1
+        parity = _parity_columns(n, int(table[0]), mask=mask, paired=True)
+        forms = [(parity, False)]
     candidates = [legacy]
     if len(default) <= len(legacy):
         candidates.append(default)

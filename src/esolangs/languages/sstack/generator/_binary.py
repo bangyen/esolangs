@@ -197,11 +197,11 @@ def _render(
             program, commands = build(table[row : row + (1 << remaining)])
             expected = metrics[depth][key]
             if not program.startswith(_PROLOGUE) or (
-                len(program) - 12,
+                len(program) - len(_PROLOGUE),
                 commands - 2,
             ) != (expected.chars, expected.commands):
                 raise ValueError("inline SStack builder disagrees with the bank price")
-            bodies[key] = program[12:]
+            bodies[key] = program[len(_PROLOGUE) :]
         return bodies[key]
 
     out = [_PROLOGUE]

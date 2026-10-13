@@ -25,7 +25,9 @@ from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
+    same_token_layout,
 )
+from esolangs.generation.wrap import balance_program
 from esolangs.languages.slow_acv_mammalian._sums import (
     _ARRAYS,
     _IO_MODULUS,
@@ -42,7 +44,6 @@ from esolangs.languages.slow_acv_mammalian.interpreter import (
 from esolangs.languages.slow_acv_mammalian.wrapping import (
     _balance_mammalian,
     _mammalian,
-    same_layout,
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -942,8 +943,6 @@ def balance_slow_acv_mammalian(
     io_modulus: int = DEFAULT_MODULI.io_modulus,
 ) -> str:
     """Retain the legacy weighted dispatch when its layout balances better."""
-    from esolangs.generation.wrap import balance_program
-
     if len(set(truth_table)) > 1:
         if cell_modulus == 255:
             return balanced_projection(
@@ -985,6 +984,6 @@ LANGUAGE = Language(
     # Four-character cells align the ``SEED`` runs; longer words span cells.
     wrap=_mammalian,
     wrap_balance=_balance_mammalian,
-    same_layout=same_layout,
+    same_layout=same_token_layout,
     slow_width_sweep=True,
 )

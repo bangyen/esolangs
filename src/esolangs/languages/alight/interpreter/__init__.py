@@ -46,6 +46,7 @@ from esolangs.languages.alight.interpreter._parse import (
     _Special,
     _SpecialNode,
     _Val,
+    _valid_name,
     _Value,
     _Var,
 )
@@ -670,7 +671,7 @@ class _Handlers:
         return name
 
     def _check_name(self, name: str) -> None:
-        if not name or not name.isalnum() or name in _RESERVED:
+        if not _valid_name(name):
             raise Hint.VARIABLE_NAME.error(f"bad variable name {name!r}")
 
     def _existing(self, text: str) -> str:
@@ -803,7 +804,7 @@ class _Core:
     flag.  The semantics are split across three components that collaborate
     through this core: :class:`_Expressions` evaluates, :class:`_Calls`
     pushes walkers and returns from them, :class:`_Handlers` runs the
-    non-control commands.  :meth:`_command` is the one orchestration point;
+    non-control commands.  :meth:`command` is the one orchestration point;
     it does no evaluation, pushing, or I/O itself.  :attr:`views` is the VM
     shell's read-only observation of the run.
     """
@@ -829,7 +830,7 @@ class _Core:
 
     @property
     def walker(self) -> _Walker:
-        """The innermost walk: the one ``_command`` advances."""
+        """The innermost walk: the one ``command`` advances."""
         return self.walkers[-1]
 
     @property
@@ -867,7 +868,7 @@ class _Core:
     #: stack, which look identical and mean somewhere else entirely.
     ip_shape = "grid"
 
-    def _command(self, value: _Value | object = _MISSING) -> int | None:
+    def command(self, value: _Value | object = _MISSING) -> int | None:
         """Execute one command, leaving the pointer at the next one's start.
 
         Pure: the input character an ``inp`` command needs arrives as
@@ -963,7 +964,7 @@ def _advance(
         walkers,
         halted=core.halted,
     )
-    output = next_core._command(value)  # noqa: SLF001 -- the semantics function
+    output = next_core.command(value)
     return next_core, output
 
 

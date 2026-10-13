@@ -85,6 +85,8 @@ _OUTPUT: Final = ":"
 _ZERO: Final = "("
 _ONE: Final = ")"
 _CLOCK: Final = "t"
+#: The one-character glyphs a label match can collide with.
+_SYMBOLS: frozenset[str] = _GATES | frozenset((_CLOCK,))
 _REMOVE: Final = "%"
 
 # What a _Gate's built-in ``kind`` may be.  Named functions are cast at
@@ -308,7 +310,7 @@ class _Parser:
                 text = match.group()
                 if text in self.definitions:
                     continue
-                if len(text) == 1 and text in (_GATES | frozenset((_CLOCK,))):
+                if text in _SYMBOLS:
                     continue
                 expression = next(
                     (
@@ -375,15 +377,12 @@ class _Parser:
                 start, col = match.start(), match.end()
                 if text in self.definitions:
                     continue
-                if len(text) == 1 and text in (_GATES | frozenset((_CLOCK,))):
+                if text in _SYMBOLS:
                     continue
-                if self.grid.at(row, start - 1) not in _WIRES:
-                    if text[0].isdigit():
-                        raise Hint.WIRE_LABEL.error(
-                            f"wire label at ({start}, {row}) annotates no wire"
-                        )
-                    continue  # pragma: no cover - validation rejects this label
-                if self.grid.at(row, col) not in _WIRES:
+                if (
+                    self.grid.at(row, start - 1) not in _WIRES
+                    or self.grid.at(row, col) not in _WIRES
+                ):
                     if text[0].isdigit():
                         raise Hint.WIRE_LABEL.error(
                             f"wire label at ({start}, {row}) annotates no wire"
@@ -493,10 +492,7 @@ class _Parser:
                 if match.group() not in self.definitions
                 if self.grid.at(row, match.start() - 1) in _WIRES
                 and self.grid.at(row, match.end()) in _WIRES
-                and not (
-                    len(match.group()) == 1
-                    and match.group() in (_GATES | frozenset((_CLOCK,)))
-                )
+                and match.group() not in _SYMBOLS
             ]
             builtins = [
                 match

@@ -158,22 +158,19 @@ def _debug(rest: list[str]) -> None:
         # all-`None` case was annotated and the *mixed* case was not, which
         # is the one where a reader actually needs telling: a row reading
         # `[None, None, 0, 0, ...]` otherwise looks like a value.
-        if set(values) <= {None}:
-            untouched = " (never written)"
-        elif None in values:
-            untouched = " (None: the cell did not exist yet at that step)"
-        else:
-            untouched = ""
+        label = options["--watch-cell"]
         if set(values) <= {None}:
             # Verdict first, and no wall of Nones: a never-written cell used
             # to print four hundred of them and put "(never written)" at the
             # far right of a wrapped line.
-            print(
-                f"cell {options['--watch-cell']}: never written in "
-                f"{len(values)} step(s)"
-            )
+            print(f"cell {label}: never written in {len(values)} step(s)")
         else:
-            print(f"cell {options['--watch-cell']}: {_abridge(values)}{untouched}")
+            untouched = (
+                " (None: the cell did not exist yet at that step)"
+                if None in values
+                else ""
+            )
+            print(f"cell {label}: {_abridge(values)}{untouched}")
     if fault is not None:
         print(f"raised: {fault}")
         # 1, like ``run``: the program itself failed.  This exited 0 for

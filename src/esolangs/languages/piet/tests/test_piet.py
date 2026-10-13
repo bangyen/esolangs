@@ -190,7 +190,7 @@ def test_public_api_loads_a_png(tmp_path: Path) -> None:
 def test_codel_chooser_selects_the_documented_edge(
     dp: int, cc: int, expected: tuple[int, int]
 ) -> None:
-    from esolangs.languages.piet.interpreter import leave
+    from esolangs.runtime.codels import leave
 
     block = {(0, 0), (0, 1), (1, 0), (1, 1)}
     assert leave(block, dp, cc) == expected

@@ -43,6 +43,7 @@ _OPEN = 5
 _CLOSE = 6
 _CLEAR = 7
 _TRANSFER_RIGHT = 8
+_JUMP_OR_IO = {".": _OUTPUT, ",": _INPUT, "[": _OPEN, "]": _CLOSE}
 
 
 def _written(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
@@ -176,6 +177,15 @@ class _Machine:
         self.state = _advance(state, self.code, self.brackets)
 
 
+def _net_change(code: str, start: int) -> tuple[int, int]:
+    """Return the net ``+``/``-`` count of the run at ``start``, and its end."""
+    end = start
+    while end < len(code) and code[end] in "+-":
+        end += 1
+    run = code[start:end]
+    return run.count("+") - run.count("-"), end
+
+
 @lru_cache(maxsize=16)
 def _compile(code: str) -> tuple[_Op, ...]:
     """Return compact operations for the effect-driven run path."""
@@ -186,10 +196,7 @@ def _compile(code: str) -> tuple[_Op, ...]:
     while ind < len(code):
         char = code[ind]
         if char in "+-":
-            change = 0
-            while ind < len(code) and code[ind] in "+-":
-                change += 1 if code[ind] == "+" else -1
-                ind += 1
+            change, ind = _net_change(code, ind)
             if change % 256:
                 ops.append((_ADD, change % 256))
             continue
@@ -200,24 +207,19 @@ def _compile(code: str) -> tuple[_Op, ...]:
             ops.append((_RIGHT if char == ">" else _LEFT, end - ind))
             ind = end
             continue
-        if char == "[" and code[ind : ind + 3] in ("[-]", "[+]"):
+        if code.startswith(("[-]", "[+]"), ind):
             ops.append((_CLEAR, 0))
-            ind += 3
+            ind += len("[-]")
             continue
-        if char == "[" and code[ind : ind + 2] == "[>":
-            end = ind + 2
-            change = 0
-            while end < len(code) and code[end] in "+-":
-                change += 1 if code[end] == "+" else -1
-                end += 1
-            if end > ind + 2 and code[end : end + 3] == "<-]":
+        if code.startswith("[>", ind):
+            change, end = _net_change(code, ind + len("[>"))
+            if end > ind + len("[>") and code.startswith("<-]", end):
                 ops.append((_TRANSFER_RIGHT, change % 256))
-                ind = end + 3
+                ind = end + len("<-]")
                 continue
-        if char in ".,[]":
+        if char in _JUMP_OR_IO:
             op_at[ind] = len(ops)
-            opcode = {".": _OUTPUT, ",": _INPUT, "[": _OPEN, "]": _CLOSE}[char]
-            ops.append((opcode, brackets.get(ind, 0)))
+            ops.append((_JUMP_OR_IO[char], brackets.get(ind, 0)))
         ind += 1
     for at, (opcode, target) in enumerate(ops):
         if opcode in (_OPEN, _CLOSE):

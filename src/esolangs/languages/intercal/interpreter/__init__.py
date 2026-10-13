@@ -778,9 +778,8 @@ def _execute(
     draws: Sequence[int],
     pos: int,
     inputs: Sequence[int | str | None],
-    input_pos: int,
     out: list[str],
-) -> tuple[_State, int, int]:
+) -> tuple[_State, int]:
     """Run one statement's command, appending its output to ``out``."""
     command = statement.command
     handler = _EXECUTE_HANDLERS.get(command.tag)
@@ -789,11 +788,10 @@ def _execute(
             f"INTERCAL syntax error (E000) in {statement.text!r}: {command.arg1}",
             hint="use statements supported by esolangs describe --spec INTERCAL",
         )
-    step = _Step(state, i, statement, program, draws, pos, inputs, input_pos, out)
+    step = _Step(state, i, statement, program, draws, pos, inputs, 0, out)
     if handler(step):
-        return step.state, step.pos, step.input_pos
-    state, pos = _leave(step.state, step.i, step.program, step.draws, step.pos)
-    return state, pos, step.input_pos
+        return step.state, step.pos
+    return _leave(step.state, step.i, step.program, step.draws, step.pos)
 
 
 def _advance(
@@ -845,10 +843,7 @@ def _statement_step(
     if reinstated:
         runs, pos = _runs(statement.chance, draws, pos)
         if runs:
-            state, pos, _input_pos = _execute(
-                state, i, statement, program, draws, pos, inputs, 0, out
-            )
-            return state, pos
+            return _execute(state, i, statement, program, draws, pos, inputs, out)
     state, pos = _leave(state, i, program, draws, pos)
     return state, pos
 

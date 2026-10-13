@@ -346,27 +346,6 @@ class _Machine:
         self._load_inputs()
         self._load_sources()
 
-    @classmethod
-    def _for_run(cls, code: list[str], io: IO) -> "_Machine":
-        """Return fresh state over the source's cached static topology."""
-        machine = cls.__new__(cls)
-        machine.clock = _ClockStream()
-        machine.io = io
-        (
-            machine.grid,
-            machine.wirings,
-            machine.gates,
-            machine.index,
-            machine._by_cell,  # noqa: SLF001 -- alternate constructor
-            machine.consumers,
-        ) = _compile(tuple(code))
-        machine.halted = False
-        machine.values = (None,) * len(machine.wirings)
-        machine.latches = tuple((None,) * len(gate.inputs) for gate in machine.gates)
-        machine._load_inputs()  # noqa: SLF001 -- alternate constructor
-        machine._load_sources()  # noqa: SLF001 -- alternate constructor
-        return machine
-
     def _load_inputs(self) -> None:
         """Drive every input wiring with the bits read from stdin.
 
@@ -502,5 +481,5 @@ class _Machine:
 
 def run(code: list[str], io: IO) -> None:
     """Execute a Circuit Diagram program."""
-    machine = _Machine._for_run(code, io)  # noqa: SLF001 -- public fast path
+    machine = _Machine(code, io)
     drive(machine)

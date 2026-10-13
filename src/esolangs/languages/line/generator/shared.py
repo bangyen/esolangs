@@ -22,6 +22,7 @@ from .render import (
     _moved,
     _Plan,
     chain,
+    chain_onto,
 )
 from .tree_layout import tree_extents
 
@@ -105,10 +106,7 @@ def shared_tree(
     if returns == 0 or (multiple and returns == 1) or commands > budget:
         return None
     head = chain(*("i" + ">i" * (n - 1)))
-    tail = head
-    while tail.next is not None:
-        tail = tail.next
-    tail.next = _moved(n - 1, order[0], root)
+    chain_onto(head, _moved(n - 1, order[0], root))
     return head, commands
 
 

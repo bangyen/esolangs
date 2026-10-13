@@ -11,10 +11,12 @@ from typing import Any
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
+    grid_width,
     in_input_order,
     layout_width,
     same_up_to_wrapping,
 )
+from esolangs.generation.wrap import _join_tokens
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -68,10 +70,6 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     return _wrap_intercal(natural, width)
 
 
-def _span(program: str) -> int:
-    return max(map(len, program.splitlines()))
-
-
 _TOKEN = re.compile(r"[A-Z]+|[.#][0-9]+|<-|@+|[0-9]+|[^\s]")
 
 
@@ -84,7 +82,7 @@ def balance_intercal(_table: str, default: str) -> str:
     """Return the lowest-``balance_score`` wrap of ``default`` over fit widths."""
     from esolangs.generation.wrap import balance_score
 
-    maximum = _span(default) - 1
+    maximum = grid_width(default) - 1
     widths = {1}
     for line in default.splitlines():
         if len(line) <= maximum:
@@ -105,8 +103,6 @@ def balance_intercal(_table: str, default: str) -> str:
 
 def _wrap_intercal(program: str, width: int) -> str:
     """Break over-wide statements only at C-INTERCAL token boundaries."""
-    from esolangs.generation.wrap import _join_tokens
-
     return "\n".join(
         line
         if len(line) <= width

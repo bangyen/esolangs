@@ -20,17 +20,21 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from ctypes import c_long, sizeof
+from operator import add, mul, sub
 from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import trunc_div, trunc_mod
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import syntax_error
 
 #: ``?`` picks one, in the order the shell's draw maps to: right, down, left, up.
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
+_HEADINGS = dict(zip(">v<^", _DIRECTIONS, strict=True))
+_ARITHMETIC = {"+": add, "-": sub, "*": mul}
 _WIDTH = 80
 _HEIGHT = 25
 _LONG_BITS = sizeof(c_long) * 8
@@ -71,10 +75,7 @@ def _divide(a: int, b: int, command: str, number_input: int | None) -> int:
                 hint="ensure the divisor is nonzero before dividing",
             )
         return number_input
-    quotient = abs(b) // abs(a)
-    if (a < 0) != (b < 0):
-        quotient = -quotient
-    return quotient if command == "/" else b - quotient * a
+    return trunc_div(b, a) if command == "/" else trunc_mod(b, a)
 
 
 def _values(stack: _Stack) -> tuple[int, ...]:
@@ -116,14 +117,9 @@ def _advance(  # noqa: C901
     elif command in "+-*/%":
         a, stack = _pop(stack)
         b, stack = _pop(stack)
-        if command == "+":
-            stack = _push(stack, b + a)
-        elif command == "-":
-            stack = _push(stack, b - a)
-        elif command == "*":
-            stack = _push(stack, b * a)
-        elif command in "/%":
-            stack = _push(stack, _divide(a, b, command, number_input))
+        operation = _ARITHMETIC.get(command)
+        value = operation(b, a) if operation else _divide(a, b, command, number_input)
+        stack = _push(stack, value)
     elif command == "!":
         a, stack = _pop(stack)
         stack = _push(stack, 0 if a else 1)
@@ -131,14 +127,8 @@ def _advance(  # noqa: C901
         a, stack = _pop(stack)
         b, stack = _pop(stack)
         stack = _push(stack, 1 if b > a else 0)
-    elif command == ">":
-        dx, dy = 1, 0
-    elif command == "<":
-        dx, dy = -1, 0
-    elif command == "^":
-        dx, dy = 0, -1
-    elif command == "v":
-        dx, dy = 0, 1
+    elif command in _HEADINGS:
+        dx, dy = _HEADINGS[command]
     elif command == "?":
         if random_dir is None:
             raise HaltError(

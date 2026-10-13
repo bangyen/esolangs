@@ -52,6 +52,19 @@ class _Point(NamedTuple):
         return _Point(self.row + d_row * count, self.col + d_col * count)
 
 
+def _walk_bound(n: int) -> int:
+    """Return the command cost a sharing walk may take at ``n`` inputs."""
+    bound: int = 128 + (
+        46 * 2 ** ((n - 6) // 2) if n % 2 == 0 else 64 * 2 ** ((n - 7) // 2)
+    )
+    return bound
+
+
+def _operand_side(heading: int) -> int:
+    """Return the lower-numbered side of ``heading``, where an operand sits."""
+    return min((heading + 1) % 4, (heading - 1) % 4)
+
+
 def _dig_alt_clear(
     cells: dict[_Point, str],
     reads: list[tuple[_Point, _Point, frozenset[_Point]]],
@@ -435,7 +448,7 @@ class _AlternatingTree:
         """
         if self.parallel:
             self.branches.append((point, heading, skip, end))
-        side = min((heading + 1) % 4, (heading - 1) % 4)
+        side = _operand_side(heading)
         count = point.step(side)
         self.place(count, str(_DIG_COUNT + skip))
         self.reads.append((point, count, frozenset()))
@@ -659,7 +672,7 @@ class _AlternatingTree:
         self, point: _Point, heading: int, skip: int, end: _Point
     ) -> set[_Point]:
         """Erase a branch block and its operand; return the readers to drop."""
-        side = min((heading + 1) % 4, (heading - 1) % 4)
+        side = _operand_side(heading)
         del self.cells[point.step(side)]
         for i in range(_DIG_END + skip + 1):
             del self.cells[point.step(heading, i)]
@@ -681,7 +694,7 @@ class _AlternatingTree:
         distance = abs(first.row - stop.row) + abs(first.col - stop.col)
         if not _DIG_COUNT + skip <= distance - 1 <= _DIG_SPAN:
             return False
-        side = min((heading + 1) % 4, (heading - 1) % 4)
+        side = _operand_side(heading)
         count_point = first.step(side)
         if count_point in self.cells:
             return False
@@ -850,12 +863,7 @@ class _AlternatingTree:
             _dig_alt_clear(self.cells, compact_reads, compact_corridors)
         except AssertionError:
             return False
-        bound: int = 128 + (
-            46 * 2 ** ((self.n - 6) // 2)
-            if self.n % 2 == 0
-            else 64 * 2 ** ((self.n - 7) // 2)
-        )
-        return self._sharing_walk_cost(compact) <= bound
+        return self._sharing_walk_cost(compact) <= _walk_bound(self.n)
 
     def _sharing_walk_cost(self, compact: Callable[[_Point], _Point]) -> int:
         """Return the entry ray plus the worst walk of any shared entry."""

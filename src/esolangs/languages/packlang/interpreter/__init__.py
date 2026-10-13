@@ -327,7 +327,7 @@ def _statement(
     frame: _Frame,
     program: _Program,
     byte: int | None,
-    stmt: tuple[object, ...] | None = None,
+    stmt: tuple[object, ...],
 ) -> tuple[_Frame, str | None, bool]:
     """Return the frame after one statement, any output, and whether to read.
 
@@ -336,8 +336,6 @@ def _statement(
     shell calls back with the byte in ``byte`` -- so the transition stays a
     function of its arguments and the two ports remain the shell's.
     """
-    if stmt is None:  # pragma: no cover - both call sites pass `prepared`
-        stmt = frame.func.body[frame.pc]
     op = stmt[0]
     store = frame.store
     # Name resolution is done from the running function's own package.
@@ -464,7 +462,7 @@ def _expression_of(stmt: tuple[object, ...]) -> _Expr | None:
 def _resolved(frame: _Frame) -> tuple[object, ...]:
     """Return the statement to run: the parsed one, or the resolved copy.
 
-    Handing the rewritten *statement* to :func:`_advance` rather than
+    Handing the rewritten *statement* to :func:`_statement` rather than
     rebuilding the function keeps the parsed program untouched -- it is
     shared by every frame and by each lap of a ``While``.
     """
@@ -548,15 +546,7 @@ def _program_key(program: _Program) -> tuple[tuple[object, ...], ...]:
                     func.uses,
                     tuple(
                         sorted(
-                            (
-                                slot,
-                                kind.low,
-                                kind.high,
-                                kind.under,
-                                kind.over,
-                                kind.length,
-                            )
-                            for slot, kind in func.locals.items()
+                            (slot, *kind.key()) for slot, kind in func.locals.items()
                         )
                     ),
                 )
@@ -564,12 +554,7 @@ def _program_key(program: _Program) -> tuple[tuple[object, ...], ...]:
             )
         ),
         tuple(sorted(program.dependencies.items())),
-        tuple(
-            sorted(
-                (key, kind.low, kind.high, kind.under, kind.over, kind.length)
-                for key, kind in program.globals.items()
-            )
-        ),
+        tuple(sorted((key, *kind.key()) for key, kind in program.globals.items())),
     )
 
 

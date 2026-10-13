@@ -44,6 +44,7 @@ from esolangs.languages.line.generator.render import (
     _check_unit,
     _moved,
     chain,
+    chain_onto,
 )
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
@@ -116,10 +117,7 @@ def _project_loader(n: int, kept: list[int], node: Node) -> Node:
     if kept[-1] < n - 1:
         reads += "<"
     head = chain(*reads)
-    tail = head
-    while tail.next is not None:
-        tail = tail.next
-    tail.next = node
+    chain_onto(head, node)
     return head
 
 

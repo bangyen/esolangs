@@ -13,6 +13,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.wrap import balance_score, wrap_program
 from esolangs.languages.taglate.proof_formulas import execution, workspace
 from esolangs.languages.taglate.wrapping import _taglate, same_layout
 from esolangs.registry._contracts import BooleanContract
@@ -299,8 +300,6 @@ def _seed_commands(seed: str) -> str:
 
 def taglate(truth_table: str, width: int | None = None) -> str:
     """Return Taglate code; narrow seeds bootstrap an empty queue."""
-    from esolangs.generation.wrap import wrap_program
-
     program = _taglate_raw(truth_table)
     if width is None:
         return program
@@ -312,8 +311,6 @@ def taglate(truth_table: str, width: int | None = None) -> str:
 
 def balance_taglate(table: str, default: str) -> str:
     """Compare the square crossing for literal and bootstrapped queues."""
-    from esolangs.generation.wrap import balance_score
-
     if len(set(table)) == 1:
         return min(
             _balanced(default),
@@ -325,8 +322,6 @@ def balance_taglate(table: str, default: str) -> str:
 
 def _balanced(default: str) -> str:
     """Compare literal and bootstrapped folds of one queue construction."""
-    from esolangs.generation.wrap import balance_score, wrap_program
-
     seed, _, commands = default.partition("\n")
     candidates = [default]
     bootstrapped = "\n" + _seed_commands(seed) + commands

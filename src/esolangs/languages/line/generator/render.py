@@ -190,13 +190,21 @@ class Node:
 
 
 def chain(*ops: str) -> Node:
-    """Build a straight-through Node chain from an opcode string, e.g. "+++"."""
+    """Build a straight-through Node chain from opcodes, e.g. ``chain(*"+++")``."""
     if not ops:
         raise ValueError("chain() requires at least one opcode")
     node = Node(ops[-1])
     for op in reversed(ops[:-1]):
         node = Node(op, next=node)
     return node
+
+
+def chain_onto(head: Node, tail: Node) -> None:
+    """Append ``tail`` after the last node of ``head``'s chain."""
+    end = head
+    while end.next is not None:
+        end = end.next
+    end.next = tail
 
 
 def _moved(pointer: int, cell: int, rest: Node) -> Node:

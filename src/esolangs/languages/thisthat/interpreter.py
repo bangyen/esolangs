@@ -400,7 +400,7 @@ class _Step:
                     value = int(any(bit == 1 for bit in bits))
                 else:
                     value = sum(bit == 1 for bit in bits) % 2
-            channel: _Channel = "execution" if chosen.channel == "execution" else "data"
+            channel = chosen.channel
             self._emit(chosen, _exits(self.grid, chosen, channel), channel, value)
 
     def advance(self, pointer: _Pointer) -> None:

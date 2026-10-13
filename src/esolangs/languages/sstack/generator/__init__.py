@@ -35,12 +35,11 @@ from esolangs.generation.shared_block import (
     repeated_definitions,
 )
 from esolangs.generation.wrap import wrap_chars
-from esolangs.languages.sstack.generator._binary import best_binary_bank
+from esolangs.languages.sstack.generator._binary import _PROLOGUE, best_binary_bank
 from esolangs.languages.sstack.generator._ternary import best_ternary_bank
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
-_PROLOGUE = '"49/b""48/c"'
 _LEAF = {"0": ":c:", "1": ":b:"}
 
 

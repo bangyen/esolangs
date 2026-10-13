@@ -111,7 +111,6 @@ from esolangs.languages.algebraic_programming_language.interpreter._parse import
     _tokens,
 )
 from esolangs.runtime._drive import drive
-from esolangs.runtime._fault import _Fault
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -155,16 +154,11 @@ class _NeedInput(Exception):  # noqa: N818 - an internal resumption signal
     """Signals that a line needs one more input token than supplied.
 
     Raised by :func:`_start_line` when binding a free variable finds the
-    explicit input tuple exhausted.  ``effects`` is the output already
-    computed before the read (empty for a line start, which never prints).
+    explicit input tuple exhausted; a line start has printed nothing yet.
     The shell reads one more token and calls :func:`_advance` again; the
     transition is deterministic, so the retry reaches the same point with
     the new value.
     """
-
-    def __init__(self, effects: tuple[str, ...] = ()) -> None:
-        super().__init__()
-        self.effects = effects
 
 
 def _frozen[T](mapping: Mapping[str, T]) -> Mapping[str, T]:
@@ -347,34 +341,22 @@ class _Machine:
         The shell: it reads the tokens the line asks for, applies the pure
         transition, and prints what the transition asks it to.  Binding a
         line's free variables can need any number of reads, so they cannot
-        be hoisted; each :data:`_NeedInput` flushes the output computed before
-        it, reads one more token, and retries.  A fault flushes the same
-        prefix before it is re-raised.
+        be hoisted; each :data:`_NeedInput` reads one more token and retries.
+        Output comes only at a step's end, so a fault has nothing to flush.
         """
         if self.halted:
             return
         inputs: list[_Number] = []
-        flushed = 0
         while True:
             try:
                 state, out = _advance(self.state, self.lines, inputs, self._WORK_LIMIT)
-            except _NeedInput as need:
-                flushed = self._flush(need.effects, flushed)
+            except _NeedInput:
                 inputs.append(self._read_number())
                 continue
-            except _Fault as fault:
-                self._flush(fault.effects, flushed)
-                raise fault.error from None
             break
         self.state = state
         if out is not None:
-            self._flush((out,), flushed)
-
-    def _flush(self, effects: tuple[str, ...], flushed: int) -> int:
-        """Print ``effects`` past ``flushed``; return the new flush count."""
-        for text in effects[flushed:]:
-            self.io.print_str(text)
-        return len(effects)
+            self.io.print_str(out)
 
     def _read_number(self) -> _Number:
         """Read one whitespace-delimited numeric token."""
@@ -426,21 +408,11 @@ def _advance(
 
     Pure: ``lines`` and ``inputs`` are parameters, and a write leaves as
     the returned string.  A line whose input binding needs a value the
-    explicit ``inputs`` does not hold raises :data:`_NeedInput`; any other
-    fault raises :data:`_Fault`, so the shell can flush any output prefix
-    (always empty here, since this language prints only at a step's end)
-    before re-raising.
+    explicit ``inputs`` does not hold raises :data:`_NeedInput`.
     """
-    try:
-        if state.frames:
-            return _step_frame(state, work_limit)
-        return _start_line(state, lines, inputs)
-    except _NeedInput:
-        raise _NeedInput(()) from None
-    except _Fault:
-        raise
-    except BaseException as exc:
-        raise _Fault((), exc) from None
+    if state.frames:
+        return _step_frame(state, work_limit)
+    return _start_line(state, lines, inputs)
 
 
 def _start_line(

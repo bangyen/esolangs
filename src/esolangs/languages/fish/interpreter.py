@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Never, cast
 
@@ -149,6 +150,7 @@ def _written(
     return MappingProxyType(updated)
 
 
+@dataclass(slots=True)
 class _Step:
     """Mutable scratch state for one :func:`_advance` transition.
 
@@ -156,38 +158,26 @@ class _Step:
     stack, moves the IP, and returns the immutable next core and effect.
     """
 
-    def __init__(
-        self,
-        x: int,
-        y: int,
-        dx: int,
-        dy: int,
-        cells: Mapping[tuple[int, int], int],
-        stacks: list[tuple[Number, ...]],
-        registers: list[Number | None],
-        quote: str | None,
-        width: int,
-        height: int,
-        char_input: int | None,
-        random_dir: int | None,
-    ) -> None:
-        self.x = x
-        self.y = y
-        self.dx = dx
-        self.dy = dy
-        self.cells = cells
-        self.stacks = stacks
-        self.registers = registers
-        self.stack: list[Number] = list(stacks[-1])
-        self.quote = quote
-        self.width = width
-        self.height = height
-        self.char_input = char_input
-        self.random_dir = random_dir
-        self.effect: _Effect = None
-        self.halted = False
-        self.commit = True
-        self.move = True
+    x: int
+    y: int
+    dx: int
+    dy: int
+    cells: Mapping[tuple[int, int], int]
+    stacks: list[tuple[Number, ...]]
+    registers: list[Number | None]
+    quote: str | None
+    width: int
+    height: int
+    char_input: int | None
+    random_dir: int | None
+    stack: list[Number] = field(init=False)
+    effect: _Effect = None
+    halted: bool = False
+    commit: bool = True
+    move: bool = True
+
+    def __post_init__(self) -> None:
+        self.stack = list(self.stacks[-1])
 
     def freeze(self) -> tuple[_Core, _Effect]:
         """Return the next core and output effect for this step."""

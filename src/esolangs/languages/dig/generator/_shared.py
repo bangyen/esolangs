@@ -2,7 +2,11 @@
 
 from typing import NamedTuple
 
-from esolangs.languages.dig.generator._layout import _dig_alt_clear, _Point
+from esolangs.languages.dig.generator._layout import (
+    _dig_alt_clear,
+    _Point,
+    _walk_bound,
+)
 from esolangs.languages.dig.generator._leaf import (
     _dig_adder,
     _dig_flat_leaf,
@@ -154,8 +158,7 @@ def _dig_indexed_shared(table: str, n: int) -> str | None:
         - 9
         + body_cost
     )
-    bound = 128 + (46 * 2 ** ((n - 6) // 2) if n % 2 == 0 else 64 * 2 ** ((n - 7) // 2))
-    if cost > bound:
+    if cost > _walk_bound(n):
         return None
 
     def place(point: tuple[int, int]) -> tuple[int, int]:

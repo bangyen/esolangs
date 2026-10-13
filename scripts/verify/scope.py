@@ -14,7 +14,7 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
 from pathlib import Path
@@ -22,7 +22,7 @@ from typing import Protocol
 
 # scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from verify.process import run_bounded
+from verify.process import run_bounded, write_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -394,13 +394,7 @@ class VerifiedCache:
         if not stable:
             return False
         for path, entry in self.pending:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(
-                mode="w", dir=path.parent, delete=False
-            ) as stream:
-                json.dump(entry, stream)
-                temporary = Path(stream.name)
-            temporary.replace(path)
+            write_text(path, json.dumps(entry))
         return True
 
 
@@ -498,7 +492,47 @@ INTERPRETER_CONTRACT_TESTS = (
 )
 
 
-def _generator_test_scope(module: str) -> list[str] | None:  # noqa: C901
+def _import_references(
+    source: Path, text: str, normalise: Callable[[str], str], owners: dict[str, str]
+) -> set[str]:
+    """Return every module, owner and imported name ``source`` refers to."""
+    references = set()
+    package = list(source.parent.relative_to(ROOT / "src").parts)
+    for node in ast.walk(ast.parse(text)):
+        if isinstance(node, ast.ImportFrom):
+            prefix = node.module or ""
+            if node.level:
+                prefix = ".".join(
+                    [
+                        *package[: len(package) - node.level + 1],
+                        *(prefix.split(".") if prefix else []),
+                    ]
+                )
+            references.add(normalise(prefix))
+            for alias in node.names:
+                references.add(normalise(prefix + "." + alias.name))
+                references.add(owners.get(alias.name, alias.name))
+        elif isinstance(node, ast.Import):
+            references.update(normalise(alias.name) for alias in node.names)
+    return references
+
+
+def _named_owner(stem: str, owners: dict[str, str]) -> str | None:
+    """Return the language a ``test_[boolean_]<name>`` file stem names, if any."""
+    for prefix in ("test_boolean_", "test_"):
+        if stem.startswith(prefix):
+            suffix = stem.removeprefix(prefix)
+            matches = [
+                name
+                for name in owners
+                if suffix == name or suffix.startswith(name + "_")
+            ]
+            if matches:
+                return owners[max(matches, key=len)]
+    return None
+
+
+def _generator_test_scope(module: str) -> list[str] | None:
     """Keep shared tests and dependent language suites for a leaf generator."""
     from esolangs.registry import LANGUAGES
 
@@ -549,25 +583,7 @@ def _generator_test_scope(module: str) -> list[str] | None:  # noqa: C901
             if not any(dep.rsplit(".", 1)[-1] in text for dep in dependents):
                 continue
             if source not in imports:
-                references = set()
-                package = list(source.parent.relative_to(ROOT / "src").parts)
-                for node in ast.walk(ast.parse(text)):
-                    if isinstance(node, ast.ImportFrom):
-                        prefix = node.module or ""
-                        if node.level:
-                            prefix = ".".join(
-                                [
-                                    *package[: len(package) - node.level + 1],
-                                    *(prefix.split(".") if prefix else []),
-                                ]
-                            )
-                        references.add(normalise(prefix))
-                        for alias in node.names:
-                            references.add(normalise(prefix + "." + alias.name))
-                            references.add(owners.get(alias.name, alias.name))
-                    elif isinstance(node, ast.Import):
-                        references.update(normalise(alias.name) for alias in node.names)
-                imports[source] = references
+                imports[source] = _import_references(source, text, normalise, owners)
             if imports[source] & dependents:
                 owner = normalise(
                     source.relative_to(ROOT / "src")
@@ -588,18 +604,7 @@ def _generator_test_scope(module: str) -> list[str] | None:  # noqa: C901
         path = test.relative_to(ROOT).as_posix()
         if not _is_collected(path):
             continue
-        test_owner: str | None = None
-        for prefix in ("test_boolean_", "test_"):
-            if test.stem.startswith(prefix):
-                suffix = test.stem.removeprefix(prefix)
-                matches = [
-                    name
-                    for name in owners
-                    if suffix == name or suffix.startswith(name + "_")
-                ]
-                if matches:
-                    test_owner = owners[max(matches, key=len)]
-                    break
+        test_owner = _named_owner(test.stem, owners)
         # Only language-local directories follow this naming convention.
         local = test.parent.name in {"generators", "interpreters", "languages"}
         relative = test.relative_to(ROOT).parts

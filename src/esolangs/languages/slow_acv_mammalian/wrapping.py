@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _span, _wrap_grid, balance_score
 
@@ -28,8 +25,3 @@ def _balance_mammalian(program: str) -> str:
     aligned = [token.ljust(_span(len(token), 4) * 5 - 1) for token in tokens]
     width = balanced_token_width(aligned, " ", rstrip_rows=True)
     return min(program, _mammalian(program, width), key=balance_score)
-
-
-def same_layout(template: str, plain: str, _layout: Callable[[int], Any]) -> bool:
-    """Whether padding preserves the instruction words."""
-    return template.split() == plain.split()

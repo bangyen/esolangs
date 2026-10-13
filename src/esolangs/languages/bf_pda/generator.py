@@ -342,18 +342,6 @@ def _bfpda_tree(
     return program, 4 * n - 1 + normal_cost(cost)
 
 
-LANGUAGE = Language(
-    "BF-PDA",
-    "bf_pda",
-    category="stack_based",
-    boolean=bfpda,
-    contract=BooleanContract(),
-    wrap=wrap_chars,
-    empty_program="BF-PDA program cannot be empty",
-    example=Example(pair=BFPDA_PAIR),
-)
-
-
 @dataclass(frozen=True, slots=True)
 class _Metric:
     size: int
@@ -538,14 +526,6 @@ def _collect_mixed_used(
             _collect_mixed_used(ids, selected, depth + 1, 2 * index + 1, used)
 
 
-def _mixed_leaf(n: int, depth: int, state: int) -> str:
-    """Return the leaf text for a completed unshared mixed-bank state."""
-    remaining = 2 * (n - depth)
-    if state == 0:
-        return ">" * remaining + "."
-    return ">" * (remaining - 1) + ".>" if remaining else "@.>"
-
-
 def _mixed_prefix(
     context: _MixedBankContext, depth: int, index: int, emit: _Emit | None = None
 ) -> _Metric:
@@ -562,7 +542,7 @@ def _mixed_prefix(
     if state < 2:
         size = context.metrics[depth][state].size + 1
         if emit is not None:
-            emit(_mixed_leaf(context.n, depth, state) + "<")
+            emit(_tree_leaf(context.n, depth, str(state)) + "<")
         return _Metric(size, size + 1)
     zero, one = context.ids[depth + 1][2 * index : 2 * index + 2]
     if zero == one:
@@ -589,7 +569,7 @@ def _mixed_inline(
     """Render a complete mixed-bank body inline onto ``pieces``."""
     state = context.ids[depth][index]
     if state < 2:
-        pieces.append(_mixed_leaf(context.n, depth, state))
+        pieces.append(_tree_leaf(context.n, depth, str(state)))
         return
     zero, one = context.ids[depth + 1][2 * index : 2 * index + 2]
     if zero == one:
@@ -647,7 +627,7 @@ def best_mixed_bank(
         tails=tails,
     )
     tree = _mixed_prefix(bank_context, 0, 0)
-    header = "<".join(["@<" + TEMPLATE_CHAR] * n)
+    header = _tree_head(n)
     size = len(header) + tree.size + decoder_size + 3
     if size >= size_limit or len(header) + tree.commands > command_budget:
         return None
@@ -662,3 +642,15 @@ def best_mixed_bank(
     if len(program) != size:
         raise ValueError("emitted BF-PDA mixed bank disagrees with its price")
     return program
+
+
+LANGUAGE = Language(
+    "BF-PDA",
+    "bf_pda",
+    category="stack_based",
+    boolean=bfpda,
+    contract=BooleanContract(),
+    wrap=wrap_chars,
+    empty_program="BF-PDA program cannot be empty",
+    example=Example(pair=BFPDA_PAIR),
+)

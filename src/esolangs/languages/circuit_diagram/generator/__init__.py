@@ -402,6 +402,13 @@ class _Builder:
 _Value = int | Literal["0", "1"]
 
 
+def _signal(arm: _Value) -> int:
+    """Narrow a mux arm the constant cases have already ruled out."""
+    if not isinstance(arm, int):  # pragma: no cover - constants handled above
+        raise AssertionError("unexpected constant mux arm")
+    return arm
+
+
 def _mux(
     builder: _Builder, selectors: list[int | None], zero: _Value, one: _Value
 ) -> _Value:
@@ -420,26 +427,18 @@ def _mux(
     # The plain rail's two rules come first: a level that only ever takes
     # them has no complement to read (see :func:`_complemented_levels`).
     if zero == "0":
-        if not isinstance(one, int):  # pragma: no cover - constants handled above
-            raise AssertionError("unexpected constant mux arm")
-        return builder.gate("a", selector, one)
+        return builder.gate("a", selector, _signal(one))
     if one == "1":
-        if not isinstance(zero, int):  # pragma: no cover - constants handled above
-            raise AssertionError("unexpected constant mux arm")
-        return builder.gate("o", selector, zero)
+        return builder.gate("o", selector, _signal(zero))
     negated = selectors[1]
     if negated is None:  # pragma: no cover - built before the fold
         raise AssertionError("selector has no complemented rail")
     if zero == "1" and one == "0":
         return negated
     if one == "0":
-        if not isinstance(zero, int):  # pragma: no cover - constants handled above
-            raise AssertionError("unexpected constant mux arm")
-        return builder.gate("a", negated, zero)
+        return builder.gate("a", negated, _signal(zero))
     if zero == "1":
-        if not isinstance(one, int):  # pragma: no cover - constants handled above
-            raise AssertionError("unexpected constant mux arm")
-        return builder.gate("o", negated, one)
+        return builder.gate("o", negated, _signal(one))
     off = builder.gate("a", negated, zero)
     on = builder.gate("a", selector, one)
     return builder.gate("o", off, on)
@@ -575,10 +574,8 @@ def _circuit_diagram_model(
     used, table = _essential_table(truth_table, n)
     ports = [builder.input_bus() for _ in range(port_inputs)]
     rails = [ports[order[i]] for i in used]
-    truth_table = table
-    n = len(used)
 
-    dag = _dag(truth_table, n)
+    dag = _dag(table, len(used))
     complemented = dag[2]
     selectors: list[list[int | None]] = [
         [rail, builder.invert(rail) if level in complemented else None]
@@ -616,10 +613,8 @@ def _linear_shared_layout(
         for prefix, point in _h_minterm_sites(inputs).items()
         if prefix.bit_length() - 1 >= 2
     ]
-    floor = (max(x for x, _ in sites) - min(x for x, _ in sites) + 1) * (
-        max(y for _, y in sites) - min(y for _, y in sites) + 1
-    )
-    if len(used) >= 6:
+    floor = _box_area(sites)
+    if len(used) >= _H_POOL_MIN_INPUTS:
         # Early admission must not suppress a smaller pooled fallback.
         floor = min(
             floor,
@@ -633,20 +628,11 @@ def _linear_shared_layout(
         )
         if _models is not None:
             _models.append(model)
-        height, width = model.bounds()
-        area = height * width
-        if area <= floor and (selected is None or area < floor):
+        area = _layout_area(model)
+        if area < floor or (area == floor and selected is None):
             floor = area
             selected = model
     return selected
-
-
-def _affine_circuit(
-    table: str, width: int, *, _events: list[int] | None = None
-) -> str | None:
-    from esolangs.languages.circuit_diagram.generator.balance import affine_circuit
-
-    return affine_circuit(table, width, _events=_events)
 
 
 def _narrowest_present(*forms: str | None) -> str:
@@ -658,6 +644,13 @@ def _layout_area(layout: _Layout) -> int:
     """Return the bounding-box area, the model-selection metric."""
     height, columns = layout.bounds()
     return height * columns
+
+
+def _box_area(points: list[tuple[int, int]]) -> int:
+    """Return the area of the smallest box holding every point."""
+    xs = [x for x, _ in points]
+    ys = [y for _, y in points]
+    return (max(xs) - min(xs) + 1) * (max(ys) - min(ys) + 1)
 
 
 def _select_h_fallback(
@@ -797,7 +790,11 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
         return banded
     # The output dash and colon extend beyond the final gate group.
     banded = _circuit_diagram_at(truth_table, max(1, width - _OUTPUT_GLYPH_COLUMNS))
-    affine = _affine_circuit(truth_table, width)
+    from esolangs.languages.circuit_diagram.generator.balance import (
+        affine_circuit,  # circular
+    )
+
+    affine = affine_circuit(truth_table, width)
     return _narrowest_present(flat, banded, affine)
 
 

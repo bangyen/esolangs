@@ -52,6 +52,10 @@ class _Type:
             return self.over
         return value
 
+    def key(self) -> tuple[int, int, int, int, int | None]:
+        """Return every field, hashable, for a program's snapshot key."""
+        return self.low, self.high, self.under, self.over, self.length
+
     def zero(self) -> object:
         """Return the type's default: its minimum, or a row of them."""
         return (self.low,) * self.length if self.length is not None else self.low

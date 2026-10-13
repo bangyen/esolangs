@@ -7,6 +7,7 @@ from typing import NamedTuple
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    affine_form,
     constant_span_test,
     decision_tree_body,
     essential_inputs,
@@ -19,7 +20,11 @@ from esolangs.generation.shared_block import (
     _repeated_blocks,
     repeated_block,
 )
-from esolangs.generation.shared_flag import flag_tree_body, shared_flag_tree
+from esolangs.generation.shared_flag import (
+    FLAG_FORMS,
+    flag_tree_body,
+    shared_flag_tree,
+)
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -75,10 +80,7 @@ def _emit(state: _BankState, code: str) -> None:
 
 def _move(state: _BankState, target: int) -> None:
     """Emit the run reaching ``target`` and move the head there."""
-    if target >= state.pos:
-        _emit(state, ">" * (target - state.pos))
-    else:
-        _emit(state, "<" * (state.pos - target))
+    _emit(state, move_text(state.pos, target, ">", "<"))
     state.pos = target
 
 
@@ -448,13 +450,10 @@ def bf_tree(truth_table: str) -> str:
 def _affine_stream(table: str) -> str | None:
     """Stream an admitted affine table through one bit and a toggle scratch."""
     n = _validate_truth_table(table)
-    bias = int(table[0])
-    coefficients = [int(table[1 << (n - i - 1)]) ^ bias for i in range(n)]
-    expected = [bias]
-    for coefficient in reversed(coefficients):
-        expected += [value ^ coefficient for value in expected]
-    if any(str(value) != bit for value, bit in zip(expected, table, strict=True)):
+    form = affine_form(table, n)
+    if form is None:
         return None
+    bias, coefficients = form
     # Input, accumulator, scratch occupy cells 0, 1, 2. Each selected read
     # costs at most 66 commands; a trailing ignored read must leave a bit
     # rather than ASCII beside the final ASCII output to retain workspace.
@@ -510,36 +509,30 @@ def _bf_ordered(
     plain = "".join(cells)
     if not share:
         return plain
+    # The body's share of the 69n + 44 command ceiling.
+    budget = 69 * n + 44 - len(header) - _ASCII_ZERO - 1
+    bodies = []
     shared = shared_flag_tree(
         truth_table,
         perm,
         tree_start,
         2 * n,
-        command_budget=69 * n + 44 - len(header) - _ASCII_ZERO - 1,
-        bank=bank,
+        command_budget=budget,
+        forms=FLAG_FORMS if bank else frozenset({"single", "multiple"}),
     )
-    if shared is not None:
-        body, commands = shared
-        candidate = header + body + "+" * _ASCII_ZERO + "."
-        if len(header) + commands + _ASCII_ZERO + 1 <= 69 * n + 44 and len(
-            candidate
-        ) < len(plain):
-            plain = candidate
+    if shared is not None and shared[1] <= budget:
+        bodies.append(shared[0])
     if bank and perm == tuple(range(n)):
-        binary = binary_bank(truth_table, 69 * n + 44 - len(header) - _ASCII_ZERO - 1)
-        if binary is not None:
-            body, _ = binary
-            candidate = header + body + "+" * _ASCII_ZERO + "."
-            if len(candidate) < len(plain):
-                plain = candidate
-        larger = larger_suffix_bank(
-            truth_table, 69 * n + 44 - len(header) - _ASCII_ZERO - 1
-        )
-        if larger is not None:
-            body, _ = larger
-            candidate = header + body + "+" * _ASCII_ZERO + "."
-            if len(candidate) < len(plain):
-                plain = candidate
+        for banked in (
+            binary_bank(truth_table, budget),
+            larger_suffix_bank(truth_table, budget),
+        ):
+            if banked is not None:
+                bodies.append(banked[0])
+    for body in bodies:
+        candidate = header + body + "+" * _ASCII_ZERO + "."
+        if len(candidate) < len(plain):
+            plain = candidate
     return plain
 
 

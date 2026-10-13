@@ -360,13 +360,15 @@ class TestCircuitDiagramLayoutGuards:
                 assert self._run_at(table, width) == table
 
     def test_native_affine_chains_verify_constants_and_complements(self) -> None:
-        from esolangs.languages.circuit_diagram.generator import _affine_circuit
+        from esolangs.languages.circuit_diagram.generator.balance import (
+            affine_circuit,
+        )
         from esolangs.languages.circuit_diagram.interpreter import run
         from esolangs.runtime.io import ScriptedIO
 
         for n in range(1, 4):
             for table in witnesses(n):
-                program = _affine_circuit(table, 1)
+                program = affine_circuit(table, 1)
                 if program is None:
                     continue
                 for row, expected in enumerate(table):

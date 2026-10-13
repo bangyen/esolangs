@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
-from typing import Any
 
 from esolangs.generation.wrap import _join_tokens
+from esolangs.languages.packlang.interpreter._lex import _TOKEN
 
-_PACKLANG_LEXEME = r"[A-Za-z_][A-Za-z_0-9]*|\d+|[{}();:,^!]"
+#: The lexer's own token grammar, so a wrap never splits a token.
+_PACKLANG_LEXEME = _TOKEN.pattern
 
 
 def _packlang(program: str, width: int) -> str:
@@ -26,8 +26,3 @@ def _packlang(program: str, width: int) -> str:
         folded = _join_tokens(tokens, max(1, width - len(indent)), separator=" ")
         lines.extend(indent + part for part in folded.split("\n"))
     return "\n".join(lines)
-
-
-def same_layout(template: str, plain: str, _layout: Callable[[int], Any]) -> bool:
-    """Whether only whitespace between lexemes changed."""
-    return "".join(template.split()) == "".join(plain.split())

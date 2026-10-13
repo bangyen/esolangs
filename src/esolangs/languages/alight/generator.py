@@ -13,7 +13,7 @@ from collections.abc import Callable
 from functools import cache
 from itertools import pairwise
 from math import isqrt, prod
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -480,42 +480,11 @@ def _postfix_units(
     return _alight_units(table, n, chunk, essential, postfix=True)
 
 
-def _balance(table: str, default: Any, *, expression_syntax: str = "infix") -> Any:
-    """Defer to the ``balance`` submodule, which imports this one.
-
-    The notation is a keyword: it changes the reconstructed instructions.
-    """
-    return balance_alight(table, default, expression_syntax=expression_syntax)
-
-
 def _dialect(expression_syntax: str = "infix", list_update: str = "in_place") -> None:
     """Validate Alight's dialect settings, one keyword per setting."""
     validate_expression_syntax(expression_syntax)
     validate_list_update(list_update)
 
-
-LANGUAGE = Language(
-    "Alight",
-    "alight",
-    category="grid_based",
-    boolean=alight,
-    dialect=_dialect,
-    dialect_values={
-        "expression_syntax": EXPRESSION_SYNTAXES,
-        "list_update": LIST_UPDATES,
-    },
-    # Not a tree: a Horner row index into a string literal.
-    shape=Shape.LOOKUP,
-    split=True,
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-    balance=_balance,
-    no_wrap="a command is a word walked cell by cell; a row end cuts it",
-    eof="it raises its own error before the read is reached",
-    underfed_raises=True,
-    empty_program="empty program",
-)
 
 _Affine = tuple[int, int]
 _EAST = len(_ALIGHT_EAST_TURN)
@@ -692,12 +661,17 @@ def select_alight(table: str, n: int, width: int) -> str:
     return _emit(table, n, plan)
 
 
+def _squareness(width: int, height: int, length: int) -> tuple[int, int, int]:
+    """Rank a shape: imbalance, then length, then width (``balance_score``'s order)."""
+    return abs(width - height), length, width
+
+
 def _balance_postfix(
     table: str, n: int, default: str, essential: list[bool] | None = None
 ) -> str:
     """Balance whole and square-root chunks at greedy fold transitions."""
     width, height = _dimensions(default)
-    best = (abs(width - height), len(default), width)
+    best = _squareness(width, height, len(default))
     selected: tuple[list[list[str]], int, tuple[int, int, int]] | None = None
     size = len(table)
     for chunk in {size, isqrt(size - 1) + 1}:
@@ -711,7 +685,7 @@ def _balance_postfix(
             # permitted width minimizes imbalance without a width sweep.
             columns = min(max(height, lower), stop - 1)
             width, height, length, _ = _fold_shape(pieces, (1, 0), columns, stop)
-            score = (abs(width - height), length, width)
+            score = _squareness(width, height, length)
             if score < best:
                 best = score
                 selected = units, columns, (width, height, length)
@@ -773,7 +747,30 @@ def _balance_projected(
             best = plan
             records.append(plan)
     selected = min(
-        records,
-        key=lambda plan: (abs(plan.width - plan.height), plan.length, plan.width),
+        records, key=lambda plan: _squareness(plan.width, plan.height, plan.length)
     )
     return _emit(table, n, selected, essential)
+
+
+LANGUAGE = Language(
+    "Alight",
+    "alight",
+    category="grid_based",
+    boolean=alight,
+    dialect=_dialect,
+    dialect_values={
+        "expression_syntax": EXPRESSION_SYNTAXES,
+        "list_update": LIST_UPDATES,
+    },
+    # Not a tree: a Horner row index into a string literal.
+    shape=Shape.LOOKUP,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    balance=balance_alight,
+    no_wrap="a command is a word walked cell by cell; a row end cuts it",
+    eof="it raises its own error before the read is reached",
+    underfed_raises=True,
+    empty_program="empty program",
+)

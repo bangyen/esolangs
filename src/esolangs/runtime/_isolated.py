@@ -104,6 +104,10 @@ def _decode(text: str, *, expired: bool) -> str:
     return cast("str", result["result"])
 
 
+#: The worker's output-cap message, which also tells the parent the cap hit.
+_OUTPUT_LIMIT = "isolated output limit exceeded"
+
+
 def check_memory(max_memory: int | None, *, isolated: bool) -> None:
     """Validate a Linux worker address-space budget in bytes before acquisition."""
     if max_memory is None:
@@ -117,6 +121,21 @@ def check_memory(max_memory: int | None, *, isolated: bool) -> None:
         raise exceptions.ArgumentError("max_memory exceeds the platform limit")
     if sys.platform != "linux":
         raise exceptions.ArgumentError("max_memory is supported only on Linux")
+
+
+def check_limits(
+    max_output: int | None, max_memory: int | None, *, isolated: bool
+) -> None:
+    """Validate the output and memory caps, which only a worker can enforce."""
+    check_memory(max_memory, isolated=isolated)
+    if max_output is None:
+        return
+    check_whole(max_output, "max_output")
+    if not isolated:
+        raise with_hint(
+            exceptions.ArgumentError("max_output requires isolated=True"),
+            "set isolated=True to bound output, or omit max_output",
+        )
 
 
 def _limit_memory(max_memory: int) -> None:
@@ -148,10 +167,8 @@ def run_isolated(
     """
     import esolangs
 
-    check_memory(max_memory, isolated=True)
+    check_limits(max_output, max_memory, isolated=True)
     check_timeout(timeout)
-    if max_output is not None:
-        check_whole(max_output, "max_output")
     if timeout is None:
         raise with_hint(
             exceptions.ArgumentError("isolated execution requires a finite timeout"),
@@ -395,7 +412,7 @@ def _worker() -> None:
                 send({"output": accepted[at : at + 4096]})
             if len(accepted) != len(text):
                 raise exceptions.InterpreterLimitError(
-                    "isolated output limit exceeded",
+                    _OUTPUT_LIMIT,
                     hint="reduce output or raise max_output if the output is needed",
                 )
 
@@ -484,7 +501,7 @@ def _worker() -> None:
                 "args": args,
                 "notes": getattr(error, "__notes__", []),
                 "output_limit": isinstance(error, exceptions.InterpreterLimitError)
-                and str(error) == "isolated output limit exceeded",
+                and str(error) == _OUTPUT_LIMIT,
             }
         )
     else:

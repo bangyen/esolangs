@@ -9,7 +9,7 @@ if not a code point), ``i`` pushes the next Unicode character code,
 unmatched ``<`` or a ``>`` with no ``<`` raise :class:`HaltError` (the
 cross-check exits 3); ``i`` raises :class:`EOFError` when exhausted.
 :func:`_advance` is pure and total over an immutable ``_State``:
-:func:`_needs` lets the shell reject an underflow first and
+``_NEEDS`` lets the shell reject an underflow first and
 :func:`_forward` returns ``None`` for an unmatched ``>``.
 
 ``o`` outputs "the top of the stack", so the wiki's Hello, world
@@ -49,11 +49,6 @@ _NEEDS = {"A": 1, "o": 1, "S": 2}
 #: so carrying it would put constant data in every value the cycle detector
 #: stores.  It is a parameter to the transition instead.
 type _State = tuple[int, int, tuple[int, ...], tuple[int, ...]]
-
-
-def _needs(char: str) -> int:
-    """Return how many stack elements ``char`` requires to run."""
-    return _NEEDS.get(char, 0)
 
 
 def _forward(code: str, ind: int) -> int | None:
@@ -199,10 +194,11 @@ class _Machine:
             return
         ind, acc, stack, jumps = self.state
         char = self.code[ind]
-        if len(stack) < _needs(char):
+        need = _NEEDS.get(char, 0)
+        if len(stack) < need:
             raise HaltError(
-                "empty stack" if _needs(char) == 1 else "swap needs two elements",
-                hint=f"push {_needs(char)} values before {char!r}",
+                "empty stack" if need == 1 else "swap needs two elements",
+                hint=f"push {need} values before {char!r}",
             )
         if char == "<" and not jumps:
             raise HaltError(

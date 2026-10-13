@@ -55,6 +55,9 @@ _CRAZY = (
 _WORDS = 3**10
 _ROTATE = 3**9
 _EOF = _WORDS - 1
+#: The commands that act; ``o`` is the no-op the loader also admits.
+_ACTIVE_OPS = "ji*p</v"
+_NOP = "o"
 type _State = tuple[int, int, int, bool]
 type _Effect = int | None
 
@@ -92,7 +95,7 @@ def _advance(
     op = _op(cell, c)
     if op is None:
         return (a, c, d, True), (), None
-    if op not in "ji*p</v":
+    if op not in _ACTIVE_OPS:
         # Native n=12 controls take 12.8M transitions, mostly no-ops.
         # Their sole write needs neither a scratch dictionary nor a peek closure.
         return (
@@ -147,7 +150,7 @@ def _initial_memory(code: str) -> tuple[int, ...]:
                 "keep the source within 59049 memory cells",
             )
         decoded = _op(cell, index)
-        if decoded is None or decoded not in "ji*p</vo":
+        if decoded is None or decoded not in _ACTIVE_OPS + _NOP:
             raise syntax_error(
                 f"Malbolge source character {char!r} at cell {index} does not "
                 f"decipher to an instruction",

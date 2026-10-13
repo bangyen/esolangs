@@ -53,8 +53,9 @@ excluding its newline.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from itertools import takewhile
 from operator import add, mul, sub
 from types import MappingProxyType
 from typing import Final, Literal
@@ -101,12 +102,17 @@ _Function = tuple[Literal["func"], str]
 _Value = int | str | _Function
 
 
-def _int_from(buf: list[str], dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> int:
-    """Parse an intmode buffer under the selected multiplication rule."""
+def _letter_number(chars: Iterable[str]) -> int:
+    """Fold letters into a number, one decimal place each: A..Y add 1..25, Z 0."""
     res = 0
-    for c in buf:
+    for c in chars:
         res = res * 10 + (ord(c) - 64 if c != "Z" else 0)
-    return dialect.finish_integer(res)
+    return res
+
+
+def _int_from(buf: Iterable[str], dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> int:
+    """Parse an intmode buffer under the selected multiplication rule."""
+    return dialect.finish_integer(_letter_number(buf))
 
 
 def _to_int(value: _Value, dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> int:
@@ -115,12 +121,8 @@ def _to_int(value: _Value, dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> int:
         return value
     if isinstance(value, tuple):  # function -> number of commands
         return len(value[1])
-    res = 0
-    for c in value:
-        if c == "F":
-            break
-        res = res * 10 + (ord(c) - 64 if c != "Z" else 0)
-    return dialect.finish_integer(res)
+    letters = takewhile(lambda c: c != "F", value)
+    return dialect.finish_integer(_letter_number(letters))
 
 
 def _to_str(value: _Value) -> str:
@@ -247,7 +249,7 @@ def _flush_of(
     if mode == "string":
         return ("".join(buf),)
     if mode == "int":
-        return (_int_from(list(buf), dialect),)
+        return (_int_from(buf, dialect),)
     if mode == "func":
         return ((_FUNC, "".join(buf)),)
     return ()
@@ -331,7 +333,7 @@ def _cmd_load(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
 def _cmd_call(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
     """Call the body of a string or function value."""
     value = step.pop(view)
-    raw = value[1] if isinstance(value, tuple) and value[0] == _FUNC else value
+    raw = value[1] if isinstance(value, tuple) else value
     if not isinstance(raw, str):
         raise HaltError(
             "G needs a string or a function",
@@ -343,7 +345,7 @@ def _cmd_call(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
 def _cmd_exec(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
     """Call a function value, or push a non-function back unchanged."""
     value = step.pop(view)
-    if isinstance(value, tuple) and value[0] == _FUNC:
+    if isinstance(value, tuple):
         step.body = value[1]
     else:
         step.pushes = (value,)
@@ -392,7 +394,7 @@ def _cmd_cond_call(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> 
     """Call a function value when the value beneath it is truthy."""
     a = step.pop(view)
     b = step.pop(view)
-    if isinstance(a, tuple) and a[0] == _FUNC and _truthy(b):
+    if isinstance(a, tuple) and _truthy(b):
         step.body = a[1]
 
 
@@ -447,11 +449,7 @@ def _cmd_output(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> Non
 def _cmd_repeat(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
     """Repeat a function while the stack is non-empty, keeping its body."""
     value = step.pop(view)
-    if (
-        isinstance(value, tuple)
-        and value[0] == _FUNC
-        and len(view) - step.pops + len(step.pushes) > 0
-    ):
+    if isinstance(value, tuple) and len(view) - step.pops + len(step.pushes) > 0:
         step.body = value[1]
         step.call_repeat = True
 

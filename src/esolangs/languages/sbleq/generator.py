@@ -14,6 +14,10 @@ from esolangs.generation.wrap import balance_program, balance_score, wrap_grid
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
+#: Tables up to this many rows keep the shared tree; larger ones also try
+#: the packed decoder.
+_TREE_ROWS = 16
+
 
 def sbleq(truth_table: str) -> str:
     """Read once, then choose a shared tree or packed decoder.
@@ -25,7 +29,7 @@ def sbleq(truth_table: str) -> str:
     if len(set(truth_table)) == 1:
         return _sbleq_constant(n, truth_table[0])
     tree = in_input_order(truth_table, _sbleq_shared)
-    if len(truth_table) <= 16:
+    if len(truth_table) <= _TREE_ROWS:
         return tree
     packed = packed_decoder(truth_table)
     return tree if len(tree) < len(packed) else packed
@@ -39,20 +43,20 @@ def _sbleq_shared(truth_table: str, perm: tuple[int, ...]) -> str:
 def _balance(table: str, default: str) -> str:
     """Retain the old constant tree/decoder when its grid is more balanced."""
     candidate = balance_program(default, "sbleq")
-    if len(set(table)) == 1:
-        n = len(table).bit_length() - 1
-        legacy = _sbleq_hoisted(table, tuple(range(n)), share=True)
-        if len(table) > 16:
-            legacy = min(
-                legacy, _packed_build(table, keep_constant_layout=True), key=len
-            )
-        return min(candidate, balance_program(legacy, "sbleq"), key=balance_score)
-    if len(table) > 16:
-        legacy = min(
-            in_input_order(table, _sbleq_shared), _packed_build(table), key=len
-        )
-        return min(candidate, balance_program(legacy, "sbleq"), key=balance_score)
-    return candidate
+    constant = len(set(table)) == 1
+    large = len(table) > _TREE_ROWS
+    if not constant and not large:
+        return candidate
+    n = len(table).bit_length() - 1
+    legacy = [
+        _sbleq_hoisted(table, tuple(range(n)), share=True)
+        if constant
+        else in_input_order(table, _sbleq_shared)
+    ]
+    if large:
+        legacy.append(_packed_build(table, keep_constant_layout=constant))
+    old = balance_program(min(legacy, key=len), "sbleq")
+    return min(candidate, old, key=balance_score)
 
 
 LANGUAGE = Language(

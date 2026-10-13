@@ -24,7 +24,7 @@ from esolangs.generation.shared_block import (
     repeated_blocks,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _RUN, balance_score, wrap_chars
+from esolangs.generation.wrap import _RUN, balance_score, wrap_chars, wrap_program
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -93,8 +93,6 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     if width < len(PAIR[0]):
         natural = (TEMPLATE_CHAR + ">>>") * n + natural[len(PAIR[0]) * n :]
-    from esolangs.generation.wrap import wrap_program
-
     marked = mark_runs(natural, TEMPLATE_CHAR, smallfuck_setters(natural, n))
     return unmark(wrap_program(marked, "smallfuck", width), TEMPLATE_CHAR, n)
 
@@ -167,8 +165,6 @@ class _Tree:
         constant: Callable[[int, int], bool],
         ids: list[list[int]],
         builder: _Builder,
-        blocks: tuple[tuple[int, int], ...],
-        depths: tuple[int, ...],
         pending_levels: tuple[int, ...],
         selected: dict[tuple[int, int], int],
         pairs: dict[int, int],
@@ -179,8 +175,6 @@ class _Tree:
         self.constant = constant
         self.ids = ids
         self.builder = builder
-        self.blocks = blocks
-        self.depths = depths
         self.pending_levels = pending_levels
         self.selected = selected
         self.pairs = pairs
@@ -520,8 +514,6 @@ def _smallfuck_tree(
         constant,
         ids,
         builder,
-        blocks,
-        depths,
         pending_levels,
         selected,
         pairs,

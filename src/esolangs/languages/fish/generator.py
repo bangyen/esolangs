@@ -10,6 +10,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -74,8 +75,6 @@ def balance_fish(truth_table: str, default: str) -> str:
             if threshold > 0:
                 boundary = max(0, (constant // threshold).bit_length() - 1)
                 exponents.update((boundary, boundary + 1, boundary + 2))
-    from esolangs.generation.wrap import balance_score
-
     candidates = [default]
     candidates.extend(
         fish(truth_table, (1 << exponent) + 2)

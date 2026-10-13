@@ -12,6 +12,8 @@ from esolangs.languages.circuit_diagram.generator import (
 )
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
+    _class_tail,
+    _gate_count,
     _pool_budget,
 )
 from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
@@ -41,7 +43,7 @@ def folded_class_bank_candidate(
 ) -> _Layout | None:
     """Return a bounded separate bank with folded masks above eight inputs."""
     n = _validate_truth_table(table)
-    tail = 7 if n % 2 else 8
+    tail = _class_tail(n)
     prefix = n - tail
     # Pooled masks through eight inputs already use this same fold.
     if prefix <= 8:
@@ -82,11 +84,7 @@ def folded_class_bank_candidate(
                 return None
             models.append((model, list(range(prefix, n))))
         parts.append(models)
-    gates = sum(
-        sum(char in "ao~xX" for char in m.glyphs.values())
-        for group in parts
-        for m, order in group
-    )
+    gates = sum(_gate_count(m) for group in parts for m, order in group)
     if gates + 2 * q - 1 > 2 * len(table) + 8 * n + 111:
         return None
     dimensions = [m.bounds() for group in parts for m, order in group]

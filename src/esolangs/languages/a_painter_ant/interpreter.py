@@ -180,7 +180,7 @@ class _Machine:
         render to one.  The render branch does not advance, or the picture
         would be one instruction past the boundary.
         """
-        if self.halted or self._interrupted:
+        if self._interrupted:
             if not self._dumped:
                 self.io.print_str(self.render())
                 self._dumped = True
