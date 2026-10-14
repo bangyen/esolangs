@@ -649,15 +649,13 @@ class _Machine:
         # Where the source ends, kept because ``ip`` still has to report a
         # position once every frame has been popped.
         self._length = len(code)
-        # First-sight identity numbering: the counter hands out each
-        # serial, and the dict remembers which objects were already
-        # numbered, so a serial names one object for the whole run.
-        # The dict stores only ids, not the objects, so this is a
-        # convention, not a structural guarantee: callers must number
-        # only objects that stay reachable from the machine's state for
-        # the rest of the run, since a freed object's id could be
-        # recycled for a different object.
-        self._serials: dict[int, int] = {}
+        # First-sight numbering of functions and scopes, so a serial names
+        # one of them for the whole run.  A function is keyed by ``id``:
+        # parsed functions live as long as the machine.  A scope is keyed by
+        # its scope id, never by its locals' ``id``: a binding replaces the
+        # locals mapping, and the freed mapping's recycled id once gave one
+        # program two different snapshot sequences on two runs.
+        self._serials: dict[tuple[str, int], int] = {}
         self._next_serial = 0
         parser = _Parser(code)
         self.globals = parser.parse()
@@ -811,7 +809,7 @@ class _Machine:
                     ),
                     f.for_ind if f.for_rows is not None else -1,
                     f.for_body_pos if f.for_rows is not None else -1,
-                    self._serial(f.fn),
+                    self._serial(("fn", id(f.fn))),
                     None
                     if f.for_rows is None
                     else tuple(tuple(row) for row in f.for_rows),
@@ -838,9 +836,7 @@ class _Machine:
 
         A closure keeps its defining scope after that frame returns, and a
         call through it can write there, so those locals are state too.  Each
-        scope is keyed by its locals' identity serial, the same numbering the
-        original snapshot used, so the resource ledger's exact formula still
-        holds.
+        scope is keyed by its serial.
         """
         seen: dict[int, int] = {}
         todo: list[int] = [f.scope for f in self.state.frames]
@@ -849,7 +845,7 @@ class _Machine:
             scope: int | None = todo.pop()
             while scope is not None:
                 node = self.state.scopes[scope]
-                key = self._serial(node.locals)
+                key = self._serial(("scope", scope))
                 if key in seen:
                     break
                 seen[key] = scope
@@ -870,9 +866,8 @@ class _Machine:
             for key in sorted(seen)
         )
 
-    def _serial(self, thing: object) -> int:
-        """Return ``thing``'s serial: its identity numbered by first sight."""
-        key = id(thing)
+    def _serial(self, key: tuple[str, int]) -> int:
+        """Return the serial of a function ``("fn", id)`` or ``("scope", id)``."""
         if key not in self._serials:
             self._serials[key] = self._next_serial
             self._next_serial += 1
@@ -881,12 +876,11 @@ class _Machine:
     def _render(self, value: object) -> str:
         """``repr(value)``, but a closure names its function and scope.
 
-        The scope is its defining scope's locals serial, matching the
-        original numbering so the ledger's exact workspace formula holds.
+        The scope is its defining scope's serial.
         """
         if isinstance(value, _Closure):
-            fn = self._serial(value.fn)
-            scope = self._serial(self.state.scopes[value.scope].locals)
+            fn = self._serial(("fn", id(value.fn)))
+            scope = self._serial(("scope", value.scope))
             return f"<{value.fn.name or 'literal'} {fn}@{scope}>"
         return repr(value)
 
