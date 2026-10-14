@@ -58,7 +58,7 @@ def _witness_rows(n):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [9, 10])
-def test_changed_scaling_controls_execute_every_row(n) -> None:
+def test_changed_scaling_controls_execute_witness_rows(n) -> None:
     table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(1 << n))
     old, new = _suffolk_lookup(table), suffolk(table)
     assert len(new) < len(old)
