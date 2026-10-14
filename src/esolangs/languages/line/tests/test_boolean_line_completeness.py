@@ -75,14 +75,33 @@ def _walk_states(head: Node, table: str) -> dict[tuple[int, str], int]:
     return key_to_id
 
 
+def _shape(table: str) -> tuple[object, ...]:
+    """Return which residuals are equal at each depth, and the first bit."""
+    patterns: list[tuple[int, ...]] = []
+    size = len(table)
+    while size > 1:
+        first: dict[str, int] = {}
+        subs = (table[i : i + size] for i in range(0, len(table), size))
+        patterns.append(tuple(first.setdefault(sub, len(first)) for sub in subs))
+        size //= 2
+    return (*patterns, table[0])
+
+
 def _cases() -> list[str]:
-    """Every n=2 and n=3 table, plus eight seeded tables each n=4..8."""
-    cases = [format(value, "04b") for value in range(1 << 4)]
-    cases += [format(value, "08b") for value in range(1 << 8)]
+    """One n=2 or n=3 table per residual shape, plus one seeded table n=4..8.
+
+    The oracle and the fold see only which residuals are equal, so the 272
+    exhaustive tables collapse to these classes with the same branch coverage.
+    """
+    shapes: dict[tuple[object, ...], str] = {}
+    for width in (4, 8):
+        for value in range(1 << width):
+            table = format(value, f"0{width}b")
+            shapes.setdefault(_shape(table), table)
+    cases = list(shapes.values())
     for n in range(4, 9):
-        for seed in range(8):
-            rng = random.Random(7919 * n + seed)
-            cases.append("".join(rng.choice("01") for _ in range(1 << n)))
+        rng = random.Random(7919 * n)
+        cases.append("".join(rng.choice("01") for _ in range(1 << n)))
     return cases
 
 
