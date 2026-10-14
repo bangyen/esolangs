@@ -148,7 +148,9 @@ options:
   --generator restrict to languages with a Boolean generator
   --interpreter-only restrict to languages without a Boolean generator
   --source    select text or raster source
-  --answer    select output, dump, or termination as the Boolean answer
+  --answer    select by where the Boolean answer lands: output (printed),
+              dump (a fixed place in the final state), or termination
+              (halting is 0, diverging is 1)
   --inputs N  select generators whose declared input cap admits positive N;
               table-dependent restrictions still apply (shown by --details)
   --state-model MODEL
