@@ -15,6 +15,8 @@ and INC1/SWAP's ``+J @next 0`` never jumps ("the condition is if the data
 field ... is positive"), so control falls into whatever follows.  With
 ``+J @label+3 1`` and data ``1`` they compute; the page states no outputs.
 
+Implementation:
+
 The execution model is :func:`_advance`, a pure function over an immutable
 program and instruction pointer. The mutable VM shell only replaces that
 state once per step.

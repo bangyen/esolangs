@@ -5,7 +5,11 @@ adjust the top (mod 256; the wiki gives no width), ``.`` prints it,
 ``,`` pushes a byte, ``[ ]`` loop while the top is nonzero.  An
 empty-stack pop or output raises :class:`HaltError`; an unmatched ``[``
 raises :class:`ValueError` when reached; exhausted input raises
-:class:`EOFError`.  :func:`_advance` is pure and total over an
+:class:`EOFError`.
+
+Implementation:
+
+:func:`_advance` is pure and total over an
 immutable ``_State``: ``_NEEDS_OPERAND`` lets the shell reject an
 empty-stack step first, and :func:`_forward_table` maps an unmatched
 ``[`` to ``None`` for the shell to raise on.

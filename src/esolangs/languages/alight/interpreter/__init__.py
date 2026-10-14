@@ -7,6 +7,8 @@ as recorded in ``docs/limitations.md`` under "Interpreter conventions".
 ``inp`` at EOF reads ``eof``; invalid runtime operations raise
 :class:`~esolangs.exceptions.HaltError`.
 
+Implementation:
+
 :func:`_advance` is the pure transition: it takes the whole state and the
 one input character a step needs -- raising :class:`_NeedInputError` when
 the shell has not read it yet -- and returns the next state and any

@@ -11,12 +11,15 @@ once in ``__init__`` and then rotated, so ``.`` consumes from a queue in
 the state; a program that reads with no bits at all raises
 :class:`EOFError`.
 
-:func:`_advance` is a pure transition over an immutable ``_State`` with
-no ``io`` argument; :class:`_Machine` rebinds one state per ``step()``
-and flushes the byte.
 
 Input characters form the initial bit queue. This implementation preserves the
 complete supplied character stream rather than discarding later lines.
+
+Implementation:
+
+:func:`_advance` is a pure transition over an immutable ``_State`` with
+no ``io`` argument; :class:`_Machine` rebinds one state per ``step()``
+and flushes the byte.
 """
 
 from __future__ import annotations

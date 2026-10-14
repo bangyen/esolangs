@@ -45,9 +45,7 @@ Choices checked against the page's 4-bit prime tester over all sixteen inputs:
   both slots of a gate (the constant-output circuit), so ports count per cell.
 
 The page's prime tester omits five characters: two OR inputs are undriven.
-``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER``
-(repaired, replayed over sixteen inputs) and ``PRIME_TESTER_AS_DRAWN``
-(silence pinned).  The repair is derived and unique: the circuit is a
+The repair is derived and unique: the circuit is a
 product of sums ``(? | c)``, ``(? | ~a | ~b)``, ``(d | ~a)``,
 ``(~b | d)``; primality over 0-15 with ``a`` the MSB forces the unknowns
 to ``~c`` (inputs 13 and 15) and ``b`` (inputs 0, 1, 9).  The page
@@ -66,6 +64,12 @@ value to settle on; no :class:`HaltError` is raised.
 
 External bits are consecutive 0/1 characters, ignoring whitespace;
 the spec leaves stdin framing unspecified.
+
+Implementation:
+
+``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER`` (repaired,
+replayed over sixteen inputs) and ``PRIME_TESTER_AS_DRAWN`` (silence
+pinned).
 """
 
 from datetime import UTC, datetime

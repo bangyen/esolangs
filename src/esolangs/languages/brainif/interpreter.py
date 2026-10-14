@@ -11,6 +11,9 @@ tape a zero cell on the left: the spec says nothing about the left edge,
 and cells left of the start are allowed.  The guard reads the
 cell as it stands, so ``if 0 increment`` / ``if 1 increment`` both fire in
 one pass -- the language's behaviour, and a reorder was reverted.
+
+Implementation:
+
 :func:`_advance` is pure over an immutable ``_State``; :func:`_parse`, the
 I/O and the malformed-line rejection are the shell's.
 """

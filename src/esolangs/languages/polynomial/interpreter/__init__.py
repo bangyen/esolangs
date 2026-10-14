@@ -13,6 +13,8 @@ and the opener alone decides if or while.  No instruction cap: a
 growing register never repeats, and ``esolangs.run``'s ``timeout`` is
 the guard.
 
+Implementation:
+
 Root recovery is exact: ``[a, b]`` is ``(x-a)^2 + p**(2*b)`` and ``[v]``
 is ``x - p**v``, so the Gaussian integer roots are recovered exactly and
 the values read off (a real root ``p**v`` passes 2**53 at ``p**8`` for

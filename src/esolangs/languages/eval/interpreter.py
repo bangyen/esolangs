@@ -13,9 +13,6 @@ clean-room reading skips the whole literal; "the next instruction" allows
 both).  ``!`` on an integer is the invalid operation above, as a number
 is no "Eval code" (the clean-room reading runs its decimal digits).
 
-The execution model is a pure function over an immutable ``_Core``: the two
-stacks and the active index.  :func:`_iterate` maps a core and a command to
-the next core, and never mutates what it is given.
 
 ``!`` evaluates a string as a program.  That nested program runs on an
 explicit *frame stack* rather than through Python recursion: ``!`` pushes a
@@ -44,6 +41,12 @@ stay in the shell the way every other interpreter here does it.
 :class:`_Machine` accepts the program in its constructor, as the other
 interpreters do.  It stores the text in the first frame rather than parsing
 it, because Eval's commands are one character wide.
+
+Implementation:
+
+The execution model is a pure function over an immutable ``_Core``: the two
+stacks and the active index.  :func:`_iterate` maps a core and a command to
+the next core, and never mutates what it is given.
 """
 
 from __future__ import annotations

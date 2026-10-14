@@ -11,6 +11,9 @@ current bit.  Other characters are ignored.  ``)`` raises
 :class:`EOFError` on exhausted input (the cross-check exits 3) and reads
 newlines too; an unmatched bracket raises :class:`ValueError` when it
 would jump (the Ruby port looped).
+
+Implementation:
+
 :func:`_advance` is pure over an immutable ``_State``; the shell reads,
 prints and resolves the jump via :func:`_match`, the one part that can
 fail.  A loop that keeps extending the pool never repeats; ``run()``'s

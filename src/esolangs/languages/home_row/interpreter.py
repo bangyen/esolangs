@@ -10,6 +10,9 @@ asks, the author never ruled); the end of the source halts; ``l`` pairs
 alternate by order (first with second, third with fourth), and a
 trailing unpaired ``l`` raises :class:`ValueError`; other characters
 are dropped before the run, so ``j`` skips the next command.
+
+Implementation:
+
 :func:`_advance` is pure over an immutable ``_State``; ``k``'s print is the shell's, its
 clearing the transition's.  The 25-cell grid is cheap to rebuild, so no
 write buffer.

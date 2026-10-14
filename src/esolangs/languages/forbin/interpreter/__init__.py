@@ -34,6 +34,8 @@ Decisions for gaps in the wiki spec (documented):
   (:class:`~esolangs.exceptions.HaltError`), and malformed syntax raises
   :class:`ValueError`.
 
+Implementation:
+
 The semantics are a pure transition.  :func:`_advance` maps an immutable
 ``_State`` -- the explicit frame stack, the lexical scope store, the input
 bit buffer and the explicit input bytes a statement may read -- to a new

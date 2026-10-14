@@ -43,6 +43,8 @@ Judgment calls for what the page leaves open:
   Divide and Mod by zero are ignored; both floor.  An In at EOF is ignored,
   and In Integer consumes a token that is not an integer.
 
+Implementation:
+
 The stack tree is one immutable nested value with an explicit path to the
 current stack, which preserves the page's aliasing (``Down`` makes a nested
 stack the current one, and both see the same value).  :func:`_advance` is the

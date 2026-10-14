@@ -1,17 +1,21 @@
 """RAM0 interpreter implementation.
 
 Two registers (z, n) and unbounded RAM; seven commands: Z, A, N, C, L,
-S, and goto.  :func:`_advance` is pure over an immutable ``_State``
-whose RAM is a tuple of ``(address, value)`` pairs in insertion order
-(the dump prints that order).  ``halted`` once the cursor runs off the token list, and
-the dump prints exactly once on that step -- the ``dumped`` flag is in
-the state because it records an effect.
+S, and goto.  The run halts when the cursor runs off the token list, and
+then dumps the RAM once, in the order its addresses were first written.
 
 Gotos are 1-based ("counting the first command as 1"), so ``0`` (or ``00``)
 names no command and raises :class:`~esolangs.exceptions.HaltError` when it
 runs.  It is not a comment: the wiki keeps digits out of the comment
 alphabet ("characters other than ``ZANCLS`` and digits").  A goto past the
 last command halts, as running off the end does.
+
+Implementation:
+
+:func:`_advance` is pure over an immutable ``_State`` whose RAM is a tuple
+of ``(address, value)`` pairs in insertion order.  ``halted`` once the
+cursor runs off the token list, and the dump prints exactly once on that
+step -- the ``dumped`` flag is in the state because it records an effect.
 """
 
 from __future__ import annotations

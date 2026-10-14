@@ -7,7 +7,11 @@ target past the last command ends the run and a taken GOTO 0 raises
 :class:`HaltError` (the wiki leaves both open).  The wiki has no I/O,
 so the deque is printed space-separated when the program ends -- the
 repo's convention.  A word that is not one of the six upper-case commands
-raises :class:`ValueError`.  :func:`_advance` is pure over an immutable
+raises :class:`ValueError`.
+
+Implementation:
+
+:func:`_advance` is pure over an immutable
 ``_State``; the dump is the shell's post-halt step.
 """
 

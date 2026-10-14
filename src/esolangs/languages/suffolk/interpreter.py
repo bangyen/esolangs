@@ -9,6 +9,9 @@ and ends the scripted run there.  ``self_halts`` is ``False``: it does not promi
 the run never ends -- a read that runs out of input ends it.  An empty
 program raises :class:`ValueError`.
 :func:`run` otherwise stops on a repeated state, never a pass count.
+
+Implementation:
+
 The transition :func:`_advance` is pure over an immutable ``_State``
 (a tuple tape, so ``run`` can put states straight into a set).
 """

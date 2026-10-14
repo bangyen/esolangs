@@ -33,6 +33,8 @@ raise :class:`~esolangs.exceptions.HaltError`. ``◘`` uses the shared randomnes
 hook, so callers may inject a reproducible source. A branch from another
 program is rejected with :class:`ValueError`.
 
+Implementation:
+
 :func:`_advance` is a pure transition over an immutable :data:`_Core`.  It
 consumes input characters and ``◘`` draws from explicit tuples and returns the
 requested print effects; it never touches the ports.  When it runs out of an

@@ -31,12 +31,6 @@ That is the unbounded-growth case the detector documents itself as unable to
 catch, and only the wall-clock timeout stops it.  (The empty program is
 rejected outright, so the fuzz suite's empty-program invariant is unaffected.)
 
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the grid to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.  The
-tape is a tuple, so a state is a value that can be stored, compared, and
-hashed as it stands.
 
 :class:`_Machine` is the mutable shell the interpreter protocol requires.
 It holds one ``_State`` and rebinds it each step, so the mutation lives in
@@ -45,6 +39,15 @@ pure layer.  The one effect the language has -- ``*`` printing the tape --
 is done by ``step`` before it calls the pure transition.
 
 Malformed programs raise :class:`ValueError`.
+
+Implementation:
+
+The execution model is a pure function over an immutable ``_State``:
+:func:`_advance` maps a state and the grid to the next state, and never
+mutates what it is given.  It takes no ``io`` argument at all, so it is
+total and side-effect free by construction rather than by inspection.  The
+tape is a tuple, so a state is a value that can be stored, compared, and
+hashed as it stands.
 """
 
 from __future__ import annotations

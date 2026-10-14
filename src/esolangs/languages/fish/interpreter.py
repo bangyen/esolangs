@@ -35,6 +35,8 @@ stack underflow, and division by zero raise
 :class:`~esolangs.exceptions.HaltError`; an empty program raises
 :class:`ValueError`.
 
+Implementation:
+
 :func:`_advance` is the pure transition over an immutable :data:`_Core`; the
 ``i`` value arrives already read, and ``x``'s direction already drawn.
 :meth:`_Machine.step` is the shell that reads, draws, and writes the effect.

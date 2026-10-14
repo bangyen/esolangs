@@ -9,6 +9,8 @@ Deleting the last cell halts with
 past 255 (``\256``) are a malformed ``\NNN`` ("between 000 and 255"),
 not ``\2`` then ``56``: the page does not say which.
 
+Implementation:
+
 :func:`_advance` is pure and *reports* one cell's edit and cursors,
 wrapping against the length its own edit produces.  :class:`_Machine`
 applies the edit in place on a list: returning a rewritten tape made

@@ -6,7 +6,11 @@ allows cells left of the start ("an interpreter may provide some"), and
 its primo and KSab Hello Worlds need four and five of them.  Unbalanced
 brackets raise :class:`ValueError`; ``,`` raises :class:`EOFError` on
 exhausted input (the spec leaves EOF undefined), so ``,[.,]`` ends with
-an error.  :func:`_advance` is pure over an immutable ``_State`` and
+an error.
+
+Implementation:
+
+:func:`_advance` is pure over an immutable ``_State`` and
 ``snapshot`` returns it directly; the shell does ``.`` and ``,``.
 ``factor.py`` drives a decoded program through it.
 """

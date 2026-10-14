@@ -6,11 +6,12 @@ wiki); a ``~`` with no jump number raises :class:`ValueError`.  Two
 choices the wiki leaves open: "The code line is split into characters,
 each character being a command", but a character that is no command is
 ignored rather than rejected; and a jump number ``0`` names no command,
-so that ``~`` falls through to the next command.  The wiki
-defines no I/O, so both registers are printed once at the end,
-space-separated with no trailing newline -- the repo's convention for
-interpreter-only languages, not the
-spec's; another spec pins newlines instead.
+so that ``~`` falls through to the next command.  The wiki defines no
+I/O, so both registers are printed once at the end, space-separated with
+no trailing newline -- the repo's convention for interpreter-only
+languages, not the spec's; another spec pins newlines instead.
+
+Implementation:
 
 :func:`_advance` is a pure transition over an immutable ``_State`` with no
 ``io`` argument; :class:`_Machine` is the mutable shell that rebinds one

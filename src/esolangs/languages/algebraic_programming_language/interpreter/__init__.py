@@ -73,6 +73,12 @@ its sub-evaluations, so ``step()`` advances exactly one node and a
 recursion pushes one frame per lap -- the granularity the ancestor check
 needs to prove ``x? = x & x?`` hangs.
 
+
+Input numbers are whitespace-delimited tokens; the spec does not define their
+text framing.
+
+Implementation:
+
 The semantics are a pure transition: :func:`_advance` maps an immutable
 :class:`_State` (the definitions, the globals, the frame tuple, the line
 cursor) plus the explicit input values a line may read to a new state and
@@ -81,9 +87,6 @@ line asks for, applies the transition, and writes what it returns.  A
 line binds every free variable before evaluating it, so the number of
 reads is not known ahead of evaluation; each :data:`_NeedInput` reads one
 more token and retries the deterministic transition.
-
-Input numbers are whitespace-delimited tokens; the spec does not define their
-text framing.
 """
 
 from __future__ import annotations

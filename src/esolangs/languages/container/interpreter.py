@@ -11,6 +11,8 @@ empty program halts
 at once; EOF supplies zero.  :func:`run` returns
 the EXIT code (``None`` if EXIT never fired) rather than exiting.
 
+Implementation:
+
 :func:`_advance` is a pure transition over an immutable ``_State`` with
 no ``io`` argument.  The shell computes the tick, does the two effects
 that compare old against new values, and hands the read byte to the

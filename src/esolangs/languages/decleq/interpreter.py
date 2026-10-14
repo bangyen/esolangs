@@ -5,7 +5,6 @@ is ``<= 0``.  The source is whitespace-separated integers (``#``
 comments) forming self-modifying memory; ``x x next`` is the countdown
 idiom.  Unbounded cells; no instruction cap (a decrementing cell never
 repeats a state), so ``esolangs.run``'s ``timeout`` is the guard.
-:func:`_advance` is pure over an immutable ``_State``.
 
 The page is ten lines and names no halt, so these are choices
 ("Memory-mapped I/O: It is optional / -2 b c Outputs b / -1 b c Set b to
@@ -20,6 +19,10 @@ user input"):
   store; a negative write indexes from the right (an error is the other
   reading), and one past the left end raises
   :class:`~esolangs.exceptions.HaltError`.
+
+Implementation:
+
+:func:`_advance` is pure over an immutable ``_State``.
 """
 
 from __future__ import annotations

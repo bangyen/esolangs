@@ -221,4 +221,10 @@ class TestTheSpecIsReachable:
     def test_it_is_the_interpreter_that_is_read(self) -> None:
         """Read, not stored, so it cannot drift from what it describes."""
         module = interpreter_module("Unsquare")
-        assert esolangs.describe("Unsquare")["spec"] == (module.__doc__ or "").strip()
+        spec = esolangs.describe("Unsquare")["spec"]
+        doc = (module.__doc__ or "").strip()
+        # The spec renders roles and stops at "Implementation:", so the
+        # headline paragraph is what both share verbatim.
+        assert spec.split("\n\n")[0] == doc.split("\n\n")[0]
+        assert "Implementation:" in doc
+        assert "Implementation:" not in spec

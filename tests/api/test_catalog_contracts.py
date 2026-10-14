@@ -1,11 +1,20 @@
 """Shared listing and specification contracts."""
 
+import re
+
 import pytest
 
 import esolangs
 from esolangs.runtime._execution import interpreter_module
 from tests.cli.test_cli import call_main
 from tests.support.reference import REFERENCE
+
+#: What a spec must not show: a private name, a raw Sphinx role, a repo path.
+_MAINTAINER = re.compile(
+    r"(?<![\w`.])`*_[a-z]\w*"
+    r"|:(?:class|func|meth|mod|attr|exc|data|obj):`"
+    r"|\b(?:src|tests)/[\w/.]+"
+)
 
 
 class TestMessagesNameTheThingThatIsWrong:
@@ -55,6 +64,33 @@ class TestTheSpecIsReachable:
         """The claim the feature rests on: there is something to show."""
         for name in esolangs.list_languages():
             assert len(esolangs.describe(name)["spec"]) > 200, name
+
+    def test_no_spec_shows_maintainer_detail(self) -> None:
+        """Private names, Sphinx roles and repo paths go below the marker."""
+        leaks = {
+            name: _MAINTAINER.findall(esolangs.describe(name)["spec"])
+            for name in esolangs.list_languages()
+        }
+        leaks = {name: found for name, found in leaks.items() if found}
+        assert not leaks, (
+            f"move these below an 'Implementation:' line in the interpreter's "
+            f"docstring: {leaks}"
+        )
+
+    def test_the_marker_cuts_and_roles_render(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Positive control: the leak check fires on a docstring that leaks."""
+        module = interpreter_module(REFERENCE)
+        monkeypatch.setattr(
+            module,
+            "__doc__",
+            "Raises :class:`~esolangs.exceptions.HaltError`.\n\n"
+            "Implementation:\n\n:func:`_advance` is pure.",
+        )
+        spec = esolangs.describe(REFERENCE)["spec"]
+        assert spec == "Raises ``HaltError``."
+        assert _MAINTAINER.findall(module.__doc__)
 
 
 class TestSpecAbortsRatherThanReturningNothing:

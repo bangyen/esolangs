@@ -13,6 +13,8 @@ unbounded dict.  Division by zero raises
 :class:`~esolangs.exceptions.HaltError`; an unrecognized operator raises
 :class:`ValueError`; exhausted input raises :class:`EOFError`.
 
+Implementation:
+
 The semantics are a pure transition: :func:`_advance` maps an immutable
 ``_State`` (the variable mapping and the statement cursor) plus the input
 values the statement may read to a new ``_State`` and the characters it

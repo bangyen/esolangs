@@ -10,9 +10,7 @@ rule applies to it too).  Non-blank lines are numbered from 1; the run halts
 when the pointer leaves.  var2/var3 and indices must be names (the wiki rejects
 ``var = 3 x + 1``); ``input`` raises :class:`EOFError` when exhausted; a
 malformed line, numeric literal or redefinition of ``input`` raises
-:class:`ValueError`.  :func:`_advance` is pure over an immutable
-``_State``; the shell pre-reads every ``input`` a line names, and
-:func:`_read` defaults a missing array to zero rather than creating it.
+:class:`ValueError`.
 
 Input numbers are whitespace-delimited integer tokens; the spec does not define
 delimiters.  Readings of sentences that admit two:
@@ -27,6 +25,12 @@ delimiters.  Readings of sentences that admit two:
   pointer moves to N and then advances as usual, so line N is skipped and
   N = 0 resumes at line 1; only this reading gives "doesn't execute it"
   meaning.  Blank lines are not numbered.
+
+Implementation:
+
+:func:`_advance` is pure over an immutable
+``_State``; the shell pre-reads every ``input`` a line names, and
+:func:`_read` defaults a missing array to zero rather than creating it.
 """
 
 from __future__ import annotations

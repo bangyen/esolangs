@@ -19,7 +19,11 @@ already lives.  Nothing is printed when no ``0`` ever fires.
 A character outside ``01,`` and a second comma raise :class:`ValueError`; no
 operation can be invalid once a program parses, so no
 :class:`~esolangs.exceptions.HaltError` arises, and nothing is read so no
-``EOFError`` comes from here.  The data-string is not threaded through
+``EOFError`` comes from here.
+
+Implementation:
+
+The data-string is not threaded through
 :func:`_advance`: a run appends ``Theta(T)`` bits and copying per append would
 cost ``Theta(T**2)`` for a program meant to be linear, so the append leaves as
 an effect (``grapheme.py``'s arrangement) and deletion is a cursor, not a slice.
