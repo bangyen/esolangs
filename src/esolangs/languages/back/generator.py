@@ -222,7 +222,7 @@ def _back_load(
 
 @dataclass
 class _BackDrawState:
-    """Mutable state threaded through the tree emitter."""
+    """Tree-emitter state: the grid under construction and its cursors."""
 
     grid: _Grid
     where: dict[_Node, tuple[int, int]]
@@ -234,45 +234,39 @@ class _BackDrawState:
     truth_table: str
     constant: Callable[[int, int], bool]
 
+    def leaf(self, level: int, value: str, row: int, col: int) -> None:
+        """Emit a leaf finisher at ``(row, col)``."""
+        # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
+        code = ">" * (self.n - level) + ("-" if value == "1" else "") + "*"
+        if self.vertical:
+            # Reserved DFS rows turn leaf finishers down without widening the tree.
+            self.grid[(row, col)] = "\\"
+            for k, ch in enumerate(code, 1):
+                self.grid[(row + k, col)] = ch
+            self.next_row = max(self.next_row, row + len(code) + 1)
+        else:
+            for k, ch in enumerate(code):
+                self.grid[(row, col + k)] = ch
 
-def _back_leaf(
-    state: _BackDrawState, level: int, value: str, row: int, col: int
-) -> None:
-    """Emit a leaf finisher at ``(row, col)``."""
-    # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
-    code = ">" * (state.n - level) + ("-" if value == "1" else "") + "*"
-    if state.vertical:
-        # Reserved DFS rows turn leaf finishers down without widening the tree.
-        state.grid[(row, col)] = "\\"
-        for k, ch in enumerate(code, 1):
-            state.grid[(row + k, col)] = ch
-        state.next_row = max(state.next_row, row + len(code) + 1)
-    else:
-        for k, ch in enumerate(code):
-            state.grid[(row, col + k)] = ch
-
-
-def _back_emit(
-    state: _BackDrawState, level: int, lo: int, hi: int, row: int, col: int
-) -> None:
-    """Emit the subtree over rows ``[lo, hi)``, node mirror at ``(row, col)``."""
-    if level == state.levels or state.constant(lo, hi):
-        _back_leaf(state, level, state.truth_table[lo], row, col)
-        return
-    mid = lo + (hi - lo) // 2
-    state.grid[(row, col)] = "+"
-    state.grid[(row, col + 1)] = "\\"
-    state.grid[(row, col + 2)] = ">"
-    block = lo >> (state.levels - level)
-    state.where[level, block] = (row, col + 1)
-    _back_emit(state, level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
-    if (level, block) in state.shared:
-        return
-    nrow = state.next_row
-    state.next_row += 1
-    state.grid[(nrow, col + 1)] = "\\"
-    state.grid[(nrow, col + 2)] = ">"
-    _back_emit(state, level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
+    def emit(self, level: int, lo: int, hi: int, row: int, col: int) -> None:
+        """Emit the subtree over rows ``[lo, hi)``, node mirror at ``(row, col)``."""
+        if level == self.levels or self.constant(lo, hi):
+            self.leaf(level, self.truth_table[lo], row, col)
+            return
+        mid = lo + (hi - lo) // 2
+        self.grid[(row, col)] = "+"
+        self.grid[(row, col + 1)] = "\\"
+        self.grid[(row, col + 2)] = ">"
+        block = lo >> (self.levels - level)
+        self.where[level, block] = (row, col + 1)
+        self.emit(level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
+        if (level, block) in self.shared:
+            return
+        nrow = self.next_row
+        self.next_row += 1
+        self.grid[(nrow, col + 1)] = "\\"
+        self.grid[(nrow, col + 2)] = ">"
+        self.emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
 
 
 def _back_draw(
@@ -302,7 +296,7 @@ def _back_draw(
         constant=constant,
     )
     # Tree root at column 1, the beam arriving rightward.
-    _back_emit(state, 0, 0, 2**levels, 0, 1)
+    state.emit(0, 0, 2**levels, 0, 1)
     return state.grid, state.where
 
 
