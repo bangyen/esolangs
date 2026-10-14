@@ -1,12 +1,28 @@
-"""Piet raster interpreter following https://www.dangermouse.net/esoteric/piet.html.
+"""Piet: the program is a picture, and colour changes are the commands.
 
-A program is an image of coloured codels.  The interpreter enters the
-top-left block and follows the direction pointer and codel chooser, running
-the command named by the hue/lightness change from the block left to the
-block entered: hue 0 pushes/pops, 1 adds/subtracts/multiplies, 2
-divides/modulos/nots, 3 compares/rotates/switches, 4 duplicates/rolls/reads
-a number and 5 reads a char or prints a number/char.  A block with no
-colour exit and no white slide ends the run.
+Spec: https://www.dangermouse.net/esoteric/piet.html.  An image is a grid
+of codels in 18 colours (six hues, three lightnesses) plus white and black.
+Same-coloured neighbours form a block.  Execution starts in the top-left
+block and leaves it along the direction pointer (dp: right, down, left,
+up), picking the far edge's left or right corner by the codel chooser (cc).
+Blocked by black or the image edge, it flips cc, then turns dp, and halts
+after eight failed tries.  White is crossed in a straight slide and runs
+nothing.
+
+Entering a new coloured block runs a command chosen by how far the hue and
+lightness stepped, cyclically, from the old block to the new one:
+
+    hue, lightness:   +0          +1           +2
+    +0                            push         pop
+    +1                add         subtract     multiply
+    +2                divide      mod          not
+    +3                greater     pointer      switch
+    +4                duplicate   roll         in(number)
+    +5                in(char)    out(number)  out(char)
+
+``push`` pushes the size of the block left; ``pointer`` turns dp clockwise
+by the popped value and ``switch`` flips cc that many times; ``roll`` pops
+a depth and a count and rotates that many of the values beneath.
 
 A colour outside the 18 standard ones is treated as white. Input commands
 share a cursor: character reads preserve newlines; numeric reads consume
@@ -23,6 +39,7 @@ scanf leaves it unread.
 
 from __future__ import annotations
 
+import operator
 import re
 from collections.abc import Callable
 from contextlib import suppress
@@ -58,68 +75,87 @@ def _colour(pixel: Pixel) -> Pixel:
     return pixel if pixel in COLOURS or pixel in {WHITE, BLACK} else WHITE
 
 
+#: ``(current, dp, cc, stack, halted)``: the codel the pointer is in, the
+#: direction pointer (0 right, clockwise), the codel chooser (-1 left,
+#: 1 right), the stack, and whether the run has ended.  A plain tuple:
+#: a NamedTuple's constructor cost 11% of the step rate.
 type _State = tuple[Point, int, int, tuple[int, ...], bool]
+
+
 type _Effect = tuple[str, int] | None
 
+#: The commands that pop two values and push one, ``second op top``.
+_BINARY: dict[tuple[int, int], Callable[[int, int], int]] = {
+    (1, 0): operator.add,
+    (1, 1): operator.sub,
+    (1, 2): operator.mul,
+    (2, 0): operator.floordiv,
+    (2, 1): operator.mod,
+    (3, 0): lambda second, top: int(second > top),
+}
+_DIVISIONS = {(2, 0), (2, 1)}
 
-def _binary(
-    stack: tuple[int, ...], operation: Callable[[int, int], int]
-) -> tuple[int, ...]:
-    return (*stack[:-2], operation(stack[-2], stack[-1])) if len(stack) >= 2 else stack
+
+def _binary(change: tuple[int, int], stack: tuple[int, ...]) -> tuple[int, ...]:
+    """Apply a two-value command; too few values or a zero divisor do nothing."""
+    if len(stack) < 2 or (change in _DIVISIONS and stack[-1] == 0):
+        return stack
+    return (*stack[:-2], _BINARY[change](stack[-2], stack[-1]))
 
 
-def _command(  # noqa: C901
+def _roll(stack: tuple[int, ...]) -> tuple[int, ...]:
+    """Pop a depth and a count; rotate that deep a slice that many times.
+
+    A negative depth, or one past the stack, does nothing.  Depth 0 is a
+    valid roll of nothing: both values still pop.
+    """
+    if len(stack) < 2:
+        return stack
+    depth, rolls = stack[-2:]
+    if not 0 <= depth <= len(stack) - 2:
+        return stack
+    stack = stack[:-2]
+    rolls = rolls % depth if depth else 0
+    if not rolls:
+        return stack
+    return (*stack[:-depth], *stack[-rolls:], *stack[-depth:-rolls])
+
+
+def _command(
     change: tuple[int, int], size: int, stack: tuple[int, ...]
 ) -> tuple[tuple[int, ...], int, int, _Effect]:
-    """Return the stack, control changes, and requested I/O effect."""
-    lightness = change[1]
-    if change == (0, 1):
-        stack = (*stack, size)
-    elif change == (0, 2):
-        stack = stack[:-1]
-    elif change == (1, 0):
-        stack = _binary(stack, lambda left, right: left + right)
-    elif change == (1, 1):
-        stack = _binary(stack, lambda left, right: left - right)
-    elif change == (1, 2):
-        stack = _binary(stack, lambda left, right: left * right)
-    elif change in {(2, 0), (2, 1)}:
-        if len(stack) >= 2 and stack[-1] != 0:
-            left, right = stack[-2:]
-            stack = (*stack[:-2], left // right if lightness == 0 else left % right)
-    elif change == (2, 2):
-        if stack:
+    """Run the command a ``(hue, lightness)`` change names.
+
+    Return the new stack, the dp turn, the cc flips, and any I/O for the
+    shell to perform.  A command that cannot run leaves the stack as it is.
+    """
+    turn = flips = 0
+    effect: _Effect = None
+    match change:
+        case (0, 1):  # push
+            stack = (*stack, size)
+        case (0, 2):  # pop
+            stack = stack[:-1]
+        case (2, 2) if stack:  # not
             stack = (*stack[:-1], int(stack[-1] == 0))
-    elif change == (3, 0):
-        stack = _binary(stack, lambda left, right: int(left > right))
-    elif change == (3, 1):
-        return stack[:-1], stack[-1] if stack else 0, 0, None
-    elif change == (3, 2):
-        return stack[:-1], 0, stack[-1] if stack else 0, None
-    elif change == (4, 0):
-        if stack:
+        case (3, 1) if stack:  # pointer
+            stack, turn = stack[:-1], stack[-1]
+        case (3, 2) if stack:  # switch
+            stack, flips = stack[:-1], stack[-1]
+        case (4, 0) if stack:  # duplicate
             stack = (*stack, stack[-1])
-    elif change == (4, 1):
-        if len(stack) >= 2:
-            depth, rolls = stack[-2:]
-            if 0 <= depth <= len(stack) - 2:
-                # Depth 0 is a valid roll of nothing: both values still pop.
-                stack = stack[:-2]
-                rolls = rolls % depth if depth else 0
-                if rolls:
-                    stack = (*stack[:-depth], *stack[-rolls:], *stack[-depth:-rolls])
-    elif change == (4, 2):
-        return stack, 0, 0, ("read_num", 0)
-    elif change == (5, 0):
-        return stack, 0, 0, ("read_char", 0)
-    elif change in {(5, 1), (5, 2)} and stack:
-        return (
-            stack[:-1],
-            0,
-            0,
-            ("write_num" if lightness == 1 else "write_char", stack[-1]),
-        )
-    return stack, 0, 0, None
+        case (4, 1):  # roll
+            stack = _roll(stack)
+        case (4, 2):  # in(number)
+            effect = ("read_num", 0)
+        case (5, 0):  # in(char)
+            effect = ("read_char", 0)
+        case (5, 1) | (5, 2) if stack:  # out(number), out(char)
+            kind = "write_num" if change == (5, 1) else "write_char"
+            stack, effect = stack[:-1], (kind, stack[-1])
+        case _ if change in _BINARY:
+            stack = _binary(change, stack)
+    return stack, turn, flips, effect
 
 
 def _slid(
@@ -132,13 +168,20 @@ def _slid(
 ) -> _State:
     """Slide from white ``start``; a slide with no exit halts at ``current``."""
     slid = slide(rows, start, dp, cc, _colour)
-    return (current, dp, cc, stack, True) if slid is None else (*slid, stack, False)
+    if slid is None:
+        return current, dp, cc, stack, True
+    point, dp, cc = slid
+    return point, dp, cc, stack, False
 
 
 def _advance(
     state: _State, rows: tuple[tuple[Pixel, ...], ...]
 ) -> tuple[_State, _Effect]:
-    """Return one pure colour transition or white slide and its I/O request."""
+    """Leave the current block for the next one; return the state and its I/O.
+
+    Leaving onto a colour runs the command its change names; onto white,
+    slides across it; with no way out, halts where it is.
+    """
     current, dp, cc, stack, halted = state
     if halted:
         return state, None
@@ -154,18 +197,10 @@ def _advance(
         return _slid(rows, target, current, dp, cc, stack), None
     old_hue, old_lightness = COLOURS[colour]
     new_hue, new_lightness = COLOURS[target_colour]
-    stack, dp_change, cc_change, effect = _command(
-        ((new_hue - old_hue) % 6, (new_lightness - old_lightness) % 3),
-        len(block),
-        stack,
-    )
-    return (
-        target,
-        (dp + dp_change) % 4,
-        -cc if cc_change % 2 else cc,
-        stack,
-        False,
-    ), effect
+    change = ((new_hue - old_hue) % 6, (new_lightness - old_lightness) % 3)
+    stack, turn, flips, effect = _command(change, len(block), stack)
+    cc = -cc if flips % 2 else cc
+    return (target, (dp + turn) % 4, cc, stack, False), effect
 
 
 class _Machine:
@@ -220,7 +255,8 @@ class _Machine:
         )
         self.io = io
         self._input_reads = 0
-        self.state: _State = ((0, 0), 0, -1, (), _colour(self.rows[0][0]) == BLACK)
+        black = _colour(self.rows[0][0]) == BLACK
+        self.state: _State = ((0, 0), 0, -1, (), black)
 
     @property
     def current(self) -> Point:
@@ -267,8 +303,9 @@ class _Machine:
 
     def step(self) -> None:
         state, effect = _advance(self.state, self.rows)
-        stack = self.perform_io(state[3], effect, self.io, self._read_succeeded)
-        self.state = (*state[:3], stack, state[4])
+        current, dp, cc, stack, halted = state
+        stack = self.perform_io(stack, effect, self.io, self._read_succeeded)
+        self.state = (current, dp, cc, stack, halted)
 
 
 def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
