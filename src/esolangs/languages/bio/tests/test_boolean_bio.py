@@ -156,3 +156,16 @@ def test_bio_indent_leaves_no_trailing_whitespace() -> None:
 def test_bio_refuses_a_program_its_tokens_do_not_tile() -> None:
     """A stray character means the regex missed something: left alone."""
     assert _bio("0ox;!!!", 40) == "0ox;!!!"
+
+
+# n=1 is the smallest constant where the old constant index balances better.
+@pytest.mark.parametrize("bit", "01")
+def test_balancing_retains_legacy_constant_index(bit: str) -> None:
+    from esolangs.generation.helpers import input_weights
+    from esolangs.languages.bio.generator import BIO_PAIR, _bio
+    from tests.support.generator_support import assert_constant_balanced_shape
+
+    table = bit * 2
+    weights, projected = input_weights(table, 1)
+    legacy = _bio(projected, weights, keep_constant_input=True)
+    assert_constant_balanced_shape("BIO", "bio", table, legacy, BIO_PAIR)

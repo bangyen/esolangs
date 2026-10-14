@@ -149,3 +149,15 @@ class TestAPainterAntTrace:
         divergence = first_divergence("nPn")  # cycle 2 moves outside the box
         assert divergence is not None
         assert (divergence.index, divergence.command) == (0, "n")
+
+
+# n=2 is the smallest constant where the old corridor balances strictly better.
+def test_balancing_retains_legacy_constant_walk() -> None:
+    from esolangs.languages.a_painter_ant.generator import PAIR, _program
+    from tests.support.generator_support import assert_constant_balanced_shape
+
+    table = "0000"
+    legacy = _program(table, keep_constant_walk=True)
+    assert_constant_balanced_shape(
+        "A Painter Ant", "a_painter_ant", table, legacy, PAIR
+    )

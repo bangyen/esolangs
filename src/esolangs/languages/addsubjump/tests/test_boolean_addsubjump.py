@@ -239,3 +239,14 @@ def test_packed_cells_execute(n: int) -> None:
                 timeout=None,
             )
             assert esolangs.read_answer("AddSubJump", output) == table[row]
+
+
+# n=7 is the smallest constant where the full packed layout balances better.
+@pytest.mark.parametrize("bit", "01")
+def test_balancing_retains_legacy_packed_constant(bit: str) -> None:
+    from esolangs.languages.addsubjump.generator import _addsubjump_packed
+    from tests.support.generator_support import assert_constant_balanced_shape
+
+    table = bit * (1 << 7)
+    legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
+    assert_constant_balanced_shape("AddSubJump", "addsubjump", table, legacy)
