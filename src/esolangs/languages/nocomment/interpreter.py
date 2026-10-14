@@ -22,6 +22,8 @@ raises.
 
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -34,20 +36,30 @@ from esolangs.runtime.source_hints import syntax_error
 # so changing the default changes what wrapping programs do.
 _TAPE = 4096
 
-#: ``(ind, ptr, tape, stack, acc, dirty)``: an immutable value, rebound per
-#: step.  ``acc`` is the true cell under the pointer; while ``dirty``,
-#: ``tape[ptr]`` is stale and :func:`_committed` (every path that leaves the
-#: cell) fixes it.  ``snapshot`` and ``tape`` commit first, so one logical
-#: state has one spelling for the cycle detector.
-#: The buffer is what makes a static 4096-cell immutable tape affordable: the
-#: text corpus writes one cell 111 times before moving, so 111 rebuilds
-#: become one (a buffer helps a tape written in place; an interpreter
-#: writing distinct addresses would absorb nothing there).
-#: ``bytes``, not a tuple: the boolean corpus has no runs (write, then move;
-#: ~66% of steps commit), and a ``bytes`` rebuild is one memcpy vs 4096
-#: pointer copies -- 32x over the 2637 commits of an 11-input decode
-#: (44.6ms -> 1.4ms).  Cells are mod-256, and ``bytes`` stays hashable.
-type _State = tuple[int, int, bytes, tuple[int, ...], int, bool]
+
+class _State(NamedTuple):
+    """An immutable value, rebound per step.
+
+    ``acc`` is the true cell under the pointer; while ``dirty``,
+    ``tape[ptr]`` is stale and :func:`_committed` (every path that leaves the
+    cell) fixes it.  ``snapshot`` and ``tape`` commit first, so one logical
+    state has one spelling for the cycle detector.
+    The buffer is what makes a static 4096-cell immutable tape affordable: the
+    text corpus writes one cell 111 times before moving, so 111 rebuilds
+    become one (a buffer helps a tape written in place; an interpreter
+    writing distinct addresses would absorb nothing there).
+    ``bytes``, not a tuple: the boolean corpus has no runs (write, then move;
+    ~66% of steps commit), and a ``bytes`` rebuild is one memcpy vs 4096
+    pointer copies -- 32x over the 2637 commits of an 11-input decode
+    (44.6ms -> 1.4ms).  Cells are mod-256, and ``bytes`` stays hashable.
+    """
+
+    ind: int
+    ptr: int
+    tape: bytes
+    stack: tuple[int, ...]
+    acc: int
+    dirty: bool
 
 
 def _committed(state: _State) -> bytes:
@@ -89,7 +101,7 @@ def _advance(state: _State, code: str, size: int) -> _State:
         dirty = True
     elif char in "sb" and acc and stack:
         ind += stack[-1] if char == "s" else -stack[-1]
-    return (ind + 1, ptr, tape, stack, acc, dirty)
+    return _State(ind + 1, ptr, tape, stack, acc, dirty=dirty)
 
 
 class _Machine:
@@ -108,7 +120,7 @@ class _Machine:
         self.size = tape
         # ``halted`` is read twice per command; take the length once.
         self.length = len(code)
-        self.state: _State = (0, 0, bytes(tape), (), 0, False)
+        self.state = _State(0, 0, bytes(tape), (), 0, dirty=False)
 
     # Views on the state.  ``tape`` and ``snapshot`` commit first.
 
@@ -119,27 +131,27 @@ class _Machine:
 
     @property
     def stack(self) -> tuple[int, ...]:
-        return self.state[3]
+        return self.state.stack
 
     @property
     def ptr(self) -> int:
-        return self.state[1]
+        return self.state.ptr
 
     @property
     def ind(self) -> int:
-        return self.state[0]
+        return self.state.ind
 
     @property
     def halted(self) -> bool:
         """Whether the cursor has reached the end of the code."""
-        return self.state[0] >= self.length
+        return self.state.ind >= self.length
 
     # VM view.
 
     @property
     def ip(self) -> int:
         """The code cursor."""
-        return self.state[0]
+        return self.state.ind
 
     @property
     def memory(self) -> list[int]:
