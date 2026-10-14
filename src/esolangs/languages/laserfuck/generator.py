@@ -398,23 +398,18 @@ def _laserfuck_reader(
     # The tree adds only a column or two past the reader, so the reader is
     # what a width has to bargain with: side by side the rings are one row
     # and forty-odd columns, stacked they are seven rows and under twenty.
-    reader_rows: list[str] | tuple[str, ...]
     if vertical_tree:
         placements = _laserfuck_placements(n, perm)
-        reader_rows, reader_exit_row, reader_exit_col = _laserfuck_assemble_reader(
+        rows, exit_row, exit_col = _laserfuck_assemble_reader(
             placements, "R" * len(placements)
         )
-    else:
-        candidates = _laserfuck_reader_candidates(n, perm)
-        fitting = [
-            item
-            for item in candidates
-            if width is None or MARGIN + item.span + 2 <= width
-        ]
-        chosen = fitting[0] if fitting else min(candidates, key=lambda item: item.span)
-        reader_rows, reader_exit_row, reader_exit_col = chosen.reader
-
-    return _LaserReader(tuple(reader_rows), reader_exit_row, reader_exit_col)
+        return _LaserReader(tuple(rows), exit_row, exit_col)
+    candidates = _laserfuck_reader_candidates(n, perm)
+    fitting = [
+        item for item in candidates if width is None or MARGIN + item.span + 2 <= width
+    ]
+    chosen = fitting[0] if fitting else min(candidates, key=lambda item: item.span)
+    return chosen.reader
 
 
 class _LaserGrid:
