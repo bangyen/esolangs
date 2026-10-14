@@ -80,11 +80,6 @@ def _translate(code: str) -> str:
     return "".join(prog)
 
 
-def _half(n: int) -> int:
-    """Half of ``n``, rounded down per the author clarification."""
-    return n // 2
-
-
 #: ``(tape, loop, ptr, ind, rep, origin)``: cells, loop-entry stack,
 #: pointer, cursor, repeat counter, and the index of the starting cell
 #: (``d``'s target, which moves right as ``l`` grows the tape left).
@@ -401,8 +396,8 @@ def _do_z(step: _Step) -> None:
 
 
 def _do_h(step: _Step) -> None:
-    """Halve the cell, rounding down."""
-    step.tape = _set(step.tape, step.ptr, _half(step.tape[step.ptr]))
+    """Halve the cell, rounding down per the author clarification."""
+    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] // 2)
 
 
 def _do_w(step: _Step) -> None:

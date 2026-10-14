@@ -215,7 +215,7 @@ class TestRepeatCollapsing:
         op: str, tape: tuple[int, ...], ptr: int, origin: int, rep: int
     ) -> tuple:
         """Apply ``op`` ``rep`` times, one step at a time."""
-        from esolangs.languages.painfuck.interpreter import _half, _set
+        from esolangs.languages.painfuck.interpreter import _set
 
         for _ in range(rep):
             if op == "p":
@@ -240,7 +240,7 @@ class TestRepeatCollapsing:
             elif op == "d":
                 ptr = origin
             elif op == "h":
-                tape = _set(tape, ptr, _half(tape[ptr]))
+                tape = _set(tape, ptr, tape[ptr] // 2)
             elif op == "k":
                 tape = _set(tape, ptr, tape[ptr] * tape[ptr])
         return tape, ptr, origin
