@@ -17,16 +17,24 @@ print is the shell's.
 from __future__ import annotations
 
 import re
+from typing import NamedTuple
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
-#: ``(ind, reg, stk)``: an immutable value, rebound per step.  Commands
-#: are a parameter, not a field.  ``snapshot`` still returns
-#: ``(reg, stk, ind, ...)``, the order it always did.
-type _State = tuple[int, tuple[int, int, int], tuple[int, ...]]
+
+class _State(NamedTuple):
+    """An immutable value, rebound per step.
+
+    Commands are a parameter, not a field.  ``snapshot`` still returns
+    ``(reg, stk, ind, ...)``, the order it always did.
+    """
+
+    ind: int
+    reg: tuple[int, int, int]
+    stk: tuple[int, ...]
 
 
 def _bumped(reg: tuple[int, int, int], index: int, delta: int) -> tuple[int, int, int]:
@@ -106,29 +114,29 @@ class _Machine:
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.commands)
-        self.state: _State = (0, (0, 0, 0), ())
+        self.state = _State(0, (0, 0, 0), ())
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
 
     @property
     def ind(self) -> int:
-        return self.state[0]
+        return self.state.ind
 
     @property
     def reg(self) -> tuple[int, int, int]:
         """The three registers, x then y then z."""
-        return self.state[1]
+        return self.state.reg
 
     @property
     def stk(self) -> tuple[int, ...]:
         """The loop-return stack."""
-        return self.state[2]
+        return self.state.stk
 
     @property
     def halted(self) -> bool:
         """Whether the cursor has reached the end of the command list."""
-        return self.state[0] >= self.size
+        return self.state.ind >= self.size
 
     # The VM's language-shaped view: Registers + loop stack + cursor; ip the cursor,
     # memory the regs.
@@ -136,17 +144,17 @@ class _Machine:
     @property
     def ip(self) -> int:
         """The current instruction position."""
-        return self.state[0]
+        return self.state.ind
 
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return list(self.state[1])
+        return list(self.state.reg)
 
     @property
     def stack(self) -> list[object]:
         """The stack."""
-        return list(self.state[2])
+        return list(self.state.stk)
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
@@ -195,7 +203,7 @@ def _advance(state: _State, commands: list[str], closes: tuple[int, ...]) -> _St
         stk = (*stk, ind)
     else:
         ind = closes[ind]
-    return (ind + 1, reg, stk)
+    return _State(ind + 1, reg, stk)
 
 
 def run(code: str, io: IO) -> None:
