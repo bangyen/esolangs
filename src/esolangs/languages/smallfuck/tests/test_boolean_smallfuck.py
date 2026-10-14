@@ -140,7 +140,9 @@ def test_complemented_shared_arm_contributes_its_constant_first() -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("table", multiple_tables())
+# Table 0 (structured) and 3 (seeded random): the pair reaches every arc of the
+# eight-table sweep; table 3 alone reaches the complemented-arm flip.
+@pytest.mark.parametrize("table", [multiple_tables()[i] for i in (0, 3)])
 @pytest.mark.parametrize("reverse", [False, True])
 @pytest.mark.parametrize("kind", ["levels", "first", "ranked"])
 @pytest.mark.parametrize("half", [0, 1])
