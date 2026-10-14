@@ -26,18 +26,18 @@ from esolangs.runtime.source_hints import keyword_hint, syntax_error
 class _State(NamedTuple):
     """One instant of a run.
 
-        A value, not a record: every transition below returns a new one rather
-        than editing one in place, and the deque is a ``tuple`` for the same
-        reason.
+    A value, not a record: every transition below returns a new one rather
+    than editing one in place, and the deque is a ``tuple`` for the same
+    reason.
 
-        ``rendered`` is state because the dump is a once-per-run effect that
-    #: happens *after* the cursor has passed the last token, so the position
-    #: alone cannot tell "about to print" from "already printed".  It stays out
-        of ``snapshot``, which reports the fields it always reported.
+    ``rendered`` is state because the dump is a once-per-run effect that
+    happens *after* the cursor has passed the last token, so the position
+    alone cannot tell "about to print" from "already printed".  It stays out
+    of ``snapshot``, which reports the fields it always reported.
 
-        The tokens are deliberately not in the transition's view of the world,
-        but they *are* in ``snapshot`` -- which is where they already were, and
-        removing them would change every hash the cycle detector has stored.
+    The tokens are deliberately not in the transition's view of the world,
+    but they *are* in ``snapshot`` -- which is where they already were, and
+    removing them would change every hash the cycle detector has stored.
     """
 
     ind: int  # token cursor
@@ -57,7 +57,7 @@ def _advance(state: _State, sym: str) -> _State:
     lands on index ``N - 2`` so the shared increment carries it to the Nth
     command; a taken ``GOTO 0`` names no command and raises.
     """
-    ind, reg, deq, _rendered = state
+    ind, reg, deq = state.ind, state.reg, state.deq
     if sym == "PUSH":
         deq = (*deq, reg)
     elif sym == "INJECT":
