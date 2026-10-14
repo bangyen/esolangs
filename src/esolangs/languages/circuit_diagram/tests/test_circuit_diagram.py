@@ -711,6 +711,9 @@ class TestPureTransition:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from esolangs.languages.circuit_diagram.interpreter import _generation
+        from esolangs.languages.circuit_diagram.interpreter._functions import (
+            _BufferedClock,
+        )
 
         def forbidden() -> int:
             raise AssertionError("the transition read wall time")
@@ -722,8 +725,8 @@ class TestPureTransition:
         machine = _Machine(["-.~.-:"], ScriptedIO("0\n"))
         before = machine.snapshot()
         state = (machine.values, machine.latches)
-        first = _generation(state, machine.gates, machine.index, machine.consumers, ())
-        second = _generation(state, machine.gates, machine.index, machine.consumers, ())
+        first = _generation(state, machine.topology, _BufferedClock(()))
+        second = _generation(state, machine.topology, _BufferedClock(()))
         # The inputs are untouched, nothing was written, and same args agree.
         assert machine.snapshot() == before
         assert machine.io.getvalue() == ""
