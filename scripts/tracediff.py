@@ -25,12 +25,14 @@ import tempfile
 import tomllib
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 # tests/ holds the suite samples; run as a script, only scripts/ is on the path.
 sys.path.insert(0, str(ROOT))
 
 import esolangs  # noqa: E402
+from esolangs.exceptions import GeneratorCapError  # noqa: E402
 from esolangs.registry import INTERPRETERS, LANGUAGES, resolve  # noqa: E402
 from esolangs.runtime.io import ScriptedIO  # noqa: E402
 
@@ -42,7 +44,8 @@ LIMIT = 400
 RANDOM_PROGRAMS = 3000
 _ADDRESS = re.compile(r" at 0x[0-9a-f]+")
 
-type Program = tuple[str, str]
+#: ``(source, stdin)``; a generated source may be a raster or compressed.
+type Program = tuple[Any, str]
 type Event = tuple[object, ...]
 
 
@@ -140,7 +143,7 @@ def trace(
     code, stdin = program
     io = ScriptedIO(stdin)
     try:
-        source = code.splitlines() if split else code
+        source = code.splitlines() if split and isinstance(code, str) else code
         machine = module._Machine(source, io)  # noqa: SLF001
     except Exception as error:
         return [("error", *_error(error))]
@@ -172,7 +175,7 @@ def _random_programs(corpus: list[Program], count: int) -> list[Program]:
     language that also takes assembly gets both kinds, half each.
     """
     rng = random.Random(0)
-    texts = [code for code, _ in corpus if code.strip()]
+    texts = [code for code, _ in corpus if isinstance(code, str) and code.strip()]
     inputs = sorted({stdin for _, stdin in corpus}) or [""]
     numbers = [
         [int(token) for token in code.split()]
@@ -215,20 +218,25 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
             for table in map("".join, itertools.product("01", repeat=1 << n)):
                 widths = (None, 8) if n < 3 else (None,)
                 for width in widths:
-                    if width is None:
-                        program = esolangs.generate(name, table)
-                    else:
-                        program = esolangs.generate(name, table, width=width)
+                    try:
+                        if width is None:
+                            program = esolangs.generate(name, table)
+                        else:
+                            program = esolangs.generate(name, table, width=width)
+                    except GeneratorCapError:
+                        continue  # Unary's n=3 programs are too long to build
                     for row in range(1 << n):
                         bits = [int(c) for c in f"{row:0{n}b}"]
+                        # Kept as generated: a raster or compressed program
+                        # stringified is no longer that program.
                         if parameterized:
                             code = esolangs.instantiate(name, program, bits)
-                            programs.append((str(code), ""))
+                            programs.append((code, ""))
                         else:
                             stdin = esolangs.encode_inputs(
                                 name, bits, truth_table=table
                             )
-                            programs.append((str(program), str(stdin)))
+                            programs.append((program, str(stdin)))
     return programs + _random_programs(programs, count)
 
 
@@ -275,7 +283,7 @@ def main(argv: list[str] | None = None) -> int:
         old = _load(_revision(path, args.old, Path(scratch)), f"{prefix}_old")
     found = differences(old, new, programs, ignored, split=split)
     for (code, stdin), step, before, after in found[:3]:
-        print(f"DIFF {code[:60]!r} stdin={stdin[:20]!r} at step {step}")
+        print(f"DIFF {code!r:.60} stdin={stdin[:20]!r} at step {step}")
         print(f"  {args.old}: {before!r:.300}")
         print(f"  new: {after!r:.300}")
     # A diff over programs that all fail at once proves nothing: say so.
