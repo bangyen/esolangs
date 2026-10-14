@@ -168,11 +168,23 @@ def _halts(events: list[Event]) -> bool:
     return events[-1][0] != "error" and len(events) < LIMIT
 
 
-def _random_programs(corpus: list[Program], count: int) -> list[Program]:
+def _cap_digits(code: str, limit: int | None) -> str:
+    """Drop every digit past the first ``limit``; ``None`` keeps them all."""
+    if limit is None:
+        return code
+    seen = itertools.accumulate(char.isdigit() for char in code)
+    pairs = zip(code, seen, strict=True)
+    return "".join(c for c, at in pairs if not (c.isdigit() and at > limit))
+
+
+def _random_programs(
+    corpus: list[Program], count: int, max_digits: int | None = None
+) -> list[Program]:
     """Seeded programs over the corpus alphabet, and small integer tokens.
 
     Integer tokens appear when some corpus program is integers alone; a
-    language that also takes assembly gets both kinds, half each.
+    language that also takes assembly gets both kinds, half each.  A
+    language's ``fuzz_max_digits`` caps the digits each one holds.
     """
     rng = random.Random(0)
     texts = [code for code, _ in corpus if isinstance(code, str) and code.strip()]
@@ -197,7 +209,7 @@ def _random_programs(corpus: list[Program], count: int) -> list[Program]:
             code = " ".join(words)
         else:
             code = "".join(rng.choice(alphabet) for _ in range(rng.randint(1, 14)))
-        programs.append((code, rng.choice(inputs)))
+        programs.append((_cap_digits(code, max_digits), rng.choice(inputs)))
     return programs
 
 
@@ -237,7 +249,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
                                 name, bits, truth_table=table
                             )
                             programs.append((program, str(stdin)))
-    return programs + _random_programs(programs, count)
+    return programs + _random_programs(programs, count, language.fuzz_max_digits)
 
 
 def differences(

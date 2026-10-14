@@ -23,10 +23,7 @@ _LIMIT = tracediff.LIMIT
 
 def _programs(name: str) -> list[tuple[object, str]]:
     """The trace diff's corpus, plus the suite sample (a raster one included)."""
-    # Factor reads random digits as one ~30-digit integer and factors it
-    # before the first step: minutes per program, so tables only.
-    count = 0 if name == "Factor" else tracediff.RANDOM_PROGRAMS
-    return [SAMPLES[name], *tracediff.corpus(name, count)]
+    return [SAMPLES[name], *tracediff.corpus(name)]
 
 
 def _snapshots(name: str, program: object, stdin: str) -> list[object]:
