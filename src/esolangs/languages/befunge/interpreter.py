@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from ctypes import c_long, sizeof
 from operator import add, mul, sub
-from typing import cast
+from typing import NamedTuple, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -43,7 +43,16 @@ type _Cursor = tuple[int, int, int, int]
 type _Grid = tuple[tuple[str, ...], ...]
 #: Persistent cons cells keep push/pop O(1) without changing old states.
 type _Stack = tuple[int, _Stack] | None
-type _State = tuple[_Cursor, _Grid, _Stack, bool, bool]
+
+
+class _State(NamedTuple):
+    cursor: _Cursor
+    grid: _Grid
+    stack: _Stack
+    string: bool
+    done: bool
+
+
 type _Effect = tuple[str, int] | None
 
 
@@ -106,7 +115,7 @@ def _advance(  # noqa: C901
             (row + dy) % height,
         )
         return (
-            ((col, row, dx, dy), grid, _push(stack, ord(command)), True, done),
+            state._replace(cursor=(col, row, dx, dy), stack=_push(stack, ord(command))),
             None,
         )
     if command == '"':
@@ -190,7 +199,7 @@ def _advance(  # noqa: C901
     elif command == "@":
         done = True
     col, row = (col + dx) % width, (row + dy) % height
-    return (((col, row, dx, dy), grid, stack, string, done), effect)
+    return _State((col, row, dx, dy), grid, stack, string, done), effect
 
 
 class _Machine:
@@ -221,11 +230,11 @@ class _Machine:
         rows.extend(" " * _WIDTH for _ in range(_HEIGHT - len(rows)))
         self.grid = tuple(tuple(row) for row in rows)
         self.io, self._rng = io, rng
-        self.state: _State = ((0, 0, 1, 0), self.grid, None, False, False)
+        self.state = _State((0, 0, 1, 0), self.grid, None, string=False, done=False)
 
     @property
     def halted(self) -> bool:
-        return self.state[4]
+        return self.state.done
 
     #: ``ip`` is a cell of the program's own rectangle: a column and a row,
     #: then the heading, so a caller can draw it rather than guess.
@@ -233,12 +242,12 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...] | None:
-        col, row, dx, dy = self.state[0]
+        col, row, dx, dy = self.state.cursor
         return None if self.halted else (row, col, dx, dy)
 
     @property
     def stack(self) -> list[object]:
-        return list(_values(self.state[2]))
+        return list(_values(self.state.stack))
 
     def snapshot(self) -> tuple[object, ...]:
         cursor, grid, stack, string, done = self.state
@@ -250,7 +259,7 @@ class _Machine:
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has reached ``@``."""
-        return cast(_State, state)[4]
+        return cast(_State, state).done
 
     def branching_successors(
         self, state: object, _limit: int
@@ -262,14 +271,15 @@ class _Machine:
         :meth:`step`: catching it would hide a halting branch.
         """
         current = cast(_State, state)
-        if current[4]:
+        if current.done:
             return (current,)
-        col, row, _dx, _dy = current[0]
-        command = current[1][row][col]
-        interpreting = not current[3]
+        col, row, _dx, _dy = current.cursor
+        command = current.grid[row][col]
+        interpreting = not current.string
+        stack = current.stack
         if interpreting and command in "~&":
             return None
-        if interpreting and command in "/%" and (not current[2] or current[2][0] == 0):
+        if interpreting and command in "/%" and (not stack or stack[0] == 0):
             # Zero divisors read a result too; predicting a halt loses that input.
             return None
         if interpreting and command == "?":
