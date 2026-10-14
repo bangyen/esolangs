@@ -22,9 +22,6 @@ Constant subtrees fold to a leaf, exactly as in
 leaf ever executes, so R flips at most once. Repeated residuals defer
 to unused level flags and emit once in depth order after the prefix tree,
 only when text shrinks and the unchanged command bound admits it.
-Banks use distinct unused descendant flags, cleared before reuse: a
-same-level bank, or the mixed-depth union of the one-per-depth picks with
-the greatest same-level bank.
 At n>=9, two-input cofactors also normalize to shared AND/XOR gates;
 input flips and output bias distinguish their functions without extra flags.
 Affine tables stream through two data cells, toggling the accumulator once
@@ -45,12 +42,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.shared_block import ContinuationCost as _Cost
-from esolangs.generation.shared_block import (
-    repeated_bank,
-    repeated_block,
-    repeated_blocks,
-    repeated_mixed_bank,
-)
+from esolangs.generation.shared_block import repeated_blocks
 from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
@@ -304,40 +296,19 @@ def normal_gates(table: str) -> str | None:
 
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
-    plain, _ = _boolfuck_tree(truth_table)
-    affine = affine_stream(truth_table)
-    if affine is not None and len(affine) < len(plain):
-        plain = affine
-    gates = normal_gates(truth_table)
-    if gates is not None and len(gates) < len(plain):
-        plain = gates
-    shared = repeated_block(truth_table)
-    if shared is None:
-        return plain
-    candidate, commands = _boolfuck_tree(truth_table, shared)
-    n = _validate_truth_table(truth_table)
-    forms = [(plain, 0), (candidate, commands)]
+    # Dropping the single-block, bank and mixed-bank candidates costs at most
+    # 6.2% over 200 tables per class at n=9 and n=12 (repeat tables, jointly);
+    # the per-level blocks form is kept: dropping it loses 19.8% (noisy affine).
+    programs = [_boolfuck_tree(truth_table)[0]]
+    for candidate in (affine_stream(truth_table), normal_gates(truth_table)):
+        if candidate is not None:
+            programs.append(candidate)
     blocks = repeated_blocks(truth_table)
-    if len(blocks) > 1:
-        forms.append(_boolfuck_tree(truth_table, shared_blocks=blocks))
-    seen = set()
-    for ranked in (False, True):
-        bank, levels = repeated_bank(truth_table, ranked=ranked)
-        if bank and bank not in seen:
-            seen.add(bank)
-            forms.append(
-                _boolfuck_tree(truth_table, shared_blocks=bank, flag_levels=levels)
-            )
-    mixed, mixed_levels = repeated_mixed_bank(truth_table)
-    if len(mixed) > 1 and mixed not in seen:
-        seen.add(mixed)
-        forms.append(
-            _boolfuck_tree(truth_table, shared_blocks=mixed, flag_levels=mixed_levels)
-        )
-    return min(
-        (program for program, cost in forms if cost <= _command_bound(n)),
-        key=len,
-    )
+    if blocks:
+        program, commands = _boolfuck_tree(truth_table, shared_blocks=blocks)
+        if commands <= _command_bound(_validate_truth_table(truth_table)):
+            programs.append(program)
+    return min(programs, key=len)
 
 
 def _boolfuck_tree(

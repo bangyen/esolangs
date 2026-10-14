@@ -30,5 +30,5 @@ def test_repeated_node_upside_is_below_the_sharing_gate() -> None:
     sample = five_input_sample()
     saved = sum(_repeated_nodes(table) for table in sample) * cost
     total = sum(len(boolfuck(table)) for table in sample)
-    assert (round(saved), total) == (1992, 85_766)
+    assert (round(saved), total) == (1992, 85_789)
     assert 100 * saved / total < 5  # the sharing gate is 10%
