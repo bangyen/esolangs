@@ -691,7 +691,7 @@ def run(
     :class:`~esolangs.exceptions.ProgramError`.
     """
     settings = effective_settings(language, program, settings)
-    dialect = dialect_options(language, settings)
+    dialect_options(language, settings)  # validate before any route
     check_scale_for(language, scale)
     check_seed(seed)
     check_timeout(timeout)
