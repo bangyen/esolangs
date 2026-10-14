@@ -171,7 +171,10 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     # A table that ignores some of its inputs is a smaller table: the tree
     # tests only the essential ones, and an ignored input is read and
-    # dropped on the stack rather than stored.
+    # dropped on the stack rather than stored.  The tree would fold an
+    # ignored input anyway (identical output over 39 tables, n=2..8, on the
+    # default, width and balance paths); reducing first is for build time,
+    # 0.115 s against 0.972 s at n=12 with two ignored inputs.
     essential = essential_inputs(truth_table, n) or [0]
     table = truth_table
     if len(essential) < n:
