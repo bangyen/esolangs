@@ -23,6 +23,7 @@ moment the variable is supplied.
 from __future__ import annotations
 
 from functools import cache
+from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     SubtreeDiagram,
@@ -57,6 +58,13 @@ _TEST = "``?{}i"
 _PROMISE = "`d"
 
 
+class _Binding(NamedTuple):
+    """The shortest ``` `N`dX ``` for a node: its ``cost`` and bound ``name``."""
+
+    cost: int
+    name: int
+
+
 def _leaf(n: int, level: int, bit: str) -> str:
     # ``v`` because every enclosing branch applies this value again; the
     # reads below a collapsed leaf are the interface and stay.
@@ -79,13 +87,15 @@ def unlambda(truth_table: str) -> str:  # noqa: C901
     diagram = SubtreeDiagram(truth_table)
     halves, level_of, reaches = diagram.halves, diagram.level, diagram.reaches
 
+    def effective(key: int, share: int | None) -> int | None:
+        # A share the subtree never reaches is dropped, so it never splits the cache.
+        return share if share is not None and reaches(key, share) else None
+
     @cache
     def size(level: int, key: int, share: int | None) -> int:
         if key < 2:
             return len(_leaf(n, level, str(key)))
-        if share is not None and not reaches(key, share):
-            share = None
-        return min(node(key, share), binding(key)[0])
+        return min(node(key, effective(key, share)), binding(key).cost)
 
     def half(level: int, key: int, share: int | None) -> int:
         return len(_BOUND) if key == share else len(_PROMISE) + size(level, key, share)
@@ -102,10 +112,10 @@ def unlambda(truth_table: str) -> str:  # noqa: C901
         return len(_OPEN + _SPLIT) + 2 * len(_TEST.format(0)) + tests
 
     @cache
-    def binding(key: int) -> tuple[int, int]:
+    def binding(key: int) -> _Binding:
         """Return the shortest ``` `N`dX ``` over the ``X`` worth binding."""
         # Unbound, a node is never longer than this, so it stays unbound.
-        best: tuple[int, int] = (32 * len(truth_table), 0)
+        best = _Binding(32 * len(truth_table), 0)
         for name in diagram.repeated_near(key, _REACH):
             bound = (
                 len("`")
@@ -113,8 +123,8 @@ def unlambda(truth_table: str) -> str:  # noqa: C901
                 + node(key, name)
                 + size(level_of[name], name, None)
             )
-            if bound < best[0]:
-                best = (bound, name)
+            if bound < best.cost:
+                best = _Binding(bound, name)
         return best
 
     pieces: list[str] = []
@@ -123,15 +133,14 @@ def unlambda(truth_table: str) -> str:  # noqa: C901
         if key < 2:
             pieces.append(_leaf(n, level, str(key)))
             return
-        if share is not None and not reaches(key, share):
-            share = None
-        if binding(key)[0] < node(key, share):
+        share = effective(key, share)
+        if binding(key).cost < node(key, share):
             write_bound(key)
         else:
             write_node(key, share)
 
     def write_bound(key: int) -> None:
-        bound = binding(key)[1]
+        bound = binding(key).name
         pieces.append("`")
         write_node(key, bound)
         pieces.append(_PROMISE)
@@ -161,7 +170,7 @@ def unlambda(truth_table: str) -> str:  # noqa: C901
     if root < 2:
         return _leaf(n, 0, str(root))
     # The root is applied to a share either way: ``v`` when nothing is bound.
-    if binding(root)[0] < node(root, None) + len("`v"):
+    if binding(root).cost < node(root, None) + len("`v"):
         write_bound(root)
     else:
         pieces.append("`")
