@@ -117,27 +117,25 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
         # Top-to-bottom update order reads the first input first; the result
         # returns along the lower wire to its input node, which now prints.
         return "▣\n│\n◇\n║\n▦\n║\n◇\n│\n▣"
-    program = _tree(truth_table)
-    plain = program
+    plain = _tree(truth_table)
+    program = plain
 
     shared = shared_tree(truth_table)
     if shared is not None:
         candidate, cycles = shared
-        if _admit_shared(
-            program, candidate, cycles, _validate_truth_table(truth_table)
-        ):
+        if _admit_shared(plain, candidate, cycles, _validate_truth_table(truth_table)):
             program = candidate
     if width is None or width <= 0:
         return program
-    old = _narrow_tree(truth_table, plain, width)
+    narrow_plain = _narrow_tree(truth_table, plain, width)
     if program == plain:
-        return old
-    candidate = _narrow_tree(truth_table, program, width)
-    old_area = grid_area(old)
-    area = grid_area(candidate)
-    if grid_width(candidate) <= max(width, grid_width(old)) and area < old_area:
-        return candidate
-    return old
+        return narrow_plain
+    narrow_shared = _narrow_tree(truth_table, program, width)
+    if grid_width(narrow_shared) <= max(width, grid_width(narrow_plain)) and (
+        grid_area(narrow_shared) < grid_area(narrow_plain)
+    ):
+        return narrow_shared
+    return narrow_plain
 
 
 def _admit_shared(plain: str, shared: str, cycles: int, n: int) -> bool:
@@ -537,8 +535,8 @@ def _draw_loader(
 ) -> tuple[int, int]:
     """Draw the start node and one read per input, rightward; return the end.
 
-    An essential input's read is followed by its tail push (◨); an ignored input's read
-    sends its bit nowhere and goes straight on.
+    An essential input's read is followed by its tail push (◨); an ignored
+    input's read sends its bit nowhere and goes straight on.
     """
     builder.node(start, "▣")
     previous = start
