@@ -5,19 +5,27 @@ are ignored; unmatched brackets raise ValueError. Unicode input is reduced
 modulo 256, matching the package's byte interfaces.
 """
 
+from typing import NamedTuple
+
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO
 
-# pc, pointer, buffered input byte, remaining input bits, output byte, output bits
-type _State = tuple[int, int, int, int, int, int]
+
+class _State(NamedTuple):
+    pc: int
+    ptr: int
+    incoming: int  # buffered input byte
+    remaining: int  # input bits left in it
+    outgoing: int  # output byte under construction
+    used: int  # its filled bits
 
 
 def _advance(state: _State, command: str, bit: int, brackets: dict[int, int]) -> _State:
     """Advance control; tape writes and byte I/O are shell effects."""
-    pc, ptr, incoming, remaining, outgoing, used = state
+    pc, ptr = state.pc, state.ptr
     if command == ">":
         ptr += 1
     elif command == "<":
@@ -25,8 +33,8 @@ def _advance(state: _State, command: str, bit: int, brackets: dict[int, int]) ->
     elif command == "[" and not bit:
         pc = brackets[pc]
     elif command == "]":
-        return (brackets[pc], ptr, incoming, remaining, outgoing, used)
-    return (pc + 1, ptr, incoming, remaining, outgoing, used)
+        return state._replace(pc=brackets[pc])
+    return state._replace(pc=pc + 1, ptr=ptr)
 
 
 class _Machine:
@@ -38,7 +46,7 @@ class _Machine:
         self.code = code
         self.io = io
         self.brackets = match_brackets(code)
-        self.state: _State = (0, 0, 0, 0, 0, 0)
+        self.state = _State(0, 0, 0, 0, 0, 0)
         self.ones: set[int] = set()
 
     @property
@@ -87,14 +95,16 @@ class _Machine:
             if full is not None:
                 self.io.print_char(chr(full))
         self.state = _advance(
-            (pc, ptr, incoming, remaining, outgoing, used), command, bit, self.brackets
+            _State(pc, ptr, incoming, remaining, outgoing, used),
+            command,
+            bit,
+            self.brackets,
         )
-        if self.state[0] >= len(self.code):
+        if self.state.pc >= len(self.code):
             full = flush_byte((outgoing, used))
             if full is not None:
                 self.io.print_char(chr(full))
-            pc, ptr, incoming, remaining, _outgoing, _used = self.state
-            self.state = (pc, ptr, incoming, remaining, 0, 0)
+            self.state = self.state._replace(outgoing=0, used=0)
 
 
 def run(code: str, io: IO) -> None:
