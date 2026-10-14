@@ -155,6 +155,15 @@ def _drop_entries(  # noqa: C901
 
     # A statement alone in its block cannot go without leaving it empty.
     parsed = ast.parse(source)
+    # ``_JAUNE_LANGUAGE`` in the ``_LANGUAGES`` tuple: an item that is only a
+    # name imported from a deleted module, which would otherwise keep its
+    # import alive.
+    imported = {
+        alias.asname or alias.name
+        for node in parsed.body
+        if isinstance(node, ast.ImportFrom) and _gone(node.module, modules)
+        for alias in node.names
+    }
     lonely = {
         id(block[0])
         for parent in ast.walk(parsed)
@@ -172,7 +181,11 @@ def _drop_entries(  # noqa: C901
                 first = (
                     item.args[0] if isinstance(item, ast.Call) and item.args else None
                 )
-                if named(item) or named(first):
+                if (
+                    named(item)
+                    or named(first)
+                    or (isinstance(item, ast.Name) and item.id in imported)
+                ):
                     own(item, item)
         elif (
             isinstance(node, ast.stmt)
@@ -201,12 +214,7 @@ def _drop_entries(  # noqa: C901
             spans.append((lo, node.end_lineno or node.lineno))
     # A top-level function or class using a name imported from a deleted
     # module goes too, and so, in turn, does whatever uses it.
-    dead = {
-        alias.asname or alias.name
-        for node in parsed.body
-        if isinstance(node, ast.ImportFrom) and _gone(node.module, modules)
-        for alias in node.names
-    } | {
+    dead = imported | {
         node.name
         for node in parsed.body
         if isinstance(node, ast.FunctionDef | ast.ClassDef)
