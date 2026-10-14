@@ -55,9 +55,11 @@ def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("inputs", [2, 3, 8])
-@pytest.mark.parametrize("io_modulus", [255, 256])
-@pytest.mark.parametrize("kind", ["first", "last", "ends"])
+# Small tree, mod-256 chain, projected 8-input chain; no single case reaches all.
+@pytest.mark.parametrize(
+    ("inputs", "io_modulus", "kind"),
+    [(2, 255, "first"), (3, 256, "last"), (8, 255, "ends")],
+)
 def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
     inputs, io_modulus, kind
 ) -> None:
