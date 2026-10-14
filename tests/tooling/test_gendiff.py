@@ -33,6 +33,7 @@ def test_differences_include_a_missing_request() -> None:
     assert gendiff.differences({"a": "x", "b": "y"}, {"a": "x"}) == ["b"]
 
 
+@pytest.mark.medium  # three generator processes and a copy of src: ~3 s
 def test_an_unchanged_tree_matches_and_a_mutant_is_caught(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
