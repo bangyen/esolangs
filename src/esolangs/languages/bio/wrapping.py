@@ -66,6 +66,11 @@ def _bio_depth(tokens: list[str]) -> int:
     return best
 
 
+def _indent_cap(width: int) -> int:
+    """Deepest indent level (2 columns each) leaving a quarter of ``width``."""
+    return max(0, (width - width // 4) // 2)
+
+
 def _bio_indented(tokens: list[str], width: int) -> str:
     """Lay BIO out one loop level to a line, indented by depth.
 
@@ -74,7 +79,7 @@ def _bio_indented(tokens: list[str], width: int) -> str:
     than a quarter of the width.
     """
     lines: list[str] = []
-    cap = max(0, (width - width // 4) // 2)
+    cap = _indent_cap(width)
     for depth, run in _bio_runs(tokens):
         pad = " " * (2 * min(depth, cap))
         room = max(width - len(pad), width // 4)
@@ -121,35 +126,44 @@ def _balance_bio(program: str) -> str:
         return min(program, _bio(program, width), key=balance_score)
     groups = _bio_runs(tokens)
     full_spans = [2 * depth + len("".join(run).rstrip(" ")) for depth, run in groups]
-    widest = max(full_spans)
-    if widest <= len(groups):
-        # Every layout has at least one row per structural run and no row
-        # wider than its fully indented run. Attaining both bounds is optimal.
-        target = min(
-            depth
-            for (depth, _run), span in zip(groups, full_spans, strict=True)
-            if span == widest
-        )
-        cap_widths = []
-        for residue in range(8):
-            fixed = (residue - residue // 4) // 2
-            remainder = residue - 2 * fixed
-            quotient = max(0, -((residue - 1) // 8), -((fixed - target) // 3))
-            for depth, run in groups:
-                if len(run) > 1:
-                    length = sum(map(len, run))
-                    # For w=8q+r, room=max(2q+r-2f, 8q+r-2depth).
-                    quotient = max(
-                        quotient,
-                        min(
-                            -((remainder - length) // 2),
-                            -((residue - 2 * depth - length) // 8),
-                        ),
-                    )
-            cap_widths.append(8 * quotient + residue)
-        width = min(cap_widths, key=lambda value: ((value - value // 4) // 2, value))
+    if max(full_spans) <= len(groups):
+        width = _cap_width(groups, full_spans)
         return min(program, _bio_indented(tokens, width), key=balance_score)
+    candidates = [_bio_indented(tokens, width) for width in _fit_widths(groups)]
+    return min(program, *candidates, key=balance_score)
 
+
+def _cap_width(groups: list[tuple[int, list[str]]], full_spans: list[int]) -> int:
+    """Width with one row per run and no row wider than its indented run."""
+    # Attaining both bounds is optimal.
+    widest = max(full_spans)
+    target = min(
+        depth
+        for (depth, _run), span in zip(groups, full_spans, strict=True)
+        if span == widest
+    )
+    cap_widths = []
+    for residue in range(8):
+        fixed = (residue - residue // 4) // 2
+        remainder = residue - 2 * fixed
+        quotient = max(0, -((residue - 1) // 8), -((fixed - target) // 3))
+        for depth, run in groups:
+            if len(run) > 1:
+                length = sum(map(len, run))
+                # For w=8q+r, room=max(2q+r-2f, 8q+r-2depth).
+                quotient = max(
+                    quotient,
+                    min(
+                        -((remainder - length) // 2),
+                        -((residue - 2 * depth - length) // 8),
+                    ),
+                )
+        cap_widths.append(8 * quotient + residue)
+    return min(cap_widths, key=lambda value: (_indent_cap(value), value))
+
+
+def _fit_widths(groups: list[tuple[int, list[str]]]) -> list[int]:
+    """Widths at which some run's whole-token fit changes the layout."""
     depth_limit = max(depth for depth, _run in groups)
     fits: list[tuple[int, set[int]]] = []
     for depth, run in groups:
@@ -180,5 +194,4 @@ def _balance_bio(program: str) -> str:
             widths.update(pad + span for span in spans if lower < pad + span <= stop)
     # Padding is fixed within each cap interval; only whole run fits can
     # change its source. Beyond the last fit, the layout is constant.
-    candidates = [_bio_indented(tokens, width) for width in sorted(widths)]
-    return min(program, *candidates, key=balance_score)
+    return sorted(widths)
