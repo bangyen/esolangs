@@ -81,7 +81,6 @@ from .core import (
     _main_planner,
     _merge_code,
     _n_hub_pass,
-    _one_options,
     _ops,
     _options_of,
     _Planner,
