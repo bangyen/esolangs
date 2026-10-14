@@ -127,7 +127,9 @@ Start from `src/esolangs/runtime/_template.py`. Every interpreter:
   the input cursor; tests look up that exact name. Its top-level grouping is
   measured: the workspace ledger counts each part only once written, so
   splitting Cyclic tag's `(answer, printed)` dropped a bit from an exact
-  formula (`tests/proofs/test_workspace_formulas.py`).
+  formula (`tests/proofs/test_workspace_formulas.py`). Regroup fields
+  inside, not in the snapshot, and diff it as is: mapping `///`'s nested
+  rule back to the old layout before comparing hid a 16-bit drop.
 - Treats every public `_Machine` property as a debugger view; adding or
   renaming one changes what the debugger shows.
 - Declares the VM views `ip`, `memory` and `stack` only where they say
