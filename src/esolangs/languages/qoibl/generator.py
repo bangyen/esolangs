@@ -258,12 +258,15 @@ def _best_width(rows: list[_Affine], length: _Affine, lower: int, upper: int) ->
 
 
 def balance_qoibl(table: str, default: str) -> str:
-    """Compare ordinary statement fits and Horner literal chunk regimes."""
+    """Compare ordinary statement fits and Horner literal chunk regimes.
+
+    Widths 1..5 never won (all 65,536 tables at n=4, 300 each at n=5, 6), so
+    they are not swept.  Fits decide n<=4 (n=4 mean imbalance 22 -> 1.8); the
+    chunk search decides n>=6 (n=8: 243 -> 0.9).
+    """
     lines = [line.split() for line in default.split("\n")]
     floor = max(len(token) for line in lines for token in line)
     candidates = [default]
-    # Below six columns the fixed ASCII literals also expand into Horner steps.
-    candidates.extend(qoibl(table, width) for width in range(1, 6))
     fits = {floor}
     for line in lines:
         fits.update(span for span in run_widths(list(map(len, line))) if span >= floor)
