@@ -232,13 +232,40 @@ def test_failures_close_the_run_with_their_cause(
     monkeypatch.setattr(
         verify, "run_bounded", lambda *_a, **_kw: subprocess.CompletedProcess([], 0)
     )
-    result = ([("pytest", 124), ("mypy", 1)], [("pytest", 9.0)], 9.0)
+    result = ([("pytest", 124, None), ("mypy", 1, None)], [("pytest", 9.0)], 9.0)
     with mock.patch.object(verify, "_run_steps", return_value=result):
         assert verify.main() == 1
     tail = capsys.readouterr().out.split("WALL")[1]
     assert "[FAIL] pytest: deadline exceeded" in tail
     assert "[FAIL] mypy: exit 1" in tail
     assert tail.rstrip().endswith("2 check(s) failed")
+
+
+def test_a_failure_names_its_log_and_failing_tests(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without these a reader reran a full-tree pytest to learn one test's name."""
+    verify = load_script()
+    monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
+    monkeypatch.setattr(
+        verify, "_parse_only_skip", lambda: (None, None, True, True, False, False)
+    )
+    monkeypatch.setattr(verify, "_scope_plan", lambda **_: (None, "test"))
+    monkeypatch.setattr(verify, "_scope_changed_files", lambda: ())
+    monkeypatch.setattr(
+        verify, "run_bounded", lambda *_a, **_kw: subprocess.CompletedProcess([], 0)
+    )
+    many = "".join(f"FAILED tests/t.py::test_{i} - boom\n" for i in range(12))
+    output = "[log] notes/verification/pytest-x.log\nnoise\n" + many
+    result = ([("pytest", 1, output)], [("pytest", 9.0)], 9.0)
+    with mock.patch.object(verify, "_run_steps", return_value=result):
+        assert verify.main() == 1
+    summary = capsys.readouterr().out.split("[FAIL] pytest: exit 1")[1]
+    assert "  [log] notes/verification/pytest-x.log" in summary
+    assert "  FAILED tests/t.py::test_0 - boom" in summary
+    assert "test_10" not in summary
+    assert "... and 2 more in the log" in summary
+    assert "noise" not in summary
 
 
 @pytest.mark.medium

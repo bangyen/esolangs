@@ -189,6 +189,25 @@ def _cause(returncode: int) -> str:
     return f"exit {returncode}"
 
 
+#: Failing tests listed in the closing summary before it says how many more.
+_SHOWN_FAILURES = 10
+
+
+def _located(output: str | None) -> list[str]:
+    """Return a failed step's log path and pytest's failing test ids.
+
+    The summary used to end at ``rerun``, and following it meant a second
+    full-tree pytest run to learn a name already in the log.
+    """
+    lines = (output or "").splitlines()
+    log = [f"  {line}" for line in lines if line.startswith("[log] ")]
+    tests = [line for line in lines if line.startswith(("FAILED ", "ERROR "))]
+    shown = [f"  {line}" for line in tests[:_SHOWN_FAILURES]]
+    if len(tests) > _SHOWN_FAILURES:
+        shown.append(f"  ... and {len(tests) - _SHOWN_FAILURES} more in the log")
+    return log + shown
+
+
 def _rerun_hint(name: str) -> list[str]:
     """Return the commands that rerun, and any that fix, failed step *name*."""
     if name == "verification inputs":
@@ -349,7 +368,7 @@ def _run_steps(  # noqa: C901
     runnable: list[tuple[str, list[str], dict[str, str]]],
     *,
     stream: bool,
-) -> tuple[list[tuple[str, int]], list[tuple[str, float]], float]:
+) -> tuple[list[tuple[str, int, str | None]], list[tuple[str, float]], float]:
     """Run the planned steps, overlapping the long one with the cheap ones.
 
     ``pre-commit`` finishes before readers start. Captured runs overlap
@@ -360,10 +379,11 @@ def _run_steps(  # noqa: C901
     that is holding the terminal alone can stream it live instead; two can
     not, since concurrent writers interleave into nonsense.
 
-    Returns the failed steps with their exit codes, per-step CPU timings, and
-    the wall time, which concurrency makes smaller than the timings' sum.
+    Returns the failed steps with their exit codes and captured output,
+    per-step CPU timings, and the wall time, which concurrency makes smaller
+    than the timings' sum.
     """
-    failed: list[tuple[str, int]] = []
+    failed: list[tuple[str, int, str | None]] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.monotonic()
     clean_cache: VerifiedCache | None = None
@@ -372,7 +392,7 @@ def _run_steps(  # noqa: C901
     def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
         timings.append((name, elapsed))
         if not _report(name, elapsed, returncode, output):
-            failed.append((name, returncode))
+            failed.append((name, returncode, output))
 
     def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
         start = time.monotonic()
@@ -418,7 +438,7 @@ def _run_steps(  # noqa: C901
                 run_serial(name, cmd, step_env)
         for future in futures:
             future.result()
-    if any(name == MUTATES_TREE for name, _ in failed):
+    if any(name == MUTATES_TREE for name, *_ in failed):
         clean_cache = None
         cache_keys.clear()
 
@@ -651,8 +671,13 @@ def main() -> int:  # noqa: C901
         print(f"{wall:5.1f}s  WALL  (elapsed, steps overlap)")
     print("=" * 40)
     # Last, below the timings: a failing run's tail is where the reader looks.
-    for name, returncode in failures:
-        print(f"[FAIL] {name}: {_cause(returncode)}", *_rerun_hint(name), sep="\n")
+    for name, returncode, output in failures:
+        print(
+            f"[FAIL] {name}: {_cause(returncode)}",
+            *_located(output),
+            *_rerun_hint(name),
+            sep="\n",
+        )
     if failures:
         print(f"{len(failures)} check(s) failed")
         return 1
