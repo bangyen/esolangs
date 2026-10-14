@@ -155,6 +155,10 @@ def _run(rest: list[str]) -> None:
         _emit_partial(exc)
         _fail(exc, _exit_code(exc))
     _write_output(output)
+    if mode == "termination":
+        # The timeout path says "undecided"; a halt is the verdict itself, and
+        # left unsaid, a hunt reader found it only in debug's `halted:` line.
+        _note(f"note: {name} halted, so its Boolean answer is 0")
     # Piped output stays byte-exact -- it gets compared and diffed -- but a
     # result with no trailing newline runs into the next shell prompt.
     if output and not output.endswith("\n") and sys.stdout.isatty():

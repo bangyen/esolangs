@@ -86,6 +86,27 @@ class TestEvaluationProvesRatherThanWaits:
         assert elapsed < 20, f"{language} waited {elapsed:.1f}s out of a 20s bound"
 
 
+def test_a_halt_states_the_termination_answer(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """The timeout path said "undecided"; the halt said nothing at all."""
+    language = languages(answer_mode="termination", boolean_generator=True)[0]
+    facts = esolangs.describe(language)
+    bits = ["--bits", "1"] if facts["parameterized"] else []
+    source, _ = call_both(["generate", *bits, language, "00"], capsys)
+    path = tmp_path / "zero.txt"
+    path.write_text(source)
+    stdin = esolangs.encode_inputs(language, [1]) if facts["reads_input"] else ""
+    output, error = call_both(
+        ["run", "--timeout", "20", language, str(path)], capsys, stdin
+    )
+    assert "halted, so its Boolean answer is 0" in error
+    assert "halted" not in output  # stdout stays the program's own bytes
+    plain = _program(tmp_path, "+.")
+    _, error = call_both(["run", REFERENCE, plain], capsys)
+    assert "Boolean answer" not in error
+
+
 class TestAnInterruptIsNotATraceback:
     """The tool invites Ctrl-C and then tracebacked when it arrived."""
 

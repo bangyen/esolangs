@@ -102,13 +102,13 @@ Row gives the logical bits; Input gives their language-specific encoding.
 - **cyclic-tag** -- Inputs fill the initial queue; the final deleted bit is the answer.
 - **fargo** -- Fargo reads one number whose bits are the inputs, so the committed input is the row index rather than a bit per line
 - **fractran** -- FRACTRAN has neither input nor output: the inputs are the exponents of n primes in the starting value, and the answer is the value the run stops on -- 1 for a zero and 2 for a one
-- **grapheme** -- Grapheme's generator normalizes each input line with ord(line[0]) - 65 and then maps zero to 1, so its input bits are spelled % and A: 'A' is a 1 and every other first character is a 0, which means a 0/1 line reads as 0 and the program answers the all-zeros row. The second step is not optional prose -- ord('A') - 65 is 0, so the subtraction alone says the opposite
+- **grapheme** -- input bits are spelled % and A: a line starting with A is a 1 and any other line a 0, so a 0/1 line reads as 0 and the program answers the all-zeros row; esolangs encode spells them
 - **inject** -- send terminates each line, so the answer ends in a newline
 - **intercal** -- INTERCAL READ OUT prints a lone overbar for zero and I for one
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **malbolge** -- the answer is one character and is printed with no newline
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
-- **piet** -- 80 pixels per codel
+- **piet** -- the committed example is drawn at 80 pixels per codel; generate draws 1 unless --scale says otherwise
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **slashes** -- Inputs fill the binary row index before unary selection; constant tables delete the input letters and print their answer.
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2

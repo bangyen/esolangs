@@ -30,7 +30,10 @@ LANGUAGE = Language(
     category="stack_based",
     source_kind=SourceKind.RASTER,
     boolean=piet,
-    contract=BooleanContract(note="80 pixels per codel"),
+    contract=BooleanContract(
+        note="the committed example is drawn at 80 pixels per codel; "
+        "generate draws 1 unless --scale says otherwise"
+    ),
     balance=balance,
     eof="an exhausted input command is ignored, as the spec requires",
     example=Example(scale=80),
