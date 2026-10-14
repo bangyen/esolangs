@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import re
 from functools import lru_cache
-from typing import cast
+from typing import NamedTuple, cast
 
 from esolangs.generation.helpers import (
     _residual_ids,
@@ -235,13 +235,26 @@ def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Rast
     return _generate(truth_table, unit).upscaled(scale)
 
 
-type _Choice = tuple[tuple[int, int, int], Node, Canvas | None, bool, bool]
+class _Score(NamedTuple):
+    """Orders layouts by imbalance, then area, then width (0 when small)."""
+
+    imbalance: int
+    area: int
+    tiebreak: int
+
+
+class _Choice(NamedTuple):
+    score: _Score
+    node: Node
+    canvas: Canvas | None
+    compact: bool
+    tight: bool
 
 
 def _best_choice(
     options: list[Node], *, compact: bool, tight: bool = True, small: bool, unit: int
 ) -> _Choice:
-    """Return ``(score, node, canvas, compact, tight)`` of the most balanced option."""
+    """Return the most balanced option."""
     choices = []
     for node in options:
         canvas = (
@@ -254,9 +267,9 @@ def _best_choice(
         else:
             y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[id(node)]
             width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
-        score = abs(width - height), width * height, 0 if small else width
-        choices.append((score, node, canvas, compact, tight))
-    return min(choices, key=lambda choice: choice[0])
+        score = _Score(abs(width - height), width * height, 0 if small else width)
+        choices.append(_Choice(score, node, canvas, compact, tight))
+    return min(choices, key=lambda choice: choice.score)
 
 
 def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
@@ -270,7 +283,9 @@ def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
     old = _best_choice(previous, compact=False, small=small, unit=unit)
 
     def within_old(choice: _Choice) -> bool:
-        return choice[0] <= old[0] and (not small or choice[0][1] <= old[0][1])
+        return choice.score <= old.score and (
+            not small or choice.score.area <= old.score.area
+        )
 
     preceding = _best_choice(nodes, compact=True, tight=False, small=small, unit=unit)
     if not within_old(preceding):
@@ -281,7 +296,7 @@ def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
     if not within_old(chosen):
         chosen = old
     # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
-    if chosen[0][1] > preceding[0][1]:
+    if chosen.score.area > preceding.score.area:
         chosen = preceding
     return chosen
 
@@ -293,15 +308,15 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
     score, selected, canvas, compact, tight = _balanced_choice(
         truth_table, small=small, unit=unit
     )
-    width = canvas.width if canvas is not None else score[2]
+    width = canvas.width if canvas is not None else score.tiebreak
     if _has_goto(cast("Node | None", default._payload)):  # noqa: SLF001 - generator-owned graph
         height, shared_width = len(default.rows), len(default.rows[0])
         shared_area = shared_width * height
         if (abs(shared_width - height), shared_area, shared_width) <= (
-            score[0],
-            score[1],
+            score.imbalance,
+            score.area,
             width,
-        ) and shared_area <= score[1]:
+        ) and shared_area <= score.area:
             return default
     return lazy_raster(
         lambda: (
