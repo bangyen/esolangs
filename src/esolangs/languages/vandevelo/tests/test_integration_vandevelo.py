@@ -98,5 +98,5 @@ def test_finite_timeout_has_no_boolean_verdict(capsys, monkeypatch) -> None:
         )
     assert exc.value.code == 124
     error = capsys.readouterr().err
-    assert "answer is undecided" in error
+    assert "timeout" in error
     assert "answer 1" not in error

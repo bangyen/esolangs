@@ -225,7 +225,7 @@ examples:
 {_TEMPLATE_EXAMPLE}
 {_DIALECT_EXAMPLES}
 """,
-    "run": f"""usage: esolangs run [--timeout S] [--isolated] [--max-output N]
+    "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
                     [--max-memory BYTES] [--seed N]
                     [--scale N] [--settings JSON] [--set KEY=VALUE]
                     [--portable] <language> <program-file>
@@ -253,9 +253,7 @@ options:
   --max-output N     cap isolated output in Unicode characters (including zero).
   --max-memory BYTES cap Linux worker address space; requires --isolated.
   --timeout SECONDS  stop the run after this long rather than hanging.
-                     Unbounded by default. Termination answers use halt for
-                     0 and divergence for 1; a timeout remains undecided.
-                     Termination-answer languages: {_TERMINATION_NAMES}.
+                     Unbounded by default.
   --scale N          override detected raster scale; 1 preserves native pixels.
   -p, --portable         load JSON saved by generate --portable.  The language
                      may be omitted because the JSON names it.
@@ -302,7 +300,7 @@ examples:
   esolangs describe --json brainfuck
   esolangs describe --spec brainfuck
 """,
-    "read-answer": """usage: esolangs read-answer <language>
+    "read-answer": f"""usage: esolangs read-answer <language>
 
 Read a program's output on stdin and print the answer bit it carries.
 
@@ -311,8 +309,11 @@ more than `tail`.  For some it is not: several dump their entire final machine
 state, and the answer sits in a tagged memory value or the current marked
 cell. `esolangs describe <language>` reports the answer convention.
 
-The languages that answer by terminating have no output to read, so
-they are refused here and named: run with `--timeout S` and observe whether it halts.
+The languages that answer by terminating have no output to read, so they
+are refused here.  A generated program in one halts for 0 and diverges for
+1: run it with `--timeout S` and observe whether it halts.  A timeout leaves
+the answer undecided.  They are:
+  {_TERMINATION_NAMES}
 
 examples:
   esolangs generate brainfuck 0110 > p.txt
@@ -341,8 +342,7 @@ options:
   --break-on-cell I=V  stop while memory cell I still holds V.
   --timeout SECONDS    stop the run after this long, reporting
                        `stopped: timeout`.  Like --steps this bounds a
-                       program that never halts, including programs whose
-                       Boolean answer is termination.
+                       program that never halts.
   --stdin TEXT         feed TEXT verbatim using the language's input unit.
                        Without this option, read the program input from stdin.
   -p, --portable       load JSON saved by generate --portable.  The language
