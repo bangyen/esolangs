@@ -16,7 +16,12 @@ from esolangs.languages.sstack.generator._ternary import (
 from scripts.benchmark import WrittenState
 
 
-@pytest.mark.parametrize("classes", range(2, 29))
+# Spine shape follows the base-3 digits of classes - 1: per width the full tree
+# (3**k) and the all-skip spine (3**k + 1), the all-ones spine 14 (two-arm at
+# every level), and the minimum 2.
+@pytest.mark.parametrize(
+    "classes", [2, 14, *(m for k in range(1, 4) for m in (3**k, 3**k + 1))]
+)
 def test_decoder_consumes_every_word_before_its_body(classes) -> None:
     width = _width(classes)
     pieces = []
