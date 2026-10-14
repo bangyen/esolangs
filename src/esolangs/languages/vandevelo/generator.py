@@ -874,8 +874,9 @@ def _cover(truth_table: str, n: int) -> list[_Clause]:
                 for index, (mask, value) in enumerate(equations)
             ]
     cubes = [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
-    tests = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
-    return [_Clause(t, len(dirs)) for t, (_, dirs) in zip(tests, cubes, strict=True)]
+    return _pruned(
+        [_Clause(_constraints(base, dirs, n), len(dirs)) for base, dirs in cubes]
+    )
 
 
 class _Held(NamedTuple):
@@ -983,10 +984,10 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
         return names[n - 1 - bit]
 
     bank = _Bank(n, ref)
-    for constraints, _ in cover:
+    for clause in cover:
         parts = []
         used: set[str] = set()
-        for w, value in constraints:
+        for w, value in clause.tests:
             # The constraint over the reads as spelled, flipped inputs and all.
             value ^= (w & flips).bit_count() & 1
             if w.bit_count() == 1:
@@ -1004,7 +1005,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     return "\n".join(lines)
 
 
-def _pruned(cover: list[list[tuple[int, int]]]) -> list[list[tuple[int, int]]]:
+def _pruned(cover: list[_Clause]) -> list[_Clause]:
     """Drop the tests every row reaching their clause passes.
 
     Random tables: 0.0% of characters.  Unions of cubes and axis half-spaces,
@@ -1018,9 +1019,9 @@ def _pruned(cover: list[list[tuple[int, int]]]) -> list[list[tuple[int, int]]]:
     """
     implied: set[tuple[int, int]] = set()
     out = []
-    for constraints in cover:
-        kept = [test for test in constraints if test not in implied]
-        out.append(kept)
+    for clause in cover:
+        kept = [test for test in clause.tests if test not in implied]
+        out.append(_Clause(kept, clause.dim))
         if len(kept) == 1:
             w, value = kept[0]
             implied.add((w, value ^ 1))
@@ -1043,13 +1044,13 @@ def _flips(cover: list[_Clause], n: int) -> int:
     count = [0] * n
     weight = [0] * n
     reach = 1 << n
-    for constraints, dim in cover:
-        for w, value in constraints:
+    for clause in cover:
+        for w, value in clause.tests:
             if w.bit_count() == 1:
                 bit = w.bit_length() - 1
                 count[bit] += 1 if value else -1
                 weight[bit] += reach if value else -reach
-        reach -= 1 << dim
+        reach -= 1 << clause.dim
     return sum(1 << bit for bit in range(n) if count[bit] < 0 and weight[bit] < 0)
 
 
