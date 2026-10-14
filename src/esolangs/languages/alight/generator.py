@@ -327,9 +327,11 @@ def _layout_flat_postfix(build: _Build) -> str:
 
 
 def _layout_bounded_infix(build: _Build) -> str:
-    """Return the bounded infix layout without dropped inputs."""
+    """Return the bounded infix layout, planned from the projection if inputs drop."""
     width = build.width
     assert width is not None
+    if build.dropped:
+        return _layout_bounded_dropped(build)
     return select_alight(build.truth_table, build.n, width)
 
 
@@ -435,8 +437,6 @@ def _program(
         essential=essential,
         dropped=dropped,
     )
-    if dropped and width is not None and expression_syntax == "infix":
-        return _layout_bounded_dropped(build)
     return _STRATEGIES[expression_syntax, width is None](build)
 
 
