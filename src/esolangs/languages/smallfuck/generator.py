@@ -20,7 +20,6 @@ from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_block import (
     _repeated_blocks,
     repeated_bank,
-    repeated_block,
     repeated_blocks,
 )
 from esolangs.generation.token_balance import balanced_token_width
@@ -33,6 +32,18 @@ PAIR = ("x>>>", "*>>>")
 
 #: Levels sharing one result cell; measured best of 2 to 5 at n = 3 to 10.
 BAND = 3
+
+#: Cells per level: input ``3 i``, flag ``3 k + 1``, band result ``3 k + 2``.
+STRIDE = len(PAIR[0]) - 1
+ANSWER = 2
+
+
+def _flag_cell(level: int) -> int:
+    return STRIDE * level + 1
+
+
+def _band_cell(level: int) -> int:
+    return STRIDE * level + 2
 
 
 def _owns_band_cell(n: int, level: int) -> bool:
@@ -84,8 +95,8 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
     flags or same-level banks and run after the band transfers; inline text
     and the existing command bound guard admission. Two-input complements
     share a three-bit code; a retired zero-arm input holds its high bit.
-    Three dense n=16 tables average 921,290 -> 723,753 characters (-21.44%);
-    both builds execute five rows per table.
+    A tiled n=16 table shrinks 1,743 -> 802 characters (-54%) against the
+    plain tree; the test executes it on 128 rows.
     """
     natural = in_input_order(truth_table, _smallfuck_ordered)
     if width is None or width <= 0:
@@ -104,25 +115,25 @@ def smallfuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 
 
 def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
-    """Compare inline text, one residual, levels and same-level banks."""
-    plain, _ = _smallfuck_tree(table, perm)
-    shared = repeated_block(table)
-    paired = _paired_roots(table)
+    """Compare the plain tree, deferred residuals and paired roots.
+
+    Deferred plans are the per-level residuals and the unranked same-level
+    bank.  The single-residual and ranked-bank forms were retired at 1.2%
+    jointly (n=8..12, 40 to 250 tables per class); dropping the per-level
+    plan too costs 10.4% on a tiled n=6 table.  Plans above the command
+    bound are dropped.
+    """
     n = len(perm)
-    forms = [(plain, 0)]
-    if shared is not None:
-        forms.append(_smallfuck_tree(table, perm, shared))
-        plans: list[tuple[tuple[tuple[int, int], ...], tuple[int, ...]]] = [
-            (repeated_blocks(table), ())
-        ]
-        plans.extend(repeated_bank(table, ranked=ranked) for ranked in (False, True))
-        for blocks, flags in dict.fromkeys(plans):
-            if len(blocks) > 1:
-                forms.append(
-                    _smallfuck_tree(
-                        table, perm, shared_blocks=blocks, flag_levels=flags
-                    )
-                )
+    forms = [_smallfuck_tree(table, perm)]
+    plans = dict.fromkeys(
+        [(repeated_blocks(table), ()), repeated_bank(table, ranked=False)]
+    )
+    for blocks, flags in plans:
+        if blocks:
+            forms.append(
+                _smallfuck_tree(table, perm, shared_blocks=blocks, flag_levels=flags)
+            )
+    paired = _paired_roots(table)
     if paired:
         forms.append(_smallfuck_tree(table, perm, paired_roots=paired))
     return min(
@@ -232,7 +243,7 @@ class _Tree:
     def clear_prefix(self, level: int) -> None:
         """Clear the unread paired-roots inputs at or above ``level``."""
         for unread in range(level, self.pair_depth):
-            bit = 3 * self.perm[unread]
+            bit = STRIDE * self.perm[unread]
             self.builder.loop(bit)
             self.builder.end(bit)
 
@@ -255,7 +266,7 @@ class _Tree:
             return _Cost(self.builder.count - start)
         if not _owns_band_cell(self.n, level):
             return self.tree(level + 1, lo, hi, result, on, free)
-        own = 3 * (level + 1) + 2
+        own = _band_cell(level + 1)
         cost = self.tree(level + 1, lo, hi, own, on, free)
         tail = self.builder.count
         self.transfer(own, result)
@@ -284,9 +295,9 @@ class _Tree:
                 if (self.truth_table[lo] == "1") != (on == "0"):
                     self.builder.flip(result)
                 for mask, cell in (
-                    (1, 3 * self.pair_depth + 1),
-                    (2, 3 * (self.pair_depth + 1) + 1),
-                    (4, 3 * self.perm[free]),
+                    (1, _flag_cell(self.pair_depth)),
+                    (2, _flag_cell(self.pair_depth + 1)),
+                    (4, STRIDE * self.perm[free]),
                 ):
                     if canonical & mask:
                         self.builder.flip(cell)
@@ -297,9 +308,9 @@ class _Tree:
             # suffix contributes the function itself after band transfers.
             if on == "0":
                 self.builder.flip(result)
-            self.builder.flip(3 * self.pending_levels[self.selected[key]] + 1)
+            self.builder.flip(_flag_cell(self.pending_levels[self.selected[key]]))
             return _Cost(self.builder.count - start, target=self.selected[key])
-        bit, flag, mid = 3 * self.perm[level], 3 * level + 1, (lo + hi) // 2
+        bit, flag, mid = STRIDE * self.perm[level], _flag_cell(level), (lo + hi) // 2
         below = self.ids[level + 1]
         if below[lo >> (self.n - level - 1)] == below[mid >> (self.n - level - 1)]:
             if self.pair_phase and level < self.pair_depth:
@@ -338,6 +349,29 @@ class _Tree:
             lambda: self.arm(level, lo, mid, result, on, zero_free),
         )
 
+    def emit_definition(
+        self, i: int, depth: int, row: int
+    ) -> tuple[_Cost[int], int, int]:
+        """Emit deferred definition ``i``; return (body cost, scaffold, skipped).
+
+        Only the first band of each definition transfers to distant cell 2.
+        At most n definitions add O(n**2) movement, absorbed by T = 2**n.
+        """
+        builder = self.builder
+        pending = _flag_cell(self.pending_levels[i])
+        start = builder.count
+        builder.loop(pending)
+        skipped = builder.count - start - 1
+        del self.selected[depth, self.ids[depth][row >> (self.n - depth)]]
+        body_start = builder.count
+        body_cost = self.tree(depth, row, row + (1 << (self.n - depth)), ANSWER, "1")
+        deferred_body = builder.count - body_start
+        builder.end(pending)
+        # Loop scaffolding around the deferred body: everything but the
+        # body itself, plus the loop's opening bracket.
+        active = builder.count - start - deferred_body + 1
+        return body_cost, active, skipped
+
     def emit_paired_roots(self, prefix: _Cost[int]) -> tuple[str, int]:
         """Emit the paired-roots decoder and price every pair tail.
 
@@ -353,24 +387,28 @@ class _Tree:
         """
         # decode needs real subtrees here, not the pair shortcut.
         self.pair_phase = False
-        collector = 3 * (self.pair_depth - 1) + 1
+        collector = _flag_cell(self.pair_depth - 1)
         # Used inputs are zero; constant leaves clear the unused prefix.
         # Only the high code bit can survive, in at most one input cell.
         skipped = delta = 0
         for level in range(self.pair_depth):
             start = self.builder.count
-            bit = 3 * self.perm[level]
+            bit = STRIDE * self.perm[level]
             self.builder.loop(bit)
             empty = self.builder.count - start - 1
             self.builder.flip(collector)
             self.builder.end(bit)
             skipped += empty
             delta = max(delta, self.builder.count - start - empty)
-        bits = (collector, 3 * (self.pair_depth + 1) + 1, 3 * self.pair_depth + 1)
+        bits = (
+            collector,
+            _flag_cell(self.pair_depth + 1),
+            _flag_cell(self.pair_depth),
+        )
         guards = (
-            3 * (self.pair_depth - 2) + 1,
-            3 * self.perm[self.pair_depth - 1],
-            3 * self.perm[self.pair_depth - 2],
+            _flag_cell(self.pair_depth - 2),
+            STRIDE * self.perm[self.pair_depth - 1],
+            STRIDE * self.perm[self.pair_depth - 2],
         )
         decoder = _PairDecoder(self, skipped, delta, bits, guards)
         model = decoder.decode(0, (0, *self.pairs))
@@ -423,7 +461,7 @@ class _PairDecoder:
                     tree.pair_depth,
                     row,
                     row + 4,
-                    2,
+                    ANSWER,
                     "0" if tree.truth_table[row] == "1" else "1",
                 )
                 cost = body.evaluate({None: 0})
@@ -456,10 +494,28 @@ class _PairDecoder:
             )
 
 
+def _check_definitions(
+    n: int, blocks: tuple[tuple[int, int], ...], flag_levels: tuple[int, ...]
+) -> None:
+    """Reject deferred definitions whose levels or flags collide."""
+    depths = tuple(depth for depth, _ in blocks)
+    if flag_levels:
+        if (
+            len(flag_levels) != len(blocks)
+            or len(set(depths)) != 1
+            or len(set(flag_levels)) != len(flag_levels)
+            or any(level < depths[0] or level >= n for level in flag_levels)
+        ):
+            raise ValueError("a bank needs distinct unused flags at one level")
+    elif any(left >= right for left, right in pairwise(depths)):
+        raise ValueError("deferred levels must be distinct and increasing")
+    if any(depth < 0 or depth >= n for depth in depths):
+        raise ValueError("deferred levels must be distinct and increasing")
+
+
 def _smallfuck_tree(
     truth_table: str,
     perm: tuple[int, ...],
-    shared: tuple[int, int] | None = None,
     *,
     shared_blocks: tuple[tuple[int, int], ...] = (),
     flag_levels: tuple[int, ...] = (),
@@ -477,25 +533,12 @@ def _smallfuck_tree(
     a node over two leaves is ``result ^= bit`` alone.
     """
     n = _validate_truth_table(truth_table)
-    constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)
-    builder = _Builder(3 * n)
+    builder = _Builder(STRIDE * n)
     builder.emit(TEMPLATE_CHAR * (len(PAIR[0]) * n))
-    blocks = (shared,) if shared is not None else shared_blocks
-    depths = tuple(depth for depth, _ in blocks)
-    if flag_levels:
-        if (
-            len(flag_levels) != len(blocks)
-            or len(set(depths)) != 1
-            or len(set(flag_levels)) != len(flag_levels)
-            or any(level < depths[0] or level >= n for level in flag_levels)
-        ):
-            raise ValueError("a bank needs distinct unused flags at one level")
-    elif any(left >= right for left, right in pairwise(depths)):
-        raise ValueError("deferred levels must be distinct and increasing")
-    if any(depth < 0 or depth >= n for depth in depths):
-        raise ValueError("deferred levels must be distinct and increasing")
-    pending_levels = flag_levels or depths
+    blocks = shared_blocks
+    _check_definitions(n, blocks, flag_levels)
+    pending_levels = flag_levels or tuple(depth for depth, _ in blocks)
     selected = {
         (depth, ids[depth][row >> (n - depth)]): i
         for i, (depth, row) in enumerate(blocks)
@@ -511,14 +554,14 @@ def _smallfuck_tree(
         n,
         truth_table,
         perm,
-        constant,
+        constant_span_test(truth_table),
         ids,
         builder,
         pending_levels,
         selected,
         pairs,
     )
-    prefix = tree.arm(-1, 0, len(truth_table), 2, "1")
+    prefix = tree.arm(-1, 0, len(truth_table), ANSWER, "1")
     if pairs:
         return tree.emit_paired_roots(prefix)
     empty_tails: dict[int | None, int] = {
@@ -527,21 +570,8 @@ def _smallfuck_tree(
     }
     cost = len(PAIR[0]) * n + prefix.evaluate(empty_tails)
     stages = []
-    # Only the first band of each definition transfers to distant cell 2.
-    # At most n definitions add O(n**2) movement, absorbed by T = 2**n.
     for i, (depth, row) in enumerate(blocks):
-        pending = 3 * pending_levels[i] + 1
-        start = builder.count
-        builder.loop(pending)
-        skipped = builder.count - start - 1
-        del selected[depth, ids[depth][row >> (n - depth)]]
-        body_start = builder.count
-        body_cost = tree.tree(depth, row, row + (1 << (n - depth)), 2, "1")
-        deferred_body = builder.count - body_start
-        builder.end(pending)
-        # Loop scaffolding around the deferred body: everything but the
-        # body itself, plus the loop's opening bracket.
-        active = builder.count - start - deferred_body + 1
+        body_cost, active, skipped = tree.emit_definition(i, depth, row)
         cost += body_cost.evaluate(empty_tails) + active
         stages.append((i, body_cost, active, skipped))
     if shared_blocks:
