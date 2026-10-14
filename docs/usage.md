@@ -293,7 +293,7 @@ assert len(debug.output) > 2
 
 `describe(language)` returns the language’s API metadata:
 `source_kind`, `state_model` (its category: register, tape, stack, grid,
-queue or other), `shape` (its generator’s construction growth: tree,
+queue, program, variables or other), `shape` (its generator’s construction growth: tree,
 reducing or lookup; None without a generator), `input_shape`,
 `input_encoding`, `answer_mode`, `answer_encoding`,
 `width_effect`, `parameterized`, `reads_input`, `random` (the interpreter draws

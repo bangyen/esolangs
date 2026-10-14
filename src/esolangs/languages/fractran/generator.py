@@ -238,7 +238,7 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 LANGUAGE = Language(
     "FRACTRAN",
     "fractran",
-    category="other",
+    category="register_based",
     boolean=fractran,
     same_layout=_same_layout,
     contract=BooleanContract(

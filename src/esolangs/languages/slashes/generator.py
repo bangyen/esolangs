@@ -95,7 +95,7 @@ def _is_unfilled_template(code: str) -> bool:
 LANGUAGE = Language(
     "///",
     "slashes",
-    category="other",
+    category="program_based",
     id="slashes",
     aliases=("Slashalash",),
     path_like_source=True,

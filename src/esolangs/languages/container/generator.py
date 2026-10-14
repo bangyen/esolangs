@@ -477,7 +477,7 @@ def balance_container(table: str, default: str) -> str:
 LANGUAGE = Language(
     "Container",
     "container",
-    category="other",
+    category="variable_based",
     boolean=container,
     split=True,
     contract=BooleanContract(

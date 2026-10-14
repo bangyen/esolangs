@@ -5,6 +5,7 @@ import json
 import pytest
 
 import esolangs
+from esolangs.registry._describe import STATE_MODELS
 from tests.support.cli_support import call_both
 from tests.support.pick import languages
 
@@ -32,8 +33,10 @@ def test_raster_filter_has_a_positive_control(capsys) -> None:
 
 def test_state_model_and_shape_filters_agree_with_describe(capsys) -> None:
     """The two derived axes filter by exactly what ``describe`` reports."""
-    for model in ("grid", "tape", "stack", "queue", "register", "other"):
-        assert _names(["--state-model", model], capsys) == [
+    for model in STATE_MODELS:
+        names = _names(["--state-model", model], capsys)
+        assert names  # every model is populated, so none is a dead label
+        assert names == [
             name
             for name in esolangs.list_languages()
             if esolangs.describe(name)["state_model"] == model
@@ -121,7 +124,8 @@ def test_no_matches_is_an_empty_catalog(capsys) -> None:
         (["--answer", "halts"], "--answer must be one of output, dump, termination"),
         (
             ["--state-model", "watch"],
-            "--state-model must be one of register, tape, stack, grid, queue, other",
+            "--state-model must be one of register, tape, stack, grid, queue, "
+            "program, variables, other",
         ),
         (["--shape", "bushy"], "--shape must be one of tree, reducing, lookup"),
         (["--input-shape", "bits"], "--input-shape must be one of line_per_bit"),

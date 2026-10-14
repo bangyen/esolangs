@@ -346,7 +346,7 @@ def balance_thue(truth_table: str, default: str) -> str:
 LANGUAGE = Language(
     "Thue",
     "thue",
-    category="other",
+    category="program_based",
     reader_checked=True,
     random=True,
     boolean=thue,

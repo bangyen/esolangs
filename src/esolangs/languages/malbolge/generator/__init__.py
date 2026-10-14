@@ -951,7 +951,7 @@ def malbolge(truth_table: str) -> str:
 LANGUAGE = Language(
     "Malbolge",
     "malbolge",
-    category="other",
+    category="program_based",
     # The program is the full 59049-cell store.
     # Every source loads into 59,049 cells, so every program -- this
     # generator's or any other -- is bounded by a constant.

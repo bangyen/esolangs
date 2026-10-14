@@ -252,7 +252,7 @@ def _balance(table: str, default: str) -> str:
 LANGUAGE = Language(
     "Forbin",
     "forbin",
-    category="other",
+    category="variable_based",
     boolean=forbin,
     # Not a tree: one painted call argument per entry, halved down to the first.
     shape=Shape.LOOKUP,

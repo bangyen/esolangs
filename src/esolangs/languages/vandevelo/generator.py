@@ -1062,7 +1062,7 @@ def _balance(table: str, default: str) -> str:
 LANGUAGE = Language(
     "Vandevelo",
     "vandevelo",
-    category="other",
+    category="variable_based",
     boolean=vandevelo,
     contract=BooleanContract(
         answer_mode="termination",

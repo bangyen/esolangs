@@ -86,32 +86,42 @@ Languages that use registers to store and manipulate data.
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/collatz_multiverse/interpreter.py))
 - [Deadfish](https://esolangs.org/wiki/Deadfish) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/deadfish/interpreter.py)) *(interpreter-only)*
 - [Decleq](https://esolangs.org/wiki/Decleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/decleq/interpreter.py))
+- [FRACTRAN](https://esolangs.org/wiki/FRACTRAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fractran/interpreter/__init__.py))
 - [HQ9+](https://esolangs.org/wiki/HQ9+) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/hq9/interpreter.py)) *(interpreter-only)*
 - [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/minsky_swap/interpreter.py))
 - [Polynomial](https://esolangs.org/wiki/Polynomial) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/polynomial/interpreter/__init__.py))
 - [Qoibl](https://esolangs.org/wiki/Qoibl) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/qoibl/interpreter.py))
 - [RAM0](https://esolangs.org/wiki/RAM0) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/ram0/interpreter.py))
 
+### Self-modifying Languages
+
+Languages whose data is the program itself, rewritten as it runs.
+
+- [///](https://esolangs.org/wiki/%2F%2F%2F) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/slashes/interpreter.py))
+- [Crement](https://esolangs.org/wiki/Crement) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/crement/interpreter.py))
+- [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/inject/interpreter.py))
+- [Malbolge](https://esolangs.org/wiki/Malbolge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/malbolge/interpreter.py))
+- [Thue](https://esolangs.org/wiki/Thue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/thue/interpreter.py))
+
+### Variable-based Languages
+
+Languages that store data in named variables the program declares.
+
+- [Algebraic Programming Language](https://esolangs.org/wiki/Algebraic_Programming_Language) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/algebraic_programming_language/interpreter/__init__.py))
+- [Container](https://esolangs.org/wiki/Container) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/container/interpreter.py))
+- [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/forbin/interpreter/__init__.py))
+- [INTERCAL](https://esolangs.org/wiki/INTERCAL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/intercal/interpreter/__init__.py))
+- [Packlang](https://esolangs.org/wiki/Packlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/packlang/interpreter/__init__.py))
+- [Vandevelo](https://esolangs.org/wiki/Vandevelo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/vandevelo/interpreter.py))
+
 ### Other Languages
 
 Languages that don't fit into the above categories.
 
-- [///](https://esolangs.org/wiki/%2F%2F%2F) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/slashes/interpreter.py))
-- [Algebraic Programming Language](https://esolangs.org/wiki/Algebraic_Programming_Language) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/algebraic_programming_language/interpreter/__init__.py))
 - [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C)) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/cvnc/interpreter.py))
-- [Container](https://esolangs.org/wiki/Container) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/container/interpreter.py))
-- [Crement](https://esolangs.org/wiki/Crement) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/crement/interpreter.py))
-- [FRACTRAN](https://esolangs.org/wiki/FRACTRAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fractran/interpreter/__init__.py))
 - [Fargo](https://esolangs.org/wiki/Fargo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fargo/interpreter.py))
-- [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/forbin/interpreter/__init__.py))
-- [INTERCAL](https://esolangs.org/wiki/INTERCAL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/intercal/interpreter/__init__.py))
-- [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/inject/interpreter.py))
-- [Malbolge](https://esolangs.org/wiki/Malbolge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/malbolge/interpreter.py))
 - [Nope.](https://esolangs.org/wiki/Nope.) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/nope/interpreter.py)) *(interpreter-only)*
-- [Packlang](https://esolangs.org/wiki/Packlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/packlang/interpreter/__init__.py))
-- [Thue](https://esolangs.org/wiki/Thue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/thue/interpreter.py))
 - [Unlambda](https://esolangs.org/wiki/Unlambda) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/unlambda/interpreter.py))
-- [Vandevelo](https://esolangs.org/wiki/Vandevelo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/vandevelo/interpreter.py))
 
 <!-- IMPLEMENTED:END -->
 </details>

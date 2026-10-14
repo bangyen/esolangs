@@ -49,6 +49,8 @@ CATEGORIES = (
     "queue_based",
     "tape_based",
     "register_based",
+    "program_based",
+    "variable_based",
     "other",
 )
 

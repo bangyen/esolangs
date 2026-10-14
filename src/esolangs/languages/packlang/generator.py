@@ -332,7 +332,7 @@ def _dialect(literal_policy: str = "decimal") -> None:
 LANGUAGE = Language(
     "Packlang",
     "packlang",
-    category="other",
+    category="variable_based",
     boolean=packlang,
     dialect=_dialect,
     dialect_values={"literal_policy": LITERAL_POLICIES},

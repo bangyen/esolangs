@@ -28,6 +28,11 @@ _STATE_MODELS = {
     "stack_based": "stack",
     "grid_based": "grid",
     "queue_based": "queue",
+    # The run's data is the program itself: rewritten text, instructions
+    # writing into each other, or code sharing one memory with data.
+    "program_based": "program",
+    # A store of named variables the program declares.
+    "variable_based": "variables",
     "other": "other",
 }
 

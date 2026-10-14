@@ -152,7 +152,7 @@ options:
               table-dependent restrictions still apply (shown by --details)
   --state-model MODEL
               select the language's category, from its interpreter family:
-              register, tape, stack, grid, queue, other
+              register, tape, stack, grid, queue, program, variables, other
   --shape SHAPE
               select generators by construction shape: tree, reducing, lookup
   --template  restrict to generators that embed the inputs in the program
