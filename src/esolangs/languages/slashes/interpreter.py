@@ -89,7 +89,9 @@ class _Machine:
         return [ord(c) for c in self.state[0]]
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.progress())
+        # Flat, as the ledger's exact workspace bound measures it.
+        source, rule = self.state
+        return (source, *(rule or (None, "")), self.io.progress())
 
     def step(self) -> None:
         self.state, output = _advance(self.state)
