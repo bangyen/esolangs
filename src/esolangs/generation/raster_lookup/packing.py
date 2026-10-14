@@ -1,5 +1,6 @@
 """Greedy lane coloring across white bridges, without merged command blocks."""
 
+from collections.abc import Sequence
 from math import isqrt
 from typing import NamedTuple
 
@@ -71,7 +72,29 @@ def _put(
     cells[x, y] = colour, owner
 
 
-def _layout(  # noqa: C901
+def _paint_run(
+    cells: dict[tuple[int, int], tuple[Pixel, int]],
+    placed: dict[tuple[int, int], tuple[Pixel, int]],
+    run: Sequence[_Operation],
+    start: tuple[int, int, int],
+    colour: Pixel,
+    owner: int,
+) -> tuple[int, Pixel, int]:
+    """Paint ``run`` along a row from ``start`` (x, y, direction), one owner a block.
+
+    Returns the next x, the colour after the run, and the last owner used.
+    """
+    x, y, direction = start
+    for operation in run:
+        owner += 1
+        for _ in range(operation.size):
+            _put(cells, placed, owner, x, y, colour)
+            x += direction
+        colour = _next_colour(colour, operation.change)
+    return x, colour, owner
+
+
+def _layout(
     operations: list[_Operation],
     columns: int,
     *,
@@ -121,36 +144,29 @@ def _layout(  # noqa: C901
                     colour = _next_colour(end_colour, (hue, phase % 3))
                 else:
                     colour = end_colour
-                x = lane.x
-
-                def block(
-                    operation: _Operation,
-                    row_y: int = y,
-                    direction: int = lane.direction,
-                    blocks: dict[tuple[int, int], tuple[Pixel, int]] = cells,
-                ) -> None:
-                    nonlocal x, colour, owner
-                    owner += 1
-                    for _ in range(operation.size):
-                        _put(blocks, placed, owner, x, row_y, colour)
-                        x += direction
-                    colour = _next_colour(colour, operation.change)
-
-                for operation in operations[lane.first : lane.last]:
-                    block(operation)
+                x, colour, owner = _paint_run(
+                    cells,
+                    placed,
+                    operations[lane.first : lane.last],
+                    (lane.x, y, lane.direction),
+                    colour,
+                    owner,
+                )
                 if number == len(lanes) - 1:
                     owner += 1
                     for offset in (-1, 0, 1):
                         _put(cells, placed, owner, x, y + offset, colour)
                 else:
                     value = 1 if lane.direction == 1 else 3
-                    for operation in (
+                    turn = (
                         _push(value),
                         _Operation(_DUPLICATE) if duplicate else _push(value),
                         _Operation(_POINTER),
                         _Operation(_POINTER),
-                    ):
-                        block(operation)
+                    )
+                    x, colour, owner = _paint_run(
+                        cells, placed, turn, (x, y, lane.direction), colour, owner
+                    )
                 collision = False
                 for (xx, yy), (pixel, block_id) in cells.items():
                     if pixel == WHITE:
