@@ -95,6 +95,18 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     return wrap_space_delimited(" ".join(tokens), width)
 
 
+def _height(parts: list[int], columns: int) -> int:
+    """Greedy single-space wrap row count for token lengths."""
+    rows, used = 1, 0
+    for length in parts:
+        if used and used + 1 + length > columns:
+            rows += 1
+            used = length
+        else:
+            used += length + bool(used)
+    return rows
+
+
 def _best_chunked_columns(
     table: str, suffix_lengths: list[int], suffix_fits: set[int]
 ) -> int | None:
@@ -115,17 +127,6 @@ def _best_chunked_columns(
     interval.
     """
     size = len(table)
-
-    def height(parts: list[int], columns: int) -> int:
-        """Greedy single-space wrap row count for token lengths."""
-        rows, used = 1, 0
-        for length in parts:
-            if used and used + 1 + length > columns:
-                rows += 1
-                used = length
-            else:
-                used += length + bool(used)
-        return rows
 
     # Widths of the push syntax around a chunk boundary: every contiguous run
     # of the boundary template straddling the (zeroed) chunk token.
@@ -156,13 +157,13 @@ def _best_chunked_columns(
             partial = size - (count - 1) * start
             # The boundary window with the partial chunk filled in.
             rows = (
-                height(
+                _height(
                     [1, 3, 3, partial + _CHUNK_TOKEN_EXTRA, 1, 3, 3],
                     start + _CHUNK_TOKEN_EXTRA,
                 )
                 + 2 * count
                 - 3
-                + height(suffix_lengths, start + _CHUNK_TOKEN_EXTRA)
+                + _height(suffix_lengths, start + _CHUNK_TOKEN_EXTRA)
             )
             # Squarest width inside this event interval.
             columns = min(max(rows, start + _CHUNK_TOKEN_EXTRA), stop + 2)
