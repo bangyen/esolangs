@@ -227,6 +227,11 @@ Judge a module by what the language does not demand.
 - The module docstring teaches the language: source syntax, one step, halt
   and output, then spec-gap decisions. Implementation notes are comments
   beside the code they explain.
+- Past the complexity cap, split dispatch by the spec's sections, not with
+  a `noqa`: Fish's regular commands became tables (`_STACK_OPS`, `_TURNS`)
+  and the rest one `match`. A command the corpus never runs needs its own
+  check: no Fish program ran `@`, so old and new `_advance` were diffed on
+  200,000 random single steps.
 - Validators and debugger views sit beside the step, not inside it
   (Streetcode's `interpreter/validation.py`).
 
