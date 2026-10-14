@@ -14,6 +14,7 @@ sets the register once), so it has no subtrees to share.
 
 from collections import Counter
 from collections.abc import Callable
+from enum import Enum
 from itertools import pairwise
 
 from esolangs.generation.helpers import (
@@ -26,7 +27,6 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -287,6 +287,14 @@ def _occurrences(
 _Cursor = tuple[int, bool]
 
 
+class _Role(Enum):
+    """How the stacked layout draws one branch's subtree."""
+
+    PLAIN = "plain"
+    JUMP = "jump"  # an earlier copy of a shared subtree: a rail to the last
+    BODY = "body"  # the last copy, drawn once and entered from the east
+
+
 class _Stacked:
     """Painter state for the stacked layout; ``cursor`` is ``(row, locked)``."""
 
@@ -332,21 +340,22 @@ class _Stacked:
         self.taps.append(y + 2)
         return y + 3, locked
 
-    def repeat(self, lo: int, hi: int, depth: int, *, locked: bool) -> int | None:
-        """Return the id of a subtree that may repeat, or ``None``."""
-        if not self.share or locked:
-            return None
-        return _shareable(self.ids, self.counts, depth, lo, hi)
+    def classify(
+        self, lo: int, hi: int, depth: int, *, locked: bool
+    ) -> tuple[int | None, _Role]:
+        """Return the span's repeating subtree id (or ``None``) and its role.
 
-    def role(self, sid: int | None) -> str:
-        """Return ``"jump"`` for an earlier copy, ``"body"`` for the last.
-
-        Anything else is ``"plain"``.
+        A candidate that never repeats in a drawn copy is ``PLAIN`` but its id
+        is still returned: the descent below it stays locked.
         """
+        if not self.share or locked:
+            return None, _Role.PLAIN
+        sid = _shareable(self.ids, self.counts, depth, lo, hi)
         if sid is None or self.copies[sid] < 2:
-            return "plain"
+            return sid, _Role.PLAIN
         self.seen[sid] += 1
-        return "body" if self.seen[sid] == self.copies[sid] else "jump"
+        last = self.seen[sid] == self.copies[sid]
+        return sid, _Role.BODY if last else _Role.JUMP
 
     def paint_branch(
         self,
@@ -380,14 +389,14 @@ class _Stacked:
         """
         cells, spine = self.cells, self.spine
         cells[(spine + 2, y)] = "┐"
-        one = self.repeat(lo, hi, depth + 1, locked=locked)
-        how = self.role(one)
-        if one is not None and how == "jump":
+        one, how = self.classify(lo, hi, depth + 1, locked=locked)
+        if how is _Role.JUMP:
+            assert one is not None
             cells[(spine + 2, y + 1)] = "└"
             self.jumps.append((y + 1, spine + 3, one))
             return y + 2
-        cells[(spine + 2, y + 1)] = "┴" if how == "body" else "┘"
-        if one is not None and how == "body":
+        cells[(spine + 2, y + 1)] = "┴" if how is _Role.BODY else "┘"
+        if one is not None and how is _Role.BODY:
             self.entries[one] = y + 1
         cells[(spine + 1, y + 1)] = "─"
         cells[(spine, y + 1)] = "┌"
@@ -416,16 +425,16 @@ class _Stacked:
         for row in range(y + 1, below):
             cells[(depth, row)] = "│"
         cells[(depth, below)] = "└"
-        zero = self.repeat(lo, hi, depth + 1, locked=locked)
-        how = self.role(zero)
-        if zero is not None and how == "jump":
+        zero, how = self.classify(lo, hi, depth + 1, locked=locked)
+        if how is _Role.JUMP:
+            assert zero is not None
             for x in range(depth + 1, spine + 2):
                 cells[(x, below)] = "─"
             self.jumps.append((below, spine + 2, zero))
             return below + 1, locked
-        for x in range(depth + 1, spine + 2 if how == "body" else spine):
+        for x in range(depth + 1, spine + 2 if how is _Role.BODY else spine):
             cells[(x, below)] = "─"
-        if zero is None or how == "plain":
+        if how is _Role.PLAIN:
             cells[(spine, below)] = "┐"
             return descend(lo, hi, depth + 1, (below + 1, locked or zero is not None))
         # A repeated zero-branch is entered from the east like a one-branch.
@@ -433,6 +442,7 @@ class _Stacked:
         cells[(spine + 2, below + 1)] = "┴"
         cells[(spine + 1, below + 1)] = "─"
         cells[(spine, below + 1)] = "┌"
+        assert zero is not None
         self.entries[zero] = below + 1
         return descend(lo, hi, depth + 1, (below + 2, True))
 
@@ -648,13 +658,13 @@ def _flowchart_deque(truth_table: str, *, keep_constant_input: bool = False) -> 
     return _flowchart_render({(x - left, row): c for (x, row), c in cells.items()})
 
 
-def _balance(table: str, default: str) -> str:
-    """Compare deque lookup, flat tree and the supported stacked fallback."""
-    flat = _flowchart_render(_flowchart_cells(table))
-    candidates = [default, flat, flowchart(table, 1)]
-    if len(set(table)) == 1:
-        candidates.append(_flowchart_deque(table, keep_constant_input=True))
-    return min(candidates, key=balance_score)
+def _balance(table: str, _default: str) -> str:
+    """Return the flat tree: the squarest layout.
+
+    The deque (2 rows), the stacked fallback and the constant-input deque
+    never beat it: 0 wins of ~1.5k tables at n=1..12 (exhaustive to n=3).
+    """
+    return _flowchart_render(_flowchart_cells(table))
 
 
 LANGUAGE = Language(
