@@ -77,7 +77,8 @@ commands:
   Catalog:
     list [--details] [--json] [--generator | --interpreter-only]
          [--source text|raster] [--answer output|dump|termination] [--inputs N]
-         [--state-model MODEL] [--shape SHAPE]
+         [--state-model MODEL] [--shape SHAPE] [--template | --reads-input]
+         [--input-shape SHAPE] [--random]
                                 list languages matching their capabilities
     describe [--json] [--spec] <language>
                                 print how that language reads its input and
@@ -129,6 +130,8 @@ example:
                      [--generator | --interpreter-only]
                      [--source text|raster] [--answer output|dump|termination]
                      [--inputs N] [--state-model MODEL] [--shape SHAPE]
+                     [--template | --reads-input] [--input-shape SHAPE]
+                     [--random]
 
 List matching languages, one per line. Filters combine with AND.
 
@@ -152,6 +155,12 @@ options:
               register, tape, stack, grid, queue, other
   --shape SHAPE
               select generators by construction shape: tree, reducing, lookup
+  --template  restrict to generators that embed the inputs in the program
+  --reads-input restrict to generators whose programs read their inputs
+  --input-shape SHAPE
+              select reading programs by how the bits arrive: line_per_bit,
+              char_stream, char_stream_padded, char_stream_cyclic, row_index
+  --random    restrict to languages with instructions that draw at random
 
 example:
   esolangs list --generator --source text --answer output --inputs 4 --details

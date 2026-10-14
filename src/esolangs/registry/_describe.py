@@ -1,7 +1,7 @@
 """Registry facts as data: :func:`describe`, :func:`_spec`, :func:`list_languages`."""
 
 import pathlib
-from typing import TypedDict
+from typing import TypedDict, get_args
 
 from esolangs.exceptions import ProgramError
 from esolangs.generation.wrap import takes_width as _takes_width
@@ -35,6 +35,8 @@ _STATE_MODELS = {
 #: the CLI's ``--state-model`` and ``--shape`` filters accept exactly these.
 STATE_MODELS: tuple[str, ...] = tuple(_STATE_MODELS.values())
 SHAPES: tuple[str, ...] = tuple(shape.value for shape in Shape)
+#: The ``input_shape`` labels, for the CLI's ``--input-shape`` filter.
+INPUT_SHAPES: tuple[str, ...] = get_args(InputShape.__value__)
 
 
 class LanguageInfo(TypedDict):

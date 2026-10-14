@@ -124,6 +124,9 @@ def test_no_matches_is_an_empty_catalog(capsys) -> None:
             "--state-model must be one of register, tape, stack, grid, queue, other",
         ),
         (["--shape", "bushy"], "--shape must be one of tree, reducing, lookup"),
+        (["--input-shape", "bits"], "--input-shape must be one of line_per_bit"),
+        (["--template", "--reads-input"], "cannot be combined"),
+        (["--input-shape", "char_stream", "--template"], "requires a reading"),
         (["--inputs", "0"], "--inputs must be a positive integer"),
         (["--inputs", "-1"], "--inputs must be a positive integer"),
         (["--inputs", "1.5"], "--inputs must be a positive integer"),
@@ -140,3 +143,61 @@ def test_invalid_filters_are_usage_errors(capsys, args, message) -> None:
         call_both(["list", *args], capsys)
     assert caught.value.code == 2
     assert message in capsys.readouterr().err
+
+
+#: Each ``describe`` field ``list`` filters on, and its option: a flag
+#: selecting True, or an option taking each value the registry holds.
+_FILTERED = {
+    "boolean_generator": "--generator",
+    "parameterized": "--template",
+    "reads_input": "--reads-input",
+    "random": "--random",
+    "source_kind": "--source",
+    "answer_mode": "--answer",
+    "state_model": "--state-model",
+    "shape": "--shape",
+    "input_shape": "--input-shape",
+    "generator_max_inputs": "--inputs",
+}
+#: Identity, prose, or per-program detail rather than a class.
+_UNFILTERED = {
+    "name",
+    "spec",
+    "id",
+    "generator_restrictions",
+    "width_aware",
+    "width_effect",
+    "input_encoding",
+    "answer_pattern",
+    "answer_encoding",
+    "answer_convention",
+    "self_halts",
+    "dumps_on_the_post_halt_step",
+    "steppable_to_answer",
+    "eof_is_a_value",
+    "examples",
+    "wiki_url",
+    "dialect_settings",
+}
+
+
+@pytest.mark.medium
+def test_every_describe_field_is_filtered_or_exempt(capsys) -> None:
+    """A new ``describe`` field must get a ``list`` filter or an exemption."""
+    assert _FILTERED.keys() | _UNFILTERED == set(esolangs.LanguageInfo.__annotations__)
+    assert not _FILTERED.keys() & _UNFILTERED
+    facts = [esolangs.describe(name) for name in esolangs.list_languages()]
+    for field, option in _FILTERED.items():
+        if field == "generator_max_inputs":
+            continue  # a cap, not a class: the caps test covers it
+        values = {row[field] for row in facts} - {None, False}
+        assert values  # populated, so the filter is not vacuous
+        for value in values:
+            args = [option] if value is True else [option, str(value)]
+            assert _names(args, capsys) == [
+                row["name"]
+                for row in facts
+                if row[field] == value
+                # A template embeds its bits, so it has no input shape.
+                and (field != "input_shape" or row["reads_input"])
+            ], args
