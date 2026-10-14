@@ -514,7 +514,7 @@ def _bf_ordered(
     plain = "".join(cells)
     if not share:
         return plain
-    # The body's share of the 69n + 44 command ceiling.
+    # The body's share of `_command_budget`.
     budget = _command_budget(n) - len(header) - _ASCII_ZERO - 1
     bodies = []
     shared = shared_flag_tree(
