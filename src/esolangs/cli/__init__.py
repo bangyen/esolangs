@@ -86,6 +86,7 @@ from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._describe import SHAPES, STATE_MODELS
+from esolangs.runtime._program import Program
 
 
 def _encode(rest: list[str]) -> None:
@@ -219,6 +220,42 @@ def _list(rest: list[str]) -> None:
         print(f"{name.ljust(width)}  {marks}{suffix}")
 
 
+def _eaten_width_note(before: list[str]) -> str:
+    """Note a truth table that a bare ``--width`` consumed as its value."""
+    # `--width` takes an *optional* N, so a truth table typed straight after
+    # it is consumed as the width and the report lands on the table being
+    # missing -- which is baffling when you did type one.
+    eaten = ""
+    for arg, value in pairwise(before):
+        if arg == "--width" and _looks_like_a_table(value):
+            eaten = (
+                f"\n\nnote: --width consumed {value!r}, which looks like a "
+                f"truth table; put the table after the language"
+            )
+    return eaten
+
+
+def _layout_ignored(language: str, *, balance: bool) -> bool:
+    """Whether ``--width``/``--balance`` cannot change ``language``'s layout."""
+    return describe(language)["width_effect"] == "none" and not (
+        balance and LANGUAGES[resolve(language)].balance is not None
+    )
+
+
+def _emit(program: Program, *, plain: bool) -> None:
+    """Write ``program`` to stdout in its native form."""
+    if isinstance(program, CompressedText):
+        if plain:
+            for chunk in program.plain_chunks():
+                sys.stdout.write(chunk)
+        else:
+            sys.stdout.buffer.write(program.to_gzip())
+    elif isinstance(program, Raster):
+        sys.stdout.buffer.write(program.to_png())
+    else:
+        print(program)
+
+
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     value_options = {"--bits", "--scale", "--settings"}
@@ -238,17 +275,7 @@ def _generate(rest: list[str]) -> None:
         set(),
         value_options | flag_options | {"--width", "--set", "--portable"},
     )
-    # `--width` takes an *optional* N, so a truth table typed straight after
-    # it is consumed as the width and the report lands on the table being
-    # missing -- which is baffling when you did type one.
-    eaten = ""
-    if width is not None and not bare:
-        for arg, value in pairwise(before):
-            if arg == "--width" and _looks_like_a_table(value):
-                eaten = (
-                    f"\n\nnote: --width consumed {value!r}, which looks like a "
-                    f"truth table; put the table after the language"
-                )
+    eaten = _eaten_width_note(before) if width is not None and not bare else ""
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
     settings = _settings_of(options, set_pairs, language=rest[0])
     try:
@@ -280,26 +307,15 @@ def _generate(rest: list[str]) -> None:
             program = dump_program(rest[0], program)
     except EsolangError as exc:
         _fail(_generate_hint(exc, rest[0], rest[1]))
-    if (
-        (width is not None or bare or balance)
-        and describe(rest[0])["width_effect"] == "none"
-        and not (balance and LANGUAGES[resolve(rest[0])].balance is not None)
+    if (width is not None or bare or balance) and _layout_ignored(
+        rest[0], balance=balance
     ):
         sys.stderr.write(
             f"note: {'--balance' if balance else '--width'} has no effect on "
             f"{describe(rest[0])['name']} -- "
             f"the generator retains its original layout\n"
         )
-    if isinstance(program, CompressedText):
-        if "--plain" in flags:
-            for chunk in program.plain_chunks():
-                sys.stdout.write(chunk)
-        else:
-            sys.stdout.buffer.write(program.to_gzip())
-    elif isinstance(program, Raster):
-        sys.stdout.buffer.write(program.to_png())
-    else:
-        print(program)
+    _emit(program, plain="--plain" in flags)
 
 
 def _answer_sentence(facts: LanguageInfo) -> str:
