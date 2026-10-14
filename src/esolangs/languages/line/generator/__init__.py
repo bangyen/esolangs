@@ -248,46 +248,47 @@ def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Rast
     return _generate(truth_table, unit).upscaled(scale)
 
 
-def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> Raster:
-    """Choose the most balanced compact or previous forward/reverse tree."""
-    _check_unit(unit)
-    small = _validate_truth_table(truth_table) <= _SMALL_MAX
+type _Choice = tuple[tuple[int, int, int], Node, Canvas | None, bool, bool]
+
+
+def _best_choice(
+    options: list[Node], *, compact: bool, tight: bool = True, small: bool, unit: int
+) -> _Choice:
+    """Return ``(score, node, canvas, compact, tight)`` of the most balanced option."""
+    choices = []
+    for node in options:
+        canvas = (
+            small_tree_canvas(node, compact=compact, tight=tight, unit=unit)
+            if small
+            else None
+        )
+        if canvas is not None:
+            width, height = canvas.width, canvas.height
+        else:
+            y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[id(node)]
+            width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
+        score = abs(width - height), width * height, 0 if small else width
+        choices.append((score, node, canvas, compact, tight))
+    return min(choices, key=lambda choice: choice[0])
+
+
+def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
+    """Most balanced compact tree that never grows past the previous layout."""
     previous = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
     nodes = previous + [
         projected
         for reverse in (False, True)
         if (projected := projected_boolean(truth_table, reverse=reverse)) is not None
     ]
-    type Choice = tuple[tuple[int, int, int], Node, Canvas | None, bool, bool]
+    old = _best_choice(previous, compact=False, small=small, unit=unit)
 
-    def best(options: list[Node], *, compact: bool, tight: bool = True) -> Choice:
-        choices = []
-        for node in options:
-            canvas = (
-                small_tree_canvas(node, compact=compact, tight=tight, unit=unit)
-                if small
-                else None
-            )
-            if canvas is not None:
-                width, height = canvas.width, canvas.height
-            else:
-                y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[
-                    id(node)
-                ]
-                width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
-            score = abs(width - height), width * height, 0 if small else width
-            choices.append((score, node, canvas, compact, tight))
-        return min(choices, key=lambda choice: choice[0])
-
-    old = best(previous, compact=False)
-
-    def within_old(choice: Choice) -> bool:
+    def within_old(choice: _Choice) -> bool:
         return choice[0] <= old[0] and (not small or choice[0][1] <= old[0][1])
 
-    preceding = best(nodes, compact=True, tight=False)
+    preceding = _best_choice(nodes, compact=True, tight=False, small=small, unit=unit)
     if not within_old(preceding):
         preceding = old
-    chosen = best(nodes, compact=True)
+    chosen = _best_choice(nodes, compact=True, small=small, unit=unit)
     # Shorter stems can select a wider orientation: 00010101 grows
     # 209277 -> 248087 pixels. Preserve the preceding area ceiling.
     if not within_old(chosen):
@@ -295,7 +296,16 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
     # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
     if chosen[0][1] > preceding[0][1]:
         chosen = preceding
-    score, selected, canvas, compact, tight = chosen
+    return chosen
+
+
+def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> Raster:
+    """Choose the most balanced compact or previous forward/reverse tree."""
+    _check_unit(unit)
+    small = _validate_truth_table(truth_table) <= _SMALL_MAX
+    score, selected, canvas, compact, tight = _balanced_choice(
+        truth_table, small=small, unit=unit
+    )
     width = canvas.width if canvas is not None else score[2]
     if _has_goto(cast("Node | None", default._payload)):  # noqa: SLF001 - generator-owned graph
         height, shared_width = len(default.rows), len(default.rows[0])
