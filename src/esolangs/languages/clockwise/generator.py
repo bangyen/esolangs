@@ -1,6 +1,7 @@
 """Boolean-function generator for Clockwise."""
 
 from math import ceil
+from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -135,6 +136,16 @@ class _Grid:
         return "\n".join("".join(row).rstrip() for row in grid)
 
 
+class _Layout(NamedTuple):
+    """A laid-out lookup: its cells, input counts, digit-tail row and shift."""
+
+    grid: _Grid
+    inputs: int
+    n: int
+    digit: int
+    return_gap: int
+
+
 def _clockwise_program(
     truth_table: str, width: int | None = None, *, keep_trailing: bool = False
 ) -> str:
@@ -149,11 +160,8 @@ def _clockwise_program(
     grid = _Grid()
     digit = _layout_lookup(grid, reads, indexed)
     return_gap = _shift_return_rail(grid, trailing)
-    digit += return_gap
-    program = grid.render()
-    return _fit_width(
-        truth_table, total, len(reads), grid, program, digit, return_gap, width
-    )
+    layout = _Layout(grid, total, len(reads), digit + return_gap, return_gap)
+    return _fit_width(truth_table, layout, grid.render(), width)
 
 
 def _head_widths(total: int, used: list[int]) -> list[int]:
@@ -248,72 +256,16 @@ def _shift_return_rail(grid: _Grid, trailing: int) -> int:
 
 
 def _fit_width(
-    truth_table: str,
-    total: int,
-    n: int,
-    grid: _Grid,
-    program: str,
-    digit: int,
-    return_gap: int,
-    width: int | None,
+    truth_table: str, layout: _Layout, program: str, width: int | None
 ) -> str:
-    """Try the width fallbacks in order until one fits ``width``."""
-    span, height = grid.span(), grid.height()
-    if width is None or width <= 0 or span <= width:
+    """Return ``program``, or its lean rotation (two columns, n <= 2) past ``width``."""
+    if width is None or width <= 0 or layout.grid.span() <= width:
         return program
-    if width < height + 2:
-        rail_cells, rail_height, rail_span = _narrow_rail_cells(grid.cells, digit)
-    else:
-        rail_cells, rail_height, rail_span = grid.cells, height, span
-    legacy = _legacy_rotation(rail_cells, rail_height, rail_span)
-    legacy_w = grid_width(legacy)
-    if legacy_w <= width:
-        return legacy
-    lean = _clockwise_lean_rotate(grid.cells, n, digit, span, return_gap)
-    lean_w = grid_width(lean)
-    chosen, chosen_w = (lean, lean_w) if lean_w < legacy_w else (legacy, legacy_w)
+    lean = _lean_rotate(layout)
     # Only n <= 2 has a two-column form (its prefix handles n == 2 alone).
-    if total <= 2 and chosen_w > width:
+    if layout.inputs <= 2 and grid_width(lean) > width:
         return _clockwise_two_columns(truth_table)
-    return chosen
-
-
-def _narrow_rail_cells(
-    cells: dict[tuple[int, int], str], digit: int
-) -> tuple[dict[tuple[int, int], str], int, int]:
-    """Shift the sub-digit rows right and emit the shared digit bits on the rail.
-
-    Only the selected final bit depends on the table; this removes the
-    nine-row digit tail without changing the accumulator at the first read.
-    Returns the rail cells with their height and span.
-    """
-    rail_cells = {
-        (x + len(_DIGIT) + 1 if x else x, y): char
-        for (x, y), char in cells.items()
-        if y < digit
-    }
-    for x, char in enumerate(_DIGIT):
-        rail_cells[x, 0] = char
-    rail_cells[_DESCENT + len(_DIGIT) + 1, digit] = "R"
-    rail_cells[_CLIMB + len(_DIGIT) + 1, digit] = "R"
-    return rail_cells, digit + 1, max(x for x, _ in rail_cells) + 1
-
-
-def _legacy_rotation(
-    rail_cells: dict[tuple[int, int], str], rail_height: int, rail_span: int
-) -> str:
-    """Rotate counterclockwise so the wide lookup runs down the page.
-
-    Most rows end at the five table columns; the interpreter pads the
-    entry rail.
-    """
-    rotated: dict[int, dict[int, str]] = {}
-    for (x, y), char in rail_cells.items():
-        rotated.setdefault(rail_span - x, {})[y + 1] = char
-    rotated[0] = {rail_height + 1: "R"}
-    rotated[rail_span + 1] = {1: "R", rail_height + 1: "R"}
-    rotated.setdefault(rail_span, {})[0] = "R"
-    return _render(rotated, rail_span + 2)
+    return lean
 
 
 def _render(rotated: dict[int, dict[int, str]], nrows: int) -> str:
@@ -327,14 +279,10 @@ def _render(rotated: dict[int, dict[int, str]], nrows: int) -> str:
     )
 
 
-def _clockwise_lean_rotate(
-    cells: dict[tuple[int, int], str],
-    n: int,
-    digit: int,
-    span: int,
-    return_gap: int,
-) -> str:
+def _lean_rotate(layout: _Layout) -> str:
     """Share entry and return rails using zero/nonzero gates around the lookup."""
+    cells, n, digit = layout.grid.cells, layout.n, layout.digit
+    span, return_gap = layout.grid.span(), layout.return_gap
     tail = digit - 1 if n > 1 else digit
     body = {(x, y): char for (x, y), char in cells.items() if 0 < y < digit}
     # The descent turns alongside the last gadget's return, outside its cells.
