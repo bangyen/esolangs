@@ -149,8 +149,15 @@ def stop_process_tree(proc: subprocess.Popen[str] | subprocess.Popen[bytes]) -> 
                         os.kill(pid, signal.SIGKILL)
             # Reap exited leaders before signalling; Darwin rejects zombie groups.
             proc.poll()
-            with suppress(ProcessLookupError):
+            try:
                 os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            except PermissionError:
+                # The leader can exit after poll(), leaving a zombie group:
+                # 1 in 15 test_verify runs.  A live leader is a real failure.
+                if proc.poll() is None:
+                    raise
         else:
             # Discard taskkill's output rather than capturing it: a killed
             # descendant can inherit the stdout pipe's write end and keep it

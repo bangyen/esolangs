@@ -648,6 +648,32 @@ def test_closed_stdout_does_not_skip_heartbeats_or_the_leaders_deadline(
     assert "deadline exceeded (0.2s)" in output
 
 
+@pytest.mark.skipif(os.name != "posix", reason="process groups are POSIX")
+def test_a_zombie_group_counts_as_stopped_but_a_live_one_does_not(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Darwin's killpg says EPERM once the leader exits; that raced 1 run in 15."""
+    verify = load_script()
+    process = sys.modules[verify.start_logged.__module__]
+
+    def refuse(_pid: int, _signal: int) -> None:
+        raise PermissionError(errno.EPERM, "Operation not permitted")
+
+    monkeypatch.setattr(process.os, "killpg", refuse)
+    exited = subprocess.Popen([sys.executable, "-c", "pass"], start_new_session=True)
+    exited.wait()
+    process.stop_process_tree(exited)
+    live = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"], start_new_session=True
+    )
+    try:
+        with pytest.raises(PermissionError):
+            process.stop_process_tree(live)
+    finally:
+        live.kill()
+        live.wait()
+
+
 @pytest.mark.parametrize("stream", [False, True])
 @pytest.mark.parametrize("running", [False, True])
 def test_log_writer_errors_fail_the_check_and_stop_running_steps(
