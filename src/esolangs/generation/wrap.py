@@ -177,7 +177,7 @@ _DIMENSIONAL_COMMAND = r"[<>$?!{]~?\d*|=[\s\S]{0,2}|:[\s\S]?|[\s\S]"
 
 # 6-5's ``7``/``8`` take the next character, whatever it is (the
 # interpreter's tokenizer merges the pair blind), so this matches any
-# character, not ``[0-9A-Z]`` (``num("\n")`` is -45).  ``7n`` skips the
+# character, not ``[0-9A-Z]`` (``_operand("7\n")`` is -45).  ``7n`` skips the
 # next *token*, a newline included (``706A`` leaves cell 0, ``70\n6A`` cell
 # 6), so it swallows the instruction it guards, operand included; ``8n``
 # counts ``4`` markers and needs no pairing.

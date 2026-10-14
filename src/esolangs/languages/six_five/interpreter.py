@@ -1,19 +1,24 @@
-"""Interpreter for 6-5.
+"""6-5: a tape language spelled in digits.
 
-Per the wiki, ``7n`` skips the next instruction when the cell equals
-``n`` and ``8n`` jumps to the n-th ``4`` marker; both operands are
-parameters, so the program is tokenized with them merged.  Printing a
-cell outside the character range halts with
+A pointer walks a tape of integer cells that starts as one zero.  The
+program is read left to right, one instruction at a time:
+
+- ``5`` and ``6`` add 5 and 6 to the cell; ``2`` and ``9`` subtract them.
+- ``1`` moves the pointer two cells right, ``3`` one cell left.
+- ``A`` prints the cell as a character, ``B`` reads one into it.
+- ``4`` is a marker.  ``8n`` jumps to the n-th marker, and ``7n`` skips the
+  next instruction when the cell equals n.  The operand n is the next
+  character, read as a digit: ``0``-``9``, then ``A``=10 onward.
+- ``0`` halts, as does running off the end.  ``C`` starts a comment to the
+  end of the line, and any other character is ignored.
+
+The wiki names no failures, so: an ``8n`` with no n-th marker falls
+through, and an ignored character is no instruction for ``7n`` to skip.
+``3`` at the leftmost cell grows the tape a zero cell on the left: the spec
+says nothing about the left edge, and cells left of the start are allowed.
+Printing a cell outside the character range halts with
 :class:`~esolangs.exceptions.HaltError`; exhausted input raises
-:class:`EOFError`.  The wiki names no failures: an ``8n`` with no ``n``-th
-``4`` falls through, and characters that are no instruction are ignored
-(not counted by ``7n``'s "skips the next instruction").  ``3`` at the
-leftmost cell grows the tape a zero cell on the left: the spec says
-nothing about the left edge, and cells left of the start are allowed.
-
-:func:`_advance` is a pure transition over an immutable ``_State`` (tuple
-tape, so hashable) with no ``io`` argument; :class:`_Machine` is the shell
-holding the two I/O tokens and ``A``'s range check.
+:class:`EOFError`.
 """
 
 from __future__ import annotations
@@ -27,27 +32,25 @@ from esolangs.runtime.io import IO
 #: character range is an invalid operation, not a wrap or a truncation.
 _MAX_CHAR = 0x10FFFF
 
-#: One instant of a run: ``(ind, cell, tape)`` -- the token cursor, the cell
-#: pointer, and the tape.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and the tape is a
-#: ``tuple`` for the same reason.
-#:
-#: The tokens are deliberately not in here.  They do not change during a
-#: run, so carrying them would put constant data in every value the cycle
-#: detector stores.  They are a parameter to the transition instead.
-#:
-#: The field order starts ``ind`` for consistency with the other
-#: interpreters, but ``snapshot`` still returns ``(cell, tape, ind, ...)``
-#: -- the order it always returned.  Reordering there would silently
-#: reorder every hash the cycle detector has stored.
+#: ``(ind, cell, tape)``: the token cursor, the cell pointer, and the tape,
+#: a tuple so a state is a hashable value.  The tokens stay out: they never
+#: change, and are a parameter to the transition instead.
 type _State = tuple[int, int, tuple[int, ...]]
 
+#: What each arithmetic instruction adds to the cell.
+_ADD = {"5": 5, "6": 6, "2": -5, "9": -6}
 
-def num(char: str) -> int:
-    """Decode a 6-5 operand digit: 0-9 literal, A-F hexadecimal."""
-    if char.isdigit():
-        return int(char)
-    return ord(char.upper()) - 55
+
+def _operand(tok: str) -> int:
+    """Return a ``7n``/``8n`` operand: a digit, then ``A``=10 onward.
+
+    Any character decodes (a newline is -45); a ``7`` or ``8`` last in the
+    program has none and reads 0.
+    """
+    if len(tok) < 2:
+        return 0
+    char = tok[1]
+    return int(char) if char.isdigit() else ord(char.upper()) - 55
 
 
 def _tokens(code: str) -> list[str]:
@@ -122,18 +125,16 @@ def _advance(
             cell -= 1
         else:
             tape = (0, *tape)
-    elif tok in ("5", "6"):
-        tape = _written(tape, cell, tape[cell] + int(tok))
-    elif tok in ("2", "9"):
-        tape = _written(tape, cell, tape[cell] - (int(tok) % 6 + 3))
+    elif tok in _ADD:
+        tape = _written(tape, cell, tape[cell] + _ADD[tok])
     elif tok[0] == "8":
         if markers is None:
             markers = _markers(toks)
-        target = _marker(markers, num(tok[1]) if len(tok) > 1 else 0)
+        target = _marker(markers, _operand(tok))
         if target is not None:
             ind = target
     elif tok[0] == "7":
-        if tape[cell] == (num(tok[1]) if len(tok) > 1 else 0):
+        if tape[cell] == _operand(tok):
             ind += 1  # skip the next instruction
     elif tok == "0":
         return (len(toks), cell, tape)  # halt
@@ -210,8 +211,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The tape is already a tuple, so it goes in as it stands, in the
-        # order this returned before the fields moved into a state value.
+        # Not the state's order: reordering would change every stored hash.
         ind, cell, tape = self.state
         return (cell, tape, ind, self.io.progress())
 
