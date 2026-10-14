@@ -23,12 +23,8 @@ from esolangs.languages.back.generator import LANGUAGE as _BACK_LANGUAGE
 from esolangs.languages.back.generator import back
 from esolangs.languages.befunge.generator import LANGUAGE as _BEFUNGE_LANGUAGE
 from esolangs.languages.befunge.generator import befunge
-from esolangs.languages.bf_pda.generator import LANGUAGE as _BFPDA_LANGUAGE
-from esolangs.languages.bf_pda.generator import bfpda
 from esolangs.languages.bfstack.generator import LANGUAGE as _BFSTACK_LANGUAGE
 from esolangs.languages.bfstack.generator import bfstack
-from esolangs.languages.bio.generator import LANGUAGE as _BIO_LANGUAGE
-from esolangs.languages.bio.generator import bio
 from esolangs.languages.bit_tilde.generator import LANGUAGE as _BIT_TILDE_LANGUAGE
 from esolangs.languages.bit_tilde.generator import bit_tilde
 from esolangs.languages.bitdeque.generator import LANGUAGE as _BITDEQUE_LANGUAGE
@@ -97,8 +93,6 @@ from esolangs.languages.inject.generator import LANGUAGE as _INJECT_LANGUAGE
 from esolangs.languages.inject.generator import inject
 from esolangs.languages.intercal.generator import LANGUAGE as _INTERCAL_LANGUAGE
 from esolangs.languages.intercal.generator import intercal
-from esolangs.languages.jaune.generator import LANGUAGE as _JAUNE_LANGUAGE
-from esolangs.languages.jaune.generator import jaune
 from esolangs.languages.laserfuck.generator import LANGUAGE as _LASERFUCK_LANGUAGE
 from esolangs.languages.laserfuck.generator import laserfuck
 from esolangs.languages.line.generator import LANGUAGE as _LINE_LANGUAGE
@@ -111,12 +105,6 @@ from esolangs.languages.minsky_swap.generator import LANGUAGE as _MINSKY_SWAP_LA
 from esolangs.languages.minsky_swap.generator import minsky_swap
 from esolangs.languages.modulous.generator import LANGUAGE as _MODULOUS_LANGUAGE
 from esolangs.languages.modulous.generator import modulous
-from esolangs.languages.nocomment.generator import LANGUAGE as _NOCOMMENT_LANGUAGE
-from esolangs.languages.nocomment.generator import nocomment
-from esolangs.languages.one_two_three.generator import (
-    LANGUAGE as _ONE_TWO_THREE_LANGUAGE,
-)
-from esolangs.languages.one_two_three.generator import one_two_three
 from esolangs.languages.packlang.generator import LANGUAGE as _PACKLANG_LANGUAGE
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.painfuck.generator import LANGUAGE as _PAINFUCK_LANGUAGE
@@ -149,8 +137,6 @@ from esolangs.languages.smallfuck.generator import LANGUAGE as _SMALLFUCK_LANGUA
 from esolangs.languages.smallfuck.generator import smallfuck
 from esolangs.languages.smu.generator import LANGUAGE as _SMU_LANGUAGE
 from esolangs.languages.smu.generator import smu
-from esolangs.languages.sophie.generator import LANGUAGE as _SOPHIE_LANGUAGE
-from esolangs.languages.sophie.generator import sophie
 from esolangs.languages.sstack.generator import LANGUAGE as _SSTACK_LANGUAGE
 from esolangs.languages.sstack.generator import sstack
 from esolangs.languages.streetcode.generator import LANGUAGE as _STREETCODE_LANGUAGE
@@ -189,9 +175,7 @@ _LANGUAGES = (
     _B_TAPEMARK_LANGUAGE,
     _BACK_LANGUAGE,
     _BEFUNGE_LANGUAGE,
-    _BFPDA_LANGUAGE,
     _BFSTACK_LANGUAGE,
-    _BIO_LANGUAGE,
     _BIT_TILDE_LANGUAGE,
     _BITDEQUE_LANGUAGE,
     _BITWISE_CYCLIC_TAG_LANGUAGE,
@@ -223,15 +207,12 @@ _LANGUAGES = (
     _HOME_ROW_LANGUAGE,
     _INJECT_LANGUAGE,
     _INTERCAL_LANGUAGE,
-    _JAUNE_LANGUAGE,
     _LASERFUCK_LANGUAGE,
     _LINE_LANGUAGE,
     _MALBOLGE_LANGUAGE,
     _MINIFUCK_LANGUAGE,
     _MINSKY_SWAP_LANGUAGE,
     _MODULOUS_LANGUAGE,
-    _NOCOMMENT_LANGUAGE,
-    _ONE_TWO_THREE_LANGUAGE,
     _PACKLANG_LANGUAGE,
     _PAINFUCK_LANGUAGE,
     _PIET_LANGUAGE,
@@ -246,7 +227,6 @@ _LANGUAGES = (
     _SLOW_ACV_MAMMALIAN_LANGUAGE,
     _SMALLFUCK_LANGUAGE,
     _SMU_LANGUAGE,
-    _SOPHIE_LANGUAGE,
     _SSTACK_LANGUAGE,
     _STREETCODE_LANGUAGE,
     _SUBLEQ_LANGUAGE,
@@ -273,9 +253,7 @@ __all__ = [
     "b_tapemark",
     "back",
     "befunge",
-    "bfpda",
     "bfstack",
-    "bio",
     "bit_tilde",
     "bitdeque",
     "bitwise_cyclic_tag",
@@ -307,15 +285,12 @@ __all__ = [
     "home_row",
     "inject",
     "intercal",
-    "jaune",
     "laserfuck",
     "line",
     "malbolge",
     "minifuck",
     "minsky_swap",
     "modulous",
-    "nocomment",
-    "one_two_three",
     "packlang",
     "painfuck",
     "piet",
@@ -330,7 +305,6 @@ __all__ = [
     "slow_acv_mammalian",
     "smallfuck",
     "smu",
-    "sophie",
     "sstack",
     "streetcode",
     "subleq",

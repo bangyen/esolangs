@@ -145,15 +145,6 @@ STEPS = [
             "checks",
         ],
     ),
-    # language-owners: ["ArrowQueue", "BIO"]
-    # The deep proofs cheap enough to gate locally: ArrowQueue's twelve named
-    # lemmas and BIO's telescoping lookup, each pinning finite facts their
-    # total-over-every-arity proofs rest on.  2.2s together.  Which proofs
-    # those are is not listed here -- each declares a band beside itself and
-    # `tests/proofs/test_bands.py` holds the band to a 5s budget, so this step
-    # cannot silently grow or shrink.  The registry-wide battery sits in the
-    # `ci` band instead: it touches every generator, so scoping it here would
-    # mean running its 12s on nearly every edit.
     (
         "deep proofs (verify band)",
         [*PY, "-m", "tests.proofs.deep", "verify"],

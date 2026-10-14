@@ -191,15 +191,6 @@ _HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "EGL": (_egl, True, (3, 5)),
     "Dig": (_dig, True, (5,)),
     "Grapheme": (_grapheme, True, (3, 5)),
-    "BIO": (
-        lambda n, _: (
-            max(2 * n, 8)
-            + sum(bl(10 * n - 8 + 3 * j) for j in range(2**n - 1))
-            + bl(4 * 2**n + 10 * n + 37)
-        ),
-        False,
-        (3, 5),
-    ),
     "Dimensional": (
         lambda n, _: (
             sum(map(bl, range(2**n)))
@@ -212,16 +203,6 @@ _HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         ),
         True,
         (3, 4),
-    ),
-    "123": (
-        lambda n, p: (
-            9
-            + sum(map(bl, range(1, 5 * 2**n + 3 * n - 2)))
-            + bl(len(p))
-            + bl(5 * 2**n + 3 * n - 3)
-        ),
-        False,
-        (4, 5),
     ),
     "INTERCAL": (lambda n, _: _intercal(n), False, (3, 6)),
     "BFStack": (
@@ -349,8 +330,6 @@ _ARITIES: dict[str, tuple[int, ...]] = {
     "Clockwise": (3, 6),
     "Back": (3, 6),
     "FALSE": (3, 5),
-    "Sophie": (3, 6),
-    "NoComment": (5,),
     # Seven-input witnesses now use shared trees; eight exercises the walk.
     "6-5": (8,),
     "Circlefuck": (3,),

@@ -12,7 +12,6 @@ Row gives the logical bits; Input gives their language-specific encoding.
 
 | Program | Language | Table | Row | Input | Expected output |
 | --- | --- | --- | --- | --- | --- |
-| `one_two_three/123.txt` | 123 | `0001` | `01` | embedded 01 | not the answer -- see note |
 | `three_x/3x.txt` | 3x | `0001` | `01` | 0 1 | '0' |
 | `six_five/6-5.txt` | 6-5 | `0001` | `01` | 01 | '0' |
 | `a_painter_ant/a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '....\n####\n.o.#' |
@@ -23,9 +22,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `b_tapemark/b-tapemark.txt` | B-tapemark | `0001` | `01` | 01 | '0' |
 | `back/back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
 | `befunge/befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |
-| `bf_pda/bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
 | `bfstack/bfstack.txt` | BFStack | `0001` | `01` | 01 | '0' |
-| `bio/bio.txt` | BIO | `0001` | `01` | embedded 01 | '0' |
 | `bitdeque/bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
 | `bitwise_cyclic_tag/bitwise-cyclic-tag.txt` | Bitwise Cyclic Tag | `0001` | `01` | embedded 01 | '0' |
 | `bit_tilde/bit~.txt` | bit~ | `0001` | `01` | 01 | '0' |
@@ -57,14 +54,12 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `home_row/home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `inject/inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `intercal/intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '_\n\n' |
-| `jaune/jaune.txt` | Jaune | `0001` | `01` | 0 1 | '0' |
 | `laserfuck/laserfuck.txt` | LaserFuck | `0001` | `01` | 01 | '0' |
 | `line/line.png` | Line | `0001` | `01` | 0 1 | '0' |
 | `malbolge/malbolge.txt` | Malbolge | `0001` | `01` | 01 | '0' |
 | `minifuck/minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
 | `minsky_swap/minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '1 0' |
 | `modulous/modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
-| `nocomment/nocomment.txt` | NoComment | `0001` | `01` | embedded 01 | '0' |
 | `packlang/packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |
 | `painfuck/painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
 | `piet/piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
@@ -78,7 +73,6 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `slow_acv_mammalian/slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 01 | '0' |
 | `smallfuck/smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
 | `smu/smu.txt` | Smu | `0001` | `01` | 01 | '0' |
-| `sophie/sophie.txt` | Sophie | `0001` | `01` | 01 | '0' |
 | `sstack/sstack.txt` | SStack | `0001` | `01` | 01 | '0' |
 | `streetcode/streetcode.txt` | Streetcode | `0001` | `01` | 01 | '0' |
 | `subleq/subleq.txt` | Subleq | `0001` | `01` | 01 | '0' |
@@ -95,7 +89,6 @@ Row gives the logical bits; Input gives their language-specific encoding.
 
 ## Notes
 
-- **123** -- 123 answers by terminating: it halts for a 0 result and loops forever for a 1, so only the halting branch is committed. Its output is not the answer and is not compared -- the merge pops through location -2 and prints whatever that cell holds, which for this program is the two bytes 'VO with a diaeresis'
 - **a-painter-ant** -- A Painter Ant has no output: it paints a grid and the answer is the colour of the cell the ant rests on, shown by 'o' (on black, a zero) or '@' (on white, a one)
 - **algebraic-programming-language** -- an executed line prints its result, so the answer ends in a newline
 - **arrowqueue** -- ArrowQueue answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The headings printed are its interpreter-only queue dump, which the verdict does not read: the answer is that the program halted at all

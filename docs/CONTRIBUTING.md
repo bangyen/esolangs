@@ -41,7 +41,6 @@ answer convention, or input interface:
 - LaserFuck uses a grid walk.
 - A Painter Ant uses a grid walk and answers by landing colour.
 - Streetcode uses a grid walk.
-- 123 branches by pointer displacement and answers by termination.
 - Minifuck gives a position-encoded answer.
 - ArrowQueue answers by termination.
 - Crement answers by termination.

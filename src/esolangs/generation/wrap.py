@@ -183,25 +183,12 @@ _DIMENSIONAL_COMMAND = r"[<>$?!{]~?\d*|=[\s\S]{0,2}|:[\s\S]?|[\s\S]"
 # counts ``4`` markers and needs no pairing.
 _SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
 
-# Literal-printing languages: the literal is one token (an over-wide one
-# gets its own line).  Sophie: numeric load and branch, then the
-# one-character forms, longest first (``#\$\d+,`` with the comma required
-# once tokenized ``#$1`` as ``#$`` + ``1``); ``}{`` is an if-close beside
-# an else-open, and a newline between loses the else.  A newline after
-# ``#`` prints in its character's place: ``Hello, World!`` came back
-# ``Hello, Worll!``.
-_SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|\}\{|."
 
 # Minifuck ``[`` skips the next character (``ind + 2``), so a newline
 # there is what gets skipped; consecutive ``[`` chain, so the whole run
 # stays with the character after it, or with the input run after it.
 _MINIFUCK_COMMAND = rf"\[+(?:{_RUN}|[\s\S])|[\s\S]"
 
-# Jaune: operand before operator (``3?``, ``2+``, ``v?``) is the only
-# unbreakable unit. Splitting ``++4:`` makes its final plus a label sign;
-# a bare ``?`` is a load error, failing by position (10, 17, 25, 37, 50
-# fail; 40 and 80 pass).
-_JAUNE_COMMAND = r"[+-]{2,}|[+-]?\d+[-+:?!$@]|v[-+?!@:$]|."
 
 # A newline inside a bracketed literal prints; Eval also keeps each ``?x``
 # conditional whole.
@@ -233,10 +220,8 @@ class _TokenWrapper:
 
 _dimensional = _TokenWrapper(_DIMENSIONAL_COMMAND)
 _six_five = _TokenWrapper(_SIX_FIVE_COMMAND)
-_sophie = _TokenWrapper(_SOPHIE_COMMAND)
 _false = _TokenWrapper(_FALSE_COMMAND)
 _unlambda = _TokenWrapper(_UNLAMBDA_COMMAND)
-_jaune = _TokenWrapper(_JAUNE_COMMAND)
 _bracket_literal = _TokenWrapper(_BRACKET_LITERAL)
 _quote_literal = _TokenWrapper(_EVAL_UNIT)
 

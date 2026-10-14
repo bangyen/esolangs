@@ -11,7 +11,6 @@ from collections.abc import Callable
 
 import esolangs
 from esolangs.debugger import make_vm
-from esolangs.languages.one_two_three.generator.construction import _leftover
 from esolangs.registry import LANGUAGES
 from scripts.benchmark import WrittenState
 from tests.proofs._formula import ledger_formulas
@@ -75,15 +74,6 @@ _HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
         (3, 4),
     ),
     "Vandevelo": (lambda _, p: _vandevelo(p), False, (3, 5)),
-    "NoComment": (
-        lambda n, _: (
-            12 * 2**n + 50 * n + 79
-            if n <= 6
-            else 3 * 2**n + 3 * 2**n // 32 + 240 * n - 491
-        ),
-        True,
-        (4, 7),
-    ),
     "INTERCAL": (
         lambda n, _: (
             2 * n + 3 + sum(min(2**k, 2 ** (2 ** (n - k)) - 2) for k in range(1, n))
@@ -201,30 +191,6 @@ def _bfstack_worst(n: int) -> str:
     return table
 
 
-def _one_two_three_worst(n: int) -> str:
-    """123's worst, a rule: the all-ones row runs every level three times.
-
-    Rows are read bit-reversed.  The all-ones row answers 0, the next one 1
-    (the topmost one, so the kill spans 2T), row 0 carries the one shield,
-    and every other row takes whichever answer needs no shield of its own.
-    """
-    width = 1 << n
-    start = width - 1 + 3 * n
-    top = start + 2 * (width - 2) + 2
-    out = []
-    for row in range(width):
-        q = int(f"{row:0{n}b}"[::-1], 2)
-        if q in {width - 1, 0}:
-            out.append("0")
-        elif q == width - 2:
-            out.append("1")
-        else:
-            pos = start + 2 * q
-            tested = top if (top - pos) % 4 == 0 else top - 1
-            out.append("0" if _leftover(n, row & 1, tested - pos) else "1")
-    return "".join(out)
-
-
 def _tables(name: str, n: int) -> tuple[str, ...]:
     """Structured and random tables, with named worst-case witnesses."""
     width = 1 << n
@@ -267,8 +233,6 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         tables += (_bfstack_worst(n),)
     if name == "Bitdeque":
         tables += ("10" + "01" * (width // 2 - 1),)
-    if name == "123" and n >= 4:
-        tables += (_one_two_three_worst(n),)
     if name == "Home Row":
         # Alternating but for one equal pair: every input essential, T - 2 leaves.
         tables += ("10" * (width // 2 - 1) + "01",)

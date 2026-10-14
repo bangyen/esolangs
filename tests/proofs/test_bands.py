@@ -15,7 +15,7 @@ from tests.proofs.deep.__main__ import BANDS, BUDGET, Proof, discover, selected
 #: in this repository where a duplicated list is the right answer: demoting a
 #: proof out of ``verify`` should cost a second, visible edit rather than
 #: happening as a side effect of editing the proof.
-_VERIFY_BAND = frozenset({"arrowqueue", "bio", "malbolge_packing"})
+_VERIFY_BAND = frozenset({"arrowqueue", "malbolge_packing"})
 
 
 @pytest.fixture(scope="module")

@@ -367,9 +367,8 @@ def render_curation_census_section() -> str:
             f"The {census['checked']} census (`tests/support/fixtures/curation.toml`)"
             " records each",
             f"language's backlinks and route: {routes.count('fame')} clear the"
-            " fame gate,",
-            f"{routes.count('first implementation')} are first implementations"
-            f" and {routes.count('grandfathered')} are grandfathered.",
+            " fame gate",
+            f"and {routes.count('first implementation')} are first implementations.",
         ]
     )
 

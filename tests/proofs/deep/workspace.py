@@ -38,9 +38,6 @@ from tests.support.witness_tables import row_bits
 BAND = "by-hand"
 COST = 56.0
 
-# language-owners: ["BIO"]
-#: Most growth a ``T log T`` row may show: T cells of ``log T``-bit values
-#: (BIO's loop counters, 123's painted indices) read x2.32, a quadratic x4.
 LOG_GROWTH = 2.5
 
 BOUND = {"poly n": POLY_GROWTH, "linear": MAX_GROWTH, "T log T": LOG_GROWTH}
