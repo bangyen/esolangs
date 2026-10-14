@@ -10,6 +10,8 @@ factor ``(x - a)**2 + p**(2*b)`` and ``[v]`` is ``x - p**v``, with
 renders 1.9x shorter than the ``-= 1; if == 0`` builder, n == 7 2.1x.
 """
 
+from collections.abc import Iterator
+
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
@@ -66,37 +68,9 @@ def polynomial(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    fits: list[list[list[int]]] = []
-    costs: list[int] = []
-
-    def retain(table: str, arity: int, *, before: int = 0, after: int = 0) -> None:
-        for level in range(arity, -1, -1):
-            instructions = _polynomial_hybrid(table, level)
-            cost = len(instructions) + before + after
-            costs.append(cost)
-            # Rejected plans are discarded; each retained list has at most
-            # ``_POLYNOMIAL_MAX_INSTRS`` instructions, including the
-            # ignored-input reads.
-            if cost <= _POLYNOMIAL_MAX_INSTRS:
-                fits.append([[0, 2]] * before + instructions + [[0, 2]] * after)
-
-    retain(truth_table, n)
-
-    # An ignored input still costs a level of branching, so drain a
-    # *leading* ignored run before building (a later one drained out of
-    # turn branched on the wrong bit: 92 wrong rows over 26 tables).
-    essential = essential_inputs(truth_table, n) or [0]
-    # A *trailing* ignored run is cut from the table and its reads appended
-    # at the very end, which every path reaches parked below zero, so they
-    # change nothing; the selection below keeps it only where it is shorter.
-    tail = n - 1 - essential[-1]
-    if tail:
-        cut = read_at(truth_table, list(range(n - tail)), n)
-        retain(cut, n - tail, after=tail)
-    lead = next((i for i in range(n) if i in essential), n)
-    if lead:
-        reduced = read_at(truth_table, list(range(lead, n)), n)
-        retain(reduced, n - lead, before=lead)
+    candidates = list(_polynomial_candidates(truth_table, n))
+    fits = [ins for ins, cost in candidates if cost <= _POLYNOMIAL_MAX_INSTRS]
+    costs = [cost for _, cost in candidates]
 
     if not fits:
         raise with_hint(
@@ -127,6 +101,45 @@ def polynomial(truth_table: str) -> str:
         ),
         key=len,
     )
+
+
+_READ = [0, 2]
+
+
+def _polynomial_candidates(
+    truth_table: str, n: int
+) -> Iterator[tuple[list[list[int]], int]]:
+    """Yield ``(instructions, cost)`` for every hybrid ``k`` of each reduction.
+
+    Rejected plans cost more than ``_POLYNOMIAL_MAX_INSTRS`` instructions,
+    ignored-input reads included; the caller drops them.
+    """
+
+    def hybrids(
+        table: str, arity: int, before: int = 0, after: int = 0
+    ) -> Iterator[tuple[list[list[int]], int]]:
+        for level in range(arity, -1, -1):
+            instructions = _polynomial_hybrid(table, level)
+            cost = len(instructions) + before + after
+            yield [_READ] * before + instructions + [_READ] * after, cost
+
+    yield from hybrids(truth_table, n)
+
+    # An ignored input still costs a level of branching, so drain a
+    # *leading* ignored run before building (a later one drained out of
+    # turn branched on the wrong bit: 92 wrong rows over 26 tables).
+    essential = essential_inputs(truth_table, n) or [0]
+    # A *trailing* ignored run is cut from the table and its reads appended
+    # at the very end, which every path reaches parked below zero, so they
+    # change nothing; the selection keeps it only where it is shorter.
+    tail = n - 1 - essential[-1]
+    if tail:
+        cut = read_at(truth_table, list(range(n - tail)), n)
+        yield from hybrids(cut, n - tail, after=tail)
+    lead = next((i for i in range(n) if i in essential), n)
+    if lead:
+        reduced = read_at(truth_table, list(range(lead, n)), n)
+        yield from hybrids(reduced, n - lead, before=lead)
 
 
 def _polynomial_assemble(instrs: list[list[int]]) -> str:
