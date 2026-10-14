@@ -81,26 +81,32 @@ def test_narrow_words_consume_fixed_one_digits_and_completed_zero_paths(
     )
 
 
+# n=14 runs the first chunk and chunk 384, the only one reaching the command
+# bound (4 rows at both n; every other chunk sits >= 16 below it).  n=16 is the
+# weekly exhaustive run.
 @pytest.mark.medium
 @pytest.mark.parametrize(
-    "n",
+    ("n", "start"),
     [
-        14,
-        pytest.param(
-            16,
-            marks=[
-                pytest.mark.weekly,
-                pytest.mark.cost_evidence(
-                    "maximum-arity binary bank preserves all essential rows "
-                    "under both six-bit ignored-prefix extremes"
-                ),
-            ],
+        *((14, start) for start in (0, 384)),
+        *(
+            pytest.param(
+                16,
+                start,
+                marks=[
+                    pytest.mark.weekly,
+                    pytest.mark.cost_evidence(
+                        "maximum-arity binary bank preserves all essential rows "
+                        "under both six-bit ignored-prefix extremes"
+                    ),
+                ],
+            )
+            for start in range(0, 1024, 128)
         ),
     ],
 )
-@pytest.mark.parametrize("start", range(0, 1024, 128))
 def test_fourteen_class_cap_bank_executes_every_essential_row(
-    start: int, n: int
+    n: int, start: int
 ) -> None:
     rng = random.Random(73017)
     core = "".join(f"{rng.randrange(1, 15):04b}" for _ in range(256))
