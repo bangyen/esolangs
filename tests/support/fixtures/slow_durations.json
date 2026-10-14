@@ -184,7 +184,6 @@
  "src/esolangs/languages/alight/tests/test_boolean_alight.py::TestAlightWidth::test_a_width_is_met_at_every_arity": 0.014394759999987627,
  "src/esolangs/languages/b_tapemark/tests/test_boolean_b_tapemark.py::test_every_one_hot_table_is_addressed[ones1]": 1.0870373669999367,
  "src/esolangs/languages/back/tests/test_boolean_back.py::test_a_permuting_generator_changes_its_drawing": 0.0038725329999920177,
- "src/esolangs/languages/back/tests/test_boolean_back.py::test_selective_bend_preserves_the_command_bound[12-2038]": 9.268950426999993,
  "src/esolangs/languages/circuit_diagram/tests/test_boolean_circuit_diagram.py::TestCircuitDiagram::test_every_three_input_table_executes": 0.01054271600003176,
  "src/esolangs/languages/circuit_diagram/tests/test_boolean_circuit_diagram.py::TestCircuitDiagram::test_h_layout_lanes_execute_at_four_inputs": 0.17350380499999574,
  "src/esolangs/languages/circuit_diagram/tests/test_boolean_circuit_diagram.py::TestCircuitDiagramLayoutGuards::test_a_band_must_re_carry_what_an_earlier_one_moved": 0.01293209899999681,
