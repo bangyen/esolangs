@@ -186,6 +186,28 @@ Execution-time optimizations require 5% fewer commands summed over every row
 of the three-input tables, with no table slower or larger. Choose candidates
 by size, breaking ties by steps. Bound the per-piece upside before choosing.
 
+## Code shape
+
+Judge a module by what the language does not demand.
+
+- A named rule beats a frozen table, and both beat a search. A searched
+  table stays only when no rule reproduces it, and its comment names the
+  search (Malbolge's `_INITS`).
+- One path per semantics. A fast path beside the plain one needs a reader
+  the fast path cannot serve (Thue keeps `_advance` for
+  `branching_successors`); otherwise delete one.
+- A race, candidate or n-specific branch cites its saving at the largest n
+  where it runs, measured jointly with its siblings: Line's five extra folds
+  each saved 0% alone, yet streaming alone lost 25% on lifted cores until
+  projected streaming stayed beside it. Under 10% it goes: Circuit Diagram's
+  cofactor bank won 0.00% at n=8..11, Back's bend 0-2.7%.
+- An index, cache or batch carries timings at three sizes; a replacement
+  must grow the same way.
+- State past three fields is a NamedTuple, not a positional tuple
+  re-unpacked in every branch.
+- Validators and debugger views sit beside the step, not inside it
+  (Streetcode's `interpreter/validation.py`).
+
 ## Checklist
 
 1. `just new-language "Name" --category tape_based` (the matching category;
