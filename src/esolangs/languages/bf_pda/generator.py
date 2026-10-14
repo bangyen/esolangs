@@ -399,6 +399,13 @@ def _body_metrics(context: _TreeContext) -> list[dict[int, _Metric]]:
     return metrics
 
 
+def _prefix_node(zero: _Metric, one: _Metric | None) -> _Metric:
+    """Price a prefix node: ``>>`` over equal children, else ``[>>..<<]>[>..<]>``."""
+    if one is None:
+        return _Metric(2 + zero.size, 2 + zero.commands)
+    return _Metric(12 + zero.size + one.size, max(7 + zero.commands, 9 + one.commands))
+
+
 def _price(
     context: _TreeContext,
     depth: int,
@@ -425,12 +432,8 @@ def _price(
             return _Metric(length, length + tails[label])
         zero_id, one_id = context.ids[level + 1][2 * index : 2 * index + 2]
         zero = prefix(level + 1, 2 * index)
-        if zero_id == one_id:
-            return _Metric(2 + zero.size, 2 + zero.commands)
-        one = prefix(level + 1, 2 * index + 1)
-        return _Metric(
-            12 + zero.size + one.size, max(7 + zero.commands, 9 + one.commands)
-        )
+        one = None if zero_id == one_id else prefix(level + 1, 2 * index + 1)
+        return _prefix_node(zero, one)
 
     priced = prefix(0, 0)
     header = 4 * (len(context.ids) - 1) - 1
@@ -599,16 +602,13 @@ def _mixed_prefix(
     zero, one = tree.ids[depth + 1][2 * index : 2 * index + 2]
     if zero == one:
         put(">>")
-        value = _mixed_prefix(bank, depth + 1, 2 * index, emit)
-        return _Metric(2 + value.size, 2 + value.commands)
+        return _prefix_node(_mixed_prefix(bank, depth + 1, 2 * index, emit), None)
     put("[>>")
     right = _mixed_prefix(bank, depth + 1, 2 * index + 1, emit)
     put("<<]>[>")
     left = _mixed_prefix(bank, depth + 1, 2 * index, emit)
     put("<]>")
-    return _Metric(
-        12 + left.size + right.size, max(7 + left.commands, 9 + right.commands)
-    )
+    return _prefix_node(left, right)
 
 
 def _mixed_inline(
