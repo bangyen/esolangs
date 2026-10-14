@@ -1,6 +1,7 @@
 """Catalog filters preserve capability limits across output formats."""
 
 import json
+import re
 
 import pytest
 
@@ -115,6 +116,24 @@ def test_no_matches_is_an_empty_catalog(capsys) -> None:
     assert (text, error) == ("", "")
 
 
+def test_grep_searches_the_spec_case_insensitively(capsys) -> None:
+    # Positive control: a spec's own headline, upper-cased, finds that spec.
+    first = esolangs.list_languages()[0]
+    headline = esolangs.describe(first)["spec"].splitlines()[0]
+    names = _names(["--grep", re.escape(headline.upper())], capsys)
+    assert first in names
+    assert names == [
+        name
+        for name in esolangs.list_languages()
+        if headline.lower() in esolangs.describe(name)["spec"].lower()
+    ]
+    names = _names(["--grep", "deque"], capsys)
+    assert names
+    assert _names(["--grep", "deque", "--state-model", "queue"], capsys) == [
+        name for name in names if esolangs.describe(name)["state_model"] == "queue"
+    ]
+
+
 @pytest.mark.parametrize(
     ("args", "message"),
     [
@@ -131,6 +150,7 @@ def test_no_matches_is_an_empty_catalog(capsys) -> None:
         (["--input-shape", "bits"], "--input-shape must be one of line_per_bit"),
         (["--template", "--reads-input"], "cannot be combined"),
         (["--input-shape", "char_stream", "--template"], "requires a reading"),
+        (["--grep", "("], "--grep is not a valid regular expression"),
         (["--inputs", "0"], "--inputs must be a positive integer"),
         (["--inputs", "-1"], "--inputs must be a positive integer"),
         (["--inputs", "1.5"], "--inputs must be a positive integer"),
@@ -161,16 +181,16 @@ _FILTERED = {
     "state_model": "--state-model",
     "shape": "--shape",
     "input_shape": "--input-shape",
+    "width_effect": "--width-effect",
     "generator_max_inputs": "--inputs",
+    "spec": "--grep",
 }
 #: Identity, prose, or per-program detail rather than a class.
 _UNFILTERED = {
     "name",
-    "spec",
     "id",
     "generator_restrictions",
     "width_aware",
-    "width_effect",
     "input_encoding",
     "answer_pattern",
     "answer_encoding",
@@ -192,8 +212,8 @@ def test_every_describe_field_is_filtered_or_exempt(capsys) -> None:
     assert not _FILTERED.keys() & _UNFILTERED
     facts = [esolangs.describe(name) for name in esolangs.list_languages()]
     for field, option in _FILTERED.items():
-        if field == "generator_max_inputs":
-            continue  # a cap, not a class: the caps test covers it
+        if field in {"generator_max_inputs", "spec"}:
+            continue  # not a class: the caps and grep tests cover them
         values = {row[field] for row in facts} - {None, False}
         assert values  # populated, so the filter is not vacuous
         for value in values:

@@ -40,8 +40,9 @@ _STATE_MODELS = {
 #: the CLI's ``--state-model`` and ``--shape`` filters accept exactly these.
 STATE_MODELS: tuple[str, ...] = tuple(_STATE_MODELS.values())
 SHAPES: tuple[str, ...] = tuple(shape.value for shape in Shape)
-#: The ``input_shape`` labels, for the CLI's ``--input-shape`` filter.
+#: The ``input_shape`` and ``width_effect`` labels, for the CLI's filters.
 INPUT_SHAPES: tuple[str, ...] = get_args(InputShape.__value__)
+WIDTH_EFFECTS: tuple[str, ...] = get_args(WidthEffect.__value__)
 
 
 class LanguageInfo(TypedDict):

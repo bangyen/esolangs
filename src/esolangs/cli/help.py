@@ -78,7 +78,8 @@ commands:
     list [--details] [--json] [--generator | --interpreter-only]
          [--source text|raster] [--answer output|dump|termination] [--inputs N]
          [--state-model MODEL] [--shape SHAPE] [--template | --reads-input]
-         [--input-shape SHAPE] [--random]
+         [--input-shape SHAPE] [--random] [--width-effect EFFECT]
+         [--grep REGEX]
                                 list languages matching their capabilities
     describe [--json] [--spec] <language>
                                 print how that language reads its input and
@@ -131,7 +132,7 @@ example:
                      [--source text|raster] [--answer output|dump|termination]
                      [--inputs N] [--state-model MODEL] [--shape SHAPE]
                      [--template | --reads-input] [--input-shape SHAPE]
-                     [--random]
+                     [--random] [--width-effect EFFECT] [--grep REGEX]
 
 List matching languages, one per line. Filters combine with AND.
 
@@ -161,6 +162,12 @@ options:
               select reading programs by how the bits arrive: line_per_bit,
               char_stream, char_stream_padded, char_stream_cyclic, row_index
   --random    restrict to languages with instructions that draw at random
+  --width-effect EFFECT
+              select by what --width does: layout (builds a shape to fit),
+              wrap (reflows between tokens), none (newlines are semantic)
+  --grep REGEX
+              select languages whose spec (`describe --spec`) matches,
+              case-insensitively
 
 example:
   esolangs list --generator --source text --answer output --inputs 4 --details

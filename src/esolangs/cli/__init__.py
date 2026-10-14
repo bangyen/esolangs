@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from collections.abc import Callable
 from itertools import pairwise
@@ -86,7 +87,12 @@ from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.registry import LANGUAGES, Language, resolve
-from esolangs.registry._describe import INPUT_SHAPES, SHAPES, STATE_MODELS
+from esolangs.registry._describe import (
+    INPUT_SHAPES,
+    SHAPES,
+    STATE_MODELS,
+    WIDTH_EFFECTS,
+)
 from esolangs.runtime._program import Program
 
 
@@ -112,6 +118,20 @@ _FLAG_FILTERS: dict[str, Callable[[Language], bool]] = {
     "--reads-input": lambda lang: lang.boolean is not None and not lang.parameterized,
     "--random": lambda lang: lang.random,
 }
+#: ``list``'s labelled options: the values each accepts and the language's
+#: own.  ``describe`` is reached only for the derived labels (0.28 s cold
+#: over the registry), so the default catalog stays cheap.
+_VALUE_FILTERS: dict[str, tuple[tuple[str, ...], Callable[[str], object]]] = {
+    "--source": (("text", "raster"), lambda name: LANGUAGES[name].source_kind.value),
+    "--answer": (
+        ("output", "dump", "termination"),
+        lambda name: LANGUAGES[name].contract.answer_mode,
+    ),
+    "--state-model": (STATE_MODELS, lambda name: describe(name)["state_model"]),
+    "--shape": (SHAPES, lambda name: describe(name)["shape"]),
+    "--input-shape": (INPUT_SHAPES, lambda name: LANGUAGES[name].contract.input_shape),
+    "--width-effect": (WIDTH_EFFECTS, lambda name: describe(name)["width_effect"]),
+}
 
 
 def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
@@ -124,15 +144,18 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
         _fail("--template and --reads-input cannot be combined")
     if "--input-shape" in options and "--template" in flags:
         _fail("--input-shape requires a reading program; omit --template")
-    for option, choices in (
-        ("--source", ("text", "raster")),
-        ("--answer", ("output", "dump", "termination")),
-        ("--state-model", STATE_MODELS),
-        ("--shape", SHAPES),
-        ("--input-shape", INPUT_SHAPES),
-    ):
-        if option in options and options[option] not in choices:
-            _fail(f"{option} must be one of {', '.join(choices)}")
+    labels = {}
+    for option, (choices, getter) in _VALUE_FILTERS.items():
+        if option in options:
+            if options[option] not in choices:
+                _fail(f"{option} must be one of {', '.join(choices)}")
+            labels[option] = getter
+    pattern = None
+    if "--grep" in options:
+        try:
+            pattern = re.compile(options["--grep"], re.IGNORECASE)
+        except re.error as exc:
+            _fail(f"--grep is not a valid regular expression: {exc}")
     inputs = None
     if "--inputs" in options:
         inputs = _integer(options["--inputs"], "--inputs", kind="a positive integer")
@@ -148,26 +171,9 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
         language = LANGUAGES[name]
         if not all(test(language) for test in wanted):
             continue
-        if "--source" in options and language.source_kind.value != options["--source"]:
+        if any(getter(name) != options[option] for option, getter in labels.items()):
             continue
-        if (
-            "--answer" in options
-            and language.contract.answer_mode != options["--answer"]
-        ):
-            continue
-        # ``describe`` is only reached for the two derived facts, so the
-        # default catalog stays as cheap as it was.
-        if (
-            "--state-model" in options
-            and describe(name)["state_model"] != options["--state-model"]
-        ):
-            continue
-        if "--shape" in options and describe(name)["shape"] != options["--shape"]:
-            continue
-        if (
-            "--input-shape" in options
-            and language.contract.input_shape != options["--input-shape"]
-        ):
+        if pattern is not None and not pattern.search(describe(name)["spec"]):
             continue
         limit = language.generator_max_inputs
         if inputs is not None and limit is not None and inputs > limit:
@@ -178,14 +184,7 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
 
 def _list(rest: list[str]) -> None:
     """Print languages matching the requested capabilities."""
-    value_options = {
-        "--source",
-        "--answer",
-        "--inputs",
-        "--state-model",
-        "--shape",
-        "--input-shape",
-    }
+    value_options = {*_VALUE_FILTERS, "--inputs", "--grep"}
     flag_options = {
         "--details",
         "--json",
@@ -219,6 +218,7 @@ def _list(rest: list[str]) -> None:
                             facts["input_shape"] if facts["reads_input"] else None
                         ),
                         "random": facts["random"],
+                        "width_effect": facts["width_effect"],
                         # The three the marker column encodes, spelled out.
                         "boolean_generator": facts["boolean_generator"],
                         "parameterized": facts["parameterized"],
