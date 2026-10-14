@@ -467,6 +467,13 @@ does, so its interpreter invented the core, the invented semantics the
 2026-10-07 for the same reason: its page gives no grammar and no I/O, and
 its one loop example calls an undefined `or`.
 
+Nor does a route admit a command-for-command substitution of a collected
+language: a fixed token map under which every program behaves the same adds
+no interpreter or generator, the ground that excludes Trivial brainfuck
+substitution as a family. Adopted 2026-10-14 for candidates; no collected
+language is one (Piet++ adds nested stacks, Painfuck +2/-1 steps, ROTfuck a
+rotating command set).
+
 - Piet++ (8) is a first implementation: the page is in the Unimplemented
   category, and the only other code is a partial C# executor (Esolang-NET/Piet)
   whose Read, Write and Roll-Context are no-ops, so it cannot arbitrate the
