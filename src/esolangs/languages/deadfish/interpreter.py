@@ -29,83 +29,81 @@ neither ``EOFError`` nor :class:`~esolangs.exceptions.HaltError` arises.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import NamedTuple
+
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 
-#: ``(ind, value)``: the code position and the one accumulator.
-type _State = tuple[int, int]
+#: The three commands that change the accumulator; ``o`` and ``h`` do not.
+_ARITHMETIC: dict[str, Callable[[int], int]] = {
+    "i": lambda value: value + 1,
+    "d": lambda value: value - 1,
+    "s": lambda value: value * value,
+}
 
 #: The two values the accumulator is reset from, and the only two.  A range
 #: check reads as the intent and is the bug the C comment describes.
 _TRAPS = (-1, 256)
 
 
-def _advance(state: _State, code: str) -> tuple[_State, str | None]:
-    """Return the state after one command, and the text to print.
+class _State(NamedTuple):
+    ind: int = 0
+    value: int = 0
+    stopped: bool = False  # set by ``h``, the only way to stop early
 
-    Pure.  The reset is applied to whatever the command left behind, which is
-    why it belongs here and not in the three arithmetic branches.
+
+def _advance(state: _State, code: str) -> tuple[_State, str | None]:
+    """Return the state after one character, and the text it prints.
+
+    The reset follows every command, so it sits after the dispatch rather
+    than inside each arithmetic branch.
     """
-    ind, value = state
-    command = code[ind]
-    if command == "i":
-        value += 1
-    elif command == "d":
-        value -= 1
-    elif command == "s":
-        value *= value
+    command = code[state.ind]
+    if command == "h":
+        return state._replace(stopped=True), None
+    value = state.value
+    if command in _ARITHMETIC:
+        value = _ARITHMETIC[command](value)
     if value in _TRAPS:
         value = 0
-    out = f"{value}\n" if command == "o" else None
-    return (ind + 1, value), out
+    return _State(state.ind + 1, value), f"{value}\n" if command == "o" else None
 
 
 class _Machine:
-    """Per-run state: the code position and the accumulator."""
+    """The source, the read position and the one accumulator."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
         self.io = io
-        self.state: _State = (0, 0)
-        #: Set by ``h``, which is the only way to stop before the end.
-        self.stopped = False
-
-    @property
-    def ind(self) -> int:
-        """The code position."""
-        return self.state[0]
-
-    @property
-    def value(self) -> int:
-        """The accumulator."""
-        return self.state[1]
+        self.state = _State()
 
     @property
     def halted(self) -> bool:
-        """Whether the code has run out, or ``h`` has stopped it."""
-        return self.stopped or self.state[0] >= len(self.code)
+        return self.state.stopped or self.state.ind >= len(self.code)
+
+    @property
+    def ind(self) -> int:
+        return self.state.ind
+
+    @property
+    def value(self) -> int:
+        return self.state.value
 
     @property
     def ip(self) -> int:
-        """The code position, which is an offset into the source."""
-        return self.state[0]
+        return self.state.ind
 
     @property
     def memory(self) -> list[int]:
-        """The accumulator, as the one cell there is."""
-        return [self.state[1]]
+        return [self.state.value]
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
-        return (self.code, *self.state, self.stopped, self.io.progress())
+        return (self.code, *self.state, self.io.progress())
 
     def step(self) -> None:
-        """Execute one character, printing when it is an ``o``."""
         if self.halted:
-            return
-        if self.code[self.state[0]] == "h":
-            self.stopped = True
             return
         self.state, out = _advance(self.state, self.code)
         if out is not None:
@@ -114,8 +112,7 @@ class _Machine:
 
 def run(code: str, io: IO) -> None:
     """Run a Deadfish program, printing a line per ``o``."""
-    machine = _Machine(code, io)
-    drive(machine)
+    drive(_Machine(code, io))
 
 
 if __name__ == "__main__":
