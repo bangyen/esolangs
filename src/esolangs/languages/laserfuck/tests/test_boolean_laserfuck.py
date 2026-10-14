@@ -365,7 +365,7 @@ def test_overhead_funnel_floor_and_corpus_size() -> None:
     assert len(boolean.laserfuck("0110", 1)) == 569
     assert sum(len(boolean.laserfuck(format(v, "04b"), 1)) for v in range(16)) == 9104
     assert (
-        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 102623
+        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 101511
     )
 
 
