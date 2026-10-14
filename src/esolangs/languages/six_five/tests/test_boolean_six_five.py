@@ -278,9 +278,9 @@ class TestSixFive:
         for value in range(256):
             table = format(value, "08b")
             dispatched = len(boolean.six_five(table))
-            # The dispatch drops the last ``0``, which the builds keep.
-            identity = len(_identity(table)) - 1
-            assert dispatched <= identity + 1, table
+            # The dispatch drops a trailing ``0``; compare like with like.
+            identity = len(_identity(table).removesuffix("0"))
+            assert dispatched <= identity, table
             improved += dispatched < identity
         # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
         # shortcut, 192 after; 108 once a node that copies its bit prints
