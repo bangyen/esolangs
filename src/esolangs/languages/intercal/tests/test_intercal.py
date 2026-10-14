@@ -493,7 +493,9 @@ def test_only_a_tail_array_element_overflows_at_sixteen_bits() -> None:
     """Manual s4.3: tail elements are 16-bit (E275), hybrid elements 32-bit."""
     with pytest.raises(HaltError, match="E275"):
         _program("PLEASE ,1 <- #1", "DO ,1 SUB #1 <- '#65535$#1'", "DO GIVE UP")
-    assert _program("PLEASE ;1 <- #1", "DO ;1 SUB #1 <- '#65535$#1'", "DO GIVE UP") == ""
+    assert (
+        _program("PLEASE ;1 <- #1", "DO ;1 SUB #1 <- '#65535$#1'", "DO GIVE UP") == ""
+    )
 
 
 def test_retrieve_restores_an_array_but_not_an_ignored_scalar() -> None:

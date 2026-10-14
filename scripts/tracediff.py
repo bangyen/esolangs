@@ -5,7 +5,8 @@ by side and compare, at every step, each public property, the snapshot and
 the output, and on an error its type, message, notes and the state left
 behind.  The corpus is the suite sample, wiki examples, every table through
 n=3 on every input row (and wrapped at width 8 below n=3), and seeded random
-programs.  ``--mutant`` is the positive control: a deliberately broken copy
+programs.  Machines that draw get the same seeded source in both copies.
+``--mutant`` is the positive control: a deliberately broken copy
 that must differ somewhere, or the corpus never reached the change.
 ``--speed`` also times both over the longest-running programs: a teaching
 rewrite once cost Deadfish a third of its step rate, unmeasured.
@@ -19,6 +20,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import importlib.util
+import inspect
 import itertools
 import math
 import random
@@ -41,6 +43,7 @@ import esolangs  # noqa: E402
 from esolangs.exceptions import GeneratorCapError  # noqa: E402
 from esolangs.registry import INTERPRETERS, LANGUAGES, resolve  # noqa: E402
 from esolangs.runtime.io import ScriptedIO  # noqa: E402
+from esolangs.runtime.randomness import Seeded  # noqa: E402
 
 # Imported by name so mypy, which checks scripts/ but not tests/, stops here.
 SAMPLES = importlib.import_module("tests.support.samples").SAMPLES
@@ -55,6 +58,18 @@ _ADDRESS = re.compile(r" at 0x[0-9a-f]+")
 #: ``(source, stdin)``; a generated source may be a raster or compressed.
 type Program = tuple[Any, str]
 type Event = tuple[object, ...]
+
+
+def _machine(module: ModuleType, source: object, io: ScriptedIO) -> Any:
+    """Build ``module``'s machine; one that draws gets a fresh seeded source.
+
+    Unseeded, a draw comes from ``secrets``: tracing one INTERCAL ``%50``
+    program 20 times gave 20 different traces.
+    """
+    machine = module._Machine  # noqa: SLF001
+    if "rng" in inspect.signature(machine).parameters:
+        return machine(source, io, rng=Seeded(0))
+    return machine(source, io)
 
 
 def _load(path: Path, name: str) -> ModuleType:
@@ -152,7 +167,7 @@ def trace(
     io = ScriptedIO(stdin)
     try:
         source = code.splitlines() if split and isinstance(code, str) else code
-        machine = module._Machine(source, io)  # noqa: SLF001
+        machine = _machine(module, source, io)
     except Exception as error:
         return [("error", *_error(error))]
     events: list[Event] = []
@@ -288,7 +303,7 @@ def _lap(module: ModuleType, work: list[tuple[Program, int]], *, split: bool) ->
     for (code, stdin), steps in work:
         source = code.splitlines() if split and isinstance(code, str) else code
         with suppress(Exception):  # an error ends the run, as it did when traced
-            machine = module._Machine(source, ScriptedIO(stdin))  # noqa: SLF001
+            machine = _machine(module, source, ScriptedIO(stdin))
             for _ in range(steps):
                 machine.step()
     return time.perf_counter() - start

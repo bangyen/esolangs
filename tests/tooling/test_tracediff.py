@@ -44,6 +44,32 @@ def test_speed_sees_a_slowed_copy(tmp_path: Path) -> None:
     assert after < before / 2
 
 
+_DRAWING = """
+from esolangs.runtime.randomness import draw
+
+
+class _Machine:
+    def __init__(self, code, io, rng=None):
+        self.rng, self.halted, self.drawn = rng, False, ()
+
+    def snapshot(self):
+        return self.drawn
+
+    def step(self):
+        self.drawn += (draw(self.rng, 1 << 30),)
+        self.halted = len(self.drawn) == 5
+"""
+
+
+def test_a_machine_that_draws_traces_the_same_every_time(tmp_path: Path) -> None:
+    """Unseeded, draws come from secrets: one %50 program traced 20 ways in 20."""
+    path = tmp_path / "drawing.py"
+    path.write_text(_DRAWING)
+    module = tracediff._load(path, "tracediff_drawing")  # noqa: SLF001
+    traces = {repr(tracediff.trace(module, ("", ""), frozenset())) for _ in range(5)}
+    assert len(traces) == 1
+
+
 def test_an_error_records_the_state_it_leaves() -> None:
     """A draft moving its pointer before a failing read passed an error-only diff."""
     module = tracediff._load(_INTERPRETER, "tracediff_error")  # noqa: SLF001
