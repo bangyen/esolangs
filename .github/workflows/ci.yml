@@ -258,7 +258,7 @@ jobs:
     # The `slow` band, sharded round-robin across four jobs so per-PR CI
     # keeps the signal without the wall time: one file holds nearly half
     # the band, so contiguous slices would leave one shard carrying it
-    # whole.  `-m "slow and not weekly"`, mirroring verify.py's --full
+    # whole.  `-m "slow and not weekly"`, mirroring gate.py's --full
     # run: the two high-arity probes stay on the weekly sampling interval,
     # and weekly.yml (bare `pytest`) remains their only runner.
     #

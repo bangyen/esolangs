@@ -90,7 +90,7 @@ test-quick *args:
 test-mid *args:
     PYTEST_ADDOPTS="-m 'not slow and not weekly'" {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
 
-# granular targets — each maps to one STEPS entry in scripts/verify/gate.py (see verify.py --list)
+# granular targets — each maps to one STEPS entry in scripts/verify/gate.py (see gate.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)
 #
 # these pass --only, so each runs its step in full — including the `slow`
