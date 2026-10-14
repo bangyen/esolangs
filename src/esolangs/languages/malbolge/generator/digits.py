@@ -42,7 +42,6 @@ from esolangs.languages.malbolge.interpreter import _crazy
 from .core import (
     _ANSWER,
     _CONSTS,
-    _ENTRY,
     _K_CELL,
     _T_HELPERS,
     _T_HUB_CELLS,
@@ -55,7 +54,7 @@ from .core import (
     _g,
     _main_planner,
     _merge_code,
-    _one_options,
+    _options_of,
     _pointers,
     _prime,
     _program,
@@ -66,7 +65,7 @@ from .core import (
     _t_jump,
     _table_char,
     _turn_hubs,
-    _valid_chars,
+    _walker,
 )
 
 #: The largest input count the generator builds.
@@ -146,21 +145,6 @@ def _readouts(n: int) -> tuple[int, ...]:
     return tuple(_crazy(s, 29524) for s in states)
 
 
-def _n_options(v: int, operand: dict[int, int]) -> list[dict[int, int]]:
-    """Return data for an ``n`` hub at ``v``: ``p``, ``p``, ``j`` to an operand."""
-    return [
-        {v + 3: a, v + 4: b, v + 5: q}
-        for q in _valid_chars(v + 5)
-        if q + 1 in operand
-        for a in _valid_chars(v + 3)
-        for b in _valid_chars(v + 4)
-        if all(
-            _crazy(_crazy(_crazy(48 + x, a), b), operand[q + 1]) & 0xFF == 49 - x
-            for x in (0, 1)
-        )
-    ]
-
-
 def _hubs(
     values: dict[int, int], label: dict[int, str], avoid: set[int]
 ) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
@@ -172,17 +156,12 @@ def _hubs(
     """
     operand = {f: _chain(_g(f), ops) for f, ops in _D_OPERANDS.items()}
 
-    def options_of(v: int, lab: str) -> list[dict[int, int]]:
-        if lab == "1":
-            return _one_options(v)
-        return _n_options(v, operand) if lab == "n" else [{}]
-
     return _t_hubs(
         values,
         label,
         avoid,
         hub_cells=_T_HUB_CELLS,
-        options_of=options_of,
+        options_of=_options_of(operand),
         floor=_D_FLOOR,
         ceiling=_WORDS - 10,
         hub_floor=_D_FLOOR,
@@ -207,14 +186,7 @@ def _digits(n: int) -> _Digits:
     label = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab in "01xn"}
     used = {*_T_LOW, *label, *_D_OPERANDS}
 
-    def walked(value: int | None = None) -> int:
-        address = next(
-            a
-            for a in range(128, _ENTRY)
-            if a not in used and (value is None or _g(a) == value)
-        )
-        used.add(address)
-        return address
+    walked = _walker(used)
 
     helper = {"all1": _T_LOW[0], "all2": _T_LOW[1]}
     for name, value in _T_HELPERS.items():

@@ -957,6 +957,47 @@ def _one_options(v: int) -> list[dict[int, int]]:
     ]
 
 
+def _n_options(v: int, operand: dict[int, int]) -> list[dict[int, int]]:
+    """Return data for an ``n`` hub at ``v``: ``p``, ``p``, ``j`` to an operand."""
+    return [
+        {v + 3: a, v + 4: b, v + 5: q}
+        for q in _valid_chars(v + 5)
+        if q + 1 in operand
+        for a in _valid_chars(v + 3)
+        for b in _valid_chars(v + 4)
+        if all(
+            _crazy(_crazy(_crazy(48 + x, a), b), operand[q + 1]) & 0xFF == 49 - x
+            for x in (0, 1)
+        )
+    ]
+
+
+def _options_of(operand: dict[int, int]) -> Callable[[int, str], list[dict[int, int]]]:
+    """Return the ``options_of`` of :func:`_t_hubs`: ``1`` and ``n`` hubs read data."""
+
+    def options_of(v: int, lab: str) -> list[dict[int, int]]:
+        if lab == "1":
+            return _one_options(v)
+        return _n_options(v, operand) if lab == "n" else [{}]
+
+    return options_of
+
+
+def _walker(used: set[int]) -> Callable[..., int]:
+    """Return an allocator of unused walked cells (``128..``) by ``g`` value."""
+
+    def walked(value: int | None = None) -> int:
+        address = next(
+            a
+            for a in range(128, _ENTRY)
+            if a not in used and (value is None or _g(a) == value)
+        )
+        used.add(address)
+        return address
+
+    return walked
+
+
 def _pointers(
     label: dict[int, str], starts: Iterable[tuple[str, int]]
 ) -> tuple[dict[int, int], dict[int, int]]:

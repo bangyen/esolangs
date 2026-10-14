@@ -82,6 +82,7 @@ from .core import (
     _n_hub_pass,
     _one_options,
     _ops,
+    _options_of,
     _Planner,
     _pointers,
     _prime,
@@ -95,6 +96,7 @@ from .core import (
     _table_char,
     _turn_hubs,
     _valid_chars,
+    _walker,
     _wide,
     _wide_program,
 )
@@ -143,26 +145,13 @@ def _t_place(
     hub_cells: dict[str, int | tuple[int, ...]] = _T_HUB_CELLS,
 ) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
     """Place the hubs of thirteen and fourteen inputs (see :func:`_t_hubs`)."""
-
-    def options_of(v: int, lab: str) -> list[dict[int, int]]:
-        if lab == "1":
-            return _one_options(v)
-        if lab != "n":
-            return [{}]
-        return [
-            {v + 3: a, v + 4: b, v + 5: q}
-            for a in _valid_chars(v + 3)
-            for b in _valid_chars(v + 4)
-            for q in _valid_chars(v + 5)
-            if q + 1 in values
-            and all(
-                _crazy(_crazy(_crazy(48 + x, a), b), values[q + 1]) & 0xFF == 49 - x
-                for x in (0, 1)
-            )
-        ]
-
     return _t_hubs(
-        values, label, avoid, hub_cells=hub_cells, options_of=options_of, floor=_T_FLOOR
+        values,
+        label,
+        avoid,
+        hub_cells=hub_cells,
+        options_of=_options_of(values),
+        floor=_T_FLOOR,
     )
 
 
@@ -182,13 +171,7 @@ def _thirteen() -> _Layout:
     used = set(_T_LOW)
     helper = {"all1": _T_LOW[0], "all2": _T_LOW[1]}
 
-    def walked(value: int) -> int:
-        address = next(
-            a for a in range(128, _ENTRY) if _g(a) == value and a not in used
-        )
-        used.add(address)
-        return address
-
+    walked = _walker(used)
     for name, value in _T_HELPERS.items():
         helper[name] = walked(value)
     select = [walked(_g(a)) for a in _W_SELECT]
