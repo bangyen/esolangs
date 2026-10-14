@@ -46,7 +46,7 @@ type _Key = tuple[str, int]
 class _DimensionKey(NamedTuple):
     """A ``("dimension", key, sizes)`` node's key: the array's sigil and number.
 
-    Hashable, so it serves as a dict key in ``_handle_dimension``; it
+    Hashable, so it serves as a dict key in ``_dimension``; it
     compares equal to the plain ``(sigil, number)`` tuple other nodes use.
     """
 
