@@ -5,6 +5,8 @@ from esolangs.languages.a_painter_ant.generator import (
     LANGUAGE as _A_PAINTER_ANT_LANGUAGE,
 )
 from esolangs.languages.a_painter_ant.generator import a_painter_ant
+from esolangs.languages.abcdirection.generator import LANGUAGE as _ABCDIRECTION_LANGUAGE
+from esolangs.languages.abcdirection.generator import abcdirection
 from esolangs.languages.addsubjump.generator import LANGUAGE as _ADDSUBJUMP_LANGUAGE
 from esolangs.languages.addsubjump.generator import addsubjump
 from esolangs.languages.algebraic_programming_language.generator import (
@@ -168,6 +170,7 @@ from esolangs.languages.vandevelo.generator import vandevelo
 
 _LANGUAGES = (
     _A_PAINTER_ANT_LANGUAGE,
+    _ABCDIRECTION_LANGUAGE,
     _ADDSUBJUMP_LANGUAGE,
     _ALGEBRAIC_PROGRAMMING_LANGUAGE_LANGUAGE,
     _ALIGHT_LANGUAGE,
@@ -246,6 +249,7 @@ _LANGUAGES = (
 __all__ = [
     "BOOLEAN",
     "a_painter_ant",
+    "abcdirection",
     "addsubjump",
     "algebraic_programming_language",
     "alight",

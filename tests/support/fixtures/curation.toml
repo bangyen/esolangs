@@ -5,6 +5,7 @@ checked = "2026-10-06"
 3x = { backlinks = 5, route = "first implementation" }
 6-5 = { backlinks = 2, route = "first implementation" }
 "A Painter Ant" = { backlinks = 4, route = "first implementation" }
+ABCDirection = { backlinks = 3, route = "first implementation" }
 AddSubJump = { backlinks = 5, route = "first implementation" }
 "Algebraic Programming Language" = { backlinks = 3, route = "first implementation" }
 Alight = { backlinks = 6, route = "first implementation" }

@@ -3,13 +3,14 @@
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 77 languages</summary>
+<summary>Show all 78 languages</summary>
 
 ### Grid-based Languages
 
 Languages that move a pointer or beam across a 2D grid.
 
 - [A Painter Ant](https://esolangs.org/wiki/A_Painter_Ant) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/a_painter_ant/interpreter.py))
+- [ABCDirection](https://esolangs.org/wiki/ABCDirection) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/abcdirection/interpreter.py))
 - [Alight](https://esolangs.org/wiki/Alight) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/alight/interpreter/__init__.py))
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/arrowqueue/interpreter.py))
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/b_tapemark/interpreter.py))

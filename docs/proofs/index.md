@@ -405,6 +405,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Generator | Proof | Qualification | Scaling | Execution | Workspace |
 | --- | --- | --- | --- | --- | --- |
 | A Painter Ant | parameterized lookup | each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike | linear: table walk; corridor weights sum to T | linear: worst 2L commands: one pass to the fixed point, one proving the repeat | T log T: worst 2(n+1)T + 4 + bl(L-1) bits: corridor, answers, ant, cursor |
+| ABCDirection | linear lookup | the write row puts the essential inputs' table on the tape, one cell an entry, then each essential input's gadget tests its dequeued bit and a 0 walks the tape pointer left by that bit's weight, leaving it beside the indexed entry; an ignored input is read and never enqueued | linear: five rows of about T + zeros + 9n columns | linear: at most 5T + 80n + 210 commands: the write row, each unary move out and back, the band | linear: at most T + 10n + 56 bits: the tape, one bit a cell |
 | AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand | linear: T/n packed cells of O(n) digits, O(n) decoder | linear: worst (11n+4)⌊T/n⌋ + 11T + 13n - 17 past n = 5, one more from n = 10 | linear: at most Σ_{a<M} bl(a) + C(n + bl(B+13+C)) + 3n + 5bl(n) + Q bits: program cells, T/n packed |
 | Algebraic Programming Language | tree | bounded shared frames; base-26 names are unbounded | linear: bounded dependency scan and canonical residual IDs | linear: at most max(21,ceil(65n/2)-21)+K+2min(K,3n+1) commands: definitions initialize once and execute at most once | poly n: at most 179n+400+V+W if K=0, else A(198+8d+3b)+Q(b+114)+65n+d+bl(2n-1) bits: frame/global state |
 | Alight | finite lookup | inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches | linear: one T-character literal, O(n) Horner reads | poly n: worst 2n + 5 commands, n Horner reads and one `at` | poly n: worst 72n + 762 + bl(6n+12) + bl(n) bits, n in 2..25 |
@@ -569,7 +570,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 72 theoretical totality arguments and
+Accordingly, this ledger records 73 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

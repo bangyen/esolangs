@@ -21,6 +21,7 @@
 [constant_local]
 "///" = "_CONSTANT" # delete inputs and print the literal answer
 "A Painter Ant" = "_program" # restore inputs and leave one answer cell
+"ABCDirection" = "_layout" # no essential input: one table cell, no select gadget
 "ArrowQueue" = "_program" # direct halt or circulating heading
 "B-tapemark" = "b_tapemark" # direct read-and-print constant
 "Befunge" = "input_weights" # one projected table cell
