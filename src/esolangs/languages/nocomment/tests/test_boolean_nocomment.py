@@ -168,8 +168,9 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     assert_shared_program(language, table, plain, commands, workspace)
 
 
-# n=1 and 11 bound the arity range; the legacy layout never wins here.
-@pytest.mark.parametrize("n", [1, 11])
+# n=1 and 11 bound the arity range; n=9 is the only arity in 1..12 where the
+# legacy layout balances strictly better, so retention is tested there.
+@pytest.mark.parametrize("n", [1, 9, 11])
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
     from esolangs.languages.nocomment.generator import _program
