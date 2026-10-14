@@ -13,12 +13,6 @@ the state; a program that reads with no bits at all raises
 
 Input characters form the initial bit queue. This implementation preserves the
 complete supplied character stream rather than discarding later lines.
-
-Implementation:
-
-:func:`_advance` is a pure transition over an immutable ``_State`` with
-no ``io`` argument; :class:`_Machine` rebinds one state per ``step()``
-and flushes the byte.
 """
 
 from __future__ import annotations
@@ -67,6 +61,8 @@ def move(
     return row + ROW[r], col + COL[r], r, o
 
 
+# :func:`_advance` is a pure transition over an immutable ``_State`` with no ``io``
+# argument; :class:`_Machine` rebinds one state per ``step()`` and flushes the byte.
 def _advance(state: _State, code: Sequence[str]) -> tuple[_State, int | None]:
     """Return the state after one cell, and any byte that is ready to print.
 

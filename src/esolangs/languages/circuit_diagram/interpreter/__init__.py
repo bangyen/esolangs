@@ -64,12 +64,6 @@ value to settle on; no :class:`HaltError` is raised.
 
 External bits are consecutive 0/1 characters, ignoring whitespace;
 the spec leaves stdin framing unspecified.
-
-Implementation:
-
-``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER`` (repaired,
-replayed over sixteen inputs) and ``PRIME_TESTER_AS_DRAWN`` (silence
-pinned).
 """
 
 from datetime import UTC, datetime
@@ -99,6 +93,9 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
 )
 from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
+
+# ``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER`` (repaired, replayed over
+# sixteen inputs) and ``PRIME_TESTER_AS_DRAWN`` (silence pinned).
 
 
 class _Topology(NamedTuple):

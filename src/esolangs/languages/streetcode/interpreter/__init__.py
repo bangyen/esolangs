@@ -23,16 +23,6 @@ raises ``HaltError``.  ``I`` on exhausted input raises :class:`EOFError`; a
 newline stores character code 10.  ``I``/``O``'s "Nth register" is the
 CPth cell.  The wiki's Turing-completeness sentence names ``<`` and ``>``;
 the command table's ``=``/``_`` move CP, and ``<``/``>`` are nops.
-
-Implementation:
-
-Movement is pure and lives in :mod:`.geometry`; the run itself is the pure
-:func:`_advance`, which takes the whole run and the one input value a step
-needs and returns the next run and any character to print.
-:class:`_Machine` is the shell that reads and writes.  :func:`_drive` is the
-whole of movement in one signature,
-``_drive(grid, state, arrival_cell, current_cell)``, which lets
-:func:`.validation.drive_states` enumerate the state space.
 """
 
 import functools
@@ -137,6 +127,12 @@ def _u_turn(grid: _Grid, state: _State, arrival_cell: int) -> _State:
     return turned
 
 
+# Movement is pure and lives in :mod:`.geometry`; the run itself is the pure
+# :func:`_advance`, which takes the whole run and the one input value a step needs and
+# returns the next run and any character to print.  :class:`_Machine` is the shell that
+# reads and writes.  :func:`_drive` is the whole of movement in one signature,
+# ``_drive(grid, state, arrival_cell, current_cell)``, which lets
+# :func:`.validation.drive_states` enumerate the state space.
 def _advance(
     run: _Run,
     grid: _Grid,

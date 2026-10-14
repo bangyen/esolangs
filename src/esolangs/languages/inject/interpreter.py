@@ -28,14 +28,6 @@ off the end halts.
 The wiki's truth machine has its cases exchanged under its own prose
 (``skipq data 0`` fires on ``0`` and clause 2 loops); the prose is kept
 because the cat example depends on the same "only executes if" wording.
-
-Implementation:
-
-``src/esolangs/languages/inject/tests/test_inject.py`` runs both truth-machine
-readings.  :func:`_advance` is
-pure over an immutable ``_State`` whose *lines* are state: a rewrite
-moves every later line, the executing one included.  Output is collected
-(a ``send`` makes many writes); ``readto``'s line arrives as an argument.
 """
 
 import re
@@ -216,6 +208,10 @@ def _injected(state: _State, rest: str) -> _State:
     return _replaced(state, name, body)
 
 
+# ``src/esolangs/languages/inject/tests/test_inject.py`` runs both truth-machine
+# readings.  :func:`_advance` is pure over an immutable ``_State`` whose *lines* are
+# state: a rewrite moves every later line, the executing one included.  Output is
+# collected (a ``send`` makes many writes); ``readto``'s line arrives as an argument.
 def _advance(
     state: _State, line_in: str | None = None
 ) -> tuple[_State, tuple[str, ...]]:

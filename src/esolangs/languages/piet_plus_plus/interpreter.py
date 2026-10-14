@@ -44,16 +44,6 @@ Judgment calls for what the page leaves open:
 - Roll and Roll-Context of depth 0 pop both operands and move nothing;
   Divide and Mod by zero are ignored; both floor.  An In at EOF is ignored,
   and In Integer consumes a token that is not an integer.
-
-Implementation:
-
-The stack tree is one immutable nested value with an explicit path to the
-current stack, which preserves the page's aliasing (``Down`` makes a nested
-stack the current one, and both see the same value).  :func:`_advance` is the
-pure transition; :meth:`_Machine.step` is the shell that reads input, applies
-it, and writes the returned :data:`_Effect`.  When an ``in`` command needs a
-value the transition raises :class:`_NeedInputError`; the shell reads one (or
-records EOF) and retries, which is sound because the transition is pure.
 """
 
 from __future__ import annotations
@@ -418,6 +408,13 @@ def _advance_core(
     return _command(moved, _COMMANDS[change], len(block), value, ready=ready)
 
 
+# The stack tree is one immutable nested value with an explicit path to the current
+# stack, which preserves the page's aliasing (``Down`` makes a nested stack the
+# current one, and both see the same value).  :func:`_advance` is the pure transition;
+# :meth:`_Machine.step` is the shell that reads input, applies it, and writes the
+# returned :data:`_Effect`.  When an ``in`` command needs a value the transition raises
+# :class:`_NeedInputError`; the shell reads one (or records EOF) and retries, which is
+# sound because the transition is pure.
 class _Machine:
     """Piet++ shell: one immutable :data:`_Core`, rebound per step."""
 

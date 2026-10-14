@@ -9,13 +9,6 @@ names no command and raises :class:`~esolangs.exceptions.HaltError` when it
 runs.  It is not a comment: the wiki keeps digits out of the comment
 alphabet ("characters other than ``ZANCLS`` and digits").  A goto past the
 last command halts, as running off the end does.
-
-Implementation:
-
-:func:`_advance` is pure over an immutable ``_State`` whose RAM is a tuple
-of ``(address, value)`` pairs in insertion order.  ``halted`` once the
-cursor runs off the token list, and the dump prints exactly once on that
-step -- the ``dumped`` flag is in the state because it records an effect.
 """
 
 from __future__ import annotations
@@ -96,6 +89,10 @@ def change(z: int, n: int, ram: _Ram, op: str, index: _Index) -> tuple[int, int,
     return z, n, ram
 
 
+# :func:`_advance` is pure over an immutable ``_State`` whose RAM is a tuple of
+# ``(address, value)`` pairs in insertion order.  ``halted`` once the cursor runs off
+# the token list, and the dump prints exactly once on that step -- the ``dumped`` flag
+# is in the state because it records an effect.
 def _advance(state: _State, op: str, index: _Index) -> _State:
     """Return the state after executing one token.
 

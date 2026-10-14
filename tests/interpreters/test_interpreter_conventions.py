@@ -236,6 +236,8 @@ def _docstring_issues(path: pathlib.Path, language: str | None) -> list[str]:
         issues.append("raises HaltError but does not document it")
     if "raise ValueError" in source and "ValueError" not in doc:
         issues.append("raises ValueError but does not document it")
+    if re.search(r"^Implementation:$", doc, re.MULTILINE):
+        issues.append("implementation notes belong in comments beside the code")
     return issues
 
 

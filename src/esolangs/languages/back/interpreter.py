@@ -38,15 +38,6 @@ pure layer.  The one effect the language has -- ``*`` printing the tape --
 is done by ``step`` before it calls the pure transition.
 
 Malformed programs raise :class:`ValueError`.
-
-Implementation:
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the grid to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.  The
-tape is a tuple, so a state is a value that can be stored, compared, and
-hashed as it stands.
 """
 
 from __future__ import annotations
@@ -66,6 +57,8 @@ from esolangs.runtime.source_hints import syntax_error
 type _State = tuple[int, int, int, int, tuple[int, ...], int, bool]
 
 
+# The tape is a tuple, so a state is a value that can be stored, compared, and
+# hashed as it stands.
 def _advance(state: _State, code: Sequence[str], size: int) -> _State:
     """Return the state after executing one grid cell.
 

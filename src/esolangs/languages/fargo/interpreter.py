@@ -29,14 +29,6 @@ what :func:`esolangs.vm.run_until_halt_or_ancestor` proves a hang on.
 
 Its initial number is a whitespace-delimited integer token; the spec does not
 define text framing.
-
-Implementation:
-
-The semantics are a pure transition: :func:`_advance` maps an immutable
-``_State`` (the two numbers, the top-level cursor, the frame tuple) plus
-the parsed definitions to a new state and the number ``$`` asks to print.
-``step`` is the shell that performs that one write.  The input number is
-read once before the run, so no read reaches the transition.
 """
 
 from __future__ import annotations
@@ -466,6 +458,11 @@ def _wants_raw(frame: _Frame) -> bool:
     return len(args) in fn.raw
 
 
+# The semantics are a pure transition: :func:`_advance` maps an immutable
+# ``_State`` (the two numbers, the top-level cursor, the frame tuple) plus
+# the parsed definitions to a new state and the number ``$`` asks to print.
+# ``step`` is the shell that performs that one write.  The input number is
+# read once before the run, so no read reaches the transition.
 def _advance(
     state: _State, defs: dict[str, _Def], calls: list[tuple[str, ...]]
 ) -> tuple[_State, int | None]:

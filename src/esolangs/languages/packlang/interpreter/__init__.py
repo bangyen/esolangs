@@ -68,15 +68,6 @@ Further decisions for gaps the wiki leaves open:
 * **A function's value** is its last evaluated expression statement (the
   trailing ``0;`` in every wiki example); a function that evaluates none
   returns 0.
-
-Implementation:
-
-Programs are parsed into a flat statement list per function, so
-:class:`_Machine` steps one statement at a time and :func:`_advance` is a
-pure transition over an immutable state.  The variable store is a tuple of
-``(name, value)`` pairs, so :meth:`_Machine.snapshot` is hashable as it
-stands and a repeated state proves a loop.  :func:`_visible` enforces
-dependency visibility.
 """
 
 from collections.abc import Callable
@@ -528,6 +519,11 @@ def _program_key(program: _Program) -> tuple[tuple[object, ...], ...]:
     )
 
 
+# Programs are parsed into a flat statement list per function, so :class:`_Machine`
+# steps one statement at a time and :func:`_advance` is a pure transition over an
+# immutable state.  The variable store is a tuple of ``(name, value)`` pairs, so
+# :meth:`_Machine.snapshot` is hashable as it stands and a repeated state proves a loop.
+# :func:`_visible` enforces dependency visibility.
 class _Machine:
     """The run state: a stack of call frames and the parsed program.
 

@@ -14,12 +14,6 @@ cross-check exits 3); ``i`` raises :class:`EOFError` when exhausted.
 miss under any reading (printing the accumulator spells "Heffi, world").
 The spec leaves input representation unspecified; i reads the next Unicode
 character code, including whitespace.
-
-Implementation:
-
-:func:`_advance` is pure and total over an immutable ``_State``:
-``_NEEDS`` lets the shell reject an underflow first and
-:func:`_forward` returns ``None`` for an unmatched ``>``.
 """
 
 from __future__ import annotations
@@ -68,6 +62,9 @@ def _forward(code: str, ind: int) -> int | None:
     return ind
 
 
+# :func:`_advance` is pure and total over an immutable ``_State``: ``_NEEDS`` lets the
+# shell reject an underflow first and :func:`_forward` returns ``None`` for an
+# unmatched ``>``.
 def _advance(
     state: _State,
     code: str,

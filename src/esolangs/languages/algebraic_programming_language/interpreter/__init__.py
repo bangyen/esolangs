@@ -75,17 +75,6 @@ needs to prove ``x? = x & x?`` hangs.
 
 Input numbers are whitespace-delimited tokens; the spec does not define their
 text framing.
-
-Implementation:
-
-The semantics are a pure transition: :func:`_advance` maps an immutable
-:class:`_State` (the definitions, the globals, the frame tuple, the line
-cursor) plus the explicit input values a line may read to a new state and
-the text it asks to print.  ``step`` is the shell: it reads the tokens the
-line asks for, applies the transition, and writes what it returns.  A
-line binds every free variable before evaluating it, so the number of
-reads is not known ahead of evaluation; each :data:`_NeedInput` reads one
-more token and retries the deterministic transition.
 """
 
 from __future__ import annotations
@@ -396,6 +385,13 @@ def _format_value(value: object) -> str:
     return text + "\n"
 
 
+# The semantics are a pure transition: :func:`_advance` maps an immutable
+# :class:`_State` (the definitions, the globals, the frame tuple, the line cursor) plus
+# the explicit input values a line may read to a new state and the text it asks to
+# print.  ``step`` is the shell: it reads the tokens the line asks for, applies the
+# transition, and writes what it returns.  A line binds every free variable before
+# evaluating it, so the number of reads is not known ahead of evaluation; each
+# :data:`_NeedInput` reads one more token and retries the deterministic transition.
 def _advance(
     state: _State,
     lines: Sequence[str],

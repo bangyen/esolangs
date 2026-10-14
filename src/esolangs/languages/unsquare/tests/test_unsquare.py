@@ -223,8 +223,6 @@ class TestTheSpecIsReachable:
         module = interpreter_module("Unsquare")
         spec = esolangs.describe("Unsquare")["spec"]
         doc = (module.__doc__ or "").strip()
-        # The spec renders roles and stops at "Implementation:", so the
-        # headline paragraph is what both share verbatim.
+        # The spec renders Sphinx roles, so the headline paragraph is what
+        # both share verbatim.
         assert spec.split("\n\n")[0] == doc.split("\n\n")[0]
-        assert "Implementation:" in doc
-        assert "Implementation:" not in spec

@@ -15,13 +15,6 @@ cross-check exits 3) and rejects anything but an integer or fraction;
 
 Input numbers are whitespace-delimited integer or fraction tokens; the spec
 does not define delimiters.
-
-Implementation:
-
-:func:`_advance` is a pure, total transition over an immutable
-``_State``; ``_NEEDS`` and :func:`_forward` let the shell reject
-underflow and unmatched brackets first, and the shell checks the zero
-divisor.  :class:`_Machine` rebinds one state per ``step()``.
 """
 
 from __future__ import annotations
@@ -226,6 +219,10 @@ class _Machine:
         self.state = _advance(self.state, self.code, value, target)
 
 
+# :func:`_advance` is a pure, total transition over an immutable ``_State``; ``_NEEDS``
+# and :func:`_forward` let the shell reject underflow and unmatched brackets first, and
+# the shell checks the zero divisor.  :class:`_Machine` rebinds one state per
+# ``step()``.
 def _advance(
     state: _State,
     code: str,

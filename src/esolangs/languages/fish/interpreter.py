@@ -34,12 +34,6 @@ fish.py pushes a space, as it stores spaces as 0.  Invalid instructions,
 stack underflow, and division by zero raise
 :class:`~esolangs.exceptions.HaltError`; an empty program raises
 :class:`ValueError`.
-
-Implementation:
-
-:func:`_advance` is the pure transition over an immutable :data:`_Core`; the
-``i`` value arrives already read, and ``x``'s direction already drawn.
-:meth:`_Machine.step` is the shell that reads, draws, and writes the effect.
 """
 
 from __future__ import annotations
@@ -253,6 +247,9 @@ def _scope(
             return stacks, (*registers[:-1], None), [*stack, registers[-1]]
 
 
+# :func:`_advance` is the pure transition over an immutable :data:`_Core`; the
+# ``i`` value arrives already read, and ``x``'s direction already drawn.
+# :meth:`_Machine.step` is the shell that reads, draws, and writes the effect.
 def _advance(
     state: _Core,
     char_input: int | None = None,

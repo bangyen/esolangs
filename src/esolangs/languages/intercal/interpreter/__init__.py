@@ -57,15 +57,6 @@ Judgment calls where the manual or C-INTERCAL leave a gap:
 * ``ONCE``/``AGAIN`` take effect when the statement is reached (for ``COME
   FROM`` when it fires); a computed ``COME FROM`` is checked at every labelled
   statement, a gerund one after every statement of that kind.
-
-Implementation:
-
-:func:`_advance` is the pure transition from one immutable ``_State`` to the
-next, returning the texts to print.  A step can draw any number of times (a
-``%`` qualifier and each candidate ``COME FROM``) and read any number of
-inputs, so neither can be hoisted: it raises :data:`_NeedDraw` or
-:data:`_NeedInput`, and ``step``, the shell, supplies one more and retries.
-:meth:`_Machine.branching_successors` replays it over explicit draw prefixes.
 """
 
 from __future__ import annotations
@@ -691,6 +682,12 @@ def _execute(
     return _leave(state, i, program, draws, pos)
 
 
+# :func:`_advance` is the pure transition from one immutable ``_State`` to the next,
+# returning the texts to print.  A step can draw any number of times (a ``%`` qualifier
+# and each candidate ``COME FROM``) and read any number of inputs, so neither can be
+# hoisted: it raises :data:`_NeedDraw` or :data:`_NeedInput`, and ``step``, the shell,
+# supplies one more and retries.  :meth:`_Machine.branching_successors` replays it over
+# explicit draw prefixes.
 def _advance(
     state: _State,
     program: _Program,

@@ -6,13 +6,6 @@ adjust the top (mod 256; the wiki gives no width), ``.`` prints it,
 empty-stack pop or output raises :class:`HaltError`; an unmatched ``[``
 raises :class:`ValueError` when reached; exhausted input raises
 :class:`EOFError`.
-
-Implementation:
-
-:func:`_advance` is pure and total over an
-immutable ``_State``: ``_NEEDS_OPERAND`` lets the shell reject an
-empty-stack step first, and :func:`_forward_table` maps an unmatched
-``[`` to ``None`` for the shell to raise on.
 """
 
 from __future__ import annotations
@@ -70,6 +63,9 @@ def _forward_table(code: str) -> dict[int, int | None]:
     return table
 
 
+# :func:`_advance` is pure and total over an immutable ``_State``: ``_NEEDS_OPERAND``
+# lets the shell reject an empty-stack step first, and :func:`_forward_table` maps an
+# unmatched ``[`` to ``None`` for the shell to raise on.
 def _advance(
     state: _State, code: str, jumps: dict[int, int | None], byte: int | None = None
 ) -> _State:

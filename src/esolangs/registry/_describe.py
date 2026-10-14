@@ -44,8 +44,6 @@ SHAPES: tuple[str, ...] = tuple(shape.value for shape in Shape)
 #: The ``input_shape`` and ``width_effect`` labels, for the CLI's filters.
 INPUT_SHAPES: tuple[str, ...] = get_args(InputShape.__value__)
 WIDTH_EFFECTS: tuple[str, ...] = get_args(WidthEffect.__value__)
-#: Where a docstring's notes for maintainers start; ``spec`` ends there.
-_IMPLEMENTATION = re.compile(r"^Implementation:$", re.MULTILINE)
 #: A Sphinx role; ``~`` keeps only the last dotted component.
 _ROLE = re.compile(r":(?:class|func|meth|mod|attr|exc|data|obj):`(~?)([^`]+)`")
 
@@ -187,13 +185,12 @@ def _spec(language: str) -> str:
 
     The module docstring: the command table and where this implementation
     differs from the wiki -- the documentation for *writing* a program.
-    It stops at an ``Implementation:`` line; roles print as literals.
-    Raises under ``-OO``, which strips docstrings.
+    Sphinx roles print as literals.  Raises under ``-OO``, which strips
+    docstrings.
     """
     name = resolve(language)
     interpreter = interpreter_module(name)
     text = (interpreter.__doc__ or "").strip()
-    text = _IMPLEMENTATION.split(text, maxsplit=1)[0].rstrip()
     text = _ROLE.sub(lambda m: f"``{m[2].rsplit('.', 1)[-1] if m[1] else m[2]}``", text)
     if not text:
         # ``-OO`` strips docstrings, so this returned ``""`` for every one --

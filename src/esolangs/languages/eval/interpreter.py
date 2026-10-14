@@ -40,12 +40,6 @@ stay in the shell the way every other interpreter here does it.
 :class:`_Machine` accepts the program in its constructor, as the other
 interpreters do.  It stores the text in the first frame rather than parsing
 it, because Eval's commands are one character wide.
-
-Implementation:
-
-The execution model is a pure function over an immutable ``_Core``: the two
-stacks and the active index.  :func:`_iterate` maps a core and a command to
-the next core, and never mutates what it is given.
 """
 
 from __future__ import annotations
@@ -108,6 +102,9 @@ def _popped(core: _Core) -> tuple[_Core, _Val]:
     return (ptr, (rest, stacks[1]) if ptr == 0 else (stacks[0], rest)), value
 
 
+# The execution model is a pure function over an immutable ``_Core``: the two
+# stacks and the active index.  :func:`_iterate` maps a core and a command to
+# the next core, and never mutates what it is given.
 def _iterate(
     core: _Core, sym: str, ind: int
 ) -> tuple[_Core, int, _Val | None, str | None]:

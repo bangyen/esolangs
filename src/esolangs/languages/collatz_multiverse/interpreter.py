@@ -25,12 +25,6 @@ delimiters.  Readings of sentences that admit two:
   pointer moves to N and then advances as usual, so line N is skipped and
   N = 0 resumes at line 1; only this reading gives "doesn't execute it"
   meaning.  Blank lines are not numbered.
-
-Implementation:
-
-:func:`_advance` is pure over an immutable
-``_State``; the shell pre-reads every ``input`` a line names, and
-:func:`_read` defaults a missing array to zero rather than creating it.
 """
 
 from __future__ import annotations
@@ -261,6 +255,9 @@ def _operand(state: _State, spec: _Operand, pending: list[int]) -> _Resolved:
     return _reg_get(state[1], name), idx
 
 
+# :func:`_advance` is pure over an immutable ``_State``; the shell pre-reads every
+# ``input`` a line names, and :func:`_read` defaults a missing array to zero rather
+# than creating it.
 def _advance(
     state: _State,
     line: _Line,

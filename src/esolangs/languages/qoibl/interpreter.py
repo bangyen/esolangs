@@ -13,23 +13,6 @@ unbounded dict.  Division by zero raises
 :class:`~esolangs.exceptions.HaltError`; an unrecognized operator raises
 :class:`ValueError`; exhausted input raises :class:`EOFError`.  Output
 printed before a failed read or a halt is kept.
-
-Implementation:
-
-The semantics are a pure transition: :func:`_advance` maps an immutable
-``_State`` (the variable mapping and the statement cursor) plus the input
-values the statement may read to a new ``_State`` and the characters it
-asks to print.  :func:`_eval` appends output to an internal accumulator as
-it is computed, so a ``tt`` records output and an ``et`` reads the next
-explicit input value.  A statement may read any number of times (an ``rr``
-body loops), so the shell cannot hoist one read: it calls :func:`_advance`
-with the values it has read, and when the statement asks for one more than
-that -- raising :data:`_NeedInput` with the output prefix already computed
--- the shell flushes that prefix, reads one character, and retries.  A fault
-raises :data:`_Fault` with the same prefix, which the shell flushes before
-re-raising, so output written before a later read fails or an operation
-halts is never dropped.  The transition is deterministic, so the retry lands
-on the same state; the shell is the only place that touches ``io``.
 """
 
 import functools
@@ -426,6 +409,19 @@ def _arithmetic(
     return x // y, var, pos
 
 
+# The semantics are a pure transition: :func:`_advance` maps an immutable ``_State``
+# (the variable mapping and the statement cursor) plus the input values the statement
+# may read to a new ``_State`` and the characters it asks to print.  :func:`_eval`
+# appends output to an internal accumulator as it is computed, so a ``tt`` records
+# output and an ``et`` reads the next explicit input value.  A statement may read any
+# number of times (an ``rr`` body loops), so the shell cannot hoist one read: it calls
+# :func:`_advance` with the values it has read, and when the statement asks for one more
+# than that -- raising :data:`_NeedInput` with the output prefix already computed -- the
+# shell flushes that prefix, reads one character, and retries.  A fault raises
+# :data:`_Fault` with the same prefix, which the shell flushes before re-raising, so
+# output written before a later read fails or an operation halts is never dropped.  The
+# transition is deterministic, so the retry lands on the same state; the shell is the
+# only place that touches ``io``.
 def _advance(
     state: _State, code: Sequence[list[str]], inputs: Sequence[int] = ()
 ) -> tuple[_State, _Effects]:

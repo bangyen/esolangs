@@ -7,12 +7,6 @@ its primo and KSab Hello Worlds need four and five of them.  Unbalanced
 brackets raise :class:`ValueError`; ``,`` raises :class:`EOFError` on
 exhausted input (the spec leaves EOF undefined), so ``,[.,]`` ends with
 an error.
-
-Implementation:
-
-:func:`_advance` is pure over an immutable ``_State`` and
-``snapshot`` returns it directly; the shell does ``.`` and ``,``.
-``factor.py`` drives a decoded program through it.
 """
 
 from __future__ import annotations
@@ -68,6 +62,9 @@ def _committed(state: _State) -> tuple[int, ...]:
     return _written(tape, ptr, acc) if dirty else tape
 
 
+# :func:`_advance` is pure over an immutable ``_State`` and ``snapshot`` returns it
+# directly; the shell does ``.`` and ``,``. ``factor.py`` drives a decoded program
+# through it.
 def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
     """Return the state after executing the command at the code position.
 

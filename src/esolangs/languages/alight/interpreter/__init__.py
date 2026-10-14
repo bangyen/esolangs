@@ -7,17 +7,6 @@ as recorded in ``docs/limitations.md`` under "Interpreter conventions".
 An in-place ``at`` is seen through every variable naming that list.
 ``inp`` at EOF reads ``eof``; invalid runtime operations raise
 :class:`~esolangs.exceptions.HaltError`.
-
-Implementation:
-
-:func:`_advance` is the pure transition: it takes the whole state and the
-one input character a step needs -- raising :class:`_NeedInputError` when
-the shell has not read it yet -- and returns the next state and any
-character an ``out`` writes.  It edits nothing it is handed: the walker
-stack is copied, the innermost frame takes a private ``vars`` copy, and an
-in-place ``at`` rebuilds the list and rebinds every alias of it rather than
-writing through the shared reference.  :class:`_Machine` is the shell that
-reads the input and writes the output.
 """
 
 from fractions import Fraction
@@ -910,6 +899,13 @@ def _own(walker: _Walker) -> _Walker:
     return copy
 
 
+# :func:`_advance` is the pure transition: it takes the whole state and the one input
+# character a step needs -- raising :class:`_NeedInputError` when the shell has not
+# read it yet -- and returns the next state and any character an ``out`` writes.  It
+# edits nothing it is handed: the walker stack is copied, the innermost frame takes a
+# private ``vars`` copy, and an in-place ``at`` rebuilds the list and rebinds every
+# alias of it rather than writing through the shared reference.  :class:`_Machine` is
+# the shell that reads the input and writes the output.
 def _advance(
     core: _Core, value: _Value | object = _MISSING
 ) -> tuple[_Core, int | None]:

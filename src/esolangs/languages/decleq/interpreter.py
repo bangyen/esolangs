@@ -19,10 +19,6 @@ user input"):
   store; a negative write indexes from the right (an error is the other
   reading), and one past the left end raises
   :class:`~esolangs.exceptions.HaltError`.
-
-Implementation:
-
-:func:`_advance` is pure over an immutable ``_State``.
 """
 
 from __future__ import annotations
@@ -81,6 +77,7 @@ def _operands(state: _State) -> tuple[int, int, int]:
     return (memory[pc], _read(memory, pc + 1), _read(memory, pc + 2))
 
 
+# :func:`_advance` is pure over an immutable ``_State``.
 def _advance(state: _State, byte: int | None = None) -> _State:
     """Return the state after executing the instruction under the pointer.
 

@@ -33,37 +33,6 @@ Decisions for gaps in the wiki spec (documented):
 - a call that resolves to no function is an invalid operation
   (:class:`~esolangs.exceptions.HaltError`), and malformed syntax raises
   :class:`ValueError`.
-
-Implementation:
-
-The semantics are a pure transition.  :func:`_advance` maps an immutable
-``_State`` -- the explicit frame stack, the lexical scope store, the input
-bit buffer and the explicit input bytes a statement may read -- to a new
-state and the bytes it asks to print.  ``step`` is the shell: it reads the
-bytes the transition asks for and writes what it returns.  A statement can
-read any number of bits (a call may read in a loop), so the reads cannot be
-hoisted; each :data:`_NeedByte` reads one more byte and retries the
-deterministic transition.
-
-``_Machine`` runs on an explicit stack of :class:`_Frame` values (one per
-statement-position call in progress -- ``main`` initially, one more per
-nested call), each with a statement cursor and, while a ``for`` loop is
-active, its row iterator.  This makes ``step()`` interruptible between
-statements, between a ``for`` loop's rows, and between statement-position
-calls (``again 0;``, a call whose result is discarded) -- the granularity a
-hang can actually occur at, and the recursion pattern this language
-actually uses (there is no return-value-threading idiom across nested
-calls; ``return`` exits the whole function immediately).  A statement's own
-expression evaluation, and any *expression-position* call it contains
-(``x = f(y)``, where the assignment needs the result back synchronously),
-still runs to completion inside one ``step()``: expressions evaluate
-through ``_eval``/``_call``, and an expression-position call runs the same
-step core to completion via ``_run`` -- there is one statement
-implementation, shared by the resumable machine and direct execution.
-Forbin has no realistic program shape that recurses that way, so this
-narrower scope fixes the depth cap for the pattern the language is
-actually written in without the larger risk of converting expression
-evaluation itself into an explicit continuation stack.
 """
 
 from __future__ import annotations
@@ -539,6 +508,14 @@ def _start_statement_call(
     return pushed, ctx
 
 
+# The semantics are a pure transition.  :func:`_advance` maps an immutable
+# ``_State`` -- the explicit frame stack, the lexical scope store, the input
+# bit buffer and the explicit input bytes a statement may read -- to a new
+# state and the bytes it asks to print.  ``step`` is the shell: it reads the
+# bytes the transition asks for and writes what it returns.  A statement can
+# read any number of bits (a call may read in a loop), so the reads cannot be
+# hoisted; each :data:`_NeedByte` reads one more byte and retries the
+# deterministic transition.
 def _advance(
     state: _State,
     globals_: Mapping[str, _Function],
@@ -637,6 +614,25 @@ def _step_for_frames(
     )
 
 
+# ``_Machine`` runs on an explicit stack of :class:`_Frame` values (one per
+# statement-position call in progress -- ``main`` initially, one more per
+# nested call), each with a statement cursor and, while a ``for`` loop is
+# active, its row iterator.  This makes ``step()`` interruptible between
+# statements, between a ``for`` loop's rows, and between statement-position
+# calls (``again 0;``, a call whose result is discarded) -- the granularity a
+# hang can actually occur at, and the recursion pattern this language
+# actually uses (there is no return-value-threading idiom across nested
+# calls; ``return`` exits the whole function immediately).  A statement's own
+# expression evaluation, and any *expression-position* call it contains
+# (``x = f(y)``, where the assignment needs the result back synchronously),
+# still runs to completion inside one ``step()``: expressions evaluate
+# through ``_eval``/``_call``, and an expression-position call runs the same
+# step core to completion via ``_run`` -- there is one statement
+# implementation, shared by the resumable machine and direct execution.
+# Forbin has no realistic program shape that recurses that way, so this
+# narrower scope fixes the depth cap for the pattern the language is
+# actually written in without the larger risk of converting expression
+# evaluation itself into an explicit continuation stack.
 class _Machine:
     """One Forbin run: an explicit stack of resumable call frames.
 
