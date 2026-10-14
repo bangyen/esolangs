@@ -486,10 +486,19 @@ def _is_collected(path: str) -> bool:
 INTERPRETER_CONTRACT_TESTS = (
     "tests/runtime/test_vm_protocol.py",
     "tests/runtime/test_stepping_parity.py",
+    "tests/runtime/test_run_bounded.py",
     "tests/api/test_api_contracts.py",
     "tests/interpreters/test_interpreter_conventions.py",
+    "tests/interpreters/test_interpreters_robustness.py",
     "tests/interpreters/test_io.py",
     "tests/interpreters/test_input_convention.py",
+    # A Cyclic tag rewrite passed the scoped gate yet failed these two: no
+    # pure `_advance`, and a regrouped snapshot one bit off its exact formula.
+    "tests/interpreters/test_transition_purity.py",
+    "tests/proofs/test_workspace_formulas.py",
+    "tests/proofs/test_execution_formulas.py",
+    "tests/generators/test_boolean_contract.py",
+    "tests/tooling/test_examples.py",
 )
 
 
