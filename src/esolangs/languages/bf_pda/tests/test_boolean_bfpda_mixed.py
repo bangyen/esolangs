@@ -21,7 +21,11 @@ from tests.generators.fills import fill
 _fill_bfpda = fill("BF-PDA")
 
 
-@pytest.mark.parametrize("classes", range(2, 20))
+# Spine shape follows the digits of classes - 1: per width the full tree
+# (2**k) and the all-skip spine (2**k + 1), plus the cap 19 (every label).
+@pytest.mark.parametrize(
+    "classes", [*(m for k in range(1, 5) for m in (2**k, 2**k + 1)), 19]
+)
 def test_decoder_consumes_each_bit_marker_pair(classes) -> None:
     width = (classes - 1).bit_length()
     pieces = []

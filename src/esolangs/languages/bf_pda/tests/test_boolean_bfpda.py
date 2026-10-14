@@ -123,13 +123,14 @@ def test_deeper_classifier_preserves_a_constant_class() -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("seed", [73027, 73028, 73029])
-@pytest.mark.parametrize("start", range(0, 2048, 128))
-def test_cap_classifier_covers_every_essential_row(seed, start) -> None:
+@pytest.mark.parametrize("path", range(8))
+def test_cap_classifier_covers_every_essential_row(path) -> None:
     from esolangs.generation.helpers import reflected_table
     from esolangs.languages.bf_pda.generator import _bfpda_tree, _prepare, bfpda
 
-    rng = random.Random(seed)
+    # One case per class path (row & 7), all 256 residual rows each: every
+    # essential row of one table.  Seeds and 128-row chunks were redundant.
+    rng = random.Random(73027)
     blocks = tuple(
         "".join(str(rng.randrange(2)) for _ in range(256)) * 32 for _ in range(2)
     )
@@ -143,7 +144,7 @@ def test_cap_classifier_covers_every_essential_row(seed, start) -> None:
         candidate,
         [
             int(f"{((row >> 8) << 13) | (padding << 8) | (row & 255):016b}"[::-1], 2)
-            for row in range(start, start + 128)
+            for row in range(path, 2048, 8)
             for padding in (0, 31)
         ],
     )
