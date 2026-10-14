@@ -339,8 +339,8 @@ def _check_template_source(
     template: Program,
     truth_table: str | None,
     settings: DialectSettings | None,
-) -> tuple[str, str]:
-    """Return ``template`` and its setter character, or refuse an unfillable one."""
+) -> str:
+    """Return the setter character for ``template``, or refuse an unfillable one."""
     if isinstance(template, Raster):
         # Accepted by the annotation so ``instantiate(lang, generate(lang,
         # table), bits)`` type-checks; no raster generator emits a template.
@@ -403,7 +403,7 @@ def _check_template_source(
             ),
             "instantiate the template using the language that generated it",
         )
-    return template, char
+    return char
 
 
 def instantiate(
@@ -429,7 +429,8 @@ def instantiate(
     dialect_options(language, settings)
     check_width(width)
     name = resolve(language)
-    template, char = _check_template_source(name, template, truth_table, settings)
+    char = _check_template_source(name, template, truth_table, settings)
+    assert isinstance(template, str)  # the check refuses a Raster
     bits = check_bits(bits, "bits")
     tagged = (
         template
