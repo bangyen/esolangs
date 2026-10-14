@@ -11,7 +11,6 @@ XOR and ``!`` is logical negation, so ``a ^ b`` is a not-equal test and
 ``!(a ^ b)`` an equality test -- the spelling every wiki example uses.  The
 built-in ``IO`` package provides ``charPut(value)`` and ``charGet(var)``.
 
-
 Every function is stepped, the entry one and its callees alike.  A call
 *pushes* a frame rather than running the callee inside the calling
 statement, so a statement holding calls is re-entered once per call: each

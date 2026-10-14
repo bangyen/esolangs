@@ -34,7 +34,6 @@ politeness, NEXT/ABSTAIN/COME FROM targets) raise at load. Numeric ``WRITE IN``
 at EOF raises ``EOFError``; Turing Tape input stores 256 at EOF. A ``%n`` draws
 from the ``rng`` hook (:mod:`esolangs.runtime.randomness`).
 
-
 Judgment calls where the manual or C-INTERCAL leave a gap:
 
 * A statement starts at ``DO``/``PLEASE`` even inside a word (``DOUBLE``), as

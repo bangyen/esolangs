@@ -13,7 +13,6 @@ corner heads down the side road, not into the turn); a dead end turns the
 car across the street in two steps, and a ``U`` on the cell where that
 turn lands does not reverse it again.
 
-
 Errors: a malformed program (:mod:`.validation`) raises :class:`ValueError` at
 construction (streets two wide, road enclosed, wall forms, no ``-`` beside ``|``, one
 network, exactly one ``C``); a ``U`` with no opposite lane raises

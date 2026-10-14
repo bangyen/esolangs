@@ -26,7 +26,6 @@ ends at the next ``H`` even inside ``E...E``; ``Z`` on a non-function does
 nothing; ``V``'s count converts as ``J`` does; a literal still open at the
 end of the code is pushed.
 
-
 Unbounded pushes are what ``esolangs.run``'s ``timeout`` catches, and
 ancestor replay is decided by
 :func:`esolangs.vm.run_until_halt_or_ancestor`.

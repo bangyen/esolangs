@@ -31,7 +31,6 @@ That is the unbounded-growth case the detector documents itself as unable to
 catch, and only the wall-clock timeout stops it.  (The empty program is
 rejected outright, so the fuzz suite's empty-program invariant is unaffected.)
 
-
 :class:`_Machine` is the mutable shell the interpreter protocol requires.
 It holds one ``_State`` and rebinds it each step, so the mutation lives in
 exactly one assignment and every rule about what Back *does* stays in the

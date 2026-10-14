@@ -32,6 +32,8 @@ Judgment calls for what the page leaves open:
 - Add with a stack keeps stack order: an integer above a stack goes on its
   top, below it on its bottom, and stack ``B`` below stack ``T`` makes
   ``B``'s elements the bottom of ``T``.
+- ``Down`` makes a nested stack the current one, and both see the same
+  value: the page's aliasing.
 - Size pushes without popping ("pushes the size of the top item").
 - Out on a stack prints its elements top first, recursing into stacks.
 - Roll-Context follows the page's first three examples: levels 0..y-1 are

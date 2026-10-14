@@ -11,7 +11,8 @@ right side is evaluated whole.  "``rr x rr y rr``" is read literally, a
 loop body being one statement.  The variable list is an
 unbounded dict.  Division by zero raises
 :class:`~esolangs.exceptions.HaltError`; an unrecognized operator raises
-:class:`ValueError`; exhausted input raises :class:`EOFError`.
+:class:`ValueError`; exhausted input raises :class:`EOFError`.  Output
+printed before a failed read or a halt is kept.
 
 Implementation:
 

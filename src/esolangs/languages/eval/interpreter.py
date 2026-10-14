@@ -13,7 +13,6 @@ clean-room reading skips the whole literal; "the next instruction" allows
 both).  ``!`` on an integer is the invalid operation above, as a number
 is no "Eval code" (the clean-room reading runs its decimal digits).
 
-
 ``!`` evaluates a string as a program.  That nested program runs on an
 explicit *frame stack* rather than through Python recursion: ``!`` pushes a
 frame and returns, and the next ``step()`` continues inside it.  Lamfunc's

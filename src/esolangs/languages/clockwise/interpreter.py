@@ -11,7 +11,6 @@ once in ``__init__`` and then rotated, so ``.`` consumes from a queue in
 the state; a program that reads with no bits at all raises
 :class:`EOFError`.
 
-
 Input characters form the initial bit queue. This implementation preserves the
 complete supplied character stream rather than discarding later lines.
 

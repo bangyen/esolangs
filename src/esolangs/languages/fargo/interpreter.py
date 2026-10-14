@@ -27,7 +27,6 @@ Evaluation uses an explicit ``_Frame`` stack: recursion is Fargo's only
 loop, native recursion would hit Python's limit, and the growing stack is
 what :func:`esolangs.vm.run_until_halt_or_ancestor` proves a hang on.
 
-
 Its initial number is a whitespace-delimited integer token; the spec does not
 define text framing.
 

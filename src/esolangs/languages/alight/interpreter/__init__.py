@@ -4,6 +4,7 @@ The language spec is the wiki page, https://esolangs.org/wiki/Alight; where
 its prose and its examples disagree this interpreter follows the examples
 (infix operators evaluated left to right, in-place three-argument ``at``),
 as recorded in ``docs/limitations.md`` under "Interpreter conventions".
+An in-place ``at`` is seen through every variable naming that list.
 ``inp`` at EOF reads ``eof``; invalid runtime operations raise
 :class:`~esolangs.exceptions.HaltError`.
 

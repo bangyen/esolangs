@@ -73,7 +73,6 @@ its sub-evaluations, so ``step()`` advances exactly one node and a
 recursion pushes one frame per lap -- the granularity the ancestor check
 needs to prove ``x? = x & x?`` hangs.
 
-
 Input numbers are whitespace-delimited tokens; the spec does not define their
 text framing.
 

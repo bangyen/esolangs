@@ -13,7 +13,6 @@ cross-check exits 3) and rejects anything but an integer or fraction;
 ``]`` is ignored, the wiki naming neither; malformed programs raise
 :class:`ValueError`.
 
-
 Input numbers are whitespace-delimited integer or fraction tokens; the spec
 does not define delimiters.
 
