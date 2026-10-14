@@ -124,7 +124,12 @@ Start from `src/esolangs/runtime/_template.py`. Every interpreter:
 - Guards an input line before indexing it (`if val:`); an empty line is
   legal, and running out raises `EOFError` either way.
 - Exposes `_Machine.step()`, `halted` and a complete `snapshot()`, including
-  the input cursor; tests look up that exact name.
+  the input cursor; tests look up that exact name. Its top-level grouping is
+  measured: the workspace ledger counts each part only once written, so
+  splitting Cyclic tag's `(answer, printed)` dropped a bit from an exact
+  formula (`tests/proofs/test_workspace_formulas.py`).
+- Treats every public `_Machine` property as a debugger view; adding or
+  renaming one changes what the debugger shows.
 - Declares the VM views `ip`, `memory` and `stack` only where they say
   something: the VM defaults `ip` to `ind` and the other two to empty, so a
   language with no stack writes no `stack`.
@@ -208,8 +213,15 @@ Judge a module by what the language does not demand.
   cofactor bank won 0.00% at n=8..11, Back's bend 0-2.7%.
 - An index, cache or batch carries timings at three sizes; a replacement
   must grow the same way.
+- Derive state; don't store it. A field computable from others is a
+  property: Cyclic tag deletes one bit a step, so `head` is
+  `read % len(program)` and `answer` is `data[read - 1]`, and four fields
+  became one counter. Try this before the next rule.
 - State past three fields is a NamedTuple, not a positional tuple
   re-unpacked in every branch.
+- The module docstring teaches the language: source syntax, one step, halt
+  and output, then spec-gap decisions. Implementation notes are comments
+  beside the code they explain.
 - Validators and debugger views sit beside the step, not inside it
   (Streetcode's `interpreter/validation.py`).
 
