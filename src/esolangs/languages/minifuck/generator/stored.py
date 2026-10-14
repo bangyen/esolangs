@@ -77,6 +77,66 @@ class _Plan:
             return None
         return "".join(word * count for word, count in self.words)
 
+    def node(self, selector: int, zero: int, one: int, target: int) -> None:
+        """Write ``target = selector ? one : zero`` for a non-trivial ref pair."""
+        if (zero, one) == (1, 0):
+            self.copy(selector, target)
+            self.invert(target)
+        elif zero == 0:
+            self.conjunction(selector, one, target)
+        elif one == 0:
+            self.invert(selector)
+            self.conjunction(selector, zero, target)
+            self.invert(selector)
+        elif zero == 1:
+            self.invert(target)
+            self.copy(selector, target)
+            self.conjunction(selector, one, target)
+        elif one == 1:
+            self.copy(selector, target)
+            self.invert(selector)
+            self.conjunction(selector, zero, target)
+            self.invert(selector)
+        else:
+            # Disjoint guarded terms combine by XOR; no OR gadget needed.
+            self.invert(selector)
+            self.conjunction(selector, zero, target)
+            self.invert(selector)
+            self.conjunction(selector, one, target)
+
+
+def _residuals(result: _Plan, table: str, inputs: dict[int, int]) -> int:
+    """Write each distinct residual once, deepest first; return the root's ref.
+
+    A ref below 2 is a constant; otherwise it is a tape cell.
+    """
+    kept = list(inputs)
+    refs: dict[tuple[int, int], int] = {}
+    allocated = len(kept)
+
+    def resolve(depth: int, node: int) -> int:
+        return node if node < 2 else refs[depth, node]
+
+    ids = subtree_ids(table)
+    for depth in range(len(kept) - 1, -1, -1):
+        selector = inputs[kept[depth]]
+        for place, node in enumerate(ids[depth]):
+            key = (depth, node)
+            if node < 2 or key in refs:
+                continue
+            zero = resolve(depth + 1, ids[depth + 1][2 * place])
+            one = resolve(depth + 1, ids[depth + 1][2 * place + 1])
+            if zero == one:
+                refs[key] = zero
+            elif (zero, one) == (0, 1):
+                refs[key] = selector
+            else:
+                target = _FIRST + _STRIDE * allocated
+                allocated += 1
+                refs[key] = target
+                result.node(selector, zero, one, target)
+    return resolve(0, ids[0][0])
+
 
 def plan(truth_table: str) -> _Plan:
     """Plan every residual once; exact text pricing takes O(T) space and work."""
@@ -92,64 +152,11 @@ def plan(truth_table: str) -> _Plan:
         result.seek(cell - 1)
         result.write(_MINIFUCK_INPUT)
         result.write("<", cell + 1)
-
-    refs: dict[tuple[int, int], int] = {}
-    allocated = len(kept)
-
-    def resolve(depth: int, node: int) -> int:
-        return node if node < 2 else refs[depth, node]
-
-    if kept:
-        ids = subtree_ids(table)
-        for depth in range(len(kept) - 1, -1, -1):
-            selector = inputs[kept[depth]]
-            for place, node in enumerate(ids[depth]):
-                key = (depth, node)
-                if node < 2 or key in refs:
-                    continue
-                zero = resolve(depth + 1, ids[depth + 1][2 * place])
-                one = resolve(depth + 1, ids[depth + 1][2 * place + 1])
-                if zero == one:
-                    refs[key] = zero
-                    continue
-                if (zero, one) == (0, 1):
-                    refs[key] = selector
-                    continue
-                target = _FIRST + _STRIDE * allocated
-                allocated += 1
-                refs[key] = target
-                if (zero, one) == (1, 0):
-                    result.copy(selector, target)
-                    result.invert(target)
-                elif zero == 0:
-                    result.conjunction(selector, one, target)
-                elif one == 0:
-                    result.invert(selector)
-                    result.conjunction(selector, zero, target)
-                    result.invert(selector)
-                elif zero == 1:
-                    result.invert(target)
-                    result.copy(selector, target)
-                    result.conjunction(selector, one, target)
-                elif one == 1:
-                    result.copy(selector, target)
-                    result.invert(selector)
-                    result.conjunction(selector, zero, target)
-                    result.invert(selector)
-                else:
-                    # Disjoint guarded terms combine by XOR; no OR gadget needed.
-                    result.invert(selector)
-                    result.conjunction(selector, zero, target)
-                    result.invert(selector)
-                    result.conjunction(selector, one, target)
-        root = resolve(0, ids[0][0])
-    else:
-        root = int(table)
-    if root < 2:
-        if root:
-            result.invert(7)
-    else:
+    root = _residuals(result, table, inputs) if kept else int(table)
+    if root >= 2:
         result.copy(root, 7)
+    elif root:
+        result.invert(7)
     result.seek(6)
     result.write("[x<.")
     return result
