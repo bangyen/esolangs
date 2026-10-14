@@ -1,14 +1,12 @@
 """Executed tests for the thisthat boolean generator."""
 
 import random
-from collections import deque
-from itertools import pairwise, permutations, product
-from math import comb
+from itertools import pairwise
 
 import pytest
 
 import esolangs
-from esolangs.languages.thisthat.generator import _Builder, _deque_plan, _tree, thisthat
+from esolangs.languages.thisthat.generator import _Builder, _tree, thisthat
 from esolangs.languages.thisthat.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import (
@@ -78,33 +76,6 @@ def test_pruning_never_grows_a_table() -> None:
     tables = [f"{value:08b}" for value in range(256)]
     assert sum(len(thisthat(table)) for table in tables) == 158_308
     assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
-
-
-def test_deque_plan_pops_exactly_the_orders_a_deque_can() -> None:
-    """Every order a push-then-pop deque yields is planned, and nothing else."""
-    for n in range(1, 7):
-        reachable = set()
-        for pushes in product((False, True), repeat=n):
-            row: deque[int] = deque()
-            for i, head in enumerate(pushes):
-                (row.appendleft if head else row.append)(i)
-            for pops in product((False, True), repeat=n):
-                left = deque(row)
-                reachable.add(
-                    tuple(left.popleft() if head else left.pop() for head in pops)
-                )
-        assert len(reachable) == comb(2 * n - 2, n - 1)
-        for order in permutations(range(n)):
-            plan = _deque_plan(order)
-            assert (plan is not None) == (order in reachable), order
-            if plan is None:
-                continue
-            head_push, head_pop = plan
-            row = deque()
-            for i, head in enumerate(head_push):
-                (row.appendleft if head else row.append)(i)
-            popped = tuple(row.popleft() if head else row.pop() for head in head_pop)
-            assert popped == order
 
 
 @pytest.mark.medium

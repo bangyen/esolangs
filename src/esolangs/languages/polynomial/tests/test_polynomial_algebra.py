@@ -1,5 +1,7 @@
 """The packed polynomial multiplication agrees with the incremental one."""
 
+from dataclasses import dataclass
+
 import pytest
 
 from esolangs.languages.polynomial.generator.algebra import (
@@ -12,7 +14,10 @@ from esolangs.languages.polynomial.generator.algebra import (
     multiply,
     render_product,
 )
-from esolangs.languages.polynomial.generator.resources import estimate_generation
+from esolangs.languages.polynomial.generator.resources import (
+    _decimal_digits_upper,
+    estimate_generation,
+)
 
 
 def _incremental(factors: list[list[int]]) -> str:
@@ -122,9 +127,70 @@ class TestResourceEstimate:
         assert large.digit_work > small.digit_work
 
 
-def test_cold_parse_estimate_covers_a_root_past_the_old_fixed_lift() -> None:
-    from esolangs.languages.polynomial.generator.resources import estimate_cold_parse
+# Test-only oracle: nothing in src/ reads it, so it lives beside its test.
+@dataclass(frozen=True)
+class ColdParseEstimate:
+    """Upper bounds derived from parsed integer coefficients."""
 
+    degree: int
+    coefficient_digits: int
+    real_lift_bound: int
+    field_points: int
+    field_count: int
+    fallback_possible: bool
+    peak_words: int
+    digit_work: int
+
+
+def estimate_cold_parse(coeffs: list[int]) -> ColdParseEstimate:
+    """Bound the implemented fast peel; do not price the remainder root search."""
+    from esolangs.languages.polynomial.interpreter.roots import (
+        _NTT_FIELDS,
+        _ntt_real_bound,
+    )
+
+    degree = max(0, len(coeffs) - 1)
+    nonzero = [abs(value) for value in coeffs if value]
+    coefficient_digits = max(
+        1, max((_decimal_digits_upper(value) for value in nonzero), default=1)
+    )
+    real_lift_bound = _ntt_real_bound(degree)
+    field_points = sum(field[0] for field in _NTT_FIELDS)
+    field_count = len(_NTT_FIELDS)
+    # The two exhaustive transforms are fixed-size.  Coefficient reduction
+    # still reads every input digit; the D**2 lift can propose O(D**3)
+    # quadratics and each screen scans O(D) coefficients.
+    transform_work = field_points * max(1, field_points.bit_length())
+    arithmetic_digits = coefficient_digits + degree * len(str(degree + 1))
+    peel_work = (degree + 1) ** 4 * arithmetic_digits**2
+    prime_powers = max(1, 2 * degree) * 6
+    # Before exact division, the implementation materialises candidate
+    # ``(real, square)`` pairs.  One pair per real lift and prime power is a
+    # deliberately loose upper bound; two payload integers price each tuple.
+    candidate_count = (2 * real_lift_bound + 1) * prime_powers
+    # Tuple/set headers and Python integers dominate their payload.  Sixty-four
+    # words per degree bit is intentionally above the two integer digit arrays
+    # plus container overhead on every supported CPython word size.
+    words_per_candidate = 16 + 64 * max(1, (degree + 1).bit_length())
+    candidate_words = candidate_count * words_per_candidate
+    peak_words = field_points + (degree + 1) * coefficient_digits + candidate_words
+    # Coefficients alone carry no provenance or factor-shape certificate.
+    # Any nonconstant arbitrary program may leave a remainder for
+    # _remainder_roots, polynomial in the source but not priced here.
+    fallback_possible = degree > 0
+    return ColdParseEstimate(
+        degree,
+        coefficient_digits,
+        real_lift_bound,
+        field_points,
+        field_count,
+        fallback_possible,
+        peak_words,
+        transform_work + peel_work,
+    )
+
+
+def test_cold_parse_estimate_covers_a_root_past_the_old_fixed_lift() -> None:
     coeffs = [1, *([0] * 399)]
     estimate = estimate_cold_parse(coeffs)
     assert estimate.real_lift_bound > 163_841 // 2
