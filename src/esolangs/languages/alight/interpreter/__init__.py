@@ -55,7 +55,6 @@ from esolangs.languages.alight.interpreter._walk import (
     _find,
     _find_func,
     _grid,
-    _Heading,
     _scan,
     _turned,
 )
@@ -83,6 +82,12 @@ class _Walker:
     the value a just-finished callee is handing back.  Both are what let a
     call inside an expression suspend: the command is re-entered once per
     call it contains, each time with one more resolved.
+
+    The grid is not here: no command writes to the program, so it is a
+    constant of the run.  ``vars`` is frozen to an alias-preserving graph by
+    :func:`_freeze` before a snapshot stores it, because lists can be
+    aliased and a live reference would let a later command mutate a
+    snapshot the cycle detector had already banked.
     """
 
     __slots__ = ("col", "heading", "pending", "returned", "row", "vars")
@@ -111,18 +116,6 @@ class _Walker:
             self.pending,
             self.returned,
         )
-
-
-#: One instant of a walk: ``(row, col, heading, vars)`` -- where the pointer
-#: is, which way it is going, and the frame it is going there with.  The grid
-#: is not in it: no command writes to the program, so it is a constant of the
-#: run rather than state, and holding it here would make every snapshot carry
-#: a copy of the source.
-#:
-#: ``vars`` is frozen to an alias-preserving graph by :func:`_freeze` before a snapshot
-#: stores it because lists can be aliased. A live reference would let a later
-#: command mutate a snapshot the cycle detector had already banked.
-type _State = tuple[int, int, _Heading, tuple[object, ...]]
 
 
 def _truth(value: _Value) -> bool:
