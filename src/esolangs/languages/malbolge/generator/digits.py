@@ -102,6 +102,34 @@ _D_OPERANDS = {86: "rot K2", 101: "rot K2"}
 #: Stubs, hub characters and the navigation's data cells sit at or above this.
 _D_FLOOR = 6000
 
+#: Free pointer-region cells (``34..127`` clear of every label and operand).
+_D_POINTER_FREE = tuple(
+    a
+    for a in range(34, 128)
+    if _T_LABELS[a - 34] not in "01xn" and a not in _D_OPERANDS
+)
+
+#: Pointer cells built at run time, ``cell -> (value, chain)``.  A ``j`` on a
+#: cell worth ``v`` lands on ``v + 1``, so a low cell holding a working address
+#: lets the planner jump straight to it instead of walking the whole
+#: ``128..419`` region: each entry saves far more ``o`` cells than its chain
+#: costs.  The cells and values were searched; the chain runs
+#: through :func:`_emit_chain`'s ``rot``/``K0``/``K1``/``K2`` ops.
+_D_POINTERS: dict[int, tuple[int, str]] = {
+    68: (297, "rot rot rot rot rot rot rot rot K2"),
+    70: (221, "K2"),
+    74: (141, "rot rot rot rot rot rot rot rot rot"),
+    91: (163, "K2"),
+    116: (172, "K2"),
+    123: (216, "K2 K1"),
+}
+
+#: Placement override for the walked working cells, keyed by allocation order
+#: (helpers, the five gadget groups, ``s``/``z``, the two twos and to-48 cells,
+#: then the four label seeds).  A cell whose preferred address is taken falls
+#: back to the first free one, so the map only steers the layout.
+_D_LAYOUT: dict[int, int] = {4: 328, 7: 132, 20: 144, 21: 135}
+
 
 def _top_bit_held(n: int, group: int) -> bool:
     """Whether fifteen inputs hold group 4's first read at the constant ``'0'``."""
@@ -193,7 +221,7 @@ def _digits(n: int) -> _Digits:
     label = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab in "01xn"}
     used = {*_T_LOW, *label, *_D_OPERANDS}
 
-    walked = _walker(used)
+    walked = _walker(used, _D_LAYOUT)
 
     helper = {"all1": _T_LOW[0], "all2": _T_LOW[1]}
     for name, value in _T_HELPERS.items():
@@ -214,6 +242,9 @@ def _digits(n: int) -> _Digits:
     _prime(
         main, helper, (helper["all1"], helper["all2"], s_cell, z_cell, *sorted(label))
     )
+    for f, (value, ops) in sorted(_D_POINTERS.items()):
+        _emit_chain(main, f, ops, helper)
+        main.mem[f] = value
     _seed_label_chains(
         main, helper, {lab: ops for lab, (_, ops) in _D_SEEDS.items()}, seeds, label
     )
