@@ -37,6 +37,7 @@ from collections import Counter
 from dataclasses import dataclass
 from functools import cache
 from itertools import product
+from typing import NamedTuple
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
@@ -129,13 +130,15 @@ _THIRTEEN_N = 13
 _T_DECODER = 29525
 _T_DECODER_AVOID = range(_T_DECODER - 5, _T_DECODER + 275)
 
-_Layout = tuple[
-    dict[int, str],
-    dict[int, int],
-    tuple[tuple[int, ...], ...],
-    tuple[tuple[tuple[int, ...], ...], ...],
-    dict[int, str],
-]
+
+class _Layout(NamedTuple):
+    """Thirteen inputs' build: code, data, the core's ``level``/``tables``, labels."""
+
+    code: dict[int, str]
+    data: dict[int, int]
+    level: tuple[tuple[int, ...], ...]
+    tables: tuple[tuple[tuple[int, ...], ...], ...]
+    labels: dict[int, str]
 
 
 def _t_place(
@@ -230,7 +233,7 @@ def _thirteen() -> _Layout:
         (*parts, stubs), data, cells_of_tables, code_end, ceiling=_T_FLOOR
     )
     labels = {p - 1: lab for p, lab in label.items()}
-    return code, data, level, tables, labels
+    return _Layout(code, data, level, tables, labels)
 
 
 def _seed_values(
@@ -967,7 +970,7 @@ def _fourteen() -> _Layout:
         (*parts, place.stubs), place.data, cells_of_tables, emitted.code_end
     )
     labels = {p - 1: lab for p, lab in alloc.label.items()}
-    return code, place.data, level, tables, labels
+    return _Layout(code, place.data, level, tables, labels)
 
 
 def _fourteen_program(truth_table: str) -> str:

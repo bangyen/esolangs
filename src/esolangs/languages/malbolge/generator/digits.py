@@ -36,6 +36,7 @@ Seventeen inputs would need 65,536 cells, more than the store.
 from __future__ import annotations
 
 from functools import cache
+from typing import NamedTuple
 
 from esolangs.languages.malbolge.interpreter import _crazy
 
@@ -168,7 +169,13 @@ def _hubs(
     )
 
 
-_Digits = tuple[dict[int, str], dict[int, int], tuple[int, ...], dict[int, str]]
+class _Digits(NamedTuple):
+    """Fifteen/sixteen inputs' build: code, data, table cell per prefix, labels."""
+
+    code: dict[int, str]
+    data: dict[int, int]
+    tables: tuple[int, ...]
+    labels: dict[int, str]
 
 
 @cache
@@ -252,7 +259,7 @@ def _digits(n: int) -> _Digits:
     code = _merge_code(
         (main.code, stubs), data, cells_of_tables, code_end, ceiling=_D_FLOOR
     )
-    return code, data, tables, {p - 1: lab for p, lab in label.items()}
+    return _Digits(code, data, tables, {p - 1: lab for p, lab in label.items()})
 
 
 @cache
