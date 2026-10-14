@@ -22,6 +22,12 @@ inputs walk the tape pointer to the answer; the grid draws no tree.
   then sends the pointer around a 2x2 loop that writes nothing, where the
   interpreter halts.
 
+Constant subtrees are not folded nor repeated ones shared: every row
+shares each input's move, so a constant block still needs a cell for each
+entry the pointer can land on, and sharing a repeated block needs moves
+that differ by path -- the per-path drawing of the ``4**n`` tree this
+replaced.  A wholly constant table is one cell and no gadget.
+
 Five rows: the write row at the bottom, and above it a four-row band the
 select gadgets fill from the right edge, reached by wrapping, under the
 write row's columns.  A random table measures 1,075 cells at ``n = 6`` and
