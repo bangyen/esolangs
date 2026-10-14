@@ -79,7 +79,7 @@ def false(truth_table: str, width: int | None = None) -> str:
 _OPEN, _BETWEEN, _CLOSE = _TEST_ONE[:-1], "?0=", "?"
 
 
-def _shared(truth_table: str, n: int) -> str:  # noqa: C901
+def _shared(truth_table: str, n: int) -> str:
     """Return the tree with repeated halves stored in variables and fetched.
 
     A half is a lambda either way, so ``[text]`` becomes ``x;`` wherever it
@@ -124,65 +124,37 @@ def _shared(truth_table: str, n: int) -> str:  # noqa: C901
             use(zero, depth + 1)
             use(one, depth + 1)
 
-    size: dict[Key, int] = {}
+    text: dict[Key, str] = {}
     names: dict[Key, str] = {}
     free = iter(ascii_lowercase)
-    # Deepest first, so a half's length already counts its stored children.
-    for key in (key for level in reversed(found) for key in level):
+
+    def half(key: Key) -> str:
+        return names[key] + ";" if key in names else "[" + text[key] + "]"
+
+    def render(key: Key) -> str:
         level, node = key
         if node < 2:
-            size[key] = 2 * (n - level) + 2
-        else:
-            match nodes[key]:
-                case _Literal(text):
-                    size[key] = len(text)
-                case _Fold(child):
-                    size[key] = len(_SKIP) + (3 if child in names else size[child])
-                case _Split(zero, one):
-                    halves = (2 if k in names else size[k] + 2 for k in (zero, one))
-                    size[key] = len(_OPEN + _BETWEEN + _CLOSE) + sum(halves)
+            return _SKIP * (n - level) + str(node) + "."
+        match nodes[key]:
+            case _Literal(literal):
+                return literal
+            case _Fold(child):
+                return _SKIP + (names[child] + ";!" if child in names else text[child])
+            case _Split(zero, one):
+                return _OPEN + half(one) + _BETWEEN + half(zero) + _CLOSE
+
+    # Deepest first, so a half's text already fetches its stored children.
+    for key in (key for level in reversed(found) for key in level):
+        text[key] = render(key)
+        size = len(text[key])
         # Each ``[text]`` use becomes ``x;`` (saves size - 2), a bare one
         # ``x;!`` (saves size - 3); the store ``[text]x:`` costs size + 4.
-        gain = uses[key] * size[key] - 3 * inner.get(key, 0) - size[key] - 4
+        gain = uses[key] * size - 3 * inner.get(key, 0) - size - 4
         if gain > 0 and (name := next(free, None)):
             names[key] = name
 
-    def body(key: Key, out: list[str]) -> None:
-        level, node = key
-        if node < 2:
-            out.append(_SKIP * (n - level) + str(node) + ".")
-        else:
-            match nodes[key]:
-                case _Literal(text):
-                    out.append(text)
-                case _Fold(child):
-                    out.append(_SKIP)
-                    if child in names:
-                        out.append(names[child] + ";!")
-                    else:
-                        body(child, out)
-                case _Split(zero, one):
-                    out.append(_OPEN)
-                    half(one, out)
-                    out.append(_BETWEEN)
-                    half(zero, out)
-                    out.append(_CLOSE)
-
-    def half(key: Key, out: list[str]) -> None:
-        if key in names:
-            out.append(names[key] + ";")
-            return
-        out.append("[")
-        body(key, out)
-        out.append("]")
-
-    out: list[str] = []
-    for key, name in names.items():
-        out.append("[")
-        body(key, out)
-        out.append("]" + name + ":")
-    body((0, ids[0][0]), out)
-    return "".join(out)
+    stores = "".join("[" + text[key] + "]" + name + ":" for key, name in names.items())
+    return stores + render((0, ids[0][0]))
 
 
 def _balance(table: str, default: str) -> str:

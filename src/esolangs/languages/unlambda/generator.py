@@ -23,7 +23,6 @@ moment the variable is supplied.
 from __future__ import annotations
 
 from functools import cache
-from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     SubtreeDiagram,
@@ -51,18 +50,11 @@ _BOUND = "i"
 #: A skip's half that is the share, which nothing else would force.
 _FORCE_BOUND = "``si`kv"
 #: How many levels below a node a bound subtree may sit; bounds the candidates
-#: per node (2**4) so the build stays O(T).
+#: per node (2**4) so the build visits O(T) nodes.
 _REACH = 4
-#: One ``?`` test and one promise wrapper, shared by the size model and writer.
+#: One ``?`` test and one promise wrapper.
 _TEST = "``?{}i"
 _PROMISE = "`d"
-
-
-class _Binding(NamedTuple):
-    """The shortest ``` `N`dX ``` for a node: its ``cost`` and bound ``name``."""
-
-    cost: int
-    name: int
 
 
 def _leaf(n: int, level: int, bit: str) -> str:
@@ -73,7 +65,7 @@ def _leaf(n: int, level: int, bit: str) -> str:
     return printing if not unread else _INERT + _SKIP * unread + printing
 
 
-def unlambda(truth_table: str) -> str:  # noqa: C901
+def unlambda(truth_table: str) -> str:
     """Return an Unlambda program computing ``truth_table``.
 
     Reads ``n`` characters, one ``0``/``1`` per input in table order, and
@@ -87,96 +79,49 @@ def unlambda(truth_table: str) -> str:  # noqa: C901
     diagram = SubtreeDiagram(truth_table)
     halves, level_of, reaches = diagram.halves, diagram.level, diagram.reaches
 
-    def effective(key: int, share: int | None) -> int | None:
+    # Each candidate is built as text and the shortest kept, so the length
+    # chosen by is the program.  A half is copied into every enclosing node:
+    # O(T * n) characters, no slower than a cost model plus writer to n=18.
+    @cache
+    def tree(level: int, key: int, share: int | None) -> str:
+        if key < 2:
+            return _leaf(n, level, str(key))
         # A share the subtree never reaches is dropped, so it never splits the cache.
-        return share if share is not None and reaches(key, share) else None
+        if share is not None and not reaches(key, share):
+            share = None
+        return min((node(key, share), *bound(key)), key=len)
 
     @cache
-    def size(level: int, key: int, share: int | None) -> int:
-        if key < 2:
-            return len(_leaf(n, level, str(key)))
-        return min(node(key, effective(key, share)), binding(key).cost)
-
-    def half(level: int, key: int, share: int | None) -> int:
-        return len(_BOUND) if key == share else len(_PROMISE) + size(level, key, share)
-
-    @cache
-    def node(key: int, share: int | None) -> int:
+    def node(key: int, share: int | None) -> str:
         zero, one = halves[key]
         level = level_of[key] + 1
         if zero == one:
-            if zero == share:
-                return len(_OPEN + _FORCE_BOUND)
-            return len(_OPEN) + size(level, zero, share)
-        tests = half(level, zero, share) + half(level, one, share)
-        return len(_OPEN + _SPLIT) + 2 * len(_TEST.format(0)) + tests
-
-    @cache
-    def binding(key: int) -> _Binding:
-        """Return the shortest ``` `N`dX ``` over the ``X`` worth binding."""
-        # Unbound, a node is never longer than this, so it stays unbound.
-        best = _Binding(32 * len(truth_table), 0)
-        for name in diagram.repeated_near(key, _REACH):
-            bound = (
-                len("`")
-                + len(_PROMISE)
-                + node(key, name)
-                + size(level_of[name], name, None)
-            )
-            if bound < best.cost:
-                best = _Binding(bound, name)
-        return best
-
-    pieces: list[str] = []
-
-    def write(level: int, key: int, share: int | None) -> None:
-        if key < 2:
-            pieces.append(_leaf(n, level, str(key)))
-            return
-        share = effective(key, share)
-        if binding(key).cost < node(key, share):
-            write_bound(key)
-        else:
-            write_node(key, share)
-
-    def write_bound(key: int) -> None:
-        bound = binding(key).name
-        pieces.append("`")
-        write_node(key, bound)
-        pieces.append(_PROMISE)
-        write(level_of[bound], bound, None)
-
-    def write_node(key: int, share: int | None) -> None:
-        zero, one = halves[key]
-        level = level_of[key] + 1
-        pieces.append(_OPEN)
-        if zero == one:
-            if zero == share:
-                pieces.append(_FORCE_BOUND)
-            else:
-                write(level, zero, share)
-            return
-        pieces.append(_SPLIT)
+            return _OPEN + (_FORCE_BOUND if zero == share else tree(level, zero, share))
         order = [("1", one), ("0", zero)] if one == share else [("0", zero), ("1", one)]
-        for digit, half_key in order:
-            pieces.append(_TEST.format(digit))
-            if half_key == share:
-                pieces.append(_BOUND)
-            else:
-                pieces.append(_PROMISE)
-                write(level, half_key, share)
+        return (
+            _OPEN
+            + _SPLIT
+            + "".join(
+                _TEST.format(digit)
+                + (_BOUND if half == share else _PROMISE + tree(level, half, share))
+                for digit, half in order
+            )
+        )
+
+    @cache
+    def bound(key: int) -> list[str]:
+        """Return the shortest ``` `N`dX ``` over the ``X`` worth binding, if any."""
+        candidates = (
+            "`" + node(key, name) + _PROMISE + tree(level_of[name], name, None)
+            for name in diagram.repeated_near(key, _REACH)
+        )
+        return sorted(candidates, key=len)[:1]  # stable: the first shortest
 
     root = diagram.ids[0][0]
     if root < 2:
         return _leaf(n, 0, str(root))
     # The root is applied to a share either way: ``v`` when nothing is bound.
-    if binding(root).cost < node(root, None) + len("`v"):
-        write_bound(root)
-    else:
-        pieces.append("`")
-        write_node(root, None)
-        pieces.append("v")
-    return "".join(pieces)
+    return min(("`" + node(root, None) + "v", *bound(root)), key=len)
 
 
 LANGUAGE = Language(
