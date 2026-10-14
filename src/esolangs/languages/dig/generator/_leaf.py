@@ -3,7 +3,11 @@
 # A reader's count comes from one adjacent digit.
 _DIG_SPAN = 9
 _DIG_PRINT = "{}:@"
-_DIG_OPAQUE = "^>'<#$@"
+# The turn glyph that sends a mole along each heading, indexed by heading
+# (up, right, down, left), and the same glyphs rotated a quarter turn clockwise.
+_DIG_TURNS = "^>'<"
+_DIG_TURNS_CW = _DIG_TURNS[1:] + _DIG_TURNS[0]
+_DIG_OPAQUE = _DIG_TURNS + "#$@"
 _DIG_DIGITS = "0123456789;"
 
 #: Local headings rotate with the stamp. Each operator has one adjacent

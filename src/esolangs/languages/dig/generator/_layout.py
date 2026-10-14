@@ -8,6 +8,7 @@ from esolangs.languages.dig.generator._leaf import (
     _DIG_DIGITS,
     _DIG_OPAQUE,
     _DIG_SPAN,
+    _DIG_TURNS,
     _dig_constant_leaf,
     _dig_flat_leaf,
     _dig_flat_walk,
@@ -242,6 +243,14 @@ def _travel_heading(travel_axis: int, *, increasing: bool) -> int:
     return 2 if increasing else 0
 
 
+class _LeafKey(NamedTuple):
+    """A flat leaf's class: its table slice, entry heading and lane coordinate."""
+
+    span: str
+    heading: int
+    lane: int
+
+
 class _AlternatingTree:
     """One alternating Dig tree being painted onto a grid.
 
@@ -259,12 +268,10 @@ class _AlternatingTree:
         *,
         sharing: bool = False,
         parallel: bool = False,
-        offset: bool = False,
     ) -> None:
         self.n = n
         self.sharing = sharing
         self.parallel = parallel
-        self.offset = offset
         self.high, self.low, self.skips, self.truth_table = _dig_leaf_inputs(
             truth_table, n
         )
@@ -295,11 +302,11 @@ class _AlternatingTree:
         # pending there, and the blank runs a mole falls along to a child.
         self.reads: list[tuple[_Point, _Point, frozenset[_Point]]] = []
         self.corridors: list[tuple[_Point, int, int]] = []
-        self.entries: dict[_Point, tuple[str, int, int]] = {}
-        self.owners: dict[tuple[str, int, int], _Point] = {}
+        self.entries: dict[_Point, _LeafKey] = {}
+        self.owners: dict[_LeafKey, _Point] = {}
         self.links: list[tuple[_Point, _Point, _Point]] = []
         self.tails: dict[_Point, int] = {}
-        self.rails: dict[tuple[str, int, int], int] = {}
+        self.rails: dict[_LeafKey, int] = {}
         self.cuts: list[int] = []
 
     def short_leaf(self, level: int, lo: int) -> str:
@@ -355,7 +362,7 @@ class _AlternatingTree:
         chars, spins, wants, _exit, bounds = _dig_flat_leaf(table, self.high, self.low)
         painted = {_onto(point, heading, cell): char for cell, char in chars.items()}
         painted |= {
-            _onto(point, heading, cell): "^>'<"[(heading + d) % 4]
+            _onto(point, heading, cell): _DIG_TURNS[(heading + d) % 4]
             for cell, d in spins.items()
         }
         min_x, max_x, min_y, max_y = bounds
@@ -421,11 +428,7 @@ class _AlternatingTree:
         self, point: _Point, heading: int, lo: int, hi: int, *, paint: bool
     ) -> None:
         """Map one flat leaf's entry and key, or paint it when shared."""
-        key = (
-            self.truth_table[lo:hi],
-            heading,
-            0 if self.offset else point[self.lane_axis],
-        )
+        key = _LeafKey(self.truth_table[lo:hi], heading, point[self.lane_axis])
         if not paint:
             self.entries[point] = key
             if (
@@ -514,17 +517,9 @@ class _AlternatingTree:
     def plan_sharing(self) -> bool:
         """Dry-run the tree and assign shared leaf lanes; False aborts."""
         self.node(0, _Point(0, 0), 1, 0, len(self.truth_table), paint=False)
-        if self.offset:
-            self._recenter_offset_owners()
         by_end, starts = self._sharing_lane_groups()
         shared, rails = self._assign_shared_lanes(by_end, starts)
         if not shared:
-            return False
-        if self.offset and not any(
-            point[self.lane_axis] != self.owners[key][self.lane_axis]
-            for point, key in self.entries.items()
-            if key in shared
-        ):
             return False
         # Leave unmatched copies painted, even if their contents coincide.
         self.owners = {
@@ -537,73 +532,44 @@ class _AlternatingTree:
                 return False
         return True
 
-    def _recenter_offset_owners(self) -> None:
-        """Point each offset leaf class at the entry nearest its callers' center.
-
-        This is one geometric rule, not a route search; crossed rays still
-        fail clearance.
-        """
-        grouped: dict[tuple[str, int, int], list[_Point]] = {}
-        for point, key in self.entries.items():
-            grouped.setdefault(key, []).append(point)
-        for key, points in grouped.items():
-            middle = tuple(
-                min(p[i] for p in points) + max(p[i] for p in points) for i in range(2)
-            )
-            self.owners[key] = min(
-                points,
-                key=lambda p: (
-                    sum(abs(2 * p[i] - middle[i]) for i in range(2)),
-                    p[self.travel_axis],
-                    p[self.lane_axis],
-                ),
-            )
-
     def _sharing_lane_groups(
         self,
-    ) -> tuple[dict[int, list[tuple[str, int, int]]], dict[tuple[str, int, int], int]]:
+    ) -> tuple[dict[int, list[_LeafKey]], dict[_LeafKey, int]]:
         """Group repeated leaf classes by travel-axis span end; return each start.
 
         A class is repeated when more than one entry maps to its key.
         """
-        counts: dict[tuple[str, int, int], int] = {}
-        starts: dict[tuple[str, int, int], int] = {}
-        ends: dict[tuple[str, int, int], int] = {}
+        counts: dict[_LeafKey, int] = {}
+        starts: dict[_LeafKey, int] = {}
         for point, key in self.entries.items():
             counts[key] = counts.get(key, 0) + 1
             starts[key] = min(
                 starts.get(key, point[self.travel_axis]), point[self.travel_axis]
             )
-            ends[key] = max(
-                ends.get(key, point[self.travel_axis]), point[self.travel_axis]
-            )
-        by_end: dict[int, list[tuple[str, int, int]]] = {}
+        by_end: dict[int, list[_LeafKey]] = {}
         for key, count in counts.items():
             if count > 1:
-                by_end.setdefault(
-                    ends[key] if self.offset else self.owners[key][self.travel_axis],
-                    [],
-                ).append(key)
+                by_end.setdefault(self.owners[key][self.travel_axis], []).append(key)
         return by_end, starts
 
     def _assign_shared_lanes(
         self,
-        by_end: dict[int, list[tuple[str, int, int]]],
-        starts: dict[tuple[str, int, int], int],
-    ) -> tuple[set[tuple[str, int, int]], dict[tuple[str, int, int], int]]:
+        by_end: dict[int, list[_LeafKey]],
+        starts: dict[_LeafKey, int],
+    ) -> tuple[set[_LeafKey], dict[_LeafKey, int]]:
         """Share lanes among earliest-ending classes, reusing a free rail.
 
         Two lanes need one gutter cell; further overlapping classes stay
         unshared.
         """
-        shared: set[tuple[str, int, int]] = set()
-        rails: dict[tuple[str, int, int], int] = {}
+        shared: set[_LeafKey] = set()
+        rails: dict[_LeafKey, int] = {}
         occupied: dict[int, list[int | None]] = {}
         for lane_end in sorted(by_end):
             for key in by_end[lane_end]:
                 lane_coordinate = (
-                    self.owners[key][self.lane_axis] if self.offset else key[2]
-                ) - _DIG_DIRECTIONS[key[1]][self.lane_axis]
+                    key.lane - _DIG_DIRECTIONS[key.heading][self.lane_axis]
+                )
                 busy = occupied.setdefault(
                     lane_coordinate, [None] * (2 if self.parallel else 1)
                 )
@@ -615,11 +581,11 @@ class _AlternatingTree:
                         break
         return shared, rails
 
-    def _parallel_lane_cuts(self, rails: dict[tuple[str, int, int], int]) -> list[int]:
+    def _parallel_lane_cuts(self, rails: dict[_LeafKey, int]) -> list[int]:
         """Return the gutter cuts separating the second rail's lanes."""
         return sorted(
             {
-                key[2] + int(_DIG_DIRECTIONS[key[1]][self.lane_axis] < 0)
+                key.lane + int(_DIG_DIRECTIONS[key.heading][self.lane_axis] < 0)
                 for key, rail in rails.items()
                 if rail
             }
@@ -717,29 +683,23 @@ class _AlternatingTree:
     def bridge_entries(self) -> bool:
         """Route shared leaf entries to their owners' lanes; False aborts."""
         lanes: dict[_Point, _Point] = {}
-        # Opposing headings bridge on opposite sides of their entry ray.
-        # The centered owner can lie behind a caller, so the cross-bank
-        # heading follows the displacement rather than the leaf heading.
-        bridges: list[tuple[_Point, int, int]] = []
         for point, key in self.entries.items():
-            if key in self.owners and not self._route_entry(point, key, lanes, bridges):
+            if key in self.owners and not self._route_entry(point, key, lanes):
                 return False
-        self.corridors = self._shorten_corridors(lanes) + bridges
+        self.corridors = self._shorten_corridors(lanes)
         self._chain_lanes(lanes)
         return True
 
     def _route_entry(
         self,
         point: _Point,
-        key: tuple[str, int, int],
+        key: _LeafKey,
         lanes: dict[_Point, _Point],
-        bridges: list[tuple[_Point, int, int]],
     ) -> bool:
         """Route one shared entry onto its owner's lane; False on collision."""
-        heading = key[1]
+        heading = key.heading
         owner = self.owners[key]
-        local = point.step(heading, -1)
-        lane = owner.step(heading, -1 - (0 if self.offset else self.rails[key]))
+        lane = owner.step(heading, -1 - self.rails[key])
         lane = (
             _Point(point.row, lane.col)
             if self.lane_axis == 1
@@ -749,57 +709,13 @@ class _AlternatingTree:
             self.travel_axis,
             increasing=point[self.travel_axis] <= owner[self.travel_axis],
         )
-        if self.offset and point[self.lane_axis] != owner[self.lane_axis]:
-            crossed = self._dogleg_across_bank(heading, local, lane, bridges)
-            if crossed is None:
-                return False
-            lane = crossed
-            travel_heading = _travel_heading(
-                self.travel_axis,
-                increasing=lane[self.travel_axis] <= owner[self.travel_axis],
-            )
         if lane in self.cells:
             return False
-        self.cells[lane] = "^>'<"[heading] if point == owner else "^>'<"[travel_heading]
+        self.cells[lane] = (
+            _DIG_TURNS[heading] if point == owner else _DIG_TURNS[travel_heading]
+        )
         lanes[point] = lane
         return True
-
-    def _dogleg_across_bank(
-        self,
-        heading: int,
-        local: _Point,
-        lane: _Point,
-        bridges: list[tuple[_Point, int, int]],
-    ) -> _Point | None:
-        """Paint a dogleg from beside the entry across to the owner's bank.
-
-        Returns the lane cell the entry travels from, or None on collision.
-        """
-        bridge_heading = _travel_heading(self.travel_axis, increasing=heading in (1, 2))
-        corner = local.step(bridge_heading)
-        lane = (
-            _Point(corner.row, lane.col)
-            if self.lane_axis == 1
-            else _Point(lane.row, corner.col)
-        )
-        cross_heading = (
-            heading
-            if (lane[self.lane_axis] - corner[self.lane_axis])
-            * _DIG_DIRECTIONS[heading][self.lane_axis]
-            > 0
-            else (heading + 2) % 4
-        )
-        for spot, char in (
-            (local, "^>'<"[bridge_heading]),
-            (corner, "^>'<"[cross_heading]),
-        ):
-            if spot in self.cells:
-                return None
-            self.cells[spot] = char
-        bridges.append(
-            (corner, cross_heading, abs(corner[self.lane_axis] - lane[self.lane_axis]))
-        )
-        return lane
 
     def _shorten_corridors(
         self, lanes: dict[_Point, _Point]
@@ -809,7 +725,7 @@ class _AlternatingTree:
         for start, heading, distance in self.corridors:
             child = start.step(heading, distance)
             if child in lanes:
-                distance -= 1 if self.offset else 1 + self.rails[self.entries[child]]
+                distance -= 1 + self.rails[self.entries[child]]
             shortened.append((start, heading, distance))
         return shortened
 
@@ -818,7 +734,7 @@ class _AlternatingTree:
         by_position: dict[int, list[_Point]] = {}
         for point in lanes:
             by_position.setdefault(lanes[point][self.travel_axis], []).append(point)
-        previous: dict[tuple[str, int, int], _Point] = {}
+        previous: dict[_LeafKey, _Point] = {}
         for position in sorted(by_position):
             for point in by_position[position]:
                 key, lane = self.entries[point], lanes[point]
@@ -879,14 +795,6 @@ class _AlternatingTree:
                     compact(point)[self.travel_axis]
                     - compact(self.owners[key])[self.travel_axis]
                 )
-            if self.offset and key in self.owners:
-                travel += abs(point[self.lane_axis] - self.owners[key][self.lane_axis])
-                if point[self.lane_axis] != self.owners[key][self.lane_axis] and (
-                    (point[self.travel_axis] >= self.owners[key][self.travel_axis])
-                    if key[1] in (1, 2)
-                    else (point[self.travel_axis] <= self.owners[key][self.travel_axis])
-                ):
-                    travel += 2
             worst = max(worst, costs[point] + travel + leaf_cost)
         entry_cost = (
             4 - min(row for row, _ in self.cells) - min(col for _, col in self.cells)
@@ -920,7 +828,6 @@ def _dig_layout(
     *,
     sharing: bool = False,
     parallel: bool = False,
-    offset: bool = False,
 ) -> str | None:
     """Lay a Dig tree whose leaves are flat tables, branch axis rotating.
 
@@ -931,9 +838,7 @@ def _dig_layout(
     doubles per level, so the rectangle stays O(2**n).  An ignored input
     above the leaf is no level: its read rides the next block, ``$~~;#``.
     """
-    tree = _AlternatingTree(
-        truth_table, n, sharing=sharing, parallel=parallel, offset=offset
-    )
+    tree = _AlternatingTree(truth_table, n, sharing=sharing, parallel=parallel)
     # Build locally with the root heading east.  Its ray from the west is
     # empty by the same bounds recurrence, so an external L-shaped entry can
     # reach it without crossing the tree.

@@ -9,6 +9,7 @@ from esolangs.languages.dig.generator._layout import (
     _walk_bound,
 )
 from esolangs.languages.dig.generator._leaf import (
+    _DIG_TURNS_CW,
     _dig_adder,
     _dig_flat_leaf,
     _dig_flat_walk,
@@ -167,7 +168,7 @@ def _dig_indexed_shared(table: str, n: int) -> str | None:
         return point[0] + decoder.row_offset, point[1] + decoder.offset
 
     cells = {place(p): c for p, c in decoder.chars.items()}
-    cells.update({place(p): ">'<^"[h] for p, h in decoder.turns.items()})
+    cells.update({place(p): _DIG_TURNS_CW[h] for p, h in decoder.turns.items()})
     checks = _remap_reads(decoder.reads, place)
     cells[0, 0], cells[decoder.row_offset, 0] = "'", ">"
     cells[decoder.top - 2, decoder.end + decoder.offset] = ">"
@@ -180,7 +181,7 @@ def _dig_indexed_shared(table: str, n: int) -> str | None:
         return point[0] + decoder.top, point[1]
 
     cells.update({below(p): c for p, c in chars.items()})
-    cells.update({below(p): ">'<^"[h] for p, h in turns.items()})
+    cells.update({below(p): _DIG_TURNS_CW[h] for p, h in turns.items()})
     checks.extend(_remap_reads(reads, below))
     cells[decoder.top + 2, merge] = "<"
     last = place(decoder.last)
