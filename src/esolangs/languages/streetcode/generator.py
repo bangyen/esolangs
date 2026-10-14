@@ -15,6 +15,7 @@ past their selector. Nonadjacent repeats still have separate drawings.
 
 from collections.abc import Callable
 from functools import cache
+from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -532,8 +533,17 @@ def _streetcode_room(
         grid[_WEST, col] = "~"
 
 
-def _flat_inputs(truth_table: str, n: int) -> tuple[str, int, list[int], int]:
-    """Return table, arity, per-level ignored-input gaps and the trailing run."""
+class _FlatInputs(NamedTuple):
+    """The indexed table, its arity, per-level ignored-input gaps, trailing run."""
+
+    table: str
+    n: int
+    gaps: list[int]
+    pending: int
+
+
+def _flat_inputs(truth_table: str, n: int) -> _FlatInputs:
+    """Return the table reduced to its indexed inputs."""
     weights, table = input_weights(truth_table, n)
     if len(table) > 1:
         n = len(table).bit_length() - 1
@@ -549,7 +559,7 @@ def _flat_inputs(truth_table: str, n: int) -> tuple[str, int, list[int], int]:
             pending = 0
         else:
             pending += 1
-    return table, n, gaps, pending
+    return _FlatInputs(table, n, gaps, pending)
 
 
 def _streetcode_flat(truth_table: str, n: int) -> str:
