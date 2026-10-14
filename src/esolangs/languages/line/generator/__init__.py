@@ -28,7 +28,8 @@ fallback area ties; larger drawings retain the smaller fallback.
 from __future__ import annotations
 
 import re
-from functools import lru_cache
+from collections.abc import Callable
+from functools import lru_cache, partial
 from typing import NamedTuple, cast
 
 from esolangs.generation.helpers import (
@@ -191,13 +192,17 @@ def _shared_candidates(truth_table: str, n: int) -> list[Node]:
 
 
 class _Candidate(NamedTuple):
-    """Smallest layout so far; ``plan`` (shared or folded) outranks ``canvas``."""
+    """Smallest layout so far; ``rows`` draws it only when the raster is read."""
 
     node: Node
     area: int
-    canvas: Canvas | None = None
-    plan: CanvasPlan | None = None
+    rows: Callable[[], Rows]
     complete: bool = False
+
+
+def _planned_rows(plan: CanvasPlan) -> Rows:
+    """Run a deferred canvas plan into shared RGB rows."""
+    return _grey_rows(plan())
 
 
 @lru_cache(maxsize=8)
@@ -208,9 +213,15 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
 
     def candidate(tree: Node) -> _Candidate:
         if n <= _SMALL_MAX and (drawn := small_tree_canvas(tree, unit=unit)):
-            return _Candidate(tree, drawn.width * drawn.height, drawn)
+            return _Candidate(
+                tree, drawn.width * drawn.height, partial(_grey_rows, drawn)
+            )
         top, bottom, left, right = tree_extents(tree)[id(tree)]
-        return _Candidate(tree, (bottom - top + 2) * (right - left + 2) * unit**2)
+        return _Candidate(
+            tree,
+            (bottom - top + 2) * (right - left + 2) * unit**2,
+            partial(_render_node, tree, unit=unit),
+        )
 
     best = candidate(line_boolean(truth_table))
     projected = projected_boolean(truth_table)
@@ -221,18 +232,15 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
     for graph in _shared_candidates(truth_table, n):
         draw = shared_canvas(graph, best.area, unit=unit)
         if draw is not None:
-            best = _Candidate(graph, draw.area, plan=draw)
+            best = _Candidate(graph, draw.area, partial(_planned_rows, draw))
     for build in (streaming_canvas, projected_streaming_canvas):
         # A complete fold wins a fallback tie; a later fold retains the first tie.
         fold = build(truth_table, best.area + int(not best.complete), unit=unit)
         if fold is not None:
-            best = _Candidate(fold[0], fold[1].area, plan=fold[1], complete=True)
-    node, canvas, plan = best.node, best.canvas, best.plan
-    if plan is not None:
-        return lazy_raster(lambda: _grey_rows(plan()), node)
-    if canvas is not None:
-        return lazy_raster(lambda: _grey_rows(canvas), node)
-    return lazy_raster(lambda: _render_node(node, unit=unit), node)
+            best = _Candidate(
+                fold[0], fold[1].area, partial(_planned_rows, fold[1]), complete=True
+            )
+    return lazy_raster(best.rows, best.node)
 
 
 def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Raster:
