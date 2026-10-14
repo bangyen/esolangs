@@ -620,10 +620,18 @@ def _streetcode_narrow(flat: str, width: int) -> str:
     )
 
 
+# Arity from which the flat lookup is the only shape.  Random tables at n=5
+# are 46% smaller flat (509645 vs 940336 chars over 200), and 53% at n=6.
+_FLAT_FROM = 6
+
+
 def _tree_shapes(
     truth_table: str, n: int, tree: list[str], *, hallway: bool
 ) -> list[str]:
-    """Return the decision-tree shapes below six inputs, hallway first if asked."""
+    """Return the tree shapes below ``_FLAT_FROM`` inputs, hallway first if asked.
+
+    The flat lookup joins the race at the last such arity.
+    """
     # The per-input loops trade rows for columns, so only width selection
     # needs them.  The shared lap is strictly shorter through every table at
     # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
@@ -638,7 +646,7 @@ def _tree_shapes(
     # At five the flat lookup wins on dense and parity tables and loses on
     # one that folds, so it is compared; without it parity at five costs
     # 3251 against 2534 and the odd rungs stop growing linearly.
-    if n == 5:
+    if n == _FLAT_FROM - 1:
         programs.append(_streetcode_flat(truth_table, n))
     return programs
 
@@ -660,7 +668,7 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     -> 258x9 at ``width=40``), which is a shape switch, not a missing piece.
     """
     n = _validate_truth_table(truth_table)
-    if n >= 6:
+    if n >= _FLAT_FROM:
         flat = _streetcode_flat(truth_table, n)
         if width is None or grid_width(flat) <= width:
             return flat
@@ -680,7 +688,7 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
 def _balance(table: str, default: str) -> str:
     """Compare each fit threshold and the seven/nine-column fallback regimes."""
     n = _validate_truth_table(table)
-    if n >= 6:
+    if n >= _FLAT_FROM:
         flat = _streetcode_flat(table, n)
         shapes = [flat, _streetcode_rotate(flat)]
     else:
