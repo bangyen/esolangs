@@ -1,6 +1,6 @@
 """Boolean-function generator for BrainIf."""
 
-from itertools import pairwise
+from itertools import count, pairwise
 
 from esolangs.generation.helpers import (
     _ASCII_ONE,
@@ -63,6 +63,11 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     return _brainif_dag(truth_table)
 
 
+def _climb(verb: str) -> list[str]:
+    """Return the lines that raise a zero cell to the byte ``'0'``."""
+    return [f"if {value} {verb}" for value in range(_ASCII_ZERO)]
+
+
 def _brainif_zero_jumps(table: str) -> str:
     """Route small trees through unread zero cells before each branch jump."""
     n = _validate_truth_table(table)
@@ -96,7 +101,7 @@ def _brainif_zero_jumps(table: str) -> str:
         ]
     )
     mark("init")
-    lines.extend(f"if {value} inc" for value in range(_ASCII_ZERO))
+    lines.extend(_climb("inc"))
     lines.append(f"if {_ASCII_ZERO} right")
     lines.extend("if 0 right" for _ in range(n))
 
@@ -170,7 +175,7 @@ def _brainif_dag(table: str) -> str:
                 target = f"node_{depth - 1}_{child}" if depth else f"out_{child}"
                 lines.append(f"if {char} goto @{target}")
     lines.extend(["@out_0", f"if {_ASCII_ONE} move right"])
-    lines.extend(f"if {i} increment" for i in range(_ASCII_ZERO))
+    lines.extend(_climb("increment"))
     lines.extend(
         [
             f"if {_ASCII_ZERO} output",
@@ -197,11 +202,11 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[str]
     ]
     # The answer byte goes on cell 0 and the inputs above it, read from the
     # far end back down.
-    entries += [f"if {v} increment" for v in range(_ASCII_ZERO)]
+    entries += _climb("increment")
     entries.append(f"if {_ASCII_ZERO} move right")
     entries += ["if 0 move right" for _ in range(n - 1)]
 
-    next_label = 0
+    labels = count()
     shared: dict[tuple[int, str], int] = {}
 
     def build(lo: int, hi: int, k: int) -> list[str]:
@@ -243,9 +248,7 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[str]
         # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
         # bit it selects is the table's usual most-significant-first one --
         # the reads are in input order even though the pointer walks down.
-        nonlocal next_label
-        label = next_label
-        next_label += 1
+        label = next(labels)
         sub0 = build(lo, middle, k + 1)
         sub1 = build(middle, hi, k + 1)
         return [
