@@ -749,7 +749,7 @@ class Worker:
             if check_log and self.log_overflow.is_set():
                 raise RuntimeError("benchmark diagnostic byte limit exceeded")
 
-    def measure(
+    def measure(  # noqa: C901
         self,
         arguments: dict[str, Any],
         identity: dict[str, Any],

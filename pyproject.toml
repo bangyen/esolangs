@@ -111,8 +111,8 @@ ignore = [
 
 [tool.ruff.lint.mccabe]
 # Ratchet: the functions above it carry `noqa: C901`, mostly opcode
-# dispatch; a refactor removes its noqa.  Measured 2026-10-13: 224 over 10, 35 over 20, 13 over 25.
-max-complexity = 25
+# dispatch; a refactor removes its noqa.  Measured 2026-10-13: 193 over 10, 58 over 15, 17 over 20.
+max-complexity = 20
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]

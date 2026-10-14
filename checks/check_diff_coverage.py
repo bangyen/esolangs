@@ -204,7 +204,7 @@ def _coverage_json(
         return None
 
 
-def main() -> int:
+def main() -> int:  # noqa: C901
     """Check every file this branch touched against the recorded coverage."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(

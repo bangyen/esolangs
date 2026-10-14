@@ -526,7 +526,7 @@ def _pytest_cmd(cmd: list[str], *, full: bool, changed: list[str]) -> list[str]:
     return cmd
 
 
-def main() -> int:
+def main() -> int:  # noqa: C901
     """Run the verification stack: lint, types, tests, and scoping."""
     only, skip, full, quiet, verbose, allow_incomplete = _parse_only_skip()
 

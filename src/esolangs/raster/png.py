@@ -138,7 +138,7 @@ def _expected_stream_size(
     return total
 
 
-def _validate_png(
+def _validate_png(  # noqa: C901
     data: bytes,
 ) -> tuple[int, int, int, bytes]:
     """Validate the container and stream before Pillow allocates pixels."""

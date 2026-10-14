@@ -7,7 +7,7 @@ class TestSeparationLaws:
     """The first law is the least mean; the rest are the greedy cover."""
 
     @pytest.mark.slow
-    def test_the_separation_law_is_the_least_mean(self) -> None:
+    def test_the_separation_law_is_the_least_mean(self) -> None:  # noqa: C901
         """The law's constants are re-derived, not trusted."""
         from itertools import product
 

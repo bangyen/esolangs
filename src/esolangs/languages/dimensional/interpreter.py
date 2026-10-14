@@ -262,7 +262,7 @@ class _Clear:
 type _Effect = _Move | _SetValue | _AddValue | _FromCoord | _Clear
 
 
-def _advance(
+def _advance(  # noqa: C901
     state: _State,
     code: str,
     match: Mapping[int, int],

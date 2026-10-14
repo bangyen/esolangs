@@ -68,7 +68,7 @@ def _binary(
     return (*stack[:-2], operation(stack[-2], stack[-1])) if len(stack) >= 2 else stack
 
 
-def _command(
+def _command(  # noqa: C901
     change: tuple[int, int], size: int, stack: tuple[int, ...]
 ) -> tuple[tuple[int, ...], int, int, _Effect]:
     """Return the stack, control changes, and requested I/O effect."""

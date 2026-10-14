@@ -59,7 +59,7 @@ def false(truth_table: str, width: int | None = None) -> str:
 _OPEN, _BETWEEN, _CLOSE = _TEST_ONE[:-1], "?0=", "?"
 
 
-def _shared(truth_table: str, n: int) -> str:
+def _shared(truth_table: str, n: int) -> str:  # noqa: C901
     """Return the tree with repeated halves stored in variables and fetched.
 
     A half is a lambda either way, so ``[text]`` becomes ``x;`` wherever it

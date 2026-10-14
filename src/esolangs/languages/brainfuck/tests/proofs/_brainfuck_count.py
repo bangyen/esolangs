@@ -30,7 +30,7 @@ def sole_loop_counts(length: int, letters: int = 6) -> list[int]:
     return sequences
 
 
-def local_patterns() -> set[str]:
+def local_patterns() -> set[str]:  # noqa: C901
     patterns = {
         "+-",
         "-+",

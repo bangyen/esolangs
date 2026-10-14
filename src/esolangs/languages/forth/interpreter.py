@@ -146,7 +146,7 @@ def _scan(frame: _Frame, opener: str, closer: str) -> tuple[str, int] | None:
     return (frame.code[start + 1 : pc - 1], pc)
 
 
-def _advance(state: _State, line: str | None = None) -> _State:
+def _advance(state: _State, line: str | None = None) -> _State:  # noqa: C901
     """Return the state after executing one command of the active frame.
 
     Pure; ``.``'s value is read by the caller first, ``,``'s line arrives

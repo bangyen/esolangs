@@ -71,7 +71,7 @@ def _put(
     cells[x, y] = colour, owner
 
 
-def _layout(
+def _layout(  # noqa: C901
     operations: list[_Operation],
     columns: int,
     *,

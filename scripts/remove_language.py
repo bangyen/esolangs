@@ -120,7 +120,7 @@ def _whole_statement(
     )
 
 
-def _drop_entries(
+def _drop_entries(  # noqa: C901
     path: Path,
     keys: set[str],
     modules: set[str],
