@@ -391,31 +391,37 @@ def _square_tail(program: str) -> str:
     )
 
 
+def _shared_form(shared: str, n: int, *, sqrt_wrap: bool) -> str:
+    """Wrap a shared-residual template square-ish."""
+    tokens = _tokens(shared, n)
+    # A unary tape walk can contain O(T) tokens. A square-root wrap and
+    # inert tail give a square without enumerating token-fit widths.
+    width = (
+        max(isqrt(len(shared)) + 1, max(map(len, tokens)))
+        if sqrt_wrap
+        else balanced_token_width(tokens, minimum=max(map(len, tokens)))
+    )
+    return _wrap_template(shared, n, width)
+
+
 def _balance(table: str, default: str) -> str:
     """Compare byte accumulators with the positional balance floor."""
     n = len(table).bit_length() - 1
     positional = _lookup_balance(table, _solve(table))
     mask = _affine_mask(table)
+    forms: list[str] = []
     if mask is None:
-        forms = [(two_state(table), False), (stored(table, len(positional)), True)]
+        if (two := two_state(table)) is not None:
+            forms.append(_shared_form(two, n, sqrt_wrap=False))
+        if (kept := stored(table, len(positional))) is not None:
+            forms.append(_shared_form(kept, n, sqrt_wrap=True))
     else:
         parity = _parity_columns(n, int(table[0]), mask=mask, paired=True)
-        forms = [(parity, False)]
+        forms.append(_shared_form(parity, n, sqrt_wrap=False))
     candidates = [positional]
     if len(default) <= len(positional):
         candidates.append(default)
-    for shared, sqrt_wrap in forms:
-        if shared is None:
-            continue
-        tokens = _tokens(shared, n)
-        # A unary tape walk can contain O(T) tokens. A square-root wrap and
-        # inert tail give a square without enumerating token-fit widths.
-        width = (
-            max(isqrt(len(shared)) + 1, max(map(len, tokens)))
-            if sqrt_wrap
-            else balanced_token_width(tokens, minimum=max(map(len, tokens)))
-        )
-        shared = _wrap_template(shared, n, width)
+    for shared in forms:
         candidates.extend(
             candidate
             for candidate in (shared, _square_tail(shared))
