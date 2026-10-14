@@ -117,14 +117,15 @@ under a fixed template and fill mapping.
   missing value and moves that digit to the top. The three maps are disjoint, giving 49,152
   cells and leaving 9,897 (one cell wraps; reorder the top digit). That
   replaces the 8,377-10,449-cell address fold with two extra group-4 runs.
-  Navigation dominates code: sixteen's main line is 5,505 cells, of which
-  4,624 are `o`. Six run-time pointer cells cut it to about 4,040 with all
-  65,536 rows still correct (scratch, unshipped). Seven meanings per cell need
-  the address parity. Its trit-sum parity should follow from `p` with `A`
-  all-2 then all-1 (checked per trit), folding ten rotations into an all-1
-  accumulator (not executed).
-  The decoder, label layout and placement remain unbuilt; the estimate
-  (5-6k code cells against about 6.1k) is unmeasured.
+  Six run-time pointer cells (`_D_POINTERS`) cut sixteen's main line from
+  5,505 to 4,038 cells; all 65,536 rows stay correct. Seven meanings per
+  cell need the address parity: `p` with `A` all-2 then all-1, then ten
+  rotations folded into an all-1 cell, gives it in 240 cells, 0 of 59,049
+  words wrong (scratch, executed). Swaps `v` {0,3,4}, `u` {1,2} make the
+  third cell's parity equal the first's for every prefix (model).
+  Dispatch does not fit (2026-10-14, scratch, executed): the seven-class label
+  window plus 14 hubs alone takes 5,155 main-line cells, leaving the line near
+  7,200 against 6,562 before the third-cell fold and per-state transitions.
 
 
   Counting bounds each family independently of mixer quality:
