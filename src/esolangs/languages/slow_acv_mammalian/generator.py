@@ -94,6 +94,25 @@ _LEAF_UNIT = 8
 #: is why there is exactly one more of them than there are pools.
 _FREE = len(_POOLS) + 1
 
+#: Fewest inputs at which the cell-255 chain beats the tree, by I/O modulus:
+#: 64835 vs 95678 characters at n=3 with I/O 255, 83404 vs 83749 at n=2 with
+#: I/O 256; smaller tables are smaller as trees.
+_CHAIN_MIN_INPUTS = {255: 3, 256: 2}
+
+#: Leaf slot of the I/O-255 chain above :data:`_FREE` inputs: the longest
+#: leaf is seven tokens, and its weights step by 255 instead of 256.
+_COMPACT_UNIT = 7
+
+#: Bound on the leaf-base fixed point and the arm-slot widening below; both
+#: are several times the measured maximum (6 and 3 over n<=10).
+_BASE_PASSES = 12
+_SLOT_PASSES = 24
+_TUNE_PASSES = 8
+#: First guess for an arm's slot past its banking run, and the step a failed
+#: build widens it by.
+_SLOT_HEADROOM = 300
+_SLOT_WIDEN = 128
+
 #: A machine state as the generator tracks it: array 0 and the accumulator.
 type _State = tuple[list[int], int]
 
@@ -663,12 +682,12 @@ def _settle(
     trampoline can only reach *past* array 0's running sum, so a failed
     build widens the slot and the narrowest arm that fits is kept.
     """
-    slot = _arm_core_len(one, weight, pool) + 300
-    for _ in range(24):
+    slot = _arm_core_len(one, weight, pool) + _SLOT_HEADROOM
+    for _ in range(_SLOT_PASSES):
         built = _try_arm(one, zero, weight, pool, landing + slot)
         if built is not None and len(built[0]) <= slot:
             break
-        slot = max(slot + 128, len(built[0]) if built else 0)
+        slot = max(slot + _SLOT_WIDEN, len(built[0]) if built else 0)
     else:  # pragma: no cover - widening always reaches a fit
         raise AssertionError("the arm slot did not settle")
     arm_toks, merged = built
@@ -701,24 +720,16 @@ def _tune(
     """Build the arm, moving ``beta`` until the two branches' heads agree.
 
     Both paths leave ``head0 == 2*hop - cont`` in the I/O residue domain.
-    Modulo 255, reuse the zero path's hop and solve beta directly. Modulo
-    256 the delta is even; the loop absorbs chunk-boundary changes.
+    Modulo 255 :func:`_tune_255` solves beta directly. Modulo 256 the delta
+    is even; the loop absorbs chunk-boundary changes (at most 4 passes
+    measured over n<=10).
     """
     z = _laundered(zero)
     _jump(z, cont)
     if one.io_modulus == 255:
-        st = one.clone()
-        tokens = _arm_core(st, weight, pool)
-        # Closing head is (2*hop - cont) % 255. Reuse the zero path's hop;
-        # beta + 254*chunks = cont - nonhead - hop fixes beta modulo 254.
-        hop = ((z.h0 + cont) * pow(2, -1, 255)) % 255
-        gap = cont - st.n0 - hop
-        if gap < 0:
-            raise _UnreachableError("merge precedes the one-branch sum")
-        tokens += _close_arm(st, gap % 254, cont)
-        return tokens, st
+        return _tune_255(one, z, weight, pool, cont)
     beta = one.io_modulus - 1
-    for _ in range(8):
+    for _ in range(_TUNE_PASSES):
         arm_toks, merged = _arm(one, weight, pool, beta, cont)
         delta = (merged.h0 - z.h0) % one.io_modulus
         if delta == 0:
@@ -727,6 +738,22 @@ def _tune(
             raise AssertionError(f"odd head delta {delta}")
         beta = (beta + delta // 2) % _MODULUS
     raise AssertionError("the tuning byte did not settle")  # pragma: no cover
+
+
+def _tune_255(
+    one: _Sums, z: _Sums, weight: int, pool: int | None, cont: int
+) -> tuple[list[str], _Sums]:
+    """Modulo-255 :func:`_tune`: solve ``beta`` directly from the zero path's hop."""
+    st = one.clone()
+    tokens = _arm_core(st, weight, pool)
+    # Closing head is (2*hop - cont) % 255. Reuse the zero path's hop;
+    # beta + 254*chunks = cont - nonhead - hop fixes beta modulo 254.
+    hop = ((z.h0 + cont) * pow(2, -1, 255)) % 255
+    gap = cont - st.n0 - hop
+    if gap < 0:
+        raise _UnreachableError("merge precedes the one-branch sum")
+    tokens += _close_arm(st, gap % 254, cont)
+    return tokens, st
 
 
 def _check_merge(merged: _Sums, zero: _Sums, weight: int) -> None:
@@ -770,36 +797,44 @@ def _program(
     if not keep_constant_input and len(set(truth_table)) == 1:
         return _constant_read(truth_table[0], n, moduli.cell_modulus)
     if moduli.cell_modulus == 255:
-        # Chain/tree characters: 64835/95678 at n=3 with I/O 255;
-        # 83404/83749 at n=2 with I/O 256. Smaller trees win below these.
-        if n >= (3 if moduli.io_modulus == 255 else 2):
-            legacy = compact_chain(
-                truth_table,
-                n,
-                modulus=moduli.cell_modulus,
-                io_modulus=moduli.io_modulus,
-            )
-        else:
-            legacy = decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
-        used = essential_inputs(truth_table, n)
-        if keep_ignored_inputs or not used or len(used) == n:
-            return legacy
-        projected = compact_chain(
-            truth_table,
-            n,
-            modulus=moduli.cell_modulus,
-            io_modulus=moduli.io_modulus,
-            project_inputs=True,
+        return _program_255(
+            truth_table, n, moduli.io_modulus, keep_ignored_inputs=keep_ignored_inputs
         )
-        return min(legacy, projected, key=len)
+    return _program_256(truth_table, n, moduli.io_modulus)
+
+
+def _program_255(
+    truth_table: str, n: int, io_modulus: int, *, keep_ignored_inputs: bool
+) -> str:
+    """Cell modulus 255: a coprime-array chain, or a tree below its break-even.
+
+    A table with ignored inputs also races the chain projected onto its
+    essential inputs, keeping the shorter; one ignored input saves 4.6% at
+    n=8 and 11.6% at n=10 (I/O 255).
+    """
+    if n >= _CHAIN_MIN_INPUTS[io_modulus]:
+        legacy = compact_chain(truth_table, n, modulus=255, io_modulus=io_modulus)
+    else:
+        legacy = decision_tree(truth_table, n, io_modulus=io_modulus)
+    used = essential_inputs(truth_table, n)
+    if keep_ignored_inputs or not used or len(used) == n:
+        return legacy
+    projected = compact_chain(
+        truth_table, n, modulus=255, io_modulus=io_modulus, project_inputs=True
+    )
+    return min(legacy, projected, key=len)
+
+
+def _program_256(truth_table: str, n: int, io_modulus: int) -> str:
+    """Cell modulus 256: the weighted chain into a flat leaf table."""
     # The weights and pools are laid out over the essential inputs; an
     # ignored one's node banks 0 with no pool, so it reads and the leaf rows
     # it would split coincide, holding equal entries.
     essential = essential_inputs(truth_table, n) or list(range(n))
     m = len(essential)
     unit, stride = _LEAF_UNIT, _MODULUS
-    if moduli.io_modulus == 255 and m > _FREE:
-        unit, stride = 7, 255
+    if io_modulus == 255 and m > _FREE:
+        unit, stride = _COMPACT_UNIT, 255
     kept = _weights(m, stride=stride, unit=unit)
     free = min(m, _FREE)
     kept_pools: list[int | None] = [None] * (m - free + 1) + list(_POOLS[: free - 1])
@@ -807,9 +842,11 @@ def _program(
     pools: list[int | None] = [None] * n
     for i, weight, pool in zip(essential, kept, kept_pools, strict=True):
         weights[i], pools[i] = weight, pool
+    # The leaf base is a fixed point of the emitted length: each pass pads to
+    # the previous length.  Measured 2-6 passes over n<=10 random tables.
     base = 0
-    for _ in range(12):
-        tokens = _emit(weights, pools, base, io_modulus=moduli.io_modulus, unit=unit)
+    for _ in range(_BASE_PASSES):
+        tokens = _emit(weights, pools, base, io_modulus=io_modulus, unit=unit)
         leaf_start = len(tokens) - sum(weights) - unit
         if leaf_start == base:
             return " ".join(_with_leaves(tokens, truth_table, weights, unit=unit))
