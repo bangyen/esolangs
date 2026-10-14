@@ -70,7 +70,7 @@ class _State(NamedTuple):
     """The movement half of a machine's state.
 
     Tape, CP and I/O are absent: they do not steer, and leaving them out
-    makes the state space finite (see ``_Machine._drive_states``).  A
+    makes the state space finite (see ``validation.drive_states``).  A
     NamedTuple so graph keys and successors are hashable and named.
     """
 
@@ -286,7 +286,7 @@ def _drives_on_the_right(grid: _Grid, state: _State) -> bool:
     A lane is the car's own when the wall it hugs is on its *right*.  The
     drive-state search probes both branch conditions, so it reaches
     wrong-side successors a real run never does; those have no successor
-    and looked like the wedged streets :meth:`_Machine._validate_total`
+    and looked like the wedged streets ``validation.validate_total``
     rejects, refusing correct programs with tightly drawn lanes.  Walls on
     both sides or neither is not a violation.
     """
@@ -805,11 +805,11 @@ def _drive[StateT: _State](
 ) -> "StateT | _Halt | None":
     """Return the state one step on from ``state``, or why there is none.
 
-    The whole movement semantics; pure, so :meth:`_Machine._drive_states`
+    The whole movement semantics; pure, so ``validation.drive_states``
     can enumerate it and :meth:`_Machine.step` replay it.  ``;`` is
     ``"halt"``; ``U`` reverses into the lane now on the right and clears
     every latch.  ``None`` is running out of road (a wedged street, which
-    :meth:`_Machine._validate_total` rejects), deliberately not ``"halt"``.
+    ``validation.validate_total`` rejects), deliberately not ``"halt"``.
     Value-dependent halts stay in :meth:`_Machine.step`.
     """
     car = state.car
