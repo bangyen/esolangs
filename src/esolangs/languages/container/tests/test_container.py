@@ -165,11 +165,6 @@ class TestContract(SnapshotContract, StateViewContract):
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["A=0:", "+1 A>=0"]
-    # `queue` is the input read but not yet consumed, which this program
-    # never fills -- it is read either side regardless, and `memory` (the
-    # containers' values) is what the tick moves.
-    state_views: ClassVar[tuple[str, ...]] = ("queue", "ip", "memory")
+    # `memory` (the containers' values) is what the tick moves.
+    state_views: ClassVar[tuple[str, ...]] = ("ip", "memory")
     viewing_program: ClassVar[list[str]] = ["A=0:", "+1 A>=0"]
-    # No program in this file moves the queue view; it stays empty
-    # for the whole run.
-    constant_views: ClassVar[frozenset[str]] = frozenset({"queue"})
