@@ -10,7 +10,6 @@ from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
-    grid_area,
     grid_width,
     input_weights,
     layout_width,
@@ -40,111 +39,6 @@ def _extent(grid: _Grid) -> tuple[int, int]:
         max(r for r, _ in grid) + 1,
         max(c for _, c in grid) + 1,
     )
-
-
-def _back_walk(grid: _Grid, height: int, width: int) -> int | None:
-    """Bound both outcomes of every skip; reject a reachable beam cycle."""
-    start = (0, 1, 0, 1)
-    costs: dict[tuple[int, int, int, int], int] = {}
-    active: set[tuple[int, int, int, int]] = set()
-    stack = [(start, False)]
-
-    def successors(state: tuple[int, int, int, int]) -> list[tuple[int, int, int, int]]:
-        row, col, dy, dx = state
-        char = grid.get((row, col), " ")
-        if char == "*":
-            return []
-        if char == "\\":
-            dy, dx = dx, dy
-        elif char == "/":
-            dy, dx = -dx, -dy
-        steps = (1, 2) if char == "+" else (1,)
-        return [
-            ((row + step * dy) % height, (col + step * dx) % width, dy, dx)
-            for step in steps
-        ]
-
-    while stack:
-        state, returning = stack.pop()
-        if state in costs:
-            continue
-        children = successors(state)
-        if returning:
-            costs[state] = 1 + max((costs[child] for child in children), default=0)
-            active.remove(state)
-        else:
-            if state in active:
-                return None
-            active.add(state)
-            stack.append((state, True))
-            stack.extend((child, False) for child in children if child not in costs)
-    return costs[start]
-
-
-def _back_bend(
-    grid: _Grid,
-    positions: dict[_Node, tuple[int, int]],
-    shared: set[_Node],
-    ids: list[list[int]],
-    draw: Callable[[set[_Node]], tuple[_Grid, dict[_Node, tuple[int, int]]]],
-) -> _Grid | None:
-    """Route the first nonadjacent repeat through column one, if unobstructed."""
-    route = None
-    for level in range(len(ids) - 1):
-        order = [node for node in positions if node[0] == level]
-        owners: dict[int, list[_Node]] = {}
-        for index in range(len(order) - 1, -1, -1):
-            node = order[index]
-            if node not in shared:
-                matching = owners.get(ids[level + 1][2 * node[1] + 1], [])
-                if matching and matching[-1] != order[index + 1]:
-                    route = node, matching[-1]
-            owners.setdefault(ids[level + 1][2 * node[1]], []).append(node)
-        if route is not None:
-            break
-    if route is None:
-        return None
-    node, owner = route
-    candidate, where = draw(shared | {node})
-    if node not in where or owner not in where:
-        return None
-    sy, col = where[node]
-    ty, _ = where[owner]
-    sy += 1
-    ty -= 1
-    if sy >= ty:
-        return None
-    path = [(sy, c) for c in range(1, col + 1)]
-    path += [(r, 1) for r in range(sy + 1, ty + 1)]
-    path += [(ty, c) for c in range(2, col + 1)]
-    if any(cell in candidate for cell in path):
-        return None
-    turns = {(sy, col): "/", (sy, 1): "/", (ty, 1): "\\", (ty, col): "\\"}
-
-    def falls(
-        cells: _Grid, nodes: dict[_Node, tuple[int, int]]
-    ) -> dict[_Node, _Node | None]:
-        height = _extent(cells)[0]
-        by_cell = {cell: key for key, cell in nodes.items()}
-        targets = {}
-        for key in shared:
-            if key not in nodes:
-                continue
-            row, column = nodes[key]
-            row = (row + 1) % height
-            while (row, column) not in cells:
-                row = (row + 1) % height
-            targets[key] = by_cell.get((row, column))
-        return targets
-
-    candidate.update(turns)
-    before = falls(grid, positions)
-    if any(target is None for target in before.values()):
-        return None
-    after = falls(candidate, where)
-    if any(after.get(key) != target for key, target in before.items() if key in where):
-        return None
-    return candidate
 
 
 def _render(rows: list[dict[int, str]]) -> str:
@@ -256,17 +150,14 @@ def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> st
     level draws none: the beam falls down the column onto that node's mirror,
     the first cell below, and turns east into the zero side.  The column
     wraps, so the level's last node reaches its first the same way, from eight
-    rows up.  At 6..12 essential inputs, the first nonadjacent repeat may
-    bend through column 1. Admission preserves existing falls, reduces text
-    and rectangular area, and bounds both outcomes of each skip. A seeded
-    n=7 three-block control shrinks 1,267 to 1,156 characters and 1,560 to
-    1,274 cells, executing all 128 inputs within 179 commands (bound 221).
-    Unrestricted bends previously raised n=6/7 worst commands from 122/221
-    to 154/306, past that bound.  Straight-fall area (rows x longest row), n=6/7:
-    random -21.9% / -23.6%, tiled from two random blocks -17.5% / -35.8%,
-    constant half 0% / -13.1%; n <= 5 is unchanged, the load column setting
-    the height.  The wrap, over the next-node fall alone, n=8/9: tiled -9.7% /
-    -6.6% of characters (-16.5% / -9.7% of area), random and constant half 0%.
+    rows up.  Straight-fall area (rows x longest row), n=6/7: random -21.9% /
+    -23.6%, tiled from two random blocks -17.5% / -35.8%, constant half
+    0% / -13.1%; n <= 5 is unchanged, the load column setting the height.
+    The wrap, over the next-node fall alone, n=9 (200 tables each): random
+    and constant half 0%, eight blocks drawn from two random ones -10.2% of
+    characters (-15.6% of area), from two 32-row blocks -2.9%.  A bend of the
+    first nonadjacent repeat through column 1 was retired: it saved at most
+    2.7% of characters on average at n=7..10 (best single table 14.7%).
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
@@ -283,13 +174,6 @@ def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> st
         ),
         key=len,
     )
-    # Bound the admission analysis; larger trees retain their existing scaling.
-    if wrap and width is None and 6 <= levels <= 12:
-        candidate = _back_ordered(
-            table, tuple(range(levels)), weights=weights, wrap=True, bend=True
-        )
-        if len(candidate) < len(program) and grid_area(candidate) < grid_area(program):
-            program = candidate
     if width is not None and width > 0 and grid_width(program) > width:
         parity = _back_parity(truth_table, n)
         if parity is not None:
@@ -344,7 +228,6 @@ class _BackDrawState:
     where: dict[_Node, tuple[int, int]]
     next_row: int
     vertical: bool
-    reserved: _Node | None
     shared: set[_Node]
     levels: int
     n: int
@@ -384,9 +267,6 @@ def _back_emit(
     state.where[level, block] = (row, col + 1)
     _back_emit(state, level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
     if (level, block) in state.shared:
-        # Keep one empty row for the bend before compacting later nodes.
-        if (level, block) == state.reserved:
-            state.next_row += 1
         return
     nrow = state.next_row
     state.next_row += 1
@@ -403,7 +283,6 @@ def _back_draw(
     constant: Callable[[int, int], bool],
     *,
     vertical: bool,
-    reserved: _Node | None = None,
 ) -> tuple[_Grid, dict[_Node, tuple[int, int]]]:
     """Draw the tree; return its cells and each node's cell by (level, block).
 
@@ -416,7 +295,6 @@ def _back_draw(
         where={},
         next_row=1,
         vertical=vertical,
-        reserved=reserved,
         shared=shared,
         levels=levels,
         n=n,
@@ -513,20 +391,6 @@ def _back_plan(
     return shared
 
 
-def _bend_command_limit(n: int) -> int:
-    """Admission bound for a bent tree's worst-case command count.
-
-    ``tree_rows`` budgets the rows the beam may walk in the bent tree: three
-    quarters of the full ``2**n``-row tree plus the origin row.  The full
-    limit is the tree-height bound ``max(tree_rows, 6 * n - 1)`` (the load
-    column can set the height) plus the walk bound ``tree_rows`` again, plus
-    ``3 * n`` for the entry/load turns and a six-command margin.  A bend is
-    admitted only when ``bent_height + 5 + commands`` stays within it.
-    """
-    tree_rows: int = 3 * 2**n // 4 + 1
-    return max(tree_rows, 6 * n - 1) + tree_rows + 3 * n + 6
-
-
 def _back_ordered(
     truth_table: str,
     perm: tuple[int, ...],
@@ -534,7 +398,6 @@ def _back_ordered(
     weights: list[int] | None = None,
     *,
     wrap: bool = False,
-    bend: bool = False,
 ) -> str:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 
@@ -572,60 +435,32 @@ def _back_ordered(
     for level, i in enumerate(perm):
         cells[essential[i]] = level
 
-    # Reverse name order: the load is drawn bottom-up in column 0, so this
-    # emits input 0 first.
-    units = _back_load(list(range(n - 1, -1, -1)), cells, weights, levels, n)
-
     constant = constant_span_test(truth_table)
-    ids = subtree_ids(truth_table)
-
     plan = partial(
         _back_plan,
         truth_table=truth_table,
         levels=levels,
         n=n,
         wrap=wrap,
-        ids=ids,
+        ids=subtree_ids(truth_table),
         constant=constant,
     )
-    shared = plan(vertical=False)
-    grid, positions = _back_draw(
-        truth_table, levels, n, shared, constant, vertical=False
-    )
-    bent = None
-    if bend and width is None and 6 <= levels <= 12:
-        bent = _back_bend(
-            grid,
-            positions,
-            shared,
-            ids,
-            lambda chosen: _back_draw(
-                truth_table,
-                levels,
-                n,
-                chosen,
-                constant,
-                vertical=False,
-                reserved=next(iter(chosen - shared)),
-            ),
-        )
 
-    if width is not None and width > 0:
-        span = max(c for _, c in grid) + 3
-        if span > width:
-            down = _back_load(list(range(n)), cells, weights, levels, n)
-            wide = _descending_back(grid, down)
-            grid, _ = _back_draw(
-                truth_table,
-                levels,
-                n,
-                plan(vertical=True),
-                constant,
-                vertical=True,
-            )
-            tall = _descending_back(grid, down)
-            return min((wide, tall), key=grid_width)
+    def draw(shared: set[_Node], *, vertical: bool) -> _Grid:
+        return _back_draw(truth_table, levels, n, shared, constant, vertical=vertical)[
+            0
+        ]
 
+    grid = draw(plan(vertical=False), vertical=False)
+    if width is not None and width > 0 and max(c for _, c in grid) + 3 > width:
+        down = _back_load(list(range(n)), cells, weights, levels, n)
+        wide = _descending_back(grid, down)
+        tall = _descending_back(draw(plan(vertical=True), vertical=True), down)
+        return min((wide, tall), key=grid_width)
+
+    # Reverse name order: the load is drawn bottom-up in column 0, so this
+    # emits input 0 first.
+    units = _back_load(list(range(n - 1, -1, -1)), cells, weights, levels, n)
     # Height is max(tree 2**n, load units + 1).  Past n=3 load rows share with
     # tree rows; safe only because a run is one character for either bit.
     rows, tree_width = _extent(grid)
@@ -635,21 +470,7 @@ def _back_ordered(
     # tree at column 1.
     _place_load(grid, units, height)
     # No input row can instantiate to whitespace.
-    program = _reflect_back(grid, height, tree_width)
-    if bent is not None:
-        bent_rows, bent_width = _extent(bent)
-        bent_height = max(bent_rows, 1 + len(units))
-        commands = _back_walk(bent, bent_height, bent_width + 2)
-        limit = _bend_command_limit(n)
-        # Five entry turns plus the full load column bound either bit value.
-        if commands is not None and bent_height + 5 + commands <= limit:
-            _place_load(bent, units, bent_height)
-            candidate = _reflect_back(bent, bent_height, bent_width)
-            if len(candidate) < len(program) and bent_height * (
-                bent_width + 2
-            ) < height * (tree_width + 2):
-                return candidate
-    return program
+    return _reflect_back(grid, height, tree_width)
 
 
 def _balance(table: str, default: str) -> str:
