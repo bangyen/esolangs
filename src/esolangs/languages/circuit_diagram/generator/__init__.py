@@ -112,9 +112,6 @@ _ROW_STEP = 2
 # fixed-order folds and shared banks cannot beat the direct mux build
 # (see the ``circuit_diagram`` docstring).
 _COMPETING_MODEL_MIN_INPUTS = 8
-# The shared H-pool layout only pays off with six or more essential
-# inputs; with fewer, the H-term layout is already minimal.
-_H_POOL_MIN_INPUTS = 6
 # Columns the output dash and colon add past the final gate group, so
 # banding rebuilds this much narrower when the first attempt is too wide.
 _OUTPUT_GLYPH_COLUMNS = 2
@@ -614,7 +611,7 @@ def _linear_shared_layout(
     Record every model in ``_models`` for final character comparison.
     Ordered interval work is O(M log M), with M=O(T/log T) residuals.
     """
-    from .hpool import _h_pool_area_floor
+    from .hpool import _H_POOL_MIN_INPUTS, _h_pool_area_floor
 
     used, projected = _essential_table(table, inputs)
     candidates = [(projected, used)]
@@ -671,7 +668,7 @@ def _select_h_fallback(
     Only skips an older layout when it is strictly larger, preserving its
     area ties: the mandatory term glyphs prove these floors.
     """
-    from .hpool import _h_pool_area_floor, _h_pool_layout
+    from .hpool import _H_POOL_MIN_INPUTS, _h_pool_area_floor, _h_pool_layout
 
     selected: _Layout | None = None
     if large_area is None or large_area >= _h_term_area_floor(len(used), inputs):
@@ -686,13 +683,13 @@ def _select_h_fallback(
 
 
 def _select_competing_model(truth_table: str, inputs: int) -> _Layout:
-    """Compete the fold, sparse, H, bundled, class, and cofactor layouts.
+    """Compete the fold, sparse, H, bundled, and class layouts.
 
     Returns the smallest-area model, keeping the older layout on ties
     unless a strictly smaller model supersedes it. Raises AssertionError
     when no candidate builds, which the constructions rule out.
     """
-    from .banks import _cofactor_bank_candidate, _residual_class_bank_candidate
+    from .banks import _residual_class_bank_candidate
     from .bundled_banks import bundled_class_bank_candidate
     from .folded_banks import folded_class_bank_candidate
     from .hpool import _large_pool_layout
@@ -717,12 +714,10 @@ def _select_competing_model(truth_table: str, inputs: int) -> _Layout:
     large_area = _layout_area(large) if large is not None else None
     if selected is None:
         selected = _select_h_fallback(projected, used, inputs, large_area)
-    prefer_old_bank = selected is None
-    if large is not None:
-        if selected is None:
-            selected = large
-        elif large_area is not None and large_area < _layout_area(selected):
-            selected, prefer_old_bank = large, True
+    if large is not None and (
+        selected is None or _layout_area(large) < _layout_area(selected)
+    ):
+        selected = large
     if selected is None:  # both fallbacks above are construction invariants
         raise AssertionError("missing Circuit Diagram layout")
     area = _layout_area(selected)
@@ -732,13 +727,7 @@ def _select_competing_model(truth_table: str, inputs: int) -> _Layout:
         area = _layout_area(selected)
     classes = _residual_class_bank_candidate(truth_table, area)
     if classes is not None and _layout_area(classes) < area:
-        selected, prefer_old_bank = classes, True
-        area = _layout_area(selected)
-    bank = _cofactor_bank_candidate(truth_table, area)
-    if bank is not None:
-        bank_area = _layout_area(bank)
-        if bank_area < area or (prefer_old_bank and bank_area == area):
-            selected = bank
+        selected = classes
     return selected
 
 
@@ -746,7 +735,7 @@ def _competing_model_circuit(truth_table: str, inputs: int) -> str:
     """Return the smallest emitted-character circuit among the n>=8 layouts.
 
     Fixed-order folds compete by area against prefix H-layouts and shared
-    cofactor banks; sharing wins character ties.
+    class banks; sharing wins character ties.
     """
     from .source_size import layout_source_size
 
@@ -772,7 +761,7 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     inside the width if that came out too wide.
 
     From eight inputs, three complete fixed-order folds compete by emitted
-    characters against prefix H-layouts and shared cofactor banks. Interval
+    characters against prefix H-layouts and shared class banks. Interval
     models count characters before rendering, so a node cap cannot hide a
     smaller complete fold. Sharing wins character ties.
 

@@ -8,6 +8,7 @@ from esolangs.generation.helpers import _validate_truth_table
 
 from .hcells import _HCellLayout
 from .hlayout import (
+    _Block,
     _depth,
     _h_reserve_terms,
     _h_route_literals,
@@ -17,20 +18,9 @@ from .hlayout import (
 )
 from .layout import _Layout, _resolve_order, _Shape
 
-
-@dataclass(frozen=True)
-class _PoolBlock:
-    x: int
-    y: int
-    width: int
-    height: int
-
-    def quadrants(self, width: int, height: int) -> tuple[_PoolBlock, ...]:
-        far_x, far_y = self.width - width, self.height - height
-        return tuple(
-            _PoolBlock(self.x + dx, self.y + dy, width, height)
-            for dx, dy in ((0, 0), (far_x, 0), (0, far_y), (far_x, far_y))
-        )
+# The shared H pool only pays off with six or more essential inputs; with
+# fewer, the H-term layout is already minimal.
+_H_POOL_MIN_INPUTS = 6
 
 
 @dataclass(frozen=True)
@@ -44,6 +34,26 @@ class _FooterPlan(_HTermPlan):
             if _depth(prefix) == self.inputs
             else (x + 4, y - 3)
         )
+
+
+def _pool_tail(inputs: int) -> int:
+    """Return an H pool's leaf width: three inputs when ``inputs`` is odd, else four."""
+    return 3 if inputs % 2 else 4
+
+
+def _pool_leaf(tail: int) -> int:
+    """Return the side of a pool's leaf block for a three/four-input tail."""
+    return 96 if tail == 3 else 192
+
+
+def _pool_inset(tail: int) -> int:
+    """Return how far the prefix site sits inside the leaf's right edge."""
+    return 8 if tail == 3 else 16
+
+
+def _atom_inputs(n: int) -> int:
+    """Return a class's input width: seven when ``n`` is odd, else eight."""
+    return 7 if n % 2 else 8
 
 
 def _atom_gate_bound(inputs: int) -> int:
@@ -65,7 +75,7 @@ def _h_pool_size(prefix_inputs: int, tail_inputs: int) -> int:
         raise ValueError(
             "cofactor pools need an even prefix and three/four suffix inputs"
         )
-    leaf = 96 if tail_inputs == 3 else 192
+    leaf = _pool_leaf(tail_inputs)
     if prefix_inputs == 0:
         return leaf
     return (
@@ -77,14 +87,15 @@ def _h_pool_size(prefix_inputs: int, tail_inputs: int) -> int:
 
 def _h_pool_area_floor(inputs: int, ports: int) -> int:
     """Bound small-pool area from its bottom-right retained term glyph."""
-    tail = 3 if inputs % 2 else 4
+    tail = _pool_tail(inputs)
     prefix = inputs - tail
     if prefix < 2:
         return 0
     side = _h_pool_size(prefix, tail)
-    leaf, inset = (96, 8) if tail == 3 else (192, 16)
     margin = 8 * ports + 8
-    return (margin + side - inset + 1) * (margin + side - leaf + 9)
+    return (margin + side - _pool_inset(tail) + 1) * (
+        margin + side - _pool_leaf(tail) + 9
+    )
 
 
 def _h_pool_layout(
@@ -93,7 +104,7 @@ def _h_pool_layout(
     """Route fixed-size cofactor pools through a prefix H tree in O(T) area."""
     return _pool_layout(
         table,
-        3 if (len(table).bit_length() - 1) % 2 else 4,
+        _pool_tail(len(table).bit_length() - 1),
         input_order=input_order,
         port_inputs=port_inputs,
     )
@@ -113,7 +124,7 @@ def _large_pool_layout(
     n=8/10/12 and n=9/11/13, native emitted growth ratios are 3.369/4.209.
     """
     n, order, ports = _pool_inputs(table, input_order, port_inputs)
-    k = 7 if n % 2 else 8
+    k = _atom_inputs(n)
     if ceiling is not None and n > k:
         leaf = _large_leaf_height(k)
         side = leaf
@@ -171,8 +182,8 @@ def _pool_geometry(k: int, p: int, atoms: dict[str, _Layout]) -> _PoolGeometry:
         leaf_width = max(leaf_height, 8 * ((atom_width + 8 * k + 55) // 8))
         prefix_x, bank_y = leaf_width - 16, 8 * k + 8
     else:
-        leaf_width = leaf_height = 96 if k == 3 else 192
-        prefix_x, bank_y = leaf_width - (8 if k == 3 else 16), 40
+        leaf_width = leaf_height = _pool_leaf(k)
+        prefix_x, bank_y = leaf_width - _pool_inset(k), 40
     dimensions = {0: (leaf_width, leaf_height)}
     for remaining in range(2, p + 1, 2):
         width, height = dimensions[remaining - 2]
@@ -183,12 +194,12 @@ def _pool_geometry(k: int, p: int, atoms: dict[str, _Layout]) -> _PoolGeometry:
 
 def _descend(
     sites: dict[int, tuple[int, int]],
-    blocks: dict[int, _PoolBlock],
+    blocks: dict[int, _Block],
     geometry: _PoolGeometry,
     k: int,
     prefix: int,
     r: int,
-    block: _PoolBlock,
+    block: _Block,
 ) -> None:
     """Record every prefix site and leaf block under ``block``."""
     if r == 0:
@@ -240,7 +251,7 @@ class _PoolBuild:
         self.large = k >= 7
         self.geometry = _pool_geometry(k, self.p, atoms)
         width, height = self.geometry.dimensions[self.p]
-        self.blocks = {1: _PoolBlock(0, 0, width, height)}
+        self.blocks = {1: _Block(0, 0, width, height)}
         raw: dict[int, tuple[int, int]] = {}
         _descend(raw, self.blocks, self.geometry, k, 1, self.p, self.blocks[1])
         self.margin = 8 * ports + 8

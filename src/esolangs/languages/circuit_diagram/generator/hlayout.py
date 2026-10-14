@@ -11,6 +11,8 @@ Larger folds compare fixed-size cofactor pools against this lattice over
 essential inputs; ignored inputs keep their original ports and drive no gates.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
@@ -44,20 +46,19 @@ _RESULT_TRACK = (4, 3)
 
 @dataclass(frozen=True)
 class _Block:
-    """Square reserved by one recursive H-layout subtree."""
+    """Rectangle reserved by one recursive H-layout subtree."""
 
     x: int
     y: int
-    size: int
+    width: int
+    height: int
 
-    def quadrants(self, child_size: int) -> tuple["_Block", ...]:
+    def quadrants(self, width: int, height: int) -> tuple[_Block, ...]:
         """Return four corner children around this block's centre cross."""
-        far = self.size - child_size
-        return (
-            _Block(self.x, self.y, child_size),
-            _Block(self.x + far, self.y, child_size),
-            _Block(self.x, self.y + far, child_size),
-            _Block(self.x + far, self.y + far, child_size),
+        far_x, far_y = self.width - width, self.height - height
+        return tuple(
+            _Block(self.x + dx, self.y + dy, width, height)
+            for dx, dy in ((0, 0), (far_x, 0), (0, far_y), (far_x, far_y))
         )
 
 
@@ -82,14 +83,16 @@ def _h_size(inputs: int) -> int:
 
 def _h_blocks(inputs: int) -> dict[int, _Block]:
     """Assign every two-level heap node a non-overlapping H-layout square."""
-    root = _Block(0, 0, _h_size(inputs))
+    root = _Block(0, 0, _h_size(inputs), _h_size(inputs))
     blocks = {1: root}
 
     def descend(prefix: int, remaining: int, block: _Block) -> None:
         if remaining < 2:
             return
         child_size = _h_size(remaining - 2)
-        for bits, child in zip(range(4), block.quadrants(child_size), strict=True):
+        for bits, child in zip(
+            range(4), block.quadrants(child_size, child_size), strict=True
+        ):
             blocks[4 * prefix + bits] = child
             descend(4 * prefix + bits, remaining - 2, child)
 
@@ -106,7 +109,7 @@ def _h_sites(inputs: int) -> dict[int, tuple[int, int]]:
         if remaining == 0:
             continue
         if remaining == 1:
-            sites[prefix] = (block.x + block.size // 2, block.y + block.size // 2)
+            sites[prefix] = (block.x + block.width // 2, block.y + block.width // 2)
             continue
         child = _h_size(remaining - 2)
         left = block.x + child
@@ -129,15 +132,15 @@ def _h_minterm_sites(inputs: int) -> dict[int, tuple[int, int]]:
         for prefix, block in blocks.items():
             if _depth(prefix) == inputs:
                 sites[prefix] = (
-                    block.x + block.size // 2,
-                    block.y + block.size // 2,
+                    block.x + block.width // 2,
+                    block.y + block.width // 2,
                 )
     else:
         for prefix, block in blocks.items():
             if _depth(prefix) != inputs - 1:
                 continue
-            middle_x = block.x + block.size // 2
-            middle_y = block.y + block.size // 2
+            middle_x = block.x + block.width // 2
+            middle_y = block.y + block.width // 2
             sites[2 * prefix] = (middle_x - _LATTICE, middle_y + _LATTICE)
             sites[2 * prefix + 1] = (middle_x + _LATTICE, middle_y + _LATTICE)
     return sites

@@ -1,7 +1,6 @@
-"""Share cofactors through fixed four/eight predicate-and-function banks.
+"""Share class bodies through predicate-and-function banks.
 
-For eight banks, G<=2T+8n+111 gives state<=6T+25n+334, below
-7T+2n-9 from n=10; the exact n=8/9 gate caps are 511/1015.
+G<=2T+8n+111 gives state<=6T+25n+334, below 7T+2n-9 from n=10.
 Bounded H bodies and coordinate-bucket copying use O(T) area and work.
 This still does not share every residual across bodies.
 """
@@ -14,10 +13,19 @@ from esolangs.generation.helpers import _validate_truth_table
 
 from . import hpool
 from .forest import _Forest, _suffix_forest
-from .hpool import _h_pool_layout, _h_pool_size, _large_pool_layout
+from .hpool import (
+    _atom_inputs,
+    _large_pool_layout,
+)
 from .layout import _Layout, _layout_area, _RoutingLayout
 
 type _Output = tuple[tuple[int, int], int]
+
+# Input count where a shared suffix forest beats separate roots even with no
+# repeated class.
+_FOREST_PAYS_ALONE_INPUTS = 9
+# Pooled masks through eight inputs already use the folded-mask construction.
+_POOLED_MASK_INPUTS = 8
 
 
 class _BankLayout(_RoutingLayout):
@@ -81,39 +89,6 @@ class _BankLayout(_RoutingLayout):
             destination.extend(translated)
 
 
-def _cofactor_bank_layout(table: str, prefix_inputs: int = 2) -> _Layout:
-    """Return four/eight banks with shared prefix complements in O(T) area."""
-    from . import _circuit_diagram_model, _essential_table
-
-    _validate_truth_table(table)
-    if prefix_inputs not in (2, 3):
-        raise ValueError("cofactor banks need two or three prefix inputs")
-    n = len(table).bit_length() - 1
-    if n < 3 or len(set(table)) == 1:
-        return _circuit_diagram_model(table, None)
-    prefix_order = list(range(prefix_inputs))
-    size = len(table) // (1 << prefix_inputs)
-    chunks = _chunks(table, size)
-    parts: list[list[tuple[_Layout, list[int]]]] = []
-    for cofactor in dict.fromkeys(chunks):
-        if "1" not in cofactor:
-            continue
-        mask = "".join("1" if chunk == cofactor else "0" for chunk in chunks)
-        models: list[tuple[_Layout, list[int]]] = []
-        if "0" in mask:
-            models.append((_circuit_diagram_model(mask, None), prefix_order))
-        if "0" in cofactor:
-            used, reduced = _essential_table(cofactor, n - prefix_inputs)
-            model = (
-                _h_pool_layout(reduced, input_order=used, port_inputs=n - prefix_inputs)
-                if len(used) >= 6
-                else _circuit_diagram_model(cofactor, None)
-            )
-            models.append((model, list(range(prefix_inputs, n))))
-        parts.append(models)
-    return _assemble_banks(parts, n, prefix_inputs, share_prefix_complements=True)
-
-
 class _SignalOwner:
     """Assign assembly signals to one body model's junction ids.
 
@@ -158,19 +133,14 @@ class _BankAssembler:
         n: int,
         prefix_inputs: int,
         *,
-        share_prefix_complements: bool,
         shared_suffix: _Forest | None = None,
-        online_returns: bool = False,
         left_returns: bool = False,
     ) -> None:
         """Capture the parts and set up the empty assembly state."""
         self.parts = parts
         self.n = n
         self.prefix_inputs = prefix_inputs
-        self.prefix_order = list(range(prefix_inputs))
-        self.share_prefix_complements = share_prefix_complements
         self.shared_suffix = shared_suffix
-        self.online_returns = online_returns
         self.left_returns = left_returns
         widths = [model.bounds()[1] for models in parts for model, _ in models]
         if shared_suffix is not None:
@@ -181,7 +151,6 @@ class _BankAssembler:
         self.serial = n
         self.reached: dict[int, tuple[int, int]] = {}
         self.feeds: list[tuple[int, tuple[int, int]]] = []
-        self.negative: dict[int, tuple[tuple[int, int], int]] = {}
         self.results: list[tuple[tuple[int, int], int]] = []
         self.y = 2 * n + 8 + 4 * prefix_inputs
         self.held: list[tuple[tuple[int, int], int] | None] = [None] * len(parts)
@@ -211,7 +180,6 @@ class _BankAssembler:
     def assemble(self) -> _Layout:
         """Build the bank layout: rails, bodies, feeds, then the output OR."""
         self._emit_input_rails()
-        self._emit_complement_rails()
         groups = list(enumerate(self.parts))
         if self.shared_suffix is not None:
             groups.insert(
@@ -224,7 +192,7 @@ class _BankAssembler:
         for group, models in groups:
             self._assemble_group(group, models)
         self._route_feeds()
-        if self.online_returns and len(self.parts) > 1:
+        if len(self.parts) > 1:
             return self._fold_online_returns()
         return self._fold_term_results()
 
@@ -234,24 +202,6 @@ class _BankAssembler:
             column = 2 * i + 2
             self.layout.input_port(2 * i, column, i)
             self.reached[i] = (column, 2 * i)
-
-    def _emit_complement_rails(self) -> None:
-        """Build one shared complement rail per prefix input the bodies need."""
-        required: set[int] = set()
-        for models in self.parts:
-            for model, ports in models:
-                if self.share_prefix_complements and ports == self.prefix_order:
-                    for (x, row), char in model.glyphs.items():
-                        if char == "~":
-                            required.add(model.junctions[x - 1, row])
-        for i in sorted(required):
-            column, row = self.right + 12 + 4 * i, 2 * self.n + 4 + 4 * i
-            signal = self.fresh()
-            self.layout.glyph(column - 1, row, "~")
-            self.layout.junction(column, row, signal)
-            self.layout.route(self.reached[i], (column - 2, row), i)
-            self.reached[i] = self.reached[i][0], row
-            self.negative[i] = ((column, row), signal)
 
     def _assemble_group(
         self, group: int, models: list[tuple[_Layout, list[int]]]
@@ -282,18 +232,13 @@ class _BankAssembler:
         """Copy one body into fresh rows and record its output endpoint."""
         owner = _SignalOwner(self)
         self._register_ports(model, port_order, owner)
-        removed, negative_feeds = self._plan_complement_feeds(model, port_order, owner)
         outpoints = [point for point, char in model.glyphs.items() if char == ":"]
         out = outpoints[0]
         endpoint = out[0] - 2, out[1]
         omitted = {
             cell for point in outpoints for cell in (point, (point[0] - 1, point[1]))
         }
-        self.layout.copy_block(model, self.body_x, self.y, owner, removed | omitted)
-        for i, target in negative_feeds:
-            source, signal = self.negative[i]
-            self.layout.route(source, target, signal)
-            self.negative[i] = ((source[0], target[1]), signal)
+        self.layout.copy_block(model, self.body_x, self.y, owner, omitted)
         if group == -1:
             self._hold_suffix_roots(model, owner)
         else:
@@ -324,28 +269,6 @@ class _BankAssembler:
             signal = model.junctions[x, row]
             owner.register(signal, i)
             self.feeds.append((i, (self.body_x + x, self.y + row)))
-
-    def _plan_complement_feeds(
-        self, model: _Layout, port_order: list[int], owner: _SignalOwner
-    ) -> tuple[set[tuple[int, int]], list[tuple[int, tuple[int, int]]]]:
-        """Map complement glyphs onto the shared rails without routing yet.
-
-        Returns the ``~`` glyphs to omit from the copy and the feeds to
-        route once ``copy_block`` has claimed the body's rows.
-        """
-        removed: set[tuple[int, int]] = set()
-        negative_feeds: list[tuple[int, tuple[int, int]]] = []
-        if self.share_prefix_complements and port_order == self.prefix_order:
-            for (x, row), char in model.glyphs.items():
-                if char != "~":
-                    continue
-                i = owner.lookup(model.junctions[x - 1, row])
-                signal = self.negative[i][1]
-                owner.register(model.junctions[x + 1, row], signal)
-                target = self.body_x + x + 1, self.y + row
-                negative_feeds.append((i, target))
-                removed.add((x, row))
-        return removed, negative_feeds
 
     def _hold_suffix_roots(self, model: _Layout, owner: _SignalOwner) -> None:
         """Park the shared suffix roots past the term-result rails."""
@@ -390,7 +313,7 @@ class _BankAssembler:
         arrive; otherwise each term waits on its own result rail.
         """
         source, signal = output
-        if self.online_returns and len(self.parts) > 1:
+        if len(self.parts) > 1:
             self.layout.route(source, (self.temporary, source[1]), signal)
             current = (self.temporary, source[1]), signal
             depth = 0
@@ -464,6 +387,11 @@ class _BankAssembler:
         return self.layout
 
 
+def _class_gate_cap(table_size: int, n: int) -> int:
+    """Return the gate budget that keeps written state below 7T+2n-9."""
+    return 2 * table_size + 8 * n + 111
+
+
 def _gate_count(model: _Layout) -> int:
     """Return how many gate glyphs (``a o ~ x X``) ``model`` draws."""
     return sum(char in "ao~xX" for char in model.glyphs.values())
@@ -474,19 +402,12 @@ def _chunks(table: str, size: int) -> list[str]:
     return [table[start : start + size] for start in range(0, len(table), size)]
 
 
-def _class_tail(n: int) -> int:
-    """Return a class's input width: seven when ``n`` is odd, else eight."""
-    return 7 if n % 2 else 8
-
-
 def _assemble_banks(
     parts: list[list[tuple[_Layout, list[int]]]],
     n: int,
     prefix_inputs: int,
     *,
-    share_prefix_complements: bool,
     shared_suffix: _Forest | None = None,
-    online_returns: bool = False,
     left_returns: bool = False,
 ) -> _Layout:
     """Assemble per-cofactor bodies into one shared-bank layout.
@@ -498,9 +419,7 @@ def _assemble_banks(
         parts,
         n,
         prefix_inputs,
-        share_prefix_complements=share_prefix_complements,
         shared_suffix=shared_suffix,
-        online_returns=online_returns,
         left_returns=left_returns,
     ).assemble()
 
@@ -534,6 +453,18 @@ def _pool_budget(n: int, ceiling: int | None) -> int | None:
     return budget if budget > 0 else None
 
 
+def _bank_rectangle(
+    dimensions: list[tuple[int, int]], n: int, prefix: int, q: int
+) -> tuple[int, int]:
+    """Return the (height, width) bound of a ``q``-class online bank.
+
+    Model bands, AND/separator rows, q-1 OR returns and the inclusive footer.
+    """
+    height = 2 * n + 8 + 4 * prefix + sum(h + 8 for h, _w in dimensions) + 32 * q + 5
+    width = max(w for _h, w in dimensions) + 2 * n + 40 + 2 * ((q - 1).bit_length() + 1)
+    return height, width
+
+
 def _online_bank_area_floor(
     dimensions: list[tuple[int, int]], n: int, prefix: int, q: int, ands: int
 ) -> int:
@@ -565,7 +496,7 @@ def _class_bank_layout(
     from . import _essential_table
 
     n = _validate_truth_table(table)
-    tail = _class_tail(n)
+    tail = _atom_inputs(n)
     prefix = n - tail
     if prefix < 2 or len(set(table)) == 1:
         return None
@@ -574,10 +505,13 @@ def _class_bank_layout(
     classes = [chunk for chunk in dict.fromkeys(chunks) if "1" in chunk]
     # Keep the former implied class cap independently of the gate count:
     # sparse masks can fit the workspace even when their worst-case bound cannot.
-    # The fixed nine-input atom also shares internal seven-input residuals
-    # across its four distinct roots: dense9 executes in 258,216 characters.
+    # At n=9 the shared forest pays without a repeated class: it folds the
+    # four distinct roots' internal seven-input residuals together (dense9
+    # executes in 258,216 characters; random n=9 tables save 10.3% over
+    # separate roots, 40 tables).
     if len(classes) >= 1 << (tail + 1) or not any(
-        "0" in chunk and (chunks.count(chunk) > 1 or (shared and n == 9))
+        "0" in chunk
+        and (chunks.count(chunk) > 1 or (shared and n == _FOREST_PAYS_ALONE_INPUTS))
         for chunk in classes
     ):
         return None
@@ -621,67 +555,12 @@ def _class_bank_layout(
     if forest is not None:
         gates += _gate_count(forest[0])
     # At most one AND per class and q-1 ORs; constants only reduce this count.
-    if gates + 2 * len(classes) - 1 > 2 * len(table) + 8 * n + 111:
+    if gates + 2 * len(classes) - 1 > _class_gate_cap(len(table), n):
         return None
     model = _assemble_banks(
         parts,
         n,
         prefix,
-        share_prefix_complements=False,
         shared_suffix=forest,
-        online_returns=True,
     )
     return model if ceiling is None or _layout_area(model) <= ceiling else None
-
-
-def _repeated_cofactor_bank(table: str) -> _Layout | None:
-    """Return a bank candidate when a nonconstant top-level cofactor repeats."""
-    size = len(table) // 4
-    chunks = _chunks(table, size)
-    if not any(
-        "0" in chunk and "1" in chunk and chunks.count(chunk) > 1 for chunk in chunks
-    ):
-        return None
-    return _cofactor_bank_layout(table)
-
-
-def _bank_exceeds_area(table: str, prefix_inputs: int, ceiling: int) -> bool:
-    """Reject a bank whose retained H term glyphs already exceed the ceiling."""
-    from . import _essential_table
-
-    inputs = len(table).bit_length() - 1 - prefix_inputs
-    size = 1 << inputs
-    for chunk in dict.fromkeys(_chunks(table, size)):
-        if "0" not in chunk or "1" not in chunk:
-            continue
-        used, _ = _essential_table(chunk, inputs)
-        if len(used) < 6:
-            continue
-        tail = 3 if len(used) % 2 else 4
-        leaf_side, offset = (96, 88) if tail == 3 else (192, 176)
-        # The bottom-right prefix leaf always retains its term AND glyph,
-        # even for an unselected chunk. Copying removes only external ports
-        # and output glyphs. Translation can only enlarge this rectangle.
-        far = 8 * inputs + 8 + _h_pool_size(len(used) - tail, tail) - leaf_side
-        if (far + offset + 1) * (far + 9) > ceiling:
-            return True
-    return False
-
-
-def _cofactor_bank_candidate(table: str, ceiling: int | None = None) -> _Layout | None:
-    """Return the smaller named four/eight-bank candidate, preserving ties."""
-    four = (
-        _repeated_cofactor_bank(table)
-        if ceiling is None or not _bank_exceeds_area(table, 2, ceiling)
-        else None
-    )
-    eight = (
-        _cofactor_bank_layout(table, 3)
-        if ceiling is None or not _bank_exceeds_area(table, 3, ceiling)
-        else None
-    )
-    if eight is None:
-        return four
-    if four is None:
-        return eight
-    return eight if _layout_area(eight) < _layout_area(four) else four

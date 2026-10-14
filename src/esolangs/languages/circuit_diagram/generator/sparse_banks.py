@@ -12,13 +12,18 @@ from __future__ import annotations
 
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.circuit_diagram.generator.banks import (
+    _POOLED_MASK_INPUTS,
     _assemble_banks,
-    _class_tail,
+    _bank_rectangle,
+    _class_gate_cap,
     _gate_count,
     _online_bank_area_floor,
     _pool_budget,
 )
-from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
+from esolangs.languages.circuit_diagram.generator.hpool import (
+    _atom_inputs,
+    _large_pool_layout,
+)
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
 from esolangs.languages.circuit_diagram.generator.sparse_masks import (
     _SparseWork,
@@ -31,9 +36,9 @@ def sparse_class_bank_candidate(
 ) -> _Layout | None:
     """Admit repeated classes by mask work, ticks, gates and retained area."""
     n = _validate_truth_table(table)
-    tail = _class_tail(n)
+    tail = _atom_inputs(n)
     prefix = n - tail
-    if prefix <= 8 or len(set(table)) == 1:
+    if prefix <= _POOLED_MASK_INPUTS or len(set(table)) == 1:
         return None
     size = 1 << tail
     positions: dict[str, list[int]] = {}
@@ -70,18 +75,15 @@ def sparse_class_bank_candidate(
         for model, _order in models:
             dimensions.append(model.bounds())
             gates += _gate_count(model)
-        if gates > 2 * len(table) + 8 * n + 111:
+        if gates > _class_gate_cap(len(table), n):
             return None
         if _online_bank_area_floor(dimensions, n, prefix, q, ands) > budget:
             return None
         parts.append(models)
-    height = 2 * n + 8 + 4 * prefix + sum(h + 8 for h, _w in dimensions) + 32 * q + 5
-    width = max(w for _h, w in dimensions) + 2 * n + 40 + 2 * (depth + 1)
+    height, width = _bank_rectangle(dimensions, n, prefix, q)
     if height * width > budget:
         return None
-    model = _assemble_banks(
-        parts, n, prefix, share_prefix_complements=False, online_returns=True
-    )
+    model = _assemble_banks(parts, n, prefix)
     h, w = model.bounds()
     if h > height or w > width:
         raise AssertionError("sparse bank exceeds its preflight rectangle")

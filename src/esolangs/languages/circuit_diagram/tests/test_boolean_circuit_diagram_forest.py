@@ -41,7 +41,6 @@ def test_every_nonzero_two_input_function_through_shared_roots(start) -> None:
         parts,
         6,
         4,
-        share_prefix_complements=False,
         shared_suffix=_suffix_forest(words, 2),
     )
     _execute(table, model.render())

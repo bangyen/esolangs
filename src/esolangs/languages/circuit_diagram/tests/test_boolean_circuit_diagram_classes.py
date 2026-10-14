@@ -9,7 +9,6 @@ from esolangs.languages.circuit_diagram.generator import (
     circuit_diagram,
 )
 from esolangs.languages.circuit_diagram.generator.banks import (
-    _repeated_cofactor_bank,
     _residual_class_bank_candidate,
 )
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
@@ -63,7 +62,6 @@ def test_classes_cross_distinct_banks_beyond_all_fold_orders() -> None:
     table = _eight_classes(13)
     complete = _linear_shared_layout(table, 13)
     assert complete is not None
-    assert _repeated_cofactor_bank(table) is None
     chunks = [table[start : start + 1024] for start in range(0, len(table), 1024)]
     assert len(set(chunks)) == 8
     code = circuit_diagram(table)
@@ -134,7 +132,6 @@ def test_public_class_admission_preserves_existing_area_ties(
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.banks"
     )
-    monkeypatch.setattr(module, "_cofactor_bank_candidate", lambda *_args: None)
     monkeypatch.setattr(module, "_residual_class_bank_candidate", lambda *_args: None)
     table = dense(9)
     expected = circuit_diagram(table)

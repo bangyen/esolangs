@@ -11,13 +11,18 @@ from esolangs.languages.circuit_diagram.generator import (
     _essential_table,
 )
 from esolangs.languages.circuit_diagram.generator.banks import (
+    _POOLED_MASK_INPUTS,
     _assemble_banks,
+    _bank_rectangle,
     _chunks,
-    _class_tail,
+    _class_gate_cap,
     _gate_count,
     _pool_budget,
 )
-from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
+from esolangs.languages.circuit_diagram.generator.hpool import (
+    _atom_inputs,
+    _large_pool_layout,
+)
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
 
 
@@ -44,10 +49,9 @@ def folded_class_bank_candidate(
 ) -> _Layout | None:
     """Return a bounded separate bank with folded masks above eight inputs."""
     n = _validate_truth_table(table)
-    tail = _class_tail(n)
+    tail = _atom_inputs(n)
     prefix = n - tail
-    # Pooled masks through eight inputs already use this same fold.
-    if prefix <= 8:
+    if prefix <= _POOLED_MASK_INPUTS:
         return None
     size = 1 << tail
     chunks = _chunks(table, size)
@@ -86,18 +90,13 @@ def folded_class_bank_candidate(
             models.append((model, list(range(prefix, n))))
         parts.append(models)
     gates = sum(_gate_count(m) for group in parts for m, order in group)
-    if gates + 2 * q - 1 > 2 * len(table) + 8 * n + 111:
+    if gates + 2 * q - 1 > _class_gate_cap(len(table), n):
         return None
     dimensions = [m.bounds() for group in parts for m, order in group]
-    carry = (q - 1).bit_length() + 1
-    # Model bands, AND/separator rows, q-1 OR returns and inclusive footer.
-    height = 2 * n + 8 + 4 * prefix + sum(h + 8 for h, w in dimensions) + 32 * q + 5
-    width = max(w for h, w in dimensions) + 2 * n + 40 + 2 * carry
+    height, width = _bank_rectangle(dimensions, n, prefix, q)
     if height * width > budget:
         return None
-    model = _assemble_banks(
-        parts, n, prefix, share_prefix_complements=False, online_returns=True
-    )
+    model = _assemble_banks(parts, n, prefix)
     h, w = model.bounds()
     if h > height or w > width:
         raise AssertionError("folded bank exceeds its preflight rectangle")

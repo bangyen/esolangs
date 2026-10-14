@@ -7,7 +7,6 @@ from esolangs.languages.circuit_diagram.generator import _circuit_diagram_model
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
     _chunks,
-    _class_tail,
     _gate_count,
     _online_bank_area_floor,
     _pool_budget,
@@ -16,6 +15,7 @@ from esolangs.languages.circuit_diagram.generator.folded_banks import (
     _folded_class_masks,
 )
 from esolangs.languages.circuit_diagram.generator.forest import _suffix_forest
+from esolangs.languages.circuit_diagram.generator.hpool import _atom_inputs
 from esolangs.languages.circuit_diagram.generator.layout import _Layout, _layout_area
 
 
@@ -24,7 +24,7 @@ def bundled_class_bank_candidate(
 ) -> _Layout | None:
     """Return bounded four-root banks, retaining one outer transport stage."""
     n = _validate_truth_table(table)
-    tail = _class_tail(n)
+    tail = _atom_inputs(n)
     prefix = n - tail
     if prefix < 2 or len(set(table)) == 1:
         return None
@@ -76,9 +76,7 @@ def bundled_class_bank_candidate(
             inner_parts,
             n,
             prefix,
-            share_prefix_complements=False,
             shared_suffix=forest,
-            online_returns=True,
             left_returns=True,
         )
         # G <= T+n implies the written-state bound; q <= 2**min(prefix,tail+2)
@@ -96,8 +94,6 @@ def bundled_class_bank_candidate(
         parts,
         n,
         0,
-        share_prefix_complements=False,
-        online_returns=True,
         left_returns=True,
     )
     return model if _layout_area(model) <= budget else None
