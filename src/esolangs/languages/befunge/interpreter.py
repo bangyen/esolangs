@@ -53,7 +53,7 @@ class _State(NamedTuple):
     done: bool
 
 
-type _Effect = tuple[str, int] | None
+type _Effect = str | None
 
 
 def _pop(stack: _Stack) -> tuple[int, _Stack]:
@@ -101,7 +101,7 @@ def _advance(  # noqa: C901
     number_input: int | None = None,
     random_dir: int | None = None,
 ) -> tuple[_State, _Effect]:
-    """Return the next state and an output effect, if this cell emits."""
+    """Return the next state and the text this cell prints, if any."""
     (col, row, dx, dy), grid, stack, string, done = state
     if done:
         return state, None
@@ -161,10 +161,10 @@ def _advance(  # noqa: C901
         _value, stack = _pop(stack)
     elif command == ".":
         a, stack = _pop(stack)
-        effect = ("num", a)
+        effect = f"{a} "
     elif command == ",":
         a, stack = _pop(stack)
-        effect = ("char", a & 0xFF)
+        effect = chr(a & 0xFF)
     elif command == "#":
         col, row = (col + dx) % width, (row + dy) % height
     elif command == "g":
@@ -312,12 +312,8 @@ class _Machine:
                     raise
         random_dir = draw(self._rng, 4) if interpreting and command == "?" else None
         self.state, effect = _advance(self.state, char_input, number_input, random_dir)
-        if effect:
-            kind, value = effect
-            if kind == "char":
-                self.io.print_char(chr(value))
-            else:
-                self.io.print_str(f"{value} ")
+        if effect is not None:
+            self.io.print_str(effect)
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
