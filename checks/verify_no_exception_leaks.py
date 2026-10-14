@@ -251,6 +251,15 @@ def _select(
     return picked, f"{len(picked)} interpreter(s) changed"
 
 
+def _runners() -> dict[str, tuple[str, bool]]:
+    """Map each interpreter to its full module name, as :func:`_select` takes it.
+
+    Stripped of ``esolangs.``, ``_sources`` would file a ``languages.`` module
+    under ``runtime.`` and raise for every registry interpreter.
+    """
+    return {name: (module, False) for name, module in INTERPRETERS.items()}
+
+
 def _drive(lang: str, program: Program, stdin: str, cap: int) -> bool:
     """Run one program, stepping it rather than running it to completion.
 
@@ -593,10 +602,7 @@ def main() -> None:
     else:
         langs, why = _select(
             langs,
-            {
-                name: (module.removeprefix("esolangs."), False)
-                for name, module in INTERPRETERS.items()
-            },
+            _runners(),
             imports,
         )
     print(f"sweeping {len(langs)} language(s): {why}", flush=True)
