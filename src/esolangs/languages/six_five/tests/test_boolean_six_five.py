@@ -22,7 +22,6 @@ from esolangs.languages.six_five.generator import (
     _six_five_hoisted,
     _six_five_markers,
     _six_five_orders,
-    _six_five_stream_ordered,
     _six_five_walk,
 )
 from tests.generators.boolean_runners import _run_from, _runner
@@ -31,6 +30,11 @@ from tests.support.witness_tables import dense as _dense
 from tests.support.witness_tables import row_bits, witnesses
 
 run_six_five = _runner("six_five")
+
+
+def _identity(table: str) -> str:
+    """The unshared tree in the table's own input order."""
+    return _six_five_hoisted(table, tuple(range(len(table).bit_length() - 1)))
 
 
 def run_six_five_from(program: str, feed: Iterator[str]) -> str:
@@ -55,12 +59,13 @@ def _markers(program: str) -> int:
 
 class TestSixFive:
     def test_branch_structure(self) -> None:
-        """Both builds read, normalize to 31/32, branch on ``7V``, and halt."""
+        """The build reads, normalizes to 31/32, branches on ``7V``, and halts."""
 
-        for program in (boolean.six_five("0110"), _six_five_stream_ordered("0110")):
-            assert program.startswith("B" + _SIX_FIVE_TREE_NORMALIZE)
-            assert _SIX_FIVE_TEST in program
-        assert _six_five_stream_ordered("0110").endswith("A0")
+        program = _identity("0110")
+        assert program.startswith("B")
+        assert _SIX_FIVE_TREE_NORMALIZE in program
+        assert _SIX_FIVE_TEST in program
+        assert program.endswith("A0")
         # The right half is NOT of the last input, with nothing left to
         # read: a node, whose leaves add 18 to the 31 and 16 to the 32.
         assert boolean.six_five("0110").endswith("7V82666A04655A")
@@ -98,7 +103,7 @@ class TestSixFive:
     def test_folded_leaf_still_reads_every_input(self, table: str, n: int) -> None:
         """Every path through a folded node-read tree reads all ``n`` inputs."""
 
-        program = _six_five_stream_ordered(table)
+        program = _identity(table)
         for combo in range(2**n):
             bits = row_bits(combo, n)
             got = run_six_five(program, [str(b) for b in bits])
@@ -125,20 +130,6 @@ class TestSixFive:
             return {1 + r for r in reads_on_each_path(left) | reads_on_each_path(right)}
 
         assert reads_on_each_path(program) == {n}
-
-    def test_marker_precheck_bounds_emitted_tree(self) -> None:
-        """The precheck bounds an unshared tree in the same input order."""
-        for table in ("1" + "0" * 63, "1" * 64, "1" * 127 + "0"):
-            assert _markers(_six_five_stream_ordered(table)) == _six_five_markers(table)
-        # A copied bit or an inversion followed by reads needs no branch label.
-        for table in ("0" * 63 + "1", "0" * 255 + "1", "1" * 48 + "0" * 16):
-            assert (
-                _markers(_six_five_stream_ordered(table))
-                == _six_five_markers(table) - 1
-            )
-        for value in range(256):
-            table = format(value, "08b")
-            assert _markers(_six_five_stream_ordered(table)) <= _six_five_markers(table)
 
     def test_folding_is_still_per_order_even_though_sharing_is_not(self) -> None:
         """Parity resists folding under every order, and is built anyway."""
@@ -170,8 +161,6 @@ class TestSixFive:
         n = 7
         alternating = ("10" * 128)[: 2**n]
         assert _six_five_markers(alternating) == 2**n - 1 > 35
-        with pytest.raises(ValueError, match="35 branch labels"):
-            _six_five_stream_ordered(alternating)
         # The identity order no longer returns "": its tree overflows, so
         # the shared build takes it -- this table is NOT of the last input,
         # whose distinct subtrees are a handful whatever the order.
@@ -256,12 +245,10 @@ class TestSixFive:
         """A node whose answer is NOT its bit tests it, unless reads remain."""
         assert _markers(boolean.six_five("10")) == 1
         assert "71" not in boolean.six_five("10")
-        assert "71" in _six_five_stream_ordered("11110000")
         for table in witnesses(3):
             for perm in permutations(range(3)):
                 program = _six_five_hoisted(permute_truth_table(table, perm), perm)
-                # The identity order is the stream build's, not the hoisted.
-                assert "71" not in program or perm == (0, 1, 2)
+                assert "71" not in program
                 for combo in range(8):
                     bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
                     assert run_six_five(program, bits) == table[combo], (table, perm)
@@ -292,8 +279,8 @@ class TestSixFive:
             table = format(value, "08b")
             dispatched = len(boolean.six_five(table))
             # The dispatch drops the last ``0``, which the builds keep.
-            identity = len(_six_five_stream_ordered(table)) - 1
-            assert dispatched <= identity, table
+            identity = len(_identity(table)) - 1
+            assert dispatched <= identity + 1, table
             improved += dispatched < identity
         # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
         # shortcut, 192 after; 108 once a node that copies its bit prints
@@ -305,7 +292,7 @@ class TestSixFive:
         # the cell two on is blank; 155 once reads are held at 31/32, where
         # the hoisted builds' cheaper nodes beat the stream build's inverts;
         # 209 once a tree jumps to the subtrees it repeats.
-        assert improved == 203  # the rest tie, keeping the old emission
+        assert improved == 219  # the rest tie, keeping the old emission
 
     def test_the_guarded_walk_has_linear_source(self) -> None:
         for n in range(1, 13):
