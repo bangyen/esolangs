@@ -230,6 +230,47 @@ def _moved(pointer: int, cell: int, rest: Node) -> Node:
     return rest
 
 
+def _guard_return(
+    cursor: _Cursor,
+    target: Node,
+    legs: list[tuple[tuple[int, int], int]],
+    plan: _Plan,
+) -> list[tuple[tuple[int, int], int]] | None:
+    """``legs`` if they clear existing ink, else a trunk merge, else None.
+
+    Drift guard, real mode only: the construction never reads ink, so
+    anything it did not reserve must be caught, not drawn through.  This is
+    what fired on the ring wrapping into a long run drawn before the fork,
+    now reserved by `_stem_len`.  Endpoints (body tip, stem merge) are
+    legitimate ink.  A clean return is recorded as the target's trunk.
+    """
+    occupied = cursor.occupied
+    assert occupied is not None
+    start = (cursor.y, cursor.x)
+    stop_at = occupied if plan.ancestor_returns else None
+    cells = _leg_cells(start, legs, stop_at)
+    blocked = cells[-1] != _leg_end(start, legs) or any(
+        c in occupied for c in cells[1:-1]
+    )
+    if blocked:
+        trunk = plan.returns.get(id(target))
+        merged = (
+            None
+            if trunk is None
+            else _merge_return_legs(cells, trunk, plan.return_indices[id(target)])
+        )
+        if merged is None:
+            return None
+        cells = _leg_cells(start, merged)
+        if any(c in occupied for c in cells[1:-1]):
+            return None
+        legs = merged
+    if plan.ancestor_returns and id(target) not in plan.returns:
+        plan.returns[id(target)] = cells
+        plan.return_indices[id(target)] = {cell: i for i, cell in enumerate(cells)}
+    return legs
+
+
 def _draw_loop_back(
     cursor: _Cursor,
     target: Node,
@@ -262,34 +303,7 @@ def _draw_loop_back(
             cursor.heading if plan.ancestor_returns else None,
         )
     if legs is not None and cursor.occupied is not None:
-        # Drift guard, real mode only: the construction never reads
-        # ink, so anything it did not reserve must be caught, not
-        # drawn through.  This is what fired on the ring wrapping
-        # into a long run drawn before the fork, now reserved by
-        # `_stem_len`.  Endpoints (body tip, stem merge) are
-        # legitimate ink.
-        stop_at = cursor.occupied if plan.ancestor_returns else None
-        cells = _leg_cells((cursor.y, cursor.x), legs, stop_at)
-        end = _leg_end((cursor.y, cursor.x), legs)
-        blocked = cells[-1] != end or any(c in cursor.occupied for c in cells[1:-1])
-        if blocked:
-            trunk = plan.returns.get(id(target))
-            legs = (
-                None
-                if trunk is None
-                else _merge_return_legs(cells, trunk, plan.return_indices[id(target)])
-            )
-            if legs is not None:
-                cells = _leg_cells((cursor.y, cursor.x), legs)
-                if any(c in cursor.occupied for c in cells[1:-1]):
-                    legs = None
-        if (
-            legs is not None
-            and plan.ancestor_returns
-            and id(target) not in plan.returns
-        ):
-            plan.returns[id(target)] = cells
-            plan.return_indices[id(target)] = {cell: i for i, cell in enumerate(cells)}
+        legs = _guard_return(cursor, target, legs, plan)
     if legs is not None:
         for direction, length in legs:
             cursor.advance(direction, length)
@@ -682,6 +696,23 @@ def _loop_return_legs(
     return [(_rotate(d, a_h), n) for d, n in legs]
 
 
+def _unit_step(a: tuple[int, int], b: tuple[int, int]) -> tuple[int, int] | None:
+    """``b - a`` if it is a single orthogonal cell step, else None."""
+    step = (b[0] - a[0], b[1] - a[1])
+    return step if abs(step[0]) + abs(step[1]) == 1 else None
+
+
+def _straight_run(
+    cells: list[tuple[int, int]], at: int, step: tuple[int, int], sign: int, count: int
+) -> bool:
+    """Whether ``cells[at + sign*i] == cells[at] + sign*i*step`` for i in 1..count."""
+    return all(
+        cells[at + sign * i]
+        == (cells[at][0] + sign * i * step[0], cells[at][1] + sign * i * step[1])
+        for i in range(1, count + 1)
+    )
+
+
 def _merge_return_legs(
     cells: list[tuple[int, int]],
     trunk: list[tuple[int, int]],
@@ -691,25 +722,21 @@ def _merge_return_legs(
     hit = len(cells) - 1
     join = index.get(cells[hit])
     distance = _DIAGONAL_APPROACH
-    if join is None or hit < distance:
+    if join is None or hit < distance or join + distance >= len(trunk):
         return None
-    if join + distance >= len(trunk):
+    forward = _unit_step(trunk[join], trunk[join + 1])
+    arrival = _unit_step(cells[hit - 1], cells[hit])
+    if forward is None or arrival is None:
         return None
-    forward = tuple(trunk[join + 1][a] - trunk[join][a] for a in (0, 1))
-    arrival = tuple(cells[hit][a] - cells[hit - 1][a] for a in (0, 1))
-    if sum(abs(c) for c in forward) != 1 or sum(abs(c) for c in arrival) != 1:
+    if forward[0] * arrival[0] + forward[1] * arrival[1]:
         return None
-    if sum(a * b for a, b in zip(forward, arrival, strict=True)):
-        return None
-    if any(
-        trunk[join + i] != tuple(trunk[join][a] + i * forward[a] for a in (0, 1))
-        or cells[hit - i] != tuple(cells[hit][a] - i * arrival[a] for a in (0, 1))
-        for i in range(1, distance + 1)
+    if not (
+        _straight_run(trunk, join, forward, 1, distance)
+        and _straight_run(cells, hit, arrival, -1, distance)
     ):
         return None
-    points = cells[: hit - distance + 1]
     result: list[tuple[tuple[int, int], int]] = []
-    for a, b in itertools.pairwise(points):
+    for a, b in itertools.pairwise(cells[: hit - distance + 1]):
         direction = (b[0] - a[0], b[1] - a[1])
         if result and result[-1][0] == direction:
             result[-1] = (direction, result[-1][1] + 1)
@@ -872,6 +899,34 @@ def _arrowhead(
     draw.polygon([tip, base_l, base_r], colour=0)
 
 
+def _rasterize(
+    strokes: list[list[tuple[int, int]]], start_heading: tuple[int, int], unit: int
+) -> Canvas:
+    """Draw ``strokes`` (cell coordinates) and the start arrowhead on a canvas."""
+    ys = [p[0] for stroke in strokes for p in stroke]
+    xs = [p[1] for stroke in strokes for p in stroke]
+    if not ys:
+        raise ValueError("program produced an empty path")
+    min_y, max_y = min(ys), max(ys)
+    min_x, max_x = min(xs), max(xs)
+
+    margin = unit
+    width = (max_x - min_x) * unit + margin * 2
+    height = (max_y - min_y) * unit + margin * 2
+
+    def to_px(pt: tuple[int, int]) -> tuple[float, float]:
+        y, x = pt
+        return (x - min_x) * unit + margin, (y - min_y) * unit + margin
+
+    canvas = Canvas(width, height)
+    for stroke in strokes:
+        canvas.line([to_px(p) for p in stroke])
+
+    start_px, start_py = to_px((0, 0))
+    _arrowhead(canvas, start_py, start_px, start_heading, unit)
+    return canvas
+
+
 def render(
     root: Node,
     start_heading: tuple[int, int] = (-1, 0),
@@ -908,27 +963,7 @@ def render(
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] = {}
     _layout(root, cursor, plan, entries)
 
-    ys = [p[0] for stroke in cursor.strokes for p in stroke]
-    xs = [p[1] for stroke in cursor.strokes for p in stroke]
-    if not ys:
-        raise ValueError("program produced an empty path")
-    min_y, max_y = min(ys), max(ys)
-    min_x, max_x = min(xs), max(xs)
-
-    margin = unit
-    width = (max_x - min_x) * unit + margin * 2
-    height = (max_y - min_y) * unit + margin * 2
-
-    def to_px(pt: tuple[int, int]) -> tuple[float, float]:
-        y, x = pt
-        return (x - min_x) * unit + margin, (y - min_y) * unit + margin
-
-    canvas = Canvas(width, height)
-    for stroke in cursor.strokes:
-        canvas.line([to_px(p) for p in stroke])
-
-    start_px, start_py = to_px((0, 0))
-    _arrowhead(canvas, start_py, start_px, start_heading, unit)
+    canvas = _rasterize(cursor.strokes, start_heading, unit)
     return canvas.upscale(scale)
 
 

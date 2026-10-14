@@ -28,6 +28,28 @@ from .render import (
 from .tree_layout import tree_extents
 
 
+def _shared_rows(
+    children: dict[int, tuple[int, int]], zero: int, one: int, n: int
+) -> tuple[int, set[int]]:
+    """``(depth, rows)``: the one arm's rows equal to the zero arm's skipped residual.
+
+    Walk the zero arm through test-free levels; ``rows`` is empty when none repeats.
+    """
+    state, depth = zero, 1
+    aligned = [one]
+    while depth < n and children[state][0] == children[state][1]:
+        state = children[state][0]
+        depth += 1
+        aligned = [child for parent in aligned for child in children[parent]]
+        if depth < n and state in aligned:
+            return depth, {
+                (1 << (depth - 1)) + index
+                for index, residual in enumerate(aligned)
+                if residual == state
+            }
+    return depth, set()
+
+
 def shared_tree(
     table: str, *, command_budget: int | None = None, multiple: bool = False
 ) -> tuple[Node, int] | None:
@@ -42,20 +64,7 @@ def shared_tree(
     zero, one = children[levels[0][0]]
     if zero == one or constants[zero] is not None:
         return None
-    state, depth = zero, 1
-    aligned = [one]
-    rows: set[int] = set()
-    while depth < n and children[state][0] == children[state][1]:
-        state = children[state][0]
-        depth += 1
-        aligned = [child for parent in aligned for child in children[parent]]
-        if depth < n and state in aligned:
-            rows = {
-                (1 << (depth - 1)) + index
-                for index, residual in enumerate(aligned)
-                if residual == state
-            }
-            break
+    depth, rows = _shared_rows(children, zero, one, n)
     if not rows:
         return None
     if not multiple:

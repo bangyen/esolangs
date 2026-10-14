@@ -169,6 +169,28 @@ def _grey_rows(canvas: Canvas) -> Rows:
     return tuple(rows)
 
 
+def _shared_candidates(truth_table: str, n: int) -> list[Node]:
+    """Ancestor-return graphs: full tables, then projected ones within budget."""
+    nodes = []
+    for multiple in (False, True):
+        shared = shared_tree(truth_table, multiple=multiple)
+        if shared is not None:
+            nodes.append(shared[0])
+    kept = essential_inputs(truth_table, n)
+    if 0 < len(kept) < n:
+        # Replace 2k-1 loader operations by n+k-1, plus two operations for
+        # trailing ignored inputs. Budget the complete original-n program.
+        extra_reads = n - len(kept) + 2 * (kept[-1] < n - 1)
+        reduced = read_at(truth_table, kept, n)
+        for multiple in (False, True):
+            compact_shared = shared_tree(
+                reduced, command_budget=5 * n - extra_reads, multiple=multiple
+            )
+            if compact_shared is not None:
+                nodes.append(_project_loader(n, kept, compact_shared[0]))
+    return nodes
+
+
 @lru_cache(maxsize=8)
 def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Return a Line raster computing ``truth_table``."""
@@ -190,23 +212,7 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
         projected_area = area(projected, drawn)
         if projected_area < smallest:
             node, canvas, smallest = projected, drawn, projected_area
-    shared_nodes = []
-    for multiple in (False, True):
-        shared = shared_tree(truth_table, multiple=multiple)
-        if shared is not None:
-            shared_nodes.append(shared[0])
-    kept = essential_inputs(truth_table, n)
-    if 0 < len(kept) < n:
-        # Replace 2k-1 loader operations by n+k-1, plus two operations for
-        # trailing ignored inputs. Budget the complete original-n program.
-        extra_reads = n - len(kept) + 2 * (kept[-1] < n - 1)
-        reduced = read_at(truth_table, kept, n)
-        for multiple in (False, True):
-            compact_shared = shared_tree(
-                reduced, command_budget=5 * n - extra_reads, multiple=multiple
-            )
-            if compact_shared is not None:
-                shared_nodes.append(_project_loader(n, kept, compact_shared[0]))
+    shared_nodes = _shared_candidates(truth_table, n)
     selected_draw = None
     for graph in shared_nodes:
         draw = shared_canvas(graph, smallest, unit=unit)

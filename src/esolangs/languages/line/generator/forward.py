@@ -308,22 +308,16 @@ def _level_columns(
     return columns
 
 
-def _place_level(
-    dag: _Dag,
-    options: _CanvasOptions,
+def _level_lanes(
     layout: _Layout,
-    incoming: list[tuple[Edge, State]],
+    options: _CanvasOptions,
     first: dict[State, Edge],
     depth: int,
     level: list[int],
-    base: int,
-) -> int:
-    """Place one layer's forks, entries and joins; return the next base row."""
-    forks, entry, join = layout.forks, layout.entry, layout.join
-    if options.median_order and depth:
-        level = _median_order(layout, incoming, level)
-    extras = [(edge, dest) for edge, dest in incoming if first[dest] != edge]
-    columns = _level_columns(options, layout.gaps, depth, level)
+    extras: list[tuple[Edge, State]],
+    columns: dict[int, int],
+) -> tuple[dict[Edge, int], int, dict[Edge, int], int]:
+    """One layer's ``(arrival_lanes, arrival_count, join_lanes, join_lane_count)``."""
     join_spans = [
         (edge, _rail(layout, edge), columns[dest[1]]) for edge, dest in extras
     ]
@@ -352,9 +346,30 @@ def _place_level(
             arrival_count,
             {edge: arrival_lanes[first[dest]] + 2 for edge, dest in extras},
         )
-        lane_count = total - arrival_count
-    else:
-        lanes, lane_count = _join_lanes(join_spans)
+        return arrival_lanes, arrival_count, lanes, total - arrival_count
+    lanes, lane_count = _join_lanes(join_spans)
+    return arrival_lanes, arrival_count, lanes, lane_count
+
+
+def _place_level(
+    dag: _Dag,
+    options: _CanvasOptions,
+    layout: _Layout,
+    incoming: list[tuple[Edge, State]],
+    first: dict[State, Edge],
+    depth: int,
+    level: list[int],
+    base: int,
+) -> int:
+    """Place one layer's forks, entries and joins; return the next base row."""
+    forks, entry, join = layout.forks, layout.entry, layout.join
+    if options.median_order and depth:
+        level = _median_order(layout, incoming, level)
+    extras = [(edge, dest) for edge, dest in incoming if first[dest] != edge]
+    columns = _level_columns(options, layout.gaps, depth, level)
+    arrival_lanes, arrival_count, lanes, lane_count = _level_lanes(
+        layout, options, first, depth, level, extras, columns
+    )
     # Disjoint arrival/join spans reuse rows. At n=22 majority, scale 1,
     # this emits 87,270,400 pixels versus 123,110,400 (29.1%); both native
     # programs pass 37 rows with the same 98-command maximum.
