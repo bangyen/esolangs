@@ -130,8 +130,11 @@ def run_until_halt_or_cycle(
 ) -> bool:
     """Step ``machine`` until it halts or revisits an exact state.
 
-    Random machines require the all-branches detector.
-    A repeated deterministic snapshot *proves* a hang.  ``True`` on a halt, ``False``
+    A random language's machine is decided by branching instead (``limit``
+    then counts branching states, its default when ``None``): ``False`` when
+    every draw cycles, ``True`` when the program never drew and halts, and
+    :class:`TypeError` when this run's own draws decide it.  A repeated
+    deterministic snapshot *proves* a hang.  ``True`` on a halt, ``False``
     once a cycle is proven; unbounded growth never repeats and is
     :func:`run_until_halt_or_growth`'s.  Brent's algorithm: O(1)
     snapshots, up to ~2x past the cycle's start, so rely on the verdict,
@@ -155,12 +158,21 @@ def run_until_halt_or_cycle(
     # A Debugger wraps a VM (``vm``); a VM wraps interpreter state (``_machine``).
     underlying = getattr(machine, "vm", machine)
     underlying = getattr(underlying, "_machine", underlying)
-    # A seeded random program can repeat its visible state, then halt.
-    # Random choices are absent from snapshots; only branching proves a cycle.
+    # A seeded random program can repeat its visible state, then halt: the
+    # next draw is not in the snapshot, so a repeat proves nothing.  Branching
+    # keeps the verdicts that hold whatever this run draws.  It ignores the
+    # machine's own draw source, so "some path halts" after a fork is not
+    # this run's answer (a FirstDraw(0) coin loops where the other halts).
     if not machine.halted and isinstance(underlying, _BranchingStepMachine):
+        halts, forked = _branch_search(underlying, 10_000 if limit is None else limit)
+        if not halts or not forked:
+            return halts
         raise with_hint(
-            TypeError("random machines cannot prove cycles from repeated snapshots"),
-            "use run_until_halt_or_all_branches_cycle for random machines",
+            TypeError(
+                "random machines: some draws halt this program, so whether "
+                "this run halts depends on its own draws"
+            ),
+            "use run_until_halt_or_all_branches_cycle for the any-draw question",
         )
     tortoise = machine.snapshot()
     power = 1
@@ -215,8 +227,14 @@ def run_until_halt_or_all_branches_cycle(
             limit,
         ),
     )
+    return _branch_search(machine, limit)[0]
+
+
+def _branch_search(machine: _BranchingStepMachine, limit: int) -> tuple[bool, bool]:
+    """Return whether some path halts, and whether any state forked."""
     pending = [machine.branching_snapshot()]
     seen: set[Hashable] = set()
+    forked = False
     while pending:
         state = pending.pop()
         if state in seen:
@@ -236,7 +254,7 @@ def run_until_halt_or_all_branches_cycle(
             )
         seen.add(state)
         if machine.branching_halted(state):
-            return True
+            return True, forked
         successors = machine.branching_successors(state, limit - len(seen))
         if successors is None:
             raise with_hint(
@@ -249,8 +267,9 @@ def run_until_halt_or_all_branches_cycle(
                     "does not decide all random paths"
                 ),
             )
+        forked = forked or len(successors) > 1
         pending.extend(successors)
-    return False
+    return False, forked
 
 
 @runtime_checkable

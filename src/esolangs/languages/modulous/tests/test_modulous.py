@@ -387,8 +387,8 @@ def test_modulous_reset_loops_and_end_halts() -> None:
     """``RST`` rewinds the cursor forever; ``END`` stops."""
     reset = Modulous("[RST]", ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(reset) is False
-    with pytest.raises(TypeError, match="random machines"):
-        run_until_halt_or_cycle(Modulous("[RST]", ScriptedIO()))
+    # Every draw cycles, so the snapshot detector's answer holds for any run.
+    assert run_until_halt_or_cycle(Modulous("[RST]", ScriptedIO())) is False
     end = Modulous("[END]", ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(end) is True
 

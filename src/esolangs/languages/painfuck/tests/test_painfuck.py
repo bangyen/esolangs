@@ -388,11 +388,13 @@ def test_painfuck_all_coin_outcomes_can_be_proved_to_loop() -> None:
     code = _encode("paybb")
     machine = Painfuck(code, ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(machine) is False
-    # A later draw could escape; snapshot proofs refuse random machines.
+    # Every outcome loops, so the hang is proved whatever this run draws.
     for coin in (0, 1):
         draws = FirstDraw(coin, rest=coin)
-        with pytest.raises(TypeError, match="random machines"):
+        assert (
             run_until_halt_or_cycle(Painfuck(code, ScriptedIO(), draws), limit=64)
+            is False
+        )
 
 
 def test_painfuck_one_halting_coin_refutes_an_all_branches_hang() -> None:

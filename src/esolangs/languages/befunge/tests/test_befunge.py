@@ -6,7 +6,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.befunge.interpreter import _advance, _Machine, run
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Seeded
-from esolangs.vm import run_until_halt
+from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
@@ -248,3 +248,17 @@ def test_hints_for_bad_programs_and_input() -> None:
         error=ValueError,
     )
     assert_halts_with_hint("Befunge", "10/.@", "divides by zero", "divisor")
+
+
+def test_a_loop_that_never_draws_is_proved_by_the_snapshot_detector() -> None:
+    """Befunge draws at ``?``; a program without one is still decidable.
+
+    The detector refused every machine of a random language, this loop
+    included, though a repeat with no draw in it proves the hang.
+    """
+    assert run_until_halt_or_cycle(make_vm("Befunge", ">v\n^<\n")) is False
+    # A draw-free path to ``@`` is this run's halt too.
+    assert run_until_halt_or_cycle(make_vm("Befunge", ">@\n")) is True
+    # Once a draw can halt it, this run's own draw decides: refused, not guessed.
+    with pytest.raises(TypeError, match="depends on its own draws"):
+        run_until_halt_or_cycle(make_vm("Befunge", "?@@@@\n@\n"))

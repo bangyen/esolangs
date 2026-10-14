@@ -216,8 +216,8 @@ def test_super_snusp_mirror_ring_loops_under_every_draw() -> None:
     code = ['/"\\', "\\ /"]
     machine = SuperSnusp(code, ScriptedIO())
     assert run_until_halt_or_all_branches_cycle(machine, limit=3000) is False
-    with pytest.raises(TypeError, match="random machines"):
-        run_until_halt_or_cycle(SuperSnusp(code, ScriptedIO()))
+    # No draw escapes, so the snapshot detector proves the hang for any run.
+    assert run_until_halt_or_cycle(SuperSnusp(code, ScriptedIO()), limit=3000) is False
 
 
 def test_super_snusp_forks_every_value_equals_could_store() -> None:
