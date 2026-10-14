@@ -169,7 +169,12 @@ requirements:
   aimed at a table class (ignored inputs, constants) is judged on that class;
   2D grids are judged by area, rows times the longest row. The n=3 total is
   context only: greedy order searches saved 8-15% there but at most 2.2% at
-  n >= 7, and were retired. Cite the measurement beside the code.
+  n >= 7, and were retired. A saving still growing at n=8 is measured on
+  past it, to its peak. Named functions (parity, majority, and/or,
+  thresholds) are reported apart; 10% on one keeps a rule for that family,
+  not the whole race. Smallfuck's residual forms saved 2.2% on random tables
+  at n=8, 0% at n >= 9 and at most 1.0% on a named function, and were
+  retired. Cite the measurement beside the code.
 - **No table grows**: checked exhaustively through three inputs, so keep the
   old build as a candidate when the new one is not uniformly shorter.
 - **Every table executes**: exhaustively through three inputs and sampled at
