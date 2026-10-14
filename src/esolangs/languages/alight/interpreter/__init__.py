@@ -294,7 +294,7 @@ class _Views:
         the wiki says is not a halt -- so a position without it is ambiguous.
         """
         core = self._core
-        return (core.row, core.col, *core.heading)
+        return (core.walker.row, core.walker.col, *core.walker.heading)
 
     @property
     def memory(self) -> list[int]:
@@ -834,30 +834,6 @@ class _Core:
         return self.walkers[-1]
 
     @property
-    def row(self) -> int:
-        return self.walker.row
-
-    @row.setter
-    def row(self, value: int) -> None:
-        self.walker.row = value
-
-    @property
-    def col(self) -> int:
-        return self.walker.col
-
-    @col.setter
-    def col(self, value: int) -> None:
-        self.walker.col = value
-
-    @property
-    def heading(self) -> tuple[int, int]:
-        return self.walker.heading
-
-    @heading.setter
-    def heading(self, value: tuple[int, int]) -> None:
-        self.walker.heading = value
-
-    @property
     def vars(self) -> dict[str, _Value]:
         """The innermost walk's namespace, which a call does not share."""
         return self.walker.vars
@@ -879,14 +855,16 @@ class _Core:
         self.handlers.output = None
         if self.halted:
             return None
-        text, row, col = _scan(self.grid, self.row, self.col, self.heading)
+        text, row, col = _scan(
+            self.grid, self.walker.row, self.walker.col, self.walker.heading
+        )
         word = _Parser(text, self.expression_syntax).word()
         if self.calls.resolve(text, word):
             return self.handlers.output
         if word == "end":
             self.calls.finish()
             return self.handlers.output
-        heading = self.heading
+        heading = self.walker.heading
         if word == "turn":
             guard = _truth(self.expressions.evaluate_rest())
             heading = _turned(heading, left=guard)
@@ -901,8 +879,9 @@ class _Core:
         drow, dcol = heading
         self.walker.pending = None
         self.walker.returned = None
-        self.row, self.col, self.heading = row + drow, col + dcol, heading
-        if not self._in_bounds(self.row, self.col):
+        walker = self.walker
+        walker.row, walker.col, walker.heading = row + drow, col + dcol, heading
+        if not self._in_bounds(walker.row, walker.col):
             raise Hint.GRID_PATH.halt("walked off the grid")
         return self.handlers.output
 
