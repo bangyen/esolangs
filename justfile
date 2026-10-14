@@ -124,6 +124,14 @@ sizes *args:
 tracediff language *args:
     {{PYTHON}} scripts/tracediff.py "{{language}}" {{args}}
 
+# A generator refactor's evidence: every table through n=3, at several widths
+# and balanced, byte-identical to a git revision (default main).  Pass
+# --mutant <file> as the positive control, --speed to fail a tree more than
+# 10% slower.
+# diff a generator's programs against another revision
+gendiff language *args:
+    {{PYTHON}} scripts/gendiff.py "{{language}}" {{args}}
+
 # Merge downloaded artifacts, one complete CI run per directory.
 refresh-ci-timings *args:
     {{PYTHON}} scripts/ci/shard.py refresh --serial-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate {{args}}
