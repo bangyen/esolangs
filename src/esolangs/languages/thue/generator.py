@@ -11,14 +11,13 @@ state reached has one rule at one position), so the answer is reproducible
 unpinned, as the classics tests assert to ``n = 3`` under several draws.
 
 A constant half is stored once (:func:`_fold`, shorter from nine inputs) on
-every path; balanced n=9/10 -24%/-35%. One repeated aligned block has a named
-expansion when the reduced table leaves command and state headroom. A single
-frontier expands it before lookup, preserving the unique enabled rewrite.
+every path; balanced n=9/10 -24%/-35%.  A named repeated block, expanded
+before lookup, saved 0% on random tables and at most 6% at n=14 on
+block-repeating ones, so it is gone.
 """
 
 from __future__ import annotations
 
-from collections import Counter
 from math import isqrt
 from string import ascii_letters
 
@@ -28,7 +27,6 @@ from esolangs.generation.helpers import (
     essential_inputs,
     grid_width,
     read_at,
-    subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
@@ -116,14 +114,9 @@ def thue(truth_table: str, width: int | None = None) -> str:
     out at the rest; the queue's five rules lose below that saving.  Plain
     and queued layouts compete on every path, nearest the width first.
     """
-    n = _validate_truth_table(truth_table)
+    _validate_truth_table(truth_table)
     tables = _tables(truth_table)
     layouts = [_thue_layout(*layout, width) for layout in tables]
-    layouts.extend(
-        shared
-        for layout in tables
-        if (shared := _shared_layout(*layout, n)) is not None
-    )
     limit = _width_limit(width)
 
     def overshoot(layout: str) -> int:
@@ -199,39 +192,29 @@ def _tables(truth_table: str) -> list[_Layout]:
     return layouts
 
 
-def _thue_layout(
-    table: str, rounds: str | None, extra: tuple[str, ...], width: int | None
+def _contracted(rules: str, *, queued: bool) -> str:
+    """Return ``rules`` with the start rules shortened to one symbol.
+
+    Only a completed return sweep contracts: ``D`` restores ``L`` before
+    reading, so the shorter start rules cannot fire on ``R`` in the interior.
+    """
+    if queued:
+        # ``KR`` and ``LR`` contract once a sweep completes.
+        short = rules.replace("KR", "C").replace("LR", "C")
+        return short.removesuffix("::=") + "KR::=C\nLR::=C\n::="
+    short = rules.replace("LR", "C").replace("::=LM", "::=D")
+    return short.removesuffix("::=") + "LR::=C\nD::=LM\n::="
+
+
+def _chunked(
+    rules_text: str,
+    entries: str,
+    rounds: str | None,
+    extra: tuple[str, ...],
+    limit: int,
 ) -> str:
-    """Return one layout: plain, or queued with a ``K``/``S`` round per input."""
-    queued = rounds is not None
-    entries = _thue_entries(table)
-    base = _QUEUED_RULES if queued else _RULES
-    if extra:
-        base = "\n".join([base.removesuffix("\n::="), *extra, "::="])
-    start = f"L{rounds}R" if queued else "LM"
-    program = f"{base}\n{start}{entries}E"
-    limit = _width_limit(width)
-    if limit is None or grid_width(program) <= limit:
-        return program
-    if extra:
-        # Contracting would merge the fold's ``KRaE`` with the final ``LRaE``.
-        rules_text = base
-    elif queued:
-        # ``KR`` and ``LR`` contract once a sweep completes, as ``LR`` does below.
-        rules_text = _QUEUED_RULES.replace("KR", "C").replace("LR", "C")
-        rules_text = rules_text.removesuffix("::=") + "KR::=C\nLR::=C\n::="
-    else:
-        # Contract only a completed return sweep. D restores L before reading,
-        # so the shorter start rules cannot fire on R in the table's interior.
-        rules_text = _RULES.replace("LR", "C").replace("::=LM", "::=D")
-        rules_text = rules_text.removesuffix("::=") + "LR::=C\nD::=LM\n::="
-    narrow = f"{rules_text}\n{start}{entries}E"
-    if grid_width(narrow) <= limit:
-        return narrow
+    """Return a program expanding named chunks of ``entries`` before reading."""
     length = len(entries)
-    # One-symbol nodes fit only bounded arities; larger trees retain chunks.
-    if not queued and length <= 8 and limit < 9:
-        return _thue_short_tree(table)
     alphabet = _alphabet(rounds, extra)
     digits = _marker_digits(length, len(alphabet))
     # Payload covers its names' overhead, keeping even the narrowest source O(T).
@@ -250,61 +233,37 @@ def _thue_layout(
     return "\n".join([*rules, "::=", head + _chunk_marker(0, digits, alphabet)])
 
 
+def _thue_layout(
+    table: str, rounds: str | None, extra: tuple[str, ...], width: int | None
+) -> str:
+    """Return one layout: plain, or queued with a ``K``/``S`` round per input."""
+    queued = rounds is not None
+    entries = _thue_entries(table)
+    base = _QUEUED_RULES if queued else _RULES
+    if extra:
+        base = "\n".join([base.removesuffix("\n::="), *extra, "::="])
+    start = f"L{rounds}R" if queued else "LM"
+    program = f"{base}\n{start}{entries}E"
+    limit = _width_limit(width)
+    if limit is None or grid_width(program) <= limit:
+        return program
+    # Contracting would merge the fold's ``KRaE`` with the final ``LRaE``.
+    rules_text = base if extra else _contracted(base, queued=queued)
+    narrow = f"{rules_text}\n{start}{entries}E"
+    if grid_width(narrow) <= limit:
+        return narrow
+    # One-symbol nodes fit only bounded arities (-40% at n=3, widths 1-8);
+    # larger trees retain chunks.
+    if not queued and len(entries) <= 8 and limit < 9:
+        return _thue_short_tree(table)
+    return _chunked(rules_text, entries, rounds, extra, limit)
+
+
 def _alphabet(rounds: str | None, extra: tuple[str, ...]) -> str:
     """Return the chunk-name symbols no rule of the layout matches."""
     if extra:
         return _FOLD_NAME_ALPHABET
     return _NAME_ALPHABET if rounds is None else _QUEUED_NAME_ALPHABET
-
-
-def _shared_layout(
-    table: str, rounds: str | None, extra: tuple[str, ...], n: int
-) -> str | None:
-    """Expand one named aligned block through a unique frontier before lookup."""
-    entries = _thue_entries(table)
-    if len(entries) < 2:
-        return None
-    ids = subtree_ids(entries.translate(str.maketrans("ab", "01")))
-    best: tuple[int, int, int] | None = None
-    saved = 0
-    for depth, layer in enumerate(ids[:-1]):
-        span = 1 << (len(ids) - 1 - depth)
-        counts = Counter(layer)
-        for index, state in enumerate(layer):
-            copies = counts[state]
-            saving = (copies - 1) * span - copies - 31
-            if state >= 2 and copies > 1 and saving > saved:
-                best, saved = (index * span, span, copies), saving
-    if best is None:
-        return None
-    row, span, copies = best
-    length = len(entries)
-    # Expand, then return R across the expanded table. Lookup itself costs
-    # at most 2L+8n+32, including queued reads and the constant-half rules.
-    startup = length + (length - copies * span) + copies + 1
-    if (
-        2 * length + 8 * n + 32 + startup > 2 * (1 << n) + 2 * n - 1
-        or length + n + 8 > 1 << n
-    ):
-        return None
-    alphabet = _alphabet(rounds, extra)
-    front, name = alphabet[0], alphabet[1]
-    body = entries[row : row + span]
-    encoded = "".join(
-        name if entries[i : i + span] == body else entries[i : i + span]
-        for i in range(0, length, span)
-    )
-    base = _QUEUED_RULES if rounds is not None else _RULES
-    rules = [
-        *base.splitlines()[:-1],
-        *extra,
-        f"{front}a::=a{front}",
-        f"{front}b::=b{front}",
-        f"{front}{name}::={body}{front}",
-        f"{front}E::=RE",
-        "::=",
-    ]
-    return "\n".join([*rules, "L" + (rounds or "") + front + encoded + "E"])
 
 
 def _thue_entries(truth_table: str) -> str:
