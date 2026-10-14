@@ -1,7 +1,9 @@
 """Model selection for n>=8: every candidate layout races on area.
 
 Lives apart from ``__init__`` because the candidates import it back (a real
-cycle), so ``__init__`` imports this module lazily, once.
+cycle), so ``__init__`` imports this module lazily, once.  The three builders
+tests monkeypatch are imported at call time instead: bound here, a patch made
+after the first import would never reach them.
 """
 
 from __future__ import annotations
@@ -10,9 +12,6 @@ from collections.abc import Callable
 from typing import NamedTuple
 
 from esolangs.languages.circuit_diagram.generator import _essential_table
-from esolangs.languages.circuit_diagram.generator.banks import (
-    _residual_class_bank_candidate,
-)
 from esolangs.languages.circuit_diagram.generator.bundled_banks import (
     bundled_class_bank_candidate,
 )
@@ -26,8 +25,6 @@ from esolangs.languages.circuit_diagram.generator.hlayout import (
 from esolangs.languages.circuit_diagram.generator.hpool import (
     _H_POOL_MIN_INPUTS,
     _h_pool_area_floor,
-    _h_pool_layout,
-    _large_pool_layout,
 )
 from esolangs.languages.circuit_diagram.generator.layout import _Layout, _layout_area
 from esolangs.languages.circuit_diagram.generator.sparse_banks import (
@@ -53,6 +50,8 @@ def _h_fallback(target: _Target, large_area: int | None) -> _Layout | None:
     Only skips an older layout when it is strictly larger, preserving its
     area ties: the mandatory term glyphs prove these floors.
     """
+    from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
+
     _, inputs, used, projected = target
     selected: _Layout | None = None
     if large_area is None or large_area >= _h_term_area_floor(len(used), inputs):
@@ -68,6 +67,8 @@ def _h_fallback(target: _Target, large_area: int | None) -> _Layout | None:
 
 def _pool(target: _Target, ceiling: int | None) -> _Layout | None:
     """Large pool; with no model yet, the H layouts too (the pool wins strict only)."""
+    from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
+
     _, inputs, used, projected = target
     large = _large_pool_layout(
         projected, input_order=used, port_inputs=inputs, ceiling=ceiling
@@ -82,6 +83,14 @@ def _pool(target: _Target, ceiling: int | None) -> _Layout | None:
     return fallback
 
 
+def _residual(target: _Target, ceiling: int | None) -> _Layout | None:
+    from esolangs.languages.circuit_diagram.generator.banks import (
+        _residual_class_bank_candidate,
+    )
+
+    return _residual_class_bank_candidate(target.table, ceiling)
+
+
 # Order is the tie-break: an earlier candidate keeps an equal-area win.  The
 # interval models count characters before rendering, so a node cap cannot
 # hide a smaller complete fold.
@@ -90,7 +99,7 @@ _CANDIDATES: tuple[_Candidate, ...] = (
     lambda t, ceiling: sparse_class_bank_candidate(t.table, ceiling),
     _pool,
     lambda t, ceiling: bundled_class_bank_candidate(t.table, ceiling),
-    lambda t, ceiling: _residual_class_bank_candidate(t.table, ceiling),
+    _residual,
 )
 
 
