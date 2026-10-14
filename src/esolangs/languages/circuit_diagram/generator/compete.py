@@ -1,9 +1,11 @@
 """Model selection for n>=8: every candidate layout races on area.
 
 Lives apart from ``__init__`` because the candidates import it back (a real
-cycle), so ``__init__`` imports this module lazily, once.  The three builders
-tests monkeypatch are imported at call time instead: bound here, a patch made
-after the first import would never reach them.
+cycle), so ``__init__`` imports this module lazily, once.  The builders and
+area floors tests monkeypatch are imported at call time instead: bound here, a
+patch made after the first import would never reach them, and a first import
+under a patch would keep it (a zero pool floor made every later build route
+the H pool, 2.3 s -> 6.2 s).
 """
 
 from __future__ import annotations
@@ -18,14 +20,8 @@ from esolangs.languages.circuit_diagram.generator.bundled_banks import (
 from esolangs.languages.circuit_diagram.generator.folded_banks import (
     folded_class_bank_candidate,
 )
-from esolangs.languages.circuit_diagram.generator.hlayout import (
-    _h_term_area_floor,
-    _h_term_layout,
-)
-from esolangs.languages.circuit_diagram.generator.hpool import (
-    _H_POOL_MIN_INPUTS,
-    _h_pool_area_floor,
-)
+from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+from esolangs.languages.circuit_diagram.generator.hpool import _H_POOL_MIN_INPUTS
 from esolangs.languages.circuit_diagram.generator.layout import _Layout, _layout_area
 from esolangs.languages.circuit_diagram.generator.sparse_banks import (
     sparse_class_bank_candidate,
@@ -50,7 +46,13 @@ def _h_fallback(target: _Target, large_area: int | None) -> _Layout | None:
     Only skips an older layout when it is strictly larger, preserving its
     area ties: the mandatory term glyphs prove these floors.
     """
-    from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
+    from esolangs.languages.circuit_diagram.generator.hlayout import (
+        _h_term_area_floor,
+    )
+    from esolangs.languages.circuit_diagram.generator.hpool import (
+        _h_pool_area_floor,
+        _h_pool_layout,
+    )
 
     _, inputs, used, projected = target
     selected: _Layout | None = None

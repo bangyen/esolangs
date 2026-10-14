@@ -103,7 +103,10 @@ def test_large_atom_displaces_older_layout_after_exact_comparison(
 ) -> None:
     module = importlib.import_module("esolangs.languages.circuit_diagram.generator")
     monkeypatch.setattr(module, "_linear_shared_layout", lambda *_args: None)
-    monkeypatch.setattr(module, "_h_term_area_floor", lambda *_args: floor)
+    terms = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.hlayout"
+    )
+    monkeypatch.setattr(terms, "_h_term_area_floor", lambda *_args: floor)
     pools = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.hpool"
     )
