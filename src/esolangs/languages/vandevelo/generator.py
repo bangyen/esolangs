@@ -772,15 +772,15 @@ def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
     dim = len(dirs)
     cols = [sum((v >> j & 1) << i for i, v in enumerate(dirs)) for j in range(n)]
     # Keep pair sums rather than materializing every triple. Querying a
-    # triple against each core column preserves the old first witness.
+    # triple against each core column yields the first witness in that order.
     witnesses: dict[int, int] = {}
     pairs: dict[int, int] = {}
     core: list[int] = []
     duals: list[int] = []
 
     def rank(inputs: int) -> tuple[int, int, list[int]]:
-        # The old cache inserted witnesses by last input, then width,
-        # then the earlier inputs in ascending order.
+        # Witnesses order by last input, then width, then the earlier
+        # inputs in ascending order.
         return inputs.bit_length(), inputs.bit_count(), _points(inputs)
 
     for j, col in enumerate(cols):
@@ -847,8 +847,15 @@ def _affine_coset(table: str, ones: set[int]) -> tuple[int, list[int]] | None:
     return base, dirs
 
 
-def _cover(truth_table: str, n: int) -> tuple[list[list[tuple[int, int]]], list[int]]:
-    """Return the clauses whose union is the ones, and each clause's dimension.
+class _Clause(NamedTuple):
+    """One clause: its ``(input set, value)`` tests and the cube's dimension."""
+
+    tests: list[tuple[int, int]]
+    dim: int
+
+
+def _cover(truth_table: str, n: int) -> list[_Clause]:
+    """Return the clauses whose union is the ones.
 
     An affine table is one coset; an affine complement is its failed equations;
     anything else is peeled into cubes.
@@ -862,11 +869,13 @@ def _cover(truth_table: str, n: int) -> tuple[list[list[tuple[int, int]]], list[
             equations = _constraints(*excluded, n)
             # The first failed equation partitions the complement, even
             # though earlier failures let its redundant prefix tests go.
-            dims = [n - index - 1 for index in range(len(equations))]
-            return [[(mask, value ^ 1)] for mask, value in equations], dims
+            return [
+                _Clause([(mask, value ^ 1)], n - index - 1)
+                for index, (mask, value) in enumerate(equations)
+            ]
     cubes = [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
-    cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
-    return cover, [len(dirs) for _, dirs in cubes]
+    tests = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
+    return [_Clause(t, len(dirs)) for t, (_, dirs) in zip(tests, cubes, strict=True)]
 
 
 class _Held(NamedTuple):
@@ -874,6 +883,12 @@ class _Held(NamedTuple):
 
     w: int
     polarity: int
+
+
+class _Binding(NamedTuple):
+    register: str
+    polarity: int
+    lines: list[tuple[str, ...]]
 
 
 class _Bank:
@@ -890,10 +905,8 @@ class _Bank:
         self.next_register = n
         self.ref = ref
 
-    def bind(
-        self, w: int, value: int, used: set[str]
-    ) -> tuple[str, int, list[tuple[str, ...]]]:
-        """Return ``(register, polarity, binding lines)`` testing parity ``w``.
+    def bind(self, w: int, value: int, used: set[str]) -> _Binding:
+        """Return the register, polarity and binding lines testing parity ``w``.
 
         Reuses a register already holding ``w``, else morphs the nearest
         free recent one, else binds a fresh or respelled register.
@@ -904,7 +917,7 @@ class _Bank:
         if exact is not None:
             polarity = held.pop(exact).polarity
             held[exact] = _Held(w, polarity)  # most recently used
-            return exact, polarity, []
+            return _Binding(exact, polarity, [])
         lines: list[tuple[str, ...]] = []
         nearest: str | None = None
         distance = w.bit_count()
@@ -939,7 +952,7 @@ class _Bank:
                 op, polarity = "==", polarity ^ 1
             lines.append((register, "~>", f"{register}?", op, f"{self.ref(b)}?"))
         held[register] = _Held(w, polarity)
-        return register, polarity, lines
+        return _Binding(register, polarity, lines)
 
 
 def vandevelo(truth_table: str, width: int | None = None) -> str:
@@ -947,8 +960,8 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     compact = width is not None
     names = [short_name(index, _ALPHABET) for index in range(n)]
-    cover, dims = _cover(truth_table, n)
-    flips = _flips(cover, dims, n)
+    cover = _cover(truth_table, n)
+    flips = _flips(cover, n)
     lines = []
     joiner = "" if compact else " "
     glue = "::" if compact else " :: "
@@ -970,7 +983,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
         return names[n - 1 - bit]
 
     bank = _Bank(n, ref)
-    for constraints in cover:
+    for constraints, _ in cover:
         parts = []
         used: set[str] = set()
         for w, value in constraints:
@@ -1014,7 +1027,7 @@ def _pruned(cover: list[list[tuple[int, int]]]) -> list[list[tuple[int, int]]]:
     return out
 
 
-def _flips(cover: list[list[tuple[int, int]]], dims: list[int], n: int) -> int:
+def _flips(cover: list[_Clause], n: int) -> int:
     """Return the index bits whose input is read negated.
 
     An input is flipped when more of its single-input tests ask for 0 than
@@ -1030,7 +1043,7 @@ def _flips(cover: list[list[tuple[int, int]]], dims: list[int], n: int) -> int:
     count = [0] * n
     weight = [0] * n
     reach = 1 << n
-    for constraints, dim in zip(cover, dims, strict=True):
+    for constraints, dim in cover:
         for w, value in constraints:
             if w.bit_count() == 1:
                 bit = w.bit_length() - 1
