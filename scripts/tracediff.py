@@ -7,8 +7,11 @@ behind.  The corpus is the suite sample, wiki examples, every table through
 n=3 on every input row (and wrapped at width 8 below n=3), and seeded random
 programs.  ``--mutant`` is the positive control: a deliberately broken copy
 that must differ somewhere, or the corpus never reached the change.
+``--speed`` also times both over the longest-running programs: a teaching
+rewrite once cost Deadfish a third of its step rate, unmeasured.
 
-Exits 1 on any difference, or on a mutant that went unseen.
+Exits 1 on any difference, on a mutant that went unseen, or with ``--speed``
+on a new copy more than 10% slower (CONTRIBUTING.md's bar).
 """
 
 from __future__ import annotations
@@ -17,12 +20,15 @@ import argparse
 import importlib
 import importlib.util
 import itertools
+import math
 import random
 import re
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
+from contextlib import suppress
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -42,6 +48,8 @@ SAMPLES = importlib.import_module("tests.support.samples").SAMPLES
 #: Steps traced per program; past it a run counts as non-halting.
 LIMIT = 400
 RANDOM_PROGRAMS = 3000
+#: The slowdown a refactor may cost before ``--speed`` fails it.
+SLOWDOWN = 0.10
 _ADDRESS = re.compile(r" at 0x[0-9a-f]+")
 
 #: ``(source, stdin)``; a generated source may be a raster or compressed.
@@ -274,6 +282,43 @@ def differences(
     return found
 
 
+def _lap(module: ModuleType, work: list[tuple[Program, int]], *, split: bool) -> float:
+    """Seconds to build each machine and run it its step count."""
+    start = time.perf_counter()
+    for (code, stdin), steps in work:
+        source = code.splitlines() if split and isinstance(code, str) else code
+        with suppress(Exception):  # an error ends the run, as it did when traced
+            machine = module._Machine(source, ScriptedIO(stdin))  # noqa: SLF001
+            for _ in range(steps):
+                machine.step()
+    return time.perf_counter() - start
+
+
+def speeds(
+    old: ModuleType,
+    new: ModuleType,
+    programs: list[Program],
+    *,
+    split: bool = False,
+    rounds: int = 5,
+) -> tuple[float, float]:
+    """Return each copy's steps per second over the longest-running programs.
+
+    Both run the same steps, the trace's length, repeated until a lap takes
+    0.2 s; laps alternate and the fastest of ``rounds`` counts.
+    """
+    lengths = [(len(trace(new, p, frozenset(), split=split)), p) for p in programs]
+    lengths.sort(key=lambda pair: pair[0], reverse=True)
+    work = [(program, steps) for steps, program in lengths[:40]]
+    work *= max(1, math.ceil(0.2 / max(_lap(new, work, split=split), 1e-6)))
+    old_best = new_best = math.inf
+    for _ in range(rounds):
+        old_best = min(old_best, _lap(old, work, split=split))
+        new_best = min(new_best, _lap(new, work, split=split))
+    steps = sum(count for _, count in work)
+    return steps / old_best, steps / new_best
+
+
 def main(argv: list[str] | None = None) -> int:
     """Print the first differences and the counts; return the exit status."""
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
@@ -284,6 +329,7 @@ def main(argv: list[str] | None = None) -> int:
         "--ignore-views", default="", help="comma-separated renamed views"
     )
     parser.add_argument("--random", type=int, default=RANDOM_PROGRAMS)
+    parser.add_argument("--speed", action="store_true", help="also compare steps/s")
     args = parser.parse_args(argv)
     name = resolve(args.language)
     ignored = frozenset(filter(None, args.ignore_views.split(",")))
@@ -304,12 +350,18 @@ def main(argv: list[str] | None = None) -> int:
         f"{name}: {len(programs)} programs ({halting} halt cleanly), "
         f"{len(found)} differ from {args.old}"
     )
-    if args.mutant is None:
-        return int(bool(found))
-    mutant = _load(args.mutant, f"{prefix}_mutant")
-    caught = len(differences(old, mutant, programs, ignored, split=split))
-    print(f"control: mutant differs on {caught}")
-    return int(bool(found) or not caught)
+    failed = bool(found)
+    if args.speed:
+        was, now = speeds(old, new, programs, split=split)
+        change = now / was - 1
+        print(f"speed: {was:,.0f} -> {now:,.0f} steps/s ({change:+.0%})")
+        failed |= change < -SLOWDOWN
+    if args.mutant is not None:
+        mutant = _load(args.mutant, f"{prefix}_mutant")
+        caught = len(differences(old, mutant, programs, ignored, split=split))
+        print(f"control: mutant differs on {caught}")
+        failed |= not caught
+    return int(failed)
 
 
 if __name__ == "__main__":

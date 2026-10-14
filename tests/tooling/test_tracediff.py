@@ -29,6 +29,21 @@ def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     assert tracediff.differences(same, mutant, programs)
 
 
+def test_speed_sees_a_slowed_copy(tmp_path: Path) -> None:
+    """Deadfish's rewrite lost a third of its step rate and nothing said so."""
+    programs = tracediff.corpus(REFERENCE, 50, max_n=1)
+    same = tracediff._load(_INTERPRETER, "tracediff_fast")  # noqa: SLF001
+    slowed = tmp_path / "slowed.py"
+    slowed.write_text(
+        _INTERPRETER.read_text(encoding="utf-8")
+        + "\n_step = _Machine.step\n\n\ndef _slow(self):\n"
+        + "    sum(range(2000))\n    _step(self)\n\n\n_Machine.step = _slow\n"
+    )
+    slow = tracediff._load(slowed, "tracediff_slow")  # noqa: SLF001
+    before, after = tracediff.speeds(same, slow, programs, rounds=2)
+    assert after < before / 2
+
+
 def test_an_error_records_the_state_it_leaves() -> None:
     """A draft moving its pointer before a failing read passed an error-only diff."""
     module = tracediff._load(_INTERPRETER, "tracediff_error")  # noqa: SLF001

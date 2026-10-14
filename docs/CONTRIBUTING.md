@@ -221,7 +221,8 @@ Judge a module by what the language does not demand.
   became one counter. Try this before the next rule.
 - State past three fields is a NamedTuple, not a positional tuple
   re-unpacked in every branch. Its constructor is Python code, so a step
-  that rebuilds the state pays for it: measure. Piet lost 11% and kept a
+  that rebuilds the state pays for it: run `just tracediff <language>
+  --speed`. Piet lost 11% and kept a
   type alias whose comment names the fields.
 - The module docstring teaches the language: source syntax, one step, halt
   and output, then spec-gap decisions. Implementation notes are comments

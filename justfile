@@ -118,7 +118,8 @@ sizes *args:
 
 # A refactor's evidence: step traces against a git revision (default main)
 # over samples, wiki examples, generated rows and random programs.  Pass
-# --mutant <file> as the positive control, --ignore-views for renamed views.
+# --mutant <file> as the positive control, --ignore-views for renamed views,
+# --speed to fail a copy more than 10% slower.
 # diff an interpreter's step-by-step behaviour against another revision
 tracediff language *args:
     {{PYTHON}} scripts/tracediff.py "{{language}}" {{args}}
