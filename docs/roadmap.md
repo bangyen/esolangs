@@ -32,3 +32,14 @@ evidence, not optimization tasks.
 Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
 check or weakening a contract.
+
+## Languages
+
+First implementations, in order; each passes the intake rule.
+
+- **Semqain:** fused code/tape 4-bit queue; skips cap at 15 cells and an
+  input written into a later skip count is a computed jump. Decide nybble I/O.
+- **Caballo:** stack-to-integer map; branches cancel by weight, and the ring
+  identities can factor tables. Decide the stdin and stack encoding.
+- **Rubic:** Total; a Rubik's cube is the only memory, so the input count is
+  capped.
