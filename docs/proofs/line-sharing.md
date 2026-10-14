@@ -27,23 +27,25 @@ depth has a different remaining-read obligation. Mandatory reads on a
 constant or test-free descent do not duplicate its eventual selector or
 output stem: those are still interned at their own depth.
 
-The projected reverse-order construction first removes globally ignored
-inputs, then tests the remaining stored cells in reverse order. Its original
-loader still reads every input, in order. Constants are inline leaves;
-nonconstant residuals again have one state per depth and identity. With
-fewer than two essential inputs, the projected tree already has no repeated
-nonconstant subtree to share. In the streaming construction, let $E$ be the
+The projected streaming construction first removes globally ignored
+inputs, then reads every input in order, draining ignored ones on the
+essential stems. Nonconstant residuals again have one state per depth and
+identity. With fewer than two essential inputs, the projected tree already
+has no repeated nonconstant subtree to share. In the streaming construction, let $E$ be the
 number of distinct edges and $S$ the number of reachable states. Every
 non-root state has an incoming edge, so $E-(S-1)$ is precisely the sum of
 incoming multiplicities beyond the first. The no-joins exit therefore means
 there is no remaining merge to draw, not that a residual-count cap was hit.
 
-Default generation compares two reverse-order geometries and four
-original-order streaming geometries with the existing tree, projection and
-ancestor-return fallback. The five unpacked geometries have no node-count or
-sharing cutoff. Packed streaming alone refuses routing when the sum of
-squared incoming-edge counts exceeds $32T$; an unpacked complete fold still
-covers the same states. No input-order search is performed.
+Default generation compares the streaming and projected streaming folds
+with the existing tree, projection and ancestor-return fallback. Neither
+has a node-count or sharing cutoff. No input-order search is performed. A
+joint ablation of the earlier seven-geometry race (forward, destination,
+streaming, centered, median, packed, projected) kept these two: on
+symmetric tables the streaming fold alone loses at most 2.5 percent against
+the race (n=5 to 10), on random tables at most 9.3 percent (n=6, 7; none at
+n=8), and on structured cores with ignored inputs the projected fold is
+needed (+25 percent mean at twelve inputs without it).
 
 Each geometry computes its exact bounding rectangle from stroke endpoints
 before allocating pixels. Cardinal and 45-degree segments attain their
@@ -60,12 +62,9 @@ not a lower bound on other physical embeddings.
 
 ## Routing and extraction
 
-All routes move forward in the vertical coordinate. In destination and
-streaming geometries, stem columns are multiples of eight, and outgoing
-rails are congruent to two or six modulo eight. Destination geometries with
-inline leaves use gaps two or ten; both preserve those residues. The
-original geometry uses twenty-unit stem pitch and eight-unit arms.
-Consequently foreign descending rails cannot coincide with stems or with the
+All routes move forward in the vertical coordinate. Stem columns are
+multiples of eight, and outgoing rails are congruent to two or six modulo
+eight. Consequently foreign descending rails cannot coincide with stems or with the
 opcode envelopes. Summing the signed sideways legs of `i` and `o` gives
 excursions between minus one and plus one unit, despite their two-unit
 internal connector or diagonal.
@@ -91,9 +90,8 @@ The rejected one-unit rail-pitch prototype illustrates why the landing row
 is part of the construction. At table `0xFAC748EF`, input `01010`, its graph
 returns zero but its native PNG returns one. A typed-grid diagnostic finds
 four landings touching foreign horizontal rails, versus none in the shipped
-layout. The regression executes all 32 rows of the shipped layout at scales
-one and two. Additional controls check all four streaming geometries at the
-eight-pixel unit and at scale two with the explicit decoder unit.
+layout. The regression executes all 32 rows of the shipped streaming layout
+at the eight-pixel unit, and at scale two with the explicit decoder unit.
 
 ## Modeling and emitted area
 
@@ -108,9 +106,7 @@ finite smaller arities change only the constant. There are at most two edges
 per state and a fixed number of stroke segments per edge. Column ranges in a
 layer are bounded by its state count and its predecessor's. Thus left-edge
 interval coloring, including its column sweep, takes $O(M)$ work summed over
-the layers. Sorting the median and packed candidates takes $O(M\log M)=O(T)$
-expected RAM work. Packed first-fit comparisons are quadratic in each
-layer's edge count, and the $32T$ preflight bounds their sum. Validation,
+the layers. Validation,
 dependency detection, projection and the fixed reversal also take $O(T)$ RAM
 work.
 
@@ -134,10 +130,8 @@ zero cell one, optionally adds one, and outputs. Induction on the residual
 table therefore gives the intended answer after exactly $n$ reads. Both
 cells lie within the original tape for $n\ge2$, and every stored value
 remains a bit. There are at most $n$ tests and $n-1$ join transitions; three
-terminal operations and the halt give at most $3n+4\le5n$ commands. The
-reverse-order loader, destination moves and joins retain their existing $5n$
-bound; projection adds only the original ignored reads and their loader
-moves.
+terminal operations and the halt give at most $3n+4\le5n$ commands. Projection adds
+only the original ignored reads.
 
 Let $K$ count actual conditional forks in a complete fold. At the last
 selector level, only identity and complement are nonconstant, and the
@@ -147,13 +141,9 @@ most $2K+1$ real frames, and the complete DAG has at most $K-1$ additional
 join resumes: including the two terminal values, $E-(S-1)=K-1$. Inline
 constants can only remove joins. Thus the frame count is at most $3K\le2T$
 for $n\ge3$. The frame index uses at most $n+1$ bits. The opcode position,
-including the end-of-frame position, is at most $3n-2$. An unprojected
-reverse loader has $2n-1$ operations; with trailing ignored inputs a
-projected loader has at most $2n$, still within $3n-2$ for $n\ge2$. The
-first globally essential reverse selector branches immediately after that
-loader. Later unbranched descents contain at most $n-1$ moves and two output
-operations. A streaming suffix below its first fork has at most $n-1$ reads
-and three output operations, also within $3n-2$. The pointer and input
+including the end-of-frame position, is at most $3n-2$. A streaming suffix
+below its first fork has at most $n-1$ reads and three output operations,
+within $3n-2$. The pointer and input
 cursor need at most $\operatorname{bl}(n-1)$ and $\operatorname{bl}(2n-1)$
 bits. At most the original $n$ bit-valued tape cells are written. Their
 indexed representation gives the unchanged bound
@@ -169,28 +159,22 @@ metadata.
 ## Executed evidence
 
 The fixed cohort contains 200 eight-input tables from `Random(19)`, using
-successive `choice("01")` calls. For each table, all six complete geometries
-are compared; the smallest admitted model is rendered to PNG. Its 256 rows
-and those of the public PNG are executed natively, including all-input,
-command and written-workspace checks. This checks 102,400 rows. The complete
-drawings total 6,834,444,000 pixels; the public fallbacks total
+successive `choice("01")` calls. For each table, both complete geometries
+are compared and the smaller is taken; the 200 public PNGs are executed
+natively on all 256 rows (51,200 rows, no mismatch). The complete
+drawings total 7,929,032,800 pixels; the public fallbacks total
 3,809,364,000. Every complete drawing is larger than its corresponding
-fallback, and the aggregate excess is 79.411681 percent. Complete programs
-use at most 24 commands; public fallbacks use at most 40, the existing
-eight-input ceiling.
+fallback, and the aggregate excess is 108.145843 percent.
 
 This is not a zero-result probe. Parity at eight inputs shares in 1,534,400
 pixels versus the 15,404,800-pixel tree and executes all 256 rows. Majority
 at eight inputs shares in 3,952,000 pixels, also with all 256 rows checked.
 The independent substring oracle checks all sixteen two-input and all 256
 three-input tables, plus eight seeded tables at each arity four through
-eight, across all four streaming geometries. A separate brute projection and
-reverse-prefix oracle checks both reverse-order geometries on the same
-tables. The streaming oracle verifies shared terminal identities as well as
-nonterminal states, no-joins refusals and the uncapped dense twelve-input
-plan beyond the packed work guard. Existing native suites separately execute
-every admitted three-input geometry and seeded four- through six-input
-controls.
+eight, against the streaming fold. It verifies shared terminal identities
+as well as nonterminal states and no-joins refusals. Existing native suites
+separately execute every admitted three-input stream and seeded four- through
+six-input controls.
 
 Before and after the tie-policy change, all 256 public three-input PNGs
 execute all eight rows: 4,096 native rows. Outputs, maximum commands and

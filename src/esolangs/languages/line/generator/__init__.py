@@ -39,11 +39,6 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.languages.line.generator.forward import (
-    centered_streaming_canvas,
-    destination_canvas,
-    forward_canvas,
-    median_streaming_canvas,
-    packed_streaming_canvas,
     projected_streaming_canvas,
     streaming_canvas,
 )
@@ -221,19 +216,11 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
             selected_draw = draw
             node = graph
     complete_selected = False
-    for build in (
-        forward_canvas,
-        destination_canvas,
-        streaming_canvas,
-        centered_streaming_canvas,
-        median_streaming_canvas,
-        packed_streaming_canvas,
-        projected_streaming_canvas,
-    ):
-        # A complete fold wins a fallback tie; later folds retain the first tie.
-        forward = build(truth_table, smallest + int(not complete_selected), unit=unit)
-        if forward is not None:
-            node, selected_draw = forward
+    for build in (streaming_canvas, projected_streaming_canvas):
+        # A complete fold wins a fallback tie; a later fold retains the first tie.
+        fold = build(truth_table, smallest + int(not complete_selected), unit=unit)
+        if fold is not None:
+            node, selected_draw = fold
             smallest = selected_draw.area
             complete_selected = True
     if selected_draw is not None:

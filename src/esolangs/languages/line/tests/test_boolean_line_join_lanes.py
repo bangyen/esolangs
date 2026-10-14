@@ -6,7 +6,12 @@ from itertools import combinations
 
 import pytest
 
-from esolangs.languages.line.generator.forward import _join_lanes, forward_canvas
+from esolangs.languages.line.generator.forward import (
+    _join_lanes,
+)
+from esolangs.languages.line.generator.forward import (
+    streaming_canvas as forward_canvas,
+)
 from esolangs.languages.line.tests.test_boolean_line_forward import _check
 
 
@@ -80,13 +85,13 @@ def test_majority22_packing_beats_unique_rows_with_native_contracts(
         )
         old_area, old_commands = _check(table, tmp_path, rows)
     area, commands = _check(table, tmp_path, rows)
-    assert (old_area, area) == (123_110_400, 87_270_400)
+    assert (old_area, area) == (42_112_000, 25_568_000)
     assert area < 0.9 * old_area
-    assert commands == old_commands == 98
+    assert commands == old_commands == 58
 
 
 @pytest.mark.medium
 def test_scaled_disjoint_join_rows_execute(tmp_path) -> None:
     table = "".join(str(int(row.bit_count() > 4)) for row in range(256))
     area, _ = _check(table, tmp_path, scale=2)
-    assert area == 12_028_800
+    assert area == 3_952_000
