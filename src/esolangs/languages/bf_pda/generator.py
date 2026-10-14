@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
+from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
@@ -48,15 +49,19 @@ type _Emit = Callable[[str | int], None]
 
 @dataclass(frozen=True)
 class _TreeContext:
+    """The validated table in reflected form; every builder reads only this."""
+
+    n: int
     reflected: str
     constant: Callable[[int, int], bool]
     ids: list[list[int]]
 
 
 def _prepare(table: str) -> _TreeContext:
-    reflected = reflected_table(table, _validate_truth_table(table))
+    n = _validate_truth_table(table)
+    reflected = reflected_table(table, n)
     return _TreeContext(
-        reflected, constant_span_test(reflected), subtree_ids(reflected)
+        n, reflected, constant_span_test(reflected), subtree_ids(reflected)
     )
 
 
@@ -71,17 +76,15 @@ def bfpda(truth_table: str) -> str:
     admission. Characters outside @.<>[] are comments; the first marker is bare @.
     """
     context = _prepare(truth_table)
-    plain, _ = _bfpda_tree(truth_table, context=context)
-    n = _validate_truth_table(truth_table)
-    reflected = context.reflected
-    shared = repeated_block(reflected)
+    plain, _ = _bfpda_tree(context)
+    shared = repeated_block(context.reflected)
     candidates = [plain]
-    budget = _decoder_budget(n)
+    budget = _decoder_budget(context.n)
     if shared is not None:
-        candidate, commands = _bfpda_tree(truth_table, shared, context=context)
+        candidate, commands = _bfpda_tree(context, shared)
         if commands <= budget:
             candidates.append(candidate)
-    bank = best_bank(truth_table, context, budget, min(map(len, candidates)))
+    bank = best_bank(context, budget, min(map(len, candidates)))
     if bank is not None:
         candidates.append(bank)
 
@@ -106,17 +109,19 @@ def _tree_leaf(n: int, level: int, value: str) -> str:
 
 
 def _plain_node(
-    n: int,
-    reflected: str,
-    constant: Callable[[int, int], bool],
-    ids: list[list[int]],
-    pieces: list[str],
+    context: _TreeContext, pieces: list[str]
 ) -> Callable[[int, int, int], BranchCost]:
     """Return the unprotected inline-tree walker.
 
     The stack hands back the *last* input first: level ``i`` tests input
     ``n - 1 - i``, row bit ``i``; bit-reversed, each subtree is a span.
     """
+    n, reflected, constant, ids = (
+        context.n,
+        context.reflected,
+        context.constant,
+        context.ids,
+    )
 
     def node(i: int, lo: int, hi: int) -> BranchCost:
         if i == n or constant(lo, hi):
@@ -140,18 +145,16 @@ def _plain_node(
     return node
 
 
-def _emit_plain_tree(table: str, context: _TreeContext) -> tuple[str, BranchCost]:
+def _emit_plain_tree(context: _TreeContext) -> tuple[str, BranchCost]:
     """Emit an inline tree."""
-    n = _validate_truth_table(table)
-    reflected, constant, ids = context.reflected, context.constant, context.ids
+    n = context.n
     pieces = [_tree_head(n)]
-    cost = _plain_node(n, reflected, constant, ids, pieces)(0, 0, 1 << n)
+    cost = _plain_node(context, pieces)(0, 0, 1 << n)
     return "".join(pieces), cost
 
 
 def _guarded_prefix(
-    n: int,
-    ids: list[list[int]],
+    context: _TreeContext,
     pieces: list[str],
     leaf: Callable[[int, int, int], BranchCost | None],
 ) -> Callable[[int, int, int], BranchCost]:
@@ -163,6 +166,7 @@ def _guarded_prefix(
     arm 3), merged with cost 4. ``leaf`` emits the level-specific leaf code
     and returns ``None`` to keep descending instead.
     """
+    n, ids = context.n, context.ids
 
     def prefix(i: int, lo: int, hi: int) -> BranchCost:
         done = leaf(i, lo, hi)
@@ -190,10 +194,10 @@ def _guarded_prefix(
 
 
 def _emit_shared_tree(
-    table: str, shared: tuple[int, int], context: _TreeContext
+    context: _TreeContext, shared: tuple[int, int]
 ) -> tuple[str, BranchCost]:
     """Emit a tree whose repeated residual is deferred behind a dispatch."""
-    n = _validate_truth_table(table)
+    n = context.n
     reflected, constant, ids = context.reflected, context.constant, context.ids
     depth, row = shared
     match = ids[depth][row >> (n - depth)]
@@ -209,11 +213,9 @@ def _emit_shared_tree(
             return len(code), None
         return None
 
-    cost = _guarded_prefix(n, ids, pieces, leaf)(0, 0, 1 << n)
+    cost = _guarded_prefix(context, pieces, leaf)(0, 0, 1 << n)
     pieces.append("[>")
-    body = _plain_node(n, reflected, constant, ids, pieces)(
-        depth, row, row + (1 << (n - depth))
-    )
+    body = _plain_node(context, pieces)(depth, row, row + (1 << (n - depth)))
     pieces.append("]")
     return "".join(pieces), dispatch_cost(cost, normal_cost(body) + 3, 1)
 
@@ -251,61 +253,59 @@ def _walk_decoder[T](
     return visit(width - 1, tuple(range(count)), 0)
 
 
-def _emit_classifier_tree(
-    table: str,
-    classes: tuple[str, ...],
-    class_depth: int,
-    class_rows: tuple[int, ...] | None,
+class _Layout(NamedTuple):
+    """A classifier bank's labels: one representative row per residual."""
+
+    depth: int
+    span: int
+    width: int
+    rows: tuple[int, ...]
+    labels: dict[int, int]
+
+
+def _classifier_layout(
     context: _TreeContext,
-) -> tuple[str, BranchCost]:
-    """Emit a sentinel-protected classifier prefix plus its label decoder."""
-    n = _validate_truth_table(table)
-    reflected, constant, ids = context.reflected, context.constant, context.ids
+    classes: tuple[str, ...],
+    depth: int,
+    class_rows: tuple[int, ...] | None,
+) -> _Layout:
+    """Validate a classifier bank and label its residuals in row order."""
+    n, reflected = context.n, context.reflected
     if len(classes) < 2 or len(set(classes)) != len(classes):
         raise ValueError("a classifier needs at least two distinct residuals")
-    if not 2 <= class_depth < n:
+    if not 2 <= depth < n:
         raise ValueError("a protected classifier needs at least two consumed inputs")
-    span = 1 << (n - class_depth)
+    span = 1 << (n - depth)
     rows = class_rows or tuple(
         next(i for i in range(0, 1 << n, span) if reflected[i : i + span] == block)
         for block in classes
     )
-    class_ids = tuple(ids[class_depth][row // span] for row in rows)
+    class_ids = tuple(context.ids[depth][row // span] for row in rows)
     if len(class_ids) < 2 or len(set(class_ids)) != len(class_ids):
         raise ValueError("a classifier needs at least two distinct residuals")
-    labels_by_id = {state: label for label, state in enumerate(class_ids)}
     width = (len(class_ids) - 1).bit_length()
-    if class_depth < width + 1:
+    if depth < width + 1:
         raise ValueError("a classifier word exceeds the retired stack space")
-    pieces = [_tree_head(n)]
+    labels = {state: label for label, state in enumerate(class_ids)}
+    return _Layout(depth, span, width, rows, labels)
 
-    def leaf(i: int, lo: int, _hi: int) -> BranchCost | None:
-        if i == class_depth:
-            label = labels_by_id[ids[i][lo >> (n - i)]]
-            code = "".join(
-                "<@<" + ("@" if label & (1 << bit) else "") for bit in range(width)
-            )
-            pieces.append(code)
-            return len(code), None
-        if i == n:
-            code = _tree_leaf(n, i, reflected[lo])
-            pieces.append(code)
-            return len(code), None
-        return None
 
-    prefix = _guarded_prefix(n, ids, pieces, leaf)
+def _emit_classifier_decoder(
+    plain: Callable[[int, int, int], BranchCost],
+    layout: _Layout,
+    pieces: list[str],
+) -> BranchCost:
+    """Emit the label decoder with each residual inline; return its cost."""
 
-    plain = _plain_node(n, reflected, constant, ids, pieces)
+    def leaf(label: int, _cost: int) -> BranchCost:
+        row = layout.rows[label]
+        return plain(layout.depth, row, row + layout.span)
 
-    def decode_leaf(label: int, _cost: int) -> BranchCost:
-        row = rows[label]
-        return plain(class_depth, row, row + span)
-
-    def decode_skip(child: Callable[[], BranchCost]) -> BranchCost:
+    def skip(child: Callable[[], BranchCost]) -> BranchCost:
         pieces.append(">>")
         return add_cost(child(), 2)
 
-    def decode_split(
+    def split(
         one: Callable[[], BranchCost], zero: Callable[[], BranchCost]
     ) -> BranchCost:
         pieces.append("[>>")
@@ -315,34 +315,56 @@ def _emit_classifier_tree(
         pieces.append("]")
         return add_cost(merge_cost(one_arm, zero_arm), 3)
 
-    cost = prefix(0, 0, 1 << n)
-    body = _walk_decoder(width, len(rows), decode_leaf, decode_skip, decode_split)
+    return _walk_decoder(layout.width, len(layout.rows), leaf, skip, split)
+
+
+def _emit_classifier_tree(
+    context: _TreeContext,
+    classes: tuple[str, ...],
+    class_depth: int,
+    class_rows: tuple[int, ...] | None,
+) -> tuple[str, BranchCost]:
+    """Emit a sentinel-protected classifier prefix plus its label decoder."""
+    n, ids = context.n, context.ids
+    layout = _classifier_layout(context, classes, class_depth, class_rows)
+    pieces = [_tree_head(n)]
+
+    def leaf(i: int, lo: int, _hi: int) -> BranchCost | None:
+        if i == class_depth:
+            label = layout.labels[ids[i][lo >> (n - i)]]
+            code = "".join(
+                "<@<" + ("@" if label & (1 << bit) else "")
+                for bit in range(layout.width)
+            )
+        elif i == n:
+            code = _tree_leaf(n, i, context.reflected[lo])
+        else:
+            return None
+        pieces.append(code)
+        return len(code), None
+
+    cost = _guarded_prefix(context, pieces, leaf)(0, 0, 1 << n)
+    body = _emit_classifier_decoder(_plain_node(context, pieces), layout, pieces)
     combined: BranchCost = normal_cost(cost) + normal_cost(body), None
     return "".join(pieces), combined
 
 
 def _bfpda_tree(
-    table: str,
+    context: _TreeContext,
     shared: tuple[int, int] | None = None,
     *,
     classes: tuple[str, ...] | None = None,
     class_depth: int = 2,
     class_rows: tuple[int, ...] | None = None,
-    context: _TreeContext | None = None,
 ) -> tuple[str, int]:
     """Emit an inline tree, a shared residual, or a classifier bank."""
-    if context is None:
-        context = _prepare(table)
     if classes is not None:
-        program, cost = _emit_classifier_tree(
-            table, classes, class_depth, class_rows, context
-        )
+        program, cost = _emit_classifier_tree(context, classes, class_depth, class_rows)
     elif shared is not None:
-        program, cost = _emit_shared_tree(table, shared, context)
+        program, cost = _emit_shared_tree(context, shared)
     else:
-        program, cost = _emit_plain_tree(table, context)
-    n = _validate_truth_table(table)
-    return program, 4 * n - 1 + normal_cost(cost)
+        program, cost = _emit_plain_tree(context)
+    return program, 4 * context.n - 1 + normal_cost(cost)
 
 
 @dataclass(frozen=True, slots=True)
@@ -415,16 +437,15 @@ def _price(
     return _Metric(header + priced.size + decoder_size, header + priced.commands)
 
 
-def best_bank(
-    table: str, context: _TreeContext, command_budget: int, size_limit: int
-) -> str | None:
-    """Price all banks; two-class banks precede larger banks on a size tie."""
+def _cheapest_bank(
+    context: _TreeContext, command_budget: int, size_limit: int
+) -> tuple[int, tuple[int, ...], _Metric] | None:
+    """Return (depth, representative rows, price) of the cheapest admitted bank."""
     # Prefixes and decoder labels sum O(T) across depths; suffix metrics
     # are reused, and only the winning bank's bodies are emitted.
     bodies = _body_metrics(context)
     best: tuple[tuple[int, bool, int], tuple[int, ...], _Metric] | None = None
-    n = len(context.ids) - 1
-    for depth in range(2, n):
+    for depth in range(2, context.n):
         representatives: dict[int, int] = {}
         for index, state in enumerate(context.ids[depth]):
             representatives.setdefault(state, index)
@@ -444,12 +465,22 @@ def best_bank(
     if best is None:
         return None
     rank, indexes, metric = best
-    depth = rank[2]
-    span = 1 << (n - depth)
+    return rank[2], indexes, metric
+
+
+def best_bank(
+    context: _TreeContext, command_budget: int, size_limit: int
+) -> str | None:
+    """Price all banks; two-class banks precede larger banks on a size tie."""
+    cheapest = _cheapest_bank(context, command_budget, size_limit)
+    if cheapest is None:
+        return None
+    depth, indexes, metric = cheapest
+    span = 1 << (context.n - depth)
     rows = tuple(index * span for index in indexes)
     classes = tuple(context.reflected[row : row + span] for row in rows)
     program, _ = _bfpda_tree(
-        table, classes=classes, class_depth=depth, class_rows=rows, context=context
+        context, classes=classes, class_depth=depth, class_rows=rows
     )
     if len(program) != metric.size:
         raise ValueError("emitted BF-PDA bank disagrees with its price")
@@ -496,16 +527,24 @@ def _emit_decoder(width: int, bodies: tuple[_Metric, ...], emit: _Emit) -> None:
 
 
 @dataclass(frozen=True, slots=True)
-class _MixedBankContext:
-    """Explicit state for the mixed-bank walks, replacing closure capture."""
+class _MixedBank:
+    """A mixed bank's shared blocks and their decoder pricing."""
 
-    ids: list[list[int]]
-    n: int
+    tree: _TreeContext
     blocks: tuple[tuple[int, int], ...]
     selected: dict[tuple[int, int], int]
     width: int
     metrics: list[dict[int, _Metric]]
     tails: dict[int, int]
+
+
+def _selection(
+    tree: _TreeContext, blocks: tuple[tuple[int, int], ...]
+) -> dict[tuple[int, int], int]:
+    """Map each block's (depth, residual id) to its decoder label."""
+    return {
+        (d, tree.ids[d][row >> (tree.n - d)]): i for i, (d, row) in enumerate(blocks)
+    }
 
 
 def _collect_mixed_used(
@@ -526,70 +565,77 @@ def _collect_mixed_used(
             _collect_mixed_used(ids, selected, depth + 1, 2 * index + 1, used)
 
 
+def _mixed_blocks(tree: _TreeContext) -> tuple[tuple[int, int], ...]:
+    """Return the repeated blocks a mixed prefix actually reaches."""
+    blocks = repeated_definitions(tree.reflected)
+    width = max(1, (len(blocks) - 1).bit_length())
+    # A word occupies 2w cells, its pending flag one, and a returning arm
+    # two sentinels. 2w+3 <= 2d fits the retired d input pairs. Completed
+    # unshared leaves empty the input stack before returning their zero flag.
+    blocks = tuple((d, row) for d, row in blocks if d >= width + 2)
+    used: set[int] = set()
+    _collect_mixed_used(tree.ids, _selection(tree, blocks), 0, 0, used)
+    return tuple(item for i, item in enumerate(blocks) if i in used)
+
+
 def _mixed_prefix(
-    context: _MixedBankContext, depth: int, index: int, emit: _Emit | None = None
+    bank: _MixedBank, depth: int, index: int, emit: _Emit | None = None
 ) -> _Metric:
     """Price, or emit when ``emit`` is given, a mixed-bank prefix walk."""
-    state = context.ids[depth][index]
-    target = context.selected.get((depth, state))
+    tree = bank.tree
+    put: _Emit = emit or (lambda _piece: None)
+    state = tree.ids[depth][index]
+    target = bank.selected.get((depth, state))
     if target is not None:
-        size = 3 * context.width + target.bit_count() + 2
-        if emit is not None:
-            for bit in range(context.width):
-                emit("<@<" + ("@" if target & (1 << bit) else ""))
-            emit("<@")
-        return _Metric(size, size + context.tails[target] + 3)
+        size = 3 * bank.width + target.bit_count() + 2
+        for bit in range(bank.width):
+            put("<@<" + ("@" if target & (1 << bit) else ""))
+        put("<@")
+        return _Metric(size, size + bank.tails[target] + 3)
     if state < 2:
-        size = context.metrics[depth][state].size + 1
-        if emit is not None:
-            emit(_tree_leaf(context.n, depth, str(state)) + "<")
+        size = bank.metrics[depth][state].size + 1
+        put(_tree_leaf(tree.n, depth, str(state)) + "<")
         return _Metric(size, size + 1)
-    zero, one = context.ids[depth + 1][2 * index : 2 * index + 2]
+    zero, one = tree.ids[depth + 1][2 * index : 2 * index + 2]
     if zero == one:
-        if emit is not None:
-            emit(">>")
-        value = _mixed_prefix(context, depth + 1, 2 * index, emit)
+        put(">>")
+        value = _mixed_prefix(bank, depth + 1, 2 * index, emit)
         return _Metric(2 + value.size, 2 + value.commands)
-    if emit is not None:
-        emit("[>>")
-    right = _mixed_prefix(context, depth + 1, 2 * index + 1, emit)
-    if emit is not None:
-        emit("<<]>[>")
-    left = _mixed_prefix(context, depth + 1, 2 * index, emit)
-    if emit is not None:
-        emit("<]>")
+    put("[>>")
+    right = _mixed_prefix(bank, depth + 1, 2 * index + 1, emit)
+    put("<<]>[>")
+    left = _mixed_prefix(bank, depth + 1, 2 * index, emit)
+    put("<]>")
     return _Metric(
         12 + left.size + right.size, max(7 + left.commands, 9 + right.commands)
     )
 
 
 def _mixed_inline(
-    context: _MixedBankContext, depth: int, index: int, pieces: list[str]
+    tree: _TreeContext, depth: int, index: int, pieces: list[str]
 ) -> None:
     """Render a complete mixed-bank body inline onto ``pieces``."""
-    state = context.ids[depth][index]
+    state = tree.ids[depth][index]
     if state < 2:
-        pieces.append(_tree_leaf(context.n, depth, str(state)))
+        pieces.append(_tree_leaf(tree.n, depth, str(state)))
         return
-    zero, one = context.ids[depth + 1][2 * index : 2 * index + 2]
+    zero, one = tree.ids[depth + 1][2 * index : 2 * index + 2]
     if zero == one:
         pieces.append(">>")
-        _mixed_inline(context, depth + 1, 2 * index, pieces)
+        _mixed_inline(tree, depth + 1, 2 * index, pieces)
     else:
         pieces.append("[>>")
-        _mixed_inline(context, depth + 1, 2 * index + 1, pieces)
+        _mixed_inline(tree, depth + 1, 2 * index + 1, pieces)
         pieces.append("]>[>")
-        _mixed_inline(context, depth + 1, 2 * index, pieces)
+        _mixed_inline(tree, depth + 1, 2 * index, pieces)
         pieces.append("]")
 
 
-def _mixed_emit(
-    context: _MixedBankContext, pieces: list[str], piece: str | int
-) -> None:
+def _mixed_emit(bank: _MixedBank, pieces: list[str], piece: str | int) -> None:
     """Route a decoder emission to a body render or a literal piece of text."""
     if isinstance(piece, int):
-        depth, row = context.blocks[piece]
-        _mixed_inline(context, depth, row >> (context.n - depth), pieces)
+        depth, row = bank.blocks[piece]
+        _mixed_inline(bank.tree, depth, row >> (bank.tree.n - depth), pieces)
     else:
         pieces.append(piece)
 
@@ -598,35 +644,18 @@ def best_mixed_bank(
     context: _TreeContext, command_budget: int, size_limit: int
 ) -> str | None:
     """Emit reachable repeated states at different depths when bounds admit them."""
-    ids = context.ids
-    n = len(ids) - 1
-    blocks = repeated_definitions(context.reflected)
-    width = max(1, (len(blocks) - 1).bit_length())
-    # A word occupies 2w cells, its pending flag one, and a returning arm
-    # two sentinels. 2w+3 <= 2d fits the retired d input pairs. Completed
-    # unshared leaves empty the input stack before returning their zero flag.
-    blocks = tuple((d, row) for d, row in blocks if d >= width + 2)
-    selected = {(d, ids[d][row >> (n - d)]): i for i, (d, row) in enumerate(blocks)}
-    used: set[int] = set()
-    _collect_mixed_used(ids, selected, 0, 0, used)
-    blocks = tuple(item for i, item in enumerate(blocks) if i in used)
+    n = context.n
+    blocks = _mixed_blocks(context)
     if len(blocks) < 2:
         return None
     width = (len(blocks) - 1).bit_length()
-    selected = {(d, ids[d][row >> (n - d)]): i for i, (d, row) in enumerate(blocks)}
     metrics = _body_metrics(context)
-    bodies = tuple(metrics[d][ids[d][row >> (n - d)]] for d, row in blocks)
+    bodies = tuple(metrics[d][context.ids[d][row >> (n - d)]] for d, row in blocks)
     decoder_size, tails = _price_decoder(width, bodies)
-    bank_context = _MixedBankContext(
-        ids=ids,
-        n=n,
-        blocks=blocks,
-        selected=selected,
-        width=width,
-        metrics=metrics,
-        tails=tails,
+    bank = _MixedBank(
+        context, blocks, _selection(context, blocks), width, metrics, tails
     )
-    tree = _mixed_prefix(bank_context, 0, 0)
+    tree = _mixed_prefix(bank, 0, 0)
     header = _tree_head(n)
     size = len(header) + tree.size + decoder_size + 3
     if size >= size_limit or len(header) + tree.commands > command_budget:
@@ -634,9 +663,10 @@ def best_mixed_bank(
     # O(T/log T) residuals give O(T) decoder digits. Price the prefix once;
     # render complete bodies only after their combined text fits inline O(T).
     pieces = [header]
-    _mixed_prefix(bank_context, 0, 0, partial(_mixed_emit, bank_context, pieces))
+    emit = partial(_mixed_emit, bank, pieces)
+    _mixed_prefix(bank, 0, 0, emit)
     pieces.append("[>")
-    _emit_decoder(width, bodies, partial(_mixed_emit, bank_context, pieces))
+    _emit_decoder(width, bodies, emit)
     pieces.append("]")
     program = "".join(pieces)
     if len(program) != size:
