@@ -604,9 +604,8 @@ def _leave(
 #: A handler's result: ``_CONTINUED`` when the command already continued the
 #: run itself (``NEXT``/``RESUME``/``GIVE UP``/``TRY AGAIN`` move ``ind``);
 #: ``_LEAVE`` when ``_execute`` still runs ``_leave``.
-type _Continued = bool
-_CONTINUED: _Continued = True
-_LEAVE: _Continued = False
+_CONTINUED = True
+_LEAVE = False
 
 
 @dataclass
@@ -624,14 +623,14 @@ class _Step:
     out: list[str]
 
 
-def _handle_calculate(step: _Step) -> _Continued:
+def _handle_calculate(step: _Step) -> bool:
     """``.1 <- expr``: evaluate and store."""
     target, expression = step.statement.command.arg1, step.statement.command.arg2
     step.state = _store(step.state, target, _value(step.state, expression))
     return _LEAVE
 
 
-def _handle_dimension(step: _Step) -> _Continued:
+def _handle_dimension(step: _Step) -> bool:
     """``,1 SUB #1 <- #n BY #m``: dimension an array."""
     array, dimensions = step.statement.command.arg1, step.statement.command.arg2
     sizes = tuple(_value(step.state, size) for size in dimensions)
@@ -647,7 +646,7 @@ def _handle_dimension(step: _Step) -> _Continued:
     return _LEAVE
 
 
-def _handle_next(step: _Step) -> _Continued:
+def _handle_next(step: _Step) -> bool:
     """``NEXT``: push the return and jump to the label."""
     step.state = _push(step.state, step.i + 1, step.i)
     label = step.statement.command.arg1
@@ -655,15 +654,15 @@ def _handle_next(step: _Step) -> _Continued:
     return _CONTINUED
 
 
-def _handle_forget(step: _Step) -> _Continued:
+def _handle_forget(step: _Step) -> bool:
     """``FORGET``: drop that many entries off the NEXT stack."""
     nexts = step.state.nexts
-    count = _value(step.state, step.statement.command.arg1)  # arg1: the count
+    count = _value(step.state, step.statement.command.arg1)
     step.state = replace(step.state, nexts=nexts[: max(0, len(nexts) - count)])
     return _LEAVE
 
 
-def _handle_resume(step: _Step) -> _Continued:
+def _handle_resume(step: _Step) -> bool:
     """``RESUME``: pop the stack down to the ``count``th-from-top entry."""
     count = _value(step.state, step.statement.command.arg1)
     step.state, step.pos = _resume(
@@ -672,14 +671,15 @@ def _handle_resume(step: _Step) -> _Continued:
     return _CONTINUED
 
 
-def _handle_variable_item(step: _Step, action: str) -> _Continued:
+def _handle_variable_item(step: _Step, action: str) -> bool:
     """One ``STASH``/``RETRIEVE``/``IGNORE``/``REMEMBER`` item."""
-    for key in step.statement.command.arg1:  # arg1: the items
+    items = step.statement.command.arg1
+    for key in items:
         step.state = _variable(step.state, action, key)
     return _LEAVE
 
 
-def _handle_abstain(step: _Step) -> _Continued:
+def _handle_abstain(step: _Step) -> bool:
     """``ABSTAIN``: raise the targets' abstain counters."""
     targets, times = step.statement.command.arg1, step.statement.command.arg2
     amount = None if times is None else _value(step.state, times)
@@ -693,7 +693,7 @@ def _handle_abstain(step: _Step) -> _Continued:
     return _LEAVE
 
 
-def _handle_reinstate(step: _Step) -> _Continued:
+def _handle_reinstate(step: _Step) -> bool:
     """``REINSTATE``: lower the targets' abstain counters."""
     for target in _targets(step.statement.command.arg1, step.program):
         if (
@@ -706,7 +706,7 @@ def _handle_reinstate(step: _Step) -> _Continued:
     return _LEAVE
 
 
-def _handle_read(step: _Step) -> _Continued:
+def _handle_read(step: _Step) -> bool:
     """``READ OUT``: append each item's text to the output."""
     for item in step.statement.command.arg1:
         step.state, text = _read_out(step.state, item)
@@ -714,7 +714,7 @@ def _handle_read(step: _Step) -> _Continued:
     return _LEAVE
 
 
-def _handle_write(step: _Step) -> _Continued:
+def _handle_write(step: _Step) -> bool:
     """``WRITE IN``: consume one input per item."""
     for item in step.statement.command.arg1:
         step.state, step.input_pos = _write_in(
@@ -723,20 +723,20 @@ def _handle_write(step: _Step) -> _Continued:
     return _LEAVE
 
 
-def _handle_give_up(step: _Step) -> _Continued:
+def _handle_give_up(step: _Step) -> bool:
     """``GIVE UP``: run past the last statement."""
     step.state = replace(step.state, ind=len(step.program.statements))
     return _CONTINUED
 
 
-def _handle_try_again(step: _Step) -> _Continued:
+def _handle_try_again(step: _Step) -> bool:
     """``TRY AGAIN``: restart at the first statement."""
     step.state = replace(step.state, ind=0)
     return _CONTINUED
 
 
 #: The command handlers, by action tag.
-_EXECUTE_HANDLERS: dict[str, Callable[[_Step], _Continued]] = {
+_EXECUTE_HANDLERS: dict[str, Callable[[_Step], bool]] = {
     "calculate": _handle_calculate,
     "dimension": _handle_dimension,
     "next": _handle_next,
@@ -774,7 +774,7 @@ def _execute(
             hint="use statements supported by esolangs describe --spec INTERCAL",
         )
     step = _Step(state, i, statement, program, draws, pos, inputs, 0, out)
-    if handler(step) is _CONTINUED:
+    if handler(step):
         return step.state, step.pos
     return _leave(step.state, step.i, step.program, step.draws, step.pos)
 
