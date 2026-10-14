@@ -42,6 +42,11 @@ __all__ = ["load_source", "run"]
 supports_scale = True
 
 
+def _luma(pixel: Pixel) -> int:
+    red, green, blue = pixel
+    return (red * 19595 + green * 38470 + blue * 7471 + 0x8000) >> 16
+
+
 def _grey_rows(rows: Rows) -> list[bytearray]:
     """Reduce RGB rows to Line's greyscale input representation.
 
@@ -56,10 +61,7 @@ def _grey_rows(rows: Rows) -> list[bytearray]:
         cached = cache.get(id(row))
         if cached is None:
             if not cache_pixels:
-                levels = bytes(
-                    (red * 19595 + green * 38470 + blue * 7471 + 0x8000) >> 16
-                    for red, green, blue in row
-                )
+                levels = bytes(map(_luma, row))
             else:
                 converted = bytearray()
                 previous: Pixel | None = None
@@ -73,10 +75,7 @@ def _grey_rows(rows: Rows) -> list[bytearray]:
                         converted.extend(bytes((level,)) * repeats)
                     cached_pixel = pixels.get(id(pixel)) if cache_pixels else None
                     if cached_pixel is None:
-                        red, green, blue = pixel
-                        level = (
-                            red * 19595 + green * 38470 + blue * 7471 + 0x8000
-                        ) >> 16
+                        level = _luma(pixel)
                         if cache_pixels:
                             pixels[id(pixel)] = pixel, level
                             cache_pixels = len(pixels) < 1024
