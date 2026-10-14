@@ -34,6 +34,8 @@ type _Tape = tuple[int, tuple[tuple[int, int], ...]]
 
 
 class _State(NamedTuple):
+    """The pure machine state that `_advance` maps to its successor."""
+
     cursor: _Cursor
     tape: _Tape
     values: tuple[int, ...]
@@ -338,7 +340,8 @@ class _Machine:
         universal hang for a program that stops.
         """
         current = cast(_State, state)
-        (row, col, _), (pointer, cells) = current.cursor, current.tape
+        row, col, _ = current.cursor
+        pointer, cells = current.tape
         values = current.values
         command = self.code[row][col]
         if command in ",@":
