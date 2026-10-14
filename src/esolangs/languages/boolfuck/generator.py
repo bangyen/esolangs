@@ -312,13 +312,9 @@ def boolfuck(truth_table: str) -> str:
 
 
 def _boolfuck_tree(
-    truth_table: str,
-    shared: tuple[int, int] | None = None,
-    *,
-    shared_blocks: tuple[tuple[int, int], ...] = (),
-    flag_levels: tuple[int, ...] = (),
+    truth_table: str, shared_blocks: tuple[tuple[int, int], ...] = ()
 ) -> tuple[str, int]:
-    """Emit a tree, optionally deferring a block into its first unused flag."""
+    """Emit a tree, optionally deferring blocks into their first unused flags."""
     n = _validate_truth_table(truth_table)
     # Cell 1 carries the answer's constant bits: every flag is 0 again there.
     out = _Emitter(result=2 * n, carrier=1)
@@ -337,9 +333,7 @@ def _boolfuck_tree(
         tuple(range(n)),
         out.pos,
         out.result,
-        shared=shared,
         shared_blocks=shared_blocks,
-        flag_levels=flag_levels,
         flip=True,
     )
     out.emit(body)
