@@ -1,7 +1,19 @@
-"""Underload boolean generator: equal-width selectors force a promise tree.
+"""Underload boolean generator: each input picks a half of a promise tree.
 
-A node ``(A)~(B)~^`` tucks its halves under the input block on top, and the
-input's ``^`` keeps one and runs it.  A repeated subtree ``X`` is pushed once
+The template opens with one seven-character slot per input, filled with a
+selector: ``(()!!^)`` for 0 or ``(~:!!^)`` for 1.  The rest pushes the
+decision tree as one string, runs it with ``^``, and ``S`` prints the bit
+it leaves.  ``0110`` (exclusive or) on inputs 1, 0 runs as
+
+    (~:!!^)(()!!^)((((0))~((1))~^)~(((1))~((0))~^)~^)^S
+
+and prints 1.  A node ``(A)~(B)~^`` tucks its halves under the input block
+on top, and the input's ``^`` keeps one and runs it: 0 runs ``!^`` (drop
+``B``, run ``A``) and 1 swaps first.  ``()!`` and ``:!`` are padding, so
+both selectors have one width and the template one shape per table.  A leaf
+pushes its bit, ``(0)`` or ``(1)``.
+
+A repeated subtree ``X`` is pushed once
 as ``(X)`` at a node above its copies and *carried*: kept on top, with the
 next input block right below it.  A carrying node opens with ``~`` to put
 that input back on top, and its selector leaves ``X`` on top again for the
