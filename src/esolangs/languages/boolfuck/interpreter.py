@@ -51,20 +51,20 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        return self.state[0] >= len(self.code)
+        return self.state.pc >= len(self.code)
 
     @property
     def ip(self) -> int:
-        return self.state[0]
+        return self.state.pc
 
     @property
     def ptr(self) -> int:
-        return self.state[1]
+        return self.state.ptr
 
     @property
     def memory(self) -> list[int]:
-        lo = min(self.ones | {self.state[1], 0})
-        hi = max(self.ones | {self.state[1], 0})
+        lo = min(self.ones | {self.state.ptr, 0})
+        hi = max(self.ones | {self.state.ptr, 0})
         return [int(i in self.ones) for i in range(lo, hi + 1)]
 
     def snapshot(self) -> tuple[object, ...]:
