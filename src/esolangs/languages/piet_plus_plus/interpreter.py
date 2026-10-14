@@ -234,6 +234,11 @@ def _written_rows(rows: _Rows, x: int, y: int, pixel: Pixel) -> _Rows:
     return (*rows[:y], row, *rows[y + 1 :])
 
 
+def _restack(core: _Core, stack: _Stack) -> _Core:
+    """Return ``core`` with the current stack replaced by ``stack``."""
+    return core._replace(root=_set(core.root, core.path, stack))
+
+
 def _command(  # noqa: C901
     core: _Core,
     name: str,
@@ -243,26 +248,22 @@ def _command(  # noqa: C901
     ready: bool = False,
 ) -> tuple[_Core, _Effect]:
     """Run ``name`` on the current stack; return the next core and any output."""
-    current, dp, cc, root, path, halted, rows, writes = core
-    stack = _get(root, path)
+    path = core.path
+    stack = _get(core.root, path)
     effect: _Effect = None
 
-    def commit(new_stack: _Stack) -> None:
-        nonlocal root
-        root = _set(root, path, new_stack)
-
     if name == "push_int":
-        commit((*stack, size))
+        core = _restack(core, (*stack, size))
     elif name == "push_stack":
-        commit((*stack, ()))
+        core = _restack(core, (*stack, ()))
     elif name in {"pop", "dup", "size"} and stack:
         if name == "pop":
-            commit(stack[:-1])
+            core = _restack(core, stack[:-1])
         elif name == "dup":
-            commit((*stack, stack[-1]))
+            core = _restack(core, (*stack, stack[-1]))
         else:
             top = stack[-1]
-            commit((*stack, -1 if type(top) is int else len(top)))
+            core = _restack(core, (*stack, -1 if type(top) is int else len(top)))
     elif name == "roll" and _ints(stack, 2):
         depth, rolls = stack[-2:]
         if 0 <= depth <= len(stack) - 2:
@@ -270,82 +271,85 @@ def _command(  # noqa: C901
             rolls = rolls % depth if depth else 0
             if rolls:
                 base = (*base[:-depth], *(base[-rolls:] + base[-depth:-rolls]))
-            commit(base)
+            core = _restack(core, base)
     elif name == "roll_context" and _ints(stack, 2):
-        root = _roll_context(root, path)
+        core = core._replace(root=_roll_context(core.root, path))
     elif name == "push_up" and path and stack:
-        parent = _get(root, path[:-1])
+        parent = _get(core.root, path[:-1])
         moved = stack[-1]
-        root = _set(root, path[:-1], (*parent, moved))
-        commit(stack[:-1])
+        core = core._replace(root=_set(core.root, path[:-1], (*parent, moved)))
+        core = _restack(core, stack[:-1])
     elif name == "push_down" and len(stack) > 1 and type(stack[-2]) is tuple:
-        commit((*stack[:-2], (*stack[-2], stack[-1])))
+        core = _restack(core, (*stack[:-2], (*stack[-2], stack[-1])))
     elif name == "pull_up" and stack and type(stack[-1]) is tuple and stack[-1]:
         nested = stack[-1]
-        commit((*stack[:-1], nested[:-1], nested[-1]))
+        core = _restack(core, (*stack[:-1], nested[:-1], nested[-1]))
     elif name == "up" and path:
-        path = path[:-1]
+        core = core._replace(path=path[:-1])
     elif name == "down" and stack and type(stack[-1]) is tuple:
-        path = (*path, len(stack) - 1)
+        core = core._replace(path=(*path, len(stack) - 1))
     elif name == "add" and len(stack) > 1:
         below, above = stack[-2:]
         if type(below) is int and type(above) is int:
-            commit((*stack[:-2], below + above))
+            core = _restack(core, (*stack[:-2], below + above))
         else:
             low = (below,) if type(below) is int else below
             high = (above,) if type(above) is int else above
-            commit((*stack[:-2], (*low, *high)))
+            core = _restack(core, (*stack[:-2], (*low, *high)))
     elif name in _BINARY and _ints(stack, 2):
         result = _BINARY[name](*stack[-2:])
         if result is not None:
-            commit((*stack[:-2], result))
+            core = _restack(core, (*stack[:-2], result))
     elif name in {"negate", "not"} and _ints(stack, 1):
-        commit(
+        core = _restack(
+            core,
             (
                 *stack[:-1],
                 -stack[-1] if name == "negate" else int(stack[-1] == 0),
-            )
+            ),
         )
     elif name in {"pointer", "toggle"} and _ints(stack, 1):
         turns = stack[-1]
-        commit(stack[:-1])
+        core = _restack(core, stack[:-1])
         if name == "pointer":
-            dp = (dp + turns) % 4
+            core = core._replace(dp=(core.dp + turns) % 4)
         elif turns % 2:
-            cc *= -1
+            core = core._replace(cc=-core.cc)
     elif name == "depth":
-        commit((*stack, len(path)))
+        core = _restack(core, (*stack, len(path)))
     elif name in {"read", "write"}:
         operands = 2 if name == "read" else 3
         if _ints(stack, operands):
-            x = current[0] + stack[-2]
-            y = current[1] + stack[-1]
-            if 0 <= x < len(rows[0]) and 0 <= y < len(rows):
+            x = core.current[0] + stack[-2]
+            y = core.current[1] + stack[-1]
+            if 0 <= x < len(core.rows[0]) and 0 <= y < len(core.rows):
                 if name == "read":
-                    r, g, b = rows[y][x]
-                    commit((*stack[:-2], r << 16 | g << 8 | b))
+                    r, g, b = core.rows[y][x]
+                    core = _restack(core, (*stack[:-2], r << 16 | g << 8 | b))
                 elif 0 <= stack[-3] <= 0xFFFFFF:
                     pixel = (
                         stack[-3] >> 16,
                         stack[-3] >> 8 & 0xFF,
                         stack[-3] & 0xFF,
                     )
-                    commit(stack[:-3])
-                    rows = _written_rows(rows, x, y, pixel)
-                    writes = MappingProxyType({**writes, (x, y): pixel})
+                    core = _restack(core, stack[:-3])
+                    core = core._replace(
+                        rows=_written_rows(core.rows, x, y, pixel),
+                        writes=MappingProxyType({**core.writes, (x, y): pixel}),
+                    )
     elif name in {"out_integer", "out_character"} and stack:
         effect = ("out", _out_values(stack[-1]), name == "out_integer")
-        commit(stack[:-1])
+        core = _restack(core, stack[:-1])
     elif name in {"in_integer", "in_character"}:
         if not ready:
             raise _NeedInputError(number=name == "in_integer")
         if value is not None:
             if name == "in_integer":
                 if _INTEGER.fullmatch(str(value)):
-                    commit((*stack, parse_integer(str(value))))
+                    core = _restack(core, (*stack, parse_integer(str(value))))
             else:
-                commit((*stack, int(value)))
-    return _Core(current, dp, cc, root, path, halted, rows, writes), effect
+                core = _restack(core, (*stack, int(value)))
+    return core, effect
 
 
 def _slide(core: _Core, start: Point) -> _Core:
