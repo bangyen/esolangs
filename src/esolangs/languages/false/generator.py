@@ -138,8 +138,8 @@ def _shared(truth_table: str, n: int) -> str:  # noqa: C901
                     size[key] = len(text)
                 case _Fold(child):
                     size[key] = len(_SKIP) + (3 if child in names else size[child])
-                case _Split() as split:
-                    halves = (2 if k in names else size[k] + 2 for k in split)
+                case _Split(zero, one):
+                    halves = (2 if k in names else size[k] + 2 for k in (zero, one))
                     size[key] = len(_OPEN + _BETWEEN + _CLOSE) + sum(halves)
         # Each ``[text]`` use becomes ``x;`` (saves size - 2), a bare one
         # ``x;!`` (saves size - 3); the store ``[text]x:`` costs size + 4.
