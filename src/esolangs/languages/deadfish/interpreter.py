@@ -42,14 +42,11 @@ _ARITHMETIC: dict[str, Callable[[int], int]] = {
     "s": lambda value: value * value,
 }
 
-#: The two values the accumulator is reset from, and the only two.  A range
-#: check reads as the intent and is the bug the C comment describes.
+#: Reset from exactly these two; a range check is the C comment's bug.
 _TRAPS = (-1, 256)
 
 
-#: ``(ind, value, stopped)``: the code position, the one accumulator, and
-#: whether ``h`` -- the only way to stop early -- has run.  A plain tuple:
-#: a NamedTuple's constructor cost a third of the step rate.
+#: ``(ind, value, stopped)``: position, accumulator, whether ``h`` ran.
 type _State = tuple[int, int, bool]
 
 
