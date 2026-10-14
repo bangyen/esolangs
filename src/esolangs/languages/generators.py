@@ -95,6 +95,8 @@ from esolangs.languages.inject.generator import LANGUAGE as _INJECT_LANGUAGE
 from esolangs.languages.inject.generator import inject
 from esolangs.languages.intercal.generator import LANGUAGE as _INTERCAL_LANGUAGE
 from esolangs.languages.intercal.generator import intercal
+from esolangs.languages.interprogck8.generator import LANGUAGE as _INTERPROGCK8_LANGUAGE
+from esolangs.languages.interprogck8.generator import interprogck8
 from esolangs.languages.laserfuck.generator import LANGUAGE as _LASERFUCK_LANGUAGE
 from esolangs.languages.laserfuck.generator import laserfuck
 from esolangs.languages.line.generator import LANGUAGE as _LINE_LANGUAGE
@@ -210,6 +212,7 @@ _LANGUAGES = (
     _HOME_ROW_LANGUAGE,
     _INJECT_LANGUAGE,
     _INTERCAL_LANGUAGE,
+    _INTERPROGCK8_LANGUAGE,
     _LASERFUCK_LANGUAGE,
     _LINE_LANGUAGE,
     _MALBOLGE_LANGUAGE,
@@ -289,6 +292,7 @@ __all__ = [
     "home_row",
     "inject",
     "intercal",
+    "interprogck8",
     "laserfuck",
     "line",
     "malbolge",

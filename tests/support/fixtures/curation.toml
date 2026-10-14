@@ -47,6 +47,7 @@ Grapheme = { backlinks = 3, route = "first implementation" }
 "HQ9+" = { backlinks = 134, route = "fame" }
 Inject = { backlinks = 4, route = "first implementation" }
 INTERCAL = { backlinks = 100, route = "fame" }
+Interprogck8 = { backlinks = 4, route = "first implementation" }
 LaserFuck = { backlinks = 1, route = "first implementation" }
 Line = { backlinks = 2, route = "first implementation" }
 Malbolge = { backlinks = 130, route = "fame" }

@@ -55,6 +55,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `home_row/home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `inject/inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `intercal/intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '_\n\n' |
+| `interprogck8/interprogck8.txt` | Interprogck8 | `0001` | `01` | 0 1 | '0' |
 | `laserfuck/laserfuck.txt` | LaserFuck | `0001` | `01` | 01 | '0' |
 | `line/line.png` | Line | `0001` | `01` | 0 1 | '0' |
 | `malbolge/malbolge.txt` | Malbolge | `0001` | `01` | 01 | '0' |

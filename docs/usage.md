@@ -169,6 +169,7 @@ Build language-specific stdin with `encode_inputs`:
 | Forþ | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |
 | Inject | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Interprogck8 | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Line | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Modulous | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Painfuck | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
