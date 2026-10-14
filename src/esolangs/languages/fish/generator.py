@@ -1,6 +1,16 @@
-"""Fish boolean generator: a grid table read with ``g``.
+"""Fish boolean generator: the truth table is stored in the codebox.
 
-A grid has no subtrees to fold or share.
+The program reads each input character, turns it into a bit (``68*-``
+subtracts ASCII ``0``) and folds the bits into a row number, most
+significant first (``$2*+``).  The table sits in the codebox as digits, so
+``g`` fetches the answer by its coordinates and ``n`` prints it.  For n=2:
+
+    0i68*-$2*+i68*-$2*+1g68*-n;
+    0110
+
+Narrow widths fold the table into a block of columns, which the fish
+reaches by snaking down; a parity table needs no table at all.  A table
+has no subtrees to fold or share.
 """
 
 from math import isqrt
@@ -21,21 +31,35 @@ def fish(truth_table: str, width: int | None = None) -> str:
     if width is not None and 0 < width < 3:
         bias = _parity_bias(truth_table)
         if bias is not None:
-            # ASCII zero is even, so sums modulo two already normalize inputs.
-            header = "vi" + "i+" * (n - 1) + "2%" + ("0=" if bias else "") + "n;"
-            return "\n".join(header)
-    # Read ASCII bits, fold the row number, then fetch the digit below; an
-    # ignored input is read and popped, and the table indexes the rest.
+            return _parity(n, bias)
+    # An ignored input is read and dropped; the table indexes the rest.
     weights, truth_table = input_weights(truth_table, n)
     reads = "".join("i68*-$2*+" if weight else "i~" for weight in weights)
     header = "0" + reads + "1g68*-n;"
-    plain = header + "\n" + truth_table
     if width is None or width <= 0 or max(len(header), len(truth_table)) <= width:
-        return plain
+        return header + "\n" + truth_table
+    return _folded(reads, truth_table, width)
+
+
+def _parity(n: int, bias: int) -> str:
+    """Return the sum of the inputs mod 2, one command per row.
+
+    ASCII ``0`` is even, so the characters' sum already has the bits' parity.
+    """
+    return "\n".join("vi" + "i+" * (n - 1) + "2%" + ("0=" if bias else "") + "n;")
+
+
+def _folded(reads: str, truth_table: str, width: int) -> str:
+    """Return the program as a snake of ``columns`` cells over the table's block.
+
+    Row ``r`` of the block holds entries ``r*c`` to ``r*c + c - 1``, so index
+    ``i`` is at ``(i % c, height + i // c)``.  The rows of code alternate
+    ``>...v`` and ``v...<``, so the fish swims down through them.
+    """
     columns = 1 << (min(max(1, width - 2), len(truth_table)).bit_length() - 1)
     divisor = "1" + "2*" * (columns.bit_length() - 1)
-    body = "0" + reads + ":" + divisor + "%$:" + divisor + "%-"
-    body += divisor + ","
+    # i -> i%c, i//c: the column, then (i - i%c) / c, exact as c divides it.
+    body = "0" + reads + ":" + divisor + "%$:" + divisor + "%-" + divisor + ","
     # Reserve a power-of-two height: its doubling literal fits even at width 3.
     height = 1 << (2 * len(body) // columns + 32).bit_length()
     body += "1" + "2*" * (height.bit_length() - 1) + "+g68*-n;"
