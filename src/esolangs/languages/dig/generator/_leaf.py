@@ -22,18 +22,27 @@ _DIG_FORWARD, _DIG_SIDE, _DIG_BACK, _DIG_RETRACE = 0, 1, 2, 3
 type _Reads = list[tuple[tuple[int, int], tuple[int, int], frozenset[tuple[int, int]]]]
 
 
+class _Box(NamedTuple):
+    """Inclusive bounds local to a block's first cell, x along its heading."""
+
+    min_x: int
+    max_x: int
+    min_y: int
+    max_y: int
+
+
 class _Stamp(NamedTuple):
     """A block laid in its own frame.
 
     ``spins`` are turns as local headings, ``exit`` is where the mole leaves,
-    and ``box`` is ``(min_x, max_x, min_y, max_y)``.
+    and ``box`` bounds the block.
     """
 
     cells: dict[tuple[int, int], str]
     spins: dict[tuple[int, int], int]
     wants: _Reads
     exit: tuple[int, int]
-    box: tuple[int, int, int, int]
+    box: _Box
 
 
 #: First column of the table band, right of the three corridor columns.
@@ -98,7 +107,7 @@ def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
         chars[1, store] = "+"
         reads.append(((1, store), (0, store), frozenset()))
     turns = {(0, hold + 1): _DIG_SIDE, (1, hold + 1): _DIG_BACK}
-    return _Stamp(chars, turns, reads, (1, first - 1), (0, hold + 1, -1, 1))
+    return _Stamp(chars, turns, reads, (1, first - 1), _Box(0, hold + 1, -1, 1))
 
 
 def _dig_flat_leaf(
@@ -140,7 +149,7 @@ def _dig_flat_leaf(
     reads: _Reads = []
 
     def stamp(row: int, col: int, block: _Stamp) -> tuple[int, int]:
-        cells, spins, wants, exit_at, _box = block
+        cells, spins, wants, exit_at, _ = block
         chars.update({(row + y, col + x): c for (y, x), c in cells.items()})
         turns.update({(row + y, col + x): d for (y, x), d in spins.items()})
         reads.extend(
@@ -184,13 +193,13 @@ def _dig_flat_leaf(
     # adder; then up the near side into the selector.
     # The far corridor clears the second adder's exit turns: a narrow
     # table would put them on it.
-    far = max(_TABLE_COL + cols, 4 + stepper.box[1])
+    far = max(_TABLE_COL + cols, 4 + stepper.box.max_x)
     turns[sel + 1, far] = _DIG_SIDE
     turns[back, far] = _DIG_BACK
     turns[back, 2] = _DIG_RETRACE
     turns[bot, 2] = _DIG_FORWARD
     turns[stamp(bot, 3, stepper)[0], 1] = _DIG_RETRACE
-    width = max(far, 3 + painter.box[1])
+    width = max(far, 3 + painter.box.max_x)
     if classes > 1:
         # Capture eight rows per class before reading the final six inputs.
         # The extra return command adds that stored offset to the row count.
@@ -203,14 +212,14 @@ def _dig_flat_leaf(
         turns[2, 1], turns[0, 1] = _DIG_RETRACE, _DIG_FORWARD
         pending = frozenset({(2, 6)})
         reads.extend((((2, 8), (2, 9), pending), ((2, 7), (3, 7), pending)))
-    return _Stamp(chars, turns, reads, (0, 0), (0, width, top - 1, back))
+    return _Stamp(chars, turns, reads, (0, 0), _Box(0, width, top - 1, back))
 
 
 def _dig_flat_walk(high: list[int], low: list[int]) -> int:
     """Bound the centered flat stamp's walk, including the final halt."""
     row_count, col_count = sum(high) + 1, sum(low) + 1
-    painter = _dig_adder(high, 2)[4][1] - 1
-    stepper = _dig_adder(low, 0)[4][1] - 1
+    painter = _dig_adder(high, 2).box.max_x - 1
+    stepper = _dig_adder(low, 0).box.max_x - 1
     far = max(_TABLE_COL + col_count, 5 + stepper)
     # Sum the flat stamp's walking legs. Only the selected column
     # changes their length; its maximum is col_count - 1. Data digits

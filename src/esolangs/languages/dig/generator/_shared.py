@@ -54,7 +54,7 @@ def _flat_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
     chars[output] = " "
     turns[halt] = 1
     del chars[halt]
-    row_offset = 2 - box[2]
+    row_offset = 2 - box.min_y
     return _PrefixDecoder(
         chars,
         turns,
@@ -65,13 +65,13 @@ def _flat_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
         exit_row=halt[0],
         offset=1,
         row_offset=row_offset,
-        top=box[3] + row_offset + 3,
+        top=box.max_y + row_offset + 3,
     )
 
 
 def _adder_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
     """Decode the prefix with an adder, chaining the prefix digits east."""
-    chars, turns, reads, exit_at, _box = _dig_adder(
+    chars, turns, reads, exit_at, _ = _dig_adder(
         [1 << i for i in reversed(range(bits))], 1
     )
     if bits == 4:
@@ -173,7 +173,7 @@ def _dig_indexed_shared(table: str, n: int) -> str | None:
     cells[0, 0], cells[decoder.row_offset, 0] = "'", ">"
     cells[decoder.top - 2, decoder.end + decoder.offset] = ">"
     cells[decoder.top - 2, merge] = "'"
-    chars, turns, reads, _exit, _box = _dig_flat_leaf(
+    chars, turns, reads, _exit, _ = _dig_flat_leaf(
         "".join(unique), [4, 2, 1], [4, 2, 1], classes=len(unique)
     )
 
