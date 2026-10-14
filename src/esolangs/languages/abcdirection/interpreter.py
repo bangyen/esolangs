@@ -8,15 +8,15 @@ no-op, and ``C`` and ``D`` dispatch on the heading:
 - ``C`` right: move the tape pointer left.
 - ``C`` left: move the tape pointer right and flip the bit there.
 - ``C`` up: if the bit is 1, turn left; otherwise go straight.
-- ``C`` down: output the bit, Boolfuck-style.
+- ``C`` down: output the bit.
 - ``D`` right: enqueue the bit.
 - ``D`` left: dequeue into the bit.
-- ``D`` up: input into the bit, Boolfuck-style.
+- ``D`` up: input into the bit.
 - ``D`` down: a 1 bit goes straight on; otherwise dequeue, and a 1 turns
   up; otherwise dequeue again, and a 0 turns left, a 1 right.
 
 The tape is an unbounded bit tape and the queue a FIFO of bits.  I/O is
-Boolfuck's: bytes leave and arrive eight bits at a time, least significant
+bitwise: bytes leave and arrive eight bits at a time, least significant
 first, and EOF supplies zero bits.  The file reader stops after the first
 line containing ``DDDDDD``; that line is read whole, so the grid is every
 line up to it, which must form a rectangle of ``A``/``B``/``C``/``D``

@@ -52,7 +52,7 @@ _WRITE = 4
 #: The band's bottom row: where a select gadget is entered, heading left.
 _BASE = 3
 
-#: Bits per input character, Boolfuck's byte.
+#: Bits per input character: input arrives a byte at a time.
 _BITS = 8
 
 #: One unit per printed bit of ``"0"``/``"1"`` (``f`` then ``0001100``,
