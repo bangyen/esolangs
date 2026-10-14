@@ -344,7 +344,16 @@ def _laserfuck_join(marks: list[tuple[int, str]]) -> str:
     return "".join(parts)
 
 
-_ReaderCandidate = tuple[int, int, tuple[str, ...], int, int]
+class _LaserReader(NamedTuple):
+    rows: tuple[str, ...]
+    exit_row: int
+    exit_col: int
+
+
+class _ReaderCandidate(NamedTuple):
+    height: int
+    span: int
+    reader: _LaserReader
 
 
 @cache
@@ -352,7 +361,7 @@ def _laserfuck_reader_candidates(
     n: int,
     perm: tuple[int, ...] | None = None,
 ) -> tuple[_ReaderCandidate, ...]:
-    """Every orientation word's reader, shortest first, as ``(rows, span, ...)``.
+    """Every orientation word's reader, shortest first (height, then span).
 
     The search depends on ``n`` and ``perm`` alone -- a truth table never
     reaches the reader, and a width only *filters* the result -- so every
@@ -370,16 +379,11 @@ def _laserfuck_reader_candidates(
             placements, orientation
         )
         span = max(len(line) for line in rows_of)
-        candidates.append((len(rows_of), span, tuple(rows_of), exit_row, exit_col))
+        reader = _LaserReader(tuple(rows_of), exit_row, exit_col)
+        candidates.append(_ReaderCandidate(len(rows_of), span, reader))
     # Stable, so ties still break on the orientation word's own order.
-    candidates.sort(key=lambda item: (item[0], item[1]))
+    candidates.sort(key=lambda item: (item.height, item.span))
     return tuple(candidates)
-
-
-class _LaserReader(NamedTuple):
-    rows: tuple[str, ...]
-    exit_row: int
-    exit_col: int
 
 
 class _LaserTree(NamedTuple):
@@ -405,10 +409,10 @@ def _laserfuck_reader(
         fitting = [
             item
             for item in candidates
-            if width is None or MARGIN + item[1] + 2 <= width
+            if width is None or MARGIN + item.span + 2 <= width
         ]
-        chosen = fitting[0] if fitting else min(candidates, key=lambda item: item[1])
-        _, _, reader_rows, reader_exit_row, reader_exit_col = chosen
+        chosen = fitting[0] if fitting else min(candidates, key=lambda item: item.span)
+        reader_rows, reader_exit_row, reader_exit_col = chosen.reader
 
     return _LaserReader(tuple(reader_rows), reader_exit_row, reader_exit_col)
 
@@ -797,8 +801,11 @@ def balance_laserfuck(table: str, default: str) -> str:
     for ordered, perm in regimes:
         tree = _laserfuck_tree(ordered, n)
         span = max(map(len, tree.upright))
-        for _, columns, _, _, exit_column in _laserfuck_reader_candidates(n, perm):
-            events.update((margin + columns + 2, margin + exit_column + span + 1))
+        for candidate in _laserfuck_reader_candidates(n, perm):
+            exit_column = candidate.reader.exit_col
+            events.update(
+                (margin + candidate.span + 2, margin + exit_column + span + 1)
+            )
     boundaries = sorted(events)
     widths = set(boundaries)
     for index, start in enumerate(boundaries):
