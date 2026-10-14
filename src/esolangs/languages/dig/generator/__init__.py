@@ -46,7 +46,7 @@ _DIG_BAND = _DIG_STRIDE + 1
 
 # Largest n built as plain decision trees; above it the alternating layout
 # (flat leaves) beats the trees on every random table measured (1.9-5.1x smaller,
-# n=5..8) and below it the layout cannot be built (n=2, 3).
+# n=5..8), at it the two race, and below it the layout cannot be built (n=2, 3).
 _DIG_TREE_MAX = 4
 
 
@@ -442,8 +442,14 @@ def _dig_build(
     # the eastbound one starts its last block, which is what fixes the
     # split rather than any search: the halves are as even as that allows.
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
+    trees = min((flat, banded), key=len)
+    if width is None and n == _DIG_TREE_MAX and share:
+        # Both build at n=4 and neither dominates: over all 65,536 tables
+        # racing them saves 30.7% of length (33.2% of area) against the trees alone.
+        layouts = filter(None, (lane, parallel, _dig_alternating(truth_table, n)))
+        return min(trees, settle(min(layouts, key=len)), key=len)
     if width is None:
-        return min((flat, banded), key=len)
+        return trees
     if n <= _DIG_TREE_MAX:
         if grid_width(flat) <= width:
             return flat
@@ -484,9 +490,9 @@ def _balance(table: str, default: str) -> str:
     ]
     essential = essential_inputs(table, n)
     if (wrapped := _dig_discarded(table, n, essential)) is not None:
-        # A discard column can be more square even when its area is larger.
-        legacy = min(_dig_build(table, n, None, share=True), wrapped, key=len)
-        candidates.append(legacy)
+        # A discard column can be more square even when its area is larger,
+        # and longer than the build it wraps (n=4 races the alternating layout).
+        candidates += [_dig_build(table, n, None, share=True), wrapped]
     if n >= 2:
         banded = _dig_grid(table, n, (n + 3) // 2)
         if grid_width(banded) < grid_width(flat):
