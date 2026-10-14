@@ -331,130 +331,35 @@ _F_EXTRA = (57, 75, 119)
 
 # ---------------------------------------------------------------------------
 # Readout op language: one typed op per step of the searched readout search.
-@dataclass(frozen=True)
-class _MixOp:
-    """One readout op: ``p`` (crazy) ``A`` with mixer state cell ``index``."""
+class _SegmentOp(NamedTuple):
+    """One readout op.
 
-    index: int
-
-
-@dataclass(frozen=True)
-class _RotOp:
-    """One readout op: ``*`` (rotation) on mixer state cell ``index``."""
-
-    index: int
-
-
-@dataclass(frozen=True)
-class _SetConstOp:
-    """One readout op: ``*`` on ``_CONSTS[index]``.
-
-    The constant is 0, all-1 or all-2; the op sets ``A`` to it.
+    ``m``: ``p`` with mixer cell ``arg``; ``r``: ``*`` on it; ``c``: ``*`` on
+    ``_CONSTS[arg]``, setting ``A``; ``s``: snapshot ``A`` into copy ``arg``'s
+    readout at the segment's level.
     """
 
-    index: int
+    kind: str
+    arg: int
 
 
-@dataclass(frozen=True)
-class _SnapshotOp:
-    """One readout op: snapshot ``A`` into copy ``index``'s readout.
-
-    The snapshot lands at this segment's level.
-    """
-
-    index: int
-
-
-_SegmentOp = _MixOp | _RotOp | _SetConstOp | _SnapshotOp
+def _segment(spec: str) -> tuple[_SegmentOp, ...]:
+    """Parse ``"s0 r6 m2"`` into ops: a kind letter, then ``arg``."""
+    return tuple(_SegmentOp(w[0], int(w[1:])) for w in spec.split())
 
 
 #: The readout ops, in three segments run after the eleven-bit post-map.
-_F_SEGMENTS: tuple[tuple[_SegmentOp, ...], ...] = (
-    (
-        _SnapshotOp(0),
-        _RotOp(6),
-        _MixOp(2),
-        _MixOp(1),
-        _MixOp(6),
-        _MixOp(6),
-        _RotOp(7),
-        _SetConstOp(1),
-        _MixOp(7),
-        _RotOp(7),
-        _MixOp(2),
-        _RotOp(0),
-        _MixOp(2),
-        _MixOp(5),
-        _MixOp(6),
-        _MixOp(1),
-        _MixOp(3),
-        _MixOp(7),
-        _SetConstOp(0),
-        _MixOp(2),
-        _RotOp(1),
-        _MixOp(2),
-        _RotOp(7),
-        _RotOp(7),
-        _RotOp(7),
-        _RotOp(6),
-        _MixOp(2),
-        _RotOp(5),
-        _MixOp(7),
-        _MixOp(2),
-        _RotOp(0),
-        _MixOp(5),
-        _MixOp(2),
-        _MixOp(0),
-        _SnapshotOp(2),
-        _SnapshotOp(1),
-        _SnapshotOp(3),
-    ),
-    (
-        _SnapshotOp(0),
-        _MixOp(7),
-        _SnapshotOp(2),
-        _SnapshotOp(1),
-        _RotOp(6),
-        _MixOp(3),
-        _RotOp(6),
-        _SetConstOp(2),
-        _MixOp(2),
-        _RotOp(2),
-        _MixOp(3),
-        _RotOp(7),
-        _RotOp(3),
-        _RotOp(7),
-        _RotOp(6),
-        _MixOp(4),
-        _RotOp(7),
-        _RotOp(7),
-        _MixOp(4),
-        _SetConstOp(0),
-        _MixOp(5),
-        _MixOp(3),
-        _RotOp(6),
-        _MixOp(4),
-        _RotOp(5),
-        _MixOp(4),
-        _RotOp(4),
-        _MixOp(1),
-        _RotOp(3),
-        _MixOp(1),
-        _RotOp(1),
-        _RotOp(0),
-        _MixOp(1),
-        _SnapshotOp(3),
-    ),
-    (
-        _MixOp(5),
-        _SnapshotOp(0),
-        _RotOp(2),
-        _SnapshotOp(1),
-        _SnapshotOp(3),
-        _RotOp(2),
-        _RotOp(2),
-        _SnapshotOp(2),
-    ),
+_F_SEGMENTS = tuple(
+    map(
+        _segment,
+        (
+            "s0 r6 m2 m1 m6 m6 r7 c1 m7 r7 m2 r0 m2 m5 m6 m1 m3 m7 c0 m2 r1 m2 "
+            "r7 r7 r7 r6 m2 r5 m7 m2 r0 m5 m2 m0 s2 s1 s3",
+            "s0 m7 s2 s1 r6 m3 r6 c2 m2 r2 m3 r7 r3 r7 r6 m4 r7 r7 m4 c0 m5 m3 "
+            "r6 m4 r5 m4 r4 m1 r3 m1 r1 r0 m1 s3",
+            "m5 s0 r2 s1 s3 r2 r2 s2",
+        ),
+    )
 )
 #: Per copy, the ``o`` run before each level's table ``j``.
 _F_OFFSETS = ((3, 18, 18), (22, 19, 1), (14, 16, 15), (14, 24, 18))
@@ -555,18 +460,18 @@ def _f_tables() -> tuple[
         state = [*cells[:5], *_F_EXTRA]
         for lvl, segment in enumerate(_F_SEGMENTS):
             for op in segment:
-                if isinstance(op, _MixOp):
-                    a = state[op.index] = _crazy(a, state[op.index])
-                elif isinstance(op, _RotOp):
-                    a = state[op.index] = _rot(state[op.index])
-                elif isinstance(op, _SetConstOp):
-                    a = _CONSTS[op.index]
+                if op.kind == "m":
+                    a = state[op.arg] = _crazy(a, state[op.arg])
+                elif op.kind == "r":
+                    a = state[op.arg] = _rot(state[op.arg])
+                elif op.kind == "c":
+                    a = _CONSTS[op.arg]
                 else:
                     if lvl < 2:
-                        a = _crazy(a, prep[op.index][lvl])
+                        a = _crazy(a, prep[op.arg][lvl])
                     else:
                         a = _crazy(_crazy(a, _L3_CELL_A), _L3_CELL_B)
-                    tables[lvl][op.index][row] = a + 1 + _F_OFFSETS[op.index][lvl]
+                    tables[lvl][op.arg][row] = a + 1 + _F_OFFSETS[op.arg][lvl]
     reach = [[1] * rows for _ in range(4)]
     count = Counter(tables[0][c][row] for c in range(4) for row in range(rows))
     changed = True
@@ -876,17 +781,17 @@ def _f_emit_segment(
 ) -> None:
     """Emit one readout segment's typed ops over the mixer and state cells."""
     for op in segment:
-        if isinstance(op, _MixOp):
-            main.op("p", cell[op.index])
-        elif isinstance(op, _RotOp):
-            main.op("*", cell[op.index])
-        elif isinstance(op, _SetConstOp):
-            main.op("*", konst[op.index])
+        if op.kind == "m":
+            main.op("p", cell[op.arg])
+        elif op.kind == "r":
+            main.op("*", cell[op.arg])
+        elif op.kind == "c":
+            main.op("*", konst[op.arg])
         elif lvl < 2:
-            main.op("p", readout[op.index, lvl])
+            main.op("p", readout[op.arg, lvl])
         else:
-            main.op("p", triples[op.index])
-            main.op("p", readout[op.index, 2])
+            main.op("p", triples[op.arg])
+            main.op("p", readout[op.arg, 2])
 
 
 def _f_emit_readouts(
