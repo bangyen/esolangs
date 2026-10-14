@@ -304,8 +304,6 @@ dispatch.
   is the whole pool.
 - brainfuck admits a bank at several depths; one cell per input level
   is the whole pool.
-- Boolfuck admits a bank at several depths; one cell per input level
-  is the whole pool.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
