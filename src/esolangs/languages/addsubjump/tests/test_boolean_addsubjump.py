@@ -250,3 +250,18 @@ def test_balancing_retains_legacy_packed_constant(bit: str) -> None:
     table = bit * (1 << 7)
     legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
     assert_constant_balanced_shape("AddSubJump", "addsubjump", table, legacy)
+
+
+def test_balancing_retains_legacy_packed_layout_with_an_ignored_input() -> None:
+    """Retention is not only for constants: at n=7 an ignored input keeps it.
+
+    Six-input parity padded with an ignored leading input; the full packed
+    layout balances strictly better here, as for every such n=7 table.
+    """
+    from esolangs.languages.addsubjump.generator import _addsubjump_packed
+    from tests.support.generator_support import assert_constant_balanced_shape
+    from tests.support.witness_tables import parity
+
+    table = parity(6) * 2
+    legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
+    assert_constant_balanced_shape("AddSubJump", "addsubjump", table, legacy)
