@@ -162,7 +162,6 @@ class _Ctx(NamedTuple):
     """
 
     scopes: Mapping[int, _Scope]
-    next_scope: int
     bits: tuple[int, ...]
     reads: int
     input_pos: int
@@ -176,7 +175,6 @@ class _State:
 
     frames: tuple[_Frame, ...]
     scopes: Mapping[int, _Scope]
-    next_scope: int
     bits: tuple[int, ...]
     reads: int
 
@@ -186,12 +184,14 @@ def _new_scope(
     fn: _Function,
     parent: int | None,
     locals_: Mapping[str, object],
-    next_scope: int,
-) -> tuple[int, int, Mapping[int, _Scope]]:
-    """Add a scope node; return its id, the next id, and the new store."""
-    scope = next_scope
+) -> tuple[int, Mapping[int, _Scope]]:
+    """Add a scope node; return its id and the new store.
+
+    Scopes are only ever added, so the next id is the store's size.
+    """
+    scope = len(scopes)
     node = _Scope(fn, _frozen(locals_), parent)
-    return scope, next_scope + 1, MappingProxyType({**scopes, scope: node})
+    return scope, MappingProxyType({**scopes, scope: node})
 
 
 def _lookup(
@@ -306,20 +306,13 @@ def _enter(
     callee: _Closure,
     args: list[object],
     scopes: Mapping[int, _Scope],
-    next_scope: int,
-) -> tuple[_Frame, int, Mapping[int, _Scope]]:
+) -> tuple[_Frame, Mapping[int, _Scope]]:
     """Return a frame for calling ``callee``; unpassed parameters are 0."""
     locals_: dict[str, object] = dict.fromkeys(callee.fn.args, 0)
     for name, value in zip(callee.fn.args, args, strict=False):
         locals_[name] = value
-    scope, next_scope, scopes = _new_scope(
-        scopes, callee.fn, callee.scope, locals_, next_scope
-    )
-    return (
-        _Frame(callee.fn, scope),
-        next_scope,
-        scopes,
-    )
+    scope, scopes = _new_scope(scopes, callee.fn, callee.scope, locals_)
+    return _Frame(callee.fn, scope), scopes
 
 
 def _call(
@@ -330,8 +323,8 @@ def _call(
 ) -> tuple[object, _Ctx]:
     """Apply a callable, threading the context through any nested run."""
     if isinstance(callee, _Closure):
-        frame, next_scope, scopes = _enter(callee, args, ctx.scopes, ctx.next_scope)
-        ctx = ctx._replace(scopes=scopes, next_scope=next_scope)
+        frame, scopes = _enter(callee, args, ctx.scopes)
+        ctx = ctx._replace(scopes=scopes)
         result, ctx = _run(frame, globals_, ctx)
         return (result if result is not None else 0), ctx
     if isinstance(callee, str):
@@ -539,8 +532,8 @@ def _start_statement_call(
     if not isinstance(callee, _Closure):
         _value, ctx = _call(callee, args, globals_, ctx)
         return False, ctx
-    pushed, next_scope, scopes = _enter(callee, args, ctx.scopes, ctx.next_scope)
-    ctx = ctx._replace(scopes=scopes, next_scope=next_scope)
+    pushed, scopes = _enter(callee, args, ctx.scopes)
+    ctx = ctx._replace(scopes=scopes)
     return pushed, ctx
 
 
@@ -558,7 +551,7 @@ def _advance(
     shell can flush output before reading or re-raising.
     """
     out: list[str] = []
-    ctx = _Ctx(state.scopes, state.next_scope, state.bits, state.reads, 0, out, inputs)
+    ctx = _Ctx(state.scopes, state.bits, state.reads, 0, out, inputs)
     try:
         frames, ctx, _returned = _step_frames(state.frames, globals_, ctx)
     except _NeedByte:
@@ -567,7 +560,7 @@ def _advance(
         raise
     except BaseException as exc:
         raise _Fault(tuple(out), exc) from None
-    return _State(frames, ctx.scopes, ctx.next_scope, ctx.bits, ctx.reads), tuple(out)
+    return _State(frames, ctx.scopes, ctx.bits, ctx.reads), tuple(out)
 
 
 def _step_frames(
@@ -674,23 +667,21 @@ class _Machine:
                 "define a main function, for example main { return 0; }",
             )
         global_fn = _Function("$globals", [])
-        global_scope, next_scope, scopes = _new_scope(
-            MappingProxyType({}), global_fn, None, MappingProxyType({}), 0
+        global_scope, scopes = _new_scope(
+            MappingProxyType({}), global_fn, None, MappingProxyType({})
         )
         self._global_scope = global_scope
         global_frame = _Frame(global_fn, global_scope)
-        self.state = _State((), scopes, next_scope, (), 0)
+        self.state = _State((), scopes, (), 0)
         for initializer in parser.initializers:
             self._run_initializer(initializer, global_frame)
         main_fn = self.globals["main"]
         main_locals = dict.fromkeys(main_fn.args, 0)
-        main_scope, next_scope, scopes = _new_scope(
-            self.state.scopes, main_fn, global_scope, main_locals, self.state.next_scope
+        main_scope, scopes = _new_scope(
+            self.state.scopes, main_fn, global_scope, main_locals
         )
         main_frame = _Frame(main_fn, main_scope)
-        self.state = _State(
-            (main_frame,), scopes, next_scope, self.state.bits, self.state.reads
-        )
+        self.state = _State((main_frame,), scopes, self.state.bits, self.state.reads)
 
     def _run_initializer(self, initializer: _Statement, global_frame: _Frame) -> None:
         """Run one top-level initializer, preserving its output order.
@@ -706,7 +697,6 @@ class _Machine:
             out: list[str] = []
             ctx = _Ctx(
                 self.state.scopes,
-                self.state.next_scope,
                 self.state.bits,
                 self.state.reads,
                 0,
@@ -724,7 +714,7 @@ class _Machine:
                 raise
             break
         self._flush(out, flushed)
-        self.state = _State((), ctx.scopes, ctx.next_scope, ctx.bits, ctx.reads)
+        self.state = _State((), ctx.scopes, ctx.bits, ctx.reads)
 
     def _flush(self, effects: Sequence[str], flushed: int) -> int:
         """Print ``effects`` past ``flushed``; return the new flush count."""
