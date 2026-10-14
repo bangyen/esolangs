@@ -37,7 +37,7 @@ from collections import Counter
 from dataclasses import dataclass
 from functools import cache
 from itertools import product
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
@@ -331,21 +331,27 @@ _F_EXTRA = (57, 75, 119)
 
 # ---------------------------------------------------------------------------
 # Readout op language: one typed op per step of the searched readout search.
+_Kind = Literal["mix", "rot", "const", "snap"]
+
+
 class _SegmentOp(NamedTuple):
     """One readout op.
 
-    ``m``: ``p`` with mixer cell ``arg``; ``r``: ``*`` on it; ``c``: ``*`` on
-    ``_CONSTS[arg]``, setting ``A``; ``s``: snapshot ``A`` into copy ``arg``'s
-    readout at the segment's level.
+    ``mix``: ``p`` with mixer cell ``arg``; ``rot``: ``*`` on it; ``const``:
+    ``*`` on ``_CONSTS[arg]``, setting ``A``; ``snap``: snapshot ``A`` into
+    copy ``arg``'s readout at the segment's level.
     """
 
-    kind: str
+    kind: _Kind
     arg: int
+
+
+_KINDS: dict[str, _Kind] = {"m": "mix", "r": "rot", "c": "const", "s": "snap"}
 
 
 def _segment(spec: str) -> tuple[_SegmentOp, ...]:
     """Parse ``"s0 r6 m2"`` into ops: a kind letter, then ``arg``."""
-    return tuple(_SegmentOp(w[0], int(w[1:])) for w in spec.split())
+    return tuple(_SegmentOp(_KINDS[w[0]], int(w[1:])) for w in spec.split())
 
 
 #: The readout ops, in three segments run after the eleven-bit post-map.
@@ -460,18 +466,20 @@ def _f_tables() -> tuple[
         state = [*cells[:5], *_F_EXTRA]
         for lvl, segment in enumerate(_F_SEGMENTS):
             for op in segment:
-                if op.kind == "m":
+                if op.kind == "mix":
                     a = state[op.arg] = _crazy(a, state[op.arg])
-                elif op.kind == "r":
+                elif op.kind == "rot":
                     a = state[op.arg] = _rot(state[op.arg])
-                elif op.kind == "c":
+                elif op.kind == "const":
                     a = _CONSTS[op.arg]
-                else:
+                elif op.kind == "snap":
                     if lvl < 2:
                         a = _crazy(a, prep[op.arg][lvl])
                     else:
                         a = _crazy(_crazy(a, _L3_CELL_A), _L3_CELL_B)
                     tables[lvl][op.arg][row] = a + 1 + _F_OFFSETS[op.arg][lvl]
+                else:
+                    raise ValueError(op.kind)
     reach = [[1] * rows for _ in range(4)]
     count = Counter(tables[0][c][row] for c in range(4) for row in range(rows))
     changed = True
@@ -781,17 +789,20 @@ def _f_emit_segment(
 ) -> None:
     """Emit one readout segment's typed ops over the mixer and state cells."""
     for op in segment:
-        if op.kind == "m":
+        if op.kind == "mix":
             main.op("p", cell[op.arg])
-        elif op.kind == "r":
+        elif op.kind == "rot":
             main.op("*", cell[op.arg])
-        elif op.kind == "c":
+        elif op.kind == "const":
             main.op("*", konst[op.arg])
-        elif lvl < 2:
-            main.op("p", readout[op.arg, lvl])
+        elif op.kind == "snap":
+            if lvl < 2:
+                main.op("p", readout[op.arg, lvl])
+            else:
+                main.op("p", triples[op.arg])
+                main.op("p", readout[op.arg, 2])
         else:
-            main.op("p", triples[op.arg])
-            main.op("p", readout[op.arg, 2])
+            raise ValueError(op.kind)
 
 
 def _f_emit_readouts(
