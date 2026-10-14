@@ -214,9 +214,8 @@ type _Latches = tuple[tuple[tuple[int, ...] | None, ...], ...]
 type _State = tuple[_Values, _Latches]
 
 
-def _emitted(state: _State, topology: _Topology) -> list[str]:
+def _emitted(values: _Values, topology: _Topology) -> list[str]:
     """Return what each ``:`` gate writes this generation, in gate order."""
-    values, _ = state
     out = []
     for gate in topology.gates:
         if gate.kind != _OUTPUT:
@@ -312,10 +311,6 @@ class _Machine:
         self.clock = clock if clock is not None else _ClockStream()
         self.io = io
         self.topology = _compile(tuple(code))
-        self.grid = self.topology.grid
-        self.wirings = self.topology.wirings
-        self.gates = self.topology.gates
-        self.index = self.topology.wire_index
         self.halted = False
         # Static topology is shared; values and remembered gate inputs stay
         # per-machine tuples indexed by topology position.
@@ -325,6 +320,28 @@ class _Machine:
         )
         self._load_inputs()
         self._load_sources()
+
+    # Read-only views of the shared topology.
+
+    @property
+    def grid(self) -> _Grid:
+        """The parsed diagram grid."""
+        return self.topology.grid
+
+    @property
+    def wirings(self) -> list[_Wiring]:
+        """Every wiring, by position."""
+        return self.topology.wirings
+
+    @property
+    def gates(self) -> list[_Gate]:
+        """Every gate, by position."""
+        return self.topology.gates
+
+    @property
+    def index(self) -> dict[int, int]:
+        """``id(wiring)`` to its position."""
+        return self.topology.wire_index
 
     def _load_inputs(self) -> None:
         """Drive every input wiring with the bits read from stdin.
@@ -429,7 +446,7 @@ class _Machine:
         gate order.  The clock is read here, one value per read the
         transition asks for; the transition itself never touches wall time.
         """
-        for text in _emitted((self.values, self.latches), self.topology):
+        for text in _emitted(self.values, self.topology):
             self.io.print_str(text)
         state = (self.values, self.latches)
         sampled: list[int] = []
