@@ -58,7 +58,7 @@ import re
 from collections.abc import Callable, Mapping
 from contextlib import suppress
 from types import MappingProxyType
-from typing import Any
+from typing import Any, NamedTuple
 
 from esolangs.raster import Raster
 from esolangs.runtime._drive import drive
@@ -85,11 +85,21 @@ Point = tuple[int, int]
 type Element = Any
 type _Stack = tuple[Element, ...]
 type _Rows = tuple[tuple[Pixel, ...], ...]
-#: current, dp, cc, the root stack, the path to the current stack, halted,
-#: the image, and the pixels ``Write`` has changed.
-type _Core = tuple[
-    Point, int, int, _Stack, tuple[int, ...], bool, _Rows, Mapping[Point, Pixel]
-]
+
+
+class _Core(NamedTuple):
+    """One immutable machine state; ``writes`` holds the pixels ``Write`` changed."""
+
+    current: Point
+    dp: int
+    cc: int
+    root: _Stack
+    path: tuple[int, ...]
+    halted: bool
+    rows: _Rows
+    writes: Mapping[Point, Pixel]
+
+
 #: ``("out", values, number)``: print each value as a number or a character.
 type _Effect = tuple[str, tuple[int, ...], bool] | None
 
@@ -335,16 +345,15 @@ def _command(  # noqa: C901
                     commit((*stack, parse_integer(str(value))))
             else:
                 commit((*stack, int(value)))
-    return ((current, dp, cc, root, path, halted, rows, writes), effect)
+    return _Core(current, dp, cc, root, path, halted, rows, writes), effect
 
 
 def _slide(core: _Core, start: Point) -> _Core:
-    current, dp, cc, root, path, halted, rows, writes = core
-    slid = slide(rows, start, dp, cc, _colour)
+    slid = slide(core.rows, start, core.dp, core.cc, _colour)
     if slid is None:
-        return (current, dp, cc, root, path, True, rows, writes)
+        return core._replace(halted=True)
     target, dp, cc = slid
-    return (target, dp, cc, root, path, halted, rows, writes)
+    return core._replace(current=target, dp=dp, cc=cc)
 
 
 def _advance(
@@ -375,29 +384,29 @@ def _advance_core(
     ready: bool,
 ) -> tuple[_Core, _Effect]:
     """Run the pure traversal and command dispatch behind :func:`_advance`."""
-    current, dp, cc, root, path, halted, rows, writes = core
-    if halted:
+    current, dp, cc, rows = core.current, core.dp, core.cc, core.rows
+    if core.halted:
         return core, None
     colour = _colour(rows[current[1]][current[0]])
     if colour == BLACK:
-        return (current, dp, cc, root, path, True, rows, writes), None
+        return core._replace(halted=True), None
     if colour == WHITE:
         return _slide(core, current), None
     block = find_block(rows, current, _colour)
     exit_ = exit_step(rows, block, dp, cc, _colour)
     if exit_ is None:
-        return (current, dp, cc, root, path, True, rows, writes), None
+        return core._replace(halted=True), None
     target, dp, cc, seen = exit_
     if seen == WHITE:
         # Slides with the dp and cc the exit search settled on, as in Piet.
-        return _slide((current, dp, cc, root, path, halted, rows, writes), target), None
+        return _slide(core._replace(dp=dp, cc=cc), target), None
     (r, g, b), (r0, g0, b0) = seen, colour
     change = (
         (r // _STEP - r0 // _STEP) % 4,
         (g // _STEP - g0 // _STEP) % 2,
         (b // _STEP - b0 // _STEP) % 4,
     )
-    moved = (target, dp, cc, root, path, halted, rows, writes)
+    moved = core._replace(current=target, dp=dp, cc=cc)
     return _command(moved, _COMMANDS[change], len(block), value, ready=ready)
 
 
@@ -414,7 +423,7 @@ class _Machine:
             bytes(channel for row in rows for pixel in row for channel in pixel),
         )
         self.io = io
-        self.state: _Core = (
+        self.state = _Core(
             (0, 0),
             0,
             -1,
