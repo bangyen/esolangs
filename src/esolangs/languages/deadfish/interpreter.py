@@ -30,7 +30,6 @@ neither ``EOFError`` nor :class:`~esolangs.exceptions.HaltError` arises.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import NamedTuple
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -48,10 +47,10 @@ _ARITHMETIC: dict[str, Callable[[int], int]] = {
 _TRAPS = (-1, 256)
 
 
-class _State(NamedTuple):
-    ind: int = 0
-    value: int = 0
-    stopped: bool = False  # set by ``h``, the only way to stop early
+#: ``(ind, value, stopped)``: the code position, the one accumulator, and
+#: whether ``h`` -- the only way to stop early -- has run.  A plain tuple:
+#: a NamedTuple's constructor cost a third of the step rate.
+type _State = tuple[int, int, bool]
 
 
 def _advance(state: _State, code: str) -> tuple[_State, str | None]:
@@ -60,15 +59,15 @@ def _advance(state: _State, code: str) -> tuple[_State, str | None]:
     The reset follows every command, so it sits after the dispatch rather
     than inside each arithmetic branch.
     """
-    command = code[state.ind]
+    ind, value, _stopped = state
+    command = code[ind]
     if command == "h":
-        return state._replace(stopped=True), None
-    value = state.value
+        return (ind, value, True), None
     if command in _ARITHMETIC:
         value = _ARITHMETIC[command](value)
     if value in _TRAPS:
         value = 0
-    return _State(state.ind + 1, value), f"{value}\n" if command == "o" else None
+    return (ind + 1, value, False), f"{value}\n" if command == "o" else None
 
 
 class _Machine:
@@ -77,27 +76,28 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
         self.io = io
-        self.state = _State()
+        self.state: _State = (0, 0, False)
 
     @property
     def halted(self) -> bool:
-        return self.state.stopped or self.state.ind >= len(self.code)
+        ind, _value, stopped = self.state
+        return stopped or ind >= len(self.code)
 
     @property
     def ind(self) -> int:
-        return self.state.ind
+        return self.state[0]
 
     @property
     def value(self) -> int:
-        return self.state.value
+        return self.state[1]
 
     @property
     def ip(self) -> int:
-        return self.state.ind
+        return self.state[0]
 
     @property
     def memory(self) -> list[int]:
-        return [self.state.value]
+        return [self.state[1]]
 
     def snapshot(self) -> tuple[object, ...]:
         return (self.code, *self.state, self.io.progress())
