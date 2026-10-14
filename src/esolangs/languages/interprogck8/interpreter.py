@@ -48,12 +48,6 @@ Decisions for gaps in the wiki spec:
 - ``[a b]`` and ``~`` draw through :mod:`esolangs.runtime.randomness`, so a
   caller can pin them; ``developer`` prints a fixed string rather than this
   file.
-
-Calls are frames on an explicit stack, popped as soon as they are
-exhausted, so the cat example's trailing ``EXE`` recurses at constant depth
-and its state repeats, which lets the cycle detector prove the
-truth-machine's ``1`` branch loops.  :func:`_advance` is a pure transition
-over an immutable ``_State``; the shell does the reads and writes.
 """
 
 from __future__ import annotations
@@ -122,6 +116,10 @@ class _State:
         return self.lines[self.ip]
 
 
+# Calls are frames on an explicit stack, popped as soon as they are
+# exhausted, so the cat example's trailing ``EXE`` recurses at constant depth
+# and its state repeats: the cycle detector can prove the truth-machine's
+# ``1`` branch loops.
 def _advance_cursor(state: _State) -> _State:
     """Move past the line just executed, popping every finished frame.
 
